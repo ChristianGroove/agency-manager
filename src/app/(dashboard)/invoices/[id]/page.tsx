@@ -26,12 +26,15 @@ type Invoice = {
   }
 }
 
+import { WhatsAppShareModal } from "@/components/modules/invoices/whatsapp-share-modal"
+
 export default function InvoicePage() {
   const params = useParams()
   const [invoice, setInvoice] = useState<Invoice | null>(null)
   const [loading, setLoading] = useState(true)
   const invoiceRef = useRef<HTMLDivElement>(null)
   const [downloading, setDownloading] = useState(false)
+  const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false)
 
   useEffect(() => {
     if (params.id) {
@@ -62,13 +65,6 @@ export default function InvoicePage() {
   const handleDownloadPDF = () => {
     // Use browser's print dialog which can save as PDF
     window.print()
-  }
-
-  const handleShareWhatsApp = () => {
-    if (!invoice) return
-    const message = `Hola ${invoice.client.name}, te comparto la Cuenta de Cobro N° ${invoice.number} por valor de $${invoice.total.toLocaleString()}.`
-    const url = `https://wa.me/${invoice.client.phone?.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`
-    window.open(url, '_blank')
   }
 
   const handleShareEmail = () => {
@@ -110,7 +106,7 @@ export default function InvoicePage() {
               <h1 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">Factura</h1>
             </div>
             <div className="flex items-center gap-2">
-              <Button onClick={handleShareWhatsApp} className="bg-green-600 hover:bg-green-700 text-white shadow-sm">
+              <Button onClick={() => setIsWhatsAppModalOpen(true)} className="bg-green-600 hover:bg-green-700 text-white shadow-sm">
                 <Share2 className="mr-2 h-4 w-4" /> WhatsApp
               </Button>
               <Button
@@ -393,6 +389,14 @@ export default function InvoicePage() {
           </div>
         </div>
       </div>
+
+      {invoice && (
+        <WhatsAppShareModal
+          invoice={invoice!}
+          open={isWhatsAppModalOpen}
+          onOpenChange={setIsWhatsAppModalOpen}
+        />
+      )}
     </div>
   )
 }

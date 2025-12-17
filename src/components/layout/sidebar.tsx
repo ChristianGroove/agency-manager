@@ -27,6 +27,11 @@ const routes = [
         href: "/invoices",
     },
     {
+        label: "Cotizaciones",
+        icon: FileText,
+        href: "/quotes",
+    },
+    {
         label: "Configuración",
         icon: Settings,
         href: "/settings",

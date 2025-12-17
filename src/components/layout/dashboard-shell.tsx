@@ -11,22 +11,24 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     return (
         <div className="h-full relative bg-gray-50/50 min-h-screen">
             {/* Floating Sidebar */}
-            <Sidebar
-                isCollapsed={isCollapsed}
-                toggleCollapse={() => setIsCollapsed(!isCollapsed)}
-            />
+            <div className="print:hidden">
+                <Sidebar
+                    isCollapsed={isCollapsed}
+                    toggleCollapse={() => setIsCollapsed(!isCollapsed)}
+                />
+            </div>
 
             {/* Main Content Area */}
             <main
                 className={cn(
-                    "transition-all duration-300 ease-in-out min-h-screen flex flex-col",
+                    "transition-all duration-300 ease-in-out min-h-screen flex flex-col print:pl-0 print:p-0",
                     isCollapsed ? "pl-[120px]" : "pl-[330px]" // 20px margin + width + gap
                 )}
             >
                 <div className="print:hidden sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-gray-100">
                     <Header />
                 </div>
-                <div className="p-6">
+                <div className="p-6 print:p-0">
                     {children}
                 </div>
             </main>

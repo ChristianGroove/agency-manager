@@ -226,7 +226,8 @@ export default function DashboardPage() {
 
             {/* Quick Actions */}
             {/* Quick Actions */}
-            <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
+            {/* Quick Actions */}
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
                 <Link href="/clients">
                     <Card className="group hover:shadow-lg transition-all duration-300 cursor-pointer border-gray-100 hover:border-brand-cyan/50 hover:-translate-y-1">
                         <CardHeader>
@@ -240,6 +241,24 @@ export default function DashboardPage() {
                         <CardContent>
                             <p className="text-sm text-muted-foreground group-hover:text-gray-600">
                                 Gestiona tu base de clientes
+                            </p>
+                        </CardContent>
+                    </Card>
+                </Link>
+
+                <Link href="/quotes">
+                    <Card className="group hover:shadow-lg transition-all duration-300 cursor-pointer border-gray-100 hover:border-yellow-500/50 hover:-translate-y-1">
+                        <CardHeader>
+                            <CardTitle className="text-base flex items-center gap-3">
+                                <div className="p-2.5 bg-yellow-50 rounded-lg group-hover:bg-yellow-500 group-hover:text-white transition-colors">
+                                    <FileText className="h-5 w-5 text-yellow-600 group-hover:text-white" />
+                                </div>
+                                <span className="group-hover:text-yellow-600 transition-colors">Cotizaciones</span>
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-sm text-muted-foreground group-hover:text-gray-600">
+                                Crea y envía propuestas
                             </p>
                         </CardContent>
                     </Card>
