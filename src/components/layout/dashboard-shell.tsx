@@ -11,7 +11,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     return (
         <div className="h-full relative bg-gray-50/50 min-h-screen">
             {/* Floating Sidebar */}
-            <div className="print:hidden">
+            <div className="hidden md:block print:hidden">
                 <Sidebar
                     isCollapsed={isCollapsed}
                     toggleCollapse={() => setIsCollapsed(!isCollapsed)}
@@ -21,8 +21,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             {/* Main Content Area */}
             <main
                 className={cn(
-                    "transition-all duration-300 ease-in-out min-h-screen flex flex-col print:pl-0 print:p-0",
-                    isCollapsed ? "pl-[120px]" : "pl-[330px]" // 20px margin + width + gap
+                    "transition-all duration-300 ease-in-out min-h-screen flex flex-col print:pl-0 print:p-0 pl-0",
+                    isCollapsed ? "md:pl-[120px]" : "md:pl-[330px]" // 20px margin + width + gap
                 )}
             >
                 <div className="print:hidden sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-gray-100">

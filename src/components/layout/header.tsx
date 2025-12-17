@@ -1,14 +1,12 @@
 "use client"
 
-import { Menu } from "lucide-react"
+import { MobileSidebar } from "./mobile-sidebar"
 import { NotificationBell } from "./notification-bell"
 
 export function Header() {
     return (
         <div className="flex items-center p-4 border-b h-full">
-            <button className="md:hidden">
-                <Menu />
-            </button>
+            <MobileSidebar />
             <div className="flex w-full justify-end">
                 <div className="flex items-center gap-x-4">
                     <NotificationBell />
