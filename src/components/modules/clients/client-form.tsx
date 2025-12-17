@@ -40,7 +40,8 @@ export function ClientForm() {
 
             const { error } = await supabase.from("clients").insert({
                 ...formData,
-                user_id: user.id
+                user_id: user.id,
+                portal_token: crypto.randomUUID()
             })
 
             if (error) {

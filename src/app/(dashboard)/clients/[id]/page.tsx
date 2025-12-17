@@ -38,7 +38,10 @@ import {
     CheckCircle2,
     Send,
     Globe,
-    AlertCircle
+    AlertCircle,
+    ExternalLink,
+    Copy,
+    MessageCircle
 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
@@ -69,6 +72,7 @@ type Client = {
     invoices: any[]
     hosting_accounts: any[]
     subscriptions: any[]
+    portal_token?: string
 }
 
 export default function ClientDetailPage() {
@@ -332,6 +336,8 @@ export default function ClientDetailPage() {
                                 Eliminar
                             </Button>
 
+
+
                             <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
                                 <DialogTrigger asChild>
                                     <Button variant="outline" size="sm" className="border-indigo-200 text-indigo-600 hover:bg-indigo-50">
@@ -569,6 +575,39 @@ export default function ClientDetailPage() {
                                     </DialogFooter>
                                 </DialogContent>
                             </Dialog>
+
+                            {client.portal_token && (
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="outline" size="sm" className="border-gray-200 text-gray-700 hover:bg-gray-50">
+                                            <Globe className="mr-2 h-4 w-4" />
+                                            Portal
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuItem onClick={() => window.open(`/portal/${client.portal_token}`, '_blank')}>
+                                            <ExternalLink className="mr-2 h-4 w-4" />
+                                            Ver Portal
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => {
+                                            const url = `${window.location.origin}/portal/${client.portal_token}`
+                                            navigator.clipboard.writeText(url)
+                                            alert("Enlace copiado al portapapeles")
+                                        }}>
+                                            <Copy className="mr-2 h-4 w-4" />
+                                            Copiar Enlace
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => {
+                                            const url = `${window.location.origin}/portal/${client.portal_token}`
+                                            const text = `Hola ${client.name}, aquí tienes tu enlace al portal de clientes para ver tus facturas y realizar pagos: ${url}`
+                                            window.open(`https://wa.me/${client.phone?.replace(/\D/g, '')}?text=${encodeURIComponent(text)}`, '_blank')
+                                        }}>
+                                            <MessageCircle className="mr-2 h-4 w-4" />
+                                            Enviar por WhatsApp
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            )}
                         </div>
                     </div>
                 </div>

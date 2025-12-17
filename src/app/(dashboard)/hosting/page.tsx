@@ -6,6 +6,13 @@ import { Plus, Search, Filter, CreditCard, Server, Megaphone, Monitor, Box, Eye,
 import Link from "next/link"
 import { Input } from "@/components/ui/input"
 import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
+import {
     Table,
     TableBody,
     TableCell,
@@ -144,18 +151,19 @@ export default function ServicesPage() {
                 </div>
                 <div className="flex items-center gap-2">
                     <Filter className="h-4 w-4 text-gray-400" />
-                    <select
-                        className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                        value={typeFilter}
-                        onChange={(e) => setTypeFilter(e.target.value)}
-                    >
-                        <option value="all">Todos los tipos</option>
-                        <option value="hosting">Hosting</option>
-                        <option value="marketing">Marketing</option>
-                        <option value="ads">Ads</option>
-                        <option value="crm">Software</option>
-                        <option value="other">Otro</option>
-                    </select>
+                    <Select value={typeFilter} onValueChange={setTypeFilter}>
+                        <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="Filtrar por tipo" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">Todos los tipos</SelectItem>
+                            <SelectItem value="hosting">Hosting</SelectItem>
+                            <SelectItem value="marketing">Marketing</SelectItem>
+                            <SelectItem value="ads">Ads</SelectItem>
+                            <SelectItem value="crm">Software</SelectItem>
+                            <SelectItem value="other">Otro</SelectItem>
+                        </SelectContent>
+                    </Select>
                 </div>
             </div>
 

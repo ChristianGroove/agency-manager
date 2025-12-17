@@ -6,6 +6,13 @@ import { Button } from "@/components/ui/button"
 import { Plus, FileText, Download, Search, Filter, Eye, Trash2, Loader2 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
+import {
     Table,
     TableBody,
     TableCell,
@@ -121,16 +128,17 @@ export default function InvoicesPage() {
                 </div>
                 <div className="flex items-center gap-2">
                     <Filter className="h-4 w-4 text-gray-400" />
-                    <select
-                        className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                        value={statusFilter}
-                        onChange={(e) => setStatusFilter(e.target.value)}
-                    >
-                        <option value="all">Todos los estados</option>
-                        <option value="paid">Pagadas</option>
-                        <option value="pending">Pendientes</option>
-                        <option value="overdue">Vencidas</option>
-                    </select>
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                        <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="Filtrar por estado" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">Todos los estados</SelectItem>
+                            <SelectItem value="paid">Pagadas</SelectItem>
+                            <SelectItem value="pending">Pendientes</SelectItem>
+                            <SelectItem value="overdue">Vencidas</SelectItem>
+                        </SelectContent>
+                    </Select>
                 </div>
             </div>
 

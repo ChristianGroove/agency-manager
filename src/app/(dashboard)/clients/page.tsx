@@ -62,6 +62,40 @@ export default function ClientsPage() {
     const fileInputRef = useRef<HTMLInputElement>(null)
     const [isDragging, setIsDragging] = useState(false)
 
+    // Invoices Modal State
+    const [isInvoicesModalOpen, setIsInvoicesModalOpen] = useState(false)
+    const [selectedClientForInvoices, setSelectedClientForInvoices] = useState<Client | null>(null)
+
+    const handleOpenInvoices = (client: Client) => {
+        setSelectedClientForInvoices(client)
+        setIsInvoicesModalOpen(true)
+    }
+
+    const handleMarkAsPaid = async (invoiceId: string) => {
+        try {
+            const { error } = await supabase
+                .from('invoices')
+                .update({ status: 'paid' })
+                .eq('id', invoiceId)
+
+            if (error) throw error
+
+            // Update local state
+            if (selectedClientForInvoices) {
+                const updatedInvoices = selectedClientForInvoices.invoices.map(inv =>
+                    inv.id === invoiceId ? { ...inv, status: 'paid' } : inv
+                )
+                setSelectedClientForInvoices({ ...selectedClientForInvoices, invoices: updatedInvoices })
+            }
+
+            // Refresh main list
+            fetchClients()
+        } catch (error) {
+            console.error("Error marking invoice as paid:", error)
+            alert("Error al actualizar la factura.")
+        }
+    }
+
     useEffect(() => {
         fetchClients()
     }, [])
@@ -257,6 +291,13 @@ export default function ClientsPage() {
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
+
+                    <Link href="/debug/tokens">
+                        <Button variant="outline" className="border-gray-200 text-gray-600 hover:bg-gray-50">
+                            <AlertTriangle className="mr-2 h-4 w-4" />
+                            Debug Tokens
+                        </Button>
+                    </Link>
 
                     <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
                         <DialogTrigger asChild>
@@ -549,7 +590,7 @@ export default function ClientsPage() {
                             <div key={client.id} className="group relative">
                                 {/* Animated Border Effect */}
                                 <Card className={cn(
-                                    "relative h-full hover:shadow-lg transition-all duration-300 overflow-hidden bg-white border-gray-100",
+                                    "relative h-full flex flex-col hover:shadow-lg transition-all duration-300 overflow-hidden bg-white border-gray-100",
                                     debt > 0
                                         ? "animate-shadow-pulse-slow-red"
                                         : futureDebt > 0
@@ -583,7 +624,7 @@ export default function ClientsPage() {
                                         </div>
                                     </CardHeader>
 
-                                    <CardContent className="px-5 pb-5 space-y-3">
+                                    <CardContent className="px-5 pb-5 space-y-3 flex-1">
                                         {/* Stats Grid */}
                                         <div className="grid grid-cols-2 gap-2">
                                             {/* Debt Status */}
@@ -690,17 +731,26 @@ export default function ClientsPage() {
                                             href={getWhatsAppLink(client.phone, client.name)}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="flex-1"
                                         >
                                             <Button
                                                 variant="outline"
-                                                size="sm"
-                                                className="w-full h-9 text-xs font-medium border-gray-200 hover:bg-gray-50 hover:text-gray-900"
+                                                size="icon"
+                                                className="h-9 w-9 border-gray-200 hover:bg-green-50 hover:text-green-600 hover:border-green-200 transition-colors"
+                                                title="Contactar por WhatsApp"
                                             >
-                                                <Phone className="h-3.5 w-3.5 mr-1.5" />
-                                                WhatsApp
+                                                <Phone className="h-4 w-4" />
                                             </Button>
                                         </a>
+
+                                        <Button
+                                            variant="outline"
+                                            size="icon"
+                                            className="h-9 w-9 border-gray-200 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition-colors"
+                                            onClick={() => handleOpenInvoices(client)}
+                                            title="Ver Facturas"
+                                        >
+                                            <FileText className="h-4 w-4" />
+                                        </Button>
 
                                         <Link href={`/clients/${client.id}`} className="flex-1">
                                             <Button
@@ -718,6 +768,58 @@ export default function ClientsPage() {
                     })
                 )}
             </div>
+
+            {/* Quick Invoices Modal */}
+            <Dialog open={isInvoicesModalOpen} onOpenChange={setIsInvoicesModalOpen}>
+                <DialogContent className="sm:max-w-[500px]">
+                    <DialogHeader>
+                        <DialogTitle>Facturas Rápidas</DialogTitle>
+                        <DialogDescription>
+                            Gestiona las facturas de {selectedClientForInvoices?.name}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+                        {selectedClientForInvoices?.invoices && selectedClientForInvoices.invoices.length > 0 ? (
+                            selectedClientForInvoices.invoices
+                                .sort((a, b) => new Date(b.due_date || '').getTime() - new Date(a.due_date || '').getTime())
+                                .map(invoice => (
+                                    <div key={invoice.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                        <div>
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-medium text-gray-900">${invoice.total.toLocaleString()}</span>
+                                                <Badge variant={invoice.status === 'paid' ? 'default' : invoice.status === 'overdue' ? 'destructive' : 'secondary'} className="text-[10px] h-5">
+                                                    {invoice.status === 'paid' ? 'Pagada' : invoice.status === 'overdue' ? 'Vencida' : 'Pendiente'}
+                                                </Badge>
+                                            </div>
+                                            <p className="text-xs text-gray-500 mt-1">
+                                                Vence: {invoice.due_date ? new Date(invoice.due_date).toLocaleDateString() : 'Sin fecha'}
+                                            </p>
+                                        </div>
+
+                                        {invoice.status !== 'paid' && (
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                className="h-8 text-xs border-green-200 text-green-700 hover:bg-green-50 hover:text-green-800"
+                                                onClick={() => handleMarkAsPaid(invoice.id)}
+                                            >
+                                                <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
+                                                Marcar Pagada
+                                            </Button>
+                                        )}
+                                    </div>
+                                ))
+                        ) : (
+                            <div className="text-center py-8 text-gray-500">
+                                <FileText className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                                <p>No hay facturas registradas</p>
+                            </div>
+                        )}
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
+
     )
 }
