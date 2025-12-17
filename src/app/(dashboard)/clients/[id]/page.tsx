@@ -226,7 +226,11 @@ export default function ClientDetailPage() {
                     email: editForm.email,
                     phone: editForm.phone,
                     address: editForm.address,
-                    logo_url: logoUrl
+                    logo_url: logoUrl,
+                    facebook: editForm.facebook,
+                    instagram: editForm.instagram,
+                    tiktok: editForm.tiktok,
+                    website: editForm.website
                 })
                 .eq('id', client.id)
 
@@ -286,8 +290,8 @@ export default function ClientDetailPage() {
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100/50">
             {/* Sticky Header */}
-            <div className="sticky top-0 z-10 bg-white border-b border-gray-200 shadow-sm">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border border-gray-200/50 shadow-sm rounded-xl mb-6">
+                <div className="px-8 py-4">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
                             <Button
@@ -300,7 +304,7 @@ export default function ClientDetailPage() {
                                 Volver
                             </Button>
                             <div className="h-8 w-px bg-gray-300" />
-                            <h1 className="text-2xl font-bold text-gray-900">{client.name}</h1>
+                            <h1 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">Cliente</h1>
                         </div>
                         <div className="flex items-center gap-2">
                             <Button
@@ -571,7 +575,7 @@ export default function ClientDetailPage() {
             </div>
 
             {/* Main Content */}
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div>
                 {/* Client Header Card */}
                 <Card className="mb-8 border-0 shadow-lg">
                     <CardContent className="p-8">

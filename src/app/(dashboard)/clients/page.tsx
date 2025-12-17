@@ -240,7 +240,7 @@ export default function ClientsPage() {
     )
 
     return (
-        <div className="p-8 space-y-8 bg-gray-50/50 min-h-screen">
+        <div className="space-y-8 bg-gray-50/50 min-h-screen">
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
@@ -525,8 +525,8 @@ export default function ClientsPage() {
                                 today.setHours(0, 0, 0, 0)
                                 dueDate.setHours(0, 0, 0, 0)
 
-                                // Only add to debt if due date has passed (today >= dueDate)
-                                if (today >= dueDate) {
+                                // Only add to debt if due date has passed (today > dueDate)
+                                if (today > dueDate) {
                                     return acc + inv.total
                                 } else {
                                     // It's pending but not yet due

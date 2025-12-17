@@ -60,6 +60,18 @@ export default function InvoicesPage() {
 
         setDeletingId(id)
         try {
+            // First, clear any subscription references to this invoice
+            const { error: subUpdateError } = await supabase
+                .from('subscriptions')
+                .update({ invoice_id: null })
+                .eq('invoice_id', id)
+
+            if (subUpdateError) {
+                console.warn("Warning updating subscriptions:", subUpdateError)
+                // Continue anyway as ON DELETE SET NULL should handle this
+            }
+
+            // Then delete the invoice
             const { error } = await supabase
                 .from('invoices')
                 .delete()
@@ -86,7 +98,7 @@ export default function InvoicesPage() {
     })
 
     return (
-        <div className="p-8 space-y-8">
+        <div className="space-y-8">
             <div className="flex items-center justify-between">
                 <div>
                     <h2 className="text-3xl font-bold tracking-tight text-gray-900">Cuentas de Cobro</h2>

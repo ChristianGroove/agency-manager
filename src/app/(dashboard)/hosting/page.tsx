@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Plus, AlertTriangle, CheckCircle, Search, Filter, CreditCard, Server, Megaphone, Monitor, Box, FileText, Eye } from "lucide-react"
+import { Plus, Search, Filter, CreditCard, Server, Megaphone, Monitor, Box, Eye, Trash2, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { Input } from "@/components/ui/input"
 import {
@@ -42,6 +42,7 @@ export default function ServicesPage() {
     const [loading, setLoading] = useState(true)
     const [searchTerm, setSearchTerm] = useState("")
     const [typeFilter, setTypeFilter] = useState("all")
+    const [deletingId, setDeletingId] = useState<string | null>(null)
 
     const fetchServices = async () => {
         setLoading(true)
@@ -54,9 +55,6 @@ export default function ServicesPage() {
             `)
             .order('next_billing_date', { ascending: true })
 
-        console.log('Fetched services:', data)
-        console.log('Error:', error)
-
         if (data) setServices(data)
         setLoading(false)
     }
@@ -64,6 +62,26 @@ export default function ServicesPage() {
     useEffect(() => {
         fetchServices()
     }, [])
+
+    const handleDeleteService = async (id: string) => {
+        if (!confirm("¿Estás seguro de que deseas eliminar este servicio? Esta acción no se puede deshacer.")) return
+
+        setDeletingId(id)
+        try {
+            const { error } = await supabase
+                .from('subscriptions')
+                .delete()
+                .eq('id', id)
+
+            if (error) throw error
+            await fetchServices()
+        } catch (error) {
+            console.error("Error deleting service:", error)
+            alert("Error al eliminar el servicio")
+        } finally {
+            setDeletingId(null)
+        }
+    }
 
     const filteredServices = services.filter(service => {
         const matchesSearch =
@@ -97,7 +115,7 @@ export default function ServicesPage() {
     }
 
     return (
-        <div className="p-8 space-y-8">
+        <div className="space-y-8">
             <div className="flex items-center justify-between">
                 <div>
                     <h2 className="text-3xl font-bold tracking-tight text-gray-900">Servicios & Suscripciones</h2>
@@ -159,13 +177,13 @@ export default function ServicesPage() {
                     <TableBody>
                         {loading ? (
                             <TableRow>
-                                <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                                <TableCell colSpan={9} className="text-center py-8 text-gray-500">
                                     Cargando servicios...
                                 </TableCell>
                             </TableRow>
                         ) : filteredServices.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                                <TableCell colSpan={9} className="text-center py-8 text-gray-500">
                                     No se encontraron servicios
                                 </TableCell>
                             </TableRow>
@@ -227,13 +245,30 @@ export default function ServicesPage() {
                                         )}
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        {service.invoice && (
-                                            <Link href={`/invoices/${service.invoice.id}`}>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-indigo-600">
-                                                    <Eye className="h-4 w-4" />
+                                        <div className="flex items-center justify-end gap-2">
+                                            {service.invoice && (
+                                                <Link href={`/invoices/${service.invoice.id}`}>
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-indigo-600">
+                                                        <Eye className="h-4 w-4" />
+                                                    </Button>
+                                                </Link>
+                                            )}
+                                            {service.status !== 'active' && (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-8 w-8 text-gray-400 hover:text-red-600"
+                                                    onClick={() => handleDeleteService(service.id)}
+                                                    disabled={deletingId === service.id}
+                                                >
+                                                    {deletingId === service.id ? (
+                                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                                    ) : (
+                                                        <Trash2 className="h-4 w-4" />
+                                                    )}
                                                 </Button>
-                                            </Link>
-                                        )}
+                                            )}
+                                        </div>
                                     </TableCell>
                                 </TableRow>
                             ))

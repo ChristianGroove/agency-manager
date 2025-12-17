@@ -51,7 +51,7 @@ export function Sidebar({ isCollapsed, toggleCollapse }: SidebarProps) {
             {/* Toggle Button */}
             <button
                 onClick={toggleCollapse}
-                className="absolute -right-3 top-10 bg-brand-pink rounded-full p-1 shadow-lg hover:scale-110 transition-transform z-50"
+                className="absolute -right-3 top-1/2 -translate-y-1/2 bg-brand-pink rounded-full p-1 shadow-lg hover:scale-110 transition-transform z-50"
             >
                 <div className={cn("transition-transform duration-300", isCollapsed ? "rotate-180" : "")}>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
