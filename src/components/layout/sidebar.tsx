@@ -43,9 +43,66 @@ interface SidebarProps {
     toggleCollapse: () => void;
 }
 
-export function Sidebar({ isCollapsed, toggleCollapse }: SidebarProps) {
+export function SidebarContent({ isCollapsed = false }: { isCollapsed?: boolean }) {
     const pathname = usePathname()
 
+    return (
+        <div className="px-3 py-6 flex-1 flex flex-col h-full">
+            <Link href="/dashboard" className={cn("flex items-center mb-10 transition-all duration-300", isCollapsed ? "justify-center px-0" : "pl-3")}>
+                <div className={cn("relative transition-all duration-300", isCollapsed ? "w-10 h-10" : "w-32 h-10")}>
+                    {isCollapsed ? (
+                        <img
+                            src="/branding/iso.svg"
+                            alt="Pixy"
+                            className="w-full h-full object-contain"
+                        />
+                    ) : (
+                        <img
+                            src="/branding/logo light.svg"
+                            alt="Pixy"
+                            className="w-full h-full object-contain object-left"
+                        />
+                    )}
+                </div>
+            </Link>
+
+            <div className="space-y-2 flex-1">
+                {routes.map((route) => (
+                    <Link
+                        key={route.href}
+                        href={route.href}
+                        className={cn(
+                            "text-sm group flex p-3 w-full font-medium cursor-pointer hover:text-white hover:bg-white/5 rounded-xl transition-all duration-200",
+                            pathname === route.href
+                                ? "text-brand-cyan bg-white/5 shadow-[0_0_15px_rgba(0,224,255,0.1)]"
+                                : "text-zinc-400",
+                            isCollapsed ? "justify-center" : "justify-start"
+                        )}
+                    >
+                        <div className="flex items-center">
+                            <route.icon className={cn("h-5 w-5 transition-colors", pathname === route.href ? "text-brand-cyan" : "text-zinc-400 group-hover:text-white", isCollapsed ? "mr-0" : "mr-3")} />
+                            {!isCollapsed && <span>{route.label}</span>}
+                        </div>
+                    </Link>
+                ))}
+            </div>
+
+            <div className="mt-auto pt-4 border-t border-white/5">
+                <button className={cn(
+                    "text-sm group flex p-3 w-full font-medium cursor-pointer hover:text-white hover:bg-white/10 rounded-xl transition text-zinc-400",
+                    isCollapsed ? "justify-center" : "justify-start"
+                )}>
+                    <div className="flex items-center">
+                        <LogOut className={cn("h-5 w-5 text-red-500 transition-all", isCollapsed ? "mr-0" : "mr-3")} />
+                        {!isCollapsed && <span>Cerrar Sesión</span>}
+                    </div>
+                </button>
+            </div>
+        </div>
+    )
+}
+
+export function Sidebar({ isCollapsed, toggleCollapse }: SidebarProps) {
     return (
         <div
             className={cn(
@@ -65,58 +122,7 @@ export function Sidebar({ isCollapsed, toggleCollapse }: SidebarProps) {
                 </div>
             </button>
 
-            <div className="px-3 py-6 flex-1 flex flex-col">
-                <Link href="/dashboard" className={cn("flex items-center mb-10 transition-all duration-300", isCollapsed ? "justify-center px-0" : "pl-3")}>
-                    <div className={cn("relative transition-all duration-300", isCollapsed ? "w-10 h-10" : "w-32 h-10")}>
-                        {isCollapsed ? (
-                            <img
-                                src="/branding/iso.svg"
-                                alt="Pixy"
-                                className="w-full h-full object-contain"
-                            />
-                        ) : (
-                            <img
-                                src="/branding/logo light.svg"
-                                alt="Pixy"
-                                className="w-full h-full object-contain object-left"
-                            />
-                        )}
-                    </div>
-                </Link>
-
-                <div className="space-y-2 flex-1">
-                    {routes.map((route) => (
-                        <Link
-                            key={route.href}
-                            href={route.href}
-                            className={cn(
-                                "text-sm group flex p-3 w-full font-medium cursor-pointer hover:text-white hover:bg-white/5 rounded-xl transition-all duration-200",
-                                pathname === route.href
-                                    ? "text-brand-cyan bg-white/5 shadow-[0_0_15px_rgba(0,224,255,0.1)]"
-                                    : "text-zinc-400",
-                                isCollapsed ? "justify-center" : "justify-start"
-                            )}
-                        >
-                            <div className="flex items-center">
-                                <route.icon className={cn("h-5 w-5 transition-colors", pathname === route.href ? "text-brand-cyan" : "text-zinc-400 group-hover:text-white", isCollapsed ? "mr-0" : "mr-3")} />
-                                {!isCollapsed && <span>{route.label}</span>}
-                            </div>
-                        </Link>
-                    ))}
-                </div>
-
-                <div className="mt-auto pt-4 border-t border-white/5">
-                    <button className={cn(
-                        "text-sm group flex p-3 w-full font-medium cursor-pointer hover:text-white hover:bg-white/10 rounded-xl transition text-zinc-400",
-                        isCollapsed ? "justify-center" : "justify-start"
-                    )}>
-                        <div className="flex items-center">
-                            <LogOut className={cn("h-5 w-5 text-red-500 transition-all", isCollapsed ? "mr-0" : "mr-3")} />
-                            {!isCollapsed && <span>Cerrar Sesión</span>}
-                        </div>
-                    </button>
-                </div>
-            </div>
+            <SidebarContent isCollapsed={isCollapsed} />
         </div>
     )
 }
