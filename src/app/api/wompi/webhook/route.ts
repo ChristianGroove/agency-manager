@@ -35,40 +35,62 @@ export async function POST(request: Request) {
         // Process Payment
         if (transaction.status === 'APPROVED') {
             const reference = transaction.reference
-            // Reference format: INV-{invoiceNumber}-{timestamp}
-            // We need to find the invoice by number. 
-            // Extract invoice number. It's between first and second dash.
-            // Example: INV-INV-12345-1700000000
-            // Wait, my generation logic was `INV-${invoice.number}-${timestamp}`
-            // Invoice number might contain dashes? Assuming standard format.
 
-            // Safer: We can store the invoice ID in the reference or just match by number if unique.
-            // Let's try to extract the number.
-            // Split by '-'
-            const parts = reference.split('-')
-            // parts[0] = 'INV'
-            // parts[last] = timestamp
-            // The middle part is the invoice number. It might contain dashes itself.
-            // So we join everything between first and last.
-            const invoiceNumber = parts.slice(1, -1).join('-')
+            // Check if it's a batch payment (PAY-) or legacy single invoice (INV-)
+            if (reference.startsWith('PAY-')) {
+                // 1. Find the transaction record
+                const { data: paymentTx, error: txError } = await supabase
+                    .from('payment_transactions')
+                    .select('*')
+                    .eq('reference', reference)
+                    .single()
 
-            if (invoiceNumber) {
-                // Update Invoice
-                const { error } = await supabase
-                    .from('invoices')
-                    .update({
-                        status: 'paid',
-                        // We could add a payment_date column or just rely on updated_at
-                        // Let's assume we want to mark it paid.
-                    })
-                    .eq('number', invoiceNumber)
-
-                if (error) {
-                    console.error('Error updating invoice status:', error)
-                    return NextResponse.json({ error: 'Database update failed' }, { status: 500 })
+                if (txError || !paymentTx) {
+                    console.error('Transaction not found for reference:', reference)
+                    return NextResponse.json({ error: 'Transaction not found' }, { status: 404 })
                 }
 
-                console.log(`Invoice ${invoiceNumber} marked as paid via Wompi webhook`)
+                // 2. Update Transaction Status
+                await supabase
+                    .from('payment_transactions')
+                    .update({ status: 'APPROVED', updated_at: new Date().toISOString() })
+                    .eq('id', paymentTx.id)
+
+                // 3. Update All Linked Invoices
+                const invoiceIds = paymentTx.invoice_ids
+                if (invoiceIds && Array.isArray(invoiceIds) && invoiceIds.length > 0) {
+                    const { error: updateError } = await supabase
+                        .from('invoices')
+                        .update({ status: 'paid' })
+                        .in('id', invoiceIds)
+
+                    if (updateError) {
+                        console.error('Error updating invoices:', updateError)
+                        return NextResponse.json({ error: 'Failed to update invoices' }, { status: 500 })
+                    }
+                    console.log(`Invoices ${invoiceIds.join(', ')} marked as paid via Wompi batch payment`)
+                }
+
+            } else if (reference.startsWith('INV-')) {
+                // Legacy support for single invoice payments
+                const parts = reference.split('-')
+                // parts[0] = 'INV'
+                // parts[last] = timestamp
+                // The middle part is the invoice number.
+                const invoiceNumber = parts.slice(1, -1).join('-')
+
+                if (invoiceNumber) {
+                    const { error } = await supabase
+                        .from('invoices')
+                        .update({ status: 'paid' })
+                        .eq('number', invoiceNumber)
+
+                    if (error) {
+                        console.error('Error updating invoice status:', error)
+                        return NextResponse.json({ error: 'Database update failed' }, { status: 500 })
+                    }
+                    console.log(`Invoice ${invoiceNumber} marked as paid via Wompi webhook (Legacy)`)
+                }
             }
         }
 
