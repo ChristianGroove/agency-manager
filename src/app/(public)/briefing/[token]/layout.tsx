@@ -22,7 +22,7 @@ export default function BriefingLayout({
                 {children}
             </main>
             <footer className="py-6 text-center text-sm text-gray-400">
-                &copy; {new Date().getFullYear()} Agency Manager. Todos los derechos reservados.
+                &copy; 2026 Pixy / private design services. Todos los derechos reservados.
             </footer>
         </div>
     )
