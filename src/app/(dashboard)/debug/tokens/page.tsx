@@ -7,11 +7,13 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, Search, ExternalLink, RefreshCw } from "lucide-react"
 import { Input } from "@/components/ui/input"
+import { regeneratePortalToken } from "@/app/actions/portal-actions"
 
 export default function DebugTokensPage() {
     const [clients, setClients] = useState<any[]>([])
     const [searchTerm, setSearchTerm] = useState("")
     const [error, setError] = useState("")
+    const [regenerating, setRegenerating] = useState<string | null>(null)
 
     useEffect(() => {
         fetchClients()
@@ -20,7 +22,7 @@ export default function DebugTokensPage() {
     const fetchClients = async () => {
         const { data, error } = await supabase
             .from('clients')
-            .select('id, name, portal_token')
+            .select('id, name, portal_short_token')
             .order('name')
 
         if (error) {
@@ -30,23 +32,23 @@ export default function DebugTokensPage() {
         }
     }
 
-    const generateToken = async (clientId: string) => {
+    const handleRegenerate = async (clientId: string) => {
+        setRegenerating(clientId)
         try {
-            const token = crypto.randomUUID()
-            const { error } = await supabase
-                .from('clients')
-                .update({ portal_token: token })
-                .eq('id', clientId)
-
-            if (error) throw error
-
-            // Update local state
-            setClients(clients.map(c =>
-                c.id === clientId ? { ...c, portal_token: token } : c
-            ))
+            const res = await regeneratePortalToken(clientId)
+            if (res.success) {
+                // Update local state
+                setClients(clients.map(c =>
+                    c.id === clientId ? { ...c, portal_short_token: res.token } : c
+                ))
+            } else {
+                throw new Error(res.error)
+            }
         } catch (error) {
             console.error('Error generating token:', error)
             alert('Error al generar token')
+        } finally {
+            setRegenerating(null)
         }
     }
 
@@ -66,7 +68,7 @@ export default function DebugTokensPage() {
                             Volver
                         </Button>
                     </Link>
-                    <h1 className="text-2xl font-bold">Debug: Portal Tokens</h1>
+                    <h1 className="text-2xl font-bold">Portal Tokens</h1>
                 </div>
                 <div className="relative w-full md:w-72">
                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -90,22 +92,21 @@ export default function DebugTokensPage() {
                         <CardContent className="px-4 pb-4">
                             <div className="flex items-center gap-2">
                                 <div className="flex-1 bg-gray-100 rounded px-2 py-1.5 font-mono text-xs text-gray-600 truncate select-all">
-                                    {client.portal_token || "No token"}
+                                    {client.portal_short_token || "No token"}
                                 </div>
-                                {!client.portal_token && (
-                                    <Button
-                                        size="icon"
-                                        variant="outline"
-                                        className="h-8 w-8 shrink-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                                        onClick={() => generateToken(client.id)}
-                                        title="Generar Token"
-                                    >
-                                        <RefreshCw className="h-4 w-4" />
-                                    </Button>
-                                )}
-                                {client.portal_token && (
+                                <Button
+                                    size="icon"
+                                    variant="outline"
+                                    className="h-8 w-8 shrink-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                    onClick={() => handleRegenerate(client.id)}
+                                    disabled={regenerating === client.id}
+                                    title="Regenerar Token"
+                                >
+                                    <RefreshCw className={`h-4 w-4 ${regenerating === client.id ? 'animate-spin' : ''}`} />
+                                </Button>
+                                {client.portal_short_token && (
                                     <Link
-                                        href={`/portal/${client.portal_token}`}
+                                        href={`https://mi.pixy.com.co/${client.portal_short_token}`}
                                         target="_blank"
                                     >
                                         <Button size="icon" variant="outline" className="h-8 w-8 shrink-0">

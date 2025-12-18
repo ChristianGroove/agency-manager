@@ -62,6 +62,6 @@ export async function regeneratePortalToken(clientId: string) {
         return { success: true, token: newToken }
     } catch (error) {
         console.error('regeneratePortalToken Error:', error)
-        throw error
+        return { success: false, error: 'Error regenerating token' }
     }
 }

@@ -295,7 +295,7 @@ export default function ClientsPage() {
                     <Link href="/debug/tokens">
                         <Button variant="outline" className="border-gray-200 text-gray-600 hover:bg-gray-50">
                             <AlertTriangle className="mr-2 h-4 w-4" />
-                            Debug Tokens
+                            Portal Tokens
                         </Button>
                     </Link>
 
