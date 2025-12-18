@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, Users, Server, FileText, Settings, LogOut } from "lucide-react"
+import { LayoutDashboard, Users, Server, FileText, Settings, LogOut, CreditCard } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const routes = [
@@ -35,6 +35,11 @@ const routes = [
         label: "Configuración",
         icon: Settings,
         href: "/settings",
+    },
+    {
+        label: "Pagos",
+        icon: CreditCard,
+        href: "/payments",
     },
 ]
 

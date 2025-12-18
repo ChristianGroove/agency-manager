@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { supabase } from "@/lib/supabase"
-import { Users, DollarSign, FileText, CreditCard, TrendingUp, AlertCircle } from "lucide-react"
+import { Users, DollarSign, FileText, CreditCard, TrendingUp, AlertCircle, Server } from "lucide-react"
 import Link from "next/link"
 
 type DashboardStats = {
@@ -287,14 +287,32 @@ export default function DashboardPage() {
                         <CardHeader>
                             <CardTitle className="text-base flex items-center gap-3">
                                 <div className="p-2.5 bg-indigo-50 rounded-lg group-hover:bg-indigo-600 group-hover:text-white transition-colors">
-                                    <CreditCard className="h-5 w-5 text-indigo-600 group-hover:text-white" />
+                                    <Server className="h-5 w-5 text-indigo-600 group-hover:text-white" />
                                 </div>
-                                <span className="group-hover:text-indigo-600 transition-colors">Hosting</span>
+                                <span className="group-hover:text-indigo-600 transition-colors">Servicios</span>
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
                             <p className="text-sm text-muted-foreground group-hover:text-gray-600">
                                 Administra dominios y hosting
+                            </p>
+                        </CardContent>
+                    </Card>
+                </Link>
+
+                <Link href="/payments">
+                    <Card className="group hover:shadow-lg transition-all duration-300 cursor-pointer border-gray-100 hover:border-green-500/50 hover:-translate-y-1">
+                        <CardHeader>
+                            <CardTitle className="text-base flex items-center gap-3">
+                                <div className="p-2.5 bg-green-50 rounded-lg group-hover:bg-green-600 group-hover:text-white transition-colors">
+                                    <CreditCard className="h-5 w-5 text-green-600 group-hover:text-white" />
+                                </div>
+                                <span className="group-hover:text-green-600 transition-colors">Pagos</span>
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-sm text-muted-foreground group-hover:text-gray-600">
+                                Ver historial de transacciones
                             </p>
                         </CardContent>
                     </Card>
