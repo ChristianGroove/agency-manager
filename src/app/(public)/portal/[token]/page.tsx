@@ -17,8 +17,28 @@ export default function PortalPage() {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState("")
 
-    const handlePay = () => {
-        window.open('https://pay.pixy.com.co', '_blank')
+    const handlePay = async (invoice: Invoice) => {
+        try {
+            const response = await fetch('/api/wompi/signature', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ invoiceId: invoice.id })
+            })
+
+            if (!response.ok) throw new Error('Error generating signature')
+
+            const { reference, amountInCents, currency, signature, publicKey } = await response.json()
+
+            const redirectUrl = window.location.href // Return to this page
+
+            const wompiUrl = `https://checkout.wompi.co/p/?public-key=${publicKey}&currency=${currency}&amount-in-cents=${amountInCents}&reference=${reference}&signature:integrity=${signature}&redirect-url=${encodeURIComponent(redirectUrl)}&customer-data:email=${client?.email || ''}&customer-data:full-name=${encodeURIComponent(client?.name || '')}`
+
+            window.location.href = wompiUrl
+
+        } catch (error) {
+            console.error('Payment error:', error)
+            alert('Error al iniciar el pago')
+        }
     }
 
 
@@ -125,7 +145,7 @@ export default function PortalPage() {
                                             <Button
                                                 size="sm"
                                                 className="bg-brand-pink text-white h-8"
-                                                onClick={handlePay}
+                                                onClick={() => handlePay(invoice)}
                                             >
                                                 Pagar
                                             </Button>
@@ -168,7 +188,7 @@ export default function PortalPage() {
                                                 <Button
                                                     size="sm"
                                                     className="bg-brand-pink hover:bg-brand-pink/90 text-white"
-                                                    onClick={handlePay}
+                                                    onClick={() => handlePay(invoice)}
                                                 >
                                                     Pagar
                                                 </Button>
