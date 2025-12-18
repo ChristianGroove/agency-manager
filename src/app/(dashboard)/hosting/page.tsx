@@ -214,7 +214,8 @@ export default function ServicesPage() {
                                     <TableCell className="capitalize text-gray-600">
                                         {service.frequency === 'one-time' ? 'Único' :
                                             service.frequency === 'biweekly' ? 'Quincenal' :
-                                                service.frequency === 'monthly' ? 'Mensual' : 'Anual'}
+                                                service.frequency === 'monthly' ? 'Mensual' :
+                                                    service.frequency === 'quarterly' ? 'Trimestral' : 'Anual'}
                                     </TableCell>
                                     <TableCell className="font-medium text-gray-900">
                                         ${service.amount.toLocaleString()}

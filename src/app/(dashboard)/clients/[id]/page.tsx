@@ -841,7 +841,7 @@ export default function ClientDetailPage() {
                                                                 <p className="text-sm text-gray-500">
                                                                     {sub.frequency === 'one-time'
                                                                         ? 'Servicio único'
-                                                                        : `${sub.frequency === 'biweekly' ? 'Quincenal' : sub.frequency === 'monthly' ? 'Mensual' : 'Anual'} • Próximo cobro: ${sub.next_billing_date ? new Date(sub.next_billing_date).toLocaleDateString() : 'N/A'}`
+                                                                        : `${sub.frequency === 'biweekly' ? 'Quincenal' : sub.frequency === 'monthly' ? 'Mensual' : sub.frequency === 'quarterly' ? 'Trimestral' : 'Anual'} • Próximo cobro: ${sub.next_billing_date ? new Date(sub.next_billing_date).toLocaleDateString() : 'N/A'}`
                                                                     }
                                                                 </p>
                                                             </div>
@@ -962,7 +962,7 @@ export default function ClientDetailPage() {
                                                                 <p className="text-sm text-gray-500">
                                                                     {sub.frequency === 'one-time'
                                                                         ? 'Servicio único'
-                                                                        : `${sub.frequency === 'biweekly' ? 'Quincenal' : sub.frequency === 'monthly' ? 'Mensual' : 'Anual'} • Próximo cobro: ${sub.next_billing_date ? new Date(sub.next_billing_date).toLocaleDateString() : 'N/A'}`
+                                                                        : `${sub.frequency === 'biweekly' ? 'Quincenal' : sub.frequency === 'monthly' ? 'Mensual' : sub.frequency === 'quarterly' ? 'Trimestral' : 'Anual'} • Próximo cobro: ${sub.next_billing_date ? new Date(sub.next_billing_date).toLocaleDateString() : 'N/A'}`
                                                                     }
                                                                 </p>
                                                             </div>

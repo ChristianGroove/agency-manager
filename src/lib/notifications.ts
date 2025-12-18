@@ -154,6 +154,9 @@ async function generateAutomaticInvoice(
             case 'monthly':
                 nextBillingDate.setMonth(nextBillingDate.getMonth() + 1)
                 break
+            case 'quarterly':
+                nextBillingDate.setMonth(nextBillingDate.getMonth() + 3)
+                break
             case 'yearly':
                 nextBillingDate.setFullYear(nextBillingDate.getFullYear() + 1)
                 break

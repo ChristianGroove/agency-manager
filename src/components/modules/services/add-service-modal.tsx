@@ -82,6 +82,8 @@ export function AddServiceModal({ clientId, clientName, onSuccess, trigger }: Ad
                         nextBilling.setDate(nextBilling.getDate() + 15)
                     } else if (newService.frequency === 'monthly') {
                         nextBilling.setMonth(nextBilling.getMonth() + 1)
+                    } else if (newService.frequency === 'quarterly') {
+                        nextBilling.setMonth(nextBilling.getMonth() + 3)
                     } else {
                         nextBilling.setFullYear(nextBilling.getFullYear() + 1)
                     }
@@ -242,6 +244,7 @@ export function AddServiceModal({ clientId, clientName, onSuccess, trigger }: Ad
                                 <option value="one-time">Una sola vez (Servicio único)</option>
                                 <option value="biweekly">Quincenal (cada 15 días)</option>
                                 <option value="monthly">Mensual</option>
+                                <option value="quarterly">Trimestral (cada 3 meses)</option>
                                 <option value="yearly">Anual</option>
                             </select>
                         </div>
