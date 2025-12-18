@@ -190,7 +190,13 @@ export default function PortalPage() {
                                                 <td className="px-6 py-4 font-medium text-gray-900">#{invoice.number}</td>
                                                 <td className="px-6 py-4 text-gray-600">{new Date(invoice.date).toLocaleDateString()}</td>
                                                 <td className="px-6 py-4">
-                                                    <Badge variant={status === 'paid' ? 'default' : status === 'overdue' ? 'destructive' : 'secondary'}>
+                                                    <Badge
+                                                        variant={status === 'paid' ? 'default' : status === 'overdue' ? 'destructive' : 'secondary'}
+                                                        className={cn(
+                                                            "w-24 justify-center",
+                                                            status === 'overdue' && "bg-red-600 text-white hover:bg-red-700 border-transparent"
+                                                        )}
+                                                    >
                                                         {status === 'paid' ? 'Pagada' : status === 'overdue' ? 'Vencida' : 'Pendiente'}
                                                     </Badge>
                                                 </td>
@@ -224,7 +230,13 @@ export default function PortalPage() {
                                         <div className="flex-1" onClick={() => setViewInvoice(invoice)}>
                                             <div className="flex justify-between items-start mb-1">
                                                 <span className="font-bold text-gray-900">#{invoice.number}</span>
-                                                <Badge variant={status === 'paid' ? 'default' : status === 'overdue' ? 'destructive' : 'secondary'}>
+                                                <Badge
+                                                    variant={status === 'paid' ? 'default' : status === 'overdue' ? 'destructive' : 'secondary'}
+                                                    className={cn(
+                                                        "w-24 justify-center",
+                                                        status === 'overdue' && "bg-red-600 text-white hover:bg-red-700 border-transparent"
+                                                    )}
+                                                >
                                                     {status === 'paid' ? 'Pagada' : status === 'overdue' ? 'Vencida' : 'Pendiente'}
                                                 </Badge>
                                             </div>
