@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
-import { PortalService } from "@/services/portal-service"
+import { getPortalData } from "@/app/actions/portal-actions"
 import { Client, Invoice } from "@/types"
 import { Loader2, AlertCircle, CheckCircle2, Clock, Download, CreditCard, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -51,10 +51,9 @@ export default function PortalPage() {
 
     const fetchData = async (token: string) => {
         try {
-            const clientData = await PortalService.getClientByToken(token)
-            setClient(clientData)
-            const invoicesData = await PortalService.getClientInvoices(clientData.id)
-            setInvoices(invoicesData)
+            const { client, invoices } = await getPortalData(token)
+            setClient(client)
+            setInvoices(invoices)
         } catch (err) {
             console.error(err)
             setError("No se pudo cargar la información. El enlace puede ser inválido.")
