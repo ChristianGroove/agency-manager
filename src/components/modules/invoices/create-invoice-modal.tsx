@@ -14,7 +14,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Plus, Trash2, Loader2, FileText } from "lucide-react"
+import { Plus, Trash2, Loader2, FileText, Edit } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 
 type InvoiceItem = {
@@ -28,9 +28,11 @@ type CreateInvoiceModalProps = {
     clientId?: string
     clientName?: string
     onInvoiceCreated?: () => void
+    invoiceToEdit?: any // Should be typed properly
+    trigger?: React.ReactNode
 }
 
-export function CreateInvoiceModal({ clientId, clientName, onInvoiceCreated }: CreateInvoiceModalProps) {
+export function CreateInvoiceModal({ clientId, clientName, onInvoiceCreated, invoiceToEdit, trigger }: CreateInvoiceModalProps) {
     const router = useRouter()
     const [open, setOpen] = useState(false)
     const [loading, setLoading] = useState(false)
@@ -48,24 +50,31 @@ export function CreateInvoiceModal({ clientId, clientName, onInvoiceCreated }: C
     // Auto-generate invoice number and set default due date when modal opens
     useEffect(() => {
         if (open) {
-            if (!invoiceNumber) {
-                const timestamp = Date.now()
-                const randomSuffix = Math.random().toString(36).substring(2, 5).toUpperCase()
-                const generatedNumber = `INV-${timestamp}-${randomSuffix}`
-                setInvoiceNumber(generatedNumber)
-            }
+            if (invoiceToEdit) {
+                setInvoiceNumber(invoiceToEdit.number)
+                setItems(invoiceToEdit.items || [])
+                setDueDate(invoiceToEdit.due_date ? invoiceToEdit.due_date.split('T')[0] : "")
+                setSelectedClientId(invoiceToEdit.client_id)
+            } else {
+                if (!invoiceNumber) {
+                    const timestamp = Date.now()
+                    const randomSuffix = Math.random().toString(36).substring(2, 5).toUpperCase()
+                    const generatedNumber = `INV-${timestamp}-${randomSuffix}`
+                    setInvoiceNumber(generatedNumber)
+                }
 
-            if (!dueDate) {
-                const defaultDueDate = new Date()
-                defaultDueDate.setDate(defaultDueDate.getDate() + 30)
-                setDueDate(defaultDueDate.toISOString().split('T')[0])
-            }
+                if (!dueDate) {
+                    const defaultDueDate = new Date()
+                    defaultDueDate.setDate(defaultDueDate.getDate() + 30)
+                    setDueDate(defaultDueDate.toISOString().split('T')[0])
+                }
 
-            if (!clientId) {
-                fetchClients()
+                if (!clientId) {
+                    fetchClients()
+                }
             }
         }
-    }, [open])
+    }, [open, invoiceToEdit])
 
     useEffect(() => {
         if (clientId) {
@@ -106,7 +115,7 @@ export function CreateInvoiceModal({ clientId, clientName, onInvoiceCreated }: C
         return items.reduce((acc, item) => acc + (item.quantity * item.price), 0)
     }
 
-    const handleCreateInvoice = async () => {
+    const handleSaveInvoice = async () => {
         if (!selectedClientId) {
             alert("Por favor selecciona un cliente")
             return
@@ -114,41 +123,64 @@ export function CreateInvoiceModal({ clientId, clientName, onInvoiceCreated }: C
         setLoading(true)
 
         try {
-            // Use the auto-generated invoice number
             const finalNumber = invoiceNumber
+            const total = calculateTotal()
 
-            const { data, error } = await supabase
-                .from('invoices')
-                .insert({
-                    client_id: selectedClientId,
-                    number: finalNumber,
-                    date: new Date().toISOString(),
-                    due_date: dueDate || null,
-                    items: items, // JSONB column
-                    total: calculateTotal(),
-                    status: 'pending'
-                })
-                .select()
-                .single()
+            let result;
 
-            if (error) throw error
+            if (invoiceToEdit) {
+                // Update existing invoice
+                result = await supabase
+                    .from('invoices')
+                    .update({
+                        client_id: selectedClientId,
+                        number: finalNumber,
+                        due_date: dueDate || null,
+                        items: items,
+                        total: total,
+                    })
+                    .eq('id', invoiceToEdit.id)
+                    .select()
+                    .single()
+            } else {
+                // Create new invoice
+                result = await supabase
+                    .from('invoices')
+                    .insert({
+                        client_id: selectedClientId,
+                        number: finalNumber,
+                        date: new Date().toISOString(),
+                        due_date: dueDate || null,
+                        items: items,
+                        total: total,
+                        status: 'pending'
+                    })
+                    .select()
+                    .single()
+            }
+
+            if (result.error) throw result.error
 
             setOpen(false)
-            // Reset form for next use
-            setInvoiceNumber("")
-            setItems([{ id: '1', description: 'Servicios Profesionales', quantity: 1, price: 0 }])
-            setDueDate("")
-            setNotes("")
-            if (!clientId) setSelectedClientId("")
+            // Reset form for next use if creating new
+            if (!invoiceToEdit) {
+                setInvoiceNumber("")
+                setItems([{ id: '1', description: 'Servicios Profesionales', quantity: 1, price: 0 }])
+                setDueDate("")
+                setNotes("")
+                if (!clientId) setSelectedClientId("")
+            }
 
             if (onInvoiceCreated) onInvoiceCreated()
 
-            // Redirect to the new invoice view
-            router.push(`/invoices/${data.id}`)
+            // Redirect to the invoice view if created new, or just close if editing
+            if (!invoiceToEdit) {
+                router.push(`/invoices/${result.data.id}`)
+            }
 
         } catch (error) {
-            console.error("Error creating invoice:", error)
-            alert("Error al crear la cuenta de cobro.")
+            console.error("Error saving invoice:", error)
+            alert("Error al guardar la cuenta de cobro.")
         } finally {
             setLoading(false)
         }
@@ -157,24 +189,28 @@ export function CreateInvoiceModal({ clientId, clientName, onInvoiceCreated }: C
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button className="bg-brand-pink hover:bg-brand-pink/90 text-white shadow-md border-0">
-                    <FileText className="mr-2 h-4 w-4" />
-                    Generar Cuenta de Cobro
-                </Button>
+                {trigger || (
+                    <Button className="bg-brand-pink hover:bg-brand-pink/90 text-white shadow-md border-0">
+                        <FileText className="mr-2 h-4 w-4" />
+                        Generar Cuenta de Cobro
+                    </Button>
+                )}
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+            <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
                 <DialogHeader>
-                    <DialogTitle>Nueva Cuenta de Cobro</DialogTitle>
+                    <DialogTitle>{invoiceToEdit ? 'Editar Cuenta de Cobro' : 'Nueva Cuenta de Cobro'}</DialogTitle>
                     <DialogDescription>
-                        {clientId
-                            ? `Creando cuenta de cobro para ${clientName}`
-                            : "Crea una nueva cuenta de cobro y asígnala a un cliente"
+                        {invoiceToEdit
+                            ? "Modifica los detalles de la cuenta de cobro existente."
+                            : clientId
+                                ? `Creando cuenta de cobro para ${clientName}`
+                                : "Crea una nueva cuenta de cobro y asígnala a un cliente"
                         }
                     </DialogDescription>
                 </DialogHeader>
 
                 <div className="grid gap-6 py-4">
-                    {!clientId && (
+                    {!clientId && !invoiceToEdit && (
                         <div className="grid gap-2">
                             <Label htmlFor="client">Cliente</Label>
                             <select
@@ -192,7 +228,7 @@ export function CreateInvoiceModal({ clientId, clientName, onInvoiceCreated }: C
                     )}
                     <div className="grid grid-cols-2 gap-4">
                         <div className="grid gap-2">
-                            <Label>Número de Factura (Auto-generado)</Label>
+                            <Label>Número de Factura</Label>
                             <Input
                                 value={invoiceNumber}
                                 readOnly
@@ -274,9 +310,9 @@ export function CreateInvoiceModal({ clientId, clientName, onInvoiceCreated }: C
 
                 <DialogFooter>
                     <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
-                    <Button onClick={handleCreateInvoice} disabled={loading || calculateTotal() === 0} className="bg-brand-pink hover:bg-brand-pink/90 text-white shadow-md border-0">
+                    <Button onClick={handleSaveInvoice} disabled={loading || calculateTotal() === 0} className="bg-brand-pink hover:bg-brand-pink/90 text-white shadow-md border-0">
                         {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Generar Cuenta de Cobro
+                        {invoiceToEdit ? 'Actualizar Cuenta de Cobro' : 'Generar Cuenta de Cobro'}
                     </Button>
                 </DialogFooter>
             </DialogContent>

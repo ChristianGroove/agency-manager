@@ -178,6 +178,32 @@ export function AddServiceModal({ clientId, clientName, onSuccess, trigger, serv
                     .eq('id', serviceToEdit.id)
 
                 if (error) throw error
+
+                // Sync with Invoice if exists
+                if (serviceToEdit.invoice_id) {
+                    // We assume the invoice corresponds to this service. 
+                    // We update the total and the first item (or replace items if we assume 1-to-1)
+                    // For safety, let's just update the total and replace items with the new service details
+                    // This keeps it consistent with "Create Service -> Create Invoice" logic
+
+                    const { error: invoiceError } = await supabase
+                        .from('invoices')
+                        .update({
+                            total: parseFloat(newService.amount),
+                            items: [{
+                                description: newService.name,
+                                quantity: 1,
+                                price: parseFloat(newService.amount)
+                            }]
+                        })
+                        .eq('id', serviceToEdit.invoice_id)
+                        .eq('status', 'pending') // Only update if pending to avoid changing history of paid/sent invoices
+
+                    if (invoiceError) {
+                        console.error('Error updating linked invoice:', invoiceError)
+                        // We don't throw here to avoid failing the service update if invoice update fails (e.g. if not pending)
+                    }
+                }
             } else {
                 // INSERT
                 const { error } = await supabase

@@ -1153,6 +1153,21 @@ export default function ClientDetailPage() {
                                                                 </Button>
                                                             </DropdownMenuTrigger>
                                                             <DropdownMenuContent align="end" className="w-48">
+                                                                <CreateInvoiceModal
+                                                                    clientId={client.id}
+                                                                    clientName={client.name}
+                                                                    invoiceToEdit={inv}
+                                                                    onInvoiceCreated={() => fetchClientData(client.id)}
+                                                                    trigger={
+                                                                        <DropdownMenuItem
+                                                                            onSelect={(e) => e.preventDefault()}
+                                                                            onClick={(e) => e.stopPropagation()}
+                                                                        >
+                                                                            <Edit className="mr-2 h-4 w-4" />
+                                                                            <span>Editar</span>
+                                                                        </DropdownMenuItem>
+                                                                    }
+                                                                />
                                                                 {inv.status !== 'paid' && (
                                                                     <DropdownMenuItem
                                                                         onClick={async (e) => {

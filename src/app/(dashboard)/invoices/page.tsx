@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Plus, FileText, Download, Search, Filter, Eye, Trash2, Loader2 } from "lucide-react"
+import { Plus, FileText, Download, Search, Filter, Eye, Trash2, Loader2, Edit } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import {
     Select,
@@ -198,6 +198,15 @@ export default function InvoicesPage() {
                                                     <Eye className="h-4 w-4" />
                                                 </Button>
                                             </Link>
+                                            <CreateInvoiceModal
+                                                invoiceToEdit={invoice}
+                                                onInvoiceCreated={fetchInvoices}
+                                                trigger={
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-blue-600">
+                                                        <Edit className="h-4 w-4" />
+                                                    </Button>
+                                                }
+                                            />
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
