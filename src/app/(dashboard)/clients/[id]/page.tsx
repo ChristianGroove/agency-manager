@@ -41,7 +41,8 @@ import {
     AlertCircle,
     ExternalLink,
     Copy,
-    MessageCircle
+    MessageCircle,
+    Edit
 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
@@ -828,11 +829,13 @@ export default function ClientDetailPage() {
                                                         <div className="flex items-center gap-4 flex-1">
                                                             <div className={cn(
                                                                 "p-3 rounded-lg border",
-                                                                sub.service_type === 'marketing' ? "bg-gray-50 border-gray-200 text-gray-700" :
-                                                                    sub.service_type === 'crm' ? "bg-gray-50 border-gray-200 text-gray-700" :
-                                                                        sub.service_type === 'ads' ? "bg-gray-50 border-gray-200 text-gray-700" :
-                                                                            sub.service_type === 'hosting' ? "bg-gray-50 border-gray-200 text-gray-700" :
-                                                                                "bg-gray-50 border-gray-200 text-gray-700"
+                                                                sub.service_type === 'marketing' ? "bg-blue-50 border-blue-200 text-blue-700" :
+                                                                    sub.service_type === 'marketing_ads' ? "bg-indigo-50 border-indigo-200 text-indigo-700" :
+                                                                        sub.service_type === 'ads' ? "bg-purple-50 border-purple-200 text-purple-700" :
+                                                                            sub.service_type === 'branding' ? "bg-pink-50 border-pink-200 text-pink-700" :
+                                                                                sub.service_type === 'crm' ? "bg-orange-50 border-orange-200 text-orange-700" :
+                                                                                    sub.service_type === 'hosting' ? "bg-slate-50 border-slate-200 text-slate-700" :
+                                                                                        "bg-gray-50 border-gray-200 text-gray-700"
                                                             )}>
                                                                 <CreditCard className="h-5 w-5" />
                                                             </div>
@@ -858,6 +861,18 @@ export default function ClientDetailPage() {
                                                                     </Button>
                                                                 </DropdownMenuTrigger>
                                                                 <DropdownMenuContent align="end" className="w-56">
+                                                                    <AddServiceModal
+                                                                        clientId={client.id}
+                                                                        clientName={client.name}
+                                                                        serviceToEdit={sub}
+                                                                        onSuccess={() => fetchClientData(client.id)}
+                                                                        trigger={
+                                                                            <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                                                                <Edit className="mr-2 h-4 w-4" />
+                                                                                <span>Editar</span>
+                                                                            </DropdownMenuItem>
+                                                                        }
+                                                                    />
                                                                     {sub.invoice_id && (
                                                                         <>
                                                                             <DropdownMenuItem onClick={() => router.push(`/invoices/${sub.invoice_id}`)}>
@@ -979,6 +994,18 @@ export default function ClientDetailPage() {
                                                                     </Button>
                                                                 </DropdownMenuTrigger>
                                                                 <DropdownMenuContent align="end" className="w-56">
+                                                                    <AddServiceModal
+                                                                        clientId={client.id}
+                                                                        clientName={client.name}
+                                                                        serviceToEdit={sub}
+                                                                        onSuccess={() => fetchClientData(client.id)}
+                                                                        trigger={
+                                                                            <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                                                                <Edit className="mr-2 h-4 w-4" />
+                                                                                <span>Editar</span>
+                                                                            </DropdownMenuItem>
+                                                                        }
+                                                                    />
                                                                     {sub.invoice_id && (
                                                                         <>
                                                                             <DropdownMenuItem onClick={() => router.push(`/invoices/${sub.invoice_id}`)}>
@@ -1276,6 +1303,6 @@ export default function ClientDetailPage() {
                     </Card>
                 )}
             </div>
-        </div>
+        </div >
     )
 }
