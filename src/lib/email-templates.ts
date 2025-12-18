@@ -155,3 +155,51 @@ export const getQuoteEmailHtml = (clientName: string, quoteNumber: string, total
 </html>
     `
 }
+
+export const getBriefingSubmissionEmailHtml = (clientName: string, templateName: string, briefingLink: string) => {
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nuevo Briefing Recibido</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f3f4f6; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased;">
+    <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+        <!-- Logo/Header -->
+        <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #111827; margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -1px;">NUEVO BRIEFING</h1>
+        </div>
+
+        <!-- Main Card -->
+        <div style="background-color: #ffffff; border-radius: 16px; padding: 40px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);">
+            <!-- Greeting -->
+            <h2 style="color: #111827; margin-top: 0; margin-bottom: 20px; font-size: 20px; font-weight: 600;">¡Hola Equipo!</h2>
+            
+            <p style="color: #374151; font-size: 16px; line-height: 24px; margin-bottom: 24px;">
+                El cliente <strong>${clientName}</strong> ha completado y enviado el briefing: <strong>${templateName}</strong>.
+            </p>
+
+            <!-- Action Button -->
+            <div style="text-align: center; margin-bottom: 30px;">
+                <a href="${briefingLink}" style="display: inline-block; background-color: #F205E2; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; font-size: 16px;">Ver Respuestas</a>
+            </div>
+
+            <p style="color: #374151; font-size: 14px; line-height: 20px; margin-bottom: 10px; text-align: center;">
+                O copia y pega este enlace:
+            </p>
+            <p style="color: #6b7280; font-size: 12px; line-height: 16px; margin-bottom: 0; text-align: center; word-break: break-all;">
+                <a href="${briefingLink}" style="color: #6b7280;">${briefingLink}</a>
+            </p>
+        </div>
+
+        <!-- Footer -->
+        <div style="margin-top: 40px; text-align: center;">
+            <p style="color: #d1d5db; font-size: 12px;">&copy; ${new Date().getFullYear()} Agency Manager. Notificación automática.</p>
+        </div>
+    </div>
+</body>
+</html>
+    `
+}

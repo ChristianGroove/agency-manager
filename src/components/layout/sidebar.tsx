@@ -32,9 +32,9 @@ const routes = [
         href: "/quotes",
     },
     {
-        label: "Configuración",
-        icon: Settings,
-        href: "/settings",
+        label: "Briefings",
+        icon: FileText,
+        href: "/briefings",
     },
     {
         label: "Pagos",

@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { supabase } from "@/lib/supabase"
+import { login } from "@/lib/actions/auth"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -11,33 +11,26 @@ import { Loader2 } from "lucide-react"
 
 export default function LoginPage() {
     const router = useRouter()
-    const [email, setEmail] = useState("")
-    const [password, setPassword] = useState("")
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
-    const handleLogin = async (e: React.FormEvent) => {
-        e.preventDefault()
+    const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault()
         setIsLoading(true)
         setError(null)
 
-        try {
-            const { error } = await supabase.auth.signInWithPassword({
-                email,
-                password,
-            })
+        const formData = new FormData(event.currentTarget)
+        const result = await login(formData)
 
-            if (error) {
-                setError(error.message)
-            } else {
-                router.push("/dashboard")
-                router.refresh()
-            }
-        } catch (err) {
-            setError("Ocurrió un error inesperado")
-        } finally {
+        if (result?.error) {
+            setError(result.error)
             setIsLoading(false)
         }
+        // If success, the server action redirects, so we don't need to do anything here.
+        // But since we are preventing default, the redirect might not happen automatically if we don't handle it?
+        // No, `redirect` in server action throws an error that Next.js catches to redirect.
+        // However, when called from a client component event handler, we might need to handle it.
+        // Actually, `redirect` works in server actions called from client components too.
     }
 
     return (
@@ -48,17 +41,16 @@ export default function LoginPage() {
                     Ingresa tus credenciales para acceder al panel.
                 </CardDescription>
             </CardHeader>
-            <form onSubmit={handleLogin}>
+            <form onSubmit={handleSubmit}>
                 <CardContent>
                     <div className="grid w-full items-center gap-4">
                         <div className="flex flex-col space-y-1.5">
                             <Label htmlFor="email">Email</Label>
                             <Input
                                 id="email"
+                                name="email"
                                 type="email"
                                 placeholder="admin@agencia.com"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
                                 required
                             />
                         </div>
@@ -66,9 +58,8 @@ export default function LoginPage() {
                             <Label htmlFor="password">Contraseña</Label>
                             <Input
                                 id="password"
+                                name="password"
                                 type="password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
                                 required
                             />
                         </div>
