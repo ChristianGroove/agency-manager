@@ -127,98 +127,100 @@ export default function PortalPage() {
         <div className="min-h-screen bg-gray-50 pb-24">
             <div className="max-w-4xl mx-auto p-4 md:p-8 space-y-8">
                 {/* Header */}
-                <div className="flex flex-col items-center gap-6 text-center">
+                <div className="flex flex-col items-center gap-6 text-center mb-12">
                     <img src="/branding/logo dark.svg" alt="Pixy" className="h-10 mb-6 mx-auto" />
                     <div>
                         <h1 className="text-2xl font-bold text-gray-900">Hola, {client.name}</h1>
                         {getGreetingMessage()}
-                        {pendingTotal > 0 && (
-                            <p className="text-sm text-gray-400 mt-2">Selecciona las facturas que deseas pagar.</p>
-                        )}
                     </div>
                 </div>
 
                 {/* Invoices List */}
-                <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-                    {/* Desktop Table */}
-                    <div className="hidden md:block">
-                        <table className="w-full text-sm text-left">
-                            <thead className="bg-gray-50 text-gray-500 font-medium border-b">
-                                <tr>
-                                    <th className="px-6 py-4 w-12">
+                <div className="space-y-4">
+                    {pendingTotal > 0 && (
+                        <p className="text-sm text-gray-500 font-medium ml-1">Selecciona las facturas que deseas pagar:</p>
+                    )}
+                    <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
+                        {/* Desktop Table */}
+                        <div className="hidden md:block">
+                            <table className="w-full text-sm text-left">
+                                <thead className="bg-gray-50 text-gray-500 font-medium border-b">
+                                    <tr>
+                                        <th className="px-6 py-4 w-12">
+                                            <input
+                                                type="checkbox"
+                                                className="rounded border-gray-300 text-brand-pink focus:ring-brand-pink"
+                                                checked={pendingInvoices.length > 0 && selectedInvoices.length === pendingInvoices.length}
+                                                onChange={toggleAll}
+                                                disabled={pendingInvoices.length === 0}
+                                            />
+                                        </th>
+                                        <th className="px-6 py-4">Factura</th>
+                                        <th className="px-6 py-4">Fecha</th>
+                                        <th className="px-6 py-4">Estado</th>
+                                        <th className="px-6 py-4 text-right">Monto</th>
+                                        <th className="px-6 py-4 text-right">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                    {invoices.map((invoice) => (
+                                        <tr key={invoice.id} className="hover:bg-gray-50/50 transition-colors">
+                                            <td className="px-6 py-4">
+                                                {invoice.status !== 'paid' && (
+                                                    <input
+                                                        type="checkbox"
+                                                        className="rounded border-gray-300 text-brand-pink focus:ring-brand-pink"
+                                                        checked={selectedInvoices.includes(invoice.id)}
+                                                        onChange={() => toggleInvoice(invoice.id)}
+                                                    />
+                                                )}
+                                            </td>
+                                            <td className="px-6 py-4 font-medium text-gray-900">#{invoice.number}</td>
+                                            <td className="px-6 py-4 text-gray-600">{new Date(invoice.date).toLocaleDateString()}</td>
+                                            <td className="px-6 py-4">
+                                                <Badge variant={invoice.status === 'paid' ? 'default' : invoice.status === 'overdue' ? 'destructive' : 'secondary'}>
+                                                    {invoice.status === 'paid' ? 'Pagada' : invoice.status === 'overdue' ? 'Vencida' : 'Pendiente'}
+                                                </Badge>
+                                            </td>
+                                            <td className="px-6 py-4 text-right font-bold text-gray-900">${invoice.total.toLocaleString()}</td>
+                                            <td className="px-6 py-4 text-right">
+                                                <Button variant="ghost" size="sm" onClick={() => setViewInvoice(invoice)}>
+                                                    Ver Detalle
+                                                </Button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* Mobile List */}
+                        <div className="md:hidden divide-y divide-gray-100">
+                            {invoices.map((invoice) => (
+                                <div key={invoice.id} className="p-4 flex items-center gap-4">
+                                    {invoice.status !== 'paid' && (
                                         <input
                                             type="checkbox"
-                                            className="rounded border-gray-300 text-brand-pink focus:ring-brand-pink"
-                                            checked={pendingInvoices.length > 0 && selectedInvoices.length === pendingInvoices.length}
-                                            onChange={toggleAll}
-                                            disabled={pendingInvoices.length === 0}
+                                            className="h-5 w-5 rounded border-gray-300 text-brand-pink focus:ring-brand-pink"
+                                            checked={selectedInvoices.includes(invoice.id)}
+                                            onChange={() => toggleInvoice(invoice.id)}
                                         />
-                                    </th>
-                                    <th className="px-6 py-4">Factura</th>
-                                    <th className="px-6 py-4">Fecha</th>
-                                    <th className="px-6 py-4">Estado</th>
-                                    <th className="px-6 py-4 text-right">Monto</th>
-                                    <th className="px-6 py-4 text-right">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                                {invoices.map((invoice) => (
-                                    <tr key={invoice.id} className="hover:bg-gray-50/50 transition-colors">
-                                        <td className="px-6 py-4">
-                                            {invoice.status !== 'paid' && (
-                                                <input
-                                                    type="checkbox"
-                                                    className="rounded border-gray-300 text-brand-pink focus:ring-brand-pink"
-                                                    checked={selectedInvoices.includes(invoice.id)}
-                                                    onChange={() => toggleInvoice(invoice.id)}
-                                                />
-                                            )}
-                                        </td>
-                                        <td className="px-6 py-4 font-medium text-gray-900">#{invoice.number}</td>
-                                        <td className="px-6 py-4 text-gray-600">{new Date(invoice.date).toLocaleDateString()}</td>
-                                        <td className="px-6 py-4">
+                                    )}
+                                    <div className="flex-1" onClick={() => setViewInvoice(invoice)}>
+                                        <div className="flex justify-between items-start mb-1">
+                                            <span className="font-bold text-gray-900">#{invoice.number}</span>
                                             <Badge variant={invoice.status === 'paid' ? 'default' : invoice.status === 'overdue' ? 'destructive' : 'secondary'}>
-                                                {invoice.status === 'paid' ? 'Pagada' : invoice.status === 'overdue' ? 'Vencida' : 'Pendiente'}
+                                                {invoice.status === 'paid' ? 'Pagada' : 'Pendiente'}
                                             </Badge>
-                                        </td>
-                                        <td className="px-6 py-4 text-right font-bold text-gray-900">${invoice.total.toLocaleString()}</td>
-                                        <td className="px-6 py-4 text-right">
-                                            <Button variant="ghost" size="sm" onClick={() => setViewInvoice(invoice)}>
-                                                Ver Detalle
-                                            </Button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-
-                    {/* Mobile List */}
-                    <div className="md:hidden divide-y divide-gray-100">
-                        {invoices.map((invoice) => (
-                            <div key={invoice.id} className="p-4 flex items-center gap-4">
-                                {invoice.status !== 'paid' && (
-                                    <input
-                                        type="checkbox"
-                                        className="h-5 w-5 rounded border-gray-300 text-brand-pink focus:ring-brand-pink"
-                                        checked={selectedInvoices.includes(invoice.id)}
-                                        onChange={() => toggleInvoice(invoice.id)}
-                                    />
-                                )}
-                                <div className="flex-1" onClick={() => setViewInvoice(invoice)}>
-                                    <div className="flex justify-between items-start mb-1">
-                                        <span className="font-bold text-gray-900">#{invoice.number}</span>
-                                        <Badge variant={invoice.status === 'paid' ? 'default' : invoice.status === 'overdue' ? 'destructive' : 'secondary'}>
-                                            {invoice.status === 'paid' ? 'Pagada' : 'Pendiente'}
-                                        </Badge>
-                                    </div>
-                                    <div className="flex justify-between items-end">
-                                        <span className="text-xs text-gray-500">{new Date(invoice.date).toLocaleDateString()}</span>
-                                        <span className="font-bold text-gray-900">${invoice.total.toLocaleString()}</span>
+                                        </div>
+                                        <div className="flex justify-between items-end">
+                                            <span className="text-xs text-gray-500">{new Date(invoice.date).toLocaleDateString()}</span>
+                                            <span className="font-bold text-gray-900">${invoice.total.toLocaleString()}</span>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        ))}
+                            ))}
+                        </div>
                     </div>
                 </div>
             </div>
