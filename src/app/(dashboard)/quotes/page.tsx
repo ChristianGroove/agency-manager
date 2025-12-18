@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Plus, FileText, Download, Eye, Loader2, Trash } from "lucide-react"
+import { Plus, FileText, Download, Eye, Loader2, Trash, MoreVertical } from "lucide-react"
 import {
     Table,
     TableBody,
@@ -12,10 +13,17 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/animate-ui/components/radix/dropdown-menu"
 import { supabase } from "@/lib/supabase"
 import { Quote } from "@/types"
 
 export default function QuotesPage() {
+    const router = useRouter()
     const [quotes, setQuotes] = useState<Quote[]>([])
     const [loading, setLoading] = useState(true)
 
@@ -130,25 +138,31 @@ export default function QuotesPage() {
                                             </div>
                                         </TableCell>
                                         <TableCell className="text-right">
-                                            <div className="flex justify-end gap-2">
-                                                <Link href={`/quotes/${quote.id}`}>
-                                                    <Button variant="ghost" size="icon" title="Ver Detalle">
-                                                        <Eye className="w-4 h-4" />
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8 p-0">
+                                                        <span className="sr-only">Abrir menú</span>
+                                                        <MoreVertical className="h-4 w-4" />
                                                     </Button>
-                                                </Link>
-                                                <Button variant="ghost" size="icon" title="Descargar PDF">
-                                                    <Download className="w-4 h-4" />
-                                                </Button>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    title="Eliminar"
-                                                    className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                                                    onClick={() => deleteQuote(quote.id)}
-                                                >
-                                                    <Trash className="w-4 h-4" />
-                                                </Button>
-                                            </div>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    <DropdownMenuItem onClick={() => router.push(`/quotes/${quote.id}`)}>
+                                                        <Eye className="mr-2 h-4 w-4" />
+                                                        <span>Ver Detalle</span>
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem>
+                                                        <Download className="mr-2 h-4 w-4" />
+                                                        <span>Descargar PDF</span>
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem
+                                                        onClick={() => deleteQuote(quote.id)}
+                                                        className="text-red-600 focus:text-red-600"
+                                                    >
+                                                        <Trash className="mr-2 h-4 w-4" />
+                                                        <span>Eliminar</span>
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
                                         </TableCell>
                                     </TableRow>
                                 )

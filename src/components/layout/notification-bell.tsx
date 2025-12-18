@@ -7,7 +7,7 @@ import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/components/animate-ui/components/radix/dropdown-menu"
 import { supabase } from "@/lib/supabase"
 import { NotificationList } from "./notification-list"
 import { checkUpcomingPayments } from "@/lib/notifications"

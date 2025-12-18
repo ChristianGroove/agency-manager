@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Plus, FileText, Download, Search, Filter, Eye, Trash2, Loader2, Edit } from "lucide-react"
 import { Input } from "@/components/ui/input"
@@ -24,6 +25,13 @@ import { Badge } from "@/components/ui/badge"
 import { supabase } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 import { CreateInvoiceModal } from "@/components/modules/invoices/create-invoice-modal"
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/animate-ui/components/radix/dropdown-menu"
+import { MoreVertical } from "lucide-react"
 
 interface Invoice {
     id: string
@@ -38,6 +46,7 @@ interface Invoice {
 }
 
 export default function InvoicesPage() {
+    const router = useRouter()
     const [invoices, setInvoices] = useState<Invoice[]>([])
     const [loading, setLoading] = useState(true)
     const [searchTerm, setSearchTerm] = useState("")
@@ -192,35 +201,37 @@ export default function InvoicesPage() {
                                         </Badge>
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        <div className="flex items-center justify-end gap-2">
-                                            <Link href={`/invoices/${invoice.id}`}>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-indigo-600">
-                                                    <Eye className="h-4 w-4" />
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 p-0">
+                                                    <span className="sr-only">Abrir menú</span>
+                                                    <MoreVertical className="h-4 w-4" />
                                                 </Button>
-                                            </Link>
-                                            <CreateInvoiceModal
-                                                invoiceToEdit={invoice}
-                                                onInvoiceCreated={fetchInvoices}
-                                                trigger={
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-blue-600">
-                                                        <Edit className="h-4 w-4" />
-                                                    </Button>
-                                                }
-                                            />
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-8 w-8 text-gray-400 hover:text-red-600"
-                                                onClick={() => handleDeleteInvoice(invoice.id)}
-                                                disabled={deletingId === invoice.id}
-                                            >
-                                                {deletingId === invoice.id ? (
-                                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                                ) : (
-                                                    <Trash2 className="h-4 w-4" />
-                                                )}
-                                            </Button>
-                                        </div>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                <DropdownMenuItem onClick={() => router.push(`/invoices/${invoice.id}`)}>
+                                                    <Eye className="mr-2 h-4 w-4" />
+                                                    <span>Ver Detalles</span>
+                                                </DropdownMenuItem>
+                                                <CreateInvoiceModal
+                                                    invoiceToEdit={invoice}
+                                                    onInvoiceCreated={fetchInvoices}
+                                                    trigger={
+                                                        <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                                            <Edit className="mr-2 h-4 w-4" />
+                                                            <span>Editar</span>
+                                                        </DropdownMenuItem>
+                                                    }
+                                                />
+                                                <DropdownMenuItem
+                                                    onClick={() => handleDeleteInvoice(invoice.id)}
+                                                    className="text-red-600 focus:text-red-600"
+                                                >
+                                                    <Trash2 className="mr-2 h-4 w-4" />
+                                                    <span>Eliminar</span>
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
                                     </TableCell>
                                 </TableRow>
                             ))

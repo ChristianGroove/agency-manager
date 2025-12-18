@@ -55,7 +55,7 @@ import {
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/components/animate-ui/components/radix/dropdown-menu"
 
 // Types
 type Client = {
@@ -902,7 +902,7 @@ export default function ClientDetailPage() {
                                                                         {sub.invoice_id && (
                                                                             <>
                                                                                 <DropdownMenuItem onClick={() => router.push(`/invoices/${sub.invoice_id}`)}>
-                                                                                    <FileText className="mr-2 h-4 w-4 text-indigo-600" />
+                                                                                    <FileText className="mr-2 h-4 w-4" />
                                                                                     <span>Ver Factura</span>
                                                                                 </DropdownMenuItem>
                                                                                 <DropdownMenuItem
@@ -925,12 +925,12 @@ export default function ClientDetailPage() {
                                                                                 >
                                                                                     {sub.invoice?.sent ? (
                                                                                         <>
-                                                                                            <CheckCircle2 className="mr-2 h-4 w-4 text-gray-400" />
-                                                                                            <span className="text-gray-400">Enviada</span>
+                                                                                            <CheckCircle2 className="mr-2 h-4 w-4" />
+                                                                                            <span className="text-muted-foreground">Enviada</span>
                                                                                         </>
                                                                                     ) : (
                                                                                         <>
-                                                                                            <Send className="mr-2 h-4 w-4 text-green-600" />
+                                                                                            <Send className="mr-2 h-4 w-4" />
                                                                                             <span>Marcar Enviada</span>
                                                                                         </>
                                                                                     )}
@@ -1035,7 +1035,7 @@ export default function ClientDetailPage() {
                                                                         {sub.invoice_id && (
                                                                             <>
                                                                                 <DropdownMenuItem onClick={() => router.push(`/invoices/${sub.invoice_id}`)}>
-                                                                                    <FileText className="mr-2 h-4 w-4 text-indigo-600" />
+                                                                                    <FileText className="mr-2 h-4 w-4" />
                                                                                     <span>Ver Factura</span>
                                                                                 </DropdownMenuItem>
                                                                                 <DropdownMenuItem
@@ -1056,7 +1056,7 @@ export default function ClientDetailPage() {
                                                                                         }
                                                                                     }}
                                                                                 >
-                                                                                    <Send className={cn("mr-2 h-4 w-4", sub.invoice?.sent ? "text-gray-400" : "text-blue-600")} />
+                                                                                    <Send className={cn("mr-2 h-4 w-4", sub.invoice?.sent ? "text-muted-foreground" : "")} />
                                                                                     <span>{sub.invoice?.sent ? 'Ya enviada' : 'Marcar como enviada'}</span>
                                                                                 </DropdownMenuItem>
                                                                             </>
@@ -1227,7 +1227,7 @@ export default function ClientDetailPage() {
                                                                                 }
                                                                             }}
                                                                         >
-                                                                            <CheckCircle2 className="mr-2 h-4 w-4 text-green-600" />
+                                                                            <CheckCircle2 className="mr-2 h-4 w-4" />
                                                                             <span>Marcar Pagada</span>
                                                                         </DropdownMenuItem>
                                                                     )}
@@ -1249,7 +1249,7 @@ export default function ClientDetailPage() {
                                                                             }
                                                                         }}
                                                                     >
-                                                                        <FileText className="mr-2 h-4 w-4 text-orange-600" />
+                                                                        <FileText className="mr-2 h-4 w-4" />
                                                                         <span>Archivar</span>
                                                                     </DropdownMenuItem>
                                                                     <DropdownMenuItem
