@@ -93,6 +93,36 @@ export default function PortalPage() {
         .filter(i => selectedInvoices.includes(i.id))
         .reduce((acc, curr) => acc + curr.total, 0)
 
+    const pendingTotal = invoices
+        .filter(i => i.status === 'pending' || i.status === 'overdue')
+        .reduce((acc, curr) => acc + curr.total, 0)
+
+    const overdueTotal = invoices
+        .filter(i => i.status === 'overdue')
+        .reduce((acc, curr) => acc + curr.total, 0)
+
+    const getGreetingMessage = () => {
+        if (overdueTotal > 0) {
+            return (
+                <p className="text-red-500 font-medium">
+                    Tienes facturas vencidas que requieren tu atención inmediata.
+                </p>
+            )
+        }
+        if (pendingTotal > 0) {
+            return (
+                <p className="text-gray-600">
+                    A continuación encontrarás el resumen de tu estado de cuenta.
+                </p>
+            )
+        }
+        return (
+            <p className="text-green-600 font-medium">
+                ¡Estás al día! No tienes pagos pendientes.
+            </p>
+        )
+    }
+
     return (
         <div className="min-h-screen bg-gray-50 pb-24">
             <div className="max-w-4xl mx-auto p-4 md:p-8 space-y-8">
@@ -101,7 +131,10 @@ export default function PortalPage() {
                     <img src="/branding/logo dark.svg" alt="Pixy" className="h-10 mb-6 mx-auto" />
                     <div>
                         <h1 className="text-2xl font-bold text-gray-900">Hola, {client.name}</h1>
-                        <p className="text-gray-500">Selecciona las facturas que deseas pagar.</p>
+                        {getGreetingMessage()}
+                        {pendingTotal > 0 && (
+                            <p className="text-sm text-gray-400 mt-2">Selecciona las facturas que deseas pagar.</p>
+                        )}
                     </div>
                 </div>
 
