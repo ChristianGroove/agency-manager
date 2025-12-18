@@ -18,7 +18,13 @@ export async function POST(request: Request) {
             .single()
 
         if (error || !invoice) {
-            return NextResponse.json({ error: 'Invoice not found' }, { status: 404 })
+            console.error('Invoice fetch error:', error)
+            return NextResponse.json({
+                error: 'Invoice not found',
+                debug_id: invoiceId,
+                debug_error: error,
+                debug_has_key: !!process.env.SUPABASE_SERVICE_ROLE_KEY
+            }, { status: 404 })
         }
 
         const currency = process.env.NEXT_PUBLIC_WOMPI_CURRENCY || 'COP'
