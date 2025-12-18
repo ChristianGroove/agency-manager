@@ -76,7 +76,7 @@ export default function QuotesPage() {
 
             <div className="rounded-md border bg-white">
                 <Table>
-                    <TableHeader>
+                    <TableHeader className="bg-gray-50/50">
                         <TableRow>
                             <TableHead>Número</TableHead>
                             <TableHead>Cliente / Prospecto</TableHead>
@@ -120,9 +120,9 @@ export default function QuotesPage() {
                                         <TableCell>${quote.total.toLocaleString()}</TableCell>
                                         <TableCell>
                                             <div className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent ${quote.status === 'draft' ? 'bg-gray-100 text-gray-800' :
-                                                    quote.status === 'sent' ? 'bg-blue-100 text-blue-800' :
-                                                        quote.status === 'accepted' ? 'bg-green-100 text-green-800' :
-                                                            'bg-red-100 text-red-800'
+                                                quote.status === 'sent' ? 'bg-blue-100 text-blue-800' :
+                                                    quote.status === 'accepted' ? 'bg-green-100 text-green-800' :
+                                                        'bg-red-100 text-red-800'
                                                 }`}>
                                                 {quote.status === 'draft' ? 'Borrador' :
                                                     quote.status === 'sent' ? 'Enviada' :
