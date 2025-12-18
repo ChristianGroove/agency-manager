@@ -10,6 +10,7 @@ import { Quote, Client, Lead } from "@/types"
 import { LeadsService } from "@/services/leads-service"
 import { QuotesService } from "@/services/quotes-service"
 import { QuoteWhatsAppModal } from "@/components/modules/quotes/quote-whatsapp-modal"
+import { ShareButton } from "@/components/animate-ui/components/community/share-button"
 
 export default function QuoteDetailPage() {
     const params = useParams()
@@ -229,17 +230,24 @@ export default function QuoteDetailPage() {
                                 </Link>
                             )}
 
-                            <Button variant="outline" className="shadow-sm" onClick={() => setIsWhatsAppOpen(true)}>
-                                <Share2 className="mr-2 h-4 w-4 text-green-600" /> WhatsApp
-                            </Button>
-
-                            <Button variant="outline" className="shadow-sm" onClick={handleEmailShare} disabled={downloading}>
-                                {downloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Mail className="mr-2 h-4 w-4" />} Email
-                            </Button>
-
-                            <Button variant="outline" className="shadow-sm" onClick={handleDownloadPDF} disabled={downloading}>
-                                <Download className="mr-2 h-4 w-4" /> PDF
-                            </Button>
+                            <ShareButton
+                                disabled={downloading}
+                                className="bg-gray-900 hover:bg-gray-800 text-white shadow-sm min-w-[140px]"
+                                onIconClick={(platform) => {
+                                    if (platform === 'whatsapp') setIsWhatsAppOpen(true)
+                                    if (platform === 'email') handleEmailShare()
+                                    if (platform === 'download') handleDownloadPDF()
+                                }}
+                            >
+                                {downloading ? (
+                                    <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        Enviando...
+                                    </>
+                                ) : (
+                                    "Compartir"
+                                )}
+                            </ShareButton>
                         </div>
                     </div>
                 </div>

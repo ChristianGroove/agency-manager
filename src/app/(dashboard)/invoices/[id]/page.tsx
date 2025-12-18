@@ -27,6 +27,7 @@ type Invoice = {
 }
 
 import { WhatsAppShareModal } from "@/components/modules/invoices/whatsapp-share-modal"
+import { ShareButton } from "@/components/animate-ui/components/community/share-button"
 
 export default function InvoicePage() {
   const params = useParams()
@@ -106,91 +107,96 @@ export default function InvoicePage() {
               <h1 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">Factura</h1>
             </div>
             <div className="flex items-center gap-2">
-              <Button onClick={() => setIsWhatsAppModalOpen(true)} className="bg-green-600 hover:bg-green-700 text-white shadow-sm">
-                <Share2 className="mr-2 h-4 w-4" /> WhatsApp
-              </Button>
-              <Button
-                onClick={async () => {
-                  if (!invoice) return;
+              <ShareButton
+                disabled={downloading}
+                className="bg-gray-900 hover:bg-gray-800 text-white shadow-sm min-w-[140px]"
+                onIconClick={async (platform) => {
+                  if (platform === 'whatsapp') {
+                    setIsWhatsAppModalOpen(true)
+                  } else if (platform === 'email') {
+                    if (!invoice) return;
 
-                  try {
-                    setDownloading(true);
+                    try {
+                      setDownloading(true);
 
-                    // Dynamic import for html-to-image and jspdf to avoid SSR issues
-                    const { toPng } = await import('html-to-image');
-                    const jsPDF = (await import('jspdf')).default;
+                      // Dynamic import for html-to-image and jspdf to avoid SSR issues
+                      const { toPng } = await import('html-to-image');
+                      const jsPDF = (await import('jspdf')).default;
 
-                    if (!invoiceRef.current) return;
+                      if (!invoiceRef.current) return;
 
-                    // Generate PNG using html-to-image
-                    const dataUrl = await toPng(invoiceRef.current, {
-                      quality: 0.95,
-                      backgroundColor: '#ffffff'
-                    });
+                      // Generate PNG using html-to-image
+                      const dataUrl = await toPng(invoiceRef.current, {
+                        quality: 0.95,
+                        backgroundColor: '#ffffff'
+                      });
 
-                    const pdf = new jsPDF({
-                      orientation: 'portrait',
-                      unit: 'mm',
-                      format: 'a4'
-                    });
+                      const pdf = new jsPDF({
+                        orientation: 'portrait',
+                        unit: 'mm',
+                        format: 'a4'
+                      });
 
-                    const imgProps = pdf.getImageProperties(dataUrl);
-                    const pdfWidth = pdf.internal.pageSize.getWidth();
-                    const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+                      const imgProps = pdf.getImageProperties(dataUrl);
+                      const pdfWidth = pdf.internal.pageSize.getWidth();
+                      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
 
-                    pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, pdfHeight);
+                      pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, pdfHeight);
 
-                    // Get PDF as base64 string
-                    const pdfBase64 = pdf.output('datauristring');
+                      // Get PDF as base64 string
+                      const pdfBase64 = pdf.output('datauristring');
 
-                    // Send to API
-                    const response = await fetch('/api/send-invoice', {
-                      method: 'POST',
-                      headers: {
-                        'Content-Type': 'application/json',
-                      },
-                      body: JSON.stringify({
-                        email: invoice.client.email,
-                        invoiceNumber: invoice.number,
-                        clientName: invoice.client.name,
-                        amount: `$${invoice.total.toLocaleString()}`,
-                        dueDate: invoice.due_date ? new Date(invoice.due_date).toLocaleDateString() : new Date().toLocaleDateString(),
-                        concept: invoice.items.map((item: any) => item.description).join(', '),
-                        pdfBase64
-                      }),
-                    });
+                      // Send to API
+                      const response = await fetch('/api/send-invoice', {
+                        method: 'POST',
+                        headers: {
+                          'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                          email: invoice.client.email,
+                          invoiceNumber: invoice.number,
+                          clientName: invoice.client.name,
+                          amount: `$${invoice.total.toLocaleString()}`,
+                          dueDate: invoice.due_date ? new Date(invoice.due_date).toLocaleDateString() : new Date().toLocaleDateString(),
+                          concept: invoice.items.map((item: any) => item.description).join(', '),
+                          pdfBase64
+                        }),
+                      });
 
-                    if (!response.ok) {
-                      const contentType = response.headers.get("content-type");
-                      if (contentType && contentType.indexOf("application/json") !== -1) {
-                        const errorData = await response.json();
-                        throw new Error(errorData.error || 'Failed to send email');
-                      } else {
-                        const errorText = await response.text();
-                        console.error('Non-JSON API Error:', errorText);
-                        throw new Error(`Server Error (${response.status}): ${errorText.slice(0, 100)}...`);
+                      if (!response.ok) {
+                        const contentType = response.headers.get("content-type");
+                        if (contentType && contentType.indexOf("application/json") !== -1) {
+                          const errorData = await response.json();
+                          throw new Error(errorData.error || 'Failed to send email');
+                        } else {
+                          const errorText = await response.text();
+                          console.error('Non-JSON API Error:', errorText);
+                          throw new Error(`Server Error (${response.status}): ${errorText.slice(0, 100)}...`);
+                        }
                       }
+
+                      alert('Correo enviado exitosamente');
+
+                    } catch (error: any) {
+                      console.error('Error sending email:', error);
+                      alert(`Error al enviar el correo: ${error.message}`);
+                    } finally {
+                      setDownloading(false);
                     }
-
-                    alert('Correo enviado exitosamente');
-
-                  } catch (error: any) {
-                    console.error('Error sending email:', error);
-                    alert(`Error al enviar el correo: ${error.message}`);
-                  } finally {
-                    setDownloading(false);
+                  } else if (platform === 'download') {
+                    handleDownloadPDF()
                   }
                 }}
-                disabled={downloading}
-                className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
               >
-                {downloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Mail className="mr-2 h-4 w-4" />}
-                Email
-              </Button>
-              <Button onClick={handleDownloadPDF} disabled={downloading} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm">
-                <Download className="mr-2 h-4 w-4" />
-                Descargar PDF
-              </Button>
+                {downloading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Enviando...
+                  </>
+                ) : (
+                  "Compartir"
+                )}
+              </ShareButton>
             </div>
           </div>
         </div>
