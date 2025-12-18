@@ -88,17 +88,27 @@ export default function PortalPage() {
     if (error) return <div className="min-h-screen flex items-center justify-center text-red-500">{error}</div>
     if (!client) return null
 
-    const pendingInvoices = invoices.filter(i => i.status !== 'paid')
+    const getInvoiceStatus = (invoice: Invoice) => {
+        if (invoice.status === 'paid') return 'paid'
+        if (invoice.due_date && new Date(invoice.due_date) < new Date()) return 'overdue'
+        return invoice.status
+    }
+
+    const pendingInvoices = invoices.filter(i => getInvoiceStatus(i) !== 'paid')
+
     const totalSelected = invoices
         .filter(i => selectedInvoices.includes(i.id))
         .reduce((acc, curr) => acc + curr.total, 0)
 
     const pendingTotal = invoices
-        .filter(i => i.status === 'pending' || i.status === 'overdue')
+        .filter(i => {
+            const status = getInvoiceStatus(i)
+            return status === 'pending' || status === 'overdue'
+        })
         .reduce((acc, curr) => acc + curr.total, 0)
 
     const overdueTotal = invoices
-        .filter(i => i.status === 'overdue')
+        .filter(i => getInvoiceStatus(i) === 'overdue')
         .reduce((acc, curr) => acc + curr.total, 0)
 
     const getGreetingMessage = () => {
@@ -138,7 +148,7 @@ export default function PortalPage() {
                 {/* Invoices List */}
                 <div className="space-y-4">
                     {pendingTotal > 0 && (
-                        <p className="text-sm text-gray-500 font-medium ml-1">Selecciona las facturas que deseas pagar:</p>
+                        <p className="text-sm text-gray-500 font-medium text-center">Selecciona las facturas que deseas pagar:</p>
                     )}
                     <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
                         {/* Desktop Table */}
@@ -163,63 +173,69 @@ export default function PortalPage() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
-                                    {invoices.map((invoice) => (
-                                        <tr key={invoice.id} className="hover:bg-gray-50/50 transition-colors">
-                                            <td className="px-6 py-4">
-                                                {invoice.status !== 'paid' && (
-                                                    <input
-                                                        type="checkbox"
-                                                        className="rounded border-gray-300 text-brand-pink focus:ring-brand-pink"
-                                                        checked={selectedInvoices.includes(invoice.id)}
-                                                        onChange={() => toggleInvoice(invoice.id)}
-                                                    />
-                                                )}
-                                            </td>
-                                            <td className="px-6 py-4 font-medium text-gray-900">#{invoice.number}</td>
-                                            <td className="px-6 py-4 text-gray-600">{new Date(invoice.date).toLocaleDateString()}</td>
-                                            <td className="px-6 py-4">
-                                                <Badge variant={invoice.status === 'paid' ? 'default' : invoice.status === 'overdue' ? 'destructive' : 'secondary'}>
-                                                    {invoice.status === 'paid' ? 'Pagada' : invoice.status === 'overdue' ? 'Vencida' : 'Pendiente'}
-                                                </Badge>
-                                            </td>
-                                            <td className="px-6 py-4 text-right font-bold text-gray-900">${invoice.total.toLocaleString()}</td>
-                                            <td className="px-6 py-4 text-right">
-                                                <Button variant="ghost" size="sm" onClick={() => setViewInvoice(invoice)}>
-                                                    Ver Detalle
-                                                </Button>
-                                            </td>
-                                        </tr>
-                                    ))}
+                                    {invoices.map((invoice) => {
+                                        const status = getInvoiceStatus(invoice)
+                                        return (
+                                            <tr key={invoice.id} className="hover:bg-gray-50/50 transition-colors">
+                                                <td className="px-6 py-4">
+                                                    {status !== 'paid' && (
+                                                        <input
+                                                            type="checkbox"
+                                                            className="rounded border-gray-300 text-brand-pink focus:ring-brand-pink"
+                                                            checked={selectedInvoices.includes(invoice.id)}
+                                                            onChange={() => toggleInvoice(invoice.id)}
+                                                        />
+                                                    )}
+                                                </td>
+                                                <td className="px-6 py-4 font-medium text-gray-900">#{invoice.number}</td>
+                                                <td className="px-6 py-4 text-gray-600">{new Date(invoice.date).toLocaleDateString()}</td>
+                                                <td className="px-6 py-4">
+                                                    <Badge variant={status === 'paid' ? 'default' : status === 'overdue' ? 'destructive' : 'secondary'}>
+                                                        {status === 'paid' ? 'Pagada' : status === 'overdue' ? 'Vencida' : 'Pendiente'}
+                                                    </Badge>
+                                                </td>
+                                                <td className="px-6 py-4 text-right font-bold text-gray-900">${invoice.total.toLocaleString()}</td>
+                                                <td className="px-6 py-4 text-right">
+                                                    <Button variant="ghost" size="sm" onClick={() => setViewInvoice(invoice)}>
+                                                        Ver Detalle
+                                                    </Button>
+                                                </td>
+                                            </tr>
+                                        )
+                                    })}
                                 </tbody>
                             </table>
                         </div>
 
                         {/* Mobile List */}
                         <div className="md:hidden divide-y divide-gray-100">
-                            {invoices.map((invoice) => (
-                                <div key={invoice.id} className="p-4 flex items-center gap-4">
-                                    {invoice.status !== 'paid' && (
-                                        <input
-                                            type="checkbox"
-                                            className="h-5 w-5 rounded border-gray-300 text-brand-pink focus:ring-brand-pink"
-                                            checked={selectedInvoices.includes(invoice.id)}
-                                            onChange={() => toggleInvoice(invoice.id)}
-                                        />
-                                    )}
-                                    <div className="flex-1" onClick={() => setViewInvoice(invoice)}>
-                                        <div className="flex justify-between items-start mb-1">
-                                            <span className="font-bold text-gray-900">#{invoice.number}</span>
-                                            <Badge variant={invoice.status === 'paid' ? 'default' : invoice.status === 'overdue' ? 'destructive' : 'secondary'}>
-                                                {invoice.status === 'paid' ? 'Pagada' : 'Pendiente'}
-                                            </Badge>
-                                        </div>
-                                        <div className="flex justify-between items-end">
-                                            <span className="text-xs text-gray-500">{new Date(invoice.date).toLocaleDateString()}</span>
-                                            <span className="font-bold text-gray-900">${invoice.total.toLocaleString()}</span>
+                            {invoices.map((invoice) => {
+                                const status = getInvoiceStatus(invoice)
+                                return (
+                                    <div key={invoice.id} className="p-4 flex items-center gap-4">
+                                        {status !== 'paid' && (
+                                            <input
+                                                type="checkbox"
+                                                className="h-5 w-5 rounded border-gray-300 text-brand-pink focus:ring-brand-pink"
+                                                checked={selectedInvoices.includes(invoice.id)}
+                                                onChange={() => toggleInvoice(invoice.id)}
+                                            />
+                                        )}
+                                        <div className="flex-1" onClick={() => setViewInvoice(invoice)}>
+                                            <div className="flex justify-between items-start mb-1">
+                                                <span className="font-bold text-gray-900">#{invoice.number}</span>
+                                                <Badge variant={status === 'paid' ? 'default' : status === 'overdue' ? 'destructive' : 'secondary'}>
+                                                    {status === 'paid' ? 'Pagada' : status === 'overdue' ? 'Vencida' : 'Pendiente'}
+                                                </Badge>
+                                            </div>
+                                            <div className="flex justify-between items-end">
+                                                <span className="text-xs text-gray-500">{new Date(invoice.date).toLocaleDateString()}</span>
+                                                <span className="font-bold text-gray-900">${invoice.total.toLocaleString()}</span>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            ))}
+                                )
+                            })}
                         </div>
                     </div>
                 </div>
