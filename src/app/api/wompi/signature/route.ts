@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createHash } from 'crypto'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabase-admin'
 
 export async function POST(request: Request) {
     try {
@@ -10,8 +10,8 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Invoice ID is required' }, { status: 400 })
         }
 
-        // Fetch invoice details
-        const { data: invoice, error } = await supabase
+        // Fetch invoice details using Admin client to bypass RLS
+        const { data: invoice, error } = await supabaseAdmin
             .from('invoices')
             .select('*')
             .eq('id', invoiceId)
