@@ -42,12 +42,14 @@ import {
     ExternalLink,
     Copy,
     MessageCircle,
-    Edit
+    Edit,
+    RefreshCw
 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 import { CreateInvoiceModal } from "@/components/modules/invoices/create-invoice-modal"
 import { AddServiceModal } from "@/components/modules/services/add-service-modal"
+import { regeneratePortalToken } from "@/app/actions/portal-actions"
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -74,6 +76,7 @@ type Client = {
     hosting_accounts: any[]
     subscriptions: any[]
     portal_token?: string
+    portal_short_token?: string
 }
 
 export default function ClientDetailPage() {
@@ -253,8 +256,6 @@ export default function ClientDetailPage() {
         }
     }
 
-
-
     // Calculate client stats
     const totalDebt = client?.invoices
         ?.filter(inv => inv.status === 'pending' || inv.status === 'overdue')
@@ -336,8 +337,6 @@ export default function ClientDetailPage() {
                                 <Trash2 className="mr-2 h-4 w-4" />
                                 Eliminar
                             </Button>
-
-
 
                             <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
                                 <DialogTrigger asChild>
@@ -577,7 +576,7 @@ export default function ClientDetailPage() {
                                 </DialogContent>
                             </Dialog>
 
-                            {client.portal_token && (
+                            {(client.portal_token || client.portal_short_token) && (
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
                                         <Button variant="outline" size="sm" className="border-gray-200 text-gray-700 hover:bg-gray-50">
@@ -586,12 +585,18 @@ export default function ClientDetailPage() {
                                         </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
-                                        <DropdownMenuItem onClick={() => window.open(`/portal/${client.portal_token}`, '_blank')}>
+                                        <DropdownMenuItem onClick={() => {
+                                            const token = client.portal_short_token || client.portal_token
+                                            const domain = 'https://mi.pixy.com.co'
+                                            window.open(`${domain}/${token}`, '_blank')
+                                        }}>
                                             <ExternalLink className="mr-2 h-4 w-4" />
                                             Ver Portal
                                         </DropdownMenuItem>
                                         <DropdownMenuItem onClick={() => {
-                                            const url = `${window.location.origin}/portal/${client.portal_token}`
+                                            const token = client.portal_short_token || client.portal_token
+                                            const domain = 'https://mi.pixy.com.co'
+                                            const url = `${domain}/${token}`
                                             navigator.clipboard.writeText(url)
                                             alert("Enlace copiado al portapapeles")
                                         }}>
@@ -599,12 +604,31 @@ export default function ClientDetailPage() {
                                             Copiar Enlace
                                         </DropdownMenuItem>
                                         <DropdownMenuItem onClick={() => {
-                                            const url = `${window.location.origin}/portal/${client.portal_token}`
+                                            const token = client.portal_short_token || client.portal_token
+                                            const domain = 'https://mi.pixy.com.co'
+                                            const url = `${domain}/${token}`
                                             const text = `Hola ${client.name}, aquí tienes tu enlace al portal de clientes para ver tus facturas y realizar pagos: ${url}`
                                             window.open(`https://wa.me/${client.phone?.replace(/\D/g, '')}?text=${encodeURIComponent(text)}`, '_blank')
                                         }}>
                                             <MessageCircle className="mr-2 h-4 w-4" />
                                             Enviar por WhatsApp
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={async () => {
+                                            if (confirm("¿Estás seguro de regenerar el token? El enlace anterior dejará de funcionar.")) {
+                                                try {
+                                                    const res = await regeneratePortalToken(client.id)
+                                                    if (res.success) {
+                                                        fetchClientData(client.id)
+                                                        alert("Token regenerado exitosamente")
+                                                    }
+                                                } catch (e) {
+                                                    console.error(e)
+                                                    alert("Error al regenerar token")
+                                                }
+                                            }
+                                        }}>
+                                            <RefreshCw className="mr-2 h-4 w-4" />
+                                            Regenerar Token
                                         </DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
@@ -616,6 +640,7 @@ export default function ClientDetailPage() {
 
             {/* Main Content */}
             <div>
+
                 {/* Client Header Card */}
                 <Card className="mb-8 border-0 shadow-lg">
                     <CardContent className="p-8">
@@ -793,144 +818,455 @@ export default function ClientDetailPage() {
                 </div>
 
                 {/* Tab Content: Services */}
-                {activeTab === "services" && (
-                    <div className="space-y-6">
-                        {/* Subscriptions Section */}
+                {
+                    activeTab === "services" && (
+                        <div className="space-y-6">
+                            {/* Subscriptions Section */}
+                            <Card className="border-0 shadow-lg">
+                                <CardHeader className="flex flex-row items-center justify-between pb-4">
+                                    <div>
+                                        <CardTitle className="text-xl font-bold">Suscripciones Activas</CardTitle>
+                                        <CardDescription className="mt-1">Servicios recurrentes del cliente</CardDescription>
+                                    </div>
+                                    <AddServiceModal
+                                        clientId={client.id}
+                                        clientName={client.name}
+                                        onSuccess={() => fetchClientData(client.id)}
+                                        trigger={
+                                            <Button className="bg-brand-pink hover:bg-brand-pink/90 text-white shadow-md border-0">
+                                                <Plus className="mr-2 h-4 w-4" />
+                                                Añadir Servicio
+                                            </Button>
+                                        }
+                                    />
+                                </CardHeader>
+                                <CardContent>
+                                    {client.subscriptions?.filter(sub => sub.status === 'active' && sub.service_type !== 'hosting').length === 0 ? (
+                                        <div className="text-center py-12 border-2 border-dashed rounded-lg">
+                                            <CreditCard className="mx-auto h-12 w-12 text-gray-400 mb-3" />
+                                            <p className="text-sm text-gray-500">No hay suscripciones activas</p>
+                                        </div>
+                                    ) : (
+                                        <div className="grid gap-4">
+                                            {client.subscriptions?.filter(sub => sub.status === 'active' && sub.service_type !== 'hosting').map((sub) => (
+                                                <Card key={sub.id} className="border border-gray-200 hover:shadow-md transition-shadow">
+                                                    <CardContent className="p-4">
+                                                        <div className="flex items-center justify-between">
+                                                            <div className="flex items-center gap-4 flex-1">
+                                                                <div className={cn(
+                                                                    "p-3 rounded-lg border",
+                                                                    sub.service_type === 'marketing' ? "bg-blue-50 border-blue-200 text-blue-700" :
+                                                                        sub.service_type === 'marketing_ads' ? "bg-indigo-50 border-indigo-200 text-indigo-700" :
+                                                                            sub.service_type === 'ads' ? "bg-purple-50 border-purple-200 text-purple-700" :
+                                                                                sub.service_type === 'branding' ? "bg-pink-50 border-pink-200 text-pink-700" :
+                                                                                    sub.service_type === 'crm' ? "bg-orange-50 border-orange-200 text-orange-700" :
+                                                                                        sub.service_type === 'hosting' ? "bg-slate-50 border-slate-200 text-slate-700" :
+                                                                                            "bg-gray-50 border-gray-200 text-gray-700"
+                                                                )}>
+                                                                    <CreditCard className="h-5 w-5" />
+                                                                </div>
+                                                                <div className="flex-1">
+                                                                    <h4 className="font-semibold text-gray-900">{sub.name}</h4>
+                                                                    <p className="text-sm text-gray-500">
+                                                                        {sub.frequency === 'one-time'
+                                                                            ? 'Servicio único'
+                                                                            : `${sub.frequency === 'biweekly' ? 'Quincenal' : sub.frequency === 'monthly' ? 'Mensual' : sub.frequency === 'quarterly' ? 'Trimestral' : 'Anual'} • Próximo cobro: ${sub.next_billing_date ? new Date(sub.next_billing_date).toLocaleDateString() : 'N/A'}`
+                                                                        }
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex items-center gap-4">
+                                                                <div className="text-right">
+                                                                    <p className="text-xl font-bold text-gray-900">${sub.amount?.toLocaleString()}</p>
+                                                                    <Badge className="bg-green-100 text-green-700 border-green-300 mt-1">Activo</Badge>
+                                                                </div>
+                                                                <DropdownMenu>
+                                                                    <DropdownMenuTrigger asChild>
+                                                                        <Button variant="ghost" size="icon" className="hover:bg-gray-100">
+                                                                            <MoreVertical className="h-4 w-4" />
+                                                                        </Button>
+                                                                    </DropdownMenuTrigger>
+                                                                    <DropdownMenuContent align="end" className="w-56">
+                                                                        <AddServiceModal
+                                                                            clientId={client.id}
+                                                                            clientName={client.name}
+                                                                            serviceToEdit={sub}
+                                                                            onSuccess={() => fetchClientData(client.id)}
+                                                                            trigger={
+                                                                                <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                                                                    <Edit className="mr-2 h-4 w-4" />
+                                                                                    <span>Editar</span>
+                                                                                </DropdownMenuItem>
+                                                                            }
+                                                                        />
+                                                                        {sub.invoice_id && (
+                                                                            <>
+                                                                                <DropdownMenuItem onClick={() => router.push(`/invoices/${sub.invoice_id}`)}>
+                                                                                    <FileText className="mr-2 h-4 w-4 text-indigo-600" />
+                                                                                    <span>Ver Factura</span>
+                                                                                </DropdownMenuItem>
+                                                                                <DropdownMenuItem
+                                                                                    disabled={sub.invoice?.sent}
+                                                                                    onClick={async () => {
+                                                                                        if (!sub.invoice?.sent) {
+                                                                                            try {
+                                                                                                const { error } = await supabase
+                                                                                                    .from('invoices')
+                                                                                                    .update({ sent: true })
+                                                                                                    .eq('id', sub.invoice_id)
+                                                                                                if (error) throw error
+                                                                                                await fetchClientData(client.id)
+                                                                                            } catch (error) {
+                                                                                                console.error('Error marking as sent:', error)
+                                                                                                alert('Error al marcar como enviada')
+                                                                                            }
+                                                                                        }
+                                                                                    }}
+                                                                                >
+                                                                                    {sub.invoice?.sent ? (
+                                                                                        <>
+                                                                                            <CheckCircle2 className="mr-2 h-4 w-4 text-gray-400" />
+                                                                                            <span className="text-gray-400">Enviada</span>
+                                                                                        </>
+                                                                                    ) : (
+                                                                                        <>
+                                                                                            <Send className="mr-2 h-4 w-4 text-green-600" />
+                                                                                            <span>Marcar Enviada</span>
+                                                                                        </>
+                                                                                    )}
+                                                                                </DropdownMenuItem>
+                                                                            </>
+                                                                        )}
+                                                                        <DropdownMenuItem
+                                                                            className="text-red-600 focus:text-red-600"
+                                                                            onClick={async () => {
+                                                                                if (confirm('¿Eliminar esta suscripción y su factura asociada?')) {
+                                                                                    try {
+                                                                                        if (sub.invoice_id) {
+                                                                                            await supabase
+                                                                                                .from('invoices')
+                                                                                                .delete()
+                                                                                                .eq('id', sub.invoice_id)
+                                                                                        }
+                                                                                        const { error } = await supabase
+                                                                                            .from('subscriptions')
+                                                                                            .delete()
+                                                                                            .eq('id', sub.id)
+                                                                                        if (error) throw error
+                                                                                        await fetchClientData(client.id)
+                                                                                    } catch (error) {
+                                                                                        console.error('Error deleting subscription:', error)
+                                                                                        alert('Error al eliminar suscripción')
+                                                                                    }
+                                                                                }
+                                                                            }}
+                                                                        >
+                                                                            <Trash2 className="mr-2 h-4 w-4" />
+                                                                            <span>Eliminar</span>
+                                                                        </DropdownMenuItem>
+                                                                    </DropdownMenuContent>
+                                                                </DropdownMenu>
+                                                            </div>
+                                                        </div>
+                                                    </CardContent>
+                                                </Card>
+                                            ))}
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
+
+                            {/* Hosting Section */}
+                            <Card className="border-0 shadow-lg">
+                                <CardHeader>
+                                    <CardTitle className="text-xl font-bold">Hosting & Dominios</CardTitle>
+                                    <CardDescription className="mt-1">Servicios de alojamiento y dominios</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    {client.subscriptions?.filter(sub => sub.status === 'active' && sub.service_type === 'hosting').length === 0 ? (
+                                        <div className="text-center py-12 border-2 border-dashed rounded-lg">
+                                            <Server className="mx-auto h-12 w-12 text-gray-400 mb-3" />
+                                            <p className="text-sm text-gray-500">No hay servicios de hosting registrados</p>
+                                        </div>
+                                    ) : (
+                                        <div className="grid gap-4">
+                                            {client.subscriptions?.filter(sub => sub.status === 'active' && sub.service_type === 'hosting').map((sub) => (
+                                                <Card key={sub.id} className="border border-gray-200 hover:shadow-md transition-shadow">
+                                                    <CardContent className="p-4">
+                                                        <div className="flex items-center justify-between">
+                                                            <div className="flex items-center gap-4 flex-1">
+                                                                <div className="p-3 bg-orange-100 text-orange-600 rounded-lg">
+                                                                    <Server className="h-5 w-5" />
+                                                                </div>
+                                                                <div className="flex-1">
+                                                                    <h4 className="font-semibold text-gray-900">{sub.name}</h4>
+                                                                    <p className="text-sm text-gray-500">
+                                                                        {sub.frequency === 'one-time'
+                                                                            ? 'Servicio único'
+                                                                            : `${sub.frequency === 'biweekly' ? 'Quincenal' : sub.frequency === 'monthly' ? 'Mensual' : sub.frequency === 'quarterly' ? 'Trimestral' : 'Anual'} • Próximo cobro: ${sub.next_billing_date ? new Date(sub.next_billing_date).toLocaleDateString() : 'N/A'}`
+                                                                        }
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex items-center gap-4">
+                                                                <div className="text-right">
+                                                                    <p className="text-xl font-bold text-gray-900">${sub.amount?.toLocaleString()}</p>
+                                                                    <Badge className="bg-green-100 text-green-700 border-green-300 mt-1">Activo</Badge>
+                                                                </div>
+                                                                <DropdownMenu>
+                                                                    <DropdownMenuTrigger asChild>
+                                                                        <Button variant="ghost" size="icon" className="hover:bg-gray-100">
+                                                                            <MoreVertical className="h-4 w-4" />
+                                                                        </Button>
+                                                                    </DropdownMenuTrigger>
+                                                                    <DropdownMenuContent align="end" className="w-56">
+                                                                        <AddServiceModal
+                                                                            clientId={client.id}
+                                                                            clientName={client.name}
+                                                                            serviceToEdit={sub}
+                                                                            onSuccess={() => fetchClientData(client.id)}
+                                                                            trigger={
+                                                                                <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                                                                    <Edit className="mr-2 h-4 w-4" />
+                                                                                    <span>Editar</span>
+                                                                                </DropdownMenuItem>
+                                                                            }
+                                                                        />
+                                                                        {sub.invoice_id && (
+                                                                            <>
+                                                                                <DropdownMenuItem onClick={() => router.push(`/invoices/${sub.invoice_id}`)}>
+                                                                                    <FileText className="mr-2 h-4 w-4 text-indigo-600" />
+                                                                                    <span>Ver Factura</span>
+                                                                                </DropdownMenuItem>
+                                                                                <DropdownMenuItem
+                                                                                    disabled={sub.invoice?.sent}
+                                                                                    onClick={async () => {
+                                                                                        if (!sub.invoice?.sent) {
+                                                                                            try {
+                                                                                                const { error } = await supabase
+                                                                                                    .from('invoices')
+                                                                                                    .update({ sent: true })
+                                                                                                    .eq('id', sub.invoice_id)
+                                                                                                if (error) throw error
+                                                                                                await fetchClientData(client.id)
+                                                                                            } catch (error) {
+                                                                                                console.error('Error marking as sent:', error)
+                                                                                                alert('Error al marcar como enviada')
+                                                                                            }
+                                                                                        }
+                                                                                    }}
+                                                                                >
+                                                                                    <Send className={cn("mr-2 h-4 w-4", sub.invoice?.sent ? "text-gray-400" : "text-blue-600")} />
+                                                                                    <span>{sub.invoice?.sent ? 'Ya enviada' : 'Marcar como enviada'}</span>
+                                                                                </DropdownMenuItem>
+                                                                            </>
+                                                                        )}
+                                                                        <DropdownMenuItem
+                                                                            className="text-red-600 focus:text-red-600"
+                                                                            onClick={async () => {
+                                                                                if (confirm('¿Estás seguro de que deseas eliminar esta suscripción?')) {
+                                                                                    try {
+                                                                                        const { error } = await supabase
+                                                                                            .from('subscriptions')
+                                                                                            .delete()
+                                                                                            .eq('id', sub.id)
+                                                                                        if (error) throw error
+                                                                                        await fetchClientData(client.id)
+                                                                                    } catch (error) {
+                                                                                        console.error('Error deleting subscription:', error)
+                                                                                        alert('Error al eliminar la suscripción')
+                                                                                    }
+                                                                                }
+                                                                            }}
+                                                                        >
+                                                                            <Trash2 className="mr-2 h-4 w-4" />
+                                                                            <span>Eliminar Suscripción</span>
+                                                                        </DropdownMenuItem>
+                                                                    </DropdownMenuContent>
+                                                                </DropdownMenu>
+                                                            </div>
+                                                        </div>
+                                                    </CardContent>
+                                                </Card>
+                                            ))}
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
+                        </div>
+                    )
+                }
+
+                {/* Tab Content: Invoices */}
+                {
+                    activeTab === "invoices" && (
                         <Card className="border-0 shadow-lg">
                             <CardHeader className="flex flex-row items-center justify-between pb-4">
                                 <div>
-                                    <CardTitle className="text-xl font-bold">Suscripciones Activas</CardTitle>
-                                    <CardDescription className="mt-1">Servicios recurrentes del cliente</CardDescription>
+                                    <CardTitle className="text-xl font-bold">Historial de Facturas</CardTitle>
+                                    <CardDescription className="mt-1">Todas las cuentas de cobro del cliente</CardDescription>
                                 </div>
-                                <AddServiceModal
-                                    clientId={client.id}
-                                    clientName={client.name}
-                                    onSuccess={() => fetchClientData(client.id)}
-                                    trigger={
-                                        <Button className="bg-brand-pink hover:bg-brand-pink/90 text-white shadow-md border-0">
-                                            <Plus className="mr-2 h-4 w-4" />
-                                            Añadir Servicio
-                                        </Button>
-                                    }
-                                />
+                                <div className="flex items-center gap-3">
+                                    <select
+                                        className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                                        value={invoiceFilter}
+                                        onChange={(e) => setInvoiceFilter(e.target.value)}
+                                    >
+                                        <option value="all">Todas</option>
+                                        <option value="pending">Pendientes</option>
+                                        <option value="paid">Pagadas</option>
+                                        <option value="overdue">Vencidas</option>
+                                    </select>
+                                    <CreateInvoiceModal
+                                        clientId={client.id}
+                                        clientName={client.name}
+                                        onInvoiceCreated={() => fetchClientData(client.id)}
+                                    />
+                                </div>
                             </CardHeader>
                             <CardContent>
-                                {client.subscriptions?.filter(sub => sub.status === 'active' && sub.service_type !== 'hosting').length === 0 ? (
+                                {filteredInvoices.length === 0 ? (
                                     <div className="text-center py-12 border-2 border-dashed rounded-lg">
-                                        <CreditCard className="mx-auto h-12 w-12 text-gray-400 mb-3" />
-                                        <p className="text-sm text-gray-500">No hay suscripciones activas</p>
+                                        <FileText className="mx-auto h-12 w-12 text-gray-400 mb-3" />
+                                        <p className="text-sm text-gray-500">No hay facturas registradas</p>
                                     </div>
                                 ) : (
-                                    <div className="grid gap-4">
-                                        {client.subscriptions?.filter(sub => sub.status === 'active' && sub.service_type !== 'hosting').map((sub) => (
-                                            <Card key={sub.id} className="border border-gray-200 hover:shadow-md transition-shadow">
+                                    <div className="space-y-2">
+                                        {filteredInvoices.map((inv, index) => (
+                                            <Card
+                                                key={inv.id}
+                                                className={cn(
+                                                    "border border-gray-200 hover:shadow-md transition-all cursor-pointer",
+                                                    index % 2 === 0 ? "bg-white" : "bg-gray-50/50"
+                                                )}
+                                                onClick={() => router.push(`/invoices/${inv.id}`)}
+                                            >
                                                 <CardContent className="p-4">
                                                     <div className="flex items-center justify-between">
                                                         <div className="flex items-center gap-4 flex-1">
-                                                            <div className={cn(
-                                                                "p-3 rounded-lg border",
-                                                                sub.service_type === 'marketing' ? "bg-blue-50 border-blue-200 text-blue-700" :
-                                                                    sub.service_type === 'marketing_ads' ? "bg-indigo-50 border-indigo-200 text-indigo-700" :
-                                                                        sub.service_type === 'ads' ? "bg-purple-50 border-purple-200 text-purple-700" :
-                                                                            sub.service_type === 'branding' ? "bg-pink-50 border-pink-200 text-pink-700" :
-                                                                                sub.service_type === 'crm' ? "bg-orange-50 border-orange-200 text-orange-700" :
-                                                                                    sub.service_type === 'hosting' ? "bg-slate-50 border-slate-200 text-slate-700" :
-                                                                                        "bg-gray-50 border-gray-200 text-gray-700"
-                                                            )}>
-                                                                <CreditCard className="h-5 w-5" />
+                                                            <div className="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
+                                                                <FileText className="h-5 w-5" />
                                                             </div>
-                                                            <div className="flex-1">
-                                                                <h4 className="font-semibold text-gray-900">{sub.name}</h4>
-                                                                <p className="text-sm text-gray-500">
-                                                                    {sub.frequency === 'one-time'
-                                                                        ? 'Servicio único'
-                                                                        : `${sub.frequency === 'biweekly' ? 'Quincenal' : sub.frequency === 'monthly' ? 'Mensual' : sub.frequency === 'quarterly' ? 'Trimestral' : 'Anual'} • Próximo cobro: ${sub.next_billing_date ? new Date(sub.next_billing_date).toLocaleDateString() : 'N/A'}`
-                                                                    }
-                                                                </p>
+                                                            <div>
+                                                                <p className="font-semibold text-gray-900">Factura #{inv.number}</p>
+                                                                <div className="flex gap-4 text-sm text-gray-500">
+                                                                    <span>Emisión: {inv.date ? new Date(inv.date).toLocaleDateString() : 'N/A'}</span>
+                                                                    {inv.due_date && (
+                                                                        <span className={cn(
+                                                                            "font-medium",
+                                                                            new Date(inv.due_date) < new Date() && inv.status !== 'paid' ? "text-red-600" : "text-gray-500"
+                                                                        )}>
+                                                                            Vence: {new Date(inv.due_date).toLocaleDateString()}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
                                                             </div>
                                                         </div>
                                                         <div className="flex items-center gap-4">
                                                             <div className="text-right">
-                                                                <p className="text-xl font-bold text-gray-900">${sub.amount?.toLocaleString()}</p>
-                                                                <Badge className="bg-green-100 text-green-700 border-green-300 mt-1">Activo</Badge>
+                                                                <p className="text-xl font-bold text-gray-900">${inv.total?.toLocaleString()}</p>
+                                                                <Badge className={cn(
+                                                                    "mt-1",
+                                                                    inv.status === 'paid' ? "bg-green-100 text-green-700 border-green-300" :
+                                                                        inv.status === 'pending' ? "bg-yellow-100 text-yellow-700 border-yellow-300" :
+                                                                            "bg-red-100 text-red-700 border-red-300"
+                                                                )}>
+                                                                    {inv.status === 'paid' ? 'Pagada' : inv.status === 'pending' ? 'Pendiente' : 'Vencida'}
+                                                                </Badge>
                                                             </div>
                                                             <DropdownMenu>
-                                                                <DropdownMenuTrigger asChild>
+                                                                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                                                                     <Button variant="ghost" size="icon" className="hover:bg-gray-100">
                                                                         <MoreVertical className="h-4 w-4" />
                                                                     </Button>
                                                                 </DropdownMenuTrigger>
-                                                                <DropdownMenuContent align="end" className="w-56">
-                                                                    <AddServiceModal
+                                                                <DropdownMenuContent align="end" className="w-48">
+                                                                    <CreateInvoiceModal
                                                                         clientId={client.id}
                                                                         clientName={client.name}
-                                                                        serviceToEdit={sub}
-                                                                        onSuccess={() => fetchClientData(client.id)}
+                                                                        invoiceToEdit={inv}
+                                                                        onInvoiceCreated={() => fetchClientData(client.id)}
                                                                         trigger={
-                                                                            <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                                                            <DropdownMenuItem
+                                                                                onSelect={(e) => e.preventDefault()}
+                                                                                onClick={(e) => e.stopPropagation()}
+                                                                            >
                                                                                 <Edit className="mr-2 h-4 w-4" />
                                                                                 <span>Editar</span>
                                                                             </DropdownMenuItem>
                                                                         }
                                                                     />
-                                                                    {sub.invoice_id && (
-                                                                        <>
-                                                                            <DropdownMenuItem onClick={() => router.push(`/invoices/${sub.invoice_id}`)}>
-                                                                                <FileText className="mr-2 h-4 w-4 text-indigo-600" />
-                                                                                <span>Ver Factura</span>
-                                                                            </DropdownMenuItem>
-                                                                            <DropdownMenuItem
-                                                                                disabled={sub.invoice?.sent}
-                                                                                onClick={async () => {
-                                                                                    if (!sub.invoice?.sent) {
-                                                                                        try {
-                                                                                            const { error } = await supabase
-                                                                                                .from('invoices')
-                                                                                                .update({ sent: true })
-                                                                                                .eq('id', sub.invoice_id)
-                                                                                            if (error) throw error
-                                                                                            await fetchClientData(client.id)
-                                                                                        } catch (error) {
-                                                                                            console.error('Error marking as sent:', error)
-                                                                                            alert('Error al marcar como enviada')
-                                                                                        }
+                                                                    {inv.status !== 'paid' && (
+                                                                        <DropdownMenuItem
+                                                                            onClick={async (e) => {
+                                                                                e.stopPropagation()
+                                                                                try {
+                                                                                    const { error } = await supabase
+                                                                                        .from('invoices')
+                                                                                        .update({ status: 'paid' })
+                                                                                        .eq('id', inv.id)
+                                                                                    if (error) throw error
+
+                                                                                    const { data: subscription } = await supabase
+                                                                                        .from('subscriptions')
+                                                                                        .select('*')
+                                                                                        .eq('invoice_id', inv.id)
+                                                                                        .single()
+
+                                                                                    if (subscription && subscription.frequency === 'one-time') {
+                                                                                        await supabase
+                                                                                            .from('subscriptions')
+                                                                                            .update({ status: 'cancelled' })
+                                                                                            .eq('id', subscription.id)
                                                                                     }
-                                                                                }}
-                                                                            >
-                                                                                {sub.invoice?.sent ? (
-                                                                                    <>
-                                                                                        <CheckCircle2 className="mr-2 h-4 w-4 text-gray-400" />
-                                                                                        <span className="text-gray-400">Enviada</span>
-                                                                                    </>
-                                                                                ) : (
-                                                                                    <>
-                                                                                        <Send className="mr-2 h-4 w-4 text-green-600" />
-                                                                                        <span>Marcar Enviada</span>
-                                                                                    </>
-                                                                                )}
-                                                                            </DropdownMenuItem>
-                                                                        </>
+
+                                                                                    await fetchClientData(client.id)
+                                                                                } catch (error) {
+                                                                                    console.error("Error updating invoice:", error)
+                                                                                    alert("Error al marcar como pagada")
+                                                                                }
+                                                                            }}
+                                                                        >
+                                                                            <CheckCircle2 className="mr-2 h-4 w-4 text-green-600" />
+                                                                            <span>Marcar Pagada</span>
+                                                                        </DropdownMenuItem>
                                                                     )}
                                                                     <DropdownMenuItem
-                                                                        className="text-red-600 focus:text-red-600"
-                                                                        onClick={async () => {
-                                                                            if (confirm('¿Eliminar esta suscripción y su factura asociada?')) {
+                                                                        onClick={async (e) => {
+                                                                            e.stopPropagation()
+                                                                            if (confirm('¿Archivar esta factura?')) {
                                                                                 try {
-                                                                                    if (sub.invoice_id) {
-                                                                                        await supabase
-                                                                                            .from('invoices')
-                                                                                            .delete()
-                                                                                            .eq('id', sub.invoice_id)
-                                                                                    }
                                                                                     const { error } = await supabase
-                                                                                        .from('subscriptions')
-                                                                                        .delete()
-                                                                                        .eq('id', sub.id)
+                                                                                        .from('invoices')
+                                                                                        .update({ archived: true })
+                                                                                        .eq('id', inv.id)
                                                                                     if (error) throw error
                                                                                     await fetchClientData(client.id)
                                                                                 } catch (error) {
-                                                                                    console.error('Error deleting subscription:', error)
-                                                                                    alert('Error al eliminar suscripción')
+                                                                                    console.error('Error archiving invoice:', error)
+                                                                                    alert('Error al archivar factura')
+                                                                                }
+                                                                            }
+                                                                        }}
+                                                                    >
+                                                                        <FileText className="mr-2 h-4 w-4 text-orange-600" />
+                                                                        <span>Archivar</span>
+                                                                    </DropdownMenuItem>
+                                                                    <DropdownMenuItem
+                                                                        className="text-red-600 focus:text-red-600"
+                                                                        onClick={async (e) => {
+                                                                            e.stopPropagation()
+                                                                            if (confirm('¿Eliminar esta factura?')) {
+                                                                                try {
+                                                                                    const { error } = await supabase
+                                                                                        .from('invoices')
+                                                                                        .delete()
+                                                                                        .eq('id', inv.id)
+                                                                                    if (error) throw error
+                                                                                    await fetchClientData(client.id)
+                                                                                } catch (error) {
+                                                                                    console.error("Error deleting invoice:", error)
+                                                                                    alert("Error al eliminar factura")
                                                                                 }
                                                                             }
                                                                         }}
@@ -949,375 +1285,70 @@ export default function ClientDetailPage() {
                                 )}
                             </CardContent>
                         </Card>
-
-                        {/* Hosting Section */}
-                        <Card className="border-0 shadow-lg">
-                            <CardHeader>
-                                <CardTitle className="text-xl font-bold">Hosting & Dominios</CardTitle>
-                                <CardDescription className="mt-1">Servicios de alojamiento y dominios</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                {client.subscriptions?.filter(sub => sub.status === 'active' && sub.service_type === 'hosting').length === 0 ? (
-                                    <div className="text-center py-12 border-2 border-dashed rounded-lg">
-                                        <Server className="mx-auto h-12 w-12 text-gray-400 mb-3" />
-                                        <p className="text-sm text-gray-500">No hay servicios de hosting registrados</p>
-                                    </div>
-                                ) : (
-                                    <div className="grid gap-4">
-                                        {client.subscriptions?.filter(sub => sub.status === 'active' && sub.service_type === 'hosting').map((sub) => (
-                                            <Card key={sub.id} className="border border-gray-200 hover:shadow-md transition-shadow">
-                                                <CardContent className="p-4">
-                                                    <div className="flex items-center justify-between">
-                                                        <div className="flex items-center gap-4 flex-1">
-                                                            <div className="p-3 bg-orange-100 text-orange-600 rounded-lg">
-                                                                <Server className="h-5 w-5" />
-                                                            </div>
-                                                            <div className="flex-1">
-                                                                <h4 className="font-semibold text-gray-900">{sub.name}</h4>
-                                                                <p className="text-sm text-gray-500">
-                                                                    {sub.frequency === 'one-time'
-                                                                        ? 'Servicio único'
-                                                                        : `${sub.frequency === 'biweekly' ? 'Quincenal' : sub.frequency === 'monthly' ? 'Mensual' : sub.frequency === 'quarterly' ? 'Trimestral' : 'Anual'} • Próximo cobro: ${sub.next_billing_date ? new Date(sub.next_billing_date).toLocaleDateString() : 'N/A'}`
-                                                                    }
-                                                                </p>
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex items-center gap-4">
-                                                            <div className="text-right">
-                                                                <p className="text-xl font-bold text-gray-900">${sub.amount?.toLocaleString()}</p>
-                                                                <Badge className="bg-green-100 text-green-700 border-green-300 mt-1">Activo</Badge>
-                                                            </div>
-                                                            <DropdownMenu>
-                                                                <DropdownMenuTrigger asChild>
-                                                                    <Button variant="ghost" size="icon" className="hover:bg-gray-100">
-                                                                        <MoreVertical className="h-4 w-4" />
-                                                                    </Button>
-                                                                </DropdownMenuTrigger>
-                                                                <DropdownMenuContent align="end" className="w-56">
-                                                                    <AddServiceModal
-                                                                        clientId={client.id}
-                                                                        clientName={client.name}
-                                                                        serviceToEdit={sub}
-                                                                        onSuccess={() => fetchClientData(client.id)}
-                                                                        trigger={
-                                                                            <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                                                                                <Edit className="mr-2 h-4 w-4" />
-                                                                                <span>Editar</span>
-                                                                            </DropdownMenuItem>
-                                                                        }
-                                                                    />
-                                                                    {sub.invoice_id && (
-                                                                        <>
-                                                                            <DropdownMenuItem onClick={() => router.push(`/invoices/${sub.invoice_id}`)}>
-                                                                                <FileText className="mr-2 h-4 w-4 text-indigo-600" />
-                                                                                <span>Ver Factura</span>
-                                                                            </DropdownMenuItem>
-                                                                            <DropdownMenuItem
-                                                                                disabled={sub.invoice?.sent}
-                                                                                onClick={async () => {
-                                                                                    if (!sub.invoice?.sent) {
-                                                                                        try {
-                                                                                            const { error } = await supabase
-                                                                                                .from('invoices')
-                                                                                                .update({ sent: true })
-                                                                                                .eq('id', sub.invoice_id)
-                                                                                            if (error) throw error
-                                                                                            await fetchClientData(client.id)
-                                                                                        } catch (error) {
-                                                                                            console.error('Error marking as sent:', error)
-                                                                                            alert('Error al marcar como enviada')
-                                                                                        }
-                                                                                    }
-                                                                                }}
-                                                                            >
-                                                                                <Send className={cn("mr-2 h-4 w-4", sub.invoice?.sent ? "text-gray-400" : "text-blue-600")} />
-                                                                                <span>{sub.invoice?.sent ? 'Ya enviada' : 'Marcar como enviada'}</span>
-                                                                            </DropdownMenuItem>
-                                                                        </>
-                                                                    )}
-                                                                    <DropdownMenuItem
-                                                                        className="text-red-600 focus:text-red-600"
-                                                                        onClick={async () => {
-                                                                            if (confirm('¿Estás seguro de que deseas eliminar esta suscripción?')) {
-                                                                                try {
-                                                                                    const { error } = await supabase
-                                                                                        .from('subscriptions')
-                                                                                        .delete()
-                                                                                        .eq('id', sub.id)
-                                                                                    if (error) throw error
-                                                                                    await fetchClientData(client.id)
-                                                                                } catch (error) {
-                                                                                    console.error('Error deleting subscription:', error)
-                                                                                    alert('Error al eliminar la suscripción')
-                                                                                }
-                                                                            }
-                                                                        }}
-                                                                    >
-                                                                        <Trash2 className="mr-2 h-4 w-4" />
-                                                                        <span>Eliminar Suscripción</span>
-                                                                    </DropdownMenuItem>
-                                                                </DropdownMenuContent>
-                                                            </DropdownMenu>
-                                                        </div>
-                                                    </div>
-                                                </CardContent>
-                                            </Card>
-                                        ))}
-                                    </div>
-                                )}
-                            </CardContent>
-                        </Card>
-                    </div>
-                )}
-
-                {/* Tab Content: Invoices */}
-                {activeTab === "invoices" && (
-                    <Card className="border-0 shadow-lg">
-                        <CardHeader className="flex flex-row items-center justify-between pb-4">
-                            <div>
-                                <CardTitle className="text-xl font-bold">Historial de Facturas</CardTitle>
-                                <CardDescription className="mt-1">Todas las cuentas de cobro del cliente</CardDescription>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <select
-                                    className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                                    value={invoiceFilter}
-                                    onChange={(e) => setInvoiceFilter(e.target.value)}
-                                >
-                                    <option value="all">Todas</option>
-                                    <option value="pending">Pendientes</option>
-                                    <option value="paid">Pagadas</option>
-                                    <option value="overdue">Vencidas</option>
-                                </select>
-                                <CreateInvoiceModal
-                                    clientId={client.id}
-                                    clientName={client.name}
-                                    onInvoiceCreated={() => fetchClientData(client.id)}
-                                />
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            {filteredInvoices.length === 0 ? (
-                                <div className="text-center py-12 border-2 border-dashed rounded-lg">
-                                    <FileText className="mx-auto h-12 w-12 text-gray-400 mb-3" />
-                                    <p className="text-sm text-gray-500">No hay facturas registradas</p>
-                                </div>
-                            ) : (
-                                <div className="space-y-2">
-                                    {filteredInvoices.map((inv, index) => (
-                                        <Card
-                                            key={inv.id}
-                                            className={cn(
-                                                "border border-gray-200 hover:shadow-md transition-all cursor-pointer",
-                                                index % 2 === 0 ? "bg-white" : "bg-gray-50/50"
-                                            )}
-                                            onClick={() => router.push(`/invoices/${inv.id}`)}
-                                        >
-                                            <CardContent className="p-4">
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex items-center gap-4 flex-1">
-                                                        <div className="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
-                                                            <FileText className="h-5 w-5" />
-                                                        </div>
-                                                        <div>
-                                                            <p className="font-semibold text-gray-900">Factura #{inv.number}</p>
-                                                            <div className="flex gap-4 text-sm text-gray-500">
-                                                                <span>Emisión: {inv.date ? new Date(inv.date).toLocaleDateString() : 'N/A'}</span>
-                                                                {inv.due_date && (
-                                                                    <span className={cn(
-                                                                        "font-medium",
-                                                                        new Date(inv.due_date) < new Date() && inv.status !== 'paid' ? "text-red-600" : "text-gray-500"
-                                                                    )}>
-                                                                        Vence: {new Date(inv.due_date).toLocaleDateString()}
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex items-center gap-4">
-                                                        <div className="text-right">
-                                                            <p className="text-xl font-bold text-gray-900">${inv.total?.toLocaleString()}</p>
-                                                            <Badge className={cn(
-                                                                "mt-1",
-                                                                inv.status === 'paid' ? "bg-green-100 text-green-700 border-green-300" :
-                                                                    inv.status === 'pending' ? "bg-yellow-100 text-yellow-700 border-yellow-300" :
-                                                                        "bg-red-100 text-red-700 border-red-300"
-                                                            )}>
-                                                                {inv.status === 'paid' ? 'Pagada' : inv.status === 'pending' ? 'Pendiente' : 'Vencida'}
-                                                            </Badge>
-                                                        </div>
-                                                        <DropdownMenu>
-                                                            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                                                                <Button variant="ghost" size="icon" className="hover:bg-gray-100">
-                                                                    <MoreVertical className="h-4 w-4" />
-                                                                </Button>
-                                                            </DropdownMenuTrigger>
-                                                            <DropdownMenuContent align="end" className="w-48">
-                                                                <CreateInvoiceModal
-                                                                    clientId={client.id}
-                                                                    clientName={client.name}
-                                                                    invoiceToEdit={inv}
-                                                                    onInvoiceCreated={() => fetchClientData(client.id)}
-                                                                    trigger={
-                                                                        <DropdownMenuItem
-                                                                            onSelect={(e) => e.preventDefault()}
-                                                                            onClick={(e) => e.stopPropagation()}
-                                                                        >
-                                                                            <Edit className="mr-2 h-4 w-4" />
-                                                                            <span>Editar</span>
-                                                                        </DropdownMenuItem>
-                                                                    }
-                                                                />
-                                                                {inv.status !== 'paid' && (
-                                                                    <DropdownMenuItem
-                                                                        onClick={async (e) => {
-                                                                            e.stopPropagation()
-                                                                            try {
-                                                                                const { error } = await supabase
-                                                                                    .from('invoices')
-                                                                                    .update({ status: 'paid' })
-                                                                                    .eq('id', inv.id)
-                                                                                if (error) throw error
-
-                                                                                const { data: subscription } = await supabase
-                                                                                    .from('subscriptions')
-                                                                                    .select('*')
-                                                                                    .eq('invoice_id', inv.id)
-                                                                                    .single()
-
-                                                                                if (subscription && subscription.frequency === 'one-time') {
-                                                                                    await supabase
-                                                                                        .from('subscriptions')
-                                                                                        .update({ status: 'cancelled' })
-                                                                                        .eq('id', subscription.id)
-                                                                                }
-
-                                                                                await fetchClientData(client.id)
-                                                                            } catch (error) {
-                                                                                console.error("Error updating invoice:", error)
-                                                                                alert("Error al marcar como pagada")
-                                                                            }
-                                                                        }}
-                                                                    >
-                                                                        <CheckCircle2 className="mr-2 h-4 w-4 text-green-600" />
-                                                                        <span>Marcar Pagada</span>
-                                                                    </DropdownMenuItem>
-                                                                )}
-                                                                <DropdownMenuItem
-                                                                    onClick={async (e) => {
-                                                                        e.stopPropagation()
-                                                                        if (confirm('¿Archivar esta factura?')) {
-                                                                            try {
-                                                                                const { error } = await supabase
-                                                                                    .from('invoices')
-                                                                                    .update({ archived: true })
-                                                                                    .eq('id', inv.id)
-                                                                                if (error) throw error
-                                                                                await fetchClientData(client.id)
-                                                                            } catch (error) {
-                                                                                console.error('Error archiving invoice:', error)
-                                                                                alert('Error al archivar factura')
-                                                                            }
-                                                                        }
-                                                                    }}
-                                                                >
-                                                                    <FileText className="mr-2 h-4 w-4 text-orange-600" />
-                                                                    <span>Archivar</span>
-                                                                </DropdownMenuItem>
-                                                                <DropdownMenuItem
-                                                                    className="text-red-600 focus:text-red-600"
-                                                                    onClick={async (e) => {
-                                                                        e.stopPropagation()
-                                                                        if (confirm('¿Eliminar esta factura?')) {
-                                                                            try {
-                                                                                const { error } = await supabase
-                                                                                    .from('invoices')
-                                                                                    .delete()
-                                                                                    .eq('id', inv.id)
-                                                                                if (error) throw error
-                                                                                await fetchClientData(client.id)
-                                                                            } catch (error) {
-                                                                                console.error("Error deleting invoice:", error)
-                                                                                alert("Error al eliminar factura")
-                                                                            }
-                                                                        }
-                                                                    }}
-                                                                >
-                                                                    <Trash2 className="mr-2 h-4 w-4" />
-                                                                    <span>Eliminar</span>
-                                                                </DropdownMenuItem>
-                                                            </DropdownMenuContent>
-                                                        </DropdownMenu>
-                                                    </div>
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-                                    ))}
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
-                )}
+                    )
+                }
 
                 {/* Tab Content: Notes */}
-                {activeTab === "notes" && (
-                    <Card className="border-0 shadow-lg">
-                        <CardHeader>
-                            <CardTitle className="text-xl font-bold">Datos y Notas del Cliente</CardTitle>
-                            <CardDescription className="mt-1">Almacena información importante como contraseñas, accesos, notas, etc.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-4">
-                                <textarea
-                                    value={notes}
-                                    onChange={(e) => setNotes(e.target.value)}
-                                    placeholder="Escribe aquí notas, contraseñas, accesos, o cualquier información importante del cliente..."
-                                    className="w-full h-96 p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none font-mono text-sm"
-                                />
-                                <div className="flex justify-between items-center">
-                                    <p className="text-sm text-gray-500">
-                                        {notes.length} caracteres
-                                    </p>
-                                    <Button
-                                        onClick={async () => {
-                                            if (!client) return
-                                            setSavingNotes(true)
-                                            try {
-                                                const { error } = await supabase
-                                                    .from('clients')
-                                                    .update({ notes: notes })
-                                                    .eq('id', client.id)
-                                                if (error) throw error
-                                                await fetchClientData(client.id)
-                                                alert('Notas guardadas correctamente')
-                                            } catch (error) {
-                                                console.error('Error saving notes:', error)
-                                                alert('Error al guardar notas')
-                                            } finally {
-                                                setSavingNotes(false)
-                                            }
-                                        }}
-                                        disabled={savingNotes}
-                                        className="bg-brand-pink hover:bg-brand-pink/90 text-white shadow-md border-0"
-                                    >
-                                        {savingNotes ? (
-                                            <>
-                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                                Guardando...
-                                            </>
-                                        ) : (
-                                            <>
-                                                <CheckCircle2 className="mr-2 h-4 w-4" />
-                                                Guardar Notas
-                                            </>
-                                        )}
-                                    </Button>
+                {
+                    activeTab === "notes" && (
+                        <Card className="border-0 shadow-lg">
+                            <CardHeader>
+                                <CardTitle className="text-xl font-bold">Datos y Notas del Cliente</CardTitle>
+                                <CardDescription className="mt-1">Almacena información importante como contraseñas, accesos, notas, etc.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="space-y-4">
+                                    <textarea
+                                        value={notes}
+                                        onChange={(e) => setNotes(e.target.value)}
+                                        placeholder="Escribe aquí notas, contraseñas, accesos, o cualquier información importante del cliente..."
+                                        className="w-full h-96 p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none font-mono text-sm"
+                                    />
+                                    <div className="flex justify-between items-center">
+                                        <p className="text-sm text-gray-500">
+                                            {notes.length} caracteres
+                                        </p>
+                                        <Button
+                                            onClick={async () => {
+                                                if (!client) return
+                                                setSavingNotes(true)
+                                                try {
+                                                    const { error } = await supabase
+                                                        .from('clients')
+                                                        .update({ notes: notes })
+                                                        .eq('id', client.id)
+                                                    if (error) throw error
+                                                    await fetchClientData(client.id)
+                                                    alert('Notas guardadas correctamente')
+                                                } catch (error) {
+                                                    console.error('Error saving notes:', error)
+                                                    alert('Error al guardar notas')
+                                                } finally {
+                                                    setSavingNotes(false)
+                                                }
+                                            }}
+                                            disabled={savingNotes}
+                                            className="bg-brand-pink hover:bg-brand-pink/90 text-white shadow-md border-0"
+                                        >
+                                            {savingNotes ? (
+                                                <>
+                                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                    Guardando...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <CheckCircle2 className="mr-2 h-4 w-4" />
+                                                    Guardar Notas
+                                                </>
+                                            )}
+                                        </Button>
+                                    </div>
                                 </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                )}
-            </div>
+                            </CardContent>
+                        </Card>
+                    )
+                }
+            </div >
         </div >
     )
 }

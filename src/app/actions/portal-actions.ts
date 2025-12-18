@@ -9,7 +9,7 @@ export async function getPortalData(token: string) {
         const { data: client, error: clientError } = await supabaseAdmin
             .from('clients')
             .select('*')
-            .eq('portal_token', token)
+            .eq('portal_short_token', token)
             .single()
 
         if (clientError || !client) {
@@ -36,6 +36,32 @@ export async function getPortalData(token: string) {
 
     } catch (error) {
         console.error('getPortalData Error:', error)
+        throw error
+    }
+}
+
+export async function regeneratePortalToken(clientId: string) {
+    try {
+        // 1. Generate new token using DB function
+        const { data: newToken, error: tokenError } = await supabaseAdmin
+            .rpc('generate_short_token')
+
+        if (tokenError) throw tokenError
+
+        // 2. Update client
+        const { error: updateError } = await supabaseAdmin
+            .from('clients')
+            .update({
+                portal_short_token: newToken,
+                portal_token_created_at: new Date().toISOString()
+            })
+            .eq('id', clientId)
+
+        if (updateError) throw updateError
+
+        return { success: true, token: newToken }
+    } catch (error) {
+        console.error('regeneratePortalToken Error:', error)
         throw error
     }
 }
