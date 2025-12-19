@@ -176,30 +176,29 @@ export function PortalDashboard({ client, invoices, quotes, briefings, events, o
                     </div>
                 </div>
             )}
-        </div>
 
-            {/* Bottom Bar for Payments */ }
-    {
-        selectedInvoices.length > 0 && paymentsEnabled && (
-            <div className="fixed bottom-0 left-0 right-0 bg-white border-t p-4 shadow-lg z-50 animate-in slide-in-from-bottom">
-                <div className="max-w-4xl mx-auto flex items-center justify-between">
-                    <div>
-                        <p className="text-sm text-gray-500">Total a Pagar ({selectedInvoices.length})</p>
-                        <p className="text-2xl font-bold text-gray-900">{formatCurrency(totalSelected)}</p>
+            {/* Bottom Bar for Payments */}
+            {
+                selectedInvoices.length > 0 && paymentsEnabled && (
+                    <div className="fixed bottom-0 left-0 right-0 bg-white border-t p-4 shadow-lg z-50 animate-in slide-in-from-bottom">
+                        <div className="max-w-4xl mx-auto flex items-center justify-between">
+                            <div>
+                                <p className="text-sm text-gray-500">Total a Pagar ({selectedInvoices.length})</p>
+                                <p className="text-2xl font-bold text-gray-900">{formatCurrency(totalSelected)}</p>
+                            </div>
+                            <Button
+                                size="lg"
+                                className="text-white px-8"
+                                style={{ backgroundColor: settings.portal_primary_color || '#F205E2' }}
+                                onClick={() => onPay(selectedInvoices)}
+                            >
+                                <CreditCard className="h-4 w-4 mr-2" />
+                                Pagar Ahora
+                            </Button>
+                        </div>
                     </div>
-                    <Button
-                        size="lg"
-                        className="text-white px-8"
-                        style={{ backgroundColor: settings.portal_primary_color || '#F205E2' }}
-                        onClick={() => onPay(selectedInvoices)}
-                    >
-                        <CreditCard className="h-4 w-4 mr-2" />
-                        Pagar Ahora
-                    </Button>
-                </div>
-            </div>
-        )
-    }
+                )
+            }
         </div >
     )
 }
