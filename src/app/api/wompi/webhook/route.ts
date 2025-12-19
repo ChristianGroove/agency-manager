@@ -1,21 +1,35 @@
 import { NextResponse } from 'next/server'
 import { createHash } from 'crypto'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabase-admin'
+
+export async function GET() {
+    return NextResponse.json({
+        status: 'active',
+        message: 'Wompi Webhook Endpoint is reachable',
+        time: new Date().toISOString()
+    }, { status: 200 })
+}
 
 export async function POST(request: Request) {
+    console.log('----- WOMPI WEBHOOK HIT -----')
+    console.log('Time:', new Date().toISOString())
+
     try {
         const body = await request.json()
-        const { data, signature, timestamp } = body
+        console.log('Webhook Body:', JSON.stringify(body, null, 2))
+
+        const { data, signature, timestamp, environment } = body
 
         // Wompi sends the transaction data inside 'data.transaction'
         const transaction = data.transaction
 
         if (!transaction) {
-            // Sometimes Wompi sends different event types, check structure
+            console.log('No transaction data found in body')
             return NextResponse.json({ message: 'Event received' }, { status: 200 })
         }
 
         const eventsSecret = process.env.WOMPI_EVENTS_SECRET
+        console.log('Events Secret Configured:', !!eventsSecret)
 
         if (!eventsSecret) {
             console.error('WOMPI_EVENTS_SECRET not configured')
@@ -27,19 +41,41 @@ export async function POST(request: Request) {
         const signatureString = `${transaction.id}${transaction.status}${transaction.amount_in_cents}${timestamp}${eventsSecret}`
         const calculatedSignature = createHash('sha256').update(signatureString).digest('hex')
 
+        console.log('Signature Check:')
+        console.log('Received:', signature.checksum)
+        console.log('Calculated:', calculatedSignature)
+
         if (calculatedSignature !== signature.checksum) {
             console.error('Invalid Wompi webhook signature')
             return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
         }
 
+        console.log('Signature Valid. Updating Settings...')
+
+        // Update Wompi Status in Settings
+        const settingsUpdate = await supabaseAdmin
+            .from('organization_settings')
+            .update({
+                wompi_last_sync: new Date().toISOString(),
+                wompi_environment: environment || (transaction.redirect_url?.includes('sandbox') ? 'sandbox' : 'production')
+            })
+            .eq('id', 1)
+
+        if (settingsUpdate.error) {
+            console.error('Error updating settings:', settingsUpdate.error)
+        } else {
+            console.log('Settings updated successfully')
+        }
+
         // Process Payment
         if (transaction.status === 'APPROVED') {
             const reference = transaction.reference
+            console.log('Processing Approved Payment. Reference:', reference)
 
-            // Check if it's a batch payment (PAY-) or legacy single invoice (INV-)
             if (reference.startsWith('PAY-')) {
+                console.log('Detected Batch Payment (PAY-)')
                 // 1. Find the transaction record
-                const { data: paymentTx, error: txError } = await supabase
+                const { data: paymentTx, error: txError } = await supabaseAdmin
                     .from('payment_transactions')
                     .select('*')
                     .eq('reference', reference)
@@ -51,7 +87,7 @@ export async function POST(request: Request) {
                 }
 
                 // 2. Update Transaction Status
-                await supabase
+                await supabaseAdmin
                     .from('payment_transactions')
                     .update({ status: 'APPROVED', updated_at: new Date().toISOString() })
                     .eq('id', paymentTx.id)
@@ -59,7 +95,7 @@ export async function POST(request: Request) {
                 // 3. Update All Linked Invoices
                 const invoiceIds = paymentTx.invoice_ids
                 if (invoiceIds && Array.isArray(invoiceIds) && invoiceIds.length > 0) {
-                    const { error: updateError } = await supabase
+                    const { error: updateError } = await supabaseAdmin
                         .from('invoices')
                         .update({ status: 'paid' })
                         .in('id', invoiceIds)
@@ -71,27 +107,34 @@ export async function POST(request: Request) {
                     console.log(`Invoices ${invoiceIds.join(', ')} marked as paid via Wompi batch payment`)
                 }
 
-            } else if (reference.startsWith('INV-')) {
-                // Legacy support for single invoice payments
-                const parts = reference.split('-')
-                // parts[0] = 'INV'
-                // parts[last] = timestamp
-                // The middle part is the invoice number.
-                const invoiceNumber = parts.slice(1, -1).join('-')
+            } else {
+                console.log('Detected Legacy/Direct Payment')
+                let invoiceNumber = reference;
+
+                if (reference.startsWith('INV-')) {
+                    const parts = reference.split('-')
+                    if (parts.length >= 3) {
+                        invoiceNumber = parts.slice(1, -1).join('-')
+                    }
+                }
+
+                console.log('Extracted Invoice Number:', invoiceNumber)
 
                 if (invoiceNumber) {
-                    const { error } = await supabase
+                    const { error } = await supabaseAdmin
                         .from('invoices')
                         .update({ status: 'paid' })
                         .eq('number', invoiceNumber)
 
                     if (error) {
-                        console.error('Error updating invoice status:', error)
-                        return NextResponse.json({ error: 'Database update failed' }, { status: 500 })
+                        console.error('Error updating invoice status (Legacy/Direct):', error)
+                    } else {
+                        console.log(`Invoice ${invoiceNumber} marked as paid via Wompi webhook (Legacy/Direct)`)
                     }
-                    console.log(`Invoice ${invoiceNumber} marked as paid via Wompi webhook (Legacy)`)
                 }
             }
+        } else {
+            console.log('Transaction status is not APPROVED:', transaction.status)
         }
 
         return NextResponse.json({ success: true }, { status: 200 })
