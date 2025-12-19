@@ -188,7 +188,7 @@ export function PortalDashboard({ client, invoices, quotes, briefings, events, o
                                             <div key={briefing.id} className="flex items-center justify-between p-2 bg-pink-50 rounded-lg border border-pink-100">
                                                 <div className="flex items-center gap-2 overflow-hidden">
                                                     <MessageSquare className="h-4 w-4 text-pink-500 shrink-0" />
-                                                    <span className="text-sm font-medium text-gray-900 truncate">{briefing.service_name}</span>
+                                                    <span className="text-sm font-medium text-gray-900 truncate">{briefing.template?.name || "Briefing"}</span>
                                                 </div>
                                                 <Link href={`/portal/${client.portal_short_token || client.portal_token}/briefing/${briefing.id}`}>
                                                     <Button size="sm" variant="ghost" className="h-7 text-xs text-pink-700 hover:text-pink-800 hover:bg-pink-100">
