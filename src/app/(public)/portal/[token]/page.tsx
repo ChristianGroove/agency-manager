@@ -147,9 +147,7 @@ export default function PortalPage() {
                     <span className="absolute -right-4 top-0 bg-pink-500 text-white text-[10px] px-1 rounded">v2.0</span>
                 </div>
                 {/* Debug Info */}
-                <div className="hidden">
-                    {console.log('Portal Data:', { client, invoices, quotes, briefings, events, settings })}
-                </div>
+
 
                 <PortalDashboard
                     client={client}
