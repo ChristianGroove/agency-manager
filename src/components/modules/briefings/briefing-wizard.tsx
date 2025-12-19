@@ -16,6 +16,9 @@ import { Loader2, CheckCircle2, ChevronRight, ChevronLeft, Save } from "lucide-r
 import { useDebouncedCallback } from "use-debounce"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
+import { LottieAnimation } from "@/components/ui/lottie-animation"
+import manWorkingAnimation from "../../../../public/animations/cartoon-man-working-at-desk-illustration-2025-10-20-04-30-47-utc.json"
+import ideaBulbAnimation from "../../../../public/animations/target-idea-bulb-illustration-2025-10-20-03-15-58-utc.json"
 
 interface BriefingWizardProps {
     briefing: Briefing
@@ -104,9 +107,9 @@ export function BriefingWizard({ briefing, template, initialResponses }: Briefin
 
     if (completed) {
         return (
-            <div className="text-center py-20 animate-in fade-in zoom-in duration-500">
-                <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-green-100 mb-6">
-                    <CheckCircle2 className="h-10 w-10 text-green-600" />
+            <div className="text-center py-20 animate-in fade-in zoom-in duration-500 flex flex-col items-center">
+                <div className="w-64 h-64 mb-6">
+                    <LottieAnimation animationData={manWorkingAnimation} />
                 </div>
                 <h1 className="text-3xl font-bold text-gray-900 mb-4">¡Gracias!</h1>
                 <p className="text-xl text-gray-600 mb-8">
@@ -125,6 +128,9 @@ export function BriefingWizard({ briefing, template, initialResponses }: Briefin
             <div className="max-w-2xl mx-auto py-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <Card className="border-0 shadow-xl ring-1 ring-gray-200/50">
                     <CardContent className="p-10 text-center space-y-6">
+                        <div className="w-64 h-64 mx-auto -my-5">
+                            <LottieAnimation animationData={ideaBulbAnimation} />
+                        </div>
                         <div className="space-y-2">
                             <h1 className="text-3xl font-bold tracking-tight text-gray-900">
                                 Briefing: {template.name}
@@ -136,10 +142,7 @@ export function BriefingWizard({ briefing, template, initialResponses }: Briefin
 
                         <div className="text-gray-600 leading-relaxed max-w-lg mx-auto">
                             <p>
-                                A continuación encontrarás una serie de preguntas diseñadas para entender mejor tus necesidades y objetivos.
-                            </p>
-                            <p className="mt-4">
-                                La información que nos proporciones será fundamental para crear una estrategia a tu medida. Por favor, tómate unos minutos para responder con el mayor detalle posible.
+                                Responde estas breves preguntas para ayudarnos a entender tus objetivos y crear una estrategia a tu medida.
                             </p>
                         </div>
 

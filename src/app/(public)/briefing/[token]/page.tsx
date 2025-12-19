@@ -2,6 +2,8 @@ import { notFound } from "next/navigation"
 import { getBriefingByToken, getBriefingResponses } from "@/lib/actions/briefings"
 import { BriefingWizard } from "@/components/modules/briefings/briefing-wizard"
 import { FullBriefingTemplate } from "@/types/briefings"
+import boyWithDogAnimation from "../../../../../public/animations/boy-with-dog-in-wilderness-illustration-2025-10-20-03-04-06-utc.json"
+import { LottieAnimation } from "@/components/ui/lottie-animation"
 
 interface PageProps {
     params: Promise<{
@@ -31,8 +33,11 @@ export default async function BriefingPage({ params }: PageProps) {
 
     if (briefing.status === 'submitted' || briefing.status === 'locked') {
         return (
-            <div className="max-w-md mx-auto text-center py-20">
-                <div className="bg-white p-8 rounded-xl shadow-sm border">
+            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-8">
+                <div className="w-64 h-64">
+                    <LottieAnimation animationData={boyWithDogAnimation} />
+                </div>
+                <div className="max-w-md w-full bg-white p-8 rounded-xl shadow-sm border text-center">
                     <h1 className="text-2xl font-bold text-gray-900 mb-2">Briefing Completado</h1>
                     <p className="text-gray-600">
                         Este briefing ya ha sido enviado y no puede ser modificado.
