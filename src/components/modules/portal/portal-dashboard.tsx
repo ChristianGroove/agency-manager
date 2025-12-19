@@ -107,57 +107,60 @@ export function PortalDashboard({ client, invoices, quotes, briefings, events, o
             )}
 
             {/* Floating "Smart" Action Center */}
-            {(pendingInvoices.length > 0 || openQuotes.length > 0 || pendingBriefings.length > 0) && (
-                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 w-full max-w-3xl px-4 animate-in slide-in-from-bottom-10 fade-in duration-700">
-                    <div className="bg-white/80 backdrop-blur-md border border-white/20 shadow-2xl rounded-2xl p-4 flex flex-col md:flex-row items-center gap-4 md:gap-6 ring-1 ring-black/5">
+            {/* Floating "Smart" Action Center */}
+            <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 w-full max-w-3xl px-4 animate-in slide-in-from-bottom-10 fade-in duration-700">
+                <div className="bg-white/90 backdrop-blur-xl border border-white/20 shadow-2xl rounded-full p-2 pl-6 flex flex-col md:flex-row items-center justify-between gap-4 md:gap-6 ring-1 ring-black/5">
 
-                        {/* Title / Icon */}
-                        <div className="flex items-center gap-2 text-gray-400 border-r border-gray-200 pr-4 hidden md:flex">
-                            <AlertCircle className="h-5 w-5 text-brand-pink" />
-                            <span className="text-xs font-semibold uppercase tracking-widest">Pendientes</span>
-                        </div>
+                    {/* Status Text (Left) */}
+                    <div className="flex-1 text-center md:text-left">
+                        {pendingInvoices.length > 0 ? (
+                            <p className="text-sm font-medium text-gray-700">
+                                <span className="font-bold text-gray-900">Pendientes:</span> Tienes {pendingInvoices.length} facturas por <span className="text-gray-900 font-bold">{formatCurrency(totalPending)}</span>.
+                            </p>
+                        ) : (
+                            <div className="flex items-center justify-center md:justify-start gap-2">
+                                <CheckCircle2 className="h-4 w-4 text-green-500" />
+                                <p className="text-sm font-medium text-gray-600">¡Todo al día! No tienes pagos pendientes.</p>
+                            </div>
+                        )}
+                    </div>
 
-                        {/* Scrollable Content Area */}
-                        <div className="flex-1 flex items-center gap-3 overflow-x-auto no-scrollbar w-full md:w-auto py-1">
+                    {/* Actions (Right) */}
+                    <div className="flex items-center gap-2 shrink-0">
 
-                            {/* Invoices Pill */}
-                            {pendingInvoices.length > 0 && (
-                                <div className="flex items-center gap-3 bg-amber-500/10 border border-amber-500/20 text-amber-700 px-3 py-1.5 rounded-full shrink-0 shadow-sm transition-all hover:bg-amber-500/20 hover:scale-105 cursor-default">
-                                    <div className="h-6 w-6 rounded-full bg-amber-500 flex items-center justify-center text-white shadow-sm">
-                                        <DollarSign className="h-3.5 w-3.5" />
-                                    </div>
-                                    <div className="flex flex-col leading-none">
-                                        <span className="text-[10px] font-bold uppercase opacity-70">Facturas ({pendingInvoices.length})</span>
-                                        <span className="text-xs font-bold">{formatCurrency(totalPending)}</span>
-                                    </div>
-                                </div>
-                            )}
+                        {/* Quotes Buttons */}
+                        {openQuotes.map(quote => (
+                            <Button
+                                key={quote.id}
+                                size="sm"
+                                className="rounded-full bg-purple-600 hover:bg-purple-700 text-white shadow-md shadow-purple-500/20 px-4 h-9 text-xs font-semibold"
+                                onClick={() => onViewQuote(quote)}
+                            >
+                                Revisar Cotización
+                            </Button>
+                        ))}
 
-                            {/* Quotes Pills */}
-                            {openQuotes.map(quote => (
-                                <div key={quote.id} className="group flex items-center gap-2 bg-purple-500/5 border border-purple-500/10 text-purple-700 px-3 py-1.5 rounded-full shrink-0 transition-all hover:bg-purple-500/10 hover:shadow-sm cursor-pointer" onClick={() => onViewQuote(quote)}>
-                                    <FileText className="h-3.5 w-3.5 text-purple-500" />
-                                    <span className="text-xs font-semibold">#{quote.number}</span>
-                                    <ArrowRight className="h-3 w-3 opacity-0 -ml-2 group-hover:opacity-100 group-hover:ml-0 transition-all text-purple-400" />
-                                </div>
-                            ))}
+                        {/* Briefings Buttons */}
+                        {pendingBriefings.map(briefing => (
+                            <Link key={briefing.id} href={`/portal/${client.portal_short_token || client.portal_token}/briefing/${briefing.id}`}>
+                                <Button
+                                    size="sm"
+                                    className="rounded-full bg-pink-600 hover:bg-pink-700 text-white shadow-md shadow-pink-500/20 px-4 h-9 text-xs font-semibold"
+                                >
+                                    Completar Briefing
+                                </Button>
+                            </Link>
+                        ))}
 
-                            {/* Briefings Pills */}
-                            {pendingBriefings.map(briefing => (
-                                <Link key={briefing.id} href={`/portal/${client.portal_short_token || client.portal_token}/briefing/${briefing.id}`}>
-                                    <div className="group flex items-center gap-2 bg-pink-500/5 border border-pink-500/10 text-pink-700 px-3 py-1.5 rounded-full shrink-0 transition-all hover:bg-pink-500/10 hover:shadow-sm cursor-pointer">
-                                        <MessageSquare className="h-3.5 w-3.5 text-pink-500" />
-                                        <span className="text-xs font-semibold max-w-[100px] truncate">{briefing.template?.name || "Briefing"}</span>
-                                        <ArrowRight className="h-3 w-3 opacity-0 -ml-2 group-hover:opacity-100 group-hover:ml-0 transition-all text-pink-400" />
-                                    </div>
-                                </Link>
-                            ))}
-                        </div>
+                        {/* Divider if actions exist */}
+                        {(openQuotes.length > 0 || pendingBriefings.length > 0) && (
+                            <div className="h-4 w-px bg-gray-300 mx-1 hidden md:block"></div>
+                        )}
 
                         {/* Floating Timeline Button (Integrated) */}
                         <Dialog>
                             <DialogTrigger asChild>
-                                <Button variant="ghost" size="icon" className="rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 shrink-0">
+                                <Button variant="ghost" size="icon" className="rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 h-9 w-9">
                                     <Clock className="h-5 w-5" />
                                 </Button>
                             </DialogTrigger>
@@ -175,7 +178,7 @@ export function PortalDashboard({ client, invoices, quotes, briefings, events, o
                         </Dialog>
                     </div>
                 </div>
-            )}
+            </div>
 
             {/* Bottom Bar for Payments */}
             {
