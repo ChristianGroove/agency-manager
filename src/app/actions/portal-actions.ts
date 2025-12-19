@@ -29,9 +29,16 @@ export async function getPortalData(token: string) {
             throw new Error('Error fetching invoices')
         }
 
+        // 3. Fetch Organization Settings
+        const { data: settings } = await supabaseAdmin
+            .from('organization_settings')
+            .select('*')
+            .single()
+
         return {
             client: client as Client,
-            invoices: invoices as Invoice[]
+            invoices: invoices as Invoice[],
+            settings: settings || {}
         }
 
     } catch (error) {

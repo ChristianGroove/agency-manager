@@ -44,6 +44,11 @@ const routes = [
         icon: CreditCard,
         href: "/payments",
     },
+    {
+        label: "Configuración",
+        icon: Settings,
+        href: "/settings",
+    },
 ]
 
 interface SidebarProps {

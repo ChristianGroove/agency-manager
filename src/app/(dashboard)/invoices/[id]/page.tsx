@@ -28,6 +28,7 @@ type Invoice = {
 
 import { WhatsAppShareModal } from "@/components/modules/invoices/whatsapp-share-modal"
 import { ShareButton } from "@/components/animate-ui/components/community/share-button"
+import { getSettings } from "@/lib/actions/settings"
 
 export default function InvoicePage() {
   const params = useParams()
@@ -36,12 +37,19 @@ export default function InvoicePage() {
   const invoiceRef = useRef<HTMLDivElement>(null)
   const [downloading, setDownloading] = useState(false)
   const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false)
+  const [settings, setSettings] = useState<any>({})
 
   useEffect(() => {
     if (params.id) {
       fetchInvoice(params.id as string)
+      fetchSettings()
     }
   }, [params.id])
+
+  const fetchSettings = async () => {
+    const data = await getSettings()
+    setSettings(data)
+  }
 
   const fetchInvoice = async (id: string) => {
     try {
@@ -388,8 +396,8 @@ export default function InvoicePage() {
 
             {/* Legal Text */}
             <div className="pt-8 border-t border-gray-100">
-              <p className="text-[10px] text-gray-400 text-center leading-relaxed max-w-2xl mx-auto">
-                Declaro, bajo gravedad de juramento, que mis ingresos corresponden a servicios personales sin relación laboral ni legal y reglamentaria, y que no tomaré costos ni gastos como deducibles. Por tanto, solicito aplicar la tabla del artículo 383 del E.T., con el 25% de renta exenta conforme al artículo 206-10 ibídem.
+              <p className="text-[10px] text-gray-400 text-center leading-relaxed max-w-2xl mx-auto whitespace-pre-wrap">
+                {settings.invoice_legal_text || `Declaro, bajo gravedad de juramento, que mis ingresos corresponden a servicios personales sin relación laboral ni legal y reglamentaria, y que no tomaré costos ni gastos como deducibles. Por tanto, solicito aplicar la tabla del artículo 383 del E.T., con el 25% de renta exenta conforme al artículo 206-10 ibídem.`}
               </p>
             </div>
           </div>

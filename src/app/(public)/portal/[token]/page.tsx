@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import { getPortalData } from "@/app/actions/portal-actions"
 import { Client, Invoice } from "@/types"
-import { Loader2, AlertCircle, CheckCircle2, Clock, Download, CreditCard, ChevronRight } from "lucide-react"
+import { Loader2, AlertCircle, CheckCircle2, Clock, Download, CreditCard, ChevronRight, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -14,23 +14,40 @@ export default function PortalPage() {
     const params = useParams()
     const [client, setClient] = useState<Client | null>(null)
     const [invoices, setInvoices] = useState<Invoice[]>([])
+    const [settings, setSettings] = useState<any>({})
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState("")
     const [selectedInvoices, setSelectedInvoices] = useState<string[]>([])
     const [isProcessing, setIsProcessing] = useState(false)
     const [viewInvoice, setViewInvoice] = useState<Invoice | null>(null)
 
+    const [showSuccessMessage, setShowSuccessMessage] = useState(false)
+
     useEffect(() => {
         if (params.token) {
             fetchData(params.token as string)
+        }
+
+        // Check for Wompi return
+        const searchParams = new URLSearchParams(window.location.search)
+        if (searchParams.get('id')) {
+            setShowSuccessMessage(true)
+            // Clean URL
+            window.history.replaceState({}, '', window.location.pathname)
         }
     }, [params.token])
 
     const fetchData = async (token: string) => {
         try {
-            const { client, invoices } = await getPortalData(token)
+            const { client, invoices, settings } = await getPortalData(token)
             setClient(client)
             setInvoices(invoices)
+            setSettings(settings || {})
+
+            // If we have a success message pending and settings are loaded, show it
+            if (new URLSearchParams(window.location.search).get('id') && settings?.payment_success_message) {
+                // Logic handled in render or separate effect, but here we just ensure we have settings
+            }
         } catch (err) {
             console.error(err)
             setError("No se pudo cargar la información. El enlace puede ser inválido.")
@@ -40,6 +57,14 @@ export default function PortalPage() {
     }
 
     const toggleInvoice = (invoiceId: string) => {
+        // Check if multi-payment is enabled
+        if (settings.enable_multi_invoice_payment === false) {
+            setSelectedInvoices(prev =>
+                prev.includes(invoiceId) ? [] : [invoiceId]
+            )
+            return
+        }
+
         setSelectedInvoices(prev =>
             prev.includes(invoiceId)
                 ? prev.filter(id => id !== invoiceId)
@@ -48,6 +73,8 @@ export default function PortalPage() {
     }
 
     const toggleAll = () => {
+        if (settings.enable_multi_invoice_payment === false) return
+
         const pendingInvoices = invoices.filter(i => i.status !== 'paid').map(i => i.id)
         if (selectedInvoices.length === pendingInvoices.length) {
             setSelectedInvoices([])
@@ -58,6 +85,16 @@ export default function PortalPage() {
 
     const handlePay = async () => {
         if (selectedInvoices.length === 0) return
+
+        // Check min payment amount
+        const totalAmount = invoices
+            .filter(i => selectedInvoices.includes(i.id))
+            .reduce((acc, curr) => acc + curr.total, 0)
+
+        if (settings.min_payment_amount && totalAmount < settings.min_payment_amount) {
+            alert(`El monto mínimo para pagos en línea es de $${parseInt(settings.min_payment_amount).toLocaleString()}`)
+            return
+        }
 
         setIsProcessing(true)
         try {
@@ -133,6 +170,8 @@ export default function PortalPage() {
         )
     }
 
+    const paymentsEnabled = settings.enable_portal_payments !== false
+
     return (
         <div className="min-h-screen bg-gray-50 pb-24">
             <div className="max-w-4xl mx-auto p-4 md:p-8 space-y-8">
@@ -145,10 +184,21 @@ export default function PortalPage() {
                     </div>
                 </div>
 
+                {/* Pre-payment Message */}
+                {settings.payment_pre_message && pendingTotal > 0 && (
+                    <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 text-sm text-blue-800 text-center max-w-2xl mx-auto">
+                        {settings.payment_pre_message}
+                    </div>
+                )}
+
                 {/* Invoices List */}
                 <div className="space-y-4">
-                    {pendingTotal > 0 && (
-                        <p className="text-sm text-gray-500 font-medium text-center">Selecciona las facturas que deseas pagar:</p>
+                    {pendingTotal > 0 && paymentsEnabled && (
+                        <p className="text-sm text-gray-500 font-medium text-center">
+                            {settings.enable_multi_invoice_payment !== false
+                                ? "Selecciona las facturas que deseas pagar:"
+                                : "Selecciona la factura que deseas pagar:"}
+                        </p>
                     )}
                     <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
                         {/* Desktop Table */}
@@ -157,13 +207,15 @@ export default function PortalPage() {
                                 <thead className="bg-gray-50 text-gray-500 font-medium border-b">
                                     <tr>
                                         <th className="px-6 py-4 w-12">
-                                            <input
-                                                type="checkbox"
-                                                className="rounded border-gray-300 text-brand-pink focus:ring-brand-pink"
-                                                checked={pendingInvoices.length > 0 && selectedInvoices.length === pendingInvoices.length}
-                                                onChange={toggleAll}
-                                                disabled={pendingInvoices.length === 0}
-                                            />
+                                            {paymentsEnabled && settings.enable_multi_invoice_payment !== false && (
+                                                <input
+                                                    type="checkbox"
+                                                    className="rounded border-gray-300 text-brand-pink focus:ring-brand-pink"
+                                                    checked={pendingInvoices.length > 0 && selectedInvoices.length === pendingInvoices.length}
+                                                    onChange={toggleAll}
+                                                    disabled={pendingInvoices.length === 0}
+                                                />
+                                            )}
                                         </th>
                                         <th className="px-6 py-4">Factura</th>
                                         <th className="px-6 py-4">Fecha</th>
@@ -178,7 +230,7 @@ export default function PortalPage() {
                                         return (
                                             <tr key={invoice.id} className="hover:bg-gray-50/50 transition-colors">
                                                 <td className="px-6 py-4">
-                                                    {status !== 'paid' && (
+                                                    {status !== 'paid' && paymentsEnabled && (
                                                         <input
                                                             type="checkbox"
                                                             className="rounded border-gray-300 text-brand-pink focus:ring-brand-pink"
@@ -219,7 +271,7 @@ export default function PortalPage() {
                                 const status = getInvoiceStatus(invoice)
                                 return (
                                     <div key={invoice.id} className="p-4 flex items-center gap-4">
-                                        {status !== 'paid' && (
+                                        {status !== 'paid' && paymentsEnabled && (
                                             <input
                                                 type="checkbox"
                                                 className="h-5 w-5 rounded border-gray-300 text-brand-pink focus:ring-brand-pink"
@@ -254,7 +306,7 @@ export default function PortalPage() {
             </div>
 
             {/* Bottom Bar */}
-            {selectedInvoices.length > 0 && (
+            {selectedInvoices.length > 0 && paymentsEnabled && (
                 <div className="fixed bottom-0 left-0 right-0 bg-white border-t p-4 shadow-lg z-50 animate-in slide-in-from-bottom">
                     <div className="max-w-4xl mx-auto flex items-center justify-between">
                         <div>
@@ -269,6 +321,22 @@ export default function PortalPage() {
                         >
                             {isProcessing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CreditCard className="h-4 w-4 mr-2" />}
                             Pagar Ahora
+                        </Button>
+                    </div>
+                </div>
+            )}
+
+            {/* Success Message Modal */}
+            {showSuccessMessage && settings.payment_success_message && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-xl shadow-xl p-6 max-w-md w-full text-center space-y-4 animate-in zoom-in-95">
+                        <div className="h-12 w-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto">
+                            <Check className="h-6 w-6" />
+                        </div>
+                        <h3 className="text-lg font-bold text-gray-900">¡Pago Recibido!</h3>
+                        <p className="text-gray-600 whitespace-pre-wrap">{settings.payment_success_message}</p>
+                        <Button onClick={() => setShowSuccessMessage(false)} className="w-full bg-brand-pink hover:bg-brand-pink/90">
+                            Entendido
                         </Button>
                     </div>
                 </div>

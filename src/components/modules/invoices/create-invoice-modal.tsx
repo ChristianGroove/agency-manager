@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { getSettings } from "@/lib/actions/settings"
 import {
     Dialog,
     DialogContent,
@@ -38,6 +39,7 @@ export function CreateInvoiceModal({ clientId, clientName, onInvoiceCreated, inv
     const [loading, setLoading] = useState(false)
     const [clients, setClients] = useState<{ id: string, name: string }[]>([])
     const [selectedClientId, setSelectedClientId] = useState(clientId || "")
+    const [settings, setSettings] = useState<any>({})
 
     // Form State
     const [invoiceNumber, setInvoiceNumber] = useState("")
@@ -48,6 +50,16 @@ export function CreateInvoiceModal({ clientId, clientName, onInvoiceCreated, inv
     const [dueDate, setDueDate] = useState("")
 
     // Auto-generate invoice number and set default due date when modal opens
+    // Fetch settings on mount
+    useEffect(() => {
+        const loadSettings = async () => {
+            const data = await getSettings()
+            setSettings(data)
+        }
+        loadSettings()
+    }, [])
+
+    // Auto-generate invoice number and set default due date when modal opens
     useEffect(() => {
         if (open) {
             if (invoiceToEdit) {
@@ -56,14 +68,24 @@ export function CreateInvoiceModal({ clientId, clientName, onInvoiceCreated, inv
                 setDueDate(invoiceToEdit.due_date ? invoiceToEdit.due_date.split('T')[0] : "")
                 setSelectedClientId(invoiceToEdit.client_id)
             } else {
-                if (!invoiceNumber) {
+                if (!invoiceNumber && settings.invoice_prefix) {
                     const timestamp = Date.now()
                     const randomSuffix = Math.random().toString(36).substring(2, 5).toUpperCase()
-                    const generatedNumber = `INV-${timestamp}-${randomSuffix}`
+                    // Use configured prefix
+                    const prefix = settings.invoice_prefix || 'INV-'
+                    const generatedNumber = `${prefix}${timestamp}-${randomSuffix}`
                     setInvoiceNumber(generatedNumber)
+                } else if (!invoiceNumber) {
+                    const timestamp = Date.now()
+                    const randomSuffix = Math.random().toString(36).substring(2, 5).toUpperCase()
+                    setInvoiceNumber(`INV-${timestamp}-${randomSuffix}`)
                 }
 
-                if (!dueDate) {
+                if (!dueDate && settings.default_due_days) {
+                    const defaultDueDate = new Date()
+                    defaultDueDate.setDate(defaultDueDate.getDate() + (parseInt(settings.default_due_days) || 30))
+                    setDueDate(defaultDueDate.toISOString().split('T')[0])
+                } else if (!dueDate) {
                     const defaultDueDate = new Date()
                     defaultDueDate.setDate(defaultDueDate.getDate() + 30)
                     setDueDate(defaultDueDate.toISOString().split('T')[0])
@@ -74,7 +96,7 @@ export function CreateInvoiceModal({ clientId, clientName, onInvoiceCreated, inv
                 }
             }
         }
-    }, [open, invoiceToEdit])
+    }, [open, invoiceToEdit, settings])
 
     useEffect(() => {
         if (clientId) {
@@ -88,6 +110,21 @@ export function CreateInvoiceModal({ clientId, clientName, onInvoiceCreated, inv
             .select('id, name')
             .order('name')
         if (data) setClients(data)
+    }
+
+    const applyDefaultTax = () => {
+        if (!settings.default_tax_rate) return
+
+        const subtotal = calculateTotal()
+        const taxRate = parseFloat(settings.default_tax_rate)
+        const taxAmount = Math.round(subtotal * (taxRate / 100))
+
+        setItems([...items, {
+            id: Math.random().toString(36).substr(2, 9),
+            description: `${settings.default_tax_name || 'Impuesto'} (${taxRate}%)`,
+            quantity: 1,
+            price: taxAmount
+        }])
     }
 
     const addItem = () => {
@@ -248,9 +285,16 @@ export function CreateInvoiceModal({ clientId, clientName, onInvoiceCreated, inv
                     <div className="space-y-4">
                         <div className="flex items-center justify-between">
                             <Label>Ítems del Servicio</Label>
-                            <Button variant="ghost" size="sm" onClick={addItem} className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50">
-                                <Plus className="h-4 w-4 mr-1" /> Agregar Ítem
-                            </Button>
+                            <div className="flex gap-2">
+                                {settings.default_tax_rate > 0 && (
+                                    <Button variant="outline" size="sm" onClick={applyDefaultTax} className="text-xs h-8">
+                                        + {settings.default_tax_name || 'Impuesto'} ({settings.default_tax_rate}%)
+                                    </Button>
+                                )}
+                                <Button variant="ghost" size="sm" onClick={addItem} className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50">
+                                    <Plus className="h-4 w-4 mr-1" /> Agregar Ítem
+                                </Button>
+                            </div>
                         </div>
 
                         <div className="space-y-3">
