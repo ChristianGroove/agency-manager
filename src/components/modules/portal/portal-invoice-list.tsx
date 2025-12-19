@@ -30,12 +30,25 @@ export function PortalInvoiceList({ invoices, settings, selectedInvoices, onTogg
 
     return (
         <Card className="border-none shadow-none bg-transparent">
-            <CardHeader className="px-0 pt-0">
-                <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                    <DollarSign className="h-5 w-5 text-blue-500" />
-                    Historial de Facturación
-                </CardTitle>
-                <p className="text-sm text-gray-500 mt-1">Selecciona las facturas que deseas pagar</p>
+            <CardHeader className="px-0 pt-0 block">
+                {/* Title Centered */}
+                <div className="w-full text-center mb-6">
+                    <CardTitle className="text-2xl font-bold inline-flex items-center gap-2 text-gray-900">
+                        <DollarSign className="h-6 w-6 text-blue-600" />
+                        Estado de Facturación
+                    </CardTitle>
+                </div>
+
+                {/* Instruction - Right Aligned, 16px bottom margin to table */}
+                <div className="flex justify-end mb-4">
+                    <p className="text-sm font-semibold text-blue-600 flex items-center gap-3 bg-blue-50/80 px-4 py-2 rounded-lg border border-blue-100 shadow-sm animate-in fade-in slide-in-from-right-4 duration-700">
+                        Selecciona las facturas que deseas pagar
+                        <span className="relative flex h-3 w-3">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
+                        </span>
+                    </p>
+                </div>
             </CardHeader>
             <CardContent className="px-0">
                 <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
