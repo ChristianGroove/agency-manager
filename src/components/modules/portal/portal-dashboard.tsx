@@ -106,132 +106,100 @@ export function PortalDashboard({ client, invoices, quotes, briefings, events, o
                 </div>
             )}
 
-            {/* Bottom Section: Action Center (Horizontal) */}
-            <div className="relative mt-12">
-                {/* Floating Timeline Button */}
-                <div className="absolute bottom-full right-0 mb-3 z-10">
-                    <Dialog>
-                        <DialogTrigger asChild>
-                            <Button variant="outline" size="icon" className="rounded-full shadow-sm bg-white hover:bg-gray-50 border-gray-200 text-gray-600 h-10 w-10">
-                                <Clock className="h-5 w-5" />
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent className="sm:max-w-[500px] max-h-[80vh] overflow-y-auto">
-                            <DialogHeader>
-                                <DialogTitle className="flex items-center gap-2">
-                                    <Clock className="h-5 w-5 text-gray-500" />
-                                    Actividad Reciente
-                                </DialogTitle>
-                            </DialogHeader>
-                            <div className="mt-4">
-                                <PortalTimeline events={events} />
-                            </div>
-                        </DialogContent>
-                    </Dialog>
-                </div>
+            {/* Floating "Smart" Action Center */}
+            {(pendingInvoices.length > 0 || openQuotes.length > 0 || pendingBriefings.length > 0) && (
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 w-full max-w-3xl px-4 animate-in slide-in-from-bottom-10 fade-in duration-700">
+                    <div className="bg-white/80 backdrop-blur-md border border-white/20 shadow-2xl rounded-2xl p-4 flex flex-col md:flex-row items-center gap-4 md:gap-6 ring-1 ring-black/5">
 
-                <Card className="border-l-4 border-l-amber-500 shadow-sm">
-                    <CardHeader className="pb-3">
-                        <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                            <AlertCircle className="h-5 w-5 text-amber-500" />
-                            Centro de Acción
-                        </CardTitle>
-                        <CardDescription>
-                            Resumen de tareas pendientes.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="flex flex-col lg:flex-row gap-6 items-start lg:items-center">
-                            {/* Invoices Summary */}
+                        {/* Title / Icon */}
+                        <div className="flex items-center gap-2 text-gray-400 border-r border-gray-200 pr-4 hidden md:flex">
+                            <AlertCircle className="h-5 w-5 text-brand-pink" />
+                            <span className="text-xs font-semibold uppercase tracking-widest">Pendientes</span>
+                        </div>
+
+                        {/* Scrollable Content Area */}
+                        <div className="flex-1 flex items-center gap-3 overflow-x-auto no-scrollbar w-full md:w-auto py-1">
+
+                            {/* Invoices Pill */}
                             {pendingInvoices.length > 0 && (
-                                <div className="flex-1 w-full lg:w-auto">
-                                    <div className="flex items-center justify-between p-3 bg-amber-50 rounded-lg border border-amber-100 h-full">
-                                        <div className="flex items-center gap-3">
-                                            <div className="h-8 w-8 rounded-full bg-white border border-amber-200 flex items-center justify-center shrink-0">
-                                                <DollarSign className="h-4 w-4 text-amber-600" />
-                                            </div>
-                                            <div>
-                                                <p className="text-sm font-medium text-gray-900">{pendingInvoices.length} Facturas pendientes</p>
-                                                <p className="text-xs text-amber-700 font-medium">{formatCurrency(totalPending)}</p>
-                                            </div>
-                                        </div>
+                                <div className="flex items-center gap-3 bg-amber-500/10 border border-amber-500/20 text-amber-700 px-3 py-1.5 rounded-full shrink-0 shadow-sm transition-all hover:bg-amber-500/20 hover:scale-105 cursor-default">
+                                    <div className="h-6 w-6 rounded-full bg-amber-500 flex items-center justify-center text-white shadow-sm">
+                                        <DollarSign className="h-3.5 w-3.5" />
+                                    </div>
+                                    <div className="flex flex-col leading-none">
+                                        <span className="text-[10px] font-bold uppercase opacity-70">Facturas ({pendingInvoices.length})</span>
+                                        <span className="text-xs font-bold">{formatCurrency(totalPending)}</span>
                                     </div>
                                 </div>
                             )}
 
-                            {/* Quotes List (Compact) */}
-                            {openQuotes.length > 0 && (
-                                <div className="flex-1 w-full lg:w-auto space-y-2">
-                                    <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wider">Cotizaciones</h4>
-                                    <div className="flex flex-col gap-2">
-                                        {openQuotes.map(quote => (
-                                            <div key={quote.id} className="flex items-center justify-between p-2 bg-purple-50 rounded-lg border border-purple-100">
-                                                <div className="flex items-center gap-2">
-                                                    <FileText className="h-4 w-4 text-purple-500" />
-                                                    <span className="text-sm font-medium text-gray-900">#{quote.number}</span>
-                                                </div>
-                                                <Button size="sm" variant="ghost" className="h-7 text-xs text-purple-700 hover:text-purple-800 hover:bg-purple-100" onClick={() => onViewQuote(quote)}>
-                                                    Ver
-                                                </Button>
-                                            </div>
-                                        ))}
-                                    </div>
+                            {/* Quotes Pills */}
+                            {openQuotes.map(quote => (
+                                <div key={quote.id} className="group flex items-center gap-2 bg-purple-500/5 border border-purple-500/10 text-purple-700 px-3 py-1.5 rounded-full shrink-0 transition-all hover:bg-purple-500/10 hover:shadow-sm cursor-pointer" onClick={() => onViewQuote(quote)}>
+                                    <FileText className="h-3.5 w-3.5 text-purple-500" />
+                                    <span className="text-xs font-semibold">#{quote.number}</span>
+                                    <ArrowRight className="h-3 w-3 opacity-0 -ml-2 group-hover:opacity-100 group-hover:ml-0 transition-all text-purple-400" />
                                 </div>
-                            )}
+                            ))}
 
-                            {/* Briefings List (Compact) */}
-                            {pendingBriefings.length > 0 && (
-                                <div className="flex-1 w-full lg:w-auto space-y-2">
-                                    <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wider">Briefings</h4>
-                                    <div className="flex flex-col gap-2">
-                                        {pendingBriefings.map(briefing => (
-                                            <div key={briefing.id} className="flex items-center justify-between p-2 bg-pink-50 rounded-lg border border-pink-100">
-                                                <div className="flex items-center gap-2 overflow-hidden">
-                                                    <MessageSquare className="h-4 w-4 text-pink-500 shrink-0" />
-                                                    <span className="text-sm font-medium text-gray-900 truncate">{briefing.template?.name || "Briefing"}</span>
-                                                </div>
-                                                <Link href={`/portal/${client.portal_short_token || client.portal_token}/briefing/${briefing.id}`}>
-                                                    <Button size="sm" variant="ghost" className="h-7 text-xs text-pink-700 hover:text-pink-800 hover:bg-pink-100">
-                                                        Ir
-                                                    </Button>
-                                                </Link>
-                                            </div>
-                                        ))}
+                            {/* Briefings Pills */}
+                            {pendingBriefings.map(briefing => (
+                                <Link key={briefing.id} href={`/portal/${client.portal_short_token || client.portal_token}/briefing/${briefing.id}`}>
+                                    <div className="group flex items-center gap-2 bg-pink-500/5 border border-pink-500/10 text-pink-700 px-3 py-1.5 rounded-full shrink-0 transition-all hover:bg-pink-500/10 hover:shadow-sm cursor-pointer">
+                                        <MessageSquare className="h-3.5 w-3.5 text-pink-500" />
+                                        <span className="text-xs font-semibold max-w-[100px] truncate">{briefing.template?.name || "Briefing"}</span>
+                                        <ArrowRight className="h-3 w-3 opacity-0 -ml-2 group-hover:opacity-100 group-hover:ml-0 transition-all text-pink-400" />
                                     </div>
-                                </div>
-                            )}
-
-                            {pendingInvoices.length === 0 && openQuotes.length === 0 && pendingBriefings.length === 0 && (
-                                <div className="w-full flex items-center justify-center py-4 text-center gap-2">
-                                    <CheckCircle2 className="h-5 w-5 text-green-500" />
-                                    <span className="text-gray-500 font-medium">¡Todo al día! No tienes tareas pendientes.</span>
-                                </div>
-                            )}
+                                </Link>
+                            ))}
                         </div>
-                    </CardContent>
-                </Card>
-            </div>
 
-            {/* Bottom Bar for Payments */}
-            {selectedInvoices.length > 0 && paymentsEnabled && (
-                <div className="fixed bottom-0 left-0 right-0 bg-white border-t p-4 shadow-lg z-50 animate-in slide-in-from-bottom">
-                    <div className="max-w-4xl mx-auto flex items-center justify-between">
-                        <div>
-                            <p className="text-sm text-gray-500">Total a Pagar ({selectedInvoices.length})</p>
-                            <p className="text-2xl font-bold text-gray-900">{formatCurrency(totalSelected)}</p>
-                        </div>
-                        <Button
-                            size="lg"
-                            className="text-white px-8"
-                            style={{ backgroundColor: settings.portal_primary_color || '#F205E2' }}
-                            onClick={() => onPay(selectedInvoices)}
-                        >
-                            <CreditCard className="h-4 w-4 mr-2" />
-                            Pagar Ahora
-                        </Button>
+                        {/* Floating Timeline Button (Integrated) */}
+                        <Dialog>
+                            <DialogTrigger asChild>
+                                <Button variant="ghost" size="icon" className="rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 shrink-0">
+                                    <Clock className="h-5 w-5" />
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent className="sm:max-w-[500px] max-h-[80vh] overflow-y-auto">
+                                <DialogHeader>
+                                    <DialogTitle className="flex items-center gap-2">
+                                        <Clock className="h-5 w-5 text-gray-500" />
+                                        Actividad Reciente
+                                    </DialogTitle>
+                                </DialogHeader>
+                                <div className="mt-4">
+                                    <PortalTimeline events={events} />
+                                </div>
+                            </DialogContent>
+                        </Dialog>
                     </div>
                 </div>
             )}
         </div>
+
+            {/* Bottom Bar for Payments */ }
+    {
+        selectedInvoices.length > 0 && paymentsEnabled && (
+            <div className="fixed bottom-0 left-0 right-0 bg-white border-t p-4 shadow-lg z-50 animate-in slide-in-from-bottom">
+                <div className="max-w-4xl mx-auto flex items-center justify-between">
+                    <div>
+                        <p className="text-sm text-gray-500">Total a Pagar ({selectedInvoices.length})</p>
+                        <p className="text-2xl font-bold text-gray-900">{formatCurrency(totalSelected)}</p>
+                    </div>
+                    <Button
+                        size="lg"
+                        className="text-white px-8"
+                        style={{ backgroundColor: settings.portal_primary_color || '#F205E2' }}
+                        onClick={() => onPay(selectedInvoices)}
+                    >
+                        <CreditCard className="h-4 w-4 mr-2" />
+                        Pagar Ahora
+                    </Button>
+                </div>
+            </div>
+        )
+    }
+        </div >
     )
 }
