@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { PortalTimeline } from "./portal-timeline"
 import { PortalBriefingList } from "./portal-briefing-list"
 import { PortalInvoiceList } from "./portal-invoice-list"
-import { ArrowRight, DollarSign, FileText, MessageSquare, AlertCircle, CheckCircle2, Clock, CreditCard } from "lucide-react"
+import { ArrowRight, DollarSign, FileText, MessageSquare, AlertCircle, CheckCircle2, Clock, CreditCard, Activity } from "lucide-react"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
@@ -15,6 +15,10 @@ import { LottieAnimation } from "@/components/ui/lottie-animation"
 import { useEffect, useState } from "react"
 
 import { PortalBriefingView } from "./portal-briefing-view"
+import { PortalServiceCard } from "./portal-service-card"
+import { PortalServiceDetail } from "./portal-service-detail"
+import { Service } from "@/types"
+
 
 function EmptyStateAnimation() {
     const [animationData, setAnimationData] = useState<any>(null)
@@ -56,11 +60,18 @@ interface PortalDashboardProps {
     onViewInvoice: (invoice: Invoice) => void
     onViewQuote: (quote: Quote) => void
     settings: any
+    services: Service[]
 }
 
-export function PortalDashboard({ client, invoices, quotes, briefings, events, onPay, onViewInvoice, onViewQuote, settings }: PortalDashboardProps) {
+export function PortalDashboard({ client, invoices, quotes, briefings, events, onPay, onViewInvoice, onViewQuote, settings, services }: PortalDashboardProps) {
+    console.log('PortalDashboard Rendered', {
+        client: client.name,
+        servicesCount: services?.length,
+        services: services
+    })
     const [selectedInvoices, setSelectedInvoices] = useState<string[]>([])
     const [viewBriefingId, setViewBriefingId] = useState<string | null>(null)
+    const [viewServiceId, setViewServiceId] = useState<string | null>(null)
 
     // Calculate Stats
     const pendingInvoices = invoices.filter(i => i.status === 'pending' || i.status === 'overdue')
@@ -97,6 +108,28 @@ export function PortalDashboard({ client, invoices, quotes, briefings, events, o
     const handleViewBriefing = (id: string) => {
         setViewBriefingId(id)
         window.scrollTo(0, 0)
+    }
+
+    if (viewServiceId) {
+        const service = services.find(s => s.id === viewServiceId)
+        if (service) {
+            const serviceInvoices = invoices.filter(i => i.service_id === service.id)
+            const serviceBriefings = briefings.filter(b => b.service_id === service.id)
+
+            return (
+                <div className="max-w-5xl mx-auto w-full pb-24">
+                    <PortalServiceDetail
+                        service={service}
+                        invoices={serviceInvoices}
+                        briefings={serviceBriefings}
+                        onBack={() => setViewServiceId(null)}
+                        onPay={onPay}
+                        onViewInvoice={onViewInvoice}
+                        onViewBriefing={handleViewBriefing} // Reuse this to open briefing view
+                    />
+                </div>
+            )
+        }
     }
 
     if (viewBriefingId) {
@@ -173,6 +206,37 @@ export function PortalDashboard({ client, invoices, quotes, briefings, events, o
                                     Completar Briefing
                                 </Button>
                             ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* Services Section */}
+                {services && services.length > 0 && (
+                    <div className="max-w-5xl mx-auto w-full mb-12">
+                        <div className="flex items-center justify-between mb-6">
+                            <h2 className="text-xl font-bold flex items-center gap-2">
+                                <Activity className="h-5 w-5 text-gray-400" />
+                                Tus Servicios Activos
+                            </h2>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {services.map(service => {
+                                // Calculate pending counts for this service
+                                const servicePendingInvoices = invoices.filter(i => i.service_id === service.id && (i.status === 'pending' || i.status === 'overdue')).length
+                                const serviceOverdueInvoices = invoices.filter(i => i.service_id === service.id && i.status === 'overdue').length
+                                const servicePendingBriefings = briefings.filter(b => b.service_id === service.id && (b.status === 'sent' || b.status === 'in_progress')).length
+
+                                return (
+                                    <PortalServiceCard
+                                        key={service.id}
+                                        service={service}
+                                        pendingInvoicesCount={servicePendingInvoices}
+                                        overdueInvoicesCount={serviceOverdueInvoices}
+                                        pendingBriefingsCount={servicePendingBriefings}
+                                        onClick={() => setViewServiceId(service.id)}
+                                    />
+                                )
+                            })}
                         </div>
                     </div>
                 )}

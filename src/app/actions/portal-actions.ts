@@ -1,7 +1,7 @@
 'use server'
 
 import { supabaseAdmin } from "@/lib/supabase-admin"
-import { Client, Invoice, Quote, Briefing, ClientEvent } from "@/types"
+import { Client, Invoice, Quote, Briefing, ClientEvent, Service } from "@/types"
 
 export async function getPortalData(token: string) {
     try {
@@ -23,14 +23,30 @@ export async function getPortalData(token: string) {
             { data: quotes },
             { data: briefings },
             { data: events },
-            { data: settings }
+            { data: settings },
+            { data: services }
         ] = await Promise.all([
             supabaseAdmin.from('invoices').select('*').eq('client_id', client.id).order('created_at', { ascending: false }),
             supabaseAdmin.from('quotes').select('*').eq('client_id', client.id).order('created_at', { ascending: false }),
             supabaseAdmin.from('briefings').select('*, template:briefing_templates(name)').eq('client_id', client.id).order('created_at', { ascending: false }),
             supabaseAdmin.from('client_events').select('*').eq('client_id', client.id).order('created_at', { ascending: false }),
-            supabaseAdmin.from('organization_settings').select('*').single()
+            supabaseAdmin.from('organization_settings').select('*').single(),
+            supabaseAdmin.from('services').select('*').eq('client_id', client.id).eq('status', 'active').order('created_at', { ascending: false })
         ])
+
+        // Filter Services logic
+        const filteredServices = (services || []).filter((service: Service) => {
+            if (service.type === 'one_off') {
+                // One-off: Show ONLY if active AND has pending/overdue invoices
+                const hasPendingOrOverdue = invoices?.some(inv =>
+                    inv.service_id === service.id &&
+                    (inv.status === 'pending' || inv.status === 'overdue')
+                )
+                return hasPendingOrOverdue
+            }
+            // Recurring services are shown if active (already filtered by query)
+            return true
+        })
 
         return {
             client: client as Client,
@@ -38,7 +54,8 @@ export async function getPortalData(token: string) {
             quotes: (quotes || []) as Quote[],
             briefings: (briefings || []) as Briefing[],
             events: (events || []) as ClientEvent[],
-            settings: settings || {}
+            settings: settings || {},
+            services: filteredServices as Service[]
         }
 
     } catch (error) {

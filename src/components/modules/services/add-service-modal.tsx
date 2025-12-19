@@ -5,247 +5,228 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Loader2, Plus, Edit } from "lucide-react"
+import { Textarea } from "@/components/ui/textarea"
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
+import { Loader2, Plus, ArrowLeft } from "lucide-react"
 import { supabase } from "@/lib/supabase"
+import { cn } from "@/lib/utils"
+import { ServiceCatalogSelector } from "./service-catalog-selector"
+import { Service } from "@/types"
 
-interface AddServiceModalProps {
+export interface AddServiceModalProps {
     clientId?: string
     clientName?: string
     onSuccess?: () => void
     trigger?: React.ReactNode
-    serviceToEdit?: any // Should be typed properly but using any for now to avoid conflicts
+    serviceToEdit?: any
+    open?: boolean
+    onOpenChange?: (open: boolean) => void
 }
 
-export function AddServiceModal({ clientId, clientName, onSuccess, trigger, serviceToEdit }: AddServiceModalProps) {
-    const [isOpen, setIsOpen] = useState(false)
-    const [saving, setSaving] = useState(false)
-    const [clients, setClients] = useState<{ id: string, name: string }[]>([])
-    const [selectedClientId, setSelectedClientId] = useState(clientId || "")
+export function AddServiceModal({ clientId, clientName, onSuccess, trigger, serviceToEdit, open, onOpenChange }: AddServiceModalProps) {
+    const [internalOpen, setInternalOpen] = useState(false)
+    const isControlled = open !== undefined
+    const isOpen = isControlled ? open : internalOpen
 
-    const [newService, setNewService] = useState({
-        name: '',
-        service_type: 'marketing',
+    const handleOpenChange = (value: boolean) => {
+        if (onOpenChange) onOpenChange(value)
+        if (!isControlled) setInternalOpen(value)
+    }
+
+    const [loading, setLoading] = useState(false)
+    const [step, setStep] = useState<'catalog' | 'form'>('catalog')
+
+    // Form State
+    const [formData, setFormData] = useState<Partial<Service>>({
+        name: "",
+        description: "",
+        amount: 0,
+        quantity: 1, // Default quantity
+        type: 'recurring',
         frequency: 'monthly',
-        amount: '',
-        start_date: new Date().toISOString().split('T')[0]
+        status: 'active'
     })
 
-    useEffect(() => {
-        if (isOpen && !clientId) {
-            fetchClients()
-        }
-    }, [isOpen, clientId])
+    // Separate Unit Price State for calculation
+    const [unitPrice, setUnitPrice] = useState<number>(0)
 
+    // Recalculate total amount when quantity or unit price changes
     useEffect(() => {
-        if (clientId) {
-            setSelectedClientId(clientId)
+        if (formData.quantity !== undefined && unitPrice !== undefined) {
+            const total = unitPrice * formData.quantity
+            setFormData(prev => ({ ...prev, amount: total }))
         }
-    }, [clientId])
+    }, [formData.quantity, unitPrice])
 
+
+    // Reset state when modal opens/closes
+    useEffect(() => {
+        if (!isOpen) {
+            // Reset to default on close
+            setStep('catalog')
+            setFormData({
+                name: "",
+                description: "",
+                amount: 0,
+                quantity: 1,
+                type: 'recurring',
+                frequency: 'monthly',
+                status: 'active'
+            })
+            setUnitPrice(0)
+        }
+    }, [isOpen])
+
+    // Load service to edit
     useEffect(() => {
         if (serviceToEdit && isOpen) {
-            setNewService({
+            setStep('form')
+            const qty = serviceToEdit.quantity || 1
+            const amount = serviceToEdit.amount || 0
+            setFormData({
                 name: serviceToEdit.name,
-                service_type: serviceToEdit.service_type,
-                frequency: serviceToEdit.frequency,
-                amount: serviceToEdit.amount.toString(),
-                start_date: serviceToEdit.start_date || new Date().toISOString().split('T')[0]
+                description: serviceToEdit.description || "",
+                amount: amount,
+                quantity: qty,
+                type: serviceToEdit.type || 'recurring',
+                frequency: serviceToEdit.frequency || 'monthly',
+                status: serviceToEdit.status || 'active'
             })
-            if (serviceToEdit.client_id) {
-                setSelectedClientId(serviceToEdit.client_id)
-            }
+            // Reverse calculate unit price if possible, or just assume amount matches
+            setUnitPrice(qty > 0 ? (amount / qty) : 0)
+
         } else if (!serviceToEdit && isOpen) {
-            // Reset if opening for new service
-            setNewService({
-                name: '',
-                service_type: 'marketing',
+            setStep('catalog')
+            setFormData({
+                name: "",
+                description: "",
+                amount: 0,
+                quantity: 1,
+                type: 'recurring',
                 frequency: 'monthly',
-                amount: '',
-                start_date: new Date().toISOString().split('T')[0]
+                status: 'active'
             })
+            setUnitPrice(0)
         }
     }, [serviceToEdit, isOpen])
 
-    const fetchClients = async () => {
-        const { data } = await supabase
-            .from('clients')
-            .select('id, name')
-            .order('name')
-        if (data) setClients(data)
+    const handleCatalogSelect = (item: any) => {
+        const initialQty = 1
+        const initialPrice = item.base_price || 0
+        setUnitPrice(initialPrice)
+        setFormData({
+            ...formData,
+            name: item.name,
+            description: item.description || "",
+            amount: initialPrice * initialQty,
+            quantity: initialQty,
+            type: item.type,
+            frequency: item.frequency || 'monthly',
+        })
+        setStep('form')
     }
 
     const handleSaveService = async () => {
-        if (!newService.name || !newService.amount || !selectedClientId) {
-            alert('Por favor completa todos los campos requeridos')
-            return
-        }
-
-        setSaving(true)
+        setLoading(true)
         try {
-            // Calculate dates
-            const startDate = newService.start_date ? new Date(newService.start_date) : new Date()
-            const today = new Date()
-            today.setHours(0, 0, 0, 0)
-            const startDay = new Date(startDate)
-            startDay.setHours(0, 0, 0, 0)
+            const { data: { user } } = await supabase.auth.getUser()
 
-            const isFuture = startDay > today
-
-            let nextBilling = null
-            let invoiceId = null
-
-            // Only generate invoice logic for NEW services or if specifically requested (simplified for now: only new)
-            // For edits, we usually just update the subscription details. 
-            // If the user changes the frequency/amount, it will affect the NEXT generated invoice, not the current one.
-
-            if (!serviceToEdit) {
-                if (isFuture) {
-                    // Future service: No invoice now. Next billing is the start date.
-                    nextBilling = new Date(startDate)
-                } else {
-                    // Current/Past service: Generate invoice immediately
-
-                    // Calculate next billing for recurring services
-                    if (newService.frequency !== 'one-time') {
-                        nextBilling = new Date(startDate)
-                        if (newService.frequency === 'biweekly') {
-                            nextBilling.setDate(nextBilling.getDate() + 15)
-                        } else if (newService.frequency === 'monthly') {
-                            nextBilling.setMonth(nextBilling.getMonth() + 1)
-                        } else if (newService.frequency === 'quarterly') {
-                            nextBilling.setMonth(nextBilling.getMonth() + 3)
-                        } else {
-                            nextBilling.setFullYear(nextBilling.getFullYear() + 1)
-                        }
-                    }
-
-                    // Calculate due date for the immediate invoice
-                    let dueDate = new Date(startDate)
-                    if (newService.frequency === 'one-time') {
-                        dueDate.setDate(dueDate.getDate() + 30)
-                    } else {
-                        if (nextBilling) {
-                            dueDate = new Date(nextBilling)
-                        }
-                    }
-
-                    // Create the invoice
-                    const invoiceNumber = `INV-${Date.now()}`
-                    const { data: invoiceData, error: invoiceError } = await supabase
-                        .from('invoices')
-                        .insert({
-                            client_id: selectedClientId,
-                            number: invoiceNumber,
-                            date: new Date().toISOString(),
-                            due_date: dueDate.toISOString(),
-                            items: [{
-                                description: newService.name,
-                                quantity: 1,
-                                price: parseFloat(newService.amount)
-                            }],
-                            total: parseFloat(newService.amount),
-                            status: 'pending',
-                            sent: false
-                        })
-                        .select()
-                        .single()
-
-                    if (invoiceError) throw invoiceError
-                    invoiceId = invoiceData.id
-                }
-            } else {
-                // For edits, preserve existing next_billing_date unless logic dictates otherwise (complex, skipping auto-update of billing date for now to avoid messing up cycles)
-                // Ideally, we might ask the user if they want to reset the billing cycle.
-                // For now, we'll keep the existing next_billing_date if it exists, or calculate if missing.
-                if (serviceToEdit.next_billing_date) {
-                    nextBilling = new Date(serviceToEdit.next_billing_date)
-                }
+            if (!user) {
+                alert("Sesión expirada")
+                return
             }
+
+            if (!clientId) {
+                alert("Error: No se ha identificado el cliente.")
+                return
+            }
+
+            const serviceData = {
+                client_id: clientId,
+                name: formData.name,
+                description: formData.description,
+                amount: formData.amount,
+                quantity: formData.quantity, // Save quantity to DB
+                type: formData.type,
+                frequency: formData.type === 'recurring' ? formData.frequency : null,
+                status: formData.status
+            }
+
+            let result
+            let serviceId = null
 
             if (serviceToEdit) {
-                // UPDATE
-                const { error } = await supabase
-                    .from('subscriptions')
-                    .update({
-                        name: newService.name,
-                        service_type: newService.service_type,
-                        frequency: newService.frequency,
-                        amount: parseFloat(newService.amount),
-                        start_date: newService.start_date,
-                        // Do not update next_billing_date automatically on simple edit to avoid resetting cycles
-                        // next_billing_date: nextBilling ? nextBilling.toISOString() : null, 
-                    })
+                // Update
+                result = await supabase
+                    .from('services')
+                    .update(serviceData)
                     .eq('id', serviceToEdit.id)
+                    .select()
+                    .single()
 
-                if (error) throw error
-
-                // Sync with Invoice if exists
-                if (serviceToEdit.invoice_id) {
-                    // We assume the invoice corresponds to this service. 
-                    // We update the total and the first item (or replace items if we assume 1-to-1)
-                    // For safety, let's just update the total and replace items with the new service details
-                    // This keeps it consistent with "Create Service -> Create Invoice" logic
-
-                    const { error: invoiceError } = await supabase
-                        .from('invoices')
-                        .update({
-                            total: parseFloat(newService.amount),
-                            items: [{
-                                description: newService.name,
-                                quantity: 1,
-                                price: parseFloat(newService.amount)
-                            }]
-                        })
-                        .eq('id', serviceToEdit.invoice_id)
-                        .eq('status', 'pending') // Only update if pending to avoid changing history of paid/sent invoices
-
-                    if (invoiceError) {
-                        console.error('Error updating linked invoice:', invoiceError)
-                        // We don't throw here to avoid failing the service update if invoice update fails (e.g. if not pending)
-                    }
-                }
+                if (result.data) serviceId = result.data.id
             } else {
-                // INSERT
-                const { error } = await supabase
-                    .from('subscriptions')
-                    .insert([{
-                        client_id: selectedClientId,
-                        name: newService.name,
-                        service_type: newService.service_type,
-                        frequency: newService.frequency,
-                        amount: parseFloat(newService.amount),
-                        start_date: newService.start_date,
-                        status: 'active',
-                        next_billing_date: nextBilling ? nextBilling.toISOString() : null,
-                        invoice_id: invoiceId
-                    }])
+                // Insert
+                result = await supabase
+                    .from('services')
+                    .insert(serviceData)
+                    .select()
+                    .single()
 
-                if (error) throw error
+                if (result.data) serviceId = result.data.id
             }
 
-            setIsOpen(false)
-            // Reset form
-            setNewService({
-                name: '',
-                service_type: 'marketing',
-                frequency: 'monthly',
-                amount: '',
-                start_date: new Date().toISOString().split('T')[0]
-            })
-            if (!clientId) setSelectedClientId("")
+            if (result.error) throw result.error
 
+            // Create Invoice Logic (Only for new services that are active)
+            // If it's a new service and has a price, we create a pending invoice
+            if (!serviceToEdit && serviceId && formData.amount && formData.amount > 0) {
+                const invoiceNumber = `INV-${Date.now().toString().slice(-6)}`
+                const dueDate = new Date()
+                dueDate.setDate(dueDate.getDate() + (formData.type === 'one_off' ? 15 : 5))
+
+                const { error: invError } = await supabase.from('invoices').insert({
+                    client_id: clientId,
+                    service_id: serviceId,
+                    number: invoiceNumber,
+                    date: new Date().toISOString(),
+                    due_date: dueDate.toISOString(),
+                    status: 'pending',
+                    total: formData.amount,
+                    items: [{
+                        description: `${formData.name} (${formData.type === 'one_off' ? 'Pago único' : 'Mensual'}) [x${formData.quantity}]`,
+                        quantity: formData.quantity || 1,
+                        price: unitPrice // Invoice item price is unit price
+                    }]
+                })
+
+                if (invError) console.error("Error creating initial invoice:", invError)
+            }
+
+            // Success
             if (onSuccess) onSuccess()
+            handleOpenChange(false)
+            setStep('catalog')
 
-        } catch (error) {
-            console.error('Error saving service:', error)
-            alert('Error al guardar el servicio')
+        } catch (error: any) {
+            console.error("Error saving service:", error)
+            alert(`Error al guardar el servicio: ${error.message || error}`)
         } finally {
-            setSaving(false)
+            setLoading(false)
         }
     }
 
+    // Render logic
+    const isEditing = !!serviceToEdit
+
     return (
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <Dialog open={isOpen} onOpenChange={handleOpenChange}>
             <DialogTrigger asChild>
                 {trigger || (
                     <Button className="bg-brand-pink hover:bg-brand-pink/90 text-white shadow-md border-0">
@@ -254,122 +235,161 @@ export function AddServiceModal({ clientId, clientName, onSuccess, trigger, serv
                     </Button>
                 )}
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
-                <DialogHeader>
-                    <DialogTitle>{serviceToEdit ? 'Editar Servicio' : 'Nuevo Servicio'}</DialogTitle>
-                    <DialogDescription>
-                        {serviceToEdit
-                            ? "Modifica los detalles del servicio existente."
-                            : clientId
-                                ? `Añade un nuevo servicio o suscripción para ${clientName}`
-                                : "Crea un nuevo servicio y asígnalo a un cliente"
-                        }
-                    </DialogDescription>
-                </DialogHeader>
-
-                <div className="grid gap-4 py-4">
-                    {!clientId && !serviceToEdit && (
-                        <div className="grid gap-2">
-                            <Label htmlFor="client">Cliente</Label>
-                            <select
-                                id="client"
-                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                value={selectedClientId}
-                                onChange={(e) => setSelectedClientId(e.target.value)}
-                            >
-                                <option value="">Seleccionar cliente...</option>
-                                {clients.map(client => (
-                                    <option key={client.id} value={client.id}>{client.name}</option>
-                                ))}
-                            </select>
-                        </div>
-                    )}
-
-                    <div className="grid gap-2">
-                        <Label htmlFor="name">Nombre del Servicio</Label>
-                        <Input
-                            id="name"
-                            placeholder="Ej: Marketing Digital Pro"
-                            value={newService.name}
-                            onChange={(e) => setNewService({ ...newService, name: e.target.value })}
-                        />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="grid gap-2">
-                            <Label htmlFor="service_type">Tipo de Servicio</Label>
-                            <select
-                                id="service_type"
-                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                value={newService.service_type}
-                                onChange={(e) => {
-                                    const type = e.target.value
-                                    setNewService({
-                                        ...newService,
-                                        service_type: type,
-                                        frequency: type === 'hosting' ? 'yearly' : type === 'other' ? 'one-time' : 'monthly'
-                                    })
-                                }}
-                            >
-                                <option value="marketing">Marketing</option>
-                                <option value="marketing_ads">Marketing + Meta Ads</option>
-                                <option value="ads">Meta Ads</option>
-                                <option value="branding">Branding / Logo</option>
-                                <option value="crm">CRM / Software</option>
-                                <option value="hosting">Hosting / Dominio</option>
-                                <option value="other">Otro</option>
-                            </select>
-                        </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="frequency">Frecuencia</Label>
-                            <select
-                                id="frequency"
-                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                value={newService.frequency}
-                                onChange={(e) => setNewService({ ...newService, frequency: e.target.value })}
-                                disabled={newService.service_type === 'hosting'}
-                            >
-                                <option value="one-time">Una sola vez (Servicio único)</option>
-                                <option value="biweekly">Quincenal (cada 15 días)</option>
-                                <option value="monthly">Mensual</option>
-                                <option value="quarterly">Trimestral (cada 3 meses)</option>
-                                <option value="yearly">Anual</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="grid gap-2">
-                            <Label htmlFor="amount">Monto</Label>
-                            <Input
-                                id="amount"
-                                type="number"
-                                placeholder="0.00"
-                                value={newService.amount}
-                                onChange={(e) => setNewService({ ...newService, amount: e.target.value })}
+            <DialogContent className={cn("transition-all duration-300", step === 'catalog' && !isEditing ? "sm:max-w-4xl p-0 bg-transparent shadow-none border-0" : "sm:max-w-[600px]")}>
+                {step === 'catalog' && !isEditing ? (
+                    <>
+                        <DialogTitle className="sr-only">Seleccionar Servicio</DialogTitle>
+                        <div className="bg-white rounded-lg shadow-xl overflow-hidden">
+                            <ServiceCatalogSelector
+                                onSelect={handleCatalogSelect}
+                                onCancel={() => handleOpenChange(false)}
                             />
+                            <div className="bg-gray-50 p-4 border-t border-gray-100 flex justify-center">
+                                <Button variant="link" onClick={() => setStep('form')} className="text-gray-500 hover:text-brand-pink">
+                                    Omitir catálogo y crear desde cero
+                                </Button>
+                            </div>
                         </div>
-                        {newService.service_type !== 'other' && (
-                            <div className="grid gap-2">
-                                <Label htmlFor="start_date">Inicio</Label>
+                    </>
+                ) : (
+                    <>
+                        <DialogHeader>
+                            <DialogTitle>{isEditing ? "Editar Servicio" : "Nuevo Servicio"}</DialogTitle>
+                            <DialogDescription>
+                                {isEditing ? "Modifica los detalles del servicio existente." : "Configura los detalles del nuevo servicio para este cliente."}
+                            </DialogDescription>
+                        </DialogHeader>
+
+                        <div className="grid gap-6 py-4">
+                            {/* Service Name */}
+                            <div className="space-y-2">
+                                <Label htmlFor="name">Nombre del Servicio</Label>
                                 <Input
-                                    id="start_date"
-                                    type="date"
-                                    value={newService.start_date}
-                                    onChange={(e) => setNewService({ ...newService, start_date: e.target.value })}
+                                    id="name"
+                                    placeholder="Ej. Hosting Premium, Diseño Web..."
+                                    value={formData.name}
+                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                 />
                             </div>
-                        )}
-                    </div>
-                </div>
 
-                <DialogFooter>
-                    <Button variant="outline" onClick={() => setIsOpen(false)}>Cancelar</Button>
-                    <Button onClick={handleSaveService} disabled={saving} className="bg-brand-pink hover:bg-brand-pink/90 text-white shadow-md border-0">
-                        {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                        {serviceToEdit ? 'Actualizar' : 'Guardar'}
-                    </Button>
-                </DialogFooter>
+                            {/* Service Type & Frequency */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label>Tipo de Servicio</Label>
+                                    <Select
+                                        value={formData.type}
+                                        onValueChange={(val: any) => setFormData({ ...formData, type: val })}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="recurring">Recurrente (Suscripción)</SelectItem>
+                                            <SelectItem value="one_off">Único (One-time)</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                {formData.type === 'recurring' && (
+                                    <div className="space-y-2">
+                                        <Label>Frecuencia de Cobro</Label>
+                                        <Select
+                                            value={formData.frequency}
+                                            onValueChange={(val: any) => setFormData({ ...formData, frequency: val })}
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="monthly">Mensual</SelectItem>
+                                                <SelectItem value="biweekly">Quincenal</SelectItem>
+                                                <SelectItem value="quarterly">Trimestral</SelectItem>
+                                                <SelectItem value="semiannual">Semestral</SelectItem>
+                                                <SelectItem value="yearly">Anual</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Pricing Section - Unit Price & Quantity */}
+                            <div className="grid grid-cols-12 gap-4 items-end bg-gray-50 p-4 rounded-lg border border-gray-100">
+                                {/* Unit Price */}
+                                <div className="col-span-12 sm:col-span-5 space-y-2">
+                                    <Label htmlFor="unitPrice">Precio Unitario</Label>
+                                    <div className="relative">
+                                        <span className="absolute left-3 top-2.5 text-gray-500">$</span>
+                                        <Input
+                                            id="unitPrice"
+                                            type="number"
+                                            placeholder="0.00"
+                                            className="pl-7 bg-white"
+                                            value={unitPrice || ''}
+                                            onChange={(e) => setUnitPrice(parseFloat(e.target.value) || 0)}
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Operator */}
+                                <div className="hidden sm:flex col-span-1 items-center justify-center pb-3 text-gray-400 font-bold">×</div>
+
+                                {/* Quantity */}
+                                <div className="col-span-12 sm:col-span-2 space-y-2">
+                                    <Label htmlFor="quantity">Cant/Hrs</Label>
+                                    <Input
+                                        id="quantity"
+                                        type="number"
+                                        min="1"
+                                        placeholder="1"
+                                        className="bg-white text-center"
+                                        value={formData.quantity}
+                                        onChange={(e) => setFormData({ ...formData, quantity: parseFloat(e.target.value) || 1 })}
+                                    />
+                                </div>
+
+                                {/* Operator */}
+                                <div className="hidden sm:flex col-span-1 items-center justify-center pb-3 text-gray-400 font-bold">=</div>
+
+                                {/* Total Display (Read Only) */}
+                                <div className="col-span-12 sm:col-span-3 space-y-2">
+                                    <Label className="text-gray-500">Total</Label>
+                                    <div className="h-10 px-3 py-2 bg-gray-100 rounded-md border border-gray-200 text-gray-900 font-bold text-right flex items-center justify-end">
+                                        ${(formData.amount || 0).toLocaleString()}
+                                    </div>
+                                </div>
+                            </div>
+
+
+                            {/* Description */}
+                            <div className="space-y-2">
+                                <Label htmlFor="description">Descripción (Opcional)</Label>
+                                <Textarea
+                                    id="description"
+                                    placeholder="Detalles del servicio, entregables, etc."
+                                    value={formData.description || ''}
+                                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                    rows={3}
+                                />
+                            </div>
+                        </div>
+
+                        <DialogFooter className="flex justify-between sm:justify-between items-center w-full">
+                            {!isEditing && (
+                                <Button variant="ghost" onClick={() => setStep('catalog')} size="sm" className="text-gray-500">
+                                    <ArrowLeft className="mr-2 h-4 w-4" />
+                                    Volver al catálogo
+                                </Button>
+                            )}
+                            <div className="flex gap-2">
+                                <Button variant="outline" onClick={() => handleOpenChange(false)}>Cancelar</Button>
+                                <Button onClick={handleSaveService} disabled={loading || !formData.name} className="bg-brand-pink text-white">
+                                    {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    {isEditing ? "Guardar Cambios" : "Crear Servicio"}
+                                </Button>
+                            </div>
+                        </DialogFooter>
+                    </>
+                )}
             </DialogContent>
         </Dialog>
     )

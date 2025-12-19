@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import { getPortalData, acceptQuote, rejectQuote } from "@/app/actions/portal-actions"
-import { Client, Invoice, Quote, Briefing, ClientEvent } from "@/types"
+import { Client, Invoice, Quote, Briefing, ClientEvent, Service } from "@/types"
 import { Loader2, AlertTriangle, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { PortalDashboard } from "@/components/modules/portal/portal-dashboard"
@@ -12,6 +12,7 @@ import { QuoteDetailModal } from "@/components/modules/portal/quote-detail-modal
 export default function PortalPage() {
     const params = useParams()
     const [client, setClient] = useState<Client | null>(null)
+    const [services, setServices] = useState<Service[]>([])
     const [invoices, setInvoices] = useState<Invoice[]>([])
     const [quotes, setQuotes] = useState<Quote[]>([])
     const [briefings, setBriefings] = useState<Briefing[]>([])
@@ -46,6 +47,7 @@ export default function PortalPage() {
             setBriefings(data.briefings)
             setEvents(data.events)
             setSettings(data.settings || {})
+            setServices(data.services || [])
         } catch (err) {
             console.error(err)
             setError("No se pudo cargar la información. El enlace puede ser inválido.")
@@ -174,7 +176,9 @@ export default function PortalPage() {
                     onPay={handlePay}
                     onViewInvoice={setViewInvoice}
                     onViewQuote={setViewQuote}
+                    onViewQuote={setViewQuote}
                     settings={settings}
+                    services={services}
                 />
             </div>
 

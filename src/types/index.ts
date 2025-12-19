@@ -13,6 +13,32 @@ export type Client = {
     portal_short_token?: string
 }
 
+export type Service = {
+    id: string
+    created_at: string
+    client_id: string
+    name: string
+    description?: string
+    status: 'active' | 'paused' | 'completed' | 'cancelled'
+    type?: 'recurring' | 'one_off' // Default is recurring
+    frequency?: 'monthly' | 'biweekly' | 'quarterly' | 'semiannual' | 'yearly'
+    amount?: number
+    quantity?: number
+    start_date?: string
+    end_date?: string
+}
+
+export type ServiceCatalogItem = {
+    id: string
+    name: string
+    description?: string
+    category: string
+    type: 'recurring' | 'one_off'
+    frequency?: 'monthly' | 'biweekly' | 'quarterly' | 'semiannual' | 'yearly'
+    base_price: number
+    is_visible_in_portal: boolean
+}
+
 export type Lead = {
     id: string
     created_at: string
@@ -44,6 +70,7 @@ export type Quote = {
     lead_id?: string | null
     client?: Client
     lead?: Lead
+    service_id?: string | null
 }
 
 export type InvoiceItem = {
@@ -64,6 +91,7 @@ export type Invoice = {
     status: 'pending' | 'paid' | 'overdue' | 'cancelled'
     pdf_url?: string
     client?: Client
+    service_id?: string | null
 }
 
 export type ClientEvent = {
@@ -88,4 +116,5 @@ export type Briefing = {
     template?: {
         name: string
     }
+    service_id?: string | null
 }

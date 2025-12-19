@@ -9,15 +9,17 @@ import { DollarSign } from "lucide-react"
 
 interface PortalInvoiceListProps {
     invoices: Invoice[]
-    settings: any
-    selectedInvoices: string[]
-    onToggle: (id: string) => void
-    onToggleAll: () => void
+    settings?: any
+    selectedInvoices?: string[]
+    onToggle?: (id: string) => void
+    onToggleAll?: () => void
     onView: (invoice: Invoice) => void
+    compact?: boolean
+    onPay?: (invoiceIds: string[]) => void // Added for direct pay action in compact mode if needed
 }
 
-export function PortalInvoiceList({ invoices, settings, selectedInvoices, onToggle, onToggleAll, onView }: PortalInvoiceListProps) {
-    const paymentsEnabled = settings.enable_portal_payments !== false && settings.portal_modules?.payments !== false
+export function PortalInvoiceList({ invoices, settings = {}, selectedInvoices = [], onToggle, onToggleAll, onView, compact = false }: PortalInvoiceListProps) {
+    const paymentsEnabled = settings?.enable_portal_payments !== false && settings?.portal_modules?.payments !== false
     const pendingInvoices = invoices.filter(i => i.status !== 'paid')
 
     const getInvoiceStatus = (invoice: Invoice) => {
@@ -57,14 +59,14 @@ export function PortalInvoiceList({ invoices, settings, selectedInvoices, onTogg
                             <thead className="bg-gray-50 text-gray-500 font-medium border-b">
                                 <tr>
                                     <th className="px-6 py-4 w-12">
-                                        {paymentsEnabled && settings.enable_multi_invoice_payment !== false && (
+                                        {!compact && paymentsEnabled && settings?.enable_multi_invoice_payment !== false && onToggleAll && (
                                             <input
                                                 type="checkbox"
                                                 className="rounded border-gray-300 text-[var(--portal-primary)] focus:ring-[var(--portal-primary)]"
                                                 checked={pendingInvoices.length > 0 && selectedInvoices.length === pendingInvoices.length}
                                                 onChange={onToggleAll}
                                                 disabled={pendingInvoices.length === 0}
-                                                style={{ color: settings.portal_primary_color }}
+                                                style={{ color: settings?.portal_primary_color }}
                                             />
                                         )}
                                     </th>
@@ -85,13 +87,13 @@ export function PortalInvoiceList({ invoices, settings, selectedInvoices, onTogg
                                             style={{ animationDelay: `${index * 50}ms` }}
                                         >
                                             <td className="px-6 py-4">
-                                                {status !== 'paid' && paymentsEnabled && (
+                                                {status !== 'paid' && !compact && paymentsEnabled && onToggle && (
                                                     <input
                                                         type="checkbox"
                                                         className="rounded border-gray-300 text-[var(--portal-primary)] focus:ring-[var(--portal-primary)]"
                                                         checked={selectedInvoices.includes(invoice.id)}
                                                         onChange={() => onToggle(invoice.id)}
-                                                        style={{ color: settings.portal_primary_color }}
+                                                        style={{ color: settings?.portal_primary_color }}
                                                     />
                                                 )}
                                             </td>

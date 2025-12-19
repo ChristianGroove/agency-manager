@@ -77,6 +77,7 @@ type Client = {
     invoices: any[]
     hosting_accounts: any[]
     subscriptions: any[]
+    services: any[]
     portal_token?: string
     portal_short_token?: string
 }
@@ -99,6 +100,8 @@ export default function ClientDetailPage() {
 
     // Add Service Modal State
     const [invoiceFilter, setInvoiceFilter] = useState("all")
+    const [serviceToEdit, setServiceToEdit] = useState<any>(null)
+    const [isServiceModalOpen, setIsServiceModalOpen] = useState(false)
 
     // Edit Client Modal State
     const [isEditModalOpen, setIsEditModalOpen] = useState(false)
@@ -156,6 +159,7 @@ export default function ClientDetailPage() {
                 .from('clients')
                 .select(`
           *,
+          services (*),
           invoices (*),
           hosting_accounts (*),
           subscriptions (
@@ -829,19 +833,25 @@ export default function ClientDetailPage() {
                 {
                     activeTab === "services" && (
                         <div className="space-y-6">
-                            {/* Subscriptions Section */}
+                            {/* NEW Services Section */}
                             <Card className="border-0 shadow-lg">
                                 <CardHeader className="flex flex-row items-center justify-between pb-4">
                                     <div>
-                                        <CardTitle className="text-xl font-bold">Suscripciones Activas</CardTitle>
-                                        <CardDescription className="mt-1">Servicios recurrentes del cliente</CardDescription>
+                                        <CardTitle className="text-xl font-bold">Servicios Activos</CardTitle>
+                                        <CardDescription className="mt-1">Gestiona los servicios y suscripciones del cliente</CardDescription>
                                     </div>
                                     <AddServiceModal
                                         clientId={client.id}
                                         clientName={client.name}
+                                        open={isServiceModalOpen}
+                                        onOpenChange={setIsServiceModalOpen}
+                                        serviceToEdit={serviceToEdit}
                                         onSuccess={() => fetchClientData(client.id)}
                                         trigger={
-                                            <Button className="bg-brand-pink hover:bg-brand-pink/90 text-white shadow-md border-0">
+                                            <Button
+                                                onClick={() => setServiceToEdit(null)}
+                                                className="bg-brand-pink hover:bg-brand-pink/90 text-white shadow-md border-0"
+                                            >
                                                 <Plus className="mr-2 h-4 w-4" />
                                                 Añadir Servicio
                                             </Button>
@@ -849,45 +859,40 @@ export default function ClientDetailPage() {
                                     />
                                 </CardHeader>
                                 <CardContent>
-                                    {client.subscriptions?.filter(sub => sub.status === 'active' && sub.service_type !== 'hosting').length === 0 ? (
+                                    {!client.services || client.services.length === 0 ? (
                                         <div className="text-center py-12 border-2 border-dashed rounded-lg">
                                             <CreditCard className="mx-auto h-12 w-12 text-gray-400 mb-3" />
-                                            <p className="text-sm text-gray-500">No hay suscripciones activas</p>
+                                            <p className="text-sm text-gray-500">No hay servicios activos</p>
                                         </div>
                                     ) : (
                                         <div className="grid gap-4">
-                                            {client.subscriptions?.filter(sub => sub.status === 'active' && sub.service_type !== 'hosting').map((sub) => (
-                                                <Card key={sub.id} className="border border-gray-200 hover:shadow-md transition-shadow">
+                                            {client.services.map((service: any) => (
+                                                <Card key={service.id} className="border border-gray-200 hover:shadow-md transition-shadow">
                                                     <CardContent className="p-4">
                                                         <div className="flex items-center justify-between">
                                                             <div className="flex items-center gap-4 flex-1">
-                                                                <div className={cn(
-                                                                    "p-3 rounded-lg border",
-                                                                    sub.service_type === 'marketing' ? "bg-blue-50 border-blue-200 text-blue-700" :
-                                                                        sub.service_type === 'marketing_ads' ? "bg-indigo-50 border-indigo-200 text-indigo-700" :
-                                                                            sub.service_type === 'ads' ? "bg-purple-50 border-purple-200 text-purple-700" :
-                                                                                sub.service_type === 'branding' ? "bg-pink-50 border-pink-200 text-pink-700" :
-                                                                                    sub.service_type === 'crm' ? "bg-orange-50 border-orange-200 text-orange-700" :
-                                                                                        sub.service_type === 'hosting' ? "bg-slate-50 border-slate-200 text-slate-700" :
-                                                                                            "bg-gray-50 border-gray-200 text-gray-700"
-                                                                )}>
+                                                                <div className="p-3 rounded-lg border bg-gray-50 border-gray-200 text-gray-700">
                                                                     <CreditCard className="h-5 w-5" />
                                                                 </div>
                                                                 <div className="flex-1">
-                                                                    <h4 className="font-semibold text-gray-900">{sub.name}</h4>
-                                                                    <p className="text-sm text-gray-500">
-                                                                        {sub.frequency === 'one-time'
-                                                                            ? 'Servicio único'
-                                                                            : `${sub.frequency === 'biweekly' ? 'Quincenal' : sub.frequency === 'monthly' ? 'Mensual' : sub.frequency === 'quarterly' ? 'Trimestral' : 'Anual'} • Próximo cobro: ${sub.next_billing_date ? new Date(sub.next_billing_date).toLocaleDateString() : 'N/A'}`
-                                                                        }
+                                                                    <div className="flex items-center gap-2">
+                                                                        <h4 className="font-semibold text-gray-900">{service.name}</h4>
+                                                                        {service.type === 'one_off' && (
+                                                                            <Badge variant="outline" className="text-xs bg-orange-50 text-orange-700 border-orange-200">
+                                                                                Puntual
+                                                                            </Badge>
+                                                                        )}
+                                                                        <Badge className="bg-green-100 text-green-700 border-green-300">Activo</Badge>
+                                                                    </div>
+                                                                    <p className="text-sm text-gray-500 mt-1">
+                                                                        {service.description || "Sin descripción"}
+                                                                    </p>
+                                                                    <p className="text-xs text-gray-400 mt-1">
+                                                                        Creado: {new Date(service.created_at).toLocaleDateString()}
                                                                     </p>
                                                                 </div>
                                                             </div>
                                                             <div className="flex items-center gap-4">
-                                                                <div className="text-right">
-                                                                    <p className="text-xl font-bold text-gray-900">${sub.amount?.toLocaleString()}</p>
-                                                                    <Badge className="bg-green-100 text-green-700 border-green-300 mt-1">Activo</Badge>
-                                                                </div>
                                                                 <DropdownMenu>
                                                                     <DropdownMenuTrigger asChild>
                                                                         <Button variant="ghost" size="icon" className="hover:bg-gray-100">
@@ -895,200 +900,36 @@ export default function ClientDetailPage() {
                                                                         </Button>
                                                                     </DropdownMenuTrigger>
                                                                     <DropdownMenuContent align="end" className="w-56">
-                                                                        <AddServiceModal
-                                                                            clientId={client.id}
-                                                                            clientName={client.name}
-                                                                            serviceToEdit={sub}
-                                                                            onSuccess={() => fetchClientData(client.id)}
-                                                                            trigger={
-                                                                                <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                                                                                    <Edit className="mr-2 h-4 w-4" />
-                                                                                    <span>Editar</span>
-                                                                                </DropdownMenuItem>
-                                                                            }
-                                                                        />
-                                                                        {sub.invoice_id && (
-                                                                            <>
-                                                                                <DropdownMenuItem onClick={() => router.push(`/invoices/${sub.invoice_id}`)}>
-                                                                                    <FileText className="mr-2 h-4 w-4" />
-                                                                                    <span>Ver Factura</span>
-                                                                                </DropdownMenuItem>
-                                                                                <DropdownMenuItem
-                                                                                    disabled={sub.invoice?.sent}
-                                                                                    onClick={async () => {
-                                                                                        if (!sub.invoice?.sent) {
-                                                                                            try {
-                                                                                                const { error } = await supabase
-                                                                                                    .from('invoices')
-                                                                                                    .update({ sent: true })
-                                                                                                    .eq('id', sub.invoice_id)
-                                                                                                if (error) throw error
-                                                                                                await fetchClientData(client.id)
-                                                                                            } catch (error) {
-                                                                                                console.error('Error marking as sent:', error)
-                                                                                                alert('Error al marcar como enviada')
-                                                                                            }
-                                                                                        }
-                                                                                    }}
-                                                                                >
-                                                                                    {sub.invoice?.sent ? (
-                                                                                        <>
-                                                                                            <CheckCircle2 className="mr-2 h-4 w-4" />
-                                                                                            <span className="text-muted-foreground">Enviada</span>
-                                                                                        </>
-                                                                                    ) : (
-                                                                                        <>
-                                                                                            <Send className="mr-2 h-4 w-4" />
-                                                                                            <span>Marcar Enviada</span>
-                                                                                        </>
-                                                                                    )}
-                                                                                </DropdownMenuItem>
-                                                                            </>
-                                                                        )}
                                                                         <DropdownMenuItem
-                                                                            className="text-red-600 focus:text-red-600"
-                                                                            onClick={async () => {
-                                                                                if (confirm('¿Eliminar esta suscripción y su factura asociada?')) {
-                                                                                    try {
-                                                                                        if (sub.invoice_id) {
-                                                                                            await supabase
-                                                                                                .from('invoices')
-                                                                                                .delete()
-                                                                                                .eq('id', sub.invoice_id)
-                                                                                        }
-                                                                                        const { error } = await supabase
-                                                                                            .from('subscriptions')
-                                                                                            .delete()
-                                                                                            .eq('id', sub.id)
-                                                                                        if (error) throw error
-                                                                                        await fetchClientData(client.id)
-                                                                                    } catch (error) {
-                                                                                        console.error('Error deleting subscription:', error)
-                                                                                        alert('Error al eliminar suscripción')
-                                                                                    }
-                                                                                }
+                                                                            onClick={() => {
+                                                                                setServiceToEdit(service)
+                                                                                setIsServiceModalOpen(true)
                                                                             }}
                                                                         >
-                                                                            <Trash2 className="mr-2 h-4 w-4" />
-                                                                            <span>Eliminar</span>
+                                                                            <Pencil className="mr-2 h-4 w-4" />
+                                                                            <span>Editar</span>
                                                                         </DropdownMenuItem>
-                                                                    </DropdownMenuContent>
-                                                                </DropdownMenu>
-                                                            </div>
-                                                        </div>
-                                                    </CardContent>
-                                                </Card>
-                                            ))}
-                                        </div>
-                                    )}
-                                </CardContent>
-                            </Card>
-
-                            {/* Hosting Section */}
-                            <Card className="border-0 shadow-lg">
-                                <CardHeader>
-                                    <CardTitle className="text-xl font-bold">Hosting & Dominios</CardTitle>
-                                    <CardDescription className="mt-1">Servicios de alojamiento y dominios</CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    {client.subscriptions?.filter(sub => sub.status === 'active' && sub.service_type === 'hosting').length === 0 ? (
-                                        <div className="text-center py-12 border-2 border-dashed rounded-lg">
-                                            <Server className="mx-auto h-12 w-12 text-gray-400 mb-3" />
-                                            <p className="text-sm text-gray-500">No hay servicios de hosting registrados</p>
-                                        </div>
-                                    ) : (
-                                        <div className="grid gap-4">
-                                            {client.subscriptions?.filter(sub => sub.status === 'active' && sub.service_type === 'hosting').map((sub) => (
-                                                <Card key={sub.id} className="border border-gray-200 hover:shadow-md transition-shadow">
-                                                    <CardContent className="p-4">
-                                                        <div className="flex items-center justify-between">
-                                                            <div className="flex items-center gap-4 flex-1">
-                                                                <div className="p-3 bg-orange-100 text-orange-600 rounded-lg">
-                                                                    <Server className="h-5 w-5" />
-                                                                </div>
-                                                                <div className="flex-1">
-                                                                    <h4 className="font-semibold text-gray-900">{sub.name}</h4>
-                                                                    <p className="text-sm text-gray-500">
-                                                                        {sub.frequency === 'one-time'
-                                                                            ? 'Servicio único'
-                                                                            : `${sub.frequency === 'biweekly' ? 'Quincenal' : sub.frequency === 'monthly' ? 'Mensual' : sub.frequency === 'quarterly' ? 'Trimestral' : 'Anual'} • Próximo cobro: ${sub.next_billing_date ? new Date(sub.next_billing_date).toLocaleDateString() : 'N/A'}`
-                                                                        }
-                                                                    </p>
-                                                                </div>
-                                                            </div>
-                                                            <div className="flex items-center gap-4">
-                                                                <div className="text-right">
-                                                                    <p className="text-xl font-bold text-gray-900">${sub.amount?.toLocaleString()}</p>
-                                                                    <Badge className="bg-green-100 text-green-700 border-green-300 mt-1">Activo</Badge>
-                                                                </div>
-                                                                <DropdownMenu>
-                                                                    <DropdownMenuTrigger asChild>
-                                                                        <Button variant="ghost" size="icon" className="hover:bg-gray-100">
-                                                                            <MoreVertical className="h-4 w-4" />
-                                                                        </Button>
-                                                                    </DropdownMenuTrigger>
-                                                                    <DropdownMenuContent align="end" className="w-56">
-                                                                        <AddServiceModal
-                                                                            clientId={client.id}
-                                                                            clientName={client.name}
-                                                                            serviceToEdit={sub}
-                                                                            onSuccess={() => fetchClientData(client.id)}
-                                                                            trigger={
-                                                                                <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                                                                                    <Edit className="mr-2 h-4 w-4" />
-                                                                                    <span>Editar</span>
-                                                                                </DropdownMenuItem>
-                                                                            }
-                                                                        />
-                                                                        {sub.invoice_id && (
-                                                                            <>
-                                                                                <DropdownMenuItem onClick={() => router.push(`/invoices/${sub.invoice_id}`)}>
-                                                                                    <FileText className="mr-2 h-4 w-4" />
-                                                                                    <span>Ver Factura</span>
-                                                                                </DropdownMenuItem>
-                                                                                <DropdownMenuItem
-                                                                                    disabled={sub.invoice?.sent}
-                                                                                    onClick={async () => {
-                                                                                        if (!sub.invoice?.sent) {
-                                                                                            try {
-                                                                                                const { error } = await supabase
-                                                                                                    .from('invoices')
-                                                                                                    .update({ sent: true })
-                                                                                                    .eq('id', sub.invoice_id)
-                                                                                                if (error) throw error
-                                                                                                await fetchClientData(client.id)
-                                                                                            } catch (error) {
-                                                                                                console.error('Error marking as sent:', error)
-                                                                                                alert('Error al marcar como enviada')
-                                                                                            }
-                                                                                        }
-                                                                                    }}
-                                                                                >
-                                                                                    <Send className={cn("mr-2 h-4 w-4", sub.invoice?.sent ? "text-muted-foreground" : "")} />
-                                                                                    <span>{sub.invoice?.sent ? 'Ya enviada' : 'Marcar como enviada'}</span>
-                                                                                </DropdownMenuItem>
-                                                                            </>
-                                                                        )}
                                                                         <DropdownMenuItem
                                                                             className="text-red-600 focus:text-red-600"
                                                                             onClick={async () => {
-                                                                                if (confirm('¿Estás seguro de que deseas eliminar esta suscripción?')) {
+                                                                                if (confirm('¿Eliminar este servicio? Esto no borrará las facturas asociadas.')) {
                                                                                     try {
                                                                                         const { error } = await supabase
-                                                                                            .from('subscriptions')
+                                                                                            .from('services')
                                                                                             .delete()
-                                                                                            .eq('id', sub.id)
+                                                                                            .eq('id', service.id)
+
                                                                                         if (error) throw error
                                                                                         await fetchClientData(client.id)
                                                                                     } catch (error) {
-                                                                                        console.error('Error deleting subscription:', error)
-                                                                                        alert('Error al eliminar la suscripción')
+                                                                                        console.error('Error deleting service:', error)
+                                                                                        alert('Error al eliminar servicio')
                                                                                     }
                                                                                 }
                                                                             }}
                                                                         >
                                                                             <Trash2 className="mr-2 h-4 w-4" />
-                                                                            <span>Eliminar Suscripción</span>
+                                                                            <span>Eliminar Servicio</span>
                                                                         </DropdownMenuItem>
                                                                     </DropdownMenuContent>
                                                                 </DropdownMenu>

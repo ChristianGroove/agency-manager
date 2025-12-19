@@ -9,9 +9,10 @@ import { Badge } from "@/components/ui/badge"
 
 interface PortalBriefingListProps {
     briefings: Briefing[]
+    onView?: (id: string) => void
 }
 
-export function PortalBriefingList({ briefings }: PortalBriefingListProps) {
+export function PortalBriefingList({ briefings, onView }: PortalBriefingListProps) {
     const getStatusBadge = (status: string) => {
         switch (status) {
             case 'draft': return <Badge variant="outline">Borrador</Badge>
@@ -62,6 +63,14 @@ export function PortalBriefingList({ briefings }: PortalBriefingListProps) {
                                     <CheckCircle2 className="mr-2 h-4 w-4" />
                                     Enviado
                                 </Button>
+                            ) : onView ? (
+                                <Button
+                                    onClick={() => onView(briefing.id)}
+                                    className="w-full bg-pink-500 hover:bg-pink-600 text-white"
+                                >
+                                    Continuar
+                                    <ArrowRight className="ml-2 h-4 w-4" />
+                                </Button>
                             ) : (
                                 <Link href={`/briefing/${briefing.token}`} target="_blank">
                                     <Button className="w-full bg-pink-500 hover:bg-pink-600 text-white">
@@ -74,6 +83,6 @@ export function PortalBriefingList({ briefings }: PortalBriefingListProps) {
                     </div>
                 ))}
             </CardContent>
-        </Card>
+        </Card >
     )
 }

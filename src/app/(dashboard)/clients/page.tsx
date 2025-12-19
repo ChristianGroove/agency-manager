@@ -34,6 +34,7 @@ type Client = {
     invoices: { id: string; total: number; status: string; due_date?: string }[]
     hosting_accounts: { status: string; renewal_date: string }[]
     subscriptions: { id: string; name: string; next_billing_date: string; status: string; amount: number; service_type: string; frequency: string }[]
+    services?: { id: string; status: string; name: string }[]
 }
 
 export default function ClientsPage() {
@@ -116,7 +117,8 @@ export default function ClientsPage() {
           *,
           invoices (id, total, status, due_date),
           hosting_accounts (status, renewal_date),
-          subscriptions (id, name, next_billing_date, status, amount, service_type, frequency)
+          subscriptions (id, name, next_billing_date, status, amount, service_type, frequency),
+          services (id, status)
         `)
 
             if (error) throw error
@@ -682,7 +684,7 @@ export default function ClientsPage() {
                                                     </span>
                                                 </div>
                                                 <p className="text-lg font-bold text-gray-900 leading-none">
-                                                    {client.subscriptions?.filter((s: any) => s.status === 'active').length || 0}
+                                                    {client.services ? client.services.filter((s: any) => s.status === 'active').length : (client.subscriptions?.filter((s: any) => s.status === 'active').length || 0)}
                                                 </p>
                                             </div>
                                         </div>
@@ -830,6 +832,5 @@ export default function ClientsPage() {
                 </DialogContent>
             </Dialog>
         </div>
-
     )
 }
