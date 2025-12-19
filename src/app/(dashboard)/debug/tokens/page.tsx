@@ -105,14 +105,15 @@ export default function DebugTokensPage() {
                                     <RefreshCw className={`h-4 w-4 ${regenerating === client.id ? 'animate-spin' : ''}`} />
                                 </Button>
                                 {client.portal_short_token && (
-                                    <Link
-                                        href={`https://mi.pixy.com.co/${client.portal_short_token}`}
+                                    <a
+                                        href={`${typeof window !== 'undefined' ? window.location.origin : ''}/portal/${client.portal_short_token}`}
                                         target="_blank"
+                                        rel="noopener noreferrer"
                                     >
                                         <Button size="icon" variant="outline" className="h-8 w-8 shrink-0">
                                             <ExternalLink className="h-4 w-4" />
                                         </Button>
-                                    </Link>
+                                    </a>
                                 )}
                             </div>
                         </CardContent>

@@ -198,12 +198,30 @@ export async function submitBriefing(briefingId: string) {
 
     if (error) throw error
 
+    // Fetch briefing details for event and email
+    const briefing = await getBriefingById(briefingId)
+
+    // Create Client Event
+    if (briefing.client_id) {
+        const { supabaseAdmin } = await import('@/lib/supabase-admin')
+        await supabaseAdmin.from('client_events').insert({
+            client_id: briefing.client_id,
+            type: 'briefing',
+            title: 'Briefing Completado',
+            description: `Se ha completado el briefing: ${briefing.template?.name}`,
+            metadata: {
+                briefing_id: briefing.id,
+                template_name: briefing.template?.name
+            },
+            icon: 'FileText'
+        })
+    }
+
     // Send email notification
     try {
         const apiKey = process.env.RESEND_API_KEY
         if (apiKey) {
             const resend = new Resend(apiKey)
-            const briefing = await getBriefingById(briefingId)
 
             const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
             const briefingLink = `${appUrl}/briefings/${briefingId}`

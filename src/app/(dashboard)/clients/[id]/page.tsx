@@ -594,16 +594,16 @@ export default function ClientDetailPage() {
                                     <DropdownMenuContent align="end">
                                         <DropdownMenuItem onClick={() => {
                                             const token = client.portal_short_token || client.portal_token
-                                            const domain = 'https://mi.pixy.com.co'
-                                            window.open(`${domain}/${token}`, '_blank')
+                                            const domain = window.location.origin
+                                            window.open(`${domain}/portal/${token}`, '_blank')
                                         }}>
                                             <ExternalLink className="mr-2 h-4 w-4" />
                                             Ver Portal
                                         </DropdownMenuItem>
                                         <DropdownMenuItem onClick={() => {
                                             const token = client.portal_short_token || client.portal_token
-                                            const domain = 'https://mi.pixy.com.co'
-                                            const url = `${domain}/${token}`
+                                            const domain = window.location.origin
+                                            const url = `${domain}/portal/${token}`
                                             navigator.clipboard.writeText(url)
                                             alert("Enlace copiado al portapapeles")
                                         }}>
@@ -612,8 +612,8 @@ export default function ClientDetailPage() {
                                         </DropdownMenuItem>
                                         <DropdownMenuItem onClick={() => {
                                             const token = client.portal_short_token || client.portal_token
-                                            const domain = 'https://mi.pixy.com.co'
-                                            const url = `${domain}/${token}`
+                                            const domain = window.location.origin
+                                            const url = `${domain}/portal/${token}`
                                             const text = `Hola ${client.name}, aquí tienes tu enlace al portal de clientes para ver tus facturas y realizar pagos: ${url}`
                                             const waUrl = getWhatsAppLink(client.phone, text, settings)
                                             window.open(waUrl, '_blank')

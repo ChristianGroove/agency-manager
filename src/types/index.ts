@@ -65,3 +65,27 @@ export type Invoice = {
     pdf_url?: string
     client?: Client
 }
+
+export type ClientEvent = {
+    id: string
+    created_at: string
+    client_id: string
+    type: string
+    title: string
+    description: string
+    metadata: any
+    icon?: string
+}
+
+export type Briefing = {
+    id: string
+    template_id: string
+    client_id?: string
+    status: 'draft' | 'sent' | 'in_progress' | 'submitted' | 'locked'
+    token: string
+    metadata?: any
+    created_at: string
+    template?: {
+        name: string
+    }
+}
