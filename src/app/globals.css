@@ -35,7 +35,9 @@
   --color-brand-dark: var(--brand-dark);
   --color-brand-pink: var(--brand-pink);
   --color-brand-cyan: var(--brand-cyan);
+
   --animate-border-spin: border-spin 3s linear infinite;
+  --animate-aurora: aurora 60s linear infinite;
 
   @keyframes border-spin {
     from {
@@ -47,6 +49,15 @@
     }
   }
 
+  @keyframes aurora {
+    from {
+      background-position: 50% 50%, 50% 50%;
+    }
+
+    to {
+      background-position: 350% 50%, 350% 50%;
+    }
+  }
 }
 
 @layer utilities {
@@ -58,20 +69,20 @@
     animation: shadow-pulse-amber 4s ease-in-out infinite;
   }
 
-  .animate-float {
-    animation: float 6s ease-in-out infinite;
+  .animate-float-sidebar {
+    animation: float-sidebar 8s ease-in-out infinite;
   }
 }
 
-@keyframes float {
+@keyframes float-sidebar {
 
   0%,
   100% {
-    transform: translateY(0);
+    transform: translateY(-5px);
   }
 
   50% {
-    transform: translateY(-10px);
+    transform: translateY(5px);
   }
 }
 

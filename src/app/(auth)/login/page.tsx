@@ -9,6 +9,9 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2 } from "lucide-react"
 
+import { ParticlesBackground } from "@/components/ui/particles-background"
+
+
 export default function LoginPage() {
     const router = useRouter()
     const [isLoading, setIsLoading] = useState(false)
@@ -26,57 +29,80 @@ export default function LoginPage() {
             setError(result.error)
             setIsLoading(false)
         }
-        // If success, the server action redirects, so we don't need to do anything here.
-        // But since we are preventing default, the redirect might not happen automatically if we don't handle it?
-        // No, `redirect` in server action throws an error that Next.js catches to redirect.
-        // However, when called from a client component event handler, we might need to handle it.
-        // Actually, `redirect` works in server actions called from client components too.
     }
 
     return (
-        <Card className="w-[350px]">
-            <CardHeader>
-                <CardTitle>Iniciar Sesión</CardTitle>
-                <CardDescription>
-                    Ingresa tus credenciales para acceder al panel.
-                </CardDescription>
-            </CardHeader>
-            <form onSubmit={handleSubmit}>
-                <CardContent>
-                    <div className="grid w-full items-center gap-4">
-                        <div className="flex flex-col space-y-1.5">
-                            <Label htmlFor="email">Email</Label>
-                            <Input
-                                id="email"
-                                name="email"
-                                type="email"
-                                placeholder="admin@agencia.com"
-                                required
-                            />
-                        </div>
-                        <div className="flex flex-col space-y-1.5">
-                            <Label htmlFor="password">Contraseña</Label>
-                            <Input
-                                id="password"
-                                name="password"
-                                type="password"
-                                required
-                            />
-                        </div>
-                        {error && (
-                            <div className="text-sm text-red-500 font-medium">
-                                {error}
+        <ParticlesBackground>
+            <div className="z-10 flex flex-col items-center gap-6 animate-in fade-in zoom-in duration-500">
+                <div className="mb-6">
+                    <img
+                        src="/branding/logo light.svg"
+                        alt="Pixy"
+                        className="h-16 w-auto"
+                    />
+                </div>
+
+                <Card className="w-[380px] bg-black/10 backdrop-blur-md border-white/10 text-white shadow-[0_0_40px_-10px_rgba(0,0,0,0.5)] ring-1 ring-white/10 hover:ring-white/20 transition-all duration-500">
+                    <CardHeader className="space-y-1 text-center pb-8">
+                        <CardTitle className="text-2xl font-bold tracking-tight">¡Bienvenido Chris!</CardTitle>
+                        <CardDescription className="text-gray-400">
+                            Ingresa tus credenciales para acceder
+                        </CardDescription>
+                    </CardHeader>
+                    <form onSubmit={handleSubmit}>
+                        <CardContent className="space-y-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="email" className="text-gray-300">Email</Label>
+                                <Input
+                                    id="email"
+                                    name="email"
+                                    type="email"
+                                    placeholder="admin@pixy.com"
+                                    required
+                                    className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-brand-pink/50 focus:ring-brand-pink/20 transition-all h-11 backdrop-blur-sm"
+                                />
                             </div>
-                        )}
-                    </div>
-                </CardContent>
-                <CardFooter className="flex justify-between">
-                    <Button type="submit" className="w-full" disabled={isLoading}>
-                        {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Ingresar
-                    </Button>
-                </CardFooter>
-            </form>
-        </Card>
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <Label htmlFor="password" className="text-gray-300">Contraseña</Label>
+                                </div>
+                                <Input
+                                    id="password"
+                                    name="password"
+                                    type="password"
+                                    required
+                                    className="bg-white/5 border-white/10 text-white focus:border-brand-pink/50 focus:ring-brand-pink/20 transition-all h-11 backdrop-blur-sm"
+                                />
+                            </div>
+                            {error && (
+                                <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-sm text-red-400 font-medium text-center animate-in fade-in slide-in-from-top-2">
+                                    {error}
+                                </div>
+                            )}
+                        </CardContent>
+                        <CardFooter className="pt-4 pb-8">
+                            <Button
+                                type="submit"
+                                className="w-full bg-gradient-to-r from-brand-pink to-brand-pink/80 hover:from-brand-pink/90 hover:to-brand-pink/70 text-white h-11 font-medium shadow-[0_0_20px_rgba(242,5,226,0.3)] hover:shadow-[0_0_30px_rgba(242,5,226,0.5)] transition-all hover:scale-[1.02] border border-white/10"
+                                disabled={isLoading}
+                            >
+                                {isLoading ? (
+                                    <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        Ingresando...
+                                    </>
+                                ) : (
+                                    "Iniciar Sesión"
+                                )}
+                            </Button>
+                        </CardFooter>
+                    </form>
+                </Card>
+
+                <p className="text-sm text-gray-500/80 font-medium">
+                    &copy; 2026 Pixy Agency
+                </p>
+            </div>
+        </ParticlesBackground>
     )
 }

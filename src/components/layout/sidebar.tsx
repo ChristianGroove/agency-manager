@@ -1,9 +1,12 @@
 "use client"
 
+import React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { LayoutDashboard, Users, Server, FileText, Settings, LogOut, CreditCard } from "lucide-react"
 import { cn } from "@/lib/utils"
+
+import { logout } from "@/app/actions/logout"
 
 const routes = [
     {
@@ -46,6 +49,16 @@ const routes = [
 interface SidebarProps {
     isCollapsed: boolean;
     toggleCollapse: () => void;
+}
+
+export function PixyLogo({ className }: { className?: string }) {
+    return (
+        <img
+            src="/branding/iso.svg"
+            alt="Pixy"
+            className={cn("object-contain", className)}
+        />
+    )
 }
 
 export function SidebarContent({ isCollapsed = false }: { isCollapsed?: boolean }) {
@@ -93,12 +106,15 @@ export function SidebarContent({ isCollapsed = false }: { isCollapsed?: boolean 
             </div>
 
             <div className="mt-auto pt-4 border-t border-white/5">
-                <button className={cn(
-                    "text-sm group flex p-3 w-full font-medium cursor-pointer hover:text-white hover:bg-white/10 rounded-xl transition text-zinc-400",
-                    isCollapsed ? "justify-center" : "justify-start"
-                )}>
+                <button
+                    onClick={() => logout()}
+                    className={cn(
+                        "text-sm group flex p-3 w-full font-medium cursor-pointer hover:text-white hover:bg-white/10 rounded-xl transition text-zinc-400",
+                        isCollapsed ? "justify-center" : "justify-start"
+                    )}
+                >
                     <div className="flex items-center">
-                        <LogOut className={cn("h-5 w-5 text-red-500 transition-all", isCollapsed ? "mr-0" : "mr-3")} />
+                        <LogOut className={cn("h-5 w-5 text-zinc-400 group-hover:text-white transition-all", isCollapsed ? "mr-0" : "mr-3")} />
                         {!isCollapsed && <span>Cerrar Sesión</span>}
                     </div>
                 </button>
@@ -107,13 +123,54 @@ export function SidebarContent({ isCollapsed = false }: { isCollapsed?: boolean 
     )
 }
 
+
+
 export function Sidebar({ isCollapsed, toggleCollapse }: SidebarProps) {
+    const [isDragging, setIsDragging] = React.useState(false)
+    const [dragStartX, setDragStartX] = React.useState(0)
+    const dragThreshold = 50 // pixels to drag before triggering collapse/expand
+
+    const handleDragStart = (clientX: number) => {
+        setIsDragging(true)
+        setDragStartX(clientX)
+    }
+
+    const handleDragMove = (clientX: number) => {
+        if (!isDragging) return
+
+        const dragDistance = clientX - dragStartX
+
+        // Only trigger if dragged more than threshold
+        if (Math.abs(dragDistance) > dragThreshold) {
+            if (dragDistance < 0 && !isCollapsed) {
+                // Dragged left while expanded -> collapse
+                toggleCollapse()
+                setIsDragging(false)
+            } else if (dragDistance > 0 && isCollapsed) {
+                // Dragged right while collapsed -> expand
+                toggleCollapse()
+                setIsDragging(false)
+            }
+        }
+    }
+
+    const handleDragEnd = () => {
+        setIsDragging(false)
+    }
+
     return (
         <div
             className={cn(
-                "fixed left-0 top-0 h-[calc(100vh-40px)] m-5 bg-brand-dark text-white rounded-2xl transition-all duration-300 ease-in-out z-50 flex flex-col shadow-2xl animate-float border border-white/5",
+                "fixed left-5 top-5 bottom-5 h-auto bg-brand-dark text-white rounded-2xl transition-all duration-300 ease-in-out z-50 flex flex-col shadow-2xl border border-white/5 animate-float-sidebar select-none",
                 isCollapsed ? "w-20" : "w-72"
             )}
+            onMouseDown={(e) => handleDragStart(e.clientX)}
+            onMouseMove={(e) => handleDragMove(e.clientX)}
+            onMouseUp={handleDragEnd}
+            onMouseLeave={handleDragEnd}
+            onTouchStart={(e) => handleDragStart(e.touches[0].clientX)}
+            onTouchMove={(e) => handleDragMove(e.touches[0].clientX)}
+            onTouchEnd={handleDragEnd}
         >
             {/* Toggle Button */}
             <button
