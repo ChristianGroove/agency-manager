@@ -2,17 +2,19 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button"
 import { Quote } from "@/types"
 import { useState } from "react"
-import { CheckCircle2, FileText, Loader2 } from "lucide-react"
+import { CheckCircle2, FileText, Loader2, XCircle } from "lucide-react"
 
 interface QuoteDetailModalProps {
     quote: Quote | null
     open: boolean
     onOpenChange: (open: boolean) => void
     onAccept: (quoteId: string) => Promise<void>
+    onReject: (quoteId: string) => Promise<void>
 }
 
-export function QuoteDetailModal({ quote, open, onOpenChange, onAccept }: QuoteDetailModalProps) {
+export function QuoteDetailModal({ quote, open, onOpenChange, onAccept, onReject }: QuoteDetailModalProps) {
     const [isAccepting, setIsAccepting] = useState(false)
+    const [isRejecting, setIsRejecting] = useState(false)
 
     if (!quote) return null
 
@@ -25,6 +27,19 @@ export function QuoteDetailModal({ quote, open, onOpenChange, onAccept }: QuoteD
             console.error(error)
         } finally {
             setIsAccepting(false)
+        }
+    }
+
+    const handleReject = async () => {
+        if (!confirm("¿Estás seguro de que deseas rechazar esta cotización?")) return
+        setIsRejecting(true)
+        try {
+            await onReject(quote.id)
+            onOpenChange(false)
+        } catch (error) {
+            console.error(error)
+        } finally {
+            setIsRejecting(false)
         }
     }
 
@@ -88,20 +103,40 @@ export function QuoteDetailModal({ quote, open, onOpenChange, onAccept }: QuoteD
                     <Button variant="outline" onClick={() => onOpenChange(false)}>
                         Cerrar
                     </Button>
-                    {quote.status !== 'accepted' && (
-                        <Button onClick={handleAccept} disabled={isAccepting} className="bg-blue-600 hover:bg-blue-700 text-white">
-                            {isAccepting ? (
-                                <>
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    Aprobando...
-                                </>
-                            ) : (
-                                <>
-                                    <CheckCircle2 className="mr-2 h-4 w-4" />
-                                    Aprobar Cotización
-                                </>
-                            )}
-                        </Button>
+                    {quote.status !== 'accepted' && quote.status !== 'rejected' && (
+                        <div className="flex gap-2">
+                            <Button
+                                variant="outline"
+                                onClick={handleReject}
+                                disabled={isRejecting || isAccepting}
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                            >
+                                {isRejecting ? (
+                                    <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        Rechazando...
+                                    </>
+                                ) : (
+                                    <>
+                                        <XCircle className="mr-2 h-4 w-4" />
+                                        Rechazar
+                                    </>
+                                )}
+                            </Button>
+                            <Button onClick={handleAccept} disabled={isAccepting || isRejecting} className="bg-blue-600 hover:bg-blue-700 text-white">
+                                {isAccepting ? (
+                                    <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        Aprobando...
+                                    </>
+                                ) : (
+                                    <>
+                                        <CheckCircle2 className="mr-2 h-4 w-4" />
+                                        Aprobar Cotización
+                                    </>
+                                )}
+                            </Button>
+                        </div>
                     )}
                 </DialogFooter>
             </DialogContent>
