@@ -114,3 +114,45 @@ export async function acceptQuote(token: string, quoteId: string) {
         return { success: false, error: 'Error accepting quote' }
     }
 }
+
+export async function rejectQuote(token: string, quoteId: string) {
+    try {
+        // 1. Verify Client
+        const { data: client, error: clientError } = await supabaseAdmin
+            .from('clients')
+            .select('id, name')
+            .eq('portal_short_token', token)
+            .single()
+
+        if (clientError || !client) throw new Error('Unauthorized')
+
+        // 2. Update Quote
+        const { data: quote, error: quoteError } = await supabaseAdmin
+            .from('quotes')
+            .update({ status: 'rejected' })
+            .eq('id', quoteId)
+            .eq('client_id', client.id) // Ensure ownership
+            .select()
+            .single()
+
+        if (quoteError) throw quoteError
+
+        // 3. Create Event
+        await supabaseAdmin.from('client_events').insert({
+            client_id: client.id,
+            type: 'quote',
+            title: 'Cotización Rechazada',
+            description: `Se ha rechazado la cotización #${quote.number}`,
+            metadata: {
+                quote_id: quote.id,
+                amount: quote.total
+            },
+            icon: 'FileX'
+        })
+
+        return { success: true }
+    } catch (error) {
+        console.error('rejectQuote Error:', error)
+        return { success: false, error: 'Error rejecting quote' }
+    }
+}

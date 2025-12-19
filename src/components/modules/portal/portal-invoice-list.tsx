@@ -30,23 +30,22 @@ export function PortalInvoiceList({ invoices, settings, selectedInvoices, onTogg
 
     return (
         <Card className="border-none shadow-none bg-transparent">
-            <CardHeader className="px-0 pt-0 block">
+            <CardHeader className="p-0 block">
                 {/* Title Centered */}
                 <div className="w-full text-center mb-6">
-                    <CardTitle className="text-2xl font-bold inline-flex items-center gap-2 text-gray-900">
-                        <DollarSign className="h-6 w-6 text-blue-600" />
+                    <CardTitle className="text-2xl font-bold text-gray-900">
                         Estado de Facturación
                     </CardTitle>
                 </div>
 
-                {/* Instruction - Right Aligned, 16px bottom margin to table */}
-                <div className="flex justify-end mb-4">
-                    <p className="text-sm font-semibold text-blue-600 flex items-center gap-3 bg-blue-50/80 px-4 py-2 rounded-lg border border-blue-100 shadow-sm animate-in fade-in slide-in-from-right-4 duration-700">
-                        Selecciona las facturas que deseas pagar
-                        <span className="relative flex h-3 w-3">
+                {/* Instruction - Left Aligned, Plain Text, Pulsing Dot */}
+                <div className="flex justify-start mb-4 pl-1 animate-in fade-in slide-in-from-left-4 duration-700 delay-200">
+                    <p className="text-sm font-medium text-gray-500 flex items-center gap-2">
+                        <span className="relative flex h-2.5 w-2.5">
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
+                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-blue-500"></span>
                         </span>
+                        Selecciona las facturas que deseas pagar
                     </p>
                 </div>
             </CardHeader>

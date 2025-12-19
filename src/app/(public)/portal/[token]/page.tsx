@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
-import { getPortalData, acceptQuote } from "@/app/actions/portal-actions"
+import { getPortalData, acceptQuote, rejectQuote } from "@/app/actions/portal-actions"
 import { Client, Invoice, Quote, Briefing, ClientEvent } from "@/types"
 import { Loader2, AlertTriangle, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -73,6 +73,23 @@ export default function PortalPage() {
         }
     }
 
+    const handleRejectQuote = async (quoteId: string) => {
+        if (!params.token) return
+        try {
+            const result = await rejectQuote(params.token as string, quoteId)
+            if (result.success) {
+                setQuotes(prev => prev.map(q => q.id === quoteId ? { ...q, status: 'rejected' } : q))
+                fetchData(params.token as string)
+            } else {
+                console.error(result.error)
+                alert("Error al rechazar la cotización")
+            }
+        } catch (error) {
+            console.error(error)
+            alert("Error inesperado")
+        }
+    }
+
     const handlePay = async (invoiceIds: string[]) => {
         if (invoiceIds.length === 0) return
 
@@ -136,7 +153,7 @@ export default function PortalPage() {
 
     return (
         <div className="min-h-screen bg-gray-50" style={brandingStyles}>
-            <div className="max-w-7xl mx-auto p-4 md:p-8">
+            <div className="max-w-7xl mx-auto p-4 md:p-8 pb-64">
                 {/* Logo Header */}
                 <div className="flex justify-center mb-8 relative">
                     <img
@@ -144,7 +161,6 @@ export default function PortalPage() {
                         alt="Logo"
                         className="h-10 object-contain"
                     />
-                    <span className="absolute -right-4 top-0 bg-pink-500 text-white text-[10px] px-1 rounded">v2.0</span>
                 </div>
                 {/* Debug Info */}
 
@@ -160,13 +176,6 @@ export default function PortalPage() {
                     onViewQuote={setViewQuote}
                     settings={settings}
                 />
-
-                {/* Footer */}
-                {settings.portal_footer_text && (
-                    <div className="text-center text-sm text-gray-400 mt-12 pb-8">
-                        {settings.portal_footer_text}
-                    </div>
-                )}
             </div>
 
             {/* Success Message Modal */}
@@ -231,6 +240,7 @@ export default function PortalPage() {
                 open={!!viewQuote}
                 onOpenChange={(open) => !open && setViewQuote(null)}
                 onAccept={handleAcceptQuote}
+                onReject={handleRejectQuote}
             />
         </div>
     )

@@ -10,8 +10,41 @@ import { PortalInvoiceList } from "./portal-invoice-list"
 import { ArrowRight, DollarSign, FileText, MessageSquare, AlertCircle, CheckCircle2, Clock, CreditCard } from "lucide-react"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
-import { useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { LottieAnimation } from "@/components/ui/lottie-animation"
+import { useEffect, useState } from "react"
+
+import { PortalBriefingView } from "./portal-briefing-view"
+
+function EmptyStateAnimation() {
+    const [animationData, setAnimationData] = useState<any>(null)
+
+    useEffect(() => {
+        fetch('/animations/comfortable-reading-with-digital-data-overlay-2025-10-20-06-18-32-utc.json')
+            .then(res => res.json())
+            .then(data => setAnimationData(data))
+            .catch(err => console.error("Failed to load animation", err))
+    }, [])
+
+    if (!animationData) return null
+
+    return <LottieAnimation animationData={animationData} loop={true} />
+}
+
+function PendingTasksAnimation() {
+    const [animationData, setAnimationData] = useState<any>(null)
+
+    useEffect(() => {
+        fetch('/animations/cartoon-task-list-illustration-2025-10-20-03-26-27-utc.json')
+            .then(res => res.json())
+            .then(data => setAnimationData(data))
+            .catch(err => console.error("Failed to load animation", err))
+    }, [])
+
+    if (!animationData) return null
+
+    return <LottieAnimation animationData={animationData} loop={true} />
+}
 
 interface PortalDashboardProps {
     client: Client
@@ -27,14 +60,15 @@ interface PortalDashboardProps {
 
 export function PortalDashboard({ client, invoices, quotes, briefings, events, onPay, onViewInvoice, onViewQuote, settings }: PortalDashboardProps) {
     const [selectedInvoices, setSelectedInvoices] = useState<string[]>([])
+    const [viewBriefingId, setViewBriefingId] = useState<string | null>(null)
 
     // Calculate Stats
     const pendingInvoices = invoices.filter(i => i.status === 'pending' || i.status === 'overdue')
     const overdueInvoices = invoices.filter(i => i.status === 'overdue')
     const totalPending = pendingInvoices.reduce((acc, curr) => acc + Number(curr.total), 0)
 
-    const openQuotes = quotes.filter(q => q.status === 'sent')
-    const pendingBriefings = briefings.filter(b => b.status === 'sent' || b.status === 'in_progress')
+    const openQuotes = quotes.filter(q => q.status === 'sent' || q.status === 'draft')
+    const pendingBriefings = briefings.filter(b => b.status === 'sent' || b.status === 'in_progress' || b.status === 'draft')
 
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(amount)
@@ -60,6 +94,22 @@ export function PortalDashboard({ client, invoices, quotes, briefings, events, o
         }
     }
 
+    const handleViewBriefing = (id: string) => {
+        setViewBriefingId(id)
+        window.scrollTo(0, 0)
+    }
+
+    if (viewBriefingId) {
+        return (
+            <div className="max-w-5xl mx-auto w-full pb-24">
+                <PortalBriefingView
+                    briefingId={viewBriefingId}
+                    onBack={() => setViewBriefingId(null)}
+                />
+            </div>
+        )
+    }
+
     const totalSelected = invoices
         .filter(i => selectedInvoices.includes(i.id))
         .reduce((acc, curr) => acc + curr.total, 0)
@@ -70,97 +120,139 @@ export function PortalDashboard({ client, invoices, quotes, briefings, events, o
     const hasQuotes = quotes.length > 0
 
     return (
-        <div className="space-y-8 animate-in fade-in duration-500 pb-24">
-            {/* Header */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold text-gray-900">Hola, {client.name.split(' ')[0]}</h1>
-                    <p className="text-gray-500 mt-1">Aquí tienes el resumen de tu cuenta y próximos pasos.</p>
+        <div className="pb-24">
+            <div className="space-y-8 animate-in fade-in duration-500">
+                {/* Header */}
+                {/* Header Centered */}
+                <div className="flex flex-col items-center text-center gap-4 mb-8">
+                    <div>
+                        <h1 className="text-3xl font-bold text-gray-900">Hola, {client.name.split(' ')[0]}</h1>
+                        <p className="text-gray-500 mt-1 max-w-lg mx-auto">Te damos la bienvenida a tu portal de cliente.</p>
+                    </div>
                 </div>
-                <div className="flex items-center gap-2">
-                    {overdueInvoices.length > 0 ? (
-                        <Badge variant="destructive" className="h-8 px-3 text-sm">
-                            <AlertCircle className="mr-2 h-4 w-4" />
-                            Pagos Pendientes
-                        </Badge>
-                    ) : (
-                        <Badge className="h-8 px-3 text-sm bg-green-100 text-green-700 hover:bg-green-100 border-green-200">
-                            <CheckCircle2 className="mr-2 h-4 w-4" />
-                            Al día
-                        </Badge>
-                    )}
-                </div>
+
+                {/* Empty State Animation - Only if no Pending Invoices, Quotes, or Briefings */}
+                {pendingInvoices.length === 0 && openQuotes.length === 0 && pendingBriefings.length === 0 && (
+                    <div className="flex flex-col items-center justify-center py-8 animate-in zoom-in duration-700">
+                        <div className="w-64 h-64 md:w-80 md:h-80 relative">
+                            <EmptyStateAnimation />
+                        </div>
+                        <p className="text-gray-400 font-medium mt-4">Todo está en orden. ¡Disfruta tu día!</p>
+                    </div>
+                )}
+
+                {/* Pending Tasks State - No Invoices, But Tasks Pending */}
+                {pendingInvoices.length === 0 && (openQuotes.length > 0 || pendingBriefings.length > 0) && (
+                    <div className="flex flex-col items-center justify-center py-8 animate-in zoom-in duration-700">
+                        <div className="w-64 h-64 md:w-80 md:h-80 relative">
+                            <PendingTasksAnimation />
+                        </div>
+                        <p className="text-gray-500 font-medium mt-4 max-w-md text-center">
+                            ¡Ya casi estamos! Tienes {openQuotes.length > 0 ? "cotizaciones por revisar" : ""} {openQuotes.length > 0 && pendingBriefings.length > 0 ? "y" : ""} {pendingBriefings.length > 0 ? "briefings por completar" : ""} para avanzar con {pendingBriefings.length === 1 ? `tu solicitud de "${pendingBriefings[0].template?.name || 'Servicio'}"` : "tus solicitudes"}.
+                        </p>
+
+                        {/* Central Action Buttons */}
+                        <div className="flex items-center gap-4 mt-6">
+                            {openQuotes.map(quote => (
+                                <Button
+                                    key={quote.id}
+                                    className="rounded-full bg-purple-600 hover:bg-purple-700 text-white shadow-lg shadow-purple-500/30 px-6 h-11 text-sm font-bold transition-all hover:-translate-y-0.5"
+                                    onClick={() => onViewQuote(quote)}
+                                >
+                                    <FileText className="h-4 w-4 mr-2" />
+                                    Revisar Cotización
+                                </Button>
+                            ))}
+                            {pendingBriefings.map(briefing => (
+                                <Button
+                                    key={briefing.id}
+                                    className="rounded-full bg-pink-600 hover:bg-pink-700 text-white shadow-lg shadow-pink-500/30 px-6 h-11 text-sm font-bold transition-all hover:-translate-y-0.5"
+                                    onClick={() => handleViewBriefing(briefing.id)}
+                                >
+                                    <MessageSquare className="h-4 w-4 mr-2" />
+                                    Completar Briefing
+                                </Button>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* Middle Section: Invoices (Always visible if enabled) */}
+                {settings.portal_modules?.invoices !== false && (
+                    <div className="max-w-5xl mx-auto w-full">
+                        <PortalInvoiceList
+                            invoices={invoices}
+                            settings={settings}
+                            selectedInvoices={selectedInvoices}
+                            onToggle={toggleInvoice}
+                            onToggleAll={toggleAll}
+                            onView={onViewInvoice}
+                        />
+                    </div>
+                )}
             </div>
 
-            {/* Middle Section: Invoices (Always visible if enabled) */}
-            {settings.portal_modules?.invoices !== false && (
-                <div className="max-w-5xl mx-auto w-full">
-                    <PortalInvoiceList
-                        invoices={invoices}
-                        settings={settings}
-                        selectedInvoices={selectedInvoices}
-                        onToggle={toggleInvoice}
-                        onToggleAll={toggleAll}
-                        onView={onViewInvoice}
-                    />
-                </div>
-            )}
-
             {/* Floating "Smart" Action Center */}
-            {/* Floating "Smart" Action Center */}
-            <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 w-full max-w-3xl px-4 animate-in slide-in-from-bottom-10 fade-in duration-700">
-                <div className="bg-white/90 backdrop-blur-xl border border-white/20 shadow-2xl rounded-full p-2 pl-6 flex flex-col md:flex-row items-center justify-between gap-4 md:gap-6 ring-1 ring-black/5">
+            {/* Bottom UI Stack (Fixed): Buttons -> Action Block -> Footer */}
+            <div className="fixed bottom-0 left-0 right-0 z-40 flex flex-col items-center gap-8 pb-8 px-4 pointer-events-none animate-in slide-in-from-bottom-4 fade-in duration-1000 bg-gradient-to-t from-gray-50/80 via-gray-50/50 to-transparent">
 
-                    {/* Status Text (Left) */}
-                    <div className="flex-1 text-center md:text-left">
-                        {pendingInvoices.length > 0 ? (
-                            <p className="text-sm font-medium text-gray-700">
-                                <span className="font-bold text-gray-900">Pendientes:</span> Tienes {pendingInvoices.length} facturas por <span className="text-gray-900 font-bold">{formatCurrency(totalPending)}</span>.
-                            </p>
-                        ) : (
-                            <div className="flex items-center justify-center md:justify-start gap-2">
-                                <CheckCircle2 className="h-4 w-4 text-green-500" />
-                                <p className="text-sm font-medium text-gray-600">¡Todo al día! No tienes pagos pendientes.</p>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Actions (Right) */}
-                    <div className="flex items-center gap-2 shrink-0">
-
+                {/* 1. Top Row: Action Buttons (Pointer Events Auto) */}
+                {/* Hide buttons here if they are shown in the center (i.e. if pendingInvoices === 0) */}
+                {pendingInvoices.length > 0 && (openQuotes.length > 0 || pendingBriefings.length > 0) && (
+                    <div className="flex items-center gap-2 pointer-events-auto">
                         {/* Quotes Buttons */}
                         {openQuotes.map(quote => (
                             <Button
                                 key={quote.id}
                                 size="sm"
-                                className="rounded-full bg-purple-600 hover:bg-purple-700 text-white shadow-md shadow-purple-500/20 px-4 h-9 text-xs font-semibold"
+                                className="rounded-full bg-purple-600 hover:bg-purple-700 text-white shadow-lg shadow-purple-500/30 px-5 h-10 text-xs font-bold transition-all hover:-translate-y-0.5"
                                 onClick={() => onViewQuote(quote)}
                             >
+                                <FileText className="h-3.5 w-3.5 mr-2" />
                                 Revisar Cotización
                             </Button>
                         ))}
 
                         {/* Briefings Buttons */}
                         {pendingBriefings.map(briefing => (
-                            <Link key={briefing.id} href={`/portal/${client.portal_short_token || client.portal_token}/briefing/${briefing.id}`}>
-                                <Button
-                                    size="sm"
-                                    className="rounded-full bg-pink-600 hover:bg-pink-700 text-white shadow-md shadow-pink-500/20 px-4 h-9 text-xs font-semibold"
-                                >
-                                    Completar Briefing
-                                </Button>
-                            </Link>
+                            <Button
+                                key={briefing.id}
+                                size="sm"
+                                className="rounded-full bg-pink-600 hover:bg-pink-700 text-white shadow-lg shadow-pink-500/30 px-5 h-10 text-xs font-bold transition-all hover:-translate-y-0.5"
+                                onClick={() => handleViewBriefing(briefing.id)}
+                            >
+                                <MessageSquare className="h-3.5 w-3.5 mr-2" />
+                                Completar Briefing
+                            </Button>
                         ))}
+                    </div>
+                )}
 
-                        {/* Divider if actions exist */}
-                        {(openQuotes.length > 0 || pendingBriefings.length > 0) && (
-                            <div className="h-4 w-px bg-gray-300 mx-1 hidden md:block"></div>
+                {/* 2. Middle Row: Status Text + Clock (Glass Block) (Pointer Events Auto) */}
+                <div className="pointer-events-auto bg-white/90 backdrop-blur-xl border border-white/20 shadow-2xl rounded-full py-2 px-6 ring-1 ring-black/5 w-full md:w-auto min-w-[320px] flex items-center justify-between gap-4 relative">
+
+                    {/* Spacer for centering balance */}
+                    <div className="w-9 hidden md:block"></div>
+
+                    {/* Centered Status */}
+                    <div className="flex-1 text-center">
+                        {pendingInvoices.length > 0 ? (
+                            <p className="text-sm font-medium text-gray-700">
+                                <span className="font-bold text-gray-900">Pendientes:</span> Tienes {pendingInvoices.length} facturas por <span className="text-gray-900 font-bold">{formatCurrency(totalPending)}</span>.
+                            </p>
+                        ) : (
+                            <div className="flex items-center justify-center gap-2">
+                                <CheckCircle2 className="h-4 w-4 text-green-500" />
+                                <p className="text-sm font-medium text-gray-600">¡Todo al día! No tienes pagos pendientes.</p>
+                            </div>
                         )}
+                    </div>
 
-                        {/* Floating Timeline Button (Integrated) */}
+                    {/* Clock Icon (Right Aligned) */}
+                    <div className="shrink-0">
                         <Dialog>
                             <DialogTrigger asChild>
-                                <Button variant="ghost" size="icon" className="rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 h-9 w-9">
+                                <Button variant="ghost" size="icon" className="rounded-full hover:bg-gray-100/50 text-gray-400 hover:text-gray-600 h-9 w-9">
                                     <Clock className="h-5 w-5" />
                                 </Button>
                             </DialogTrigger>
@@ -178,6 +270,11 @@ export function PortalDashboard({ client, invoices, quotes, briefings, events, o
                         </Dialog>
                     </div>
                 </div>
+
+                {/* 3. Bottom Row: Footer (Pointer Events Auto) */}
+                <footer className="pointer-events-auto text-center text-sm text-gray-400">
+                    &copy; 2026 Pixy / private design services. Todos los derechos reservados.
+                </footer>
             </div>
 
             {/* Bottom Bar for Payments */}
