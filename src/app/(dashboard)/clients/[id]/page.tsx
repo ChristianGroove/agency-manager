@@ -46,6 +46,8 @@ import {
     RefreshCw
 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
+import { getSettings } from "@/lib/actions/settings"
+import { getWhatsAppLink } from "@/lib/communication-utils"
 import { cn } from "@/lib/utils"
 import { CreateInvoiceModal } from "@/components/modules/invoices/create-invoice-modal"
 import { AddServiceModal } from "@/components/modules/services/add-service-modal"
@@ -84,6 +86,11 @@ export default function ClientDetailPage() {
     const router = useRouter()
     const [client, setClient] = useState<Client | null>(null)
     const [loading, setLoading] = useState(true)
+    const [settings, setSettings] = useState<any>(null)
+
+    useEffect(() => {
+        getSettings().then(setSettings)
+    }, [])
     const [activeTab, setActiveTab] = useState("services")
 
     // Notes state
@@ -608,7 +615,8 @@ export default function ClientDetailPage() {
                                             const domain = 'https://mi.pixy.com.co'
                                             const url = `${domain}/${token}`
                                             const text = `Hola ${client.name}, aquí tienes tu enlace al portal de clientes para ver tus facturas y realizar pagos: ${url}`
-                                            window.open(`https://wa.me/${client.phone?.replace(/\D/g, '')}?text=${encodeURIComponent(text)}`, '_blank')
+                                            const waUrl = getWhatsAppLink(client.phone, text, settings)
+                                            window.open(waUrl, '_blank')
                                         }}>
                                             <MessageCircle className="mr-2 h-4 w-4" />
                                             Enviar por WhatsApp

@@ -20,6 +20,8 @@ import {
 } from "@/components/ui/dialog"
 import { supabase } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
+import { getSettings } from "@/lib/actions/settings"
+import { getWhatsAppLink } from "@/lib/communication-utils"
 
 // Types
 type Client = {
@@ -38,6 +40,11 @@ export default function ClientsPage() {
     const [clients, setClients] = useState<Client[]>([])
     const [loading, setLoading] = useState(true)
     const [searchTerm, setSearchTerm] = useState("")
+    const [settings, setSettings] = useState<any>(null)
+
+    useEffect(() => {
+        getSettings().then(setSettings)
+    }, [])
 
     // Create Client Modal State
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
@@ -262,10 +269,13 @@ export default function ClientsPage() {
         return diffDays
     }
 
-    const getWhatsAppLink = (phone: string, name: string) => {
-        const cleanPhone = phone?.replace(/\D/g, '') || ''
+    // We need settings for the link generation, but fetching it here might be overkill for just a link.
+    // However, to be consistent, we should. Or we can just use the utility with default settings if not loaded.
+    // Since this is a list page, we can fetch settings once at the top.
+
+    const getClientWhatsAppLink = (phone: string, name: string) => {
         const message = `Hola ${name}, te escribo de la agencia para revisar tus servicios.`
-        return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`
+        return getWhatsAppLink(phone, message, settings)
     }
 
     const filteredClients = clients.filter(client =>
@@ -728,7 +738,7 @@ export default function ClientsPage() {
                                     {/* Action Buttons */}
                                     <CardFooter className="px-5 pb-5 pt-0 flex gap-2">
                                         <a
-                                            href={getWhatsAppLink(client.phone, client.name)}
+                                            href={getClientWhatsAppLink(client.phone, client.name)}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                         >

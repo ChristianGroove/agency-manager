@@ -8,6 +8,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Share2, Copy, Check } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { getSettings } from "@/lib/actions/settings"
+import { generateMessage, getWhatsAppLink } from "@/lib/communication-utils"
 
 interface WhatsAppShareModalProps {
     invoice: {
@@ -23,23 +25,7 @@ interface WhatsAppShareModalProps {
     onOpenChange: (open: boolean) => void
 }
 
-const TEMPLATES = [
-    {
-        id: "new_invoice",
-        label: "Nueva Factura",
-        content: "Hola {cliente}, te comparto la Cuenta de Cobro N° {factura} por valor de {valor}. Puedes realizar el pago antes del {vencimiento}. ¡Gracias por tu confianza!"
-    },
-    {
-        id: "reminder",
-        label: "Recordatorio de Pago",
-        content: "Hola {cliente}, un recordatorio amable sobre la Cuenta de Cobro N° {factura} por {valor} que vence el {vencimiento}. Quedo atento a tu pago."
-    },
-    {
-        id: "overdue",
-        label: "Factura Vencida",
-        content: "Hola {cliente}, la Cuenta de Cobro N° {factura} por {valor} presenta un saldo pendiente desde el {vencimiento}. Agradezco tu gestión para ponerte al día."
-    }
-]
+// Removed hardcoded TEMPLATES
 
 export function WhatsAppShareModal({ invoice, open, onOpenChange }: WhatsAppShareModalProps) {
     const [selectedTemplate, setSelectedTemplate] = useState("new_invoice")
@@ -66,17 +52,32 @@ export function WhatsAppShareModal({ invoice, open, onOpenChange }: WhatsAppShar
             .replace(/{vencimiento}/g, formatDate(invoice.due_date))
     }
 
-    // Update message when template changes
+    const [settings, setSettings] = useState<any>(null)
+
     useEffect(() => {
-        const template = TEMPLATES.find(t => t.id === selectedTemplate)
-        if (template) {
-            setMessage(processTemplate(template.content))
-        }
-    }, [selectedTemplate, invoice])
+        getSettings().then(setSettings)
+    }, [])
+
+    // Update message when settings load or template changes
+    useEffect(() => {
+        if (!settings) return
+
+        const templateKey = selectedTemplate === 'new_invoice' ? 'invoice_sent' :
+            selectedTemplate === 'reminder' ? 'payment_reminder' : 'invoice_sent' // Default fallback
+
+        const msg = generateMessage(templateKey, {
+            cliente: invoice.client.name,
+            factura: invoice.number,
+            monto: formatCurrency(invoice.total),
+            link: `${window.location.origin}/portal/${invoice.client?.portal_token || ''}`
+        }, settings)
+
+        setMessage(msg)
+    }, [selectedTemplate, invoice, settings])
 
     const handleSend = () => {
-        const phone = invoice.client.phone?.replace(/\D/g, '') || ''
-        const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`
+        const phone = invoice.client.phone || ''
+        const url = getWhatsAppLink(phone, message, settings)
         window.open(url, '_blank')
         onOpenChange(false)
     }
@@ -108,11 +109,8 @@ export function WhatsAppShareModal({ invoice, open, onOpenChange }: WhatsAppShar
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                                {TEMPLATES.map(template => (
-                                    <SelectItem key={template.id} value={template.id}>
-                                        {template.label}
-                                    </SelectItem>
-                                ))}
+                                <SelectItem value="new_invoice">Nueva Factura</SelectItem>
+                                <SelectItem value="reminder">Recordatorio de Pago</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>

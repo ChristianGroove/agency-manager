@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
+import { AlertTriangle } from "lucide-react"
 
 export default function PortalPage() {
     const params = useParams()
@@ -125,6 +126,25 @@ export default function PortalPage() {
     if (error) return <div className="min-h-screen flex items-center justify-center text-red-500">{error}</div>
     if (!client) return null
 
+    // Portal Disabled Check
+    if (settings.portal_enabled === false) {
+        return (
+            <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4 text-center">
+                <AlertTriangle className="h-12 w-12 text-amber-500 mb-4" />
+                <h1 className="text-2xl font-bold text-gray-900 mb-2">Portal en Mantenimiento</h1>
+                <p className="text-gray-600 max-w-md">
+                    El portal de clientes no está disponible en este momento. Por favor contacta a la agencia directamente.
+                </p>
+            </div>
+        )
+    }
+
+    // Branding Colors Injection
+    const brandingStyles = {
+        '--portal-primary': settings.portal_primary_color || '#F205E2',
+        '--portal-secondary': settings.portal_secondary_color || '#00E0FF',
+    } as React.CSSProperties
+
     const getInvoiceStatus = (invoice: Invoice) => {
         if (invoice.status === 'paid') return 'paid'
         if (invoice.due_date && new Date(invoice.due_date) < new Date()) return 'overdue'
@@ -170,17 +190,29 @@ export default function PortalPage() {
         )
     }
 
-    const paymentsEnabled = settings.enable_portal_payments !== false
+    const paymentsEnabled = settings.enable_portal_payments !== false && settings.portal_modules?.payments !== false
+    const showInvoices = settings.portal_modules?.invoices !== false
 
     return (
         <div className="min-h-screen bg-gray-50 pb-24">
             <div className="max-w-4xl mx-auto p-4 md:p-8 space-y-8">
                 {/* Header */}
                 <div className="flex flex-col items-center gap-6 text-center mb-12">
-                    <img src="/branding/logo dark.svg" alt="Pixy" className="h-10 mb-6 mx-auto" />
+                    <img
+                        src={settings.portal_logo_url || "/branding/logo dark.svg"}
+                        alt="Logo"
+                        className="h-12 mb-6 mx-auto object-contain"
+                    />
                     <div>
                         <h1 className="text-2xl font-bold text-gray-900">Hola, {client.name}</h1>
-                        {getGreetingMessage()}
+                        {settings.portal_welcome_message && (
+                            <p className="text-gray-600 mt-2 max-w-2xl mx-auto whitespace-pre-wrap">
+                                {settings.portal_welcome_message}
+                            </p>
+                        )}
+                        <div className="mt-4">
+                            {getGreetingMessage()}
+                        </div>
                     </div>
                 </div>
 
@@ -192,56 +224,100 @@ export default function PortalPage() {
                 )}
 
                 {/* Invoices List */}
-                <div className="space-y-4">
-                    {pendingTotal > 0 && paymentsEnabled && (
-                        <p className="text-sm text-gray-500 font-medium text-center">
-                            {settings.enable_multi_invoice_payment !== false
-                                ? "Selecciona las facturas que deseas pagar:"
-                                : "Selecciona la factura que deseas pagar:"}
-                        </p>
-                    )}
-                    <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-                        {/* Desktop Table */}
-                        <div className="hidden md:block">
-                            <table className="w-full text-sm text-left">
-                                <thead className="bg-gray-50 text-gray-500 font-medium border-b">
-                                    <tr>
-                                        <th className="px-6 py-4 w-12">
-                                            {paymentsEnabled && settings.enable_multi_invoice_payment !== false && (
+                {showInvoices && (
+                    <div className="space-y-4">
+                        {pendingTotal > 0 && paymentsEnabled && (
+                            <p className="text-sm text-gray-500 font-medium text-center">
+                                {settings.enable_multi_invoice_payment !== false
+                                    ? "Selecciona las facturas que deseas pagar:"
+                                    : "Selecciona la factura que deseas pagar:"}
+                            </p>
+                        )}
+                        <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
+                            {/* Desktop Table */}
+                            <div className="hidden md:block">
+                                <table className="w-full text-sm text-left">
+                                    <thead className="bg-gray-50 text-gray-500 font-medium border-b">
+                                        <tr>
+                                            <th className="px-6 py-4 w-12">
+                                                {paymentsEnabled && settings.enable_multi_invoice_payment !== false && (
+                                                    <input
+                                                        type="checkbox"
+                                                        className="rounded border-gray-300 text-[var(--portal-primary)] focus:ring-[var(--portal-primary)]"
+                                                        checked={pendingInvoices.length > 0 && selectedInvoices.length === pendingInvoices.length}
+                                                        onChange={toggleAll}
+                                                        disabled={pendingInvoices.length === 0}
+                                                        style={{ color: settings.portal_primary_color }}
+                                                    />
+                                                )}
+                                            </th>
+                                            <th className="px-6 py-4">Factura</th>
+                                            <th className="px-6 py-4">Fecha</th>
+                                            <th className="px-6 py-4">Estado</th>
+                                            <th className="px-6 py-4 text-right">Monto</th>
+                                            <th className="px-6 py-4 text-right">Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100">
+                                        {invoices.map((invoice) => {
+                                            const status = getInvoiceStatus(invoice)
+                                            return (
+                                                <tr key={invoice.id} className="hover:bg-gray-50/50 transition-colors">
+                                                    <td className="px-6 py-4">
+                                                        {status !== 'paid' && paymentsEnabled && (
+                                                            <input
+                                                                type="checkbox"
+                                                                className="rounded border-gray-300 text-[var(--portal-primary)] focus:ring-[var(--portal-primary)]"
+                                                                checked={selectedInvoices.includes(invoice.id)}
+                                                                onChange={() => toggleInvoice(invoice.id)}
+                                                                style={{ color: settings.portal_primary_color }}
+                                                            />
+                                                        )}
+                                                    </td>
+                                                    <td className="px-6 py-4 font-medium text-gray-900">#{invoice.number}</td>
+                                                    <td className="px-6 py-4 text-gray-600">{new Date(invoice.date).toLocaleDateString()}</td>
+                                                    <td className="px-6 py-4">
+                                                        <Badge
+                                                            variant={status === 'paid' ? 'default' : status === 'overdue' ? 'destructive' : 'secondary'}
+                                                            className={cn(
+                                                                "w-24 justify-center",
+                                                                status === 'overdue' && "bg-red-600 text-white hover:bg-red-700 border-transparent"
+                                                            )}
+                                                        >
+                                                            {status === 'paid' ? 'Pagada' : status === 'overdue' ? 'Vencida' : 'Pendiente'}
+                                                        </Badge>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-right font-bold text-gray-900">${invoice.total.toLocaleString()}</td>
+                                                    <td className="px-6 py-4 text-right">
+                                                        <Button variant="ghost" size="sm" onClick={() => setViewInvoice(invoice)}>
+                                                            Ver Detalle
+                                                        </Button>
+                                                    </td>
+                                                </tr>
+                                            )
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {/* Mobile List */}
+                            <div className="md:hidden divide-y divide-gray-100">
+                                {invoices.map((invoice) => {
+                                    const status = getInvoiceStatus(invoice)
+                                    return (
+                                        <div key={invoice.id} className="p-4 flex items-center gap-4">
+                                            {status !== 'paid' && paymentsEnabled && (
                                                 <input
                                                     type="checkbox"
-                                                    className="rounded border-gray-300 text-brand-pink focus:ring-brand-pink"
-                                                    checked={pendingInvoices.length > 0 && selectedInvoices.length === pendingInvoices.length}
-                                                    onChange={toggleAll}
-                                                    disabled={pendingInvoices.length === 0}
+                                                    className="h-5 w-5 rounded border-gray-300 text-[var(--portal-primary)] focus:ring-[var(--portal-primary)]"
+                                                    checked={selectedInvoices.includes(invoice.id)}
+                                                    onChange={() => toggleInvoice(invoice.id)}
+                                                    style={{ color: settings.portal_primary_color }}
                                                 />
                                             )}
-                                        </th>
-                                        <th className="px-6 py-4">Factura</th>
-                                        <th className="px-6 py-4">Fecha</th>
-                                        <th className="px-6 py-4">Estado</th>
-                                        <th className="px-6 py-4 text-right">Monto</th>
-                                        <th className="px-6 py-4 text-right">Acciones</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-100">
-                                    {invoices.map((invoice) => {
-                                        const status = getInvoiceStatus(invoice)
-                                        return (
-                                            <tr key={invoice.id} className="hover:bg-gray-50/50 transition-colors">
-                                                <td className="px-6 py-4">
-                                                    {status !== 'paid' && paymentsEnabled && (
-                                                        <input
-                                                            type="checkbox"
-                                                            className="rounded border-gray-300 text-brand-pink focus:ring-brand-pink"
-                                                            checked={selectedInvoices.includes(invoice.id)}
-                                                            onChange={() => toggleInvoice(invoice.id)}
-                                                        />
-                                                    )}
-                                                </td>
-                                                <td className="px-6 py-4 font-medium text-gray-900">#{invoice.number}</td>
-                                                <td className="px-6 py-4 text-gray-600">{new Date(invoice.date).toLocaleDateString()}</td>
-                                                <td className="px-6 py-4">
+                                            <div className="flex-1" onClick={() => setViewInvoice(invoice)}>
+                                                <div className="flex justify-between items-start mb-1">
+                                                    <span className="font-bold text-gray-900">#{invoice.number}</span>
                                                     <Badge
                                                         variant={status === 'paid' ? 'default' : status === 'overdue' ? 'destructive' : 'secondary'}
                                                         className={cn(
@@ -251,59 +327,27 @@ export default function PortalPage() {
                                                     >
                                                         {status === 'paid' ? 'Pagada' : status === 'overdue' ? 'Vencida' : 'Pendiente'}
                                                     </Badge>
-                                                </td>
-                                                <td className="px-6 py-4 text-right font-bold text-gray-900">${invoice.total.toLocaleString()}</td>
-                                                <td className="px-6 py-4 text-right">
-                                                    <Button variant="ghost" size="sm" onClick={() => setViewInvoice(invoice)}>
-                                                        Ver Detalle
-                                                    </Button>
-                                                </td>
-                                            </tr>
-                                        )
-                                    })}
-                                </tbody>
-                            </table>
-                        </div>
-
-                        {/* Mobile List */}
-                        <div className="md:hidden divide-y divide-gray-100">
-                            {invoices.map((invoice) => {
-                                const status = getInvoiceStatus(invoice)
-                                return (
-                                    <div key={invoice.id} className="p-4 flex items-center gap-4">
-                                        {status !== 'paid' && paymentsEnabled && (
-                                            <input
-                                                type="checkbox"
-                                                className="h-5 w-5 rounded border-gray-300 text-brand-pink focus:ring-brand-pink"
-                                                checked={selectedInvoices.includes(invoice.id)}
-                                                onChange={() => toggleInvoice(invoice.id)}
-                                            />
-                                        )}
-                                        <div className="flex-1" onClick={() => setViewInvoice(invoice)}>
-                                            <div className="flex justify-between items-start mb-1">
-                                                <span className="font-bold text-gray-900">#{invoice.number}</span>
-                                                <Badge
-                                                    variant={status === 'paid' ? 'default' : status === 'overdue' ? 'destructive' : 'secondary'}
-                                                    className={cn(
-                                                        "w-24 justify-center",
-                                                        status === 'overdue' && "bg-red-600 text-white hover:bg-red-700 border-transparent"
-                                                    )}
-                                                >
-                                                    {status === 'paid' ? 'Pagada' : status === 'overdue' ? 'Vencida' : 'Pendiente'}
-                                                </Badge>
-                                            </div>
-                                            <div className="flex justify-between items-end">
-                                                <span className="text-xs text-gray-500">{new Date(invoice.date).toLocaleDateString()}</span>
-                                                <span className="font-bold text-gray-900">${invoice.total.toLocaleString()}</span>
+                                                </div>
+                                                <div className="flex justify-between items-end">
+                                                    <span className="text-xs text-gray-500">{new Date(invoice.date).toLocaleDateString()}</span>
+                                                    <span className="font-bold text-gray-900">${invoice.total.toLocaleString()}</span>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                )
-                            })}
+                                    )
+                                })}
+                            </div>
                         </div>
                     </div>
-                </div>
+                )}
             </div>
+
+            {/* Footer */}
+            {settings.portal_footer_text && (
+                <div className="text-center text-sm text-gray-400 mt-12 pb-8">
+                    {settings.portal_footer_text}
+                </div>
+            )}
 
             {/* Bottom Bar */}
             {selectedInvoices.length > 0 && paymentsEnabled && (
@@ -315,7 +359,8 @@ export default function PortalPage() {
                         </div>
                         <Button
                             size="lg"
-                            className="bg-brand-pink hover:bg-brand-pink/90 text-white px-8"
+                            className="text-white px-8"
+                            style={{ backgroundColor: settings.portal_primary_color || '#F205E2' }}
                             onClick={handlePay}
                             disabled={isProcessing}
                         >
@@ -335,7 +380,7 @@ export default function PortalPage() {
                         </div>
                         <h3 className="text-lg font-bold text-gray-900">¡Pago Recibido!</h3>
                         <p className="text-gray-600 whitespace-pre-wrap">{settings.payment_success_message}</p>
-                        <Button onClick={() => setShowSuccessMessage(false)} className="w-full bg-brand-pink hover:bg-brand-pink/90">
+                        <Button onClick={() => setShowSuccessMessage(false)} className="w-full text-white" style={{ backgroundColor: settings.portal_primary_color || '#F205E2' }}>
                             Entendido
                         </Button>
                     </div>

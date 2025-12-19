@@ -10,8 +10,10 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
+import { Badge } from "@/components/ui/badge"
 import { updateSettings } from "@/lib/actions/settings"
-import { Loader2, Save, CreditCard, FileText, Building2, Globe } from "lucide-react"
+import { Loader2, Save, CreditCard, FileText, Building2, Globe, Layout, Palette, Eye, MessageSquare } from "lucide-react"
+import { COMMUNICATION_VARIABLES, DEFAULT_TEMPLATES } from "@/lib/communication-utils"
 
 export function SettingsForm({ initialSettings }: { initialSettings: any }) {
     const router = useRouter()
@@ -29,6 +31,26 @@ export function SettingsForm({ initialSettings }: { initialSettings: any }) {
 
     const handleSwitchChange = (name: string, checked: boolean) => {
         setFormData((prev: any) => ({ ...prev, [name]: checked }))
+    }
+
+    const handleModuleChange = (moduleName: string, checked: boolean) => {
+        setFormData((prev: any) => ({
+            ...prev,
+            portal_modules: {
+                ...prev.portal_modules,
+                [moduleName]: checked
+            }
+        }))
+    }
+
+    const handleTemplateChange = (key: string, value: string) => {
+        setFormData((prev: any) => ({
+            ...prev,
+            comm_templates: {
+                ...prev.comm_templates,
+                [key]: value
+            }
+        }))
     }
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -55,7 +77,7 @@ export function SettingsForm({ initialSettings }: { initialSettings: any }) {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h2 className="text-2xl font-bold tracking-tight">Configuración</h2>
+                    <h2 className="text-3xl font-bold tracking-tight text-gray-900">Configuración</h2>
                     <p className="text-muted-foreground">Administra los datos de tu agencia y preferencias globales.</p>
                 </div>
                 <Button onClick={handleSubmit} disabled={isLoading} className="bg-brand-pink hover:bg-brand-pink/90">
@@ -65,11 +87,13 @@ export function SettingsForm({ initialSettings }: { initialSettings: any }) {
             </div>
 
             <Tabs defaultValue="agency" className="w-full">
-                <TabsList className="grid w-full grid-cols-4 max-w-[600px]">
+                <TabsList className="grid w-full grid-cols-6 max-w-[900px]">
                     <TabsTrigger value="agency" className="flex items-center gap-2"><Building2 className="h-4 w-4" /> Agencia</TabsTrigger>
                     <TabsTrigger value="general" className="flex items-center gap-2"><Globe className="h-4 w-4" /> General</TabsTrigger>
                     <TabsTrigger value="billing" className="flex items-center gap-2"><FileText className="h-4 w-4" /> Facturación</TabsTrigger>
                     <TabsTrigger value="payments" className="flex items-center gap-2"><CreditCard className="h-4 w-4" /> Pagos</TabsTrigger>
+                    <TabsTrigger value="portal" className="flex items-center gap-2"><Layout className="h-4 w-4" /> Portal</TabsTrigger>
+                    <TabsTrigger value="communication" className="flex items-center gap-2"><MessageSquare className="h-4 w-4" /> Comms</TabsTrigger>
                 </TabsList>
 
                 {/* AGENCY TAB */}
@@ -354,6 +378,261 @@ export function SettingsForm({ initialSettings }: { initialSettings: any }) {
                             </div>
                         </CardContent>
                     </Card>
+                </TabsContent>
+
+                {/* PORTAL TAB */}
+                <TabsContent value="portal" className="space-y-4 mt-4">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                        {/* Left Column: General & Branding */}
+                        <div className="lg:col-span-2 space-y-4">
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2"><Globe className="h-4 w-4" /> General</CardTitle>
+                                    <CardDescription>Configuración básica del portal de clientes.</CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/20">
+                                        <div className="space-y-0.5">
+                                            <Label className="text-base">Habilitar Portal</Label>
+                                            <p className="text-sm text-muted-foreground">
+                                                Si se desactiva, los clientes verán una página de mantenimiento.
+                                            </p>
+                                        </div>
+                                        <Switch
+                                            checked={formData.portal_enabled !== false}
+                                            onCheckedChange={(checked) => handleSwitchChange('portal_enabled', checked)}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="portal_subdomain">Subdominio (Opcional)</Label>
+                                        <div className="flex items-center gap-2">
+                                            <Input id="portal_subdomain" name="portal_subdomain" value={formData.portal_subdomain || ''} onChange={handleChange} placeholder="mi-agencia" className="max-w-[200px]" />
+                                            <span className="text-muted-foreground text-sm">.pixy.com.co</span>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="portal_welcome_message">Mensaje de Bienvenida</Label>
+                                        <Textarea
+                                            id="portal_welcome_message"
+                                            name="portal_welcome_message"
+                                            value={formData.portal_welcome_message || ''}
+                                            onChange={handleChange}
+                                            placeholder="¡Hola! Bienvenido a tu portal de clientes..."
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="portal_footer_text">Texto del Pie de Página</Label>
+                                        <Input
+                                            id="portal_footer_text"
+                                            name="portal_footer_text"
+                                            value={formData.portal_footer_text || ''}
+                                            onChange={handleChange}
+                                            placeholder="© 2024 Mi Agencia - Todos los derechos reservados"
+                                        />
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2"><Palette className="h-4 w-4" /> Branding</CardTitle>
+                                    <CardDescription>Personaliza la apariencia del portal.</CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="portal_logo_url">URL del Logo del Portal</Label>
+                                        <Input
+                                            id="portal_logo_url"
+                                            name="portal_logo_url"
+                                            value={formData.portal_logo_url || ''}
+                                            onChange={handleChange}
+                                            placeholder="https://..."
+                                        />
+                                        <p className="text-xs text-muted-foreground">Si se deja vacío, se usará el logo de la agencia.</p>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="portal_primary_color">Color Primario</Label>
+                                            <div className="flex gap-2">
+                                                <Input
+                                                    type="color"
+                                                    id="portal_primary_color"
+                                                    name="portal_primary_color"
+                                                    value={formData.portal_primary_color || '#000000'}
+                                                    onChange={handleChange}
+                                                    className="w-12 h-10 p-1 cursor-pointer"
+                                                />
+                                                <Input
+                                                    name="portal_primary_color"
+                                                    value={formData.portal_primary_color || ''}
+                                                    onChange={handleChange}
+                                                    placeholder="#000000"
+                                                    className="flex-1"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="portal_secondary_color">Color Secundario</Label>
+                                            <div className="flex gap-2">
+                                                <Input
+                                                    type="color"
+                                                    id="portal_secondary_color"
+                                                    name="portal_secondary_color"
+                                                    value={formData.portal_secondary_color || '#ffffff'}
+                                                    onChange={handleChange}
+                                                    className="w-12 h-10 p-1 cursor-pointer"
+                                                />
+                                                <Input
+                                                    name="portal_secondary_color"
+                                                    value={formData.portal_secondary_color || ''}
+                                                    onChange={handleChange}
+                                                    placeholder="#ffffff"
+                                                    className="flex-1"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <Label htmlFor="portal_show_agency_name">Mostrar Nombre de Agencia</Label>
+                                        <Switch
+                                            id="portal_show_agency_name"
+                                            checked={formData.portal_show_agency_name !== false}
+                                            onCheckedChange={(checked) => handleSwitchChange('portal_show_agency_name', checked)}
+                                        />
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <Label htmlFor="portal_show_contact_info">Mostrar Info de Contacto</Label>
+                                        <Switch
+                                            id="portal_show_contact_info"
+                                            checked={formData.portal_show_contact_info !== false}
+                                            onCheckedChange={(checked) => handleSwitchChange('portal_show_contact_info', checked)}
+                                        />
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
+
+                        {/* Right Column: Modules */}
+                        <div className="space-y-4">
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2"><Eye className="h-4 w-4" /> Visibilidad</CardTitle>
+                                    <CardDescription>Controla qué módulos pueden ver tus clientes.</CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-6">
+                                    <div className="flex items-center justify-between">
+                                        <div className="space-y-0.5">
+                                            <Label className="text-base">Facturas</Label>
+                                            <p className="text-xs text-muted-foreground">Historial y pendientes.</p>
+                                        </div>
+                                        <Switch
+                                            checked={formData.portal_modules?.invoices !== false}
+                                            onCheckedChange={(checked) => handleModuleChange('invoices', checked)}
+                                        />
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <div className="space-y-0.5">
+                                            <Label className="text-base">Pagos en Línea</Label>
+                                            <p className="text-xs text-muted-foreground">Botón de pago Wompi.</p>
+                                        </div>
+                                        <Switch
+                                            checked={formData.portal_modules?.payments !== false}
+                                            onCheckedChange={(checked) => handleModuleChange('payments', checked)}
+                                        />
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <div className="space-y-0.5">
+                                            <Label className="text-base">Briefings</Label>
+                                            <p className="text-xs text-muted-foreground">Formularios de proyectos.</p>
+                                        </div>
+                                        <Switch
+                                            checked={formData.portal_modules?.briefings !== false}
+                                            onCheckedChange={(checked) => handleModuleChange('briefings', checked)}
+                                        />
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
+                    </div>
+                </TabsContent>
+
+                {/* COMMUNICATION TAB */}
+                <TabsContent value="communication" className="space-y-4 mt-4">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                        {/* Left Column: General Settings */}
+                        <div className="space-y-4">
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2"><MessageSquare className="h-4 w-4" /> General</CardTitle>
+                                    <CardDescription>Configuración de WhatsApp.</CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="comm_whatsapp_number">Número Principal</Label>
+                                        <Input
+                                            id="comm_whatsapp_number"
+                                            name="comm_whatsapp_number"
+                                            value={formData.comm_whatsapp_number || ''}
+                                            onChange={handleChange}
+                                            placeholder="3001234567"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="comm_sender_name">Nombre del Remitente</Label>
+                                        <Input
+                                            id="comm_sender_name"
+                                            name="comm_sender_name"
+                                            value={formData.comm_sender_name || ''}
+                                            onChange={handleChange}
+                                            placeholder="Tu Agencia"
+                                        />
+                                        <p className="text-xs text-muted-foreground">Se usará en algunos mensajes automáticos.</p>
+                                    </div>
+                                    <div className="flex items-center justify-between p-3 border rounded-lg">
+                                        <div className="space-y-0.5">
+                                            <Label className="text-sm">Modo Asistido</Label>
+                                            <p className="text-xs text-muted-foreground">Abrir WhatsApp Web al enviar.</p>
+                                        </div>
+                                        <Switch
+                                            checked={formData.comm_assisted_mode !== false}
+                                            onCheckedChange={(checked) => handleSwitchChange('comm_assisted_mode', checked)}
+                                        />
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
+
+                        {/* Right Column: Templates */}
+                        <div className="lg:col-span-2 space-y-4">
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>Plantillas de Mensajes</CardTitle>
+                                    <CardDescription>Personaliza los mensajes que se envían a tus clientes.</CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-6">
+                                    {Object.keys(DEFAULT_TEMPLATES).map((key) => (
+                                        <div key={key} className="space-y-2 border-b pb-4 last:border-0 last:pb-0">
+                                            <Label className="capitalize font-semibold text-base">
+                                                {key.replace('_', ' ')}
+                                            </Label>
+                                            <div className="flex gap-2 mb-2 flex-wrap">
+                                                {COMMUNICATION_VARIABLES[key as keyof typeof COMMUNICATION_VARIABLES].map((v) => (
+                                                    <Badge key={v} variant="outline" className="text-xs bg-muted">
+                                                        {v}
+                                                    </Badge>
+                                                ))}
+                                            </div>
+                                            <Textarea
+                                                value={formData.comm_templates?.[key] || DEFAULT_TEMPLATES[key as keyof typeof DEFAULT_TEMPLATES]}
+                                                onChange={(e) => handleTemplateChange(key, e.target.value)}
+                                                className="min-h-[80px]"
+                                            />
+                                        </div>
+                                    ))}
+                                </CardContent>
+                            </Card>
+                        </div>
+                    </div>
                 </TabsContent>
             </Tabs>
         </div>
