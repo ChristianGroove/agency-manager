@@ -7,24 +7,7 @@ import { Loader2, Download, Share2, Mail, ArrowLeft, CreditCard, Smartphone, Glo
 import { supabase } from "@/lib/supabase"
 import Link from "next/link"
 
-type Invoice = {
-  id: string
-  number: string
-  date: string
-  due_date: string
-  total: number
-  status: string
-  items: { description: string; quantity: number; price: number }[]
-  client: {
-    id: string
-    name: string
-    company_name: string
-    nit: string
-    email: string
-    phone: string
-    address: string
-  }
-}
+import { Invoice } from "@/types"
 
 import { WhatsAppShareModal } from "@/components/modules/invoices/whatsapp-share-modal"
 import { ShareButton } from "@/components/animate-ui/components/community/share-button"
@@ -77,7 +60,7 @@ export default function InvoicePage() {
   }
 
   const handleShareEmail = () => {
-    if (!invoice) return
+    if (!invoice || !invoice.client) return
     const subject = `Cuenta de Cobro N° ${invoice.number} - ${invoice.client.company_name}`
     const body = `Hola ${invoice.client.name},\n\nAdjunto encontrarás la cuenta de cobro N° ${invoice.number}.\n\nTotal a pagar: $${invoice.total.toLocaleString()}\n\nGracias por tu confianza.`
     const url = `mailto:${invoice.client.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
@@ -101,7 +84,7 @@ export default function InvoicePage() {
         <div className="px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Link href={`/clients/${invoice.client.id}`}>
+              <Link href={invoice.client?.id ? `/clients/${invoice.client.id}` : '/clients'}>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -161,9 +144,9 @@ export default function InvoicePage() {
                           'Content-Type': 'application/json',
                         },
                         body: JSON.stringify({
-                          email: invoice.client.email,
+                          email: invoice.client?.email || '',
                           invoiceNumber: invoice.number,
-                          clientName: invoice.client.name,
+                          clientName: invoice.client?.name || 'Cliente',
                           amount: `$${invoice.total.toLocaleString()}`,
                           dueDate: invoice.due_date ? new Date(invoice.due_date).toLocaleDateString() : new Date().toLocaleDateString(),
                           concept: invoice.items.map((item: any) => item.description).join(', '),
@@ -254,12 +237,12 @@ export default function InvoicePage() {
               </div>
               <div>
                 <h3 className="text-xs font-bold mb-3 uppercase text-gray-500 tracking-wider">Para:</h3>
-                <p className="font-bold text-base text-gray-900">{invoice.client.name}</p>
-                <p className="text-sm text-gray-700">{invoice.client.company_name}</p>
-                <p className="text-sm text-gray-700">NIT/CC: {invoice.client.nit}</p>
-                <p className="text-sm text-gray-700">{invoice.client.address}</p>
-                <p className="text-sm text-gray-700">{invoice.client.email}</p>
-                <p className="text-sm font-semibold text-gray-900 mt-1">Cel: {invoice.client.phone}</p>
+                <p className="font-bold text-base text-gray-900">{invoice.client?.name}</p>
+                <p className="text-sm text-gray-700">{invoice.client?.company_name}</p>
+                <p className="text-sm text-gray-700">NIT/CC: {invoice.client?.nit}</p>
+                <p className="text-sm text-gray-700">{invoice.client?.address}</p>
+                <p className="text-sm text-gray-700">{invoice.client?.email}</p>
+                <p className="text-sm font-semibold text-gray-900 mt-1">Cel: {invoice.client?.phone}</p>
               </div>
             </div>
 

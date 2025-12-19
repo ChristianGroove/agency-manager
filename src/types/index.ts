@@ -9,6 +9,8 @@ export type Client = {
     phone?: string
     address?: string
     logo_url?: string
+    portal_token?: string
+    portal_short_token?: string
 }
 
 export type Lead = {

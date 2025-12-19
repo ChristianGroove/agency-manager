@@ -10,17 +10,10 @@ import { Share2, Copy, Check } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getSettings } from "@/lib/actions/settings"
 import { generateMessage, getWhatsAppLink } from "@/lib/communication-utils"
+import { Invoice } from "@/types"
 
 interface WhatsAppShareModalProps {
-    invoice: {
-        number: string
-        client: {
-            name: string
-            phone: string
-        }
-        total: number
-        due_date: string
-    }
+    invoice: Invoice
     open: boolean
     onOpenChange: (open: boolean) => void
 }
@@ -38,7 +31,7 @@ export function WhatsAppShareModal({ invoice, open, onOpenChange }: WhatsAppShar
     }
 
     // Helper to format date
-    const formatDate = (dateString: string) => {
+    const formatDate = (dateString?: string) => {
         if (!dateString) return "N/A"
         return new Date(dateString).toLocaleDateString()
     }
@@ -46,7 +39,7 @@ export function WhatsAppShareModal({ invoice, open, onOpenChange }: WhatsAppShar
     // Replace variables in template
     const processTemplate = (templateContent: string) => {
         return templateContent
-            .replace(/{cliente}/g, invoice.client.name)
+            .replace(/{cliente}/g, invoice.client?.name || 'Cliente')
             .replace(/{factura}/g, invoice.number)
             .replace(/{valor}/g, formatCurrency(invoice.total))
             .replace(/{vencimiento}/g, formatDate(invoice.due_date))
@@ -66,7 +59,7 @@ export function WhatsAppShareModal({ invoice, open, onOpenChange }: WhatsAppShar
             selectedTemplate === 'reminder' ? 'payment_reminder' : 'invoice_sent' // Default fallback
 
         const msg = generateMessage(templateKey, {
-            cliente: invoice.client.name,
+            cliente: invoice.client?.name || 'Cliente',
             factura: invoice.number,
             monto: formatCurrency(invoice.total),
             link: `${window.location.origin}/portal/${invoice.client?.portal_token || ''}`
@@ -76,7 +69,7 @@ export function WhatsAppShareModal({ invoice, open, onOpenChange }: WhatsAppShar
     }, [selectedTemplate, invoice, settings])
 
     const handleSend = () => {
-        const phone = invoice.client.phone || ''
+        const phone = invoice.client?.phone || ''
         const url = getWhatsAppLink(phone, message, settings)
         window.open(url, '_blank')
         onOpenChange(false)
