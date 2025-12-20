@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
     Dialog,
     DialogContent,
@@ -43,8 +44,17 @@ import {
     Copy,
     MessageCircle,
     Edit,
-    RefreshCw
+    RefreshCw,
+    CalendarClock,
+    PauseCircle,
+    PlayCircle,
+    StickyNote,
+    MoreHorizontal,
+    Eye
 } from "lucide-react"
+import { NotesModal } from "@/components/modules/clients/notes-modal"
+import { ResumeServiceModal } from "@/components/modules/services/resume-service-modal"
+import { toggleServiceStatus } from "@/app/actions/services-actions"
 import { supabase } from "@/lib/supabase"
 import { getSettings } from "@/lib/actions/settings"
 import { getWhatsAppLink } from "@/lib/communication-utils"
@@ -92,11 +102,39 @@ export default function ClientDetailPage() {
     useEffect(() => {
         getSettings().then(setSettings)
     }, [])
-    const [activeTab, setActiveTab] = useState("services")
 
-    // Notes state
-    const [notes, setNotes] = useState("")
-    const [savingNotes, setSavingNotes] = useState(false)
+    // Unified View State
+    const [isNotesModalOpen, setIsNotesModalOpen] = useState(false)
+    const [selectedServiceForResume, setSelectedServiceForResume] = useState<any>(null)
+    const [isResumeModalOpen, setIsResumeModalOpen] = useState(false)
+
+    // Helper: Get invoices linked to a service
+    const getServiceInvoices = (serviceId: string) => {
+        return client?.invoices?.filter(inv => inv.service_id === serviceId) || []
+    }
+
+    // Helper: Get invoices NOT linked to any service
+    const getUnlinkedInvoices = () => {
+        const serviceIds = client?.services?.map(s => s.id) || []
+        return client?.invoices?.filter(inv => !inv.service_id || !serviceIds.includes(inv.service_id)) || []
+    }
+
+    const handlePauseService = async (id: string) => {
+        if (!client) return
+        if (!confirm("¿Estás seguro de que deseas pausar este servicio? Se detendrá la facturación hasta que lo reanudes.")) return
+
+        try {
+            const result = await toggleServiceStatus(id, 'paused')
+            if (result.success) {
+                await fetchClientData(client.id)
+            } else {
+                alert("Error al pausar el servicio")
+            }
+        } catch (error) {
+            console.error(error)
+            alert("Error desconocido")
+        }
+    }
 
     // Add Service Modal State
     const [invoiceFilter, setInvoiceFilter] = useState("all")
@@ -178,7 +216,6 @@ export default function ClientDetailPage() {
             }
 
             setClient(data)
-            setNotes(data?.notes || "")
         } catch (error) {
             console.error("Error fetching client:", error)
         } finally {
@@ -324,10 +361,11 @@ export default function ClientDetailPage() {
                             <h1 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">Cliente</h1>
                         </div>
                         <div className="flex items-center gap-2">
+                            {/* Delete - Icon Only */}
                             <Button
-                                variant="outline"
-                                size="sm"
-                                className="text-red-600 hover:bg-red-50 hover:text-red-700 border-red-200"
+                                variant="ghost"
+                                size="icon"
+                                className="text-gray-400 hover:text-red-600 hover:bg-red-50"
                                 onClick={async () => {
                                     if (confirm(`¿Estás seguro de eliminar a ${client.name}? Esta acción eliminará toda su información incluyendo facturas, suscripciones y hosting. Esta acción no se puede deshacer.`)) {
                                         try {
@@ -344,311 +382,224 @@ export default function ClientDetailPage() {
                                         }
                                     }
                                 }}
+                                title="Eliminar Cliente"
                             >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Eliminar
+                                <Trash2 className="h-5 w-5" />
                             </Button>
 
+                            {/* Notes - Icon Only */}
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="text-gray-400 hover:text-amber-600 hover:bg-amber-50"
+                                onClick={() => setIsNotesModalOpen(true)}
+                                title="Notas"
+                            >
+                                <StickyNote className="h-5 w-5" />
+                            </Button>
+
+                            {/* Edit - Icon Only */}
                             <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
                                 <DialogTrigger asChild>
-                                    <Button variant="outline" size="sm" className="border-indigo-200 text-indigo-600 hover:bg-indigo-50">
-                                        <Pencil className="mr-2 h-4 w-4" />
-                                        Editar
+                                    <Button variant="ghost" size="icon" className="text-gray-400 hover:text-indigo-600 hover:bg-indigo-50" title="Editar Cliente">
+                                        <Pencil className="h-5 w-5" />
                                     </Button>
                                 </DialogTrigger>
-                                <DialogContent className="sm:max-w-[600px]">
+                                <DialogContent className="sm:max-w-[550px]">
                                     <DialogHeader>
                                         <DialogTitle>Editar Cliente</DialogTitle>
                                         <DialogDescription>
-                                            Actualiza la información del cliente.
+                                            Actualiza la información del cliente organizada por secciones.
                                         </DialogDescription>
                                     </DialogHeader>
+                                    <form onSubmit={(e) => { e.preventDefault(); handleUpdateClient(); }}>
+                                        <Tabs defaultValue="profile" className="w-full">
+                                            <TabsList className="grid w-full grid-cols-3 mb-4">
+                                                <TabsTrigger value="profile">Perfil</TabsTrigger>
+                                                <TabsTrigger value="contact">Contacto</TabsTrigger>
+                                                <TabsTrigger value="social">Redes</TabsTrigger>
+                                            </TabsList>
 
-                                    <div className="grid gap-6 py-4 max-h-[70vh] overflow-y-auto px-1">
-                                        {/* Logo Upload - Featured Section */}
-                                        <div className="flex flex-col items-center gap-3 pb-4 border-b border-gray-100">
-                                            {!previewUrl ? (
-                                                <div
-                                                    className={cn(
-                                                        "w-32 h-32 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-all",
-                                                        "border-gray-300 hover:border-indigo-400 hover:bg-gray-50"
-                                                    )}
-                                                    onDrop={handleDrop}
-                                                    onDragOver={(e) => { e.preventDefault(); e.stopPropagation() }}
-                                                    onClick={() => fileInputRef.current?.click()}
-                                                >
-                                                    <Upload className="h-8 w-8 text-gray-400 mb-2" />
-                                                    <p className="text-xs font-medium text-gray-600">Logo del cliente</p>
-                                                    <p className="text-xs text-gray-400 mt-1">PNG, JPG • 300x300</p>
-                                                    <input
-                                                        ref={fileInputRef}
-                                                        type="file"
-                                                        accept="image/*"
-                                                        className="hidden"
-                                                        onChange={handleFileSelect}
-                                                    />
-                                                </div>
-                                            ) : (
-                                                <div className="relative w-32 h-32 bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl overflow-hidden flex items-center justify-center border-2 border-indigo-200">
-                                                    <img src={previewUrl} alt="Preview" className="w-full h-full object-contain p-2" />
-                                                    <Button
-                                                        type="button"
-                                                        variant="destructive"
-                                                        size="icon"
-                                                        className="absolute -top-2 -right-2 h-7 w-7 rounded-full shadow-lg"
-                                                        onClick={removeFile}
+                                            {/* TAB 1: PERFIL */}
+                                            <TabsContent value="profile" className="space-y-4 py-2">
+                                                <div className="flex items-center gap-4 border p-3 rounded-lg bg-gray-50/50">
+                                                    <div
+                                                        className="relative group cursor-pointer shrink-0"
+                                                        onClick={() => fileInputRef.current?.click()}
+                                                        onDragOver={(e) => e.preventDefault()}
+                                                        onDrop={handleDrop}
                                                     >
-                                                        <X className="h-4 w-4" />
-                                                    </Button>
+                                                        <Avatar className="h-16 w-16 border-2 border-white shadow-sm group-hover:border-indigo-200 transition-colors">
+                                                            <AvatarImage src={previewUrl || editForm.logo_url} className="object-cover" />
+                                                            <AvatarFallback className="text-lg font-bold bg-indigo-50 text-indigo-600">
+                                                                {editForm.name?.substring(0, 2).toUpperCase() || "CL"}
+                                                            </AvatarFallback>
+                                                        </Avatar>
+                                                        <div className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                                                            <Upload className="h-4 w-4" />
+                                                        </div>
+                                                        <input
+                                                            type="file"
+                                                            ref={fileInputRef}
+                                                            className="hidden"
+                                                            accept="image/*"
+                                                            onChange={handleFileSelect}
+                                                        />
+                                                    </div>
+                                                    <div className="flex-1">
+                                                        <Label className="cursor-pointer hover:text-indigo-600 transition-colors" htmlFor="logo-upload">
+                                                            Logo Corporativo
+                                                        </Label>
+                                                        <p className="text-xs text-gray-500 mt-1">Sube una imagen cuadrada (PNG/JPG).</p>
+                                                    </div>
                                                 </div>
-                                            )}
-                                        </div>
 
-                                        {/* Basic Information Section */}
-                                        <div className="space-y-4">
-                                            <div className="flex items-center gap-2 mb-3">
-                                                <div className="p-1.5 bg-indigo-100 rounded-lg">
-                                                    <FileText className="h-4 w-4 text-indigo-600" />
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    <div className="space-y-1.5">
+                                                        <Label htmlFor="company_name">Empresa / Razón Social</Label>
+                                                        <Input
+                                                            id="company_name"
+                                                            value={editForm.company_name}
+                                                            onChange={(e) => setEditForm({ ...editForm, company_name: e.target.value })}
+                                                            placeholder="Empresa SAS"
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-1.5">
+                                                        <Label htmlFor="nit">NIT</Label>
+                                                        <Input
+                                                            id="nit"
+                                                            value={editForm.nit}
+                                                            onChange={(e) => setEditForm({ ...editForm, nit: e.target.value })}
+                                                            placeholder="900.123.456-7"
+                                                        />
+                                                    </div>
                                                 </div>
-                                                <h3 className="font-semibold text-gray-900">Información Básica</h3>
-                                            </div>
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="edit-name" className="text-sm font-medium flex items-center gap-1.5">
-                                                        Nombre Completo
-                                                        <span className="text-red-500">*</span>
-                                                    </Label>
+                                                <div className="space-y-1.5">
+                                                    <Label htmlFor="address">Dirección Fiscal</Label>
                                                     <Input
-                                                        id="edit-name"
-                                                        placeholder="Juan Pérez"
-                                                        value={editForm.name}
-                                                        onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                                                        className="h-10"
-                                                    />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="edit-company" className="text-sm font-medium">
-                                                        Empresa
-                                                    </Label>
-                                                    <Input
-                                                        id="edit-company"
-                                                        placeholder="Agencia S.A.S"
-                                                        value={editForm.company_name}
-                                                        onChange={(e) => setEditForm({ ...editForm, company_name: e.target.value })}
-                                                        className="h-10"
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Contact Details Section */}
-                                        <div className="space-y-4">
-                                            <div className="flex items-center gap-2 mb-3">
-                                                <div className="p-1.5 bg-blue-100 rounded-lg">
-                                                    <Mail className="h-4 w-4 text-blue-600" />
-                                                </div>
-                                                <h3 className="font-semibold text-gray-900">Datos de Contacto</h3>
-                                            </div>
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="edit-email" className="text-sm font-medium flex items-center gap-1.5">
-                                                        Email
-                                                        <span className="text-red-500">*</span>
-                                                    </Label>
-                                                    <Input
-                                                        id="edit-email"
-                                                        type="email"
-                                                        placeholder="cliente@empresa.com"
-                                                        value={editForm.email}
-                                                        onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-                                                        className="h-10"
-                                                    />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="edit-phone" className="text-sm font-medium">
-                                                        Teléfono
-                                                    </Label>
-                                                    <Input
-                                                        id="edit-phone"
-                                                        placeholder="+57 300 123 4567"
-                                                        value={editForm.phone}
-                                                        onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
-                                                        className="h-10"
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Business Information Section */}
-                                        <div className="space-y-4">
-                                            <div className="flex items-center gap-2 mb-3">
-                                                <div className="p-1.5 bg-purple-100 rounded-lg">
-                                                    <CreditCard className="h-4 w-4 text-purple-600" />
-                                                </div>
-                                                <h3 className="font-semibold text-gray-900">Información Fiscal</h3>
-                                            </div>
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="edit-nit" className="text-sm font-medium">
-                                                        NIT / ID
-                                                    </Label>
-                                                    <Input
-                                                        id="edit-nit"
-                                                        placeholder="900.123.456-7"
-                                                        value={editForm.nit}
-                                                        onChange={(e) => setEditForm({ ...editForm, nit: e.target.value })}
-                                                        className="h-10"
-                                                    />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="edit-address" className="text-sm font-medium">
-                                                        Dirección
-                                                    </Label>
-                                                    <Input
-                                                        id="edit-address"
-                                                        placeholder="Calle 123 #45-67"
+                                                        id="address"
                                                         value={editForm.address}
                                                         onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
-                                                        className="h-10"
+                                                        placeholder="Dirección completa"
                                                     />
                                                 </div>
-                                            </div>
-                                        </div>
+                                            </TabsContent>
 
-                                        {/* Social Media Section */}
-                                        <div className="space-y-4">
-                                            <div className="flex items-center gap-2 mb-3">
-                                                <div className="p-1.5 bg-green-100 rounded-lg">
-                                                    <Globe className="h-4 w-4 text-green-600" />
+                                            {/* TAB 2: CONTACTO */}
+                                            <TabsContent value="contact" className="space-y-4 py-2">
+                                                <div className="space-y-1.5">
+                                                    <Label htmlFor="name">Nombre del Contacto</Label>
+                                                    <div className="relative">
+                                                        <FileText className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
+                                                        <Input
+                                                            id="name"
+                                                            className="pl-9"
+                                                            value={editForm.name}
+                                                            onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                                                            placeholder="Nombre completo"
+                                                        />
+                                                    </div>
                                                 </div>
-                                                <h3 className="font-semibold text-gray-900">Redes Sociales</h3>
-                                                <span className="text-xs text-gray-500">(opcional)</span>
-                                            </div>
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="edit-facebook" className="text-sm font-medium">
-                                                        Facebook
-                                                    </Label>
-                                                    <Input
-                                                        id="edit-facebook"
-                                                        placeholder="facebook.com/empresa"
-                                                        value={editForm.facebook}
-                                                        onChange={(e) => setEditForm({ ...editForm, facebook: e.target.value })}
-                                                        className="h-10"
-                                                    />
+                                                <div className="space-y-1.5">
+                                                    <Label htmlFor="email">Correo Electrónico</Label>
+                                                    <div className="relative">
+                                                        <Mail className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
+                                                        <Input
+                                                            id="email"
+                                                            className="pl-9"
+                                                            value={editForm.email}
+                                                            onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                                                            placeholder="correo@ejemplo.com"
+                                                        />
+                                                    </div>
                                                 </div>
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="edit-instagram" className="text-sm font-medium">
-                                                        Instagram
-                                                    </Label>
-                                                    <Input
-                                                        id="edit-instagram"
-                                                        placeholder="@empresa"
-                                                        value={editForm.instagram}
-                                                        onChange={(e) => setEditForm({ ...editForm, instagram: e.target.value })}
-                                                        className="h-10"
-                                                    />
+                                                <div className="space-y-1.5">
+                                                    <Label htmlFor="phone">Teléfono / Celular</Label>
+                                                    <div className="relative">
+                                                        <Phone className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
+                                                        <Input
+                                                            id="phone"
+                                                            className="pl-9"
+                                                            value={editForm.phone}
+                                                            onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                                                            placeholder="+57 300 ..."
+                                                        />
+                                                    </div>
                                                 </div>
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="edit-tiktok" className="text-sm font-medium">
-                                                        TikTok
-                                                    </Label>
-                                                    <Input
-                                                        id="edit-tiktok"
-                                                        placeholder="@empresa"
-                                                        value={editForm.tiktok}
-                                                        onChange={(e) => setEditForm({ ...editForm, tiktok: e.target.value })}
-                                                        className="h-10"
-                                                    />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="edit-website" className="text-sm font-medium">
-                                                        Sitio Web
-                                                    </Label>
-                                                    <Input
-                                                        id="edit-website"
-                                                        placeholder="https://empresa.com"
-                                                        value={editForm.website}
-                                                        onChange={(e) => setEditForm({ ...editForm, website: e.target.value })}
-                                                        className="h-10"
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
+                                            </TabsContent>
 
-                                    <DialogFooter>
-                                        <Button variant="outline" onClick={() => setIsEditModalOpen(false)}>Cancelar</Button>
-                                        <Button onClick={handleUpdateClient} disabled={editing} className="bg-brand-pink hover:bg-brand-pink/90 text-white shadow-md border-0">
-                                            {editing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                                            Guardar Cambios
-                                        </Button>
-                                    </DialogFooter>
+                                            {/* TAB 3: REDES */}
+                                            <TabsContent value="social" className="space-y-4 py-2">
+                                                <div className="space-y-1.5">
+                                                    <Label htmlFor="website">Sitio Web</Label>
+                                                    <div className="relative">
+                                                        <Globe className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
+                                                        <Input
+                                                            id="website"
+                                                            className="pl-9"
+                                                            value={editForm.website}
+                                                            onChange={(e) => setEditForm({ ...editForm, website: e.target.value })}
+                                                            placeholder="www.tusitio.com"
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-3 pt-2">
+                                                    <div className="space-y-1.5">
+                                                        <Label htmlFor="instagram">Instagram</Label>
+                                                        <Input
+                                                            id="instagram"
+                                                            value={editForm.instagram}
+                                                            onChange={(e) => setEditForm({ ...editForm, instagram: e.target.value })}
+                                                            placeholder="@usuario"
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-1.5">
+                                                        <Label htmlFor="facebook">Facebook</Label>
+                                                        <Input
+                                                            id="facebook"
+                                                            value={editForm.facebook}
+                                                            onChange={(e) => setEditForm({ ...editForm, facebook: e.target.value })}
+                                                            placeholder="usuario"
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-1.5">
+                                                        <Label htmlFor="tiktok">TikTok</Label>
+                                                        <Input
+                                                            id="tiktok"
+                                                            value={editForm.tiktok}
+                                                            onChange={(e) => setEditForm({ ...editForm, tiktok: e.target.value })}
+                                                            placeholder="@usuario"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </TabsContent>
+                                        </Tabs>
+
+                                        <DialogFooter className="pt-4 mt-2 border-t border-gray-100">
+                                            <Button type="button" variant="ghost" onClick={() => setIsEditModalOpen(false)}>Cancelar</Button>
+                                            <Button type="submit" disabled={loading} className="bg-brand-pink hover:bg-brand-pink/90 text-white">
+                                                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Guardar Cambios"}
+                                            </Button>
+                                        </DialogFooter>
+                                    </form>
                                 </DialogContent>
                             </Dialog>
 
-                            {(client.portal_token || client.portal_short_token) && (
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="outline" size="sm" className="border-gray-200 text-gray-700 hover:bg-gray-50">
-                                            <Globe className="mr-2 h-4 w-4" />
-                                            Portal
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                        <DropdownMenuItem onClick={() => {
-                                            const token = client.portal_short_token || client.portal_token
-                                            const domain = window.location.origin
-                                            window.open(`${domain}/portal/${token}`, '_blank')
-                                        }}>
-                                            <ExternalLink className="mr-2 h-4 w-4" />
-                                            Ver Portal
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => {
-                                            const token = client.portal_short_token || client.portal_token
-                                            const domain = window.location.origin
-                                            const url = `${domain}/portal/${token}`
-                                            navigator.clipboard.writeText(url)
-                                            alert("Enlace copiado al portapapeles")
-                                        }}>
-                                            <Copy className="mr-2 h-4 w-4" />
-                                            Copiar Enlace
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => {
-                                            const token = client.portal_short_token || client.portal_token
-                                            const domain = window.location.origin
-                                            const url = `${domain}/portal/${token}`
-                                            const text = `Hola ${client.name}, aquí tienes tu enlace al portal de clientes para ver tus facturas y realizar pagos: ${url}`
-                                            const waUrl = getWhatsAppLink(client.phone, text, settings)
-                                            window.open(waUrl, '_blank')
-                                        }}>
-                                            <MessageCircle className="mr-2 h-4 w-4" />
-                                            Enviar por WhatsApp
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem onClick={async () => {
-                                            if (confirm("¿Estás seguro de regenerar el token? El enlace anterior dejará de funcionar.")) {
-                                                try {
-                                                    const res = await regeneratePortalToken(client.id)
-                                                    if (res.success) {
-                                                        fetchClientData(client.id)
-                                                        alert("Token regenerado exitosamente")
-                                                    }
-                                                } catch (e) {
-                                                    console.error(e)
-                                                    alert("Error al regenerar token")
-                                                }
-                                            }
-                                        }}>
-                                            <RefreshCw className="mr-2 h-4 w-4" />
-                                            Regenerar Token
-                                        </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                            )}
+                            {/* Primary Action: Add Service (Right-Most) */}
+                            <Button
+                                onClick={() => {
+                                    setServiceToEdit(null)
+                                    setIsServiceModalOpen(true)
+                                }}
+                                className="bg-brand-pink hover:bg-brand-pink/90 text-white shadow-sm ml-2"
+                            >
+                                <Plus className="mr-2 h-4 w-4" />
+                                Nuevo Servicio
+                            </Button>
                         </div>
                     </div>
-                </div>
-            </div>
+                </div >
+            </div >
 
             {/* Main Content */}
             <div>
@@ -778,431 +729,216 @@ export default function ClientDetailPage() {
                     </CardContent>
                 </Card>
 
-                {/* Tabs Navigation */}
-                <div className="mb-6">
-                    <div className="flex gap-2 bg-white rounded-xl p-2 shadow-sm border border-gray-200">
-                        <button
-                            onClick={() => setActiveTab("services")}
-                            className={cn(
-                                "flex-1 px-6 py-3 rounded-lg font-medium text-sm transition-all",
-                                activeTab === "services"
-                                    ? "bg-brand-dark text-white shadow-md"
-                                    : "text-gray-600 hover:bg-gray-100"
-                            )}
-                        >
-                            <div className="flex items-center justify-center gap-2">
-                                <CreditCard className="h-4 w-4" />
-                                <span>Servicios</span>
-                            </div>
-                        </button>
-                        <button
-                            onClick={() => setActiveTab("invoices")}
-                            className={cn(
-                                "flex-1 px-6 py-3 rounded-lg font-medium text-sm transition-all",
-                                activeTab === "invoices"
-                                    ? "bg-brand-dark text-white shadow-md"
-                                    : "text-gray-600 hover:bg-gray-100"
-                            )}
-                        >
-                            <div className="flex items-center justify-center gap-2 relative">
-                                <FileText className="h-4 w-4" />
-                                <span>Facturas</span>
-                                {hasAttentionInvoices && (
-                                    <AlertCircle className="h-4 w-4 text-brand-pink animate-pulse" />
-                                )}
-                            </div>
-                        </button>
-                        <button
-                            onClick={() => setActiveTab("notes")}
-                            className={cn(
-                                "flex-1 px-6 py-3 rounded-lg font-medium text-sm transition-all",
-                                activeTab === "notes"
-                                    ? "bg-brand-dark text-white shadow-md"
-                                    : "text-gray-600 hover:bg-gray-100"
-                            )}
-                        >
-                            <div className="flex items-center justify-center gap-2">
-                                <FileText className="h-4 w-4" />
-                                <span>Datos y Notas</span>
-                            </div>
-                        </button>
-                    </div>
-                </div>
+                {/* Unified Content View */}
+                <div className="space-y-8 pb-20">
 
-                {/* Tab Content: Services */}
-                {
-                    activeTab === "services" && (
-                        <div className="space-y-6">
-                            {/* NEW Services Section */}
-                            <Card className="border-0 shadow-lg">
-                                <CardHeader className="flex flex-row items-center justify-between pb-4">
-                                    <div>
-                                        <CardTitle className="text-xl font-bold">Servicios Activos</CardTitle>
-                                        <CardDescription className="mt-1">Gestiona los servicios y suscripciones del cliente</CardDescription>
-                                    </div>
-                                    <AddServiceModal
-                                        clientId={client.id}
-                                        clientName={client.name}
-                                        open={isServiceModalOpen}
-                                        onOpenChange={setIsServiceModalOpen}
-                                        serviceToEdit={serviceToEdit}
-                                        onSuccess={() => fetchClientData(client.id)}
-                                        trigger={
-                                            <Button
-                                                onClick={() => setServiceToEdit(null)}
-                                                className="bg-brand-pink hover:bg-brand-pink/90 text-white shadow-md border-0"
-                                            >
-                                                <Plus className="mr-2 h-4 w-4" />
-                                                Añadir Servicio
-                                            </Button>
-                                        }
-                                    />
-                                </CardHeader>
-                                <CardContent>
-                                    {!client.services || client.services.length === 0 ? (
-                                        <div className="text-center py-12 border-2 border-dashed rounded-lg">
-                                            <CreditCard className="mx-auto h-12 w-12 text-gray-400 mb-3" />
-                                            <p className="text-sm text-gray-500">No hay servicios activos</p>
-                                        </div>
-                                    ) : (
-                                        <div className="grid gap-4">
-                                            {client.services.map((service: any) => (
-                                                <Card key={service.id} className="border border-gray-200 hover:shadow-md transition-shadow">
-                                                    <CardContent className="p-4">
-                                                        <div className="flex items-center justify-between">
-                                                            <div className="flex items-center gap-4 flex-1">
-                                                                <div className="p-3 rounded-lg border bg-gray-50 border-gray-200 text-gray-700">
-                                                                    <CreditCard className="h-5 w-5" />
-                                                                </div>
-                                                                <div className="flex-1">
-                                                                    <div className="flex items-center gap-2">
-                                                                        <h4 className="font-semibold text-gray-900">{service.name}</h4>
-                                                                        {service.type === 'one_off' && (
-                                                                            <Badge variant="outline" className="text-xs bg-orange-50 text-orange-700 border-orange-200">
-                                                                                Puntual
-                                                                            </Badge>
-                                                                        )}
-                                                                        {(service.quantity || 1) > 1 && (
-                                                                            <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
-                                                                                x{service.quantity}
-                                                                            </Badge>
-                                                                        )}
-                                                                        <Badge className="bg-green-100 text-green-700 border-green-300">Activo</Badge>
-                                                                    </div>
-                                                                    <p className="text-sm text-gray-500 mt-1">
-                                                                        {service.description || "Sin descripción"}
-                                                                    </p>
-                                                                    <p className="text-xs text-gray-400 mt-1">
-                                                                        Creado: {new Date(service.created_at).toLocaleDateString()}
-                                                                    </p>
-                                                                </div>
-                                                            </div>
-                                                            <div className="flex items-center gap-4">
-                                                                <DropdownMenu>
-                                                                    <DropdownMenuTrigger asChild>
-                                                                        <Button variant="ghost" size="icon" className="hover:bg-gray-100">
-                                                                            <MoreVertical className="h-4 w-4" />
-                                                                        </Button>
-                                                                    </DropdownMenuTrigger>
-                                                                    <DropdownMenuContent align="end" className="w-56">
-                                                                        <DropdownMenuItem
-                                                                            onClick={() => {
-                                                                                setServiceToEdit(service)
-                                                                                setIsServiceModalOpen(true)
-                                                                            }}
-                                                                        >
-                                                                            <Pencil className="mr-2 h-4 w-4" />
-                                                                            <span>Editar</span>
-                                                                        </DropdownMenuItem>
-                                                                        <DropdownMenuItem
-                                                                            className="text-red-600 focus:text-red-600"
-                                                                            onClick={async () => {
-                                                                                if (confirm('¿Eliminar este servicio? Esto no borrará las facturas asociadas.')) {
-                                                                                    try {
-                                                                                        const { error } = await supabase
-                                                                                            .from('services')
-                                                                                            .delete()
-                                                                                            .eq('id', service.id)
-
-                                                                                        if (error) throw error
-                                                                                        await fetchClientData(client.id)
-                                                                                    } catch (error) {
-                                                                                        console.error('Error deleting service:', error)
-                                                                                        alert('Error al eliminar servicio')
-                                                                                    }
-                                                                                }
-                                                                            }}
-                                                                        >
-                                                                            <Trash2 className="mr-2 h-4 w-4" />
-                                                                            <span>Eliminar Servicio</span>
-                                                                        </DropdownMenuItem>
-                                                                    </DropdownMenuContent>
-                                                                </DropdownMenu>
-                                                            </div>
-                                                        </div>
-                                                    </CardContent>
-                                                </Card>
-                                            ))}
-                                        </div>
-                                    )}
-                                </CardContent>
-                            </Card>
+                    {/* 1. Services & Their Invoices (The Core View) */}
+                    <div className="space-y-6">
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                                <Server className="h-5 w-5 text-indigo-600" />
+                                Servicios Activos & Facturación
+                            </h2>
                         </div>
-                    )
-                }
 
-                {/* Tab Content: Invoices */}
-                {
-                    activeTab === "invoices" && (
-                        <Card className="border-0 shadow-lg">
-                            <CardHeader className="flex flex-row items-center justify-between pb-4">
-                                <div>
-                                    <CardTitle className="text-xl font-bold">Historial de Facturas</CardTitle>
-                                    <CardDescription className="mt-1">Todas las cuentas de cobro del cliente</CardDescription>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                    <select
-                                        className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                                        value={invoiceFilter}
-                                        onChange={(e) => setInvoiceFilter(e.target.value)}
-                                    >
-                                        <option value="all">Todas</option>
-                                        <option value="pending">Pendientes</option>
-                                        <option value="paid">Pagadas</option>
-                                        <option value="overdue">Vencidas</option>
-                                    </select>
-                                    <CreateInvoiceModal
-                                        clientId={client.id}
-                                        clientName={client.name}
-                                        onInvoiceCreated={() => fetchClientData(client.id)}
-                                    />
-                                </div>
-                            </CardHeader>
-                            <CardContent>
-                                {filteredInvoices.length === 0 ? (
-                                    <div className="text-center py-12 border-2 border-dashed rounded-lg">
-                                        <FileText className="mx-auto h-12 w-12 text-gray-400 mb-3" />
-                                        <p className="text-sm text-gray-500">No hay facturas registradas</p>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-2">
-                                        {filteredInvoices.map((inv, index) => (
-                                            <Card
-                                                key={inv.id}
-                                                className={cn(
-                                                    "border border-gray-200 hover:shadow-md transition-all cursor-pointer",
-                                                    index % 2 === 0 ? "bg-white" : "bg-gray-50/50"
-                                                )}
-                                                onClick={() => router.push(`/invoices/${inv.id}`)}
-                                            >
-                                                <CardContent className="p-4">
-                                                    <div className="flex items-center justify-between">
-                                                        <div className="flex items-center gap-4 flex-1">
-                                                            <div className="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
-                                                                <FileText className="h-5 w-5" />
-                                                            </div>
-                                                            <div>
-                                                                <p className="font-semibold text-gray-900">Factura #{inv.number}</p>
-                                                                <div className="flex gap-4 text-sm text-gray-500">
-                                                                    <span>Emisión: {inv.date ? new Date(inv.date).toLocaleDateString() : 'N/A'}</span>
-                                                                    {inv.due_date && (
-                                                                        <span className={cn(
-                                                                            "font-medium",
-                                                                            new Date(inv.due_date) < new Date() && inv.status !== 'paid' ? "text-red-600" : "text-gray-500"
-                                                                        )}>
-                                                                            Vence: {new Date(inv.due_date).toLocaleDateString()}
-                                                                        </span>
-                                                                    )}
-                                                                </div>
-                                                            </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                            {client.services && client.services.length > 0 ? (
+                                client.services.map((service: any) => {
+                                    const linkedInvoices = getServiceInvoices(service.id)
+                                    // Sort by date (newest first)
+                                    const recentInvoices = linkedInvoices
+                                        .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                                        .slice(0, 3) // Only top 3
+
+                                    return (
+                                        <div key={service.id} className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all flex flex-col h-full overflow-hidden group">
+                                            {/* 1. Header: Icon, Name, Actions */}
+                                            <div className="p-4 flex items-start justify-between gap-3">
+                                                <div className="flex items-center gap-3 overflow-hidden">
+                                                    <div className={cn(
+                                                        "p-2 rounded-lg shrink-0",
+                                                        service.status === 'active' ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-600"
+                                                    )}>
+                                                        <Server className="h-5 w-5" />
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <div className="flex items-center gap-2">
+                                                            <h3 className="font-bold text-gray-900 truncate">{service.name}</h3>
+                                                            {service.status === 'paused' && <Badge variant="secondary" className="text-[10px] h-4 px-1 bg-amber-100 text-amber-700">Pausado</Badge>}
                                                         </div>
-                                                        <div className="flex items-center gap-4">
-                                                            <div className="text-right">
-                                                                <p className="text-xl font-bold text-gray-900">${inv.total?.toLocaleString()}</p>
-                                                                <Badge className={cn(
-                                                                    "mt-1",
-                                                                    inv.status === 'paid' ? "bg-green-100 text-green-700 border-green-300" :
-                                                                        inv.status === 'pending' ? "bg-yellow-100 text-yellow-700 border-yellow-300" :
-                                                                            "bg-red-100 text-red-700 border-red-300"
-                                                                )}>
-                                                                    {inv.status === 'paid' ? 'Pagada' : inv.status === 'pending' ? 'Pendiente' : 'Vencida'}
-                                                                </Badge>
-                                                            </div>
-                                                            <DropdownMenu>
-                                                                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                                                                    <Button variant="ghost" size="icon" className="hover:bg-gray-100">
-                                                                        <MoreVertical className="h-4 w-4" />
-                                                                    </Button>
-                                                                </DropdownMenuTrigger>
-                                                                <DropdownMenuContent align="end" className="w-48">
-                                                                    <CreateInvoiceModal
-                                                                        clientId={client.id}
-                                                                        clientName={client.name}
-                                                                        invoiceToEdit={inv}
-                                                                        onInvoiceCreated={() => fetchClientData(client.id)}
-                                                                        trigger={
-                                                                            <DropdownMenuItem
-                                                                                onSelect={(e) => e.preventDefault()}
-                                                                                onClick={(e) => e.stopPropagation()}
-                                                                            >
-                                                                                <Edit className="mr-2 h-4 w-4" />
-                                                                                <span>Editar</span>
-                                                                            </DropdownMenuItem>
-                                                                        }
-                                                                    />
-                                                                    {inv.status !== 'paid' && (
-                                                                        <DropdownMenuItem
-                                                                            onClick={async (e) => {
-                                                                                e.stopPropagation()
-                                                                                try {
-                                                                                    const { error } = await supabase
-                                                                                        .from('invoices')
-                                                                                        .update({ status: 'paid' })
-                                                                                        .eq('id', inv.id)
-                                                                                    if (error) throw error
-
-                                                                                    const { data: subscription } = await supabase
-                                                                                        .from('subscriptions')
-                                                                                        .select('*')
-                                                                                        .eq('invoice_id', inv.id)
-                                                                                        .single()
-
-                                                                                    if (subscription && subscription.frequency === 'one-time') {
-                                                                                        await supabase
-                                                                                            .from('subscriptions')
-                                                                                            .update({ status: 'cancelled' })
-                                                                                            .eq('id', subscription.id)
-                                                                                    }
-
-                                                                                    await fetchClientData(client.id)
-                                                                                } catch (error) {
-                                                                                    console.error("Error updating invoice:", error)
-                                                                                    alert("Error al marcar como pagada")
-                                                                                }
-                                                                            }}
-                                                                        >
-                                                                            <CheckCircle2 className="mr-2 h-4 w-4" />
-                                                                            <span>Marcar Pagada</span>
-                                                                        </DropdownMenuItem>
-                                                                    )}
-                                                                    <DropdownMenuItem
-                                                                        onClick={async (e) => {
-                                                                            e.stopPropagation()
-                                                                            if (confirm('¿Archivar esta factura?')) {
-                                                                                try {
-                                                                                    const { error } = await supabase
-                                                                                        .from('invoices')
-                                                                                        .update({ archived: true })
-                                                                                        .eq('id', inv.id)
-                                                                                    if (error) throw error
-                                                                                    await fetchClientData(client.id)
-                                                                                } catch (error) {
-                                                                                    console.error('Error archiving invoice:', error)
-                                                                                    alert('Error al archivar factura')
-                                                                                }
-                                                                            }
-                                                                        }}
-                                                                    >
-                                                                        <FileText className="mr-2 h-4 w-4" />
-                                                                        <span>Archivar</span>
-                                                                    </DropdownMenuItem>
-                                                                    <DropdownMenuItem
-                                                                        className="text-red-600 focus:text-red-600"
-                                                                        onClick={async (e) => {
-                                                                            e.stopPropagation()
-                                                                            if (confirm('¿Eliminar esta factura?')) {
-                                                                                try {
-                                                                                    const { error } = await supabase
-                                                                                        .from('invoices')
-                                                                                        .delete()
-                                                                                        .eq('id', inv.id)
-                                                                                    if (error) throw error
-                                                                                    await fetchClientData(client.id)
-                                                                                } catch (error) {
-                                                                                    console.error("Error deleting invoice:", error)
-                                                                                    alert("Error al eliminar factura")
-                                                                                }
-                                                                            }
-                                                                        }}
-                                                                    >
-                                                                        <Trash2 className="mr-2 h-4 w-4" />
-                                                                        <span>Eliminar</span>
-                                                                    </DropdownMenuItem>
-                                                                </DropdownMenuContent>
-                                                            </DropdownMenu>
+                                                        <div className="flex items-center text-xs text-gray-500 mt-0.5 gap-2">
+                                                            <span className="capitalize">{service.frequency === 'monthly' ? 'Mensual' : service.frequency === 'yearly' ? 'Anual' : 'Único'}</span>
                                                         </div>
                                                     </div>
-                                                </CardContent>
-                                            </Card>
-                                        ))}
-                                    </div>
-                                )}
-                            </CardContent>
-                        </Card>
-                    )
-                }
+                                                </div>
 
-                {/* Tab Content: Notes */}
-                {
-                    activeTab === "notes" && (
-                        <Card className="border-0 shadow-lg">
-                            <CardHeader>
-                                <CardTitle className="text-xl font-bold">Datos y Notas del Cliente</CardTitle>
-                                <CardDescription className="mt-1">Almacena información importante como contraseñas, accesos, notas, etc.</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="space-y-4">
-                                    <textarea
-                                        value={notes}
-                                        onChange={(e) => setNotes(e.target.value)}
-                                        placeholder="Escribe aquí notas, contraseñas, accesos, o cualquier información importante del cliente..."
-                                        className="w-full h-96 p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none font-mono text-sm"
-                                    />
-                                    <div className="flex justify-between items-center">
-                                        <p className="text-sm text-gray-500">
-                                            {notes.length} caracteres
-                                        </p>
-                                        <Button
-                                            onClick={async () => {
-                                                if (!client) return
-                                                setSavingNotes(true)
-                                                try {
-                                                    const { error } = await supabase
-                                                        .from('clients')
-                                                        .update({ notes: notes })
-                                                        .eq('id', client.id)
-                                                    if (error) throw error
-                                                    await fetchClientData(client.id)
-                                                    alert('Notas guardadas correctamente')
-                                                } catch (error) {
-                                                    console.error('Error saving notes:', error)
-                                                    alert('Error al guardar notas')
-                                                } finally {
-                                                    setSavingNotes(false)
-                                                }
-                                            }}
-                                            disabled={savingNotes}
-                                            className="bg-brand-pink hover:bg-brand-pink/90 text-white shadow-md border-0"
-                                        >
-                                            {savingNotes ? (
-                                                <>
-                                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                                    Guardando...
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <CheckCircle2 className="mr-2 h-4 w-4" />
-                                                    Guardar Notas
-                                                </>
-                                            )}
-                                        </Button>
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-gray-600 shrink-0">
+                                                            <MoreVertical className="h-4 w-4" />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end">
+                                                        <DropdownMenuItem onClick={() => {
+                                                            setServiceToEdit(service)
+                                                            setIsServiceModalOpen(true)
+                                                        }}>
+                                                            <Edit className="mr-2 h-4 w-4" /> Editar
+                                                        </DropdownMenuItem>
+                                                        {service.status === 'active' ? (
+                                                            <DropdownMenuItem onClick={() => handlePauseService(service.id)} className="text-amber-600">
+                                                                <PauseCircle className="mr-2 h-4 w-4" /> Pausar
+                                                            </DropdownMenuItem>
+                                                        ) : (
+                                                            <DropdownMenuItem onClick={() => {
+                                                                setSelectedServiceForResume(service)
+                                                                setIsResumeModalOpen(true)
+                                                            }} className="text-emerald-600">
+                                                                <PlayCircle className="mr-2 h-4 w-4" /> Reanudar
+                                                            </DropdownMenuItem>
+                                                        )}
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            </div>
+
+                                            {/* 2. Middle: Compact Invoice Table */}
+                                            <div className="px-4 py-2 flex-1">
+                                                {recentInvoices.length > 0 ? (
+                                                    <div className="bg-gray-50/50 rounded-lg border border-gray-100 overflow-hidden">
+                                                        <table className="w-full text-xs text-left">
+                                                            <tbody className="divide-y divide-gray-100">
+                                                                {recentInvoices.map((inv: any) => (
+                                                                    <tr key={inv.id} className="hover:bg-gray-50 transition-colors">
+                                                                        <td className="py-2 pl-3 font-medium text-gray-700">#{inv.number}</td>
+                                                                        <td className="py-2 text-gray-500 text-[10px]">{new Date(inv.created_at).toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' })}</td>
+                                                                        <td className="py-2 pr-2 text-right">
+                                                                            <Badge variant="outline" className={cn(
+                                                                                "text-[9px] px-1 py-0 h-4 border-0",
+                                                                                inv.status === 'paid' ? "bg-emerald-100 text-emerald-700" :
+                                                                                    inv.status === 'overdue' ? "bg-red-100 text-red-700" : "bg-gray-100 text-gray-700"
+                                                                            )}>
+                                                                                {inv.status === 'paid' ? 'Pagada' : inv.status === 'overdue' ? 'Vencida' : 'Pend.'}
+                                                                            </Badge>
+                                                                        </td>
+                                                                        <td className="py-2 pr-2 w-[24px]">
+                                                                            {inv.pdf_url && (
+                                                                                <a href={inv.pdf_url} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-indigo-600 block">
+                                                                                    <Eye className="h-3 w-3" />
+                                                                                </a>
+                                                                            )}
+                                                                        </td>
+                                                                    </tr>
+                                                                ))}
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                ) : (
+                                                    <div className="h-full flex items-center justify-center p-4 bg-gray-50/30 rounded-lg border border-gray-100 border-dashed">
+                                                        <span className="text-[10px] text-gray-400 italic">Sin facturas recientes</span>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {/* 3. Footer: Cost & Billing Date */}
+                                            <div className="mt-2 p-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+                                                <div className="flex flex-col">
+                                                    <span className="text-[10px] text-gray-500 uppercase font-semibold">Costo</span>
+                                                    <span className="font-bold text-gray-900">${service.amount?.toLocaleString()}</span>
+                                                </div>
+                                                {service.next_billing_date && (
+                                                    <div className="text-right">
+                                                        <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                                                            <CalendarClock className="h-3.5 w-3.5" />
+                                                            <span>{new Date(service.next_billing_date).toLocaleDateString()}</span>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )
+                                })
+                            ) : (
+                                <div className="col-span-full text-center py-16 bg-white rounded-xl border border-dashed border-gray-300">
+                                    <div className="bg-gray-50 p-4 rounded-full w-fit mx-auto mb-4">
+                                        <Server className="h-8 w-8 text-indigo-200" />
                                     </div>
+                                    <h3 className="text-lg font-medium text-gray-900 mb-1">Sin Servicios Activos</h3>
+                                    <p className="text-gray-500 mb-6 max-w-sm mx-auto">Este cliente no tiene ningún servicio registrado. Comienza añadiendo uno desde el botón superior.</p>
                                 </div>
-                            </CardContent>
-                        </Card>
-                    )
-                }
+                            )}
+                        </div>
+                    </div>
+
+                    {/* 2. Unlinked / General Invoices */}
+                    {getUnlinkedInvoices().length > 0 && (
+                        <div className="pt-8 border-t border-gray-200">
+                            <div className="flex items-center justify-between mb-6">
+                                <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                                    <FileText className="h-5 w-5 text-gray-500" />
+                                    Facturas Generales (Sin Servicio)
+                                </h2>
+                            </div>
+                            <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+                                <div className="p-4 space-y-2">
+                                    {getUnlinkedInvoices().map((inv: any) => (
+                                        <div key={inv.id} className="flex items-center justify-between p-3 border-b border-gray-100 last:border-0 hover:bg-gray-50">
+                                            <div className="flex items-center gap-4">
+                                                <span className="font-medium">{inv.number}</span>
+                                                <span className="text-gray-500 text-sm">{inv.description || "Sin descripción"}</span>
+                                                <Badge variant="outline" className={cn("text-[10px]",
+                                                    inv.status === 'paid' ? "text-emerald-600 bg-emerald-50 border-emerald-100" :
+                                                        inv.status === 'overdue' ? "text-red-600 bg-red-50 border-red-100" : "text-gray-600"
+                                                )}>
+                                                    {inv.status === 'paid' ? 'Pagada' : inv.status === 'overdue' ? 'Vencida' : 'Pendiente'}
+                                                </Badge>
+                                            </div>
+                                            <div className="flex items-center gap-4">
+                                                <span className="font-bold">${inv.total.toLocaleString()}</span>
+                                                {inv.pdf_url && (
+                                                    <a href={inv.pdf_url} target="_blank" rel="noopener noreferrer">
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-gray-50">
+                                                            <Eye className="h-4 w-4 text-gray-400" />
+                                                        </Button>
+                                                    </a>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Modals */}
+                <AddServiceModal
+                    clientId={client.id}
+                    clientName={client.name}
+                    open={isServiceModalOpen}
+                    onOpenChange={setIsServiceModalOpen}
+                    serviceToEdit={serviceToEdit}
+                    onSuccess={() => fetchClientData(client.id)}
+                    trigger={<span className="hidden" />}
+                />
+
+                <NotesModal
+                    clientId={client.id}
+                    initialNotes={client.notes || ""}
+                    isOpen={isNotesModalOpen}
+                    onClose={() => setIsNotesModalOpen(false)}
+                    onSuccess={(newNotes) => {
+                        setClient({ ...client, notes: newNotes })
+                    }}
+                />
+
+                <ResumeServiceModal
+                    service={selectedServiceForResume}
+                    isOpen={isResumeModalOpen}
+                    onClose={() => setIsResumeModalOpen(false)}
+                    onSuccess={() => fetchClientData(client.id)}
+                />
             </div >
         </div >
     )
 }
+// End of component

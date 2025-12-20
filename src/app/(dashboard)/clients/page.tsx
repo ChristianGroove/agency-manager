@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Label } from "@/components/ui/label"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
     Dialog,
     DialogContent,
@@ -378,232 +379,193 @@ export default function ClientsPage() {
                                 Nuevo Cliente
                             </Button>
                         </DialogTrigger>
-                        <DialogContent className="sm:max-w-[600px]">
+                        <DialogContent className="sm:max-w-[550px]">
                             <DialogHeader>
                                 <DialogTitle>Crear Nuevo Cliente</DialogTitle>
                                 <DialogDescription>
-                                    Ingresa la información básica del cliente para comenzar a gestionar sus servicios.
+                                    Ingresa la información básica organizada por secciones.
                                 </DialogDescription>
                             </DialogHeader>
 
-                            <div className="grid gap-6 py-4 max-h-[70vh] overflow-y-auto px-1">
-                                {/* Logo Upload - Featured Section */}
-                                <div className="flex flex-col items-center gap-3 pb-4 border-b border-gray-100">
-                                    {!previewUrl ? (
-                                        <div
-                                            className={cn(
-                                                "w-32 h-32 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-all",
-                                                isDragging ? "border-indigo-500 bg-indigo-50 scale-105" : "border-gray-300 hover:border-indigo-400 hover:bg-gray-50"
-                                            )}
-                                            onDragOver={handleDragOver}
-                                            onDragLeave={handleDragLeave}
-                                            onDrop={handleDrop}
-                                            onClick={() => fileInputRef.current?.click()}
-                                        >
-                                            <Upload className="h-8 w-8 text-gray-400 mb-2" />
-                                            <p className="text-xs font-medium text-gray-600">Logo del cliente</p>
-                                            <p className="text-xs text-gray-400 mt-1">PNG, JPG • 300x300</p>
-                                            <input
-                                                type="file"
-                                                ref={fileInputRef}
-                                                className="hidden"
-                                                accept="image/*"
-                                                onChange={handleFileSelect}
-                                            />
-                                        </div>
-                                    ) : (
-                                        <div className="relative w-32 h-32 bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl overflow-hidden flex items-center justify-center border-2 border-indigo-200">
-                                            <img src={previewUrl} alt="Preview" className="w-full h-full object-contain p-2" />
-                                            <Button
-                                                variant="destructive"
-                                                size="icon"
-                                                className="absolute -top-2 -right-2 h-7 w-7 rounded-full shadow-lg"
-                                                onClick={(e) => { e.stopPropagation(); removeFile(); }}
-                                            >
-                                                <X className="h-4 w-4" />
-                                            </Button>
-                                        </div>
-                                    )}
-                                </div>
+                            <Tabs defaultValue="profile" className="w-full mt-2">
+                                <TabsList className="grid w-full grid-cols-3 mb-4">
+                                    <TabsTrigger value="profile">Perfil</TabsTrigger>
+                                    <TabsTrigger value="contact">Contacto</TabsTrigger>
+                                    <TabsTrigger value="social">Redes</TabsTrigger>
+                                </TabsList>
 
-                                {/* Basic Information Section */}
-                                <div className="space-y-4">
-                                    <div className="flex items-center gap-2 mb-3">
-                                        <div className="p-1.5 bg-indigo-100 rounded-lg">
-                                            <FileText className="h-4 w-4 text-indigo-600" />
+                                {/* TAB 1: PERFIL */}
+                                <TabsContent value="profile" className="space-y-4 py-2">
+                                    <div className="flex items-center gap-4 border p-3 rounded-lg bg-gray-50/50">
+                                        {!previewUrl ? (
+                                            <div
+                                                className={cn(
+                                                    "h-16 w-16 border-2 border-dashed rounded-full flex flex-col items-center justify-center cursor-pointer transition-all bg-white shrink-0",
+                                                    isDragging ? "border-indigo-500 bg-indigo-50" : "border-gray-300 hover:border-indigo-400"
+                                                )}
+                                                onDragOver={handleDragOver}
+                                                onDragLeave={handleDragLeave}
+                                                onDrop={handleDrop}
+                                                onClick={() => fileInputRef.current?.click()}
+                                            >
+                                                <Upload className="h-5 w-5 text-gray-400" />
+                                                <input
+                                                    type="file"
+                                                    ref={fileInputRef}
+                                                    className="hidden"
+                                                    accept="image/*"
+                                                    onChange={handleFileSelect}
+                                                />
+                                            </div>
+                                        ) : (
+                                            <div className="relative h-16 w-16 shrink-0">
+                                                <Avatar className="h-16 w-16 border-2 border-white shadow-sm">
+                                                    <AvatarImage src={previewUrl} className="object-cover" />
+                                                    <AvatarFallback>CL</AvatarFallback>
+                                                </Avatar>
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); removeFile(); }}
+                                                    className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 shadow-sm hover:bg-red-600"
+                                                >
+                                                    <X className="h-3 w-3" />
+                                                </button>
+                                            </div>
+                                        )}
+                                        <div className="flex-1">
+                                            <Label className="cursor-pointer hover:text-indigo-600 transition-colors" onClick={() => fileInputRef.current?.click()}>
+                                                Logo Corporativo <span className="text-xs text-gray-400 font-normal ml-1">(Opcional)</span>
+                                            </Label>
+                                            <p className="text-xs text-gray-500 mt-1">Sube una imagen cuadrada para mejor visualización.</p>
                                         </div>
-                                        <h3 className="font-semibold text-gray-900">Información Básica</h3>
                                     </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <Label htmlFor="name" className="text-sm font-medium flex items-center gap-1.5">
-                                                Nombre Completo
-                                                <span className="text-red-500">*</span>
-                                            </Label>
-                                            <Input
-                                                id="name"
-                                                placeholder="Juan Pérez"
-                                                value={newClient.name}
-                                                onChange={(e) => setNewClient({ ...newClient, name: e.target.value })}
-                                                className="h-10"
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="company" className="text-sm font-medium">
-                                                Empresa
-                                            </Label>
+
+                                    <div className="space-y-1.5">
+                                        <Label htmlFor="name">Nombre del Cliente <span className="text-red-500">*</span></Label>
+                                        <Input
+                                            id="name"
+                                            placeholder="Juan Pérez"
+                                            value={newClient.name}
+                                            onChange={(e) => setNewClient({ ...newClient, name: e.target.value })}
+                                        />
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="space-y-1.5">
+                                            <Label htmlFor="company">Empresa</Label>
                                             <Input
                                                 id="company"
                                                 placeholder="Agencia S.A.S"
                                                 value={newClient.company_name}
                                                 onChange={(e) => setNewClient({ ...newClient, company_name: e.target.value })}
-                                                className="h-10"
                                             />
                                         </div>
-                                    </div>
-                                </div>
-
-                                {/* Contact Details Section */}
-                                <div className="space-y-4">
-                                    <div className="flex items-center gap-2 mb-3">
-                                        <div className="p-1.5 bg-blue-100 rounded-lg">
-                                            <Mail className="h-4 w-4 text-blue-600" />
-                                        </div>
-                                        <h3 className="font-semibold text-gray-900">Datos de Contacto</h3>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <Label htmlFor="email" className="text-sm font-medium flex items-center gap-1.5">
-                                                Email
-                                                <span className="text-red-500">*</span>
-                                            </Label>
-                                            <Input
-                                                id="email"
-                                                type="email"
-                                                placeholder="cliente@empresa.com"
-                                                value={newClient.email}
-                                                onChange={(e) => setNewClient({ ...newClient, email: e.target.value })}
-                                                className="h-10"
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="phone" className="text-sm font-medium">
-                                                Teléfono
-                                            </Label>
-                                            <Input
-                                                id="phone"
-                                                placeholder="+57 300 123 4567"
-                                                value={newClient.phone}
-                                                onChange={(e) => setNewClient({ ...newClient, phone: e.target.value })}
-                                                className="h-10"
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Business Information Section */}
-                                <div className="space-y-4">
-                                    <div className="flex items-center gap-2 mb-3">
-                                        <div className="p-1.5 bg-purple-100 rounded-lg">
-                                            <CreditCard className="h-4 w-4 text-purple-600" />
-                                        </div>
-                                        <h3 className="font-semibold text-gray-900">Información Fiscal</h3>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <Label htmlFor="nit" className="text-sm font-medium">
-                                                NIT / ID
-                                            </Label>
+                                        <div className="space-y-1.5">
+                                            <Label htmlFor="nit">NIT / ID</Label>
                                             <Input
                                                 id="nit"
                                                 placeholder="900.123.456-7"
                                                 value={newClient.nit}
                                                 onChange={(e) => setNewClient({ ...newClient, nit: e.target.value })}
-                                                className="h-10"
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="address" className="text-sm font-medium">
-                                                Dirección
-                                            </Label>
-                                            <Input
-                                                id="address"
-                                                placeholder="Calle 123 #45-67"
-                                                value={newClient.address}
-                                                onChange={(e) => setNewClient({ ...newClient, address: e.target.value })}
-                                                className="h-10"
                                             />
                                         </div>
                                     </div>
-                                </div>
+                                    <div className="space-y-1.5">
+                                        <Label htmlFor="address">Dirección Fiscal</Label>
+                                        <Input
+                                            id="address"
+                                            placeholder="Calle 123 #45-67, Ciudad"
+                                            value={newClient.address}
+                                            onChange={(e) => setNewClient({ ...newClient, address: e.target.value })}
+                                        />
+                                    </div>
+                                </TabsContent>
 
-                                {/* Social Media Section */}
-                                <div className="space-y-4">
-                                    <div className="flex items-center gap-2 mb-3">
-                                        <div className="p-1.5 bg-green-100 rounded-lg">
-                                            <Globe className="h-4 w-4 text-green-600" />
-                                        </div>
-                                        <h3 className="font-semibold text-gray-900">Redes Sociales</h3>
-                                        <span className="text-xs text-gray-500">(opcional)</span>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <Label htmlFor="facebook" className="text-sm font-medium">
-                                                Facebook
-                                            </Label>
+                                {/* TAB 2: CONTACTO */}
+                                <TabsContent value="contact" className="space-y-4 py-2">
+                                    <div className="space-y-1.5">
+                                        <Label htmlFor="email">Correo Electrónico <span className="text-red-500">*</span></Label>
+                                        <div className="relative">
+                                            <Mail className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
                                             <Input
-                                                id="facebook"
-                                                placeholder="facebook.com/empresa"
-                                                value={newClient.facebook}
-                                                onChange={(e) => setNewClient({ ...newClient, facebook: e.target.value })}
-                                                className="h-10"
+                                                id="email"
+                                                type="email"
+                                                className="pl-9"
+                                                placeholder="cliente@empresa.com"
+                                                value={newClient.email}
+                                                onChange={(e) => setNewClient({ ...newClient, email: e.target.value })}
                                             />
                                         </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="instagram" className="text-sm font-medium">
-                                                Instagram
-                                            </Label>
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label htmlFor="phone">Teléfono / Celular</Label>
+                                        <div className="relative">
+                                            <Phone className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
+                                            <Input
+                                                id="phone"
+                                                className="pl-9"
+                                                placeholder="+57 300 123 4567"
+                                                value={newClient.phone}
+                                                onChange={(e) => setNewClient({ ...newClient, phone: e.target.value })}
+                                            />
+                                        </div>
+                                    </div>
+                                </TabsContent>
+
+                                {/* TAB 3: REDES */}
+                                <TabsContent value="social" className="space-y-4 py-2">
+                                    <div className="space-y-1.5">
+                                        <Label htmlFor="website">Sitio Web</Label>
+                                        <div className="relative">
+                                            <Globe className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
+                                            <Input
+                                                id="website"
+                                                className="pl-9"
+                                                placeholder="https://empresa.com"
+                                                value={newClient.website}
+                                                onChange={(e) => setNewClient({ ...newClient, website: e.target.value })}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3 pt-2">
+                                        <div className="space-y-1.5">
+                                            <Label htmlFor="instagram">Instagram</Label>
                                             <Input
                                                 id="instagram"
                                                 placeholder="@empresa"
                                                 value={newClient.instagram}
                                                 onChange={(e) => setNewClient({ ...newClient, instagram: e.target.value })}
-                                                className="h-10"
                                             />
                                         </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="tiktok" className="text-sm font-medium">
-                                                TikTok
-                                            </Label>
+                                        <div className="space-y-1.5">
+                                            <Label htmlFor="facebook">Facebook</Label>
+                                            <Input
+                                                id="facebook"
+                                                placeholder="facebook.com/empresa"
+                                                value={newClient.facebook}
+                                                onChange={(e) => setNewClient({ ...newClient, facebook: e.target.value })}
+                                            />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <Label htmlFor="tiktok">TikTok</Label>
                                             <Input
                                                 id="tiktok"
                                                 placeholder="@empresa"
                                                 value={newClient.tiktok}
                                                 onChange={(e) => setNewClient({ ...newClient, tiktok: e.target.value })}
-                                                className="h-10"
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="website" className="text-sm font-medium">
-                                                Sitio Web
-                                            </Label>
-                                            <Input
-                                                id="website"
-                                                placeholder="https://empresa.com"
-                                                value={newClient.website}
-                                                onChange={(e) => setNewClient({ ...newClient, website: e.target.value })}
-                                                className="h-10"
                                             />
                                         </div>
                                     </div>
-                                </div>
-                            </div>
+                                </TabsContent>
+                            </Tabs>
 
-                            <DialogFooter>
-                                <Button variant="outline" onClick={() => setIsCreateModalOpen(false)}>Cancelar</Button>
-                                <Button onClick={handleCreateClient} disabled={creating || !newClient.name || !newClient.email} className="bg-brand-pink hover:bg-brand-pink/90 text-white shadow-md border-0">
-                                    {creating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                    Crear Cliente
+                            <DialogFooter className="pt-4 border-t border-gray-100">
+                                <Button variant="ghost" onClick={() => setIsCreateModalOpen(false)}>Cancelar</Button>
+                                <Button
+                                    onClick={handleCreateClient}
+                                    disabled={creating}
+                                    className="bg-brand-pink hover:bg-brand-pink/90 text-white"
+                                >
+                                    {creating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Crear Cliente"}
                                 </Button>
                             </DialogFooter>
                         </DialogContent>
