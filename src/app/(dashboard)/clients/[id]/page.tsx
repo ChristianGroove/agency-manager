@@ -882,6 +882,11 @@ export default function ClientDetailPage() {
                                                                                 Puntual
                                                                             </Badge>
                                                                         )}
+                                                                        {(service.quantity || 1) > 1 && (
+                                                                            <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                                                                                x{service.quantity}
+                                                                            </Badge>
+                                                                        )}
                                                                         <Badge className="bg-green-100 text-green-700 border-green-300">Activo</Badge>
                                                                     </div>
                                                                     <p className="text-sm text-gray-500 mt-1">

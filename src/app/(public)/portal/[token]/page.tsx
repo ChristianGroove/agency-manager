@@ -6,7 +6,7 @@ import { getPortalData, acceptQuote, rejectQuote } from "@/app/actions/portal-ac
 import { Client, Invoice, Quote, Briefing, ClientEvent, Service } from "@/types"
 import { Loader2, AlertTriangle, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { PortalDashboard } from "@/components/modules/portal/portal-dashboard"
+import { PortalLayout } from "@/components/modules/portal/portal-layout"
 import { QuoteDetailModal } from "@/components/modules/portal/quote-detail-modal"
 
 export default function PortalPage() {
@@ -151,36 +151,23 @@ export default function PortalPage() {
     const brandingStyles = {
         '--portal-primary': settings.portal_primary_color || '#F205E2',
         '--portal-secondary': settings.portal_secondary_color || '#00E0FF',
+        '--primary': settings.portal_primary_color || '#F205E2', // Override Shadcn primary
     } as React.CSSProperties
 
     return (
         <div className="min-h-screen bg-gray-50" style={brandingStyles}>
-            <div className="max-w-7xl mx-auto p-4 md:p-8 pb-64">
-                {/* Logo Header */}
-                <div className="flex justify-center mb-8 relative">
-                    <img
-                        src={settings.portal_logo_url || "/branding/logo dark.svg"}
-                        alt="Logo"
-                        className="h-10 object-contain"
-                    />
-                </div>
-                {/* Debug Info */}
-
-
-                <PortalDashboard
-                    client={client}
-                    invoices={invoices}
-                    quotes={quotes}
-                    briefings={briefings}
-                    events={events}
-                    onPay={handlePay}
-                    onViewInvoice={setViewInvoice}
-                    onViewQuote={setViewQuote}
-                    onViewQuote={setViewQuote}
-                    settings={settings}
-                    services={services}
-                />
-            </div>
+            <PortalLayout
+                client={client}
+                invoices={invoices}
+                quotes={quotes}
+                briefings={briefings}
+                events={events}
+                services={services}
+                settings={settings}
+                onPay={handlePay}
+                onViewInvoice={setViewInvoice}
+                onViewQuote={setViewQuote}
+            />
 
             {/* Success Message Modal */}
             {showSuccessMessage && settings.payment_success_message && (
@@ -198,7 +185,7 @@ export default function PortalPage() {
                 </div>
             )}
 
-            {/* Invoice Detail Modal */}
+            {/* Invoice Detail Modal - Can also be moved down to Layout if preferred, but OK here */}
             {viewInvoice && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setViewInvoice(null)}>
                     <div className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden animate-in zoom-in-95" onClick={e => e.stopPropagation()}>

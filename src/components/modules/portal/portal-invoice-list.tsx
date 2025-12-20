@@ -133,7 +133,7 @@ export function PortalInvoiceList({ invoices, settings = {}, selectedInvoices = 
                                     className="p-4 flex items-center gap-4 animate-in fade-in slide-in-from-bottom-2 duration-300 fill-mode-backwards"
                                     style={{ animationDelay: `${index * 50}ms` }}
                                 >
-                                    {status !== 'paid' && paymentsEnabled && (
+                                    {status !== 'paid' && paymentsEnabled && onToggle && (
                                         <input
                                             type="checkbox"
                                             className="h-5 w-5 rounded border-gray-300 text-[var(--portal-primary)] focus:ring-[var(--portal-primary)]"

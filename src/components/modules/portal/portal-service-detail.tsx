@@ -47,6 +47,11 @@ export function PortalServiceDetail({ service, invoices, briefings, onBack, onPa
                                     }`}>
                                     {service.status === 'active' ? 'Activo' : service.status}
                                 </span>
+                                {(service.quantity || 1) > 1 && (
+                                    <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full text-xs font-medium border border-blue-100">
+                                        {service.quantity} Unidades
+                                    </span>
+                                )}
                             </div>
                         </div>
                     </div>

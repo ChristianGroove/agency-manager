@@ -10,11 +10,12 @@ import { cn } from "@/lib/utils"
 interface PortalServiceCardProps {
     service: Service
     pendingInvoicesCount: number
+    overdueInvoicesCount: number
     pendingBriefingsCount: number
     onClick: () => void
 }
 
-export function PortalServiceCard({ service, pendingInvoicesCount, pendingBriefingsCount, onClick }: PortalServiceCardProps) {
+export function PortalServiceCard({ service, pendingInvoicesCount, overdueInvoicesCount, pendingBriefingsCount, onClick }: PortalServiceCardProps) {
     // Determine overall status
     const hasPending = pendingInvoicesCount > 0 || pendingBriefingsCount > 0
 
@@ -29,18 +30,31 @@ export function PortalServiceCard({ service, pendingInvoicesCount, pendingBriefi
                 <div className="flex justify-between items-start gap-4">
                     {/* Icon + Title */}
                     <div className="flex items-center gap-3">
-                        <div className="h-9 w-9 shrink-0 rounded-lg bg-pink-50 flex items-center justify-center group-hover:bg-pink-100 transition-colors">
-                            <Monitor className="h-4.5 w-4.5 text-pink-500" />
+                        <div className="h-9 w-9 shrink-0 rounded-lg bg-gray-50 flex items-center justify-center border border-gray-100">
+                            <Monitor className="h-4.5 w-4.5 text-gray-500" />
                         </div>
-                        <CardTitle className="text-base font-bold text-gray-900 group-hover:text-pink-600 transition-colors leading-tight">
+                        <CardTitle className="text-base font-bold text-gray-900 leading-tight">
                             {service.name}
                         </CardTitle>
                     </div>
 
                     {/* Status Tags (Moved to top right) */}
                     <div className="shrink-0 flex gap-2">
+                        {(service.quantity || 1) > 1 && (
+                            <Badge variant="outline" className="border-gray-200 text-gray-600 bg-gray-50 px-2 py-0.5 h-6 text-xs font-medium">
+                                x{service.quantity}
+                            </Badge>
+                        )}
                         {pendingInvoicesCount > 0 && (
-                            <Badge variant="outline" className="border-red-100 text-red-600 bg-red-50 px-2 py-0.5 h-6 text-xs">
+                            <Badge
+                                variant="outline"
+                                className={cn(
+                                    "px-2 py-0.5 h-6 text-xs border-0",
+                                    overdueInvoicesCount > 0
+                                        ? "bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20"
+                                        : "bg-orange-50 text-orange-700 ring-1 ring-inset ring-orange-600/20"
+                                )}
+                            >
                                 {pendingInvoicesCount} Fac.
                             </Badge>
                         )}

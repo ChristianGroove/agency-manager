@@ -1,10 +1,9 @@
 "use client"
 
-import { createClient } from "@/lib/supabase-client"
+import { supabase } from "@/lib/supabase"
 import { Service } from "@/types"
 
 export async function getServices(clientId: string) {
-    const supabase = createClient()
     const { data, error } = await supabase
         .from('services')
         .select('*')
@@ -20,7 +19,6 @@ export async function getServices(clientId: string) {
 }
 
 export async function createService(service: Partial<Service>) {
-    const supabase = createClient()
     const { data, error } = await supabase
         .from('services')
         .insert(service)
@@ -32,7 +30,6 @@ export async function createService(service: Partial<Service>) {
 }
 
 export async function updateService(id: string, updates: Partial<Service>) {
-    const supabase = createClient()
     const { data, error } = await supabase
         .from('services')
         .update(updates)
@@ -45,7 +42,6 @@ export async function updateService(id: string, updates: Partial<Service>) {
 }
 
 export async function deleteService(id: string) {
-    const supabase = createClient()
     const { error } = await supabase
         .from('services')
         .delete()
