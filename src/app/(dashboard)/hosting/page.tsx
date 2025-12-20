@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Plus, Search, Filter, CreditCard, Server, Megaphone, Monitor, Box, Eye, Trash2, Loader2, RefreshCw, Zap, CalendarClock } from "lucide-react"
+import { Plus, Search, Filter, CreditCard, Server, Megaphone, Monitor, Box, Eye, Trash2, Loader2, RefreshCw, Zap, CalendarClock, MoreHorizontal, Pencil, FileText } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import {
     Table,
@@ -12,9 +12,18 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
 import { supabase } from "@/lib/supabase"
 import { AddServiceModal } from "@/components/modules/services/add-service-modal"
+import { ServiceDetailsModal } from "@/components/modules/services/service-details-modal"
 import { cn } from "@/lib/utils"
 
 interface ServiceFromDB {
@@ -25,6 +34,7 @@ interface ServiceFromDB {
     frequency?: string
     amount: number
     status: string
+    created_at?: string
     client: {
         id: string
         name: string
@@ -41,6 +51,10 @@ export default function ServicesPage() {
     // Modern Filters
     const [statusFilter, setStatusFilter] = useState<string>("active") // Default to active
     const [typeFilter, setTypeFilter] = useState<string>("all")
+
+    // Details Modal State
+    const [selectedServiceForDetails, setSelectedServiceForDetails] = useState<ServiceFromDB | null>(null)
+    const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false)
 
     const fetchServices = async () => {
         setLoading(true)
@@ -109,20 +123,19 @@ export default function ServicesPage() {
         return map[freq] || freq
     }
 
-    // Reuse pill component logic
-    const FilterPill = ({ label, active, onClick }: { label: string, active: boolean, onClick: () => void }) => (
-        <button
-            onClick={onClick}
-            className={cn(
-                "px-3 py-1.5 rounded-full text-xs font-medium transition-all",
-                active
-                    ? "bg-black text-white shadow-sm"
-                    : "bg-white text-gray-600 border border-gray-200 hover:border-gray-300 hover:bg-gray-50"
-            )}
-        >
-            {label}
-        </button>
-    )
+    const counts = {
+        all: services.length,
+        status: {
+            all: services.length,
+            active: services.filter(s => s.status === 'active').length,
+            paused: services.filter(s => s.status === 'paused').length,
+        },
+        type: {
+            all: services.length,
+            recurring: services.filter(s => s.type === 'recurring').length,
+            one_off: services.filter(s => s.type === 'one_off').length,
+        }
+    }
 
     return (
         <div className="space-y-8">
@@ -144,38 +157,93 @@ export default function ServicesPage() {
                 </div>
             </div>
 
-            {/* Filters Area */}
-            <div className="space-y-4">
-                <div className="flex items-center gap-4 bg-white p-4 rounded-lg border border-gray-100 shadow-sm">
-                    <div className="relative flex-1 max-w-sm">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            {/* Unified Control Block */}
+            <div className="flex flex-col md:flex-row gap-3 sticky top-4 z-30">
+                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-1.5 flex flex-col md:flex-row items-center gap-2 flex-1 transition-all hover:shadow-md">
+                    {/* Integrated Search */}
+                    <div className="relative flex-1 w-full md:w-auto min-w-[200px] flex items-center px-3 gap-2">
+                        <Search className="h-4 w-4 text-gray-400 shrink-0" />
                         <Input
                             placeholder="Buscar por servicio o cliente..."
-                            className="pl-9"
+                            className="bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-sm w-full outline-none text-gray-700 placeholder:text-gray-400 h-9 p-0 shadow-none"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
-                </div>
 
-                <div className="flex flex-col sm:flex-row gap-6">
-                    {/* Status Filters */}
-                    <div className="space-y-2">
-                        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider ml-1">Estado</span>
-                        <div className="flex flex-wrap gap-2">
-                            <FilterPill label="Todos" active={statusFilter === 'all'} onClick={() => setStatusFilter('all')} />
-                            <FilterPill label="Activos" active={statusFilter === 'active'} onClick={() => setStatusFilter('active')} />
-                            <FilterPill label="Pausados" active={statusFilter === 'paused'} onClick={() => setStatusFilter('paused')} />
+                    {/* Vertical Divider (Desktop) */}
+                    <div className="h-6 w-px bg-gray-200 hidden md:block" />
+
+                    {/* Filter Groups Container */}
+                    <div className="flex items-center gap-4 overflow-x-auto w-full md:w-auto scrollbar-hide p-1 md:p-0">
+
+                        {/* Status Filters */}
+                        <div className="flex items-center gap-1.5 whitespace-nowrap">
+                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mr-1 hidden lg:block">Estado</span>
+                            {[
+                                { id: 'all', label: 'Todos', count: counts.status.all, color: 'gray' },
+                                { id: 'active', label: 'Activos', count: counts.status.active, color: 'emerald' },
+                                { id: 'paused', label: 'Pausados', count: counts.status.paused, color: 'amber' },
+                            ].map(filter => (
+                                <button
+                                    key={filter.id}
+                                    onClick={() => setStatusFilter(filter.id)}
+                                    className={cn(
+                                        "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all duration-200 whitespace-nowrap",
+                                        statusFilter === filter.id
+                                            ? filter.id === 'active' ? "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20 shadow-sm"
+                                                : filter.id === 'paused' ? "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/20 shadow-sm"
+                                                    : "bg-gray-900 text-white shadow-sm"
+                                            : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
+                                    )}
+                                >
+                                    <span>{filter.label}</span>
+                                    <span className={cn(
+                                        "px-1.5 py-0.5 rounded-md text-[10px]",
+                                        statusFilter === filter.id
+                                            ? "bg-white/20 text-current"
+                                            : "bg-gray-100 text-gray-500"
+                                    )}>
+                                        {filter.count}
+                                    </span>
+                                </button>
+                            ))}
                         </div>
-                    </div>
 
-                    {/* Type Filters */}
-                    <div className="space-y-2">
-                        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider ml-1">Tipo</span>
-                        <div className="flex flex-wrap gap-2">
-                            <FilterPill label="Todos" active={typeFilter === 'all'} onClick={() => setTypeFilter('all')} />
-                            <FilterPill label="Recurrentes" active={typeFilter === 'recurring'} onClick={() => setTypeFilter('recurring')} />
-                            <FilterPill label="Proyectos" active={typeFilter === 'one_off'} onClick={() => setTypeFilter('one_off')} />
+                        {/* Divider */}
+                        <div className="h-4 w-px bg-gray-200 hidden sm:block" />
+
+                        {/* Type Filters */}
+                        <div className="flex items-center gap-1.5 whitespace-nowrap">
+                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mr-1 hidden lg:block">Tipo</span>
+                            {[
+                                { id: 'all', label: 'Todos', count: counts.type.all },
+                                { id: 'recurring', label: 'Recurrentes', count: counts.type.recurring },
+                                { id: 'one_off', label: 'Proyectos', count: counts.type.one_off },
+                            ].map(filter => (
+                                <button
+                                    key={filter.id}
+                                    onClick={() => setTypeFilter(filter.id)}
+                                    className={cn(
+                                        "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all duration-200 whitespace-nowrap",
+                                        typeFilter === filter.id
+                                            ? filter.id === 'recurring' ? "bg-indigo-50 text-indigo-700 ring-1 ring-inset ring-indigo-600/20 shadow-sm"
+                                                : filter.id === 'one_off' ? "bg-violet-50 text-violet-700 ring-1 ring-inset ring-violet-600/20 shadow-sm"
+                                                    : "bg-gray-900 text-white shadow-sm"
+                                            : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
+                                    )}
+                                >
+                                    <span>{filter.label}</span>
+                                    <span className={cn(
+                                        "px-1.5 py-0.5 rounded-md text-[10px]",
+                                        typeFilter === filter.id
+                                            ? "bg-white/20 text-current"
+                                            : "bg-gray-100 text-gray-500"
+                                    )}>
+                                        {filter.count}
+                                    </span>
+                                </button>
+                            ))}
                         </div>
                     </div>
                 </div>
@@ -212,7 +280,7 @@ export default function ServicesPage() {
                             </TableRow>
                         ) : (
                             filteredServices.map((service) => (
-                                <TableRow key={service.id} className="group">
+                                <TableRow key={service.id} className="group hover:bg-gray-50/30 transition-colors">
                                     <TableCell>
                                         <div>
                                             <p className="font-medium text-gray-900">{service.name}</p>
@@ -264,26 +332,46 @@ export default function ServicesPage() {
                                         </Badge>
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <AddServiceModal
-                                                serviceToEdit={service}
-                                                clientId={service.client?.id}
-                                                onSuccess={fetchServices}
-                                                trigger={
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-indigo-600">
-                                                        <Eye className="h-4 w-4" />
-                                                    </Button>
-                                                }
-                                            />
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                onClick={() => handleDeleteService(service.id)}
-                                                className="h-8 w-8 text-gray-400 hover:text-red-600"
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                        </div>
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                                    <span className="sr-only">Open menu</span>
+                                                    <MoreHorizontal className="h-4 w-4" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                <DropdownMenuItem
+                                                    onClick={() => {
+                                                        setSelectedServiceForDetails(service)
+                                                        setIsDetailsModalOpen(true)
+                                                    }}
+                                                >
+                                                    <Eye className="mr-2 h-4 w-4" />
+                                                    Ver Detalle
+                                                </DropdownMenuItem>
+
+                                                {/* Edit triggers modal via standard open/close pattern */}
+                                                <AddServiceModal
+                                                    serviceToEdit={service}
+                                                    clientId={service.client?.id}
+                                                    onSuccess={fetchServices}
+                                                    trigger={
+                                                        <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                                            <Pencil className="mr-2 h-4 w-4" />
+                                                            Editar
+                                                        </DropdownMenuItem>
+                                                    }
+                                                />
+
+                                                <DropdownMenuItem
+                                                    onClick={() => handleDeleteService(service.id)}
+                                                    className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                                                >
+                                                    <Trash2 className="mr-2 h-4 w-4" />
+                                                    Eliminar
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
                                     </TableCell>
                                 </TableRow>
                             ))
@@ -291,6 +379,12 @@ export default function ServicesPage() {
                     </TableBody>
                 </Table>
             </div>
+
+            <ServiceDetailsModal
+                service={selectedServiceForDetails}
+                isOpen={isDetailsModalOpen}
+                onClose={() => setIsDetailsModalOpen(false)}
+            />
         </div>
     )
 }
