@@ -38,7 +38,7 @@ type Client = {
     invoices: { id: string; total: number; status: string; due_date?: string }[]
     hosting_accounts: { status: string; renewal_date: string }[]
     subscriptions: { id: string; name: string; next_billing_date: string; status: string; amount: number; service_type: string; frequency: string }[]
-    services?: { id: string; status: string; name: string }[]
+    services?: { id: string; status: string; name: string; next_billing_date?: string; amount?: number; frequency?: string }[]
     quotes?: { id: string; number: string; total: number; status: string; pdf_url?: string }[]
     portal_token?: string
     portal_short_token?: string

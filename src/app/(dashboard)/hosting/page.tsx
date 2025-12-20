@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Plus, Search, Filter, CreditCard, Server, Megaphone, Monitor, Box, Eye, Trash2, Loader2, RefreshCw, Zap, CalendarClock, MoreHorizontal, Pencil, FileText } from "lucide-react"
+import { Plus, Search, Filter, CreditCard, Server, Megaphone, Monitor, Box, Eye, Trash2, Loader2, RefreshCw, Zap, CalendarClock, MoreHorizontal, Pencil, FileText, PlayCircle, PauseCircle } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import {
     Table,
@@ -24,6 +24,8 @@ import { Badge } from "@/components/ui/badge"
 import { supabase } from "@/lib/supabase"
 import { AddServiceModal } from "@/components/modules/services/add-service-modal"
 import { ServiceDetailsModal } from "@/components/modules/services/service-details-modal"
+import { ResumeServiceModal } from "@/components/modules/services/resume-service-modal"
+import { toggleServiceStatus } from "@/app/actions/services-actions"
 import { cn } from "@/lib/utils"
 
 interface ServiceFromDB {
@@ -56,15 +58,35 @@ export default function ServicesPage() {
     const [selectedServiceForDetails, setSelectedServiceForDetails] = useState<ServiceFromDB | null>(null)
     const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false)
 
+    // Resume Modal State
+    const [selectedServiceForResume, setSelectedServiceForResume] = useState<ServiceFromDB | null>(null)
+    const [isResumeModalOpen, setIsResumeModalOpen] = useState(false)
+
+    const handlePauseService = async (id: string) => {
+        if (!confirm("¿Estás seguro de que deseas pausar este servicio? Se detendrá la facturación hasta que lo reanudes.")) return
+
+        try {
+            const result = await toggleServiceStatus(id, 'paused')
+            if (result.success) {
+                await fetchServices()
+            } else {
+                alert("Error al pausar el servicio")
+            }
+        } catch (error) {
+            console.error(error)
+            alert("Error desconocido")
+        }
+    }
+
     const fetchServices = async () => {
         setLoading(true)
         // Fetch from 'services' table instead of 'subscriptions'
         const { data, error } = await supabase
             .from('services')
             .select(`
-                *,
-                client:clients(id, name, company_name)
-            `)
+    *,
+    client: clients(id, name, company_name)
+        `)
             .order('created_at', { ascending: false })
 
         if (error) {
@@ -370,6 +392,29 @@ export default function ServicesPage() {
                                                     <Trash2 className="mr-2 h-4 w-4" />
                                                     Eliminar
                                                 </DropdownMenuItem>
+
+                                                <DropdownMenuSeparator />
+
+                                                {service.status === 'active' ? (
+                                                    <DropdownMenuItem
+                                                        onClick={() => handlePauseService(service.id)}
+                                                        className="text-amber-600 focus:text-amber-600 focus:bg-amber-50"
+                                                    >
+                                                        <PauseCircle className="mr-2 h-4 w-4" />
+                                                        Pausar Servicio
+                                                    </DropdownMenuItem>
+                                                ) : service.status === 'paused' ? (
+                                                    <DropdownMenuItem
+                                                        onClick={() => {
+                                                            setSelectedServiceForResume(service)
+                                                            setIsResumeModalOpen(true)
+                                                        }}
+                                                        className="text-emerald-600 focus:text-emerald-600 focus:bg-emerald-50"
+                                                    >
+                                                        <PlayCircle className="mr-2 h-4 w-4" />
+                                                        Reanudar Servicio
+                                                    </DropdownMenuItem>
+                                                ) : null}
                                             </DropdownMenuContent>
                                         </DropdownMenu>
                                     </TableCell>
@@ -384,6 +429,13 @@ export default function ServicesPage() {
                 service={selectedServiceForDetails}
                 isOpen={isDetailsModalOpen}
                 onClose={() => setIsDetailsModalOpen(false)}
+            />
+
+            <ResumeServiceModal
+                service={selectedServiceForResume}
+                isOpen={isResumeModalOpen}
+                onClose={() => setIsResumeModalOpen(false)}
+                onSuccess={fetchServices}
             />
         </div>
     )
