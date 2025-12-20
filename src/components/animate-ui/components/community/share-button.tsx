@@ -35,9 +35,12 @@ const iconSizeMap = {
 };
 
 type ShareButtonProps = HTMLMotionProps<'button'> & {
-  children: React.ReactNode;
+  children?: React.ReactNode; // Optional now
   className?: string;
   onIconClick?: (platform: 'whatsapp' | 'email' | 'download') => void;
+  url?: string;
+  title?: string;
+  onShare?: () => void;
 } & VariantProps<typeof buttonVariants>;
 
 function ShareButton({
@@ -46,9 +49,20 @@ function ShareButton({
   size,
   icon,
   onIconClick,
+  url,
+  title,
+  onShare,
   ...props
 }: ShareButtonProps) {
   const [hovered, setHovered] = React.useState(false);
+
+  const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    if (onShare) {
+      onShare();
+    }
+    props.onClick?.(e);
+  };
+
   return (
     <motion.button
       className={cn(
@@ -57,45 +71,13 @@ function ShareButton({
       )}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      onClick={handleClick}
       {...props}
     >
-      <AnimatePresence initial={false} mode="wait">
-        {!hovered ? (
-          <motion.div
-            key="content"
-            initial={{ opacity: 1, y: 0 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -24 }}
-            transition={{ duration: 0.2 }}
-            className=" absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center gap-2"
-          >
-            {icon === 'prefix' && (
-              <Share2
-                className="size-4"
-                size={iconSizeMap[size as keyof typeof iconSizeMap]}
-              />
-            )}
-            {children}
-            {icon === 'suffix' && (
-              <Share2
-                className="size-4"
-                size={iconSizeMap[size as keyof typeof iconSizeMap]}
-              />
-            )}
-          </motion.div>
-        ) : (
-          <motion.div
-            key="icons"
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 24 }}
-            transition={{ duration: 0.2 }}
-            className=" absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center gap-2"
-          >
-            <ShareIconGroup size={size} onIconClick={onIconClick} />
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <div className="flex items-center gap-2">
+        <Share2 className="size-4" />
+        {children || "Compartir"}
+      </div>
     </motion.button>
   );
 }

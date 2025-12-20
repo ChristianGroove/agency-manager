@@ -28,6 +28,11 @@ export function NotificationBell() {
     const [notifications, setNotifications] = useState<Notification[]>([])
     const [unreadCount, setUnreadCount] = useState(0)
     const [loading, setLoading] = useState(true)
+    const [isMounted, setIsMounted] = useState(false)
+
+    useEffect(() => {
+        setIsMounted(true)
+    }, [])
 
     const fetchNotifications = async () => {
         try {
@@ -103,6 +108,10 @@ export function NotificationBell() {
 
         return () => clearInterval(interval)
     }, [])
+
+    if (!isMounted) {
+        return null
+    }
 
     return (
         <DropdownMenu>

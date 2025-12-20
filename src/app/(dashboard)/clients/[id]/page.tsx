@@ -41,25 +41,23 @@ import {
     Globe,
     AlertCircle,
     ExternalLink,
-    Copy,
-    MessageCircle,
     Edit,
     RefreshCw,
     CalendarClock,
     PauseCircle,
     PlayCircle,
     StickyNote,
-    MoreHorizontal,
-    Eye
+    Eye,
+    Share2
 } from "lucide-react"
 import { NotesModal } from "@/components/modules/clients/notes-modal"
 import { ResumeServiceModal } from "@/components/modules/services/resume-service-modal"
 import { toggleServiceStatus } from "@/app/actions/services-actions"
 import { supabase } from "@/lib/supabase"
 import { getSettings } from "@/lib/actions/settings"
-import { getWhatsAppLink } from "@/lib/communication-utils"
 import { cn } from "@/lib/utils"
 import { CreateInvoiceModal } from "@/components/modules/invoices/create-invoice-modal"
+import { ShareInvoiceModal } from "@/components/modules/invoices/share-invoice-modal"
 import { AddServiceModal } from "@/components/modules/services/add-service-modal"
 import { regeneratePortalToken } from "@/app/actions/portal-actions"
 import {
@@ -110,7 +108,9 @@ export default function ClientDetailPage() {
 
     // Helper: Get invoices linked to a service
     const getServiceInvoices = (serviceId: string) => {
-        return client?.invoices?.filter(inv => inv.service_id === serviceId) || []
+        const linkedInvoices = client?.invoices?.filter(inv => inv.service_id === serviceId) || []
+        // Sort by created_at desc (newest first)
+        return linkedInvoices.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     }
 
     // Helper: Get invoices NOT linked to any service
@@ -140,6 +140,10 @@ export default function ClientDetailPage() {
     const [invoiceFilter, setInvoiceFilter] = useState("all")
     const [serviceToEdit, setServiceToEdit] = useState<any>(null)
     const [isServiceModalOpen, setIsServiceModalOpen] = useState(false)
+
+    // Share Invoice Modal
+    const [isShareInvoiceModalOpen, setIsShareInvoiceModalOpen] = useState(false)
+    const [invoiceToShare, setInvoiceToShare] = useState<any>(null)
 
     // Edit Client Modal State
     const [isEditModalOpen, setIsEditModalOpen] = useState(false)
@@ -246,6 +250,23 @@ export default function ClientDetailPage() {
         setPreviewUrl(null)
         if (fileInputRef.current) {
             fileInputRef.current.value = ""
+        }
+    }
+
+    const handleMarkAsPaid = async (invoiceId: string) => {
+        try {
+            const { error } = await supabase
+                .from('invoices')
+                .update({ status: 'paid' })
+                .eq('id', invoiceId)
+
+            if (error) throw error
+
+            // Refresh data
+            fetchClientData(params.id as string)
+        } catch (error) {
+            console.error("Error marking invoice as paid:", error)
+            alert("Error al actualizar la factura.")
         }
     }
 
@@ -840,19 +861,80 @@ export default function ClientDetailPage() {
                                             </div>
 
                                             {/* 3. Footer: Cost & Billing Date */}
-                                            <div className="mt-2 p-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+                                            <div className="mt-2 py-3 px-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
                                                 <div className="flex flex-col">
                                                     <span className="text-[10px] text-gray-500 uppercase font-semibold">Costo</span>
                                                     <span className="font-bold text-gray-900">${service.amount?.toLocaleString()}</span>
                                                 </div>
-                                                {service.next_billing_date && (
-                                                    <div className="text-right">
-                                                        <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                                                            <CalendarClock className="h-3.5 w-3.5" />
-                                                            <span>{new Date(service.next_billing_date).toLocaleDateString()}</span>
+                                                <div className="flex items-center gap-4">
+                                                    {/* Actions for Latest Invoice */}
+                                                    {recentInvoices.length > 0 && (
+                                                        <div className="flex items-center gap-1">
+                                                            {(() => {
+                                                                const latestInvoice = recentInvoices[0]; // Any invoice works for HTML view
+                                                                const latestUnpaidInvoice = recentInvoices.find((inv: any) => inv.status !== 'paid')
+
+                                                                return (
+                                                                    <>
+                                                                        <Button
+                                                                            type="button"
+                                                                            variant="ghost"
+                                                                            size="icon"
+                                                                            className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50"
+                                                                            title="Ver Factura"
+                                                                            onClick={(e) => {
+                                                                                e.preventDefault();
+                                                                                e.stopPropagation();
+                                                                                if (latestInvoice?.id) window.open(`/invoices/${latestInvoice.id}`, '_blank')
+                                                                            }}
+                                                                        >
+                                                                            <Eye className="h-3.5 w-3.5" />
+                                                                        </Button>
+
+                                                                        <Button
+                                                                            type="button"
+                                                                            variant="ghost"
+                                                                            size="icon"
+                                                                            className="h-7 w-7 text-gray-400 hover:text-blue-600 hover:bg-blue-50"
+                                                                            title="Compartir Factura"
+                                                                            onClick={(e) => {
+                                                                                e.preventDefault();
+                                                                                e.stopPropagation();
+                                                                                if (latestInvoice) {
+                                                                                    setInvoiceToShare(latestInvoice)
+                                                                                    setIsShareInvoiceModalOpen(true)
+                                                                                }
+                                                                            }}
+                                                                        >
+                                                                            <Share2 className="h-3.5 w-3.5" />
+                                                                        </Button>
+
+                                                                        {latestUnpaidInvoice && (
+                                                                            <Button
+                                                                                variant="ghost"
+                                                                                size="icon"
+                                                                                className="h-7 w-7 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50"
+                                                                                title={`Marcar Factura #${latestUnpaidInvoice.number} como Pagada`}
+                                                                                onClick={() => handleMarkAsPaid(latestUnpaidInvoice.id)}
+                                                                            >
+                                                                                <CheckCircle2 className="h-3.5 w-3.5" />
+                                                                            </Button>
+                                                                        )}
+                                                                    </>
+                                                                )
+                                                            })()}
                                                         </div>
-                                                    </div>
-                                                )}
+                                                    )}
+
+                                                    {service.next_billing_date && (
+                                                        <div className="text-right border-l border-gray-200 pl-4">
+                                                            <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                                                                <CalendarClock className="h-3.5 w-3.5" />
+                                                                <span>{new Date(service.next_billing_date).toLocaleDateString()}</span>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     )
@@ -894,13 +976,46 @@ export default function ClientDetailPage() {
                                             </div>
                                             <div className="flex items-center gap-4">
                                                 <span className="font-bold">${inv.total.toLocaleString()}</span>
-                                                {inv.pdf_url && (
-                                                    <a href={inv.pdf_url} target="_blank" rel="noopener noreferrer">
-                                                        <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-gray-50">
-                                                            <Eye className="h-4 w-4 text-gray-400" />
+                                                <div className="flex items-center gap-1">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className={cn("h-8 w-8 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50", !inv.pdf_url && "opacity-50 cursor-not-allowed")}
+                                                        title={inv.pdf_url ? "Ver Factura" : "Sin PDF disponible"}
+                                                        disabled={!inv.pdf_url}
+                                                        onClick={() => inv.pdf_url && window.open(inv.pdf_url, '_blank')}
+                                                    >
+                                                        <Eye className="h-4 w-4" />
+                                                    </Button>
+
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className={cn("h-8 w-8 text-gray-400 hover:text-blue-600 hover:bg-blue-50", !inv.pdf_url && "opacity-50 cursor-not-allowed")}
+                                                        title={inv.pdf_url ? "Compartir Factura" : "Sin PDF disponible"}
+                                                        disabled={!inv.pdf_url}
+                                                        onClick={() => {
+                                                            if (inv.pdf_url) {
+                                                                setInvoiceToShare(inv)
+                                                                setIsShareInvoiceModalOpen(true)
+                                                            }
+                                                        }}
+                                                    >
+                                                        <Share2 className="h-4 w-4" />
+                                                    </Button>
+
+                                                    {inv.status !== 'paid' && (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50"
+                                                            title="Marcar como Pagada"
+                                                            onClick={() => handleMarkAsPaid(inv.id)}
+                                                        >
+                                                            <CheckCircle2 className="h-4 w-4" />
                                                         </Button>
-                                                    </a>
-                                                )}
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     ))}
@@ -936,6 +1051,14 @@ export default function ClientDetailPage() {
                     isOpen={isResumeModalOpen}
                     onClose={() => setIsResumeModalOpen(false)}
                     onSuccess={() => fetchClientData(client.id)}
+                />
+
+                <ShareInvoiceModal
+                    isOpen={isShareInvoiceModalOpen}
+                    onOpenChange={setIsShareInvoiceModalOpen}
+                    invoice={invoiceToShare}
+                    client={client}
+                    settings={settings}
                 />
             </div >
         </div >

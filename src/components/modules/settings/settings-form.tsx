@@ -127,9 +127,30 @@ export function SettingsForm({ initialSettings }: { initialSettings: any }) {
                                     <Label htmlFor="agency_website">Sitio Web</Label>
                                     <Input id="agency_website" name="agency_website" value={formData.agency_website || ''} onChange={handleChange} placeholder="https://pixy.com" />
                                 </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="agency_logo_url">URL del Logo</Label>
-                                    <Input id="agency_logo_url" name="agency_logo_url" value={formData.agency_logo_url || ''} onChange={handleChange} placeholder="/branding/logo.svg" />
+                            </div>
+
+                            {/* Branding Section */}
+                            <div className="space-y-4 pt-4 border-t">
+                                <div>
+                                    <h4 className="text-sm font-semibold text-gray-900 mb-1">Sistema de Branding</h4>
+                                    <p className="text-xs text-gray-500">Configura los logos que se usarán en diferentes partes del sistema</p>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="invoice_logo_url">Logo para Facturas</Label>
+                                        <Input id="invoice_logo_url" name="invoice_logo_url" value={formData.invoice_logo_url || ''} onChange={handleChange} placeholder="/branding/invoice-logo.png" />
+                                        <p className="text-xs text-muted-foreground">Se usará en PDFs de facturas</p>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="main_logo_url">Logo Principal (Login/Sidebar)</Label>
+                                        <Input id="main_logo_url" name="main_logo_url" value={formData.main_logo_url || ''} onChange={handleChange} placeholder="/branding/main-logo.svg" />
+                                        <p className="text-xs text-muted-foreground">Se usará en navegación</p>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="isotipo_url">Isotipo / Favicon</Label>
+                                        <Input id="isotipo_url" name="isotipo_url" value={formData.isotipo_url || ''} onChange={handleChange} placeholder="/branding/isotipo.svg" />
+                                        <p className="text-xs text-muted-foreground">Icono compacto del sistema</p>
+                                    </div>
                                 </div>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

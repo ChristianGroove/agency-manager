@@ -191,7 +191,7 @@ export function AddServiceModal({ clientId, clientName, onSuccess, trigger, serv
                 const dueDate = new Date()
                 dueDate.setDate(dueDate.getDate() + (formData.type === 'one_off' ? 15 : 5))
 
-                const { error: invError } = await supabase.from('invoices').insert({
+                const { data: invData, error: invError } = await supabase.from('invoices').insert({
                     client_id: clientId,
                     service_id: serviceId,
                     number: invoiceNumber,
@@ -204,9 +204,12 @@ export function AddServiceModal({ clientId, clientName, onSuccess, trigger, serv
                         quantity: formData.quantity || 1,
                         price: unitPrice // Invoice item price is unit price
                     }]
-                })
+                }).select().single()
 
-                if (invError) console.error("Error creating initial invoice:", invError)
+                if (invError) {
+                    console.error("Error creating initial invoice:", invError)
+                    alert(`El servicio se creó, pero hubo un error al crear la factura: ${invError.message}`)
+                }
             }
 
             // Success
