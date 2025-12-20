@@ -2,16 +2,8 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Plus, Search, Filter, CreditCard, Server, Megaphone, Monitor, Box, Eye, Trash2, Loader2 } from "lucide-react"
-import Link from "next/link"
+import { Plus, Search, Filter, CreditCard, Server, Megaphone, Monitor, Box, Eye, Trash2, Loader2, RefreshCw, Zap, CalendarClock } from "lucide-react"
 import { Input } from "@/components/ui/input"
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
 import {
     Table,
     TableBody,
@@ -25,44 +17,47 @@ import { supabase } from "@/lib/supabase"
 import { AddServiceModal } from "@/components/modules/services/add-service-modal"
 import { cn } from "@/lib/utils"
 
-interface Service {
+interface ServiceFromDB {
     id: string
     name: string
-    service_type: string
-    frequency: string
+    description?: string
+    type: 'recurring' | 'one_off'
+    frequency?: string
     amount: number
-    next_billing_date: string | null
     status: string
     client: {
+        id: string
         name: string
         company_name: string
     }
-    invoice?: {
-        id: string
-        status: string
-        number: string
-    }
+    // Optional: Include invoice info if needed, but keeping it simple for now
 }
 
 export default function ServicesPage() {
-    const [services, setServices] = useState<Service[]>([])
+    const [services, setServices] = useState<ServiceFromDB[]>([])
     const [loading, setLoading] = useState(true)
     const [searchTerm, setSearchTerm] = useState("")
-    const [typeFilter, setTypeFilter] = useState("all")
-    const [deletingId, setDeletingId] = useState<string | null>(null)
+
+    // Modern Filters
+    const [statusFilter, setStatusFilter] = useState<string>("active") // Default to active
+    const [typeFilter, setTypeFilter] = useState<string>("all")
 
     const fetchServices = async () => {
         setLoading(true)
+        // Fetch from 'services' table instead of 'subscriptions'
         const { data, error } = await supabase
-            .from('subscriptions')
+            .from('services')
             .select(`
                 *,
-                client:clients(name, company_name),
-                invoice:invoices(id, status, number)
+                client:clients(id, name, company_name)
             `)
-            .order('next_billing_date', { ascending: true })
+            .order('created_at', { ascending: false })
 
-        if (data) setServices(data)
+        if (error) {
+            console.error("Error fetching services:", error)
+        } else if (data) {
+            setServices(data)
+        }
         setLoading(false)
     }
 
@@ -73,10 +68,9 @@ export default function ServicesPage() {
     const handleDeleteService = async (id: string) => {
         if (!confirm("¿Estás seguro de que deseas eliminar este servicio? Esta acción no se puede deshacer.")) return
 
-        setDeletingId(id)
         try {
             const { error } = await supabase
-                .from('subscriptions')
+                .from('services')
                 .delete()
                 .eq('id', id)
 
@@ -85,8 +79,6 @@ export default function ServicesPage() {
         } catch (error) {
             console.error("Error deleting service:", error)
             alert("Error al eliminar el servicio")
-        } finally {
-            setDeletingId(null)
         }
     }
 
@@ -96,187 +88,201 @@ export default function ServicesPage() {
             service.client?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             service.client?.company_name?.toLowerCase().includes(searchTerm.toLowerCase())
 
-        const matchesType = typeFilter === "all" || service.service_type === typeFilter
+        const matchesStatus = statusFilter === "all" || service.status === statusFilter
+        const matchesType = typeFilter === "all" || service.type === typeFilter
 
-        return matchesSearch && matchesType
+        // Handle "active" filter specifically to include only active services vs others
+        // (If simple match is enough, keep it simple. But usually 'active' means status='active')
+
+        return matchesSearch && matchesStatus && matchesType
     })
 
-    const getServiceIcon = (type: string) => {
-        switch (type) {
-            case 'hosting': return <Server className="h-4 w-4" />
-            case 'marketing': return <Megaphone className="h-4 w-4" />
-            case 'ads': return <Monitor className="h-4 w-4" />
-            case 'crm': return <Box className="h-4 w-4" />
-            default: return <CreditCard className="h-4 w-4" />
+    const getFrequencyLabel = (freq?: string) => {
+        if (!freq) return '-'
+        const map: Record<string, string> = {
+            monthly: 'Mensual',
+            biweekly: 'Quincenal',
+            quarterly: 'Trimestral',
+            semiannual: 'Semestral',
+            yearly: 'Anual'
         }
+        return map[freq] || freq
     }
 
-    const getServiceLabel = (type: string) => {
-        switch (type) {
-            case 'hosting': return 'Hosting'
-            case 'marketing': return 'Marketing'
-            case 'ads': return 'Ads'
-            case 'crm': return 'Software'
-            default: return 'Otro'
-        }
-    }
+    // Reuse pill component logic
+    const FilterPill = ({ label, active, onClick }: { label: string, active: boolean, onClick: () => void }) => (
+        <button
+            onClick={onClick}
+            className={cn(
+                "px-3 py-1.5 rounded-full text-xs font-medium transition-all",
+                active
+                    ? "bg-black text-white shadow-sm"
+                    : "bg-white text-gray-600 border border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+            )}
+        >
+            {label}
+        </button>
+    )
 
     return (
         <div className="space-y-8">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h2 className="text-3xl font-bold tracking-tight text-gray-900">Servicios & Suscripciones</h2>
-                    <p className="text-muted-foreground mt-1">Gestiona todos los servicios recurrentes de tus clientes</p>
+                    <h2 className="text-3xl font-bold tracking-tight text-gray-900">Servicios</h2>
+                    <p className="text-muted-foreground mt-1">Suscripciones y proyectos únicos de tus clientes</p>
                 </div>
-                <AddServiceModal
-                    onSuccess={fetchServices}
-                    trigger={
-                        <Button className="bg-brand-pink hover:bg-brand-pink/90 text-white shadow-md border-0">
-                            <Plus className="mr-2 h-4 w-4" />
-                            Nuevo Servicio
-                        </Button>
-                    }
-                />
-            </div>
-
-            <div className="flex items-center gap-4 bg-white p-4 rounded-lg border border-gray-100 shadow-sm">
-                <div className="relative flex-1 max-w-sm">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <Input
-                        placeholder="Buscar por servicio o cliente..."
-                        className="pl-9"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
+                <div className="w-full md:w-auto">
+                    <AddServiceModal
+                        onSuccess={fetchServices}
+                        trigger={
+                            <Button className="w-full md:w-auto bg-brand-pink hover:bg-brand-pink/90 text-white shadow-md border-0">
+                                <Plus className="mr-2 h-4 w-4" />
+                                Nuevo Servicio
+                            </Button>
+                        }
                     />
                 </div>
-                <div className="flex items-center gap-2">
-                    <Filter className="h-4 w-4 text-gray-400" />
-                    <Select value={typeFilter} onValueChange={setTypeFilter}>
-                        <SelectTrigger className="w-[180px]">
-                            <SelectValue placeholder="Filtrar por tipo" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">Todos los tipos</SelectItem>
-                            <SelectItem value="hosting">Hosting</SelectItem>
-                            <SelectItem value="marketing">Marketing</SelectItem>
-                            <SelectItem value="ads">Ads</SelectItem>
-                            <SelectItem value="crm">Software</SelectItem>
-                            <SelectItem value="other">Otro</SelectItem>
-                        </SelectContent>
-                    </Select>
+            </div>
+
+            {/* Filters Area */}
+            <div className="space-y-4">
+                <div className="flex items-center gap-4 bg-white p-4 rounded-lg border border-gray-100 shadow-sm">
+                    <div className="relative flex-1 max-w-sm">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <Input
+                            placeholder="Buscar por servicio o cliente..."
+                            className="pl-9"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-6">
+                    {/* Status Filters */}
+                    <div className="space-y-2">
+                        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider ml-1">Estado</span>
+                        <div className="flex flex-wrap gap-2">
+                            <FilterPill label="Todos" active={statusFilter === 'all'} onClick={() => setStatusFilter('all')} />
+                            <FilterPill label="Activos" active={statusFilter === 'active'} onClick={() => setStatusFilter('active')} />
+                            <FilterPill label="Pausados" active={statusFilter === 'paused'} onClick={() => setStatusFilter('paused')} />
+                        </div>
+                    </div>
+
+                    {/* Type Filters */}
+                    <div className="space-y-2">
+                        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider ml-1">Tipo</span>
+                        <div className="flex flex-wrap gap-2">
+                            <FilterPill label="Todos" active={typeFilter === 'all'} onClick={() => setTypeFilter('all')} />
+                            <FilterPill label="Recurrentes" active={typeFilter === 'recurring'} onClick={() => setTypeFilter('recurring')} />
+                            <FilterPill label="Proyectos" active={typeFilter === 'one_off'} onClick={() => setTypeFilter('one_off')} />
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div className="rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden">
+            {/* Table */}
+            <div className="rounded-xl border bg-white shadow-sm overflow-hidden">
                 <Table>
-                    <TableHeader className="bg-gray-50/50">
-                        <TableRow>
-                            <TableHead>Servicio</TableHead>
-                            <TableHead>Cliente</TableHead>
+                    <TableHeader>
+                        <TableRow className="bg-gray-50/50 hover:bg-gray-50/50">
+                            <TableHead >Servicio / Cliente</TableHead>
                             <TableHead>Tipo</TableHead>
                             <TableHead>Frecuencia</TableHead>
                             <TableHead>Monto</TableHead>
-                            <TableHead>Próximo Cobro</TableHead>
                             <TableHead>Estado</TableHead>
-                            <TableHead>Estado Factura</TableHead>
                             <TableHead className="text-right">Acciones</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {loading ? (
                             <TableRow>
-                                <TableCell colSpan={9} className="text-center py-8 text-gray-500">
-                                    Cargando servicios...
+                                <TableCell colSpan={6} className="h-32 text-center">
+                                    <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                                        <Loader2 className="h-5 w-5 animate-spin" />
+                                        Cargando servicios...
+                                    </div>
                                 </TableCell>
                             </TableRow>
                         ) : filteredServices.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={9} className="text-center py-8 text-gray-500">
-                                    No se encontraron servicios
+                                <TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
+                                    No se encontraron servicios con estos filtros.
                                 </TableCell>
                             </TableRow>
                         ) : (
                             filteredServices.map((service) => (
-                                <TableRow key={service.id} className="hover:bg-gray-50/50">
-                                    <TableCell className="font-medium text-gray-900">{service.name}</TableCell>
+                                <TableRow key={service.id} className="group">
                                     <TableCell>
-                                        <div className="flex flex-col">
-                                            <span className="font-medium text-gray-900">{service.client?.name}</span>
-                                            <span className="text-xs text-gray-500">{service.client?.company_name}</span>
+                                        <div>
+                                            <p className="font-medium text-gray-900">{service.name}</p>
+                                            <div className="flex items-center gap-1 text-sm text-gray-500">
+                                                <span className="truncate max-w-[200px]">{service.client?.name || 'Sin Cliente'}</span>
+                                                {service.client?.company_name && (
+                                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-gray-100 text-gray-600">
+                                                        {service.client.company_name}
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
                                     </TableCell>
                                     <TableCell>
-                                        <div className="flex items-center gap-2 text-gray-600">
-                                            {getServiceIcon(service.service_type)}
-                                            <span>{getServiceLabel(service.service_type)}</span>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className="capitalize text-gray-600">
-                                        {service.frequency === 'one-time' ? 'Único' :
-                                            service.frequency === 'biweekly' ? 'Quincenal' :
-                                                service.frequency === 'monthly' ? 'Mensual' :
-                                                    service.frequency === 'quarterly' ? 'Trimestral' : 'Anual'}
-                                    </TableCell>
-                                    <TableCell className="font-medium text-gray-900">
-                                        ${service.amount.toLocaleString()}
-                                    </TableCell>
-                                    <TableCell>
-                                        {service.next_billing_date ? (
-                                            <span className={cn(
-                                                "font-medium",
-                                                new Date(service.next_billing_date) < new Date() ? "text-red-600" : "text-gray-600"
-                                            )}>
-                                                {new Date(service.next_billing_date).toLocaleDateString()}
-                                            </span>
-                                        ) : 'N/A'}
-                                    </TableCell>
-                                    <TableCell>
-                                        <Badge className={cn(
-                                            "font-normal",
-                                            service.status === 'active' ? "bg-green-100 text-green-700 border-green-200 hover:bg-green-100" : "bg-gray-100 text-gray-700 border-gray-200"
-                                        )}>
-                                            {service.status === 'active' ? 'Activo' : 'Inactivo'}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell>
-                                        {service.invoice ? (
-                                            <Badge className={cn(
-                                                "font-normal",
-                                                service.invoice.status === 'paid' ? "bg-green-100 text-green-700 border-green-200" :
-                                                    service.invoice.status === 'pending' ? "bg-yellow-100 text-yellow-700 border-yellow-200" :
-                                                        "bg-red-100 text-red-700 border-red-200"
-                                            )}>
-                                                {service.invoice.status === 'paid' ? 'Pagada' :
-                                                    service.invoice.status === 'pending' ? 'Pendiente' : 'Vencida'}
+                                        {service.type === 'recurring' ? (
+                                            <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200">
+                                                <RefreshCw className="h-3 w-3 mr-1" /> Recurrente
                                             </Badge>
                                         ) : (
-                                            <span className="text-xs text-gray-400 italic">Sin factura</span>
+                                            <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+                                                <Zap className="h-3 w-3 mr-1" /> Proyecto
+                                            </Badge>
                                         )}
                                     </TableCell>
+                                    <TableCell>
+                                        {service.type === 'recurring' ? (
+                                            <div className="flex items-center gap-1 text-sm text-gray-600">
+                                                <CalendarClock className="h-4 w-4 text-gray-400" />
+                                                {getFrequencyLabel(service.frequency)}
+                                            </div>
+                                        ) : (
+                                            <span className="text-gray-400 text-sm">-</span>
+                                        )}
+                                    </TableCell>
+                                    <TableCell>
+                                        <div className="font-medium">
+                                            ${service.amount?.toLocaleString()}
+                                        </div>
+                                    </TableCell>
+                                    <TableCell>
+                                        <Badge variant="secondary" className={cn(
+                                            "capitalize",
+                                            service.status === 'active' ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100" :
+                                                service.status === 'paused' ? "bg-yellow-100 text-yellow-700 hover:bg-yellow-100" :
+                                                    "bg-gray-100 text-gray-700 hover:bg-gray-100"
+                                        )}>
+                                            {service.status === 'active' ? 'Activo' :
+                                                service.status === 'paused' ? 'Pausado' : 'Cancelado'}
+                                        </Badge>
+                                    </TableCell>
                                     <TableCell className="text-right">
-                                        <div className="flex items-center justify-end gap-2">
-                                            {service.invoice && (
-                                                <Link href={`/invoices/${service.invoice.id}`}>
+                                        <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <AddServiceModal
+                                                serviceToEdit={service}
+                                                clientId={service.client?.id}
+                                                onSuccess={fetchServices}
+                                                trigger={
                                                     <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-indigo-600">
                                                         <Eye className="h-4 w-4" />
                                                     </Button>
-                                                </Link>
-                                            )}
-                                            {service.status !== 'active' && (
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="h-8 w-8 text-gray-400 hover:text-red-600"
-                                                    onClick={() => handleDeleteService(service.id)}
-                                                    disabled={deletingId === service.id}
-                                                >
-                                                    {deletingId === service.id ? (
-                                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                                    ) : (
-                                                        <Trash2 className="h-4 w-4" />
-                                                    )}
-                                                </Button>
-                                            )}
+                                                }
+                                            />
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() => handleDeleteService(service.id)}
+                                                className="h-8 w-8 text-gray-400 hover:text-red-600"
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
                                         </div>
                                     </TableCell>
                                 </TableRow>

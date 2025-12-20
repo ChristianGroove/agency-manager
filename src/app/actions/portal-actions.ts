@@ -173,3 +173,47 @@ export async function rejectQuote(token: string, quoteId: string) {
         return { success: false, error: 'Error rejecting quote' }
     }
 }
+
+export async function registerServiceInterest(token: string, serviceId: string, serviceName: string) {
+    try {
+        // 1. Verify Client
+        const { data: client, error: clientError } = await supabaseAdmin
+            .from('clients')
+            .select('id, name')
+            .eq('portal_short_token', token)
+            .single()
+
+        if (clientError || !client) throw new Error('Unauthorized')
+
+        // 2. Create Event (Interest)
+        // Check if recently requested to avoid spam
+        const { data: existing } = await supabaseAdmin
+            .from('client_events')
+            .select('id')
+            .eq('client_id', client.id)
+            .eq('type', 'interest')
+            .eq('metadata->>service_id', serviceId)
+            .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()) // Last 24 hours
+            .single()
+
+        if (!existing) {
+            await supabaseAdmin.from('client_events').insert({
+                client_id: client.id,
+                type: 'interest',
+                title: 'Interés en Servicio',
+                description: `El cliente ha mostrado interés en: ${serviceName}`,
+                metadata: {
+                    service_id: serviceId,
+                    service_name: serviceName,
+                    channel: 'whatsapp_click'
+                },
+                icon: 'Heart'
+            })
+        }
+
+        return { success: true }
+    } catch (error) {
+        console.error('registerServiceInterest Error:', error)
+        return { success: false, error: 'Error registering interest' }
+    }
+}

@@ -11,6 +11,8 @@ export type Client = {
     logo_url?: string
     portal_token?: string
     portal_short_token?: string
+    invoices?: any[]
+    quotes?: any[]
 }
 
 export type Service = {

@@ -6,11 +6,16 @@ import { ServiceCatalogItem } from "@/types"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, Search, CheckCircle, ArrowRight } from "lucide-react"
+import { Loader2, Search, CheckCircle, ArrowRight, MessageCircle } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
+// Import server action (we need to pass token or client info, assume settings has token or we pass it down)
+// Actually, PortalCatalogTab receives settings. we need a way to identify the client.
+// Usually token is in the URL, but here we are deep in components.
+// We can pass the `client` prop or `token` prop from PortalData.
+import { registerServiceInterest } from "@/app/actions/portal-actions"
 
-export function PortalCatalogTab({ settings }: { settings: any }) {
+export function PortalCatalogTab({ settings, client }: { settings: any, client: any }) {
     const [items, setItems] = useState<ServiceCatalogItem[]>([])
     const [loading, setLoading] = useState(true)
     const [searchTerm, setSearchTerm] = useState("")
@@ -38,13 +43,24 @@ export function PortalCatalogTab({ settings }: { settings: any }) {
         }
     }
 
-    const handleRequestInterest = (item: ServiceCatalogItem) => {
-        // Here we would ideally send an email or create a 'lead' record
-        // For now, we simulate a success state
+    const handleRequestInterest = async (item: ServiceCatalogItem) => {
+        // 1. Optimistic Update
         setRequestedItems(prev => [...prev, item.id])
 
-        // Optional: Trigger a server action ot send notification
-        // sendServiceInterestNotification(client.id, item.id)
+        // 2. Open WhatsApp Immediately
+        const phone = settings.agency_phone || '573000000000' // Fallback
+        const message = `Hola, estoy interesado en el servicio *${item.name}* que vi en el portal de clientes. Me gustaría recibir más información.`
+        const whatsappUrl = `https://wa.me/${phone.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`
+
+        window.open(whatsappUrl, '_blank')
+
+        // 3. Log event in background (Server Action)
+        // We need the portal token. Since we don't have it explicitly in props, we can rely on client ID or pass token.
+        // For security, server actions usually act on session or verified token. 
+        // We will assume 'client.portal_short_token' or 'client.portal_token' is available in the client prop we just added.
+        if (client?.portal_short_token || client?.portal_token) {
+            await registerServiceInterest(client.portal_short_token || client.portal_token || '', item.id, item.name)
+        }
     }
 
     const categories = Array.from(new Set(items.map(i => i.category)))
@@ -138,19 +154,18 @@ export function PortalCatalogTab({ settings }: { settings: any }) {
                                 </div>
 
                                 <Button
-                                    className={cn("w-full transition-all", isRequested ? "bg-green-600 hover:bg-green-700" : "bg-black hover:bg-gray-800")}
+                                    className={cn("w-full transition-all", isRequested ? "bg-green-600 hover:bg-green-700" : "bg-green-600 hover:bg-green-700 text-white")}
                                     onClick={() => handleRequestInterest(item)}
-                                    disabled={isRequested}
                                 >
                                     {isRequested ? (
                                         <>
-                                            <CheckCircle className="h-4 w-4 mr-2" />
-                                            Solicitado
+                                            <MessageCircle className="h-4 w-4 mr-2" />
+                                            Solicitar de nuevo
                                         </>
                                     ) : (
                                         <>
-                                            Me interesa
-                                            <ArrowRight className="h-4 w-4 ml-2" />
+                                            <MessageCircle className="h-4 w-4 mr-2" />
+                                            Solicitar por WhatsApp
                                         </>
                                     )}
                                 </Button>

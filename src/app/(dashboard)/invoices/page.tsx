@@ -115,14 +115,16 @@ export default function InvoicesPage() {
 
     return (
         <div className="space-y-8">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h2 className="text-3xl font-bold tracking-tight text-gray-900">Cuentas de Cobro</h2>
                     <p className="text-muted-foreground mt-1">Gestiona todas las cuentas de cobro emitidas</p>
                 </div>
-                <CreateInvoiceModal
-                    onInvoiceCreated={fetchInvoices}
-                />
+                <div className="w-full md:w-auto">
+                    <CreateInvoiceModal
+                        onInvoiceCreated={fetchInvoices}
+                    />
+                </div>
             </div>
 
             <div className="flex items-center gap-4 bg-white p-4 rounded-lg border border-gray-100 shadow-sm">

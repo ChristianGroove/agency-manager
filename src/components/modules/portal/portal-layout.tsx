@@ -129,9 +129,7 @@ export function PortalLayout({ client, invoices, quotes, briefings, events, serv
                             invoices={invoices} settings={settings} onPay={onPay} onViewInvoice={onViewInvoice}
                         />
                     )}
-                    {activeTab === 'explore' && (
-                        <PortalCatalogTab settings={settings} />
-                    )}
+                    {activeTab === 'explore' && <PortalCatalogTab settings={settings} client={client} />}
                 </div>
 
                 {/* Billing Summary Block (Persistent Desktop) */}
