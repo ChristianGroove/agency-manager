@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
     Dialog,
@@ -64,6 +65,7 @@ import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
+    DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/animate-ui/components/radix/dropdown-menu"
 
@@ -133,6 +135,26 @@ export default function ClientDetailPage() {
         } catch (error) {
             console.error(error)
             alert("Error desconocido")
+        }
+    }
+
+    const handleDeleteService = async (serviceId: string) => {
+        if (!confirm("¿Estás seguro de eliminar este servicio? Esta acción no se puede deshacer.")) return
+
+        try {
+            const { error } = await supabase
+                .from('services')
+                .delete()
+                .eq('id', serviceId)
+
+            if (error) throw error
+
+            alert("Servicio eliminado correctamente")
+            // Re-fetch client data to update the UI
+            if (client) fetchClientData(client.id)
+        } catch (error) {
+            console.error("Error deleting service:", error)
+            alert("No se pudo eliminar el servicio. Verifica si tiene facturas asociadas que impidan la eliminación.")
         }
     }
 
@@ -626,129 +648,127 @@ export default function ClientDetailPage() {
             <div>
 
                 {/* Client Header Card */}
-                <Card className="mb-8 border-0 shadow-lg">
-                    <CardContent className="p-8">
-                        <div className="flex flex-col md:flex-row gap-8">
-                            {/* Left: Logo & Info */}
-                            <div className="flex items-start gap-6">
-                                <Avatar className="h-24 w-24 rounded-xl border border-gray-100 shadow-sm">
-                                    <AvatarImage src={client.logo_url} alt={client.name} className="object-contain p-1" />
-                                    <AvatarFallback className="text-2xl font-bold bg-gray-100 text-gray-600 rounded-xl">
-                                        {client.name.substring(0, 2).toUpperCase()}
-                                    </AvatarFallback>
-                                </Avatar>
-                                <div className="flex-1">
-                                    <h2 className="text-3xl font-bold text-gray-900 mb-1">{client.name}</h2>
-                                    <p className="text-lg text-gray-600 mb-4">{client.company_name}</p>
-                                    <div className="grid grid-cols-1 gap-3">
-                                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                                            <Mail className="h-4 w-4 text-gray-400" />
-                                            <span>{client.email}</span>
-                                        </div>
-                                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                                            <Phone className="h-4 w-4 text-gray-400" />
-                                            <span>{client.phone}</span>
-                                        </div>
-                                        {client.address && (
-                                            <div className="flex items-center gap-2 text-sm text-gray-600">
-                                                <MapPin className="h-4 w-4 text-gray-400" />
-                                                <span>{client.address}</span>
-                                            </div>
-                                        )}
-                                        {client.nit && (
-                                            <div className="flex items-center gap-2 text-sm text-gray-600">
-                                                <FileText className="h-4 w-4 text-gray-400" />
-                                                <span>NIT: {client.nit}</span>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
+                {/* Client Header - Split-Bar Modern Style */}
+                <div className="mb-8 rounded-2xl bg-white/90 backdrop-blur-sm border border-gray-200/50 shadow-lg overflow-hidden transition-all hover:shadow-xl sticky top-4 z-20">
 
-                            {/* Middle: Social Media */}
-                            <div className="flex-1">
-                                <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                                    <Globe className="h-4 w-4 text-gray-400" />
-                                    Redes Sociales
-                                </h3>
-                                <div className="space-y-2">
-                                    {client.facebook && (
-                                        <a href={client.facebook.startsWith('http') ? client.facebook : `https://${client.facebook}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-gray-600 hover:text-brand-pink transition-colors">
-                                            <div className="p-1.5 bg-brand-pink/10 rounded border border-brand-pink/20">
-                                                <svg className="h-3.5 w-3.5 text-brand-pink" fill="currentColor" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" /></svg>
-                                            </div>
-                                            <span className="truncate">Facebook</span>
-                                        </a>
-                                    )}
-                                    {client.instagram && (
-                                        <a href={client.instagram.startsWith('http') ? client.instagram : `https://instagram.com/${client.instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-gray-600 hover:text-brand-pink transition-colors">
-                                            <div className="p-1.5 bg-brand-pink/10 rounded border border-brand-pink/20">
-                                                <svg className="h-3.5 w-3.5 text-brand-pink" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" /></svg>
-                                            </div>
-                                            <span className="truncate">Instagram</span>
-                                        </a>
-                                    )}
-                                    {client.tiktok && (
-                                        <a href={client.tiktok.startsWith('http') ? client.tiktok : `https://tiktok.com/@${client.tiktok.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-gray-600 hover:text-brand-pink transition-colors">
-                                            <div className="p-1.5 bg-brand-pink/10 rounded border border-brand-pink/20">
-                                                <svg className="h-3.5 w-3.5 text-brand-pink" fill="currentColor" viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z" /></svg>
-                                            </div>
-                                            <span className="truncate">TikTok</span>
-                                        </a>
-                                    )}
-                                    {client.website && (
-                                        <a href={client.website.startsWith('http') ? client.website : `https://${client.website}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-gray-600 hover:text-brand-pink transition-colors">
-                                            <div className="p-1.5 bg-brand-pink/10 rounded border border-brand-pink/20">
-                                                <Globe className="h-3.5 w-3.5 text-brand-pink" />
-                                            </div>
-                                            <span className="truncate">Sitio Web</span>
-                                        </a>
-                                    )}
-                                    {!client.facebook && !client.instagram && !client.tiktok && !client.website && (
-                                        <p className="text-xs text-gray-400 italic">Sin redes sociales</p>
-                                    )}
-                                </div>
-                            </div>
+                    {/* TOP ROW: Identity & Stats */}
+                    <div className="p-6 flex flex-col xl:flex-row items-start xl:items-center justify-between gap-6">
 
-                            {/* Right: Stats - Vertical Stack */}
-                            <div className="flex flex-col gap-2 md:min-w-[180px]">
-                                <div className="bg-white rounded-lg p-3 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex-1">
-                                            <p className="text-xs text-gray-500 mb-1">Por Cobrar</p>
-                                            <p className={cn("text-xl font-bold", totalDebt > 0 ? "text-red-600" : "text-gray-900")}>${totalDebt.toLocaleString()}</p>
-                                        </div>
-                                        <div className={cn("p-2 rounded-lg", totalDebt > 0 ? "bg-red-50" : "bg-gray-50")}>
-                                            <DollarSign className={cn("h-4 w-4", totalDebt > 0 ? "text-red-600" : "text-gray-400")} />
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="bg-white rounded-lg p-3 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex-1">
-                                            <p className="text-xs text-gray-500 mb-1">Pagado</p>
-                                            <p className="text-xl font-bold text-gray-900">${totalSpent.toLocaleString()}</p>
-                                        </div>
-                                        <div className="p-2 bg-gray-50 rounded-lg">
-                                            <TrendingUp className="h-4 w-4 text-gray-400" />
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="bg-white rounded-lg p-3 border border-indigo-200 shadow-sm hover:shadow-md transition-shadow">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex-1">
-                                            <p className="text-xs text-gray-500 mb-1">Servicios</p>
-                                            <p className="text-xl font-bold text-indigo-600">{activeServices}</p>
-                                        </div>
-                                        <div className="p-2 bg-indigo-50 rounded-lg">
-                                            <CreditCard className="h-4 w-4 text-indigo-600" />
-                                        </div>
-                                    </div>
+                        {/* Identity */}
+                        <div className="flex items-center gap-5">
+                            <Avatar className="h-20 w-20 rounded-2xl border-2 border-white shadow-md ring-1 ring-gray-100">
+                                <AvatarImage src={client.logo_url} className="object-cover" />
+                                <AvatarFallback className="bg-gradient-to-br from-indigo-50 to-indigo-100 text-indigo-600 font-bold text-2xl rounded-2xl">
+                                    {client.name.substring(0, 2).toUpperCase()}
+                                </AvatarFallback>
+                            </Avatar>
+                            <div>
+                                <h1 className="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight">{client.name}</h1>
+                                <div className="flex items-center gap-3 mt-1 text-gray-500 font-medium">
+                                    <span className="flex items-center gap-1.5"><Server className="h-3.5 w-3.5" /> {client.company_name}</span>
+                                    {client.nit && (
+                                        <>
+                                            <div className="h-1 w-1 rounded-full bg-gray-300" />
+                                            <span className="text-sm">NIT: {client.nit}</span>
+                                        </>
+                                    )}
                                 </div>
                             </div>
                         </div>
-                    </CardContent>
-                </Card>
+
+                        {/* Stats Group - Horizontal */}
+                        <div className="flex items-center gap-3 w-full xl:w-auto">
+                            <div className={cn("flex-1 xl:flex-none px-5 py-3 rounded-xl border flex flex-col min-w-[120px]", totalDebt > 0 ? "bg-red-50/50 border-red-100" : "bg-emerald-50/50 border-emerald-100")}>
+                                <div className="flex items-center justify-between mb-1">
+                                    <span className={cn("text-[10px] uppercase font-bold tracking-wider", totalDebt > 0 ? "text-red-500" : "text-emerald-500")}>{totalDebt > 0 ? "Por Cobrar" : "Estado"}</span>
+                                    <DollarSign className={cn("h-4 w-4", totalDebt > 0 ? "text-red-500" : "text-emerald-500")} />
+                                </div>
+                                <span className={cn("text-2xl font-bold leading-none", totalDebt > 0 ? "text-red-600" : "text-emerald-600")}>${totalDebt > 0 ? totalDebt.toLocaleString() : "Al Día"}</span>
+                            </div>
+
+                            <div className="flex-1 xl:flex-none px-5 py-3 rounded-xl border border-indigo-100 bg-indigo-50/30 flex flex-col min-w-[120px]">
+                                <div className="flex items-center justify-between mb-1">
+                                    <span className="text-[10px] uppercase font-bold tracking-wider text-indigo-500">Servicios</span>
+                                    <CreditCard className="h-4 w-4 text-indigo-500" />
+                                </div>
+                                <span className="text-2xl font-bold leading-none text-indigo-600">{activeServices}</span>
+                            </div>
+
+                            <div className="hidden md:flex flex-1 xl:flex-none px-5 py-3 rounded-xl border border-gray-100 bg-gray-50/50 flex-col min-w-[120px]">
+                                <div className="flex items-center justify-between mb-1">
+                                    <span className="text-[10px] uppercase font-bold tracking-wider text-gray-500">Pagado</span>
+                                    <TrendingUp className="h-4 w-4 text-gray-400" />
+                                </div>
+                                <span className="text-2xl font-bold leading-none text-gray-700">${totalSpent.toLocaleString()}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <Separator />
+
+                    {/* BOTTOM ROW: Connectivity Bar */}
+                    <div className="px-6 py-3 bg-gray-50/50 flex flex-col md:flex-row items-center justify-between gap-4 text-sm">
+
+                        {/* Contact Info */}
+                        <div className="flex flex-wrap items-center gap-4 text-gray-600 w-full md:w-auto justify-center md:justify-start">
+                            <div className="flex items-center gap-2">
+                                <Mail className="h-3.5 w-3.5 text-indigo-500" />
+                                <span className="font-medium cursor-copy hover:text-indigo-600 transition-colors" title="Copiar">{client.email}</span>
+                            </div>
+                            <div className="hidden md:block h-4 w-[1px] bg-gray-300" />
+                            <div className="flex items-center gap-2">
+                                <Phone className="h-3.5 w-3.5 text-emerald-500" />
+                                <span className="font-medium">{client.phone}</span>
+                            </div>
+                            {client.address && (
+                                <>
+                                    <div className="hidden md:block h-4 w-[1px] bg-gray-300" />
+                                    <div className="flex items-center gap-2">
+                                        <MapPin className="h-3.5 w-3.5 text-rose-500" />
+                                        <span className="font-medium truncate max-w-[200px]">{client.address}</span>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+
+                        {/* Actions & Socials (Full Buttons) */}
+                        <div className="flex items-center gap-2 w-full md:w-auto justify-center md:justify-end">
+                            {client.facebook && (
+                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-blue-50 hover:text-blue-600 rounded-full" asChild title="Facebook">
+                                    <a href={client.facebook.startsWith('http') ? client.facebook : `https://${client.facebook}`} target="_blank">
+                                        <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" /></svg>
+                                    </a>
+                                </Button>
+                            )}
+                            {client.instagram && (
+                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-pink-50 hover:text-pink-600 rounded-full" asChild title="Instagram">
+                                    <a href={client.instagram.startsWith('http') ? client.instagram : `https://instagram.com/${client.instagram.replace('@', '')}`} target="_blank">
+                                        <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" /></svg>
+                                    </a>
+                                </Button>
+                            )}
+                            {client.tiktok && (
+                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-gray-100 hover:text-black rounded-full" asChild title="TikTok">
+                                    <a href={client.tiktok.startsWith('http') ? client.tiktok : `https://tiktok.com/@${client.tiktok.replace('@', '')}`} target="_blank">
+                                        <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z" /></svg>
+                                    </a>
+                                </Button>
+                            )}
+
+                            {(client.facebook || client.instagram || client.tiktok) && client.website && (
+                                <div className="h-4 w-[1px] bg-gray-300 mx-1" />
+                            )}
+
+                            {client.website && (
+                                <Button variant="outline" size="sm" className="h-8 gap-2 hover:text-brand-pink hover:border-brand-pink/30 hover:bg-brand-pink/5" asChild>
+                                    <a href={client.website.startsWith('http') ? client.website : `https://${client.website}`} target="_blank">
+                                        <Globe className="h-3.5 w-3.5" /> Web
+                                    </a>
+                                </Button>
+                            )}
+                        </div>
+                    </div>
+                </div>
 
                 {/* Unified Content View */}
                 <div className="space-y-8 pb-20">
@@ -818,6 +838,13 @@ export default function ClientDetailPage() {
                                                                 <PlayCircle className="mr-2 h-4 w-4" /> Reanudar
                                                             </DropdownMenuItem>
                                                         )}
+                                                        <DropdownMenuSeparator />
+                                                        <DropdownMenuItem
+                                                            onClick={() => handleDeleteService(service.id)}
+                                                            className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                                                        >
+                                                            <Trash2 className="mr-2 h-4 w-4" /> Eliminar
+                                                        </DropdownMenuItem>
                                                     </DropdownMenuContent>
                                                 </DropdownMenu>
                                             </div>

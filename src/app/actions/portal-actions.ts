@@ -6,11 +6,17 @@ import { Client, Invoice, Quote, Briefing, ClientEvent, Service } from "@/types"
 export async function getPortalData(token: string) {
     try {
         // 1. Fetch Client by Token
-        const { data: client, error: clientError } = await supabaseAdmin
-            .from('clients')
-            .select('*')
-            .eq('portal_short_token', token)
-            .single()
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)
+
+        let query = supabaseAdmin.from('clients').select('*')
+
+        if (isUuid) {
+            query = query.or(`portal_short_token.eq.${token},portal_token.eq.${token}`)
+        } else {
+            query = query.eq('portal_short_token', token)
+        }
+
+        const { data: client, error: clientError } = await query.single()
 
         if (clientError || !client) {
             console.error('Portal Client Fetch Error:', clientError)

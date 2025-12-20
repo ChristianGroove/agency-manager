@@ -657,7 +657,7 @@ export default function ClientsPage() {
             </div>
 
             {/* Clients Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-6">
                 {
                     loading ? (
                         [1, 2, 3, 4].map(i => (
@@ -716,7 +716,7 @@ export default function ClientsPage() {
                                                 </div>
 
                                                 <div className="flex-1 min-w-0 pr-16"> {/* Added padding-right to avoid overlap with badge */}
-                                                    <h3 className="font-semibold text-gray-900 text-lg leading-tight truncate">
+                                                    <h3 className="font-semibold text-gray-900 text-lg leading-tight line-clamp-2 break-words">
                                                         {client.name}
                                                     </h3>
                                                     {client.company_name && (
@@ -958,6 +958,7 @@ export default function ClientsPage() {
             <AddServiceModal
                 open={isServiceModalOpen}
                 onOpenChange={setIsServiceModalOpen}
+                trigger={null}
                 clientId={selectedClientForService?.id}
                 clientName={selectedClientForService?.name}
                 onSuccess={() => {

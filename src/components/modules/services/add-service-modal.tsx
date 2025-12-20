@@ -230,14 +230,18 @@ export function AddServiceModal({ clientId, clientName, onSuccess, trigger, serv
 
     return (
         <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-            <DialogTrigger asChild>
-                {trigger || (
-                    <Button className="bg-brand-pink hover:bg-brand-pink/90 text-white shadow-md border-0">
-                        <Plus className="mr-2 h-4 w-4" />
-                        Añadir Servicio
-                    </Button>
-                )}
-            </DialogTrigger>
+            {trigger !== null && (
+                <DialogTrigger asChild>
+                    {trigger === undefined ? (
+                        <Button className="bg-brand-pink hover:bg-brand-pink/90 text-white shadow-md border-0">
+                            <Plus className="mr-2 h-4 w-4" />
+                            Añadir Servicio
+                        </Button>
+                    ) : (
+                        trigger
+                    )}
+                </DialogTrigger>
+            )}
             <DialogContent className={cn("transition-all duration-300", step === 'catalog' && !isEditing ? "sm:max-w-4xl p-0 bg-transparent shadow-none border-0" : "sm:max-w-[600px]")}>
                 {step === 'catalog' && !isEditing ? (
                     <>
