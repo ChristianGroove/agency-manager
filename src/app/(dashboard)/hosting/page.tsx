@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Plus, Search, Filter, CreditCard, Server, Megaphone, Monitor, Box, Eye, Trash2, Loader2, RefreshCw, Zap, CalendarClock, MoreHorizontal, Pencil, FileText, PlayCircle, PauseCircle } from "lucide-react"
+import { Plus, Search, Filter, CreditCard, Server, Megaphone, Monitor, Box, Eye, Trash2, Loader2, RefreshCw, Zap, CalendarClock, MoreHorizontal, Pencil, FileText, PlayCircle, PauseCircle, ListFilter } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import {
     Table,
@@ -51,6 +51,7 @@ export default function ServicesPage() {
     const [searchTerm, setSearchTerm] = useState("")
 
     // Modern Filters
+    const [showFilters, setShowFilters] = useState(false)
     const [statusFilter, setStatusFilter] = useState<string>("active") // Default to active
     const [typeFilter, setTypeFilter] = useState<string>("all")
 
@@ -164,7 +165,7 @@ export default function ServicesPage() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h2 className="text-3xl font-bold tracking-tight text-gray-900">Servicios</h2>
-                    <p className="text-muted-foreground mt-1">Suscripciones y proyectos únicos de tus clientes</p>
+                    <p className="text-muted-foreground mt-1">Suscripciones y proyectos únicos de tus clientes.</p>
                 </div>
                 <div className="w-full md:w-auto">
                     <AddServiceModal
@@ -193,81 +194,101 @@ export default function ServicesPage() {
                         />
                     </div>
 
-                    {/* Vertical Divider (Desktop) */}
-                    <div className="h-6 w-px bg-gray-200 hidden md:block" />
+                    {/* Collapsible Filter Groups (Middle) */}
+                    <div className={cn(
+                        "flex items-center gap-4 overflow-hidden transition-all duration-300 ease-in-out",
+                        showFilters ? "max-w-[800px] opacity-100 ml-2" : "max-w-0 opacity-0 ml-0 p-0 pointer-events-none"
+                    )}>
+                        <div className="flex items-center gap-4 min-w-max">
+                            <div className="h-4 w-px bg-gray-300 mx-1 hidden md:block" />
 
-                    {/* Filter Groups Container */}
-                    <div className="flex items-center gap-4 overflow-x-auto w-full md:w-auto scrollbar-hide p-1 md:p-0">
+                            {/* Status Filters */}
+                            <div className="flex items-center gap-1.5 whitespace-nowrap">
+                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mr-1 hidden lg:block">Estado</span>
+                                {[
+                                    { id: 'all', label: 'Todos', count: counts.status.all, color: 'gray' },
+                                    { id: 'active', label: 'Activos', count: counts.status.active, color: 'emerald' },
+                                    { id: 'paused', label: 'Pausados', count: counts.status.paused, color: 'amber' },
+                                ].map(filter => (
+                                    <button
+                                        key={filter.id}
+                                        onClick={() => setStatusFilter(filter.id)}
+                                        className={cn(
+                                            "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all duration-200 whitespace-nowrap",
+                                            statusFilter === filter.id
+                                                ? filter.id === 'active' ? "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20 shadow-sm"
+                                                    : filter.id === 'paused' ? "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/20 shadow-sm"
+                                                        : "bg-gray-900 text-white shadow-sm"
+                                                : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
+                                        )}
+                                    >
+                                        <span>{filter.label}</span>
+                                        <span className={cn(
+                                            "px-1.5 py-0.5 rounded-md text-[10px]",
+                                            statusFilter === filter.id
+                                                ? "bg-white/20 text-current"
+                                                : "bg-gray-100 text-gray-500"
+                                        )}>
+                                            {filter.count}
+                                        </span>
+                                    </button>
+                                ))}
+                            </div>
 
-                        {/* Status Filters */}
-                        <div className="flex items-center gap-1.5 whitespace-nowrap">
-                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mr-1 hidden lg:block">Estado</span>
-                            {[
-                                { id: 'all', label: 'Todos', count: counts.status.all, color: 'gray' },
-                                { id: 'active', label: 'Activos', count: counts.status.active, color: 'emerald' },
-                                { id: 'paused', label: 'Pausados', count: counts.status.paused, color: 'amber' },
-                            ].map(filter => (
-                                <button
-                                    key={filter.id}
-                                    onClick={() => setStatusFilter(filter.id)}
-                                    className={cn(
-                                        "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all duration-200 whitespace-nowrap",
-                                        statusFilter === filter.id
-                                            ? filter.id === 'active' ? "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20 shadow-sm"
-                                                : filter.id === 'paused' ? "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/20 shadow-sm"
-                                                    : "bg-gray-900 text-white shadow-sm"
-                                            : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
-                                    )}
-                                >
-                                    <span>{filter.label}</span>
-                                    <span className={cn(
-                                        "px-1.5 py-0.5 rounded-md text-[10px]",
-                                        statusFilter === filter.id
-                                            ? "bg-white/20 text-current"
-                                            : "bg-gray-100 text-gray-500"
-                                    )}>
-                                        {filter.count}
-                                    </span>
-                                </button>
-                            ))}
-                        </div>
+                            {/* Divider */}
+                            <div className="h-4 w-px bg-gray-200 hidden sm:block" />
 
-                        {/* Divider */}
-                        <div className="h-4 w-px bg-gray-200 hidden sm:block" />
-
-                        {/* Type Filters */}
-                        <div className="flex items-center gap-1.5 whitespace-nowrap">
-                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mr-1 hidden lg:block">Tipo</span>
-                            {[
-                                { id: 'all', label: 'Todos', count: counts.type.all },
-                                { id: 'recurring', label: 'Recurrentes', count: counts.type.recurring },
-                                { id: 'one_off', label: 'Proyectos', count: counts.type.one_off },
-                            ].map(filter => (
-                                <button
-                                    key={filter.id}
-                                    onClick={() => setTypeFilter(filter.id)}
-                                    className={cn(
-                                        "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all duration-200 whitespace-nowrap",
-                                        typeFilter === filter.id
-                                            ? filter.id === 'recurring' ? "bg-indigo-50 text-indigo-700 ring-1 ring-inset ring-indigo-600/20 shadow-sm"
-                                                : filter.id === 'one_off' ? "bg-violet-50 text-violet-700 ring-1 ring-inset ring-violet-600/20 shadow-sm"
-                                                    : "bg-gray-900 text-white shadow-sm"
-                                            : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
-                                    )}
-                                >
-                                    <span>{filter.label}</span>
-                                    <span className={cn(
-                                        "px-1.5 py-0.5 rounded-md text-[10px]",
-                                        typeFilter === filter.id
-                                            ? "bg-white/20 text-current"
-                                            : "bg-gray-100 text-gray-500"
-                                    )}>
-                                        {filter.count}
-                                    </span>
-                                </button>
-                            ))}
+                            {/* Type Filters */}
+                            <div className="flex items-center gap-1.5 whitespace-nowrap">
+                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mr-1 hidden lg:block">Tipo</span>
+                                {[
+                                    { id: 'all', label: 'Todos', count: counts.type.all },
+                                    { id: 'recurring', label: 'Recurrentes', count: counts.type.recurring },
+                                    { id: 'one_off', label: 'Proyectos', count: counts.type.one_off },
+                                ].map(filter => (
+                                    <button
+                                        key={filter.id}
+                                        onClick={() => setTypeFilter(filter.id)}
+                                        className={cn(
+                                            "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all duration-200 whitespace-nowrap",
+                                            typeFilter === filter.id
+                                                ? filter.id === 'recurring' ? "bg-indigo-50 text-indigo-700 ring-1 ring-inset ring-indigo-600/20 shadow-sm"
+                                                    : filter.id === 'one_off' ? "bg-violet-50 text-violet-700 ring-1 ring-inset ring-violet-600/20 shadow-sm"
+                                                        : "bg-gray-900 text-white shadow-sm"
+                                                : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
+                                        )}
+                                    >
+                                        <span>{filter.label}</span>
+                                        <span className={cn(
+                                            "px-1.5 py-0.5 rounded-md text-[10px]",
+                                            typeFilter === filter.id
+                                                ? "bg-white/20 text-current"
+                                                : "bg-gray-100 text-gray-500"
+                                        )}>
+                                            {filter.count}
+                                        </span>
+                                    </button>
+                                ))}
+                            </div>
                         </div>
                     </div>
+
+                    {/* Divider */}
+                    <div className="h-6 w-px bg-gray-200 mx-1 hidden md:block" />
+
+                    {/* Toggle Filters Button (Fixed Right) */}
+                    <button
+                        onClick={() => setShowFilters(!showFilters)}
+                        className={cn(
+                            "flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 border",
+                            showFilters
+                                ? "bg-gray-100 text-gray-900 border-gray-200 shadow-inner"
+                                : "bg-white text-gray-500 border-transparent hover:bg-gray-50 hover:text-gray-900"
+                        )}
+                        title="Filtrar Servicios"
+                    >
+                        <ListFilter className="h-4 w-4" />
+                    </button>
                 </div>
             </div>
 

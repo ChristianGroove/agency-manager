@@ -45,8 +45,8 @@ export function WhatsAppActionsModal({ isOpen, onOpenChange, client, settings }:
             case 'invoice':
                 const invoice = client.invoices?.find(i => i.id === selectedInvoiceId)
                 if (invoice) {
-                    message = `Hola ${client.name}, te envío el detalle de la factura #${invoice.number} por valor de $${invoice.total.toLocaleString()}. Puedes verla en tu portal.`
-                    if (invoice.pdf_url) message += ` PDF: ${invoice.pdf_url}`
+                    const link = `${window.location.origin}/invoices/${invoice.id}`
+                    message = `Hola ${client.name}, te envío el enlace de la factura #${invoice.number} por valor de $${invoice.total.toLocaleString()}. Puedes verla y descargarla aquí: ${link}`
                 }
                 break
             case 'quote':

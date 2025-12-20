@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Loader2, Eye, Search } from "lucide-react"
+import { Loader2, Eye, Search, ListFilter } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import {
     Table,
@@ -37,6 +37,8 @@ export default function PaymentsPage() {
     const [transactions, setTransactions] = useState<PaymentTransaction[]>([])
     const [loading, setLoading] = useState(true)
     const [searchTerm, setSearchTerm] = useState("")
+    const [showFilters, setShowFilters] = useState(false)
+    const [statusFilter, setStatusFilter] = useState("all")
     const [selectedTransaction, setSelectedTransaction] = useState<PaymentTransaction | null>(null)
     const [linkedInvoices, setLinkedInvoices] = useState<Invoice[]>([])
     const [loadingDetails, setLoadingDetails] = useState(false)
@@ -83,10 +85,15 @@ export default function PaymentsPage() {
         }
     }
 
-    const filteredTransactions = transactions.filter(t =>
-        t.reference.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        t.status.toLowerCase().includes(searchTerm.toLowerCase())
-    )
+    const filteredTransactions = transactions.filter(t => {
+        const matchesSearch =
+            t.reference.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            t.status.toLowerCase().includes(searchTerm.toLowerCase())
+
+        const matchesStatus = statusFilter === 'all' || t.status === statusFilter
+
+        return matchesSearch && matchesStatus
+    })
 
     return (
         <div className="space-y-8">
@@ -97,15 +104,69 @@ export default function PaymentsPage() {
                 </div>
             </div>
 
-            <div className="flex items-center gap-4 bg-white p-4 rounded-lg border border-gray-100 shadow-sm">
-                <div className="relative flex-1 max-w-sm">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <Input
-                        placeholder="Buscar por referencia..."
-                        className="pl-9"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
+            {/* Unified Control Block */}
+            <div className="flex flex-col md:flex-row gap-3 sticky top-4 z-30">
+                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-1.5 flex flex-col md:flex-row items-center gap-2 flex-1 transition-all hover:shadow-md">
+                    {/* Integrated Search */}
+                    <div className="relative flex-1 w-full md:w-auto min-w-[200px] flex items-center px-3 gap-2">
+                        <Search className="h-4 w-4 text-gray-400 shrink-0" />
+                        <Input
+                            placeholder="Buscar por referencia..."
+                            className="bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-sm w-full outline-none text-gray-700 placeholder:text-gray-400 h-9 p-0 shadow-none"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+
+                    {/* Vertical Divider (Desktop) */}
+                    <div className="h-6 w-px bg-gray-200 hidden md:block" />
+
+                    {/* Collapsible Filter Pills (Middle) */}
+                    <div className={cn(
+                        "flex items-center gap-1.5 overflow-hidden transition-all duration-300 ease-in-out",
+                        showFilters ? "max-w-[800px] opacity-100 ml-2" : "max-w-0 opacity-0 ml-0 p-0 pointer-events-none"
+                    )}>
+                        <div className="flex items-center gap-1.5 min-w-max">
+                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mr-1 hidden lg:block">Estado</span>
+                            {[
+                                { id: 'all', label: 'Todos', color: 'gray' },
+                                { id: 'APPROVED', label: 'Aprobadas', color: 'green' },
+                                { id: 'DECLINED', label: 'Rechazadas', color: 'red' },
+                                { id: 'ERROR', label: 'Error', color: 'red' },
+                            ].map(filter => (
+                                <button
+                                    key={filter.id}
+                                    onClick={() => setStatusFilter(filter.id)}
+                                    className={cn(
+                                        "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all duration-200 whitespace-nowrap",
+                                        statusFilter === filter.id
+                                            ? filter.id === 'APPROVED' ? "bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20 shadow-sm"
+                                                : "bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20 shadow-sm"
+                                            : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
+                                    )}
+                                >
+                                    <span>{filter.label}</span>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Divider */}
+                    <div className="h-6 w-px bg-gray-200 mx-1 hidden md:block" />
+
+                    {/* Toggle Filters Button (Fixed Right) */}
+                    <button
+                        onClick={() => setShowFilters(!showFilters)}
+                        className={cn(
+                            "flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 border",
+                            showFilters
+                                ? "bg-gray-100 text-gray-900 border-gray-200 shadow-inner"
+                                : "bg-white text-gray-500 border-transparent hover:bg-gray-50 hover:text-gray-900"
+                        )}
+                        title="Filtrar Pagos"
+                    >
+                        <ListFilter className="h-4 w-4" />
+                    </button>
                 </div>
             </div>
 

@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { ServiceDetailModal } from "@/components/modules/services/service-detail-modal"
 import {
     Dialog,
     DialogContent,
@@ -107,6 +108,8 @@ export default function ClientDetailPage() {
     const [isNotesModalOpen, setIsNotesModalOpen] = useState(false)
     const [selectedServiceForResume, setSelectedServiceForResume] = useState<any>(null)
     const [isResumeModalOpen, setIsResumeModalOpen] = useState(false)
+    const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
+    const [selectedServiceForDetail, setSelectedServiceForDetail] = useState<any>(null)
 
     // Helper: Get invoices linked to a service
     const getServiceInvoices = (serviceId: string) => {
@@ -792,7 +795,14 @@ export default function ClientDetailPage() {
                                         .slice(0, 3) // Only top 3
 
                                     return (
-                                        <div key={service.id} className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all flex flex-col h-full overflow-hidden group">
+                                        <div
+                                            key={service.id}
+                                            className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all flex flex-col h-full overflow-hidden group cursor-pointer hover:border-indigo-300"
+                                            onClick={() => {
+                                                setSelectedServiceForDetail(service)
+                                                setIsDetailModalOpen(true)
+                                            }}
+                                        >
                                             {/* 1. Header: Icon, Name, Actions */}
                                             <div className="p-4 flex items-start justify-between gap-3">
                                                 <div className="flex items-center gap-3 overflow-hidden">
@@ -814,24 +824,29 @@ export default function ClientDetailPage() {
                                                 </div>
 
                                                 <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild>
+                                                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                                                         <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-gray-600 shrink-0">
                                                             <MoreVertical className="h-4 w-4" />
                                                         </Button>
                                                     </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end">
-                                                        <DropdownMenuItem onClick={() => {
+                                                    <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                                                        <DropdownMenuItem onClick={(e) => {
+                                                            e.stopPropagation()
                                                             setServiceToEdit(service)
                                                             setIsServiceModalOpen(true)
                                                         }}>
                                                             <Edit className="mr-2 h-4 w-4" /> Editar
                                                         </DropdownMenuItem>
                                                         {service.status === 'active' ? (
-                                                            <DropdownMenuItem onClick={() => handlePauseService(service.id)} className="text-amber-600">
+                                                            <DropdownMenuItem onClick={(e) => {
+                                                                e.stopPropagation()
+                                                                handlePauseService(service.id)
+                                                            }} className="text-amber-600">
                                                                 <PauseCircle className="mr-2 h-4 w-4" /> Pausar
                                                             </DropdownMenuItem>
                                                         ) : (
-                                                            <DropdownMenuItem onClick={() => {
+                                                            <DropdownMenuItem onClick={(e) => {
+                                                                e.stopPropagation()
                                                                 setSelectedServiceForResume(service)
                                                                 setIsResumeModalOpen(true)
                                                             }} className="text-emerald-600">
@@ -840,7 +855,10 @@ export default function ClientDetailPage() {
                                                         )}
                                                         <DropdownMenuSeparator />
                                                         <DropdownMenuItem
-                                                            onClick={() => handleDeleteService(service.id)}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation()
+                                                                handleDeleteService(service.id)
+                                                            }}
                                                             className="text-red-600 focus:text-red-600 focus:bg-red-50"
                                                         >
                                                             <Trash2 className="mr-2 h-4 w-4" /> Eliminar
@@ -1071,6 +1089,12 @@ export default function ClientDetailPage() {
                     onSuccess={(newNotes) => {
                         setClient({ ...client, notes: newNotes })
                     }}
+                />
+
+                <ServiceDetailModal
+                    isOpen={isDetailModalOpen}
+                    onOpenChange={setIsDetailModalOpen}
+                    service={selectedServiceForDetail}
                 />
 
                 <ResumeServiceModal

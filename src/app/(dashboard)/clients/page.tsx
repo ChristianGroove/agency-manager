@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Plus, Search, Phone, Mail, Calendar, ArrowRight, AlertTriangle, CheckCircle2, Clock, Loader2, Upload, X, Image as ImageIcon, Globe, CreditCard, FileText, LayoutGrid, Rows } from "lucide-react"
+import { Plus, Search, Phone, Mail, Calendar, ArrowRight, AlertTriangle, CheckCircle2, Clock, Loader2, Upload, X, Image as ImageIcon, Globe, CreditCard, FileText, LayoutGrid, Rows, ListFilter } from "lucide-react"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -50,6 +50,7 @@ export default function ClientsPage() {
     const [loading, setLoading] = useState(true)
     const [searchTerm, setSearchTerm] = useState("")
     const [settings, setSettings] = useState<any>(null)
+    const [showFilters, setShowFilters] = useState(false)
 
     useEffect(() => {
         getSettings().then(setSettings)
@@ -362,13 +363,13 @@ export default function ClientsPage() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h2 className="text-3xl font-bold tracking-tight text-gray-900">Mis Clientes</h2>
-                    <p className="text-muted-foreground">Gestión visual de tu cartera y estados de cuenta.</p>
+                    <p className="text-muted-foreground mt-1">Gestión visual completa de tu cartera y estados de cuenta.</p>
                 </div>
-                <div className="flex gap-3 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
+                <div className="flex items-center gap-3 w-full md:w-auto">
                     <Link href="/debug/tokens">
                         <Button variant="outline" className="h-9 px-4 border-gray-200 text-gray-600 hover:bg-gray-50">
                             <AlertTriangle className="mr-2 h-4 w-4" />
-                            Portal Tokens
+                            Tokens
                         </Button>
                     </Link>
 
@@ -589,48 +590,67 @@ export default function ClientsPage() {
                         />
                     </div>
 
-                    {/* Vertical Divider (Desktop) */}
-                    <div className="h-6 w-px bg-gray-200 hidden md:block" />
-
-                    {/* Filter Pills - Compact */}
-                    <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto scrollbar-hide p-1 md:p-0">
-                        {[
-                            { id: 'all', label: 'Todos', count: counts.all, color: 'gray' },
-                            { id: 'overdue', label: 'Vencidos', count: counts.overdue, color: 'red' },
-                            { id: 'urgent', label: 'Por Vencer', count: counts.urgent, color: 'amber' },
-                            { id: 'active', label: 'Al día', count: counts.active, color: 'emerald' },
-                            { id: 'inactive', label: 'Sin Servicio', count: counts.inactive, color: 'slate' },
-                        ].map(filter => (
-                            <button
-                                key={filter.id}
-                                onClick={() => setActiveFilter(filter.id)}
-                                className={cn(
-                                    "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all duration-200 whitespace-nowrap",
-                                    activeFilter === filter.id
-                                        ? filter.id === 'overdue' ? "bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20 shadow-sm"
-                                            : filter.id === 'urgent' ? "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/20 shadow-sm"
-                                                : filter.id === 'active' ? "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20 shadow-sm"
-                                                    : filter.id === 'inactive' ? "bg-slate-50 text-slate-700 ring-1 ring-inset ring-slate-600/20 shadow-sm"
-                                                        : "bg-gray-900 text-white shadow-sm"
-                                        : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
-                                )}
-                            >
-                                <span>{filter.label}</span>
-                                <span className={cn(
-                                    "px-1.5 py-0.5 rounded-md text-[10px]",
-                                    activeFilter === filter.id
-                                        ? "bg-white/20 text-current"
-                                        : "bg-gray-100 text-gray-500"
-                                )}>
-                                    {filter.count}
-                                </span>
-                            </button>
-                        ))}
+                    {/* Collapsible Filter Pills (Now Middle) */}
+                    <div className={cn(
+                        "flex items-center gap-1.5 overflow-hidden transition-all duration-300 ease-in-out",
+                        showFilters ? "max-w-[800px] opacity-100 ml-2" : "max-w-0 opacity-0 ml-0 p-0 pointer-events-none"
+                    )}>
+                        <div className="flex items-center gap-1.5 min-w-max">
+                            {[
+                                { id: 'all', label: 'Todos', count: counts.all, color: 'gray' },
+                                { id: 'overdue', label: 'Vencidos', count: counts.overdue, color: 'red' },
+                                { id: 'urgent', label: 'Por Vencer', count: counts.urgent, color: 'amber' },
+                                { id: 'active', label: 'Al día', count: counts.active, color: 'emerald' },
+                                { id: 'inactive', label: 'Sin Servicio', count: counts.inactive, color: 'slate' },
+                            ].map(filter => (
+                                <button
+                                    key={filter.id}
+                                    onClick={() => setActiveFilter(filter.id)}
+                                    className={cn(
+                                        "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all duration-200 whitespace-nowrap",
+                                        activeFilter === filter.id
+                                            ? filter.id === 'overdue' ? "bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20 shadow-sm"
+                                                : filter.id === 'urgent' ? "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/20 shadow-sm"
+                                                    : filter.id === 'active' ? "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20 shadow-sm"
+                                                        : filter.id === 'inactive' ? "bg-slate-50 text-slate-700 ring-1 ring-inset ring-slate-600/20 shadow-sm"
+                                                            : "bg-gray-900 text-white shadow-sm"
+                                            : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
+                                    )}
+                                >
+                                    <span>{filter.label}</span>
+                                    <span className={cn(
+                                        "px-1.5 py-0.5 rounded-md text-[10px]",
+                                        activeFilter === filter.id
+                                            ? "bg-white/20 text-current"
+                                            : "bg-gray-100 text-gray-600"
+                                    )}>
+                                        {filter.count}
+                                    </span>
+                                </button>
+                            ))}
+                        </div>
                     </div>
+
+                    {/* Divider */}
+                    <div className="h-6 w-px bg-gray-200 mx-1 hidden md:block" />
+
+                    {/* Toggle Filters Button (Fixed Right) */}
+                    <button
+                        onClick={() => setShowFilters(!showFilters)}
+                        className={cn(
+                            "flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 border",
+                            showFilters
+                                ? "bg-gray-100 text-gray-900 border-gray-200 shadow-inner"
+                                : "bg-white text-gray-500 border-transparent hover:bg-gray-50 hover:text-gray-900"
+                        )}
+                        title="Filtrar Clientes"
+                    >
+                        <ListFilter className="h-4 w-4" />
+                    </button>
                 </div>
 
                 {/* View Toggle - Separated but on same line */}
-                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-1.5 flex items-center transition-all hover:shadow-md h-[52px]">
+                < div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-1.5 flex items-center transition-all hover:shadow-md h-[52px]" >
                     <div className="flex bg-gray-50 rounded-xl p-0.5">
                         <button
                             onClick={() => setIsCompactView(false)}
@@ -653,11 +673,11 @@ export default function ClientsPage() {
                             <Rows className="h-4 w-4" />
                         </button>
                     </div>
-                </div>
-            </div>
+                </div >
+            </div >
 
             {/* Clients Grid */}
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-6">
+            < div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-6" >
                 {
                     loading ? (
                         [1, 2, 3, 4].map(i => (
@@ -893,10 +913,10 @@ export default function ClientsPage() {
                         })
                     )
                 }
-            </div>
+            </div >
 
             {/* Quick Invoices Modal */}
-            <Dialog open={isInvoicesModalOpen} onOpenChange={setIsInvoicesModalOpen}>
+            < Dialog open={isInvoicesModalOpen} onOpenChange={setIsInvoicesModalOpen} >
                 <DialogContent className="sm:max-w-[500px]">
                     <DialogHeader>
                         <DialogTitle>Facturas Rápidas</DialogTitle>
@@ -944,10 +964,10 @@ export default function ClientsPage() {
                         )}
                     </div>
                 </DialogContent>
-            </Dialog>
+            </Dialog >
 
             {/* WhatsApp Actions Modal */}
-            <WhatsAppActionsModal
+            < WhatsAppActionsModal
                 isOpen={isWhatsAppModalOpen}
                 onOpenChange={setIsWhatsAppModalOpen}
                 client={selectedClientForWhatsApp}
@@ -955,7 +975,7 @@ export default function ClientsPage() {
             />
 
             {/* Add Service Modal */}
-            <AddServiceModal
+            < AddServiceModal
                 open={isServiceModalOpen}
                 onOpenChange={setIsServiceModalOpen}
                 trigger={null}
@@ -964,8 +984,9 @@ export default function ClientsPage() {
                 onSuccess={() => {
                     fetchClients()
                     setIsServiceModalOpen(false)
-                }}
+                }
+                }
             />
-        </div>
+        </div >
     )
 }

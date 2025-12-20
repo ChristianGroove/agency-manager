@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Plus, FileText, Download, Search, Filter, Eye, Trash2, Loader2, Edit } from "lucide-react"
+import { Plus, FileText, Download, Search, Filter, Eye, Trash2, Loader2, Edit, ListFilter } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import {
     Select,
@@ -50,6 +50,7 @@ export default function InvoicesPage() {
     const [invoices, setInvoices] = useState<Invoice[]>([])
     const [loading, setLoading] = useState(true)
     const [searchTerm, setSearchTerm] = useState("")
+    const [showFilters, setShowFilters] = useState(false)
     const [statusFilter, setStatusFilter] = useState("all")
     const [deletingId, setDeletingId] = useState<string | null>(null)
 
@@ -118,7 +119,7 @@ export default function InvoicesPage() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h2 className="text-3xl font-bold tracking-tight text-gray-900">Cuentas de Cobro</h2>
-                    <p className="text-muted-foreground mt-1">Gestiona todas las cuentas de cobro emitidas</p>
+                    <p className="text-muted-foreground mt-1">Gestiona todas las cuentas de cobro emitidas.</p>
                 </div>
                 <div className="w-full md:w-auto">
                     <CreateInvoiceModal
@@ -127,29 +128,71 @@ export default function InvoicesPage() {
                 </div>
             </div>
 
-            <div className="flex items-center gap-4 bg-white p-4 rounded-lg border border-gray-100 shadow-sm">
-                <div className="relative flex-1 max-w-sm">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <Input
-                        placeholder="Buscar por número o cliente..."
-                        className="pl-9"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                </div>
-                <div className="flex items-center gap-2">
-                    <Filter className="h-4 w-4 text-gray-400" />
-                    <Select value={statusFilter} onValueChange={setStatusFilter}>
-                        <SelectTrigger className="w-[180px]">
-                            <SelectValue placeholder="Filtrar por estado" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">Todos los estados</SelectItem>
-                            <SelectItem value="paid">Pagadas</SelectItem>
-                            <SelectItem value="pending">Pendientes</SelectItem>
-                            <SelectItem value="overdue">Vencidas</SelectItem>
-                        </SelectContent>
-                    </Select>
+            {/* Unified Control Block */}
+            <div className="flex flex-col md:flex-row gap-3 sticky top-4 z-30">
+                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-1.5 flex flex-col md:flex-row items-center gap-2 flex-1 transition-all hover:shadow-md">
+                    {/* Integrated Search */}
+                    <div className="relative flex-1 w-full md:w-auto min-w-[200px] flex items-center px-3 gap-2">
+                        <Search className="h-4 w-4 text-gray-400 shrink-0" />
+                        <Input
+                            placeholder="Buscar por número o cliente..."
+                            className="bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-sm w-full outline-none text-gray-700 placeholder:text-gray-400 h-9 p-0 shadow-none"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+
+                    {/* Vertical Divider (Desktop) */}
+                    <div className="h-6 w-px bg-gray-200 hidden md:block" />
+
+                    {/* Collapsible Filter Pills (Middle) */}
+                    <div className={cn(
+                        "flex items-center gap-1.5 overflow-hidden transition-all duration-300 ease-in-out",
+                        showFilters ? "max-w-[800px] opacity-100 ml-2" : "max-w-0 opacity-0 ml-0 p-0 pointer-events-none"
+                    )}>
+                        <div className="flex items-center gap-1.5 min-w-max">
+                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mr-1 hidden lg:block">Estado</span>
+                            {[
+                                { id: 'all', label: 'Todos', color: 'gray' },
+                                { id: 'paid', label: 'Pagadas', color: 'green' },
+                                { id: 'pending', label: 'Pendientes', color: 'yellow' },
+                                { id: 'overdue', label: 'Vencidas', color: 'red' },
+                            ].map(filter => (
+                                <button
+                                    key={filter.id}
+                                    onClick={() => setStatusFilter(filter.id)}
+                                    className={cn(
+                                        "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all duration-200 whitespace-nowrap",
+                                        statusFilter === filter.id
+                                            ? filter.id === 'paid' ? "bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20 shadow-sm"
+                                                : filter.id === 'pending' ? "bg-yellow-50 text-yellow-700 ring-1 ring-inset ring-yellow-600/20 shadow-sm"
+                                                    : filter.id === 'overdue' ? "bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20 shadow-sm"
+                                                        : "bg-gray-900 text-white shadow-sm"
+                                            : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
+                                    )}
+                                >
+                                    <span>{filter.label}</span>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Divider */}
+                    <div className="h-6 w-px bg-gray-200 mx-1 hidden md:block" />
+
+                    {/* Toggle Filters Button (Fixed Right) */}
+                    <button
+                        onClick={() => setShowFilters(!showFilters)}
+                        className={cn(
+                            "flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 border",
+                            showFilters
+                                ? "bg-gray-100 text-gray-900 border-gray-200 shadow-inner"
+                                : "bg-white text-gray-500 border-transparent hover:bg-gray-50 hover:text-gray-900"
+                        )}
+                        title="Filtrar Facturas"
+                    >
+                        <ListFilter className="h-4 w-4" />
+                    </button>
                 </div>
             </div>
 
