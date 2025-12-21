@@ -20,7 +20,7 @@ import {
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger,
-} from "@/components/animate-ui/components/radix/dropdown-menu"
+} from "@/components/ui/dropdown-menu"
 import { deleteBriefing } from "@/lib/actions/briefings"
 import { toast } from "sonner"
 import Link from "next/link"

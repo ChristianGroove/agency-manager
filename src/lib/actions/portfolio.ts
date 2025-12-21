@@ -103,3 +103,144 @@ export async function deletePortfolioItem(id: string) {
     if (error) throw error
     revalidatePath('/dashboard/portfolio')
 }
+
+
+// Helper for Template Configuration
+const TEMPLATE_CONFIG: Record<string, { title: string, description: string, fields: any[] }[]> = {
+    'Branding': [
+        {
+            title: "Identidad de Marca",
+            description: "Define el alma y la apariencia de tu marca.",
+            fields: [
+                { label: "¿Cuál es la misión y visión de la empresa?", name: "mision_vision", type: "textarea", required: true, order: 1 },
+                { label: "Describe a tu cliente ideal (Avatar)", name: "target_audience", type: "textarea", required: true, order: 2 },
+                { label: "Adjetivos que describan la marca (Ej: Seria, Juvenil)", name: "brand_adjectives", type: "text", required: true, order: 3 },
+                { label: "Preferencias de color", name: "color_preferences", type: "text", required: false, order: 4 },
+                { label: "¿Qué marcas admiras? (Referencias)", name: "references", type: "textarea", required: false, order: 5 }
+            ]
+        }
+    ],
+    'Desarrollo Web': [
+        {
+            title: "Objetivos del Sitio",
+            description: "Estructura y funcionalidad esperada.",
+            fields: [
+                { label: "¿Cuál es el objetivo principal? (Ventas, Informativo, Portafolio)", name: "site_objective", type: "text", required: true, order: 1 },
+                { label: "Secciones requeridas (Inicio, Nosotros, Contacto...)", name: "sitemap", type: "textarea", required: true, order: 2 },
+                { label: "Sitios web de referencia (Links)", name: "ref_sites", type: "textarea", required: true, order: 3 },
+                { label: "¿Cuentas con Hosting/Dominio?", name: "hosting_domain", type: "radio", options: ["Si", "No", "Necesito Asesoría"], required: true, order: 4 }
+            ]
+        }
+    ],
+    'Marketing': [
+        {
+            title: "Estrategia de Campaña",
+            description: "Detalles para la configuración de anuncios.",
+            fields: [
+                { label: "Presupuesto Mensual Estimado", name: "budget", type: "text", required: true, order: 1 },
+                { label: "Objetivo de Campaña", name: "campaign_objective", type: "select", options: ["Reconocimiento", "Tráfico", "Leads", "Ventas"], required: true, order: 2 },
+                { label: "Público Objetivo (Ubicación, Edad, Intereses)", name: "audience_details", type: "textarea", required: true, order: 3 },
+                { label: "Material Creativo Disponible", name: "creatives", type: "checkbox", options: ["Fotos", "Videos", "Logos", "No tengo material"], required: false, order: 4 }
+            ]
+        }
+    ],
+    'Default': [
+        {
+            title: "Detalles del Proyecto",
+            description: "Información general sobre el requerimiento.",
+            fields: [
+                { label: "Descripción detallada del requerimiento", name: "project_description", type: "textarea", required: true, order: 1 },
+                { label: "¿Cuál es el objetivo principal?", name: "main_objective", type: "text", required: true, order: 2 },
+                { label: "Fecha de entrega esperada", name: "deadline", type: "date", required: false, order: 3 },
+                { label: "Archivos adjuntos o referencias", name: "attachments", type: "textarea", required: false, order: 4 }
+            ]
+        }
+    ]
+}
+
+export async function syncAllBriefingTemplates() {
+    const supabase = await createClient()
+
+    // 1. Get all services
+    const { data: services } = await supabase.from('service_catalog').select('*')
+    if (!services) return
+
+    let createdCount = 0
+
+    // 2. Iterate services to Ensure Template Exists AND has Steps
+    for (const service of services) {
+        const slug = slugify(service.name)
+
+        // A. Upsert Template to ensure it exists
+        // We use upsert to create it if missing, or get its ID if existing
+        const { data: template, error: tmplError } = await supabase
+            .from('briefing_templates')
+            .upsert({
+                name: service.name,
+                description: service.description || `Plantilla para ${service.name}`,
+                slug: slug,
+                updated_at: new Date().toISOString()
+            }, { onConflict: 'slug' })
+            .select('id')
+            .single()
+
+        if (tmplError || !template) {
+            console.error("Error upserting template:", tmplError)
+            continue
+        }
+
+        // B. Check if steps exist
+        const { count } = await supabase
+            .from('briefing_steps')
+            .select('*', { count: 'exact', head: true })
+            .eq('template_id', template.id)
+
+        // Only populate if NO steps exist (to avoid overwriting custom ones)
+        if (count === 0) {
+            // Determine config
+            let config = TEMPLATE_CONFIG['Default']
+            const lowerName = service.name.toLowerCase()
+            const lowerCat = service.category.toLowerCase()
+
+            if (lowerCat.includes('branding') || lowerName.includes('brand') || lowerName.includes('identidad')) config = TEMPLATE_CONFIG['Branding']
+            else if (lowerCat.includes('web') || lowerName.includes('web') || lowerName.includes('landing') || lowerName.includes('ecommerce')) config = TEMPLATE_CONFIG['Desarrollo Web']
+            else if (lowerCat.includes('marketing') || lowerName.includes('ads') || lowerName.includes('pauta')) config = TEMPLATE_CONFIG['Marketing']
+
+            // Insert Steps and Fields
+            for (const [stepIndex, stepConfig] of config.entries()) {
+                const { data: newStep, error: stepError } = await supabase
+                    .from('briefing_steps')
+                    .insert({
+                        template_id: template.id,
+                        title: stepConfig.title,
+                        description: stepConfig.description,
+                        order_index: stepIndex + 1
+                    })
+                    .select()
+                    .single()
+
+                if (stepError || !newStep) continue
+
+                const fieldsToInsert = stepConfig.fields.map(f => ({
+                    step_id: newStep.id,
+                    label: f.label,
+                    name: f.name,
+                    type: f.type,
+                    required: f.required,
+                    options: f.options || null,
+                    order_index: f.order
+                }))
+
+                await supabase.from('briefing_fields').insert(fieldsToInsert)
+            }
+            createdCount++
+        }
+    }
+
+    if (createdCount > 0) {
+        revalidatePath('/dashboard/portfolio')
+        revalidatePath('/dashboard/briefings')
+    }
+
+    return { success: true, count: createdCount }
+}

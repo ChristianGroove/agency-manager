@@ -2,18 +2,36 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Plus } from "lucide-react"
+import { Plus, RefreshCw } from "lucide-react"
 import { PortfolioList } from "@/components/modules/portfolio/portfolio-list"
 import { PortfolioFormModal } from "@/components/modules/portfolio/portfolio-form-modal"
-import { getPortfolioItems, deletePortfolioItem } from "@/lib/actions/portfolio"
+import { getPortfolioItems, deletePortfolioItem, syncAllBriefingTemplates } from "@/lib/actions/portfolio"
 import { ServiceCatalogItem } from "@/types"
 import { toast } from "sonner"
+import { cn } from "@/lib/utils"
 
 export default function PortfolioPage() {
     const [items, setItems] = useState<ServiceCatalogItem[]>([])
     const [loading, setLoading] = useState(true)
     const [isFormOpen, setIsFormOpen] = useState(false)
     const [itemToEdit, setItemToEdit] = useState<ServiceCatalogItem | null>(null)
+    const [isSyncing, setIsSyncing] = useState(false)
+
+    const handleSync = async () => {
+        setIsSyncing(true)
+        try {
+            const result = await syncAllBriefingTemplates()
+            if (result && result.count > 0) {
+                toast.success(`${result.count} plantillas creadas correctamente`)
+            } else {
+                toast.info("Todas las plantillas ya están sincronizadas")
+            }
+        } catch (error) {
+            toast.error("Error al sincronizar plantillas")
+        } finally {
+            setIsSyncing(false)
+        }
+    }
 
     const fetchData = async () => {
         setLoading(true)
@@ -55,15 +73,21 @@ export default function PortfolioPage() {
     }
 
     return (
-        <div className="p-8 space-y-8 animate-in fade-in duration-500">
+        <div className="space-y-8 animate-in fade-in duration-500">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight text-gray-900">Portafolio de Servicios</h1>
                     <p className="text-muted-foreground mt-1">Gestiona tu catálogo y plantillas de briefing centralizadas.</p>
                 </div>
-                <Button onClick={handleCreate} className="bg-brand-pink hover:bg-brand-pink/90 text-white shadow-lg shadow-brand-pink/20">
-                    <Plus className="mr-2 h-4 w-4" /> Nuevo Servicio
-                </Button>
+                <div className="flex gap-2">
+                    <Button onClick={handleSync} variant="outline" className="border-brand-pink/20 text-brand-pink hover:bg-brand-pink/5">
+                        <RefreshCw className={cn("mr-2 h-4 w-4", isSyncing ? "animate-spin" : "")} />
+                        Sincronizar Plantillas
+                    </Button>
+                    <Button onClick={handleCreate} className="bg-brand-pink hover:bg-brand-pink/90 text-white shadow-lg shadow-brand-pink/20">
+                        <Plus className="mr-2 h-4 w-4" /> Nuevo Servicio
+                    </Button>
+                </div>
             </div>
 
             {loading ? (
