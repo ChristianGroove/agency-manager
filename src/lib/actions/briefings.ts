@@ -19,7 +19,7 @@ export async function getBriefingTemplates() {
     return data
 }
 
-export async function createBriefing(templateId: string, clientId: string | null) {
+export async function createBriefing(templateId: string, clientId: string | null, serviceId?: string | null) {
     const supabase = await createClient()
 
     const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -34,6 +34,7 @@ export async function createBriefing(templateId: string, clientId: string | null
         .insert({
             template_id: templateId,
             client_id: clientId,
+            service_id: serviceId,
             status: 'draft'
         })
         .select()

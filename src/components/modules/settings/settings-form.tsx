@@ -106,7 +106,7 @@ export function SettingsForm({ initialSettings }: { initialSettings: any }) {
             </div>
 
             <Tabs defaultValue="agency" className="w-full">
-                <TabsList className="grid w-full grid-cols-6 max-w-[900px]">
+                <TabsList className="grid w-full grid-cols-7 max-w-full">
                     <TabsTrigger value="agency" className="flex items-center gap-2"><Building2 className="h-4 w-4" /> Agencia</TabsTrigger>
                     <TabsTrigger value="general" className="flex items-center gap-2"><Globe className="h-4 w-4" /> General</TabsTrigger>
                     <TabsTrigger value="billing" className="flex items-center gap-2"><FileText className="h-4 w-4" /> Facturación</TabsTrigger>

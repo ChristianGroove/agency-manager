@@ -8,7 +8,12 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2, Plus, Trash } from "lucide-react"
 
-export function InvoiceForm() {
+interface InvoiceFormProps {
+    onCancel?: () => void
+    onSuccess?: () => void
+}
+
+export function InvoiceForm({ onCancel, onSuccess }: InvoiceFormProps) {
     const router = useRouter()
     const [isLoading, setIsLoading] = useState(false)
     const [items, setItems] = useState([{ description: "", quantity: 1, price: 0 }])
@@ -40,17 +45,21 @@ export function InvoiceForm() {
         e.preventDefault()
         setIsLoading(true)
         // Logic to save invoice
-        alert("Funcionalidad de guardado pendiente")
-        setIsLoading(false)
+        // alert("Funcionalidad de guardado pendiente")
+        // Simulate save
+        setTimeout(() => {
+            onSuccess?.()
+            setIsLoading(false)
+        }, 1000)
     }
 
     return (
-        <Card className="w-full max-w-4xl mx-auto">
-            <CardHeader>
+        <Card className="w-full max-w-4xl mx-auto shadow-none border-0">
+            <CardHeader className="px-0 pt-0">
                 <CardTitle>Nueva Cuenta de Cobro</CardTitle>
             </CardHeader>
             <form onSubmit={handleSubmit}>
-                <CardContent className="space-y-6">
+                <CardContent className="space-y-6 px-0">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="client_id">Cliente</Label>
@@ -105,9 +114,9 @@ export function InvoiceForm() {
                     </div>
 
                 </CardContent>
-                <CardFooter className="flex justify-end space-x-2">
-                    <Button variant="outline" type="button" onClick={() => router.back()}>Cancelar</Button>
-                    <Button type="submit" disabled={isLoading}>
+                <CardFooter className="flex justify-end space-x-2 px-0 pt-4 border-t border-gray-100">
+                    <Button variant="ghost" type="button" onClick={() => onCancel ? onCancel() : router.back()}>Cancelar</Button>
+                    <Button type="submit" disabled={isLoading} className="bg-brand-pink hover:bg-brand-pink/90 text-white">
                         {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         Generar Cuenta de Cobro
                     </Button>

@@ -9,6 +9,10 @@ import GlassCard3D from "@/components/ui/glass-card-3d"
 import dynamic from "next/dynamic"
 import { motion, AnimatePresence } from "framer-motion"
 import AnimatedAvatarGroup from "@/components/ui/animated-avatar-group"
+import { ClientFormModal } from "@/components/modules/clients/client-form-modal"
+import { QuoteFormModal } from "@/components/modules/quotes/quote-form-modal"
+import { InvoiceFormModal } from "@/components/modules/invoices/invoice-form-modal"
+import { BriefingFormModal } from "@/components/modules/briefings/briefing-form-modal"
 
 const Lottie = dynamic(() => import("lottie-react"), { ssr: false })
 
@@ -45,6 +49,12 @@ export default function DashboardPage() {
     const [animationData, setAnimationData] = useState<any>(null)
     const [currentTip, setCurrentTip] = useState(0)
     const [debtors, setDebtors] = useState<any[]>([])
+
+    // Modal States
+    const [isClientModalOpen, setIsClientModalOpen] = useState(false)
+    const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false)
+    const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false)
+    const [isBriefingModalOpen, setIsBriefingModalOpen] = useState(false)
 
     useEffect(() => {
         fetchDashboardData()
@@ -339,8 +349,9 @@ export default function DashboardPage() {
             {/* Quick Actions */}
             {/* Quick Actions */}
             {/* Quick Actions */}
+            {/* Quick Actions */}
             <div className="grid gap-8 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
-                <Link href="/clients?new=true">
+                <div onClick={() => setIsClientModalOpen(true)}>
                     <motion.div whileHover="hover" initial="rest" className="h-full">
                         <Card className="h-full group hover:shadow-lg transition-all duration-300 cursor-pointer border-gray-100 hover:border-brand-cyan/50 hover:-translate-y-1 rounded-[30px]">
                             <CardHeader>
@@ -355,9 +366,9 @@ export default function DashboardPage() {
                             </CardHeader>
                         </Card>
                     </motion.div>
-                </Link>
+                </div>
 
-                <Link href="/quotes/new">
+                <div onClick={() => setIsQuoteModalOpen(true)}>
                     <motion.div whileHover="hover" initial="rest" className="h-full">
                         <Card className="h-full group hover:shadow-lg transition-all duration-300 cursor-pointer border-gray-100 hover:border-yellow-500/50 hover:-translate-y-1 rounded-[30px]">
                             <CardHeader>
@@ -372,9 +383,9 @@ export default function DashboardPage() {
                             </CardHeader>
                         </Card>
                     </motion.div>
-                </Link>
+                </div>
 
-                <Link href="/briefings/new">
+                <div onClick={() => setIsBriefingModalOpen(true)}>
                     <motion.div whileHover="hover" initial="rest" className="h-full">
                         <Card className="h-full group hover:shadow-lg transition-all duration-300 cursor-pointer border-gray-100 hover:border-indigo-500/50 hover:-translate-y-1 rounded-[30px]">
                             <CardHeader>
@@ -389,9 +400,9 @@ export default function DashboardPage() {
                             </CardHeader>
                         </Card>
                     </motion.div>
-                </Link>
+                </div>
 
-                <Link href="/invoices/new">
+                <div onClick={() => setIsInvoiceModalOpen(true)}>
                     <motion.div whileHover="hover" initial="rest" className="h-full">
                         <Card className="h-full group hover:shadow-lg transition-all duration-300 cursor-pointer border-gray-100 hover:border-brand-pink/50 hover:-translate-y-1 rounded-[30px]">
                             <CardHeader>
@@ -406,7 +417,7 @@ export default function DashboardPage() {
                             </CardHeader>
                         </Card>
                     </motion.div>
-                </Link>
+                </div>
             </div>
 
             {/* Smart Block: Debtors */}
@@ -435,6 +446,30 @@ export default function DashboardPage() {
                     </div>
                 </Card>
             </div>
+            {/* Modals */}
+            <ClientFormModal
+                isOpen={isClientModalOpen}
+                onClose={() => setIsClientModalOpen(false)}
+                onSuccess={() => {
+                    setIsClientModalOpen(false)
+                    fetchDashboardData() // Refresh stats
+                }}
+            />
+
+            <QuoteFormModal
+                isOpen={isQuoteModalOpen}
+                onClose={() => setIsQuoteModalOpen(false)}
+            />
+
+            <BriefingFormModal
+                isOpen={isBriefingModalOpen}
+                onClose={() => setIsBriefingModalOpen(false)}
+            />
+
+            <InvoiceFormModal
+                isOpen={isInvoiceModalOpen}
+                onClose={() => setIsInvoiceModalOpen(false)}
+            />
         </div>
     )
 }

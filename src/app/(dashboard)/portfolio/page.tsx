@@ -1,0 +1,91 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import { Button } from "@/components/ui/button"
+import { Plus } from "lucide-react"
+import { PortfolioList } from "@/components/modules/portfolio/portfolio-list"
+import { PortfolioFormModal } from "@/components/modules/portfolio/portfolio-form-modal"
+import { getPortfolioItems, deletePortfolioItem } from "@/lib/actions/portfolio"
+import { ServiceCatalogItem } from "@/types"
+import { toast } from "sonner"
+
+export default function PortfolioPage() {
+    const [items, setItems] = useState<ServiceCatalogItem[]>([])
+    const [loading, setLoading] = useState(true)
+    const [isFormOpen, setIsFormOpen] = useState(false)
+    const [itemToEdit, setItemToEdit] = useState<ServiceCatalogItem | null>(null)
+
+    const fetchData = async () => {
+        setLoading(true)
+        try {
+            const data = await getPortfolioItems()
+            setItems(data)
+        } catch (error) {
+            console.error(error)
+            toast.error("Error al cargar el portafolio")
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    useEffect(() => {
+        fetchData()
+    }, [])
+
+    const handleCreate = () => {
+        setItemToEdit(null)
+        setIsFormOpen(true)
+    }
+
+    const handleEdit = (item: ServiceCatalogItem) => {
+        setItemToEdit(item)
+        setIsFormOpen(true)
+    }
+
+    const handleDelete = async (id: string) => {
+        if (!confirm("¿Estás seguro de eliminar este servicio? Esta acción no se puede deshacer.")) return
+
+        try {
+            await deletePortfolioItem(id)
+            toast.success("Servicio eliminado")
+            fetchData()
+        } catch (error) {
+            toast.error("Error al eliminar el servicio")
+        }
+    }
+
+    return (
+        <div className="p-8 space-y-8 animate-in fade-in duration-500">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h1 className="text-3xl font-bold tracking-tight text-gray-900">Portafolio de Servicios</h1>
+                    <p className="text-muted-foreground mt-1">Gestiona tu catálogo y plantillas de briefing centralizadas.</p>
+                </div>
+                <Button onClick={handleCreate} className="bg-brand-pink hover:bg-brand-pink/90 text-white shadow-lg shadow-brand-pink/20">
+                    <Plus className="mr-2 h-4 w-4" /> Nuevo Servicio
+                </Button>
+            </div>
+
+            {loading ? (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {[1, 2, 3, 4, 5, 6].map(i => (
+                        <div key={i} className="h-40 bg-gray-100 rounded-xl animate-pulse" />
+                    ))}
+                </div>
+            ) : (
+                <PortfolioList
+                    items={items}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                />
+            )}
+
+            <PortfolioFormModal
+                isOpen={isFormOpen}
+                onClose={() => setIsFormOpen(false)}
+                itemToEdit={itemToEdit}
+                onSuccess={fetchData}
+            />
+        </div>
+    )
+}

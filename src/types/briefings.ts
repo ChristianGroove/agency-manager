@@ -60,6 +60,7 @@ export interface Briefing {
         name: string
         email: string
     }
+    service_id?: string | null
 }
 
 export interface BriefingResponse {
