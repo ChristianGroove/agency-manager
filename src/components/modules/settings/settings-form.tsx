@@ -12,13 +12,32 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
 import { updateSettings } from "@/lib/actions/settings"
-import { Loader2, Save, CreditCard, FileText, Building2, Globe, Layout, Palette, Eye, MessageSquare } from "lucide-react"
+import { Loader2, Save, CreditCard, FileText, Building2, Globe, Layout, Palette, Eye, MessageSquare, LayoutTemplate } from "lucide-react"
 import { COMMUNICATION_VARIABLES, DEFAULT_TEMPLATES } from "@/lib/communication-utils"
+import { useEffect } from "react"
 
 export function SettingsForm({ initialSettings }: { initialSettings: any }) {
     const router = useRouter()
     const [isLoading, setIsLoading] = useState(false)
     const [formData, setFormData] = useState(initialSettings || {})
+
+    // Local UI Settings State
+    const [showMarqueeLocal, setShowMarqueeLocal] = useState(true)
+
+    useEffect(() => {
+        // Load local setting on mount
+        const stored = localStorage.getItem("ui_settings_tools_marquee")
+        if (stored !== null) {
+            setShowMarqueeLocal(stored === "true")
+        }
+    }, [])
+
+    const handleMarqueeChange = (checked: boolean) => {
+        setShowMarqueeLocal(checked)
+        localStorage.setItem("ui_settings_tools_marquee", String(checked))
+        // Dispatch custom event for real-time updates
+        window.dispatchEvent(new Event("ui-settings-changed"))
+    }
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target
@@ -94,6 +113,7 @@ export function SettingsForm({ initialSettings }: { initialSettings: any }) {
                     <TabsTrigger value="payments" className="flex items-center gap-2"><CreditCard className="h-4 w-4" /> Pagos</TabsTrigger>
                     <TabsTrigger value="portal" className="flex items-center gap-2"><Layout className="h-4 w-4" /> Portal</TabsTrigger>
                     <TabsTrigger value="communication" className="flex items-center gap-2"><MessageSquare className="h-4 w-4" /> Comms</TabsTrigger>
+                    <TabsTrigger value="interface" className="flex items-center gap-2"><LayoutTemplate className="h-4 w-4" /> Interfaz</TabsTrigger>
                 </TabsList>
 
                 {/* AGENCY TAB */}
@@ -150,6 +170,36 @@ export function SettingsForm({ initialSettings }: { initialSettings: any }) {
                                         <Label htmlFor="isotipo_url">Isotipo / Favicon</Label>
                                         <Input id="isotipo_url" name="isotipo_url" value={formData.isotipo_url || ''} onChange={handleChange} placeholder="/branding/isotipo.svg" />
                                         <p className="text-xs text-muted-foreground">Icono compacto del sistema</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Social Media Section */}
+                            <div className="space-y-4 pt-4 border-t">
+                                <div>
+                                    <h4 className="text-sm font-semibold text-gray-900 mb-1">Redes Sociales</h4>
+                                    <p className="text-xs text-gray-500">Configura tus perfiles de redes sociales y estadísticas</p>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="social_facebook">Facebook URL</Label>
+                                        <Input id="social_facebook" name="social_facebook" value={formData.social_facebook || ''} onChange={handleChange} placeholder="https://facebook.com/pixypds" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="social_facebook_followers">Seguidores Facebook</Label>
+                                        <Input type="number" id="social_facebook_followers" name="social_facebook_followers" value={formData.social_facebook_followers || ''} onChange={handleChange} placeholder="1250" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="social_instagram">Instagram URL</Label>
+                                        <Input id="social_instagram" name="social_instagram" value={formData.social_instagram || ''} onChange={handleChange} placeholder="https://instagram.com/pixypds" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="social_instagram_followers">Seguidores Instagram</Label>
+                                        <Input type="number" id="social_instagram_followers" name="social_instagram_followers" value={formData.social_instagram_followers || ''} onChange={handleChange} placeholder="3400" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="social_twitter">Twitter/X URL</Label>
+                                        <Input id="social_twitter" name="social_twitter" value={formData.social_twitter || ''} onChange={handleChange} placeholder="https://twitter.com/pixypds" />
                                     </div>
                                 </div>
                             </div>
@@ -654,6 +704,31 @@ export function SettingsForm({ initialSettings }: { initialSettings: any }) {
                             </Card>
                         </div>
                     </div>
+                </TabsContent>
+                {/* INTERFACE TAB */}
+                <TabsContent value="interface" className="space-y-4 mt-4">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2"><LayoutTemplate className="h-4 w-4" /> Personalización de Interfaz</CardTitle>
+                            <CardDescription>
+                                Ajusta la apariencia y elementos visibles de la aplicación.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
+                            <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/20">
+                                <div className="space-y-0.5">
+                                    <Label className="text-base">Barra de Herramientas (Header)</Label>
+                                    <p className="text-sm text-muted-foreground">
+                                        Muestra una cinta animada con las herramientas que usas.
+                                    </p>
+                                </div>
+                                <Switch
+                                    checked={showMarqueeLocal}
+                                    onCheckedChange={handleMarqueeChange}
+                                />
+                            </div>
+                        </CardContent>
+                    </Card>
                 </TabsContent>
             </Tabs>
         </div>
