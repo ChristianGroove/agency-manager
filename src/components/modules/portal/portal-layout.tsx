@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Client, Invoice, Quote, Briefing, ClientEvent, Service } from "@/types"
+import { Client, Invoice, Quote, ClientEvent, Service } from "@/types"
+import { Briefing } from "@/types/briefings"
 import { Button } from "@/components/ui/button"
 import { LayoutDashboard, Layers, CreditCard, Search, Bell, LogOut, Menu } from "lucide-react"
 import { cn } from "@/lib/utils"
