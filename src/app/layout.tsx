@@ -29,17 +29,24 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default function RootLayout({
+import { TrashBinModal } from "@/components/modules/trash/trash-bin-modal";
+import { Toaster } from "sonner";
+
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const settings = await getSettings();
+
   return (
     <html lang="en" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         {children}
+        <TrashBinModal shortcut={settings?.trash_shortcut} />
+        <Toaster />
       </body>
     </html>
   );

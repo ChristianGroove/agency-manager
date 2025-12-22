@@ -144,6 +144,7 @@ export default function ClientsPage() {
           subscriptions (id, name, next_billing_date, status, amount, service_type, frequency),
           services (id, status)
         `)
+                .is('deleted_at', null)
 
             if (error) throw error
 

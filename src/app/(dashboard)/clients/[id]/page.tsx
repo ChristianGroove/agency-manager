@@ -417,7 +417,7 @@ export default function ClientDetailPage() {
                                         try {
                                             const { error } = await supabase
                                                 .from('clients')
-                                                .delete()
+                                                .update({ deleted_at: new Date().toISOString() })
                                                 .eq('id', client.id)
 
                                             if (error) throw error

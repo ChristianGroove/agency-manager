@@ -63,6 +63,7 @@ export interface Briefing {
         email: string
     }
     service_id?: string | null
+    deleted_at?: string
 }
 
 export interface BriefingResponse {

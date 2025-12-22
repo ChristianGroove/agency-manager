@@ -308,6 +308,26 @@ export function SettingsForm({ initialSettings }: { initialSettings: any }) {
                                     className="min-h-[100px]"
                                 />
                             </div>
+
+                            <div className="space-y-2 pt-4 border-t">
+                                <h4 className="text-sm font-medium text-gray-900 mb-2">Accesibilidad</h4>
+                                <div className="space-y-2">
+                                    <Label htmlFor="trash_shortcut">Atajo de Papelera</Label>
+                                    <div className="flex items-center gap-2">
+                                        <Input
+                                            id="trash_shortcut"
+                                            name="trash_shortcut"
+                                            value={formData.trash_shortcut || 'ctrl+alt+p'}
+                                            onChange={handleChange}
+                                            placeholder="ej: ctrl+alt+p"
+                                            className="max-w-[200px]"
+                                        />
+                                        <p className="text-xs text-muted-foreground">
+                                            Combinación de teclas para abrir la papelera (ej: ctrl+alt+p, meta+k, shift+delete).
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
                         </CardContent>
                     </Card>
                 </TabsContent>

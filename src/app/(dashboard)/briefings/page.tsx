@@ -1,6 +1,6 @@
 import { getBriefings } from "@/lib/actions/briefings"
 import { BriefingsPageHeader } from "@/components/modules/briefings/briefings-page-header"
-import { BriefingList } from "@/components/modules/briefings/briefing-list"
+import { DynamicBriefingList } from "@/components/modules/briefings/dynamic-briefing-list"
 
 export default async function BriefingsPage() {
     const briefings = await getBriefings()
@@ -9,7 +9,7 @@ export default async function BriefingsPage() {
         <div className="space-y-8">
             <BriefingsPageHeader />
 
-            <BriefingList briefings={briefings || []} />
+            <DynamicBriefingList briefings={briefings || []} />
         </div>
     )
 }

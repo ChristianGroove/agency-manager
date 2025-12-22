@@ -54,6 +54,7 @@ export async function getBriefings() {
             template:briefing_templates(name),
             client:clients(name, email)
         `)
+        .is('deleted_at', null)
         .order('created_at', { ascending: false })
 
     if (error) {
@@ -68,7 +69,7 @@ export async function deleteBriefing(id: string) {
     const supabase = await createClient()
     const { error } = await supabase
         .from('briefings')
-        .delete()
+        .update({ deleted_at: new Date().toISOString() })
         .eq('id', id)
 
     if (error) throw error

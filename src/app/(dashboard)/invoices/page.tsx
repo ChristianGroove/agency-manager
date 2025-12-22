@@ -63,6 +63,7 @@ export default function InvoicesPage() {
                 *,
                 client:clients(name)
             `)
+            .is('deleted_at', null)
             .order('date', { ascending: false })
 
         if (data) setInvoices(data)
@@ -74,25 +75,14 @@ export default function InvoicesPage() {
     }, [])
 
     const handleDeleteInvoice = async (id: string) => {
-        if (!confirm("¿Estás seguro de que deseas eliminar esta factura? Esta acción no se puede deshacer.")) return
+        if (!confirm("¿Estás seguro de que deseas eliminar esta factura?")) return
 
         setDeletingId(id)
         try {
-            // First, clear any subscription references to this invoice
-            const { error: subUpdateError } = await supabase
-                .from('subscriptions')
-                .update({ invoice_id: null })
-                .eq('invoice_id', id)
-
-            if (subUpdateError) {
-                console.warn("Warning updating subscriptions:", subUpdateError)
-                // Continue anyway as ON DELETE SET NULL should handle this
-            }
-
-            // Then delete the invoice
+            // Soft delete the invoice
             const { error } = await supabase
                 .from('invoices')
-                .delete()
+                .update({ deleted_at: new Date().toISOString() })
                 .eq('id', id)
 
             if (error) throw error

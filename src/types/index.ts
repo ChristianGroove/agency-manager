@@ -13,6 +13,7 @@ export type Client = {
     portal_short_token?: string
     invoices?: any[]
     quotes?: any[]
+    deleted_at?: string
 }
 
 export type Service = {
@@ -73,6 +74,7 @@ export type Quote = {
     client?: Client
     lead?: Lead
     service_id?: string | null
+    deleted_at?: string
 }
 
 export type InvoiceItem = {
@@ -94,6 +96,7 @@ export type Invoice = {
     pdf_url?: string
     client?: Client
     service_id?: string | null
+    deleted_at?: string
 }
 
 export type ClientEvent = {

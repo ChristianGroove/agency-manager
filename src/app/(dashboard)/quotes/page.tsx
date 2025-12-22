@@ -46,6 +46,7 @@ export default function QuotesPage() {
                     client:clients (name, company_name),
                     lead:leads (name, company_name)
                 `)
+                .is('deleted_at', null)
                 .order('created_at', { ascending: false })
 
             if (error) throw error
@@ -63,7 +64,7 @@ export default function QuotesPage() {
         try {
             const { error } = await supabase
                 .from('quotes')
-                .delete()
+                .update({ deleted_at: new Date().toISOString() })
                 .eq('id', id)
 
             if (error) throw error

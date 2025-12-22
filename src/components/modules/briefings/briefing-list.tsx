@@ -29,7 +29,10 @@ interface BriefingListProps {
     briefings: Briefing[]
 }
 
+import { useRouter } from "next/navigation"
+
 export function BriefingList({ briefings }: BriefingListProps) {
+    const router = useRouter()
     const [searchTerm, setSearchTerm] = useState("")
     const [showFilters, setShowFilters] = useState(false)
     const [statusFilter, setStatusFilter] = useState("all")
@@ -40,10 +43,11 @@ export function BriefingList({ briefings }: BriefingListProps) {
     }
 
     const handleDelete = async (id: string) => {
-        if (confirm("¿Estás seguro de que deseas eliminar este briefing? Esta acción no se puede deshacer.")) {
+        if (confirm("¿Estás seguro de que deseas eliminar este briefing? Esta acción no se puede deshacer de la vista actual.")) {
             try {
                 await deleteBriefing(id)
-                toast.success("Briefing eliminado correctamente")
+                toast.success("Briefing enviado a la papelera")
+                router.refresh()
             } catch (error) {
                 console.error("Error deleting briefing:", error)
                 toast.error("Error al eliminar el briefing")
