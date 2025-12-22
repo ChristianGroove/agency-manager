@@ -51,6 +51,7 @@ function PendingTasksAnimation() {
 }
 
 interface PortalDashboardProps {
+    token: string
     client: Client
     invoices: Invoice[]
     quotes: Quote[]
@@ -63,7 +64,7 @@ interface PortalDashboardProps {
     services: Service[]
 }
 
-export function PortalDashboard({ client, invoices, quotes, briefings, events, onPay, onViewInvoice, onViewQuote, settings, services }: PortalDashboardProps) {
+export function PortalDashboard({ token, client, invoices, quotes, briefings, events, onPay, onViewInvoice, onViewQuote, settings, services }: PortalDashboardProps) {
     console.log('PortalDashboard Rendered', {
         client: client.name,
         servicesCount: services?.length,
@@ -136,6 +137,7 @@ export function PortalDashboard({ client, invoices, quotes, briefings, events, o
         return (
             <div className="max-w-5xl mx-auto w-full pb-24">
                 <PortalBriefingView
+                    token={token}
                     briefingId={viewBriefingId}
                     onBack={() => setViewBriefingId(null)}
                 />
