@@ -1,8 +1,8 @@
 'use server'
 
 import { supabaseAdmin } from "@/lib/supabase-admin"
-import { Client, Invoice, Quote, ClientEvent, Service } from "@/types"
-import { FullBriefingTemplate, Briefing } from "@/types/briefings"
+import { Client, Invoice, Quote, Briefing, ClientEvent, Service } from "@/types"
+import { FullBriefingTemplate } from "@/types/briefings"
 
 export async function getPortalData(token: string) {
     try {
