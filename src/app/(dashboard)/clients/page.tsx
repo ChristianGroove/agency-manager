@@ -883,7 +883,7 @@ export default function ClientsPage() {
 
                                                 {(client.portal_short_token || client.portal_token) && (
                                                     <a
-                                                        href={`${window.location.origin}/portal/${client.portal_short_token || client.portal_token}`}
+                                                        href={getPortalUrl(`/portal/${client.portal_short_token || client.portal_token}`)}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
                                                     >

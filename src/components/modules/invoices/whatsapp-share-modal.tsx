@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Share2, Copy, Check } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn, getPortalUrl } from "@/lib/utils"
 import { getSettings } from "@/lib/actions/settings"
 import { generateMessage, getWhatsAppLink } from "@/lib/communication-utils"
 import { Invoice } from "@/types"
@@ -62,7 +62,7 @@ export function WhatsAppShareModal({ invoice, open, onOpenChange }: WhatsAppShar
             cliente: invoice.client?.name || 'Cliente',
             factura: invoice.number,
             monto: formatCurrency(invoice.total),
-            link: `${window.location.origin}/portal/${invoice.client?.portal_token || ''}`
+            link: getPortalUrl(`/portal/${invoice.client?.portal_token || ''}`)
         }, settings)
 
         setMessage(msg)
