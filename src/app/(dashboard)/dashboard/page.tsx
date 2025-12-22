@@ -13,6 +13,7 @@ import { ClientFormModal } from "@/components/modules/clients/client-form-modal"
 import { QuoteFormModal } from "@/components/modules/quotes/quote-form-modal"
 import { InvoiceFormModal } from "@/components/modules/invoices/invoice-form-modal"
 import { BriefingFormModal } from "@/components/modules/briefings/briefing-form-modal"
+import CountUp from "react-countup"
 
 const Lottie = dynamic(() => import("lottie-react"), { ssr: false })
 
@@ -292,7 +293,13 @@ export default function DashboardPage() {
                     <CardContent className="flex-1 flex flex-col">
                         <div className="flex-1 flex items-center">
                             <div className="text-4xl font-bold text-white flex items-baseline gap-2">
-                                ${stats.monthlyRecurring.toLocaleString()}
+                                $<CountUp
+                                    end={stats.monthlyRecurring}
+                                    duration={2.5}
+                                    separator=","
+                                    decimals={0}
+                                    preserveValue={true}
+                                />
                                 <span className="text-lg font-normal text-gray-400">COP/mes</span>
                             </div>
                         </div>
