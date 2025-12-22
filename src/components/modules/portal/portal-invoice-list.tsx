@@ -32,24 +32,7 @@ export function PortalInvoiceList({ invoices, settings = {}, selectedInvoices = 
 
     return (
         <Card className="border-none shadow-none bg-transparent">
-            <CardHeader className="p-0 block">
-                {/* Title Centered */}
-                <div className="w-full text-center mb-6">
-                    <CardTitle className="text-2xl font-bold text-gray-900">
-                        Estado de Facturación
-                    </CardTitle>
-                </div>
-
-                {/* Instruction - Left Aligned, Plain Text, Pulsing Dot */}
-                <div className="flex justify-start mb-4 pl-1 animate-in fade-in slide-in-from-left-4 duration-700 delay-200">
-                    <p className="text-sm font-medium text-gray-500 flex items-center gap-2">
-                        <span className="relative flex h-2.5 w-2.5">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-blue-500"></span>
-                        </span>
-                        Selecciona las facturas que deseas pagar
-                    </p>
-                </div>
+            <CardHeader className="p-0 pb-4">
             </CardHeader>
             <CardContent className="px-0">
                 <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
@@ -101,10 +84,11 @@ export function PortalInvoiceList({ invoices, settings = {}, selectedInvoices = 
                                             <td className="px-6 py-4 text-gray-600">{new Date(invoice.date).toLocaleDateString()}</td>
                                             <td className="px-6 py-4">
                                                 <Badge
-                                                    variant={status === 'paid' ? 'default' : status === 'overdue' ? 'destructive' : 'secondary'}
+                                                    variant="outline"
                                                     className={cn(
-                                                        "w-24 justify-center",
-                                                        status === 'overdue' && "bg-red-600 text-white hover:bg-red-700 border-transparent"
+                                                        "w-24 justify-center border-0",
+                                                        status === 'paid' ? "text-green-600" :
+                                                            status === 'overdue' ? "text-red-600" : "text-gray-600"
                                                     )}
                                                 >
                                                     {status === 'paid' ? 'Pagada' : status === 'overdue' ? 'Vencida' : 'Pendiente'}
@@ -146,10 +130,11 @@ export function PortalInvoiceList({ invoices, settings = {}, selectedInvoices = 
                                         <div className="flex justify-between items-start mb-1">
                                             <span className="font-bold text-gray-900">#{invoice.number}</span>
                                             <Badge
-                                                variant={status === 'paid' ? 'default' : status === 'overdue' ? 'destructive' : 'secondary'}
+                                                variant="outline"
                                                 className={cn(
-                                                    "w-24 justify-center",
-                                                    status === 'overdue' && "bg-red-600 text-white hover:bg-red-700 border-transparent"
+                                                    "w-24 justify-center border-0",
+                                                    status === 'paid' ? "text-green-600" :
+                                                        status === 'overdue' ? "text-red-600" : "text-gray-600"
                                                 )}
                                             >
                                                 {status === 'paid' ? 'Pagada' : status === 'overdue' ? 'Vencida' : 'Pendiente'}

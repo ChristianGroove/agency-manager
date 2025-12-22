@@ -91,7 +91,8 @@ export function PortalServicesTab({ services, invoices, briefings, onPay, onView
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {services.map(service => {
-                        const servicePendingInvoices = invoices.filter(i => i.service_id === service.id && (i.status === 'pending' || i.status === 'overdue')).length
+                        const servicePendingInvoices = invoices.filter(i => i.service_id === service.id && (i.status === 'pending' || i.status === 'overdue'))
+                        const servicePendingInvoicesIds = servicePendingInvoices.map(i => i.id)
                         const serviceOverdueInvoices = invoices.filter(i => i.service_id === service.id && i.status === 'overdue').length
                         const servicePendingBriefings = briefings.filter(b => b.service_id === service.id && (b.status === 'sent' || b.status === 'in_progress')).length
 
@@ -99,10 +100,11 @@ export function PortalServicesTab({ services, invoices, briefings, onPay, onView
                             <PortalServiceCard
                                 key={service.id}
                                 service={service}
-                                pendingInvoicesCount={servicePendingInvoices}
+                                pendingInvoicesCount={servicePendingInvoices.length}
                                 overdueInvoicesCount={serviceOverdueInvoices}
                                 pendingBriefingsCount={servicePendingBriefings}
                                 onClick={() => setViewServiceId(service.id)}
+                                onPay={(serviceId) => onPay(servicePendingInvoicesIds)} // Quick pay all pending invoices for this service
                             />
                         )
                     })}

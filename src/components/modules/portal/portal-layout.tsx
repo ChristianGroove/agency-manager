@@ -76,7 +76,7 @@ export function PortalLayout({ client, invoices, quotes, briefings, events, serv
                 <nav className="flex-1 px-4 space-y-2">
                     <NavButton active={activeTab === 'summary'} onClick={() => setActiveTab('summary')} icon={LayoutDashboard} label="Resumen" />
                     <NavButton active={activeTab === 'services'} onClick={() => setActiveTab('services')} icon={Layers} label="Mis Servicios" />
-                    <NavButton active={activeTab === 'billing'} onClick={() => setActiveTab('billing')} icon={CreditCard} label="Facturación" />
+                    <NavButton active={activeTab === 'billing'} onClick={() => setActiveTab('billing')} icon={CreditCard} label="Pagos" />
                     <NavButton active={activeTab === 'explore'} onClick={() => setActiveTab('explore')} icon={Search} label="Explorar" />
                 </nav>
 
