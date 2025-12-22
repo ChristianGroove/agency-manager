@@ -63,7 +63,7 @@ export const InvoiceTemplate = forwardRef<HTMLDivElement, InvoiceTemplateProps>(
                             <h3 className="text-[10px] font-bold mb-1.5 uppercase text-gray-500 tracking-wider">Emitido por:</h3>
                             <p className="font-bold text-base text-gray-900">{settings?.company_name || "Cristian Camilo Gómez"}</p>
                             <p className="text-sm text-gray-700">NIT: {settings?.company_nit || "1110458437"}</p>
-                            <p className="text-sm text-gray-700">{settings?.company_address || "Cra 3 # 41-107 Ibagué-Tolima"}</p>
+                            <p className="text-sm text-gray-700">{settings?.company_address || "Cra 4 #40-54 Macarena / Ibagué -Tolima"}</p>
                             <p className="text-sm text-gray-700">{settings?.company_email || "contact@pixy.com.co"}</p>
                             <p className="text-sm font-semibold text-gray-900 mt-1">Cel: {settings?.company_phone || "+57 350 407 6800"}</p>
                         </div>

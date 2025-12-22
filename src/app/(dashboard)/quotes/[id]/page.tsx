@@ -16,6 +16,7 @@ export default function QuoteDetailPage() {
     const params = useParams()
     const router = useRouter()
     const [quote, setQuote] = useState<Quote | null>(null)
+    const [settings, setSettings] = useState<any>(null)
     const [loading, setLoading] = useState(true)
     const [converting, setConverting] = useState(false)
     const [downloading, setDownloading] = useState(false)
@@ -25,8 +26,14 @@ export default function QuoteDetailPage() {
     useEffect(() => {
         if (params.id) {
             fetchQuote(params.id as string)
+            fetchSettings()
         }
     }, [params.id])
+
+    const fetchSettings = async () => {
+        const { data } = await supabase.from('organization_settings').select('*').single()
+        if (data) setSettings(data)
+    }
 
     const fetchQuote = async (id: string) => {
         try {
@@ -288,11 +295,10 @@ export default function QuoteDetailPage() {
                         <div className="grid grid-cols-2 gap-12 mb-12">
                             <div>
                                 <h3 className="text-xs font-bold mb-3 uppercase text-gray-500 tracking-wider">Emitido por:</h3>
-                                <p className="font-bold text-base text-gray-900">Cristian Camilo Gómez</p>
-                                <p className="text-sm text-gray-700">NIT: 1110458437</p>
-                                <p className="text-sm text-gray-700">Cra 3 # 41-107 Ibagué-Tolima</p>
-                                <p className="text-sm text-gray-700">contact@pixy.com.co</p>
-                                <p className="text-sm font-semibold text-gray-900 mt-1">Cel: +57 350 407 6800</p>
+                                <p className="font-bold text-base text-gray-900">{settings?.agency_name || "Pixy"}</p>
+                                <p className="text-sm text-gray-700">{settings?.company_address || "Cra 4 #40-54 Macarena / Ibagué -Tolima"}</p>
+                                <p className="text-sm text-gray-700">{settings?.company_email || "contact@pixy.com.co"}</p>
+                                <p className="text-sm font-semibold text-gray-900 mt-1">Cel: {settings?.company_phone || "+57 350 407 6800"}</p>
                             </div>
                             <div>
                                 <h3 className="text-xs font-bold mb-3 uppercase text-gray-500 tracking-wider">Para:</h3>
