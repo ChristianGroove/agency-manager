@@ -13,8 +13,8 @@ export async function generateMetadata(
     const token = resolvedParams.token
     const settings = await getPortalMetadata(token)
 
-    const title = settings.portal_og_title || settings.agency_name || "Pixy Portal"
-    const description = settings.portal_og_description || settings.portal_welcome_message || "Portal de clientes"
+    const title = settings.portal_og_title || "Pixy"
+    const description = settings.portal_og_description || "Portal de clientes"
     const image = settings.portal_og_image_url || settings.portal_logo_url || settings.main_logo_url
 
     return {
