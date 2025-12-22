@@ -11,10 +11,14 @@ interface PortalTimelineProps {
 export function PortalTimeline({ events }: PortalTimelineProps) {
     const getIcon = (type: string) => {
         switch (type) {
-            case 'invoice_created': return DollarSign
-            case 'payment_received': return CheckCircle2
-            case 'quote_sent': return FileText
-            case 'briefing_assigned': return MessageSquare
+            case 'invoice_created':
+            case 'invoice': return DollarSign
+            case 'payment_received':
+            case 'payment': return CheckCircle2
+            case 'quote_sent':
+            case 'quote': return FileText
+            case 'briefing_assigned':
+            case 'briefing': return MessageSquare
             case 'project_update': return Clock
             default: return AlertCircle
         }
@@ -22,10 +26,14 @@ export function PortalTimeline({ events }: PortalTimelineProps) {
 
     const getColor = (type: string) => {
         switch (type) {
-            case 'invoice_created': return "text-amber-500 bg-amber-50"
-            case 'payment_received': return "text-green-500 bg-green-50"
-            case 'quote_sent': return "text-blue-500 bg-blue-50"
-            case 'briefing_assigned': return "text-purple-500 bg-purple-50"
+            case 'invoice_created':
+            case 'invoice': return "text-amber-500 bg-amber-50"
+            case 'payment_received':
+            case 'payment': return "text-green-500 bg-green-50"
+            case 'quote_sent':
+            case 'quote': return "text-blue-500 bg-blue-50"
+            case 'briefing_assigned':
+            case 'briefing': return "text-purple-500 bg-purple-50"
             default: return "text-gray-500 bg-gray-50"
         }
     }
