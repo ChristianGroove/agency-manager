@@ -200,11 +200,26 @@ export async function submitBriefing(briefingId: string) {
     if (error) throw error
 
     // Fetch briefing details for event and email
-    const briefing = await getBriefingById(briefingId)
+    // Fetch briefing details for event and email using Admin (bypass RLS)
+    const { supabaseAdmin } = await import('@/lib/supabase-admin')
+
+    const { data: briefing, error: fError } = await supabaseAdmin
+        .from('briefings')
+        .select(`
+            *,
+            template:briefing_templates(name),
+            client:clients(name)
+        `)
+        .eq('id', briefingId)
+        .single()
+
+    if (fError || !briefing) {
+        console.error("Error fetching briefing for event:", fError)
+        return // Can't send email or create event if we can't fetch details
+    }
 
     // Create Client Event
     if (briefing.client_id) {
-        const { supabaseAdmin } = await import('@/lib/supabase-admin')
         await supabaseAdmin.from('client_events').insert({
             client_id: briefing.client_id,
             type: 'briefing',
