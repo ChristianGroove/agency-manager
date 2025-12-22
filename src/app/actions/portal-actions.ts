@@ -70,6 +70,12 @@ export async function getPortalData(token: string) {
     }
 }
 
+export async function getPortalMetadata(token: string) {
+    // Lightweight fetch for metadata only
+    const { data: settings } = await supabaseAdmin.from('organization_settings').select('*').single()
+    return settings || {}
+}
+
 export async function regeneratePortalToken(clientId: string) {
     try {
         // 1. Generate new token using DB function

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { ArrowLeft, Search, ExternalLink, RefreshCw } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { regeneratePortalToken } from "@/app/actions/portal-actions"
+import { getPortalUrl } from "@/lib/utils"
 
 export default function DebugTokensPage() {
     const [clients, setClients] = useState<any[]>([])
@@ -106,7 +107,7 @@ export default function DebugTokensPage() {
                                 </Button>
                                 {client.portal_short_token && (
                                     <a
-                                        href={`${typeof window !== 'undefined' ? window.location.origin : ''}/portal/${client.portal_short_token}`}
+                                        href={getPortalUrl(`/portal/${client.portal_short_token}`)}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                     >

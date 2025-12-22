@@ -477,13 +477,48 @@ export function SettingsForm({ initialSettings }: { initialSettings: any }) {
                                             onCheckedChange={(checked) => handleSwitchChange('portal_enabled', checked)}
                                         />
                                     </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="portal_subdomain">Subdominio (Opcional)</Label>
-                                        <div className="flex items-center gap-2">
-                                            <Input id="portal_subdomain" name="portal_subdomain" value={formData.portal_subdomain || ''} onChange={handleChange} placeholder="mi-agencia" className="max-w-[200px]" />
-                                            <span className="text-muted-foreground text-sm">.pixy.com.co</span>
+                                    <div className="flex items-center gap-2">
+                                        <Input id="portal_subdomain" name="portal_subdomain" value={formData.portal_subdomain || ''} onChange={handleChange} placeholder="mi-agencia" className="max-w-[200px]" />
+                                        <span className="text-muted-foreground text-sm">.pixy.com.co</span>
+                                    </div>
+
+
+                                    {/* Metadata Section */}
+                                    <div className="space-y-4 pt-4 border-t">
+                                        <h4 className="text-sm font-medium">Metadatos (SEO y Compartir)</h4>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="portal_og_title">Título al Compartir</Label>
+                                            <Input
+                                                id="portal_og_title"
+                                                name="portal_og_title"
+                                                value={formData.portal_og_title || ''}
+                                                onChange={handleChange}
+                                                placeholder="Ej: Portal de Clientes - Pixy Agency"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="portal_og_description">Descripción al Compartir</Label>
+                                            <Input
+                                                id="portal_og_description"
+                                                name="portal_og_description"
+                                                value={formData.portal_og_description || ''}
+                                                onChange={handleChange}
+                                                placeholder="Ej: Accede a tus facturas y proyectos en tiempo real."
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="portal_og_image_url">URL de Imagen (Preview)</Label>
+                                            <Input
+                                                id="portal_og_image_url"
+                                                name="portal_og_image_url"
+                                                value={formData.portal_og_image_url || ''}
+                                                onChange={handleChange}
+                                                placeholder="https://..."
+                                            />
+                                            <p className="text-xs text-muted-foreground">Opcional. Si no se define, se usará el logo.</p>
                                         </div>
                                     </div>
+
                                     <div className="space-y-2">
                                         <Label htmlFor="portal_welcome_message">Mensaje de Bienvenida</Label>
                                         <Textarea
@@ -734,6 +769,6 @@ export function SettingsForm({ initialSettings }: { initialSettings: any }) {
                     </Card>
                 </TabsContent>
             </Tabs>
-        </div>
+        </div >
     )
 }
