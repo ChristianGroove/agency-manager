@@ -20,7 +20,7 @@ import {
     DialogTrigger
 } from "@/components/ui/dialog"
 import { supabase } from "@/lib/supabase"
-import { cn } from "@/lib/utils"
+import { cn, getPortalUrl } from "@/lib/utils"
 import { getSettings } from "@/lib/actions/settings"
 import { getWhatsAppLink } from "@/lib/communication-utils"
 import { WhatsAppActionsModal } from "@/components/modules/clients/whatsapp-modal"
