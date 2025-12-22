@@ -12,7 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { saveBriefingResponse, submitBriefing } from "@/lib/actions/briefings"
-import { Loader2, CheckCircle2, ChevronRight, ChevronLeft, Save } from "lucide-react"
+import { Loader2, CheckCircle2, ChevronRight, ChevronLeft, Save, Plus, X } from "lucide-react"
 import { useDebouncedCallback } from "use-debounce"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
@@ -351,16 +351,86 @@ function FieldRenderer({ field, value, onChange }: { field: BriefingField, value
                 </RadioGroup>
             )}
 
-            {field.type === 'boolean' && (
-                <div className="flex items-center space-x-2">
-                    <Checkbox
-                        id={field.id}
-                        checked={value === true}
-                        onCheckedChange={(checked) => onChange(checked === true)}
-                    />
-                    <Label htmlFor={field.id}>Sí / Confirmar</Label>
+            {field.type === 'color' && (
+                <ColorPaletteInput
+                    value={value || []}
+                    onChange={onChange}
+                    maxColors={5}
+                />
+            )}
+        </div>
+    )
+}
+
+function ColorPaletteInput({ value, onChange, maxColors = 5 }: { value: string[], onChange: (val: string[]) => void, maxColors?: number }) {
+    const [currentColor, setCurrentColor] = useState("#F205E2")
+
+    const handleAddColor = () => {
+        if (value.length >= maxColors) return
+        if (!value.includes(currentColor)) {
+            onChange([...value, currentColor])
+        }
+    }
+
+    const handleRemoveColor = (color: string) => {
+        onChange(value.filter(c => c !== color))
+    }
+
+    return (
+        <div className="space-y-4">
+            <div className="flex gap-3 items-end">
+                <div className="space-y-1.5 flex-1">
+                    <Label className="text-xs text-gray-500 font-normal">Selector de Color</Label>
+                    <div className="flex gap-2">
+                        <div className="relative w-12 h-10 rounded-lg overflow-hidden border shadow-sm ring-1 ring-black/5 hover:ring-black/10 transition-shadow">
+                            <input
+                                type="color"
+                                value={currentColor}
+                                onChange={(e) => setCurrentColor(e.target.value)}
+                                className="absolute inset-0 w-[150%] h-[150%] -top-1/4 -left-1/4 cursor-pointer p-0 border-0"
+                            />
+                        </div>
+                        <Input
+                            value={currentColor}
+                            onChange={(e) => setCurrentColor(e.target.value)}
+                            className="w-28 font-mono uppercase"
+                            maxLength={7}
+                        />
+                    </div>
+                </div>
+                <Button
+                    type="button"
+                    onClick={handleAddColor}
+                    disabled={value.length >= maxColors}
+                    variant="secondary"
+                    className="mb-0.5"
+                >
+                    <Plus className="w-4 h-4 mr-1" />
+                    Agregar
+                </Button>
+            </div>
+
+            {value.length > 0 && (
+                <div className="flex flex-wrap gap-3 p-4 bg-gray-50 rounded-xl border border-gray-100">
+                    {value.map((color, idx) => (
+                        <div
+                            key={`${color}-${idx}`}
+                            className="group relative flex items-center justify-center w-12 h-12 rounded-full shadow-sm ring-2 ring-white transition-transform hover:scale-105"
+                            style={{ backgroundColor: color }}
+                        >
+                            <button
+                                onClick={() => handleRemoveColor(color)}
+                                className="absolute -top-1 -right-1 bg-white text-red-500 rounded-full p-0.5 shadow-md opacity-0 group-hover:opacity-100 transition-opacity transform scale-75 hover:scale-100"
+                            >
+                                <X className="w-3 h-3" />
+                            </button>
+                        </div>
+                    ))}
                 </div>
             )}
+            <p className="text-xs text-gray-400 text-right">
+                {value.length} / {maxColors} colores seleccionados
+            </p>
         </div>
     )
 }

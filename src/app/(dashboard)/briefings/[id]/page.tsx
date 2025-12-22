@@ -42,6 +42,22 @@ export default async function BriefingDetailPage({ params }: PageProps) {
         if (value === undefined || value === null) return <span className="text-gray-400 italic">Sin respuesta</span>
 
         if (type === 'boolean') return value ? 'Sí' : 'No'
+        if (type === 'color' && Array.isArray(value)) {
+            return (
+                <div className="flex gap-2 flex-wrap">
+                    {value.map((color: string, idx: number) => (
+                        <div key={idx} className="flex flex-col items-center gap-1">
+                            <div
+                                className="w-8 h-8 rounded-full border shadow-sm"
+                                style={{ backgroundColor: color }}
+                                title={color}
+                            />
+                            <span className="text-[10px] font-mono text-gray-500 uppercase">{color}</span>
+                        </div>
+                    ))}
+                </div>
+            )
+        }
         if (Array.isArray(value)) return value.join(', ')
         if (typeof value === 'object') return JSON.stringify(value)
         return value.toString()

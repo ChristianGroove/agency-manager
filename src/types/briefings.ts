@@ -11,6 +11,7 @@ export type BriefingFieldType =
     | 'upload'
     | 'scale'
     | 'boolean'
+    | 'color'
 
 export interface BriefingTemplate {
     id: string
