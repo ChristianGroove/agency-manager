@@ -20,7 +20,7 @@ const routes = [
         href: "/clients",
     },
     {
-        label: "Servicios",
+        label: "Contratos",
         icon: Server,
         href: "/hosting",
     },
@@ -40,7 +40,7 @@ const routes = [
         href: "/briefings",
     },
     {
-        label: "Portafolio",
+        label: "Catálogo",
         icon: Briefcase,
         href: "/portfolio",
     },

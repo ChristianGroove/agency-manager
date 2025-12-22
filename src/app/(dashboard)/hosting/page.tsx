@@ -1,5 +1,12 @@
 "use client"
 
+/**
+ * NOMENCLATURA: Este módulo muestra "Contratos" en la UI.
+ * Backend usa tabla 'services' (NO cambiar nombres técnicos).
+ * "Contratos" = Servicios YA vendidos/contratados a clientes.
+ * Ver: /NOMENCLATURE.md para más info.
+ */
+
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Plus, Search, Filter, CreditCard, Server, Megaphone, Monitor, Box, Eye, Trash2, Loader2, RefreshCw, Zap, CalendarClock, MoreHorizontal, Pencil, FileText, PlayCircle, PauseCircle, ListFilter } from "lucide-react"
@@ -27,6 +34,7 @@ import { ServiceDetailsModal } from "@/components/modules/services/service-detai
 import { ResumeServiceModal } from "@/components/modules/services/resume-service-modal"
 import { toggleServiceStatus } from "@/app/actions/services-actions"
 import { cn } from "@/lib/utils"
+import { SplitText } from "@/components/ui/split-text"
 
 interface ServiceFromDB {
     id: string
@@ -64,14 +72,14 @@ export default function ServicesPage() {
     const [isResumeModalOpen, setIsResumeModalOpen] = useState(false)
 
     const handlePauseService = async (id: string) => {
-        if (!confirm("¿Estás seguro de que deseas pausar este servicio? Se detendrá la facturación hasta que lo reanudes.")) return
+        if (!confirm("¿Estás seguro de que deseas pausar este contrato? Se detendrá la facturación hasta que lo reanudes.")) return
 
         try {
             const result = await toggleServiceStatus(id, 'paused')
             if (result.success) {
                 await fetchServices()
             } else {
-                alert("Error al pausar el servicio")
+                alert("Error al pausar el contrato")
             }
         } catch (error) {
             console.error(error)
@@ -103,7 +111,7 @@ export default function ServicesPage() {
     }, [])
 
     const handleDeleteService = async (id: string) => {
-        if (!confirm("¿Estás seguro de que deseas eliminar este servicio? Esta acción no se puede deshacer.")) return
+        if (!confirm("¿Estás seguro de que deseas eliminar este contrato? Esta acción no se puede deshacer.")) return
 
         try {
             const { error } = await supabase
@@ -115,7 +123,7 @@ export default function ServicesPage() {
             await fetchServices()
         } catch (error) {
             console.error("Error deleting service:", error)
-            alert("Error al eliminar el servicio")
+            alert("Error al eliminar el contrato")
         }
     }
 
@@ -164,8 +172,10 @@ export default function ServicesPage() {
         <div className="space-y-8">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h2 className="text-3xl font-bold tracking-tight text-gray-900">Servicios</h2>
-                    <p className="text-muted-foreground mt-1">Suscripciones y proyectos únicos de tus clientes.</p>
+                    <h2 className="text-3xl font-bold tracking-tight text-gray-900">
+                        <SplitText>Contratos</SplitText>
+                    </h2>
+                    <p className="text-muted-foreground mt-1">Servicios contratados y proyectos en curso de tus clientes.</p>
                 </div>
                 <div className="w-full md:w-auto">
                     <AddServiceModal
@@ -173,7 +183,7 @@ export default function ServicesPage() {
                         trigger={
                             <Button className="w-full md:w-auto bg-brand-pink hover:bg-brand-pink/90 text-white shadow-md border-0">
                                 <Plus className="mr-2 h-4 w-4" />
-                                Nuevo Servicio
+                                Nuevo Contrato
                             </Button>
                         }
                     />
@@ -187,7 +197,7 @@ export default function ServicesPage() {
                     <div className="relative flex-1 w-full md:w-auto min-w-[200px] flex items-center px-3 gap-2">
                         <Search className="h-4 w-4 text-gray-400 shrink-0" />
                         <Input
-                            placeholder="Buscar por servicio o cliente..."
+                            placeholder="Buscar por contrato o cliente..."
                             className="bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-sm w-full outline-none text-gray-700 placeholder:text-gray-400 h-9 p-0 shadow-none"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
@@ -285,7 +295,7 @@ export default function ServicesPage() {
                                 ? "bg-gray-100 text-gray-900 border-gray-200 shadow-inner"
                                 : "bg-white text-gray-500 border-transparent hover:bg-gray-50 hover:text-gray-900"
                         )}
-                        title="Filtrar Servicios"
+                        title="Filtrar Contratos"
                     >
                         <ListFilter className="h-4 w-4" />
                     </button>
@@ -297,7 +307,7 @@ export default function ServicesPage() {
                 <Table>
                     <TableHeader>
                         <TableRow className="bg-gray-50/50 hover:bg-gray-50/50">
-                            <TableHead >Servicio / Cliente</TableHead>
+                            <TableHead >Contrato / Cliente</TableHead>
                             <TableHead>Tipo</TableHead>
                             <TableHead>Frecuencia</TableHead>
                             <TableHead>Monto</TableHead>
@@ -311,14 +321,14 @@ export default function ServicesPage() {
                                 <TableCell colSpan={6} className="h-32 text-center">
                                     <div className="flex items-center justify-center gap-2 text-muted-foreground">
                                         <Loader2 className="h-5 w-5 animate-spin" />
-                                        Cargando servicios...
+                                        Cargando contratos...
                                     </div>
                                 </TableCell>
                             </TableRow>
                         ) : filteredServices.length === 0 ? (
                             <TableRow>
                                 <TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
-                                    No se encontraron servicios con estos filtros.
+                                    No se encontraron contratos con estos filtros.
                                 </TableCell>
                             </TableRow>
                         ) : (
@@ -422,7 +432,7 @@ export default function ServicesPage() {
                                                         className="text-amber-600 focus:text-amber-600 focus:bg-amber-50"
                                                     >
                                                         <PauseCircle className="mr-2 h-4 w-4" />
-                                                        Pausar Servicio
+                                                        Pausar Contrato
                                                     </DropdownMenuItem>
                                                 ) : service.status === 'paused' ? (
                                                     <DropdownMenuItem
@@ -433,7 +443,7 @@ export default function ServicesPage() {
                                                         className="text-emerald-600 focus:text-emerald-600 focus:bg-emerald-50"
                                                     >
                                                         <PlayCircle className="mr-2 h-4 w-4" />
-                                                        Reanudar Servicio
+                                                        Reanudar Contrato
                                                     </DropdownMenuItem>
                                                 ) : null}
                                             </DropdownMenuContent>

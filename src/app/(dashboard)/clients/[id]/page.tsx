@@ -691,7 +691,7 @@ export default function ClientDetailPage() {
 
                             <div className="flex-1 xl:flex-none px-5 py-3 rounded-xl border border-indigo-100 bg-indigo-50/30 flex flex-col min-w-[120px]">
                                 <div className="flex items-center justify-between mb-1">
-                                    <span className="text-[10px] uppercase font-bold tracking-wider text-indigo-500">Servicios</span>
+                                    <span className="text-[10px] uppercase font-bold tracking-wider text-indigo-500">Contratos</span>
                                     <CreditCard className="h-4 w-4 text-indigo-500" />
                                 </div>
                                 <span className="text-2xl font-bold leading-none text-indigo-600">{activeServices}</span>

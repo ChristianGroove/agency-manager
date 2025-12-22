@@ -15,6 +15,7 @@ import { InvoiceFormModal } from "@/components/modules/invoices/invoice-form-mod
 import { BriefingFormModal } from "@/components/modules/briefings/briefing-form-modal"
 import CountUp from "react-countup"
 import { SplitText } from "@/components/ui/split-text"
+import { MagicCard } from "@/components/ui/magic-card"
 
 const Lottie = dynamic(() => import("lottie-react"), { ssr: false })
 
@@ -172,106 +173,114 @@ export default function DashboardPage() {
             {/* Stats Grid */}
             <div className="grid gap-8 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
                 {/* Total Clients */}
-                <Card className="border-gray-100 shadow-sm hover:shadow-md transition-shadow rounded-[30px]">
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-sm font-medium text-gray-500">
-                            Total Clientes
-                        </CardTitle>
-                        <div className="p-2 bg-gray-50 rounded-lg">
-                            <Users className="h-4 w-4 text-gray-500" />
-                        </div>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-gray-900">{stats.totalClients}</div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                            {stats.clientsWithDebt > 0 ? (
-                                <span className="text-brand-pink font-medium flex items-center gap-1">
-                                    <AlertCircle className="h-3 w-3" />
-                                    {stats.clientsWithDebt} con saldo pendiente
-                                </span>
-                            ) : (
-                                <span className="text-green-600 flex items-center gap-1">
-                                    <TrendingUp className="h-3 w-3" />
-                                    Todos al día
-                                </span>
-                            )}
-                        </p>
-                    </CardContent>
-                </Card>
+                <MagicCard gradientColor="#00E0FF">
+                    <Card className="bg-transparent border-gray-100 shadow-sm hover:shadow-md transition-shadow rounded-[30px]">
+                        <CardHeader className="flex flex-row items-center justify-between pb-2">
+                            <CardTitle className="text-sm font-medium text-gray-500">
+                                Total Clientes
+                            </CardTitle>
+                            <div className="p-2 bg-gray-50 rounded-lg">
+                                <Users className="h-4 w-4 text-gray-500" />
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold text-gray-900">{stats.totalClients}</div>
+                            <p className="text-xs text-muted-foreground mt-1">
+                                {stats.clientsWithDebt > 0 ? (
+                                    <span className="text-brand-pink font-medium flex items-center gap-1">
+                                        <AlertCircle className="h-3 w-3" />
+                                        {stats.clientsWithDebt} con saldo pendiente
+                                    </span>
+                                ) : (
+                                    <span className="text-green-600 flex items-center gap-1">
+                                        <TrendingUp className="h-3 w-3" />
+                                        Todos al día
+                                    </span>
+                                )}
+                            </p>
+                        </CardContent>
+                    </Card>
+                </MagicCard>
 
                 {/* Total Revenue */}
-                <Card className="border-gray-100 shadow-sm hover:shadow-md transition-shadow rounded-[30px]">
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-sm font-medium text-gray-500">
-                            Ingresos Totales
-                        </CardTitle>
-                        <div className="p-2 bg-gray-50 rounded-lg">
-                            <DollarSign className="h-4 w-4 text-gray-500" />
-                        </div>
-                    </CardHeader>
-                    <CardContent className="px-6 pb-5">
-                        <div className="text-2xl font-bold text-gray-900">
-                            $<CountUp
-                                end={stats.totalRevenue}
-                                duration={1.8}
-                                separator=","
-                                preserveValue={true}
-                            />
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                            {stats.paidInvoices} facturas pagadas
-                        </p>
-                    </CardContent>
-                </Card>
+                <MagicCard gradientColor="#00E0FF">
+                    <Card className="bg-transparent border-gray-100 shadow-sm hover:shadow-md transition-shadow rounded-[30px]">
+                        <CardHeader className="flex flex-row items-center justify-between pb-2">
+                            <CardTitle className="text-sm font-medium text-gray-500">
+                                Ingresos Totales
+                            </CardTitle>
+                            <div className="p-2 bg-gray-50 rounded-lg">
+                                <DollarSign className="h-4 w-4 text-gray-500" />
+                            </div>
+                        </CardHeader>
+                        <CardContent className="px-6 pb-5">
+                            <div className="text-2xl font-bold text-gray-900">
+                                $<CountUp
+                                    end={stats.totalRevenue}
+                                    duration={1.8}
+                                    separator=","
+                                    preserveValue={true}
+                                />
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1">
+                                {stats.paidInvoices} facturas pagadas
+                            </p>
+                        </CardContent>
+                    </Card>
+                </MagicCard>
 
                 {/* Pending Payments */}
-                <Card className="border-gray-100 shadow-sm hover:shadow-md transition-shadow rounded-[30px]">
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-sm font-medium text-gray-500">
-                            Por Cobrar
-                        </CardTitle>
-                        <div className="p-2 bg-gray-50 rounded-lg">
-                            <AlertCircle className="h-4 w-4 text-gray-500" />
-                        </div>
-                    </CardHeader>
-                    <CardContent className="px-6 pb-5">
-                        <div className="text-2xl font-bold text-gray-900">
-                            $<CountUp
-                                end={stats.pendingPayments}
-                                duration={2}
-                                separator=","
-                                preserveValue={true}
-                            />
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                            Pendientes de pago
-                        </p>
-                    </CardContent>
-                </Card>
+                <MagicCard gradientColor="#00E0FF">
+                    <Card className="bg-transparent border-gray-100 shadow-sm hover:shadow-md transition-shadow rounded-[30px]">
+                        <CardHeader className="flex flex-row items-center justify-between pb-2">
+                            <CardTitle className="text-sm font-medium text-gray-500">
+                                Por Cobrar
+                            </CardTitle>
+                            <div className="p-2 bg-gray-50 rounded-lg">
+                                <AlertCircle className="h-4 w-4 text-gray-500" />
+                            </div>
+                        </CardHeader>
+                        <CardContent className="px-6 pb-5">
+                            <div className="text-2xl font-bold text-gray-900">
+                                $<CountUp
+                                    end={stats.pendingPayments}
+                                    duration={2}
+                                    separator=","
+                                    preserveValue={true}
+                                />
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1">
+                                Pendientes de pago
+                            </p>
+                        </CardContent>
+                    </Card>
+                </MagicCard>
 
                 {/* Active Subscriptions */}
-                <Card className="border-gray-100 shadow-sm hover:shadow-md transition-shadow rounded-[30px]">
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-sm font-medium text-gray-500">
-                            Suscripciones Activas
-                        </CardTitle>
-                        <div className="p-2 bg-gray-50 rounded-lg">
-                            <CreditCard className="h-4 w-4 text-gray-500" />
-                        </div>
-                    </CardHeader>
-                    <CardContent className="px-6 pb-5">
-                        <div className="text-2xl font-bold text-gray-900">
-                            <CountUp
-                                end={stats.activeSubscriptions}
-                                duration={1.5}
-                                preserveValue={true}
-                            />
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                            Servicios recurrentes
-                        </p>
-                    </CardContent>
-                </Card>
+                <MagicCard gradientColor="#00E0FF">
+                    <Card className="bg-transparent border-gray-100 shadow-sm hover:shadow-md transition-shadow rounded-[30px]">
+                        <CardHeader className="flex flex-row items-center justify-between pb-2">
+                            <CardTitle className="text-sm font-medium text-gray-500">
+                                Suscripciones Activas
+                            </CardTitle>
+                            <div className="p-2 bg-gray-50 rounded-lg">
+                                <CreditCard className="h-4 w-4 text-gray-500" />
+                            </div>
+                        </CardHeader>
+                        <CardContent className="px-6 pb-5">
+                            <div className="text-2xl font-bold text-gray-900">
+                                <CountUp
+                                    end={stats.activeSubscriptions}
+                                    duration={1.5}
+                                    preserveValue={true}
+                                />
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1">
+                                Servicios recurrentes
+                            </p>
+                        </CardContent>
+                    </Card>
+                </MagicCard>
             </div>
 
             {/* Monthly Recurring Revenue & 3D Card Section */}

@@ -1,5 +1,12 @@
 "use client"
 
+/**
+ * NOMENCLATURA: Este módulo muestra "Catálogo" en la UI.
+ * Backend usa tabla 'service_catalog' (NO cambiar nombres técnicos).
+ * "Catálogo" = Plantillas/oferta de servicios que la agencia ofrece.
+ * Ver: /NOMENCLATURE.md para más info.
+ */
+
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Plus, RefreshCw } from "lucide-react"
@@ -77,10 +84,10 @@ export default function PortfolioPage() {
         <div className="space-y-8 animate-in fade-in duration-500">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h2 className="text-3xl font-bold track ing-tight text-gray-900">
-                        <SplitText>Portafolio de Servicios</SplitText>
-                    </h2>
-                    <p className="text-muted-foreground mt-1">Gestiona tu catálogo y plantillas de briefing centralizadas.</p>
+                    <h1 className="text-3xl font-bold tracking-tight text-gray-900">
+                        <SplitText>Catálogo</SplitText>
+                    </h1>
+                    <p className="text-muted-foreground mt-1">Servicios y plantillas de briefing que ofrece tu agencia.</p>
                 </div>
                 <div className="flex gap-2">
                     <Button onClick={handleSync} variant="outline" className="border-brand-pink/20 text-brand-pink hover:bg-brand-pink/5">
