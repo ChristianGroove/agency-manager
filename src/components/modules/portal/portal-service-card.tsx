@@ -86,21 +86,27 @@ export function PortalServiceCard({ service, pendingInvoicesCount, overdueInvoic
                 </div>
             </CardContent>
 
-            {/* Quick Actions Footer */}
-            {pendingInvoicesCount > 0 && onPay && (
-                <CardFooter className="px-5 py-3 border-t bg-gray-50/50">
-                    <Button
-                        size="sm"
-                        className="w-full bg-pink-500 hover:bg-pink-600 text-white"
-                        onClick={(e) => {
-                            e.stopPropagation()
-                            onPay(service.id)
-                        }}
-                    >
-                        💰 Pagar {pendingInvoicesCount} factura{pendingInvoicesCount > 1 ? 's' : ''}
-                    </Button>
-                </CardFooter>
-            )}
+            {/* Status Footer */}
+            <CardFooter className={cn(
+                "px-5 py-3 border-t flex justify-center items-center",
+                pendingInvoicesCount > 0 ? "bg-orange-50/50" : "bg-gray-50/50"
+            )}>
+                {pendingInvoicesCount > 0 ? (
+                    <div className="flex items-center gap-2 text-orange-700">
+                        <span className="relative flex h-2.5 w-2.5">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-orange-500"></span>
+                        </span>
+                        <span className="text-xs font-bold uppercase tracking-wider">Pendiente de Pago</span>
+                    </div>
+                ) : (
+                    <div className="flex items-center gap-2 text-green-700">
+                        <Clock className="h-3.5 w-3.5" />
+                        <span className="text-xs font-bold uppercase tracking-wider">Al día</span>
+                    </div>
+                )}
+
+            </CardFooter>
         </Card>
     )
 }
