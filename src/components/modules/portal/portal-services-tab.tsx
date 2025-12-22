@@ -1,8 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Service, Invoice } from "@/types"
-import { Briefing } from "@/types/briefings"
+import { Service, Invoice, Briefing } from "@/types"
 import { PortalServiceCard } from "./portal-service-card"
 import { PortalServiceDetail } from "./portal-service-detail"
 import { PortalBriefingView } from "./portal-briefing-view"

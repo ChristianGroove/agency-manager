@@ -1,7 +1,6 @@
 "use client"
 
-import { Client, Invoice, Quote } from "@/types"
-import { Briefing } from "@/types/briefings"
+import { Client, Invoice, Quote, Briefing } from "@/types"
 import { Button } from "@/components/ui/button"
 import { CheckCircle2, FileText, MessageSquare } from "lucide-react"
 import { LottieAnimation } from "@/components/ui/lottie-animation"
