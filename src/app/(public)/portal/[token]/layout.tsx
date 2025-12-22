@@ -15,7 +15,7 @@ export async function generateMetadata(
 
     const title = settings.portal_og_title || "Pixy"
     const description = settings.portal_og_description || "Portal de clientes"
-    const image = settings.portal_og_image_url || settings.portal_logo_url || settings.main_logo_url
+    const image = settings.portal_og_image_url || settings.portal_logo_url || settings.isotipo_url || settings.main_logo_url || "https://mi.pixy.com.co/branding/iso.svg"
 
     return {
         title: title,
