@@ -233,6 +233,8 @@ export default function PortalPage() {
                 onOpenChange={(open) => !open && setViewQuote(null)}
                 onAccept={handleAcceptQuote}
                 onReject={handleRejectQuote}
+                settings={settings}
+                token={params.token as string}
             />
         </div>
     )
