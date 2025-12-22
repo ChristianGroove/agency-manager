@@ -117,6 +117,6 @@ export default async function BriefingDetailPage({ params }: PageProps) {
                     </CardContent>
                 </Card>
             </div>
-        </div>
+        </div >
     )
 }

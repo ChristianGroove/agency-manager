@@ -51,7 +51,7 @@ export function BriefingWizard({ briefing, template, initialResponses }: Briefin
         } finally {
             setSaving(false)
         }
-    }, 1000)
+    }, 500)
 
     const handleFieldChange = (fieldId: string, value: any) => {
         setResponses(prev => ({ ...prev, [fieldId]: value }))
@@ -73,8 +73,34 @@ export function BriefingWizard({ briefing, template, initialResponses }: Briefin
         return true
     }
 
-    const handleNext = () => {
+    // Force save all fields in current step before moving
+    const flushCurrentStepSaves = async () => {
+        if (!currentStep) return
+
+        // We use promise.all to save all fields in parallel to be sure
+        // In a real optimized app we would track dirty fields, but this is safer
+        const promises = currentStep.fields.map(field => {
+            const value = responses[field.id]
+            if (value !== undefined) {
+                return saveBriefingResponse(briefing.id, field.id, value)
+            }
+            return Promise.resolve()
+        })
+
+        try {
+            setSaving(true)
+            await Promise.all(promises)
+        } catch (e) {
+            console.error("Error flushing saves", e)
+        } finally {
+            setSaving(false)
+        }
+    }
+
+    const handleNext = async () => {
         if (validateStep()) {
+            await flushCurrentStepSaves() // Ensure saved before moving
+
             if (currentStepIndex < totalSteps - 1) {
                 setCurrentStepIndex(prev => prev + 1)
                 window.scrollTo(0, 0)
