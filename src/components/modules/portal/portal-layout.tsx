@@ -15,6 +15,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Badge } from "@/components/ui/badge"
 
 interface PortalLayoutProps {
+    token: string
     client: Client
     invoices: Invoice[]
     quotes: Quote[]
@@ -30,7 +31,7 @@ interface PortalLayoutProps {
 
 type TabKey = 'summary' | 'services' | 'billing' | 'explore'
 
-export function PortalLayout({ client, invoices, quotes, briefings, events, services, settings, onPay, onViewInvoice, onViewQuote }: PortalLayoutProps) {
+export function PortalLayout({ token, client, invoices, quotes, briefings, events, services, settings, onPay, onViewInvoice, onViewQuote }: PortalLayoutProps) {
     const [activeTab, setActiveTab] = useState<TabKey>('summary')
     const [viewQuote, setViewQuote] = useState<Quote | null>(null)
     const [targetBriefingId, setTargetBriefingId] = useState<string | null>(null)
@@ -121,6 +122,7 @@ export function PortalLayout({ client, invoices, quotes, briefings, events, serv
                     )}
                     {activeTab === 'services' && (
                         <PortalServicesTab
+                            token={token}
                             services={services} invoices={invoices} briefings={briefings}
                             onPay={onPay} onViewInvoice={onViewInvoice}
                             initialBriefingId={targetBriefingId}
