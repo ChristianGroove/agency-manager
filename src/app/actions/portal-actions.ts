@@ -4,7 +4,10 @@ import { supabaseAdmin } from "@/lib/supabase-admin"
 import { Client, Invoice, Quote, Briefing, ClientEvent, Service } from "@/types"
 import { Briefing as PortalBriefing } from "@/types/briefings"
 
-export async function getPortalData(token: string) {
+import { unstable_cache } from 'next/cache'
+
+// Internal fetch function (uncached)
+async function fetchPortalData(token: string) {
     try {
         // 1. Fetch Client by Token
         const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)
@@ -70,6 +73,16 @@ export async function getPortalData(token: string) {
         throw error
     }
 }
+
+// Cached version exposed to the app
+export const getPortalData = unstable_cache(
+    async (token: string) => fetchPortalData(token),
+    ['portal-data'],
+    {
+        revalidate: 60, // Cache for 60 seconds
+        tags: ['portal-data'] // Tag for manual invalidation if needed
+    }
+)
 
 export async function getPortalMetadata(token: string) {
     // Lightweight fetch for metadata only

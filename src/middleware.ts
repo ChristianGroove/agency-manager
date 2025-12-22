@@ -19,7 +19,7 @@ export function middleware(request: NextRequest) {
         // Rate Limiting Logic
         const now = Date.now()
         const windowMs = 60 * 1000 // 1 minute
-        const limit = 20 // 20 requests per minute
+        const limit = 60 // 60 requests per minute (1 per second)
 
         const record = rateLimit.get(ip) || { count: 0, lastReset: now }
 
