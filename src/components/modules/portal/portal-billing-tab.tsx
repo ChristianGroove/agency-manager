@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Invoice } from "@/types"
 import { PortalInvoiceList } from "./portal-invoice-list"
 import { Button } from "@/components/ui/button"
@@ -12,22 +12,13 @@ interface PortalBillingTabProps {
     settings: any
     onPay: (invoiceIds: string[]) => void
     onViewInvoice: (invoice: Invoice) => void
-    externalSelectedInvoices?: string[] // External control
-    onSelectionChange?: (ids: string[]) => void // Notify parent
 }
 
-export function PortalBillingTab({ invoices, settings, onPay, onViewInvoice, externalSelectedInvoices }: PortalBillingTabProps) {
+export function PortalBillingTab({ invoices, settings, onPay, onViewInvoice }: PortalBillingTabProps) {
     const [selectedInvoices, setSelectedInvoices] = useState<string[]>([])
 
     // Calculate Stats
     const pendingInvoices = invoices.filter(i => i.status === 'pending' || i.status === 'overdue')
-
-    // Sync with external control from alert CTA
-    useEffect(() => {
-        if (externalSelectedInvoices !== undefined) {
-            setSelectedInvoices(externalSelectedInvoices)
-        }
-    }, [externalSelectedInvoices])
 
     const toggleInvoice = (invoiceId: string) => {
         if (settings.enable_multi_invoice_payment === false) {

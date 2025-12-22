@@ -33,6 +33,7 @@ export function PortalInvoiceList({ invoices, settings = {}, selectedInvoices = 
     return (
         <Card className="border-none shadow-none bg-transparent">
             <CardHeader className="p-0 pb-4">
+                <p className="text-sm text-gray-600 text-center">Selecciona la(s) factura(s) que deseas pagar</p>
             </CardHeader>
             <CardContent className="px-0">
                 <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
