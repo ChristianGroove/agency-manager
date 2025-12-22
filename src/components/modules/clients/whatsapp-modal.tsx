@@ -7,7 +7,7 @@ import { MessageCircle, Globe, FileText, FileBarChart2, ArrowRight, Check, Copy 
 import { Client, Invoice, Quote } from "@/types"
 import { getWhatsAppLink } from "@/lib/communication-utils"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { cn } from "@/lib/utils"
+import { cn, getPortalUrl } from "@/lib/utils"
 
 interface WhatsAppActionsModalProps {
     isOpen: boolean
@@ -39,13 +39,13 @@ export function WhatsAppActionsModal({ isOpen, onOpenChange, client, settings }:
                 message = `Hola ${client.name}, ¿cómo estás? Te escribo de ${settings?.agency_name || "la agencia"}.`
                 break
             case 'portal':
-                const link = `${window.location.origin}/portal/${client.portal_short_token || client.portal_token}`
+                const link = getPortalUrl(`/portal/${client.portal_short_token || client.portal_token}`)
                 message = `Hola ${client.name}, aquí te comparto el enlace a tu portal de cliente para que revises tus servicios y facturas: ${link}`
                 break
             case 'invoice':
                 const invoice = client.invoices?.find(i => i.id === selectedInvoiceId)
                 if (invoice) {
-                    const link = `${window.location.origin}/invoices/${invoice.id}`
+                    const link = getPortalUrl(`/invoices/${invoice.id}`)
                     message = `Hola ${client.name}, te envío el enlace de la factura #${invoice.number} por valor de $${invoice.total.toLocaleString()}. Puedes verla y descargarla aquí: ${link}`
                 }
                 break
@@ -122,7 +122,7 @@ export function WhatsAppActionsModal({ isOpen, onOpenChange, client, settings }:
                             <div className="text-center space-y-2">
                                 <p className="text-sm text-gray-600">Se enviará el enlace directo al portal del cliente.</p>
                                 <div className="text-xs bg-white p-2 rounded border border-gray-200 text-gray-400 truncate font-mono">
-                                    {window.location.origin}/portal/{client.portal_short_token || '...'}
+                                    {getPortalUrl(`/portal/${client.portal_short_token || '...'}`)}
                                 </div>
                             </div>
                         )}

@@ -15,3 +15,20 @@ export function slugify(text: string) {
     .replace(/^-+/, '')      // Trim - from start of text
     .replace(/-+$/, '')      // Trim - from end of text
 }
+
+export function getPortalUrl(path: string = ''): string {
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+
+  if (typeof window === 'undefined') {
+    const baseUrl = process.env.NEXT_PUBLIC_PORTAL_URL || 'https://mi.pixy.com.co';
+    return `${baseUrl}${cleanPath}`;
+  }
+
+  const isLocalhost = window.location.hostname.includes('localhost') || window.location.hostname.includes('127.0.0.1');
+
+  if (isLocalhost) {
+    return `${window.location.origin}${cleanPath}`;
+  }
+
+  return `https://mi.pixy.com.co${cleanPath}`;
+}
