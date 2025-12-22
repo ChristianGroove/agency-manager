@@ -34,6 +34,8 @@ export function PortalLayout({ client, invoices, quotes, briefings, events, serv
     const [activeTab, setActiveTab] = useState<TabKey>('summary')
     const [viewQuote, setViewQuote] = useState<Quote | null>(null)
     const [targetBriefingId, setTargetBriefingId] = useState<string | null>(null)
+    const [billingAlertDismissed, setBillingAlertDismissed] = useState(false)
+    const [selectedInvoicesFromAlert, setSelectedInvoicesFromAlert] = useState<string[] | undefined>(undefined)
 
     // Derived State
     const pendingInvoices = invoices.filter(i => i.status === 'pending' || i.status === 'overdue')
@@ -47,6 +49,14 @@ export function PortalLayout({ client, invoices, quotes, briefings, events, serv
     const handleViewBriefing = (id: string) => {
         setTargetBriefingId(id)
         setActiveTab('services')
+    }
+
+
+    const handleSelectAllFromAlert = () => {
+        // Mark all pending invoices (check all checkboxes)
+        const pendingIds = pendingInvoices.map(i => i.id)
+        setSelectedInvoicesFromAlert(pendingIds)
+        setBillingAlertDismissed(true)
     }
 
     // Inject Branding Logic via CSS Variables if needed (already done in page.tsx wrapper, but good to keep in mind)
@@ -128,7 +138,11 @@ export function PortalLayout({ client, invoices, quotes, briefings, events, serv
                     )}
                     {activeTab === 'billing' && (
                         <PortalBillingTab
-                            invoices={invoices} settings={settings} onPay={onPay} onViewInvoice={onViewInvoice}
+                            invoices={invoices}
+                            settings={settings}
+                            onPay={onPay}
+                            onViewInvoice={onViewInvoice}
+                            externalSelectedInvoices={selectedInvoicesFromAlert}
                         />
                     )}
                     {activeTab === 'explore' && <PortalCatalogTab settings={settings} client={client} />}
@@ -136,7 +150,7 @@ export function PortalLayout({ client, invoices, quotes, briefings, events, serv
 
                 {/* Billing Summary Block (Persistent Desktop) */}
                 {/* Visible on all tabs except 'explore' */}
-                {activeTab !== 'explore' && pendingInvoices.length > 0 && (
+                {activeTab !== 'explore' && pendingInvoices.length > 0 && !billingAlertDismissed && (
                     <div className="hidden lg:block fixed bottom-8 right-8 z-20">
                         <div className="bg-white rounded-xl shadow-2xl p-6 w-80 border border-gray-100 ring-1 ring-black/5 animate-in slide-in-from-right">
                             <div className="flex justify-between items-start mb-4">
@@ -152,9 +166,22 @@ export function PortalLayout({ client, invoices, quotes, briefings, events, serv
                                 {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(totalPending)}
                             </p>
                             <p className="text-sm text-gray-500 mb-4">Tienes {pendingInvoices.length} facturas por pagar.</p>
-                            <Button className="w-full text-white bg-black hover:bg-gray-800" onClick={() => setActiveTab('billing')}>
-                                Ir a Facturación
-                            </Button>
+
+                            {activeTab === 'billing' ? (
+                                <Button
+                                    className="w-full text-white bg-black hover:bg-gray-800"
+                                    onClick={handleSelectAllFromAlert}
+                                >
+                                    {pendingInvoices.length > 1 ? 'Pagar Todo' : 'Pagar Ahora'}
+                                </Button>
+                            ) : (
+                                <Button
+                                    className="w-full text-white bg-black hover:bg-gray-800"
+                                    onClick={() => setActiveTab('billing')}
+                                >
+                                    Ir a Facturación
+                                </Button>
+                            )}
                         </div>
                     </div>
                 )}
