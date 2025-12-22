@@ -55,16 +55,18 @@ export function PortalLayout({ client, invoices, quotes, briefings, events, serv
         <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row">
 
             {/* ----------------- Mobile Top Bar (Project Logo + Notifs) ----------------- */}
-            <div className="md:hidden flex items-center justify-between p-4 bg-white border-b sticky top-0 z-30">
+            <div className="md:hidden flex items-center justify-center p-4 bg-white border-b sticky top-0 z-30 relative">
                 <img src={settings.portal_logo_url || "/branding/logo dark.svg"} alt="Logo" className="h-8 object-contain" />
-                <NotificationBell
-                    count={notificationCount}
-                    pendingInvoices={pendingInvoices}
-                    openQuotes={openQuotes}
-                    pendingBriefings={pendingBriefings}
-                    onViewQuote={onViewQuote}
-                    onTabChange={setActiveTab}
-                />
+                <div className="absolute right-4">
+                    <NotificationBell
+                        count={notificationCount}
+                        pendingInvoices={pendingInvoices}
+                        openQuotes={openQuotes}
+                        pendingBriefings={pendingBriefings}
+                        onViewQuote={onViewQuote}
+                        onTabChange={setActiveTab}
+                    />
+                </div>
             </div>
 
             {/* ----------------- Desktop Sidebar (Navigation) ----------------- */}
@@ -161,7 +163,7 @@ export function PortalLayout({ client, invoices, quotes, briefings, events, serv
             {/* ----------------- Mobile Bottom Navigation ----------------- */}
             <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t flex justify-around p-2 pb-4 z-50">
                 <MobileNavBtn active={activeTab === 'summary'} onClick={() => setActiveTab('summary')} icon={LayoutDashboard} label="Inicio" />
-                <MobileNavBtn active={activeTab === 'services'} onClick={() => setActiveTab('services')} icon={Layers} label="Servicios" />
+                <MobileNavBtn active={activeTab === 'services'} onClick={() => setActiveTab('services')} icon={Layers} label="Mis Servicios" />
                 <MobileNavBtn active={activeTab === 'billing'} onClick={() => setActiveTab('billing')} icon={CreditCard} label="Pagos" />
                 <MobileNavBtn active={activeTab === 'explore'} onClick={() => setActiveTab('explore')} icon={Search} label="Explorar" />
             </nav>

@@ -6,6 +6,7 @@ import { PortalServiceCard } from "./portal-service-card"
 import { PortalServiceDetail } from "./portal-service-detail"
 import { PortalBriefingView } from "./portal-briefing-view"
 import { Activity } from "lucide-react"
+import { SplitText } from "@/components/ui/split-text"
 
 interface PortalServicesTabProps {
     services: Service[]
@@ -77,11 +78,12 @@ export function PortalServicesTab({ services, invoices, briefings, onPay, onView
     // 3. Service List View
     return (
         <div className="max-w-5xl mx-auto w-full mb-12 space-y-6 animate-in fade-in duration-500">
-            <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold flex items-center gap-2">
-                    <Activity className="h-5 w-5 text-gray-400" />
-                    Tus Servicios Activos
+            {/* Header - Centered */}
+            <div className="text-center mb-8">
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                    <SplitText>Mis Servicios</SplitText>
                 </h2>
+                <p className="text-gray-500">Servicios activos y proyectos en curso</p>
             </div>
 
             {services.length === 0 ? (

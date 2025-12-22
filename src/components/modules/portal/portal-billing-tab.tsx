@@ -5,6 +5,7 @@ import { Invoice } from "@/types"
 import { PortalInvoiceList } from "./portal-invoice-list"
 import { Button } from "@/components/ui/button"
 import { CreditCard } from "lucide-react"
+import { SplitText } from "@/components/ui/split-text"
 
 interface PortalBillingTabProps {
     invoices: Invoice[]
@@ -51,12 +52,12 @@ export function PortalBillingTab({ invoices, settings, onPay, onViewInvoice }: P
 
     return (
         <div className="max-w-5xl mx-auto w-full pb-32 animate-in fade-in duration-500">
-            <div className="mb-6 flex items-center justify-between">
-                <div>
-                    <h2 className="text-2xl font-bold text-gray-900">Facturación</h2>
-                    <p className="text-gray-500">Historial y pagos pendientes</p>
-                </div>
-                {/* Desktop Pay Button (if functionality desired here, but bottom bar covers it) */}
+            {/* Header - Centered */}
+            <div className="text-center mb-8">
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                    <SplitText>Pagos</SplitText>
+                </h2>
+                <p className="text-gray-500">Gestiona tus facturas y pagos pendientes</p>
             </div>
 
             <PortalInvoiceList

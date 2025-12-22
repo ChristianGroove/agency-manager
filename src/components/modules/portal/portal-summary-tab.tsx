@@ -7,6 +7,7 @@ import { LottieAnimation } from "@/components/ui/lottie-animation"
 import { useEffect, useState } from "react"
 import { PortalTimeline } from "./portal-timeline"
 import { ClientEvent } from "@/types"
+import { SplitText } from "@/components/ui/split-text"
 
 // Animations (Moved locally to avoid duplication if we want, or keep separate)
 function EmptyStateAnimation() {
@@ -53,7 +54,9 @@ export function PortalSummaryTab({ client, invoices, quotes, briefings, events, 
 
             {/* Header Greeting */}
             <div className="text-center space-y-2 mt-8">
-                <h1 className="text-3xl font-bold text-gray-900">Hola, {client.name.split(' ')[0]} 👋</h1>
+                <h1 className="text-3xl font-bold text-gray-900">
+                    <SplitText>{`Hola, ${client.name.split(' ')[0]} 👋`}</SplitText>
+                </h1>
                 <p className="text-gray-500">Aquí tienes un resumen de tu actividad.</p>
             </div>
 
@@ -98,7 +101,7 @@ export function PortalSummaryTab({ client, invoices, quotes, briefings, events, 
 
             {/* Timeline Preview */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                <h3 className="text-lg font-bold mb-4">Actividad Reciente</h3>
+                <h3 className="text-lg font-bold mb-4 text-center">Actividad Reciente</h3>
                 {events && events.length > 0 ? (
                     <PortalTimeline events={events.slice(0, 5)} />
                 ) : (
