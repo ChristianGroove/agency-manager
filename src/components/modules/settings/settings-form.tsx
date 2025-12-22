@@ -15,6 +15,7 @@ import { updateSettings } from "@/lib/actions/settings"
 import { Loader2, Save, CreditCard, FileText, Building2, Globe, Layout, Palette, Eye, MessageSquare, LayoutTemplate } from "lucide-react"
 import { COMMUNICATION_VARIABLES, DEFAULT_TEMPLATES } from "@/lib/communication-utils"
 import { useEffect } from "react"
+import { SplitText } from "@/components/ui/split-text"
 
 export function SettingsForm({ initialSettings }: { initialSettings: any }) {
     const router = useRouter()
@@ -96,7 +97,9 @@ export function SettingsForm({ initialSettings }: { initialSettings: any }) {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h2 className="text-3xl font-bold tracking-tight text-gray-900">Configuración</h2>
+                    <h2 className="text-3xl font-bold tracking-tight text-gray-900">
+                        <SplitText>Configuración</SplitText>
+                    </h2>
                     <p className="text-muted-foreground">Administra los datos de tu agencia y preferencias globales.</p>
                 </div>
                 <Button onClick={handleSubmit} disabled={isLoading} className="bg-brand-pink hover:bg-brand-pink/90">

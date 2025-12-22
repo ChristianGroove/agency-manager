@@ -25,6 +25,7 @@ import { Badge } from "@/components/ui/badge"
 import { supabase } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 import { CreateInvoiceModal } from "@/components/modules/invoices/create-invoice-modal"
+import { SplitText } from "@/components/ui/split-text"
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -118,7 +119,9 @@ export default function InvoicesPage() {
         <div className="space-y-8">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h2 className="text-3xl font-bold tracking-tight text-gray-900">Cuentas de Cobro</h2>
+                    <h2 className="text-3xl font-bold tracking-tight text-gray-900">
+                        <SplitText>Cuentas de Cobro</SplitText>
+                    </h2>
                     <p className="text-muted-foreground mt-1">Gestiona todas las cuentas de cobro emitidas.</p>
                 </div>
                 <div className="w-full md:w-auto">
@@ -284,6 +287,6 @@ export default function InvoicesPage() {
                     </TableBody>
                 </Table>
             </div>
-        </div>
+        </div >
     )
 }

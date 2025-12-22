@@ -9,6 +9,7 @@ import { getPortfolioItems, deletePortfolioItem, syncAllBriefingTemplates } from
 import { ServiceCatalogItem } from "@/types"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
+import { SplitText } from "@/components/ui/split-text"
 
 export default function PortfolioPage() {
     const [items, setItems] = useState<ServiceCatalogItem[]>([])
@@ -74,9 +75,11 @@ export default function PortfolioPage() {
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-gray-900">Portafolio de Servicios</h1>
+                    <h2 className="text-3xl font-bold track ing-tight text-gray-900">
+                        <SplitText>Portafolio de Servicios</SplitText>
+                    </h2>
                     <p className="text-muted-foreground mt-1">Gestiona tu catálogo y plantillas de briefing centralizadas.</p>
                 </div>
                 <div className="flex gap-2">

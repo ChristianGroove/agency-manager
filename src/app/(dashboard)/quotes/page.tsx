@@ -23,6 +23,7 @@ import {
 } from "@/components/animate-ui/components/radix/dropdown-menu"
 import { supabase } from "@/lib/supabase"
 import { Quote } from "@/types"
+import { SplitText } from "@/components/ui/split-text"
 
 export default function QuotesPage() {
     const router = useRouter()
@@ -93,7 +94,9 @@ export default function QuotesPage() {
         <div className="space-y-8">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h2 className="text-3xl font-bold tracking-tight text-gray-900">Cotizaciones</h2>
+                    <h2 className="text-3xl font-bold tracking-tight text-gray-900">
+                        <SplitText>Cotizaciones</SplitText>
+                    </h2>
                     <p className="text-muted-foreground mt-1">Gestiona las cotizaciones y propuestas comerciales de tus clientes.</p>
                 </div>
                 <div className="w-full md:w-auto">

@@ -25,6 +25,7 @@ import { getSettings } from "@/lib/actions/settings"
 import { getWhatsAppLink } from "@/lib/communication-utils"
 import { WhatsAppActionsModal } from "@/components/modules/clients/whatsapp-modal"
 import { AddServiceModal } from "@/components/modules/services/add-service-modal"
+import { SplitText } from "@/components/ui/split-text"
 
 // Types
 type Client = {
@@ -359,10 +360,11 @@ export default function ClientsPage() {
 
     return (
         <div className="space-y-8 bg-gray-50/50 min-h-screen">
-            {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h2 className="text-3xl font-bold tracking-tight text-gray-900">Mis Clientes</h2>
+                    <h2 className="text-3xl font-bold tracking-tight text-gray-900">
+                        <SplitText>Mis Clientes</SplitText>
+                    </h2>
                     <p className="text-muted-foreground mt-1">Gestión visual completa de tu cartera y estados de cuenta.</p>
                 </div>
                 <div className="flex items-center gap-3 w-full md:w-auto">

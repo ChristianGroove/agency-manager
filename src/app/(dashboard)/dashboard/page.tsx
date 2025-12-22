@@ -14,6 +14,7 @@ import { QuoteFormModal } from "@/components/modules/quotes/quote-form-modal"
 import { InvoiceFormModal } from "@/components/modules/invoices/invoice-form-modal"
 import { BriefingFormModal } from "@/components/modules/briefings/briefing-form-modal"
 import CountUp from "react-countup"
+import { SplitText } from "@/components/ui/split-text"
 
 const Lottie = dynamic(() => import("lottie-react"), { ssr: false })
 
@@ -162,7 +163,9 @@ export default function DashboardPage() {
         <div className="space-y-8">
             {/* Header */}
             <div>
-                <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+                <h1 className="text-3xl font-bold text-gray-900">
+                    <SplitText>Dashboard</SplitText>
+                </h1>
                 <p className="text-muted-foreground mt-1">Resumen en tiempo real de tu agencia</p>
             </div>
 
@@ -208,7 +211,12 @@ export default function DashboardPage() {
                     </CardHeader>
                     <CardContent className="px-6 pb-5">
                         <div className="text-2xl font-bold text-gray-900">
-                            ${stats.totalRevenue.toLocaleString()}
+                            $<CountUp
+                                end={stats.totalRevenue}
+                                duration={1.8}
+                                separator=","
+                                preserveValue={true}
+                            />
                         </div>
                         <p className="text-xs text-muted-foreground mt-1">
                             {stats.paidInvoices} facturas pagadas
@@ -228,7 +236,12 @@ export default function DashboardPage() {
                     </CardHeader>
                     <CardContent className="px-6 pb-5">
                         <div className="text-2xl font-bold text-gray-900">
-                            ${stats.pendingPayments.toLocaleString()}
+                            $<CountUp
+                                end={stats.pendingPayments}
+                                duration={2}
+                                separator=","
+                                preserveValue={true}
+                            />
                         </div>
                         <p className="text-xs text-muted-foreground mt-1">
                             Pendientes de pago
@@ -248,7 +261,11 @@ export default function DashboardPage() {
                     </CardHeader>
                     <CardContent className="px-6 pb-5">
                         <div className="text-2xl font-bold text-gray-900">
-                            {stats.activeSubscriptions}
+                            <CountUp
+                                end={stats.activeSubscriptions}
+                                duration={1.5}
+                                preserveValue={true}
+                            />
                         </div>
                         <p className="text-xs text-muted-foreground mt-1">
                             Servicios recurrentes
@@ -295,7 +312,8 @@ export default function DashboardPage() {
                             <div className="text-4xl font-bold text-white flex items-baseline gap-2">
                                 $<CountUp
                                     end={stats.monthlyRecurring}
-                                    duration={2.5}
+                                    duration={3}
+                                    delay={0.5}
                                     separator=","
                                     decimals={0}
                                     preserveValue={true}
@@ -313,7 +331,9 @@ export default function DashboardPage() {
                                     transition={{ duration: 0.5, ease: "easeOut" }}
                                     className="text-sm text-gray-400 absolute w-full"
                                 >
-                                    {AGENCY_TIPS[currentTip]}
+                                    <SplitText delay={0.3} duration={0.03}>
+                                        {AGENCY_TIPS[currentTip]}
+                                    </SplitText>
                                 </motion.p>
                             </AnimatePresence>
                         </div>

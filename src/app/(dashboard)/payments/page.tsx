@@ -15,6 +15,7 @@ import {
     TableRow,
 } from "@/components/ui/table"
 import { cn } from "@/lib/utils"
+import { SplitText } from "@/components/ui/split-text"
 
 interface PaymentTransaction {
     id: string
@@ -99,7 +100,9 @@ export default function PaymentsPage() {
         <div className="space-y-8">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h2 className="text-3xl font-bold tracking-tight text-gray-900">Historial de Pagos</h2>
+                    <h2 className="text-3xl font-bold tracking-tight text-gray-900">
+                        <SplitText>Historial de Pagos</SplitText>
+                    </h2>
                     <p className="text-muted-foreground mt-1">Gestiona y visualiza todas las transacciones recibidas.</p>
                 </div>
             </div>
