@@ -295,3 +295,24 @@ export async function getPortalBriefingResponses(token: string, briefingId: stri
     if (error) throw error
     return data
 }
+
+export async function getPortalCatalog(token: string) {
+    // 1. Verify Client
+    const { data: client, error: clientError } = await supabaseAdmin
+        .from('clients')
+        .select('id')
+        .eq('portal_short_token', token)
+        .single()
+
+    if (clientError || !client) throw new Error('Unauthorized')
+
+    // 2. Fetch Catalog (Admin bypasses RLS)
+    const { data, error } = await supabaseAdmin
+        .from('service_catalog')
+        .select('*')
+        .eq('is_visible_in_portal', true)
+        .order('category')
+
+    if (error) throw error
+    return data
+}

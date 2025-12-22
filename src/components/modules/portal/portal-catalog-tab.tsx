@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { supabase } from "@/lib/supabase"
 import { ServiceCatalogItem } from "@/types"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -9,13 +8,9 @@ import { Badge } from "@/components/ui/badge"
 import { Loader2, Search, CheckCircle, ArrowRight, MessageCircle } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
-// Import server action (we need to pass token or client info, assume settings has token or we pass it down)
-// Actually, PortalCatalogTab receives settings. we need a way to identify the client.
-// Usually token is in the URL, but here we are deep in components.
-// We can pass the `client` prop or `token` prop from PortalData.
-import { registerServiceInterest } from "@/app/actions/portal-actions"
+import { registerServiceInterest, getPortalCatalog } from "@/app/actions/portal-actions"
 
-export function PortalCatalogTab({ settings, client }: { settings: any, client: any }) {
+export function PortalCatalogTab({ settings, client, token }: { settings: any, client: any, token: string }) {
     const [items, setItems] = useState<ServiceCatalogItem[]>([])
     const [loading, setLoading] = useState(true)
     const [searchTerm, setSearchTerm] = useState("")
@@ -28,13 +23,7 @@ export function PortalCatalogTab({ settings, client }: { settings: any, client: 
 
     const loadCatalog = async () => {
         try {
-            const { data, error } = await supabase
-                .from('service_catalog')
-                .select('*')
-                .eq('is_visible_in_portal', true)
-                .order('category')
-
-            if (error) throw error
+            const data = await getPortalCatalog(token)
             setItems(data || [])
         } catch (error) {
             console.error("Error loading catalog:", error)

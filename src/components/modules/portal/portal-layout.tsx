@@ -134,7 +134,7 @@ export function PortalLayout({ token, client, invoices, quotes, briefings, event
                             invoices={invoices} settings={settings} onPay={onPay} onViewInvoice={onViewInvoice}
                         />
                     )}
-                    {activeTab === 'explore' && <PortalCatalogTab settings={settings} client={client} />}
+                    {activeTab === 'explore' && <PortalCatalogTab settings={settings} client={client} token={token} />}
                 </div>
 
                 {/* Billing Summary Block (Persistent Desktop) */}
