@@ -12,6 +12,7 @@ export type BriefingFieldType =
     | 'scale'
     | 'boolean'
     | 'color'
+    | 'typography'
 
 export interface BriefingTemplate {
     id: string

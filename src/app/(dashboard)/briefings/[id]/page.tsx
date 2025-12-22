@@ -58,6 +58,26 @@ export default async function BriefingDetailPage({ params }: PageProps) {
                 </div>
             )
         }
+        if (type === 'typography' && Array.isArray(value)) {
+            const stylesMap: Record<string, string> = {
+                sans: "Sans Serif",
+                serif: "Serif",
+                slab: "Slab Serif",
+                modern: "Moderno / Geometric",
+                decorative: "Decorativa / Retro",
+                script: "Manuscrita",
+                display: "Display / Bold"
+            }
+            return (
+                <div className="flex gap-2 flex-wrap">
+                    {value.map((styleId: string) => (
+                        <span key={styleId} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 border border-gray-200">
+                            {stylesMap[styleId] || styleId}
+                        </span>
+                    ))}
+                </div>
+            )
+        }
         if (Array.isArray(value)) return value.join(', ')
         if (typeof value === 'object') return JSON.stringify(value)
         return value.toString()

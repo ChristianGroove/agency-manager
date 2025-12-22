@@ -268,9 +268,14 @@ function FieldRenderer({ field, value, onChange }: { field: BriefingField, value
 
     return (
         <div className="space-y-3">
-            <Label className="text-base font-medium flex items-center gap-1">
+            <Label className="text-base font-medium flex flex-wrap items-center gap-1">
                 {field.label}
                 {field.required && <span className="text-red-500">*</span>}
+                {(field.type === 'typography' || field.type === 'color') && (
+                    <span className="text-xs font-normal text-gray-400 ml-1 italic">
+                        (solo se usará como referencia)
+                    </span>
+                )}
             </Label>
 
             {field.help_text && (
@@ -358,6 +363,120 @@ function FieldRenderer({ field, value, onChange }: { field: BriefingField, value
                     maxColors={5}
                 />
             )}
+
+            {field.type === 'typography' && (
+                <TypographyInput
+                    value={value || []}
+                    onChange={onChange}
+                />
+            )}
+        </div>
+    )
+}
+
+function TypographyInput({ value, onChange }: { value: string[], onChange: (val: string[]) => void }) {
+    // Definición de estilos tipográficos con fuentes seguras o importadas
+    const styles = [
+        {
+            id: "sans",
+            name: "Sans Serif",
+            description: "Moderna, Limpia, Minimalista",
+            sample: "Agencia",
+            fontFamily: "Inter, system-ui, sans-serif"
+        },
+        {
+            id: "serif",
+            name: "Serif",
+            description: "Elegante, Clásica, Confiable",
+            sample: "Agencia",
+            fontFamily: "Georgia, 'Times New Roman', serif"
+        },
+        {
+            id: "slab",
+            name: "Slab Serif",
+            description: "Fuerte, Sólida, Contundente",
+            sample: "Agencia",
+            fontFamily: "'Courier New', Courier, monospace", // Aprox para demo sin cargar fuentes externas pesadas
+            fontWeight: 'bold'
+        },
+        {
+            id: "modern",
+            name: "Moderno / Geometric",
+            description: "Futurista, Tecnológica, Precisa",
+            sample: "Agencia",
+            fontFamily: "'Century Gothic', Futura, sans-serif"
+        },
+        {
+            id: "decorative",
+            name: "Decorativa / Retro",
+            description: "Única, Artística, Con Carácter",
+            sample: "Agencia",
+            fontFamily: "Fantasy, Copperplate, Papyrus"
+        },
+        {
+            id: "script",
+            name: "Manuscrita / Script",
+            description: "Creativa, Personal, Elegante",
+            sample: "Agencia",
+            fontFamily: "'Brush Script MT', cursive"
+        },
+        {
+            id: "display",
+            name: "Display / Bold",
+            description: "Impactante, Llamativa",
+            sample: "AGENCIA",
+            fontFamily: "Impact, Haettenschweiler, sans-serif"
+        }
+    ]
+
+    const toggleStyle = (styleId: string) => {
+        if (value.includes(styleId)) {
+            onChange(value.filter(id => id !== styleId))
+        } else {
+            // Permitir múltiples selecciones (digamos hasta 2 o 3 para no saturar)
+            onChange([...value, styleId])
+        }
+    }
+
+    return (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {styles.map((style) => {
+                const isSelected = value.includes(style.id)
+                return (
+                    <div
+                        key={style.id}
+                        onClick={() => toggleStyle(style.id)}
+                        className={cn(
+                            "cursor-pointer rounded-xl border-2 p-5 transition-all text-center group hover:border-[#F205E2]/50 hover:bg-[#F205E2]/5",
+                            isSelected
+                                ? "border-[#F205E2] bg-[#F205E2]/10 ring-1 ring-[#F205E2]"
+                                : "border-gray-100 bg-white"
+                        )}
+                    >
+                        <div
+                            className="mb-3 text-4xl text-gray-900 transition-transform group-hover:scale-105"
+                            style={{
+                                fontFamily: style.fontFamily,
+                                fontWeight: style.fontWeight || 'normal'
+                            }}
+                        >
+                            {style.sample}
+                        </div>
+                        <h4 className={cn("font-medium text-sm mb-1", isSelected ? "text-[#F205E2]" : "text-gray-900")}>
+                            {style.name}
+                        </h4>
+                        <p className="text-xs text-gray-500">
+                            {style.description}
+                        </p>
+
+                        {isSelected && (
+                            <div className="absolute top-3 right-3 text-[#F205E2]">
+                                <CheckCircle2 className="w-5 h-5 fill-current text-white/20" />
+                            </div>
+                        )}
+                    </div>
+                )
+            })}
         </div>
     )
 }
@@ -378,36 +497,36 @@ function ColorPaletteInput({ value, onChange, maxColors = 5 }: { value: string[]
 
     return (
         <div className="space-y-4">
-            <div className="flex gap-3 items-end">
-                <div className="space-y-1.5 flex-1">
-                    <Label className="text-xs text-gray-500 font-normal">Selector de Color</Label>
-                    <div className="flex gap-2">
-                        <div className="relative w-12 h-10 rounded-lg overflow-hidden border shadow-sm ring-1 ring-black/5 hover:ring-black/10 transition-shadow">
-                            <input
-                                type="color"
-                                value={currentColor}
-                                onChange={(e) => setCurrentColor(e.target.value)}
-                                className="absolute inset-0 w-[150%] h-[150%] -top-1/4 -left-1/4 cursor-pointer p-0 border-0"
-                            />
-                        </div>
-                        <Input
+            <div className="space-y-2">
+                <Label className="text-xs text-gray-500 font-normal">Selector de Color</Label>
+                <div className="flex items-center gap-2">
+                    <div className="relative w-10 h-10 shrink-0 rounded-lg overflow-hidden border shadow-sm ring-1 ring-black/5 hover:ring-black/10 transition-shadow">
+                        <input
+                            type="color"
                             value={currentColor}
                             onChange={(e) => setCurrentColor(e.target.value)}
-                            className="w-28 font-mono uppercase"
-                            maxLength={7}
+                            className="absolute inset-0 w-[150%] h-[150%] -top-1/4 -left-1/4 cursor-pointer p-0 border-0"
                         />
                     </div>
+                    <Input
+                        value={currentColor}
+                        onChange={(e) => setCurrentColor(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddColor())}
+                        className="w-28 font-mono uppercase"
+                        maxLength={7}
+                    />
+                    <Button
+                        type="button"
+                        onClick={handleAddColor}
+                        disabled={value.length >= maxColors}
+                        variant="secondary"
+                        size="icon"
+                        className="shrink-0 w-10 h-10"
+                        title="Agregar color"
+                    >
+                        <Plus className="w-5 h-5" />
+                    </Button>
                 </div>
-                <Button
-                    type="button"
-                    onClick={handleAddColor}
-                    disabled={value.length >= maxColors}
-                    variant="secondary"
-                    className="mb-0.5"
-                >
-                    <Plus className="w-4 h-4 mr-1" />
-                    Agregar
-                </Button>
             </div>
 
             {value.length > 0 && (
