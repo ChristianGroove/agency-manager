@@ -30,15 +30,23 @@ export async function getPortalData(token: string) {
             { data: briefings },
             { data: events },
             { data: settings },
-            { data: services }
+            { data: services },
+            { data: templates }
         ] = await Promise.all([
             supabaseAdmin.from('invoices').select('*').eq('client_id', client.id).order('created_at', { ascending: false }),
             supabaseAdmin.from('quotes').select('*').eq('client_id', client.id).order('created_at', { ascending: false }),
-            supabaseAdmin.from('briefings').select('*, template:briefing_templates(name)').eq('client_id', client.id).order('created_at', { ascending: false }),
+            supabaseAdmin.from('briefings').select('*').eq('client_id', client.id).order('created_at', { ascending: false }),
             supabaseAdmin.from('client_events').select('*').eq('client_id', client.id).order('created_at', { ascending: false }),
             supabaseAdmin.from('organization_settings').select('*').single(),
-            supabaseAdmin.from('services').select('*').eq('client_id', client.id).eq('status', 'active').order('created_at', { ascending: false })
+            supabaseAdmin.from('services').select('*').eq('client_id', client.id).eq('status', 'active').order('created_at', { ascending: false }),
+            supabaseAdmin.from('briefing_templates').select('id, name')
         ])
+
+        // Manually Join Templates to Briefings
+        const enrichedBriefings = (briefings || []).map(b => ({
+            ...b,
+            template: (templates || []).find(t => t.id === b.template_id) || { name: 'Sin Plantilla' }
+        }))
 
         // Filter Services logic
         const filteredServices = (services || []).filter((service: Service) => {
@@ -58,7 +66,7 @@ export async function getPortalData(token: string) {
             client: client as Client,
             invoices: (invoices || []) as Invoice[],
             quotes: (quotes || []) as Quote[],
-            briefings: (briefings || []) as Briefing[],
+            briefings: (enrichedBriefings || []) as Briefing[],
             events: (events || []) as ClientEvent[],
             settings: settings || {},
             services: filteredServices as Service[]
