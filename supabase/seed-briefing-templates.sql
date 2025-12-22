@@ -2,6 +2,8 @@
 -- Aligned with catalog services and service categories
 -- This script creates 7 comprehensive briefing templates
 
+-- CLEANUP ORPHANED BRIEFINGS
+TRUNCATE TABLE briefings CASCADE;
 TRUNCATE TABLE briefing_templates CASCADE;
 
 DO $$
