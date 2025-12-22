@@ -9,7 +9,6 @@ import { Activity } from "lucide-react"
 import { SplitText } from "@/components/ui/split-text"
 
 interface PortalServicesTabProps {
-    token: string // Add token
     services: Service[]
     invoices: Invoice[]
     briefings: Briefing[]
@@ -19,7 +18,7 @@ interface PortalServicesTabProps {
     onBriefingClosed?: () => void
 }
 
-export function PortalServicesTab({ token, services, invoices, briefings, onPay, onViewInvoice, initialBriefingId, onBriefingClosed }: PortalServicesTabProps) {
+export function PortalServicesTab({ services, invoices, briefings, onPay, onViewInvoice, initialBriefingId, onBriefingClosed }: PortalServicesTabProps) {
     const [viewServiceId, setViewServiceId] = useState<string | null>(null)
     const [viewBriefingId, setViewBriefingId] = useState<string | null>(initialBriefingId || null)
 
@@ -46,7 +45,6 @@ export function PortalServicesTab({ token, services, invoices, briefings, onPay,
         return (
             <div className="max-w-5xl mx-auto w-full pb-24 animate-in fade-in slide-in-from-right-4">
                 <PortalBriefingView
-                    token={token} // Pass token
                     briefingId={viewBriefingId}
                     onBack={handleBackFromBriefing}
                 />

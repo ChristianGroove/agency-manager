@@ -2,18 +2,17 @@
 
 import { useState, useEffect } from "react"
 import { Briefing, FullBriefingTemplate } from "@/types/briefings"
-import { getPortalBriefing, getPortalBriefingResponses } from "@/app/actions/portal-actions"
+import { getBriefingById, getBriefingResponses } from "@/lib/actions/briefings"
 import { BriefingWizard } from "@/components/modules/briefings/briefing-wizard"
 import { Loader2, ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 interface PortalBriefingViewProps {
-    token: string
     briefingId: string
     onBack: () => void
 }
 
-export function PortalBriefingView({ token, briefingId, onBack }: PortalBriefingViewProps) {
+export function PortalBriefingView({ briefingId, onBack }: PortalBriefingViewProps) {
     const [briefing, setBriefing] = useState<Briefing | null>(null)
     const [responses, setResponses] = useState<Record<string, any>>({})
     const [loading, setLoading] = useState(true)
@@ -23,8 +22,8 @@ export function PortalBriefingView({ token, briefingId, onBack }: PortalBriefing
         const load = async () => {
             try {
                 const [briefingData, responsesData] = await Promise.all([
-                    getPortalBriefing(token, briefingId),
-                    getPortalBriefingResponses(token, briefingId)
+                    getBriefingById(briefingId),
+                    getBriefingResponses(briefingId)
                 ])
 
                 setBriefing(briefingData)

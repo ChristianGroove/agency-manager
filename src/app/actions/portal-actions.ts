@@ -2,7 +2,6 @@
 
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { Client, Invoice, Quote, Briefing, ClientEvent, Service } from "@/types"
-import { FullBriefingTemplate } from "@/types/briefings"
 
 export async function getPortalData(token: string) {
     try {
@@ -237,69 +236,4 @@ export async function registerServiceInterest(token: string, serviceId: string, 
         console.error('registerServiceInterest Error:', error)
         return { success: false, error: 'Error registering interest' }
     }
-}
-
-export async function getPortalBriefing(token: string, briefingId: string) {
-    // 1. Verify Client by Token
-    const { data: client, error: clientError } = await supabaseAdmin
-        .from('clients')
-        .select('id')
-        .eq('portal_short_token', token)
-        .single()
-
-    if (clientError || !client) throw new Error('Unauthorized')
-
-    // 2. Fetch Briefing for this Client using Admin
-    const { data, error } = await supabaseAdmin
-        .from('briefings')
-        .select(`
-            *,
-            template:briefing_templates(
-                name,
-                steps:briefing_steps(
-                    id, title, description, order_index,
-                    fields:briefing_fields(
-                        id, label, type, required, options, order_index
-                    )
-                )
-            ),
-            client:clients(name, email)
-        `)
-        .eq('id', briefingId)
-        .eq('client_id', client.id) // Security Check
-        .single()
-
-    if (error) throw error
-
-    // Sort steps and fields
-    if (data.template && data.template.steps) {
-        data.template.steps.sort((a: any, b: any) => a.order_index - b.order_index)
-        data.template.steps.forEach((step: any) => {
-            if (step.fields) {
-                step.fields.sort((a: any, b: any) => a.order_index - b.order_index)
-            }
-        })
-    }
-
-    return data as Briefing
-}
-
-export async function getPortalBriefingResponses(token: string, briefingId: string) {
-    // 1. Verify Client
-    const { data: client, error: clientError } = await supabaseAdmin
-        .from('clients')
-        .select('id')
-        .eq('portal_short_token', token)
-        .single()
-
-    if (clientError || !client) throw new Error('Unauthorized')
-
-    // 2. Fetch Responses
-    const { data, error } = await supabaseAdmin
-        .from('briefing_responses')
-        .select('*')
-        .eq('briefing_id', briefingId)
-
-    if (error) throw error
-    return data
 }

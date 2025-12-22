@@ -157,7 +157,6 @@ export default function PortalPage() {
     return (
         <div className="min-h-screen bg-gray-50" style={brandingStyles}>
             <PortalLayout
-                token={params.token as string}
                 client={client}
                 invoices={invoices}
                 quotes={quotes}
