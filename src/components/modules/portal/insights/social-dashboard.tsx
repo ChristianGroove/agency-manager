@@ -16,28 +16,28 @@ export function SocialDashboard({ data }: SocialDashboardProps) {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <KPICard
                     title="Seguidores"
-                    value={data.followers.toLocaleString()}
+                    value={data.facebook.followers.toLocaleString()}
                     icon={Users}
                     color="text-blue-600"
                     bg="bg-blue-100"
                 />
                 <KPICard
                     title="Alcance"
-                    value={data.reach.toLocaleString()}
+                    value={data.facebook.reach.toLocaleString()}
                     icon={BarChart2}
                     color="text-green-600"
                     bg="bg-green-100"
                 />
                 <KPICard
                     title="Interacciones"
-                    value={data.engagement.toLocaleString()}
+                    value={data.facebook.engagement.toLocaleString()}
                     icon={Heart}
                     color="text-pink-600"
                     bg="bg-pink-100"
                 />
                 <KPICard
                     title="Impresiones"
-                    value={data.impressions.toLocaleString()}
+                    value={data.facebook.impressions.toLocaleString()}
                     icon={Share2}
                     color="text-purple-600"
                     bg="bg-purple-100"
@@ -54,7 +54,7 @@ export function SocialDashboard({ data }: SocialDashboardProps) {
                 </CardHeader>
                 <CardContent>
                     <div className="grid md:grid-cols-3 gap-4">
-                        {data.top_posts.map((post) => (
+                        {data.facebook.top_posts.map((post) => (
                             <a
                                 key={post.id}
                                 href={post.url}
