@@ -4,9 +4,11 @@ import { supabaseAdmin } from "@/lib/supabase-admin"
 import { Client, Invoice, Quote, Briefing, ClientEvent, Service } from "@/types"
 import { Briefing as PortalBriefing } from "@/types/briefings"
 
-import { unstable_cache } from 'next/cache'
+import { unstable_cache, revalidateTag } from 'next/cache'
 
-// Internal fetch function (uncached)
+
+
+
 async function fetchPortalData(token: string) {
     try {
         // 1. Fetch Client by Token
@@ -119,11 +121,17 @@ export async function regeneratePortalToken(clientId: string) {
 export async function acceptQuote(token: string, quoteId: string) {
     try {
         // 1. Verify Client
-        const { data: client, error: clientError } = await supabaseAdmin
-            .from('clients')
-            .select('id, name')
-            .eq('portal_short_token', token)
-            .single()
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)
+
+        let query = supabaseAdmin.from('clients').select('id, name')
+
+        if (isUuid) {
+            query = query.or(`portal_short_token.eq.${token},portal_token.eq.${token}`)
+        } else {
+            query = query.eq('portal_short_token', token)
+        }
+
+        const { data: client, error: clientError } = await query.single()
 
         if (clientError || !client) throw new Error('Unauthorized')
 
@@ -151,6 +159,7 @@ export async function acceptQuote(token: string, quoteId: string) {
             icon: 'FileCheck'
         })
 
+        revalidateTag('portal-data')
         return { success: true }
     } catch (error) {
         console.error('acceptQuote Error:', error)
@@ -161,11 +170,17 @@ export async function acceptQuote(token: string, quoteId: string) {
 export async function rejectQuote(token: string, quoteId: string) {
     try {
         // 1. Verify Client
-        const { data: client, error: clientError } = await supabaseAdmin
-            .from('clients')
-            .select('id, name')
-            .eq('portal_short_token', token)
-            .single()
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)
+
+        let query = supabaseAdmin.from('clients').select('id, name')
+
+        if (isUuid) {
+            query = query.or(`portal_short_token.eq.${token},portal_token.eq.${token}`)
+        } else {
+            query = query.eq('portal_short_token', token)
+        }
+
+        const { data: client, error: clientError } = await query.single()
 
         if (clientError || !client) throw new Error('Unauthorized')
 
@@ -193,6 +208,7 @@ export async function rejectQuote(token: string, quoteId: string) {
             icon: 'FileX'
         })
 
+        revalidateTag('portal-data')
         return { success: true }
     } catch (error) {
         console.error('rejectQuote Error:', error)
@@ -203,11 +219,17 @@ export async function rejectQuote(token: string, quoteId: string) {
 export async function registerServiceInterest(token: string, serviceId: string, serviceName: string) {
     try {
         // 1. Verify Client
-        const { data: client, error: clientError } = await supabaseAdmin
-            .from('clients')
-            .select('id, name')
-            .eq('portal_short_token', token)
-            .single()
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)
+
+        let query = supabaseAdmin.from('clients').select('id, name')
+
+        if (isUuid) {
+            query = query.or(`portal_short_token.eq.${token},portal_token.eq.${token}`)
+        } else {
+            query = query.eq('portal_short_token', token)
+        }
+
+        const { data: client, error: clientError } = await query.single()
 
         if (clientError || !client) throw new Error('Unauthorized')
 
@@ -237,6 +259,7 @@ export async function registerServiceInterest(token: string, serviceId: string, 
             })
         }
 
+        revalidateTag('portal-data')
         return { success: true }
     } catch (error) {
         console.error('registerServiceInterest Error:', error)
@@ -246,11 +269,17 @@ export async function registerServiceInterest(token: string, serviceId: string, 
 
 export async function getPortalBriefing(token: string, briefingId: string) {
     // 1. Verify Client by Token
-    const { data: client, error: clientError } = await supabaseAdmin
-        .from('clients')
-        .select('id')
-        .eq('portal_short_token', token)
-        .single()
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)
+
+    let query = supabaseAdmin.from('clients').select('id')
+
+    if (isUuid) {
+        query = query.or(`portal_short_token.eq.${token},portal_token.eq.${token}`)
+    } else {
+        query = query.eq('portal_short_token', token)
+    }
+
+    const { data: client, error: clientError } = await query.single()
 
     if (clientError || !client) throw new Error('Unauthorized')
 
@@ -291,11 +320,17 @@ export async function getPortalBriefing(token: string, briefingId: string) {
 
 export async function getPortalBriefingResponses(token: string, briefingId: string) {
     // 1. Verify Client
-    const { data: client, error: clientError } = await supabaseAdmin
-        .from('clients')
-        .select('id')
-        .eq('portal_short_token', token)
-        .single()
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)
+
+    let query = supabaseAdmin.from('clients').select('id')
+
+    if (isUuid) {
+        query = query.or(`portal_short_token.eq.${token},portal_token.eq.${token}`)
+    } else {
+        query = query.eq('portal_short_token', token)
+    }
+
+    const { data: client, error: clientError } = await query.single()
 
     if (clientError || !client) throw new Error('Unauthorized')
 
@@ -311,11 +346,17 @@ export async function getPortalBriefingResponses(token: string, briefingId: stri
 
 export async function getPortalCatalog(token: string) {
     // 1. Verify Client
-    const { data: client, error: clientError } = await supabaseAdmin
-        .from('clients')
-        .select('id')
-        .eq('portal_short_token', token)
-        .single()
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)
+
+    let query = supabaseAdmin.from('clients').select('id')
+
+    if (isUuid) {
+        query = query.or(`portal_short_token.eq.${token},portal_token.eq.${token}`)
+    } else {
+        query = query.eq('portal_short_token', token)
+    }
+
+    const { data: client, error: clientError } = await query.single()
 
     if (clientError || !client) throw new Error('Unauthorized')
 
