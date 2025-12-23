@@ -4,12 +4,11 @@ import { supabaseAdmin } from "@/lib/supabase-admin"
 import { Client, Invoice, Quote, Briefing, ClientEvent, Service } from "@/types"
 import { Briefing as PortalBriefing } from "@/types/briefings"
 
-import { unstable_cache, revalidateTag } from 'next/cache'
 
 
 
-
-async function fetchPortalData(token: string) {
+// Internal fetch function (uncached) - Exported directly for live data
+export async function getPortalData(token: string) {
     try {
         // 1. Fetch Client by Token
         const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)
@@ -76,15 +75,7 @@ async function fetchPortalData(token: string) {
     }
 }
 
-// Cached version exposed to the app
-export const getPortalData = unstable_cache(
-    async (token: string) => fetchPortalData(token),
-    ['portal-data'],
-    {
-        revalidate: 60, // Cache for 60 seconds
-        tags: ['portal-data'] // Tag for manual invalidation if needed
-    }
-)
+
 
 export async function getPortalMetadata(token: string) {
     // Lightweight fetch for metadata only
@@ -159,7 +150,6 @@ export async function acceptQuote(token: string, quoteId: string) {
             icon: 'FileCheck'
         })
 
-        revalidateTag('portal-data')
         return { success: true }
     } catch (error) {
         console.error('acceptQuote Error:', error)
@@ -208,7 +198,6 @@ export async function rejectQuote(token: string, quoteId: string) {
             icon: 'FileX'
         })
 
-        revalidateTag('portal-data')
         return { success: true }
     } catch (error) {
         console.error('rejectQuote Error:', error)
@@ -259,7 +248,6 @@ export async function registerServiceInterest(token: string, serviceId: string, 
             })
         }
 
-        revalidateTag('portal-data')
         return { success: true }
     } catch (error) {
         console.error('registerServiceInterest Error:', error)
