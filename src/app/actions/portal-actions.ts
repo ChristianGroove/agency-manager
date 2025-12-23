@@ -163,10 +163,9 @@ export async function acceptQuote(token: string, quoteId: string) {
             })
         } else {
             console.warn('⚠️ No admin user_id found for client', client.id)
-
-
-            return { success: true }
         }
+
+        return { success: true }
     } catch (error) {
         console.error('acceptQuote Error:', error)
         return { success: false, error: 'Error accepting quote' }
