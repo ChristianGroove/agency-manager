@@ -191,7 +191,7 @@ export function MetaConfigurationModal({ client, services }: MetaConfigurationMo
                                 {/* We reuse the specific InsightsTab component */}
                                 {/* Note: We might need to mock the Portal Context or Props if it depends on them heavily. */}
                                 {/* Providing client and services as is. */}
-                                <InsightsTab client={client} services={services} token={client.portal_token} />
+                                <InsightsTab client={client} services={services} token={client.portal_short_token || client.portal_token} />
                             </CardContent>
                         </Card>
                     </TabsContent>
