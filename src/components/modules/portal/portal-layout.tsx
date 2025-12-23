@@ -3,12 +3,14 @@
 import { useState, useEffect } from "react"
 import { Client, Invoice, Quote, Briefing, ClientEvent, Service } from "@/types"
 import { Button } from "@/components/ui/button"
-import { LayoutDashboard, Layers, CreditCard, Search, Bell, LogOut, Menu } from "lucide-react"
+import { LayoutDashboard, Layers, CreditCard, Search, Bell, LogOut, Menu, BarChart3 } from "lucide-react"
+import { isFeatureEnabled } from "@/lib/features"
 import { cn } from "@/lib/utils"
 import { PortalSummaryTab } from "./portal-summary-tab"
 import { PortalServicesTab } from "./portal-services-tab"
 import { PortalBillingTab } from "./portal-billing-tab"
 import { PortalCatalogTab } from "./portal-catalog-tab"
+import { InsightsTab } from "./insights/insights-tab"
 import { QuoteDetailModal } from "./quote-detail-modal"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -29,7 +31,7 @@ interface PortalLayoutProps {
     logout?: () => void
 }
 
-type TabKey = 'summary' | 'services' | 'billing' | 'explore'
+type TabKey = 'summary' | 'services' | 'billing' | 'explore' | 'insights'
 
 export function PortalLayout({ token, client, invoices, quotes, briefings, events, services, settings, onPay, onViewInvoice, onViewQuote }: PortalLayoutProps) {
     const [activeTab, setActiveTab] = useState<TabKey>('summary')
@@ -81,6 +83,9 @@ export function PortalLayout({ token, client, invoices, quotes, briefings, event
                     <NavButton active={activeTab === 'summary'} onClick={() => setActiveTab('summary')} icon={LayoutDashboard} label="Resumen" />
                     <NavButton active={activeTab === 'services'} onClick={() => setActiveTab('services')} icon={Layers} label="Mis Servicios" />
                     <NavButton active={activeTab === 'billing'} onClick={() => setActiveTab('billing')} icon={CreditCard} label="Pagos" />
+                    {isFeatureEnabled('meta_insights') && (
+                        <NavButton active={activeTab === 'insights'} onClick={() => setActiveTab('insights')} icon={BarChart3} label="Insights" />
+                    )}
                     <NavButton active={activeTab === 'explore'} onClick={() => setActiveTab('explore')} icon={Search} label="Explorar" />
                 </nav>
 
@@ -134,6 +139,7 @@ export function PortalLayout({ token, client, invoices, quotes, briefings, event
                             invoices={invoices} settings={settings} onPay={onPay} onViewInvoice={onViewInvoice}
                         />
                     )}
+                    {activeTab === 'insights' && <InsightsTab client={client} services={services} token={token} />}
                     {activeTab === 'explore' && <PortalCatalogTab settings={settings} client={client} token={token} />}
                 </div>
 
@@ -174,6 +180,9 @@ export function PortalLayout({ token, client, invoices, quotes, briefings, event
                 <MobileNavBtn active={activeTab === 'summary'} onClick={() => setActiveTab('summary')} icon={LayoutDashboard} label="Inicio" />
                 <MobileNavBtn active={activeTab === 'services'} onClick={() => setActiveTab('services')} icon={Layers} label="Mis Servicios" />
                 <MobileNavBtn active={activeTab === 'billing'} onClick={() => setActiveTab('billing')} icon={CreditCard} label="Pagos" />
+                {isFeatureEnabled('meta_insights') && (
+                    <MobileNavBtn active={activeTab === 'insights'} onClick={() => setActiveTab('insights')} icon={BarChart3} label="Insights" />
+                )}
                 <MobileNavBtn active={activeTab === 'explore'} onClick={() => setActiveTab('explore')} icon={Search} label="Explorar" />
             </nav>
 

@@ -62,6 +62,7 @@ import { CreateInvoiceModal } from "@/components/modules/invoices/create-invoice
 import { ShareInvoiceModal } from "@/components/modules/invoices/share-invoice-modal"
 import { AddServiceModal } from "@/components/modules/services/add-service-modal"
 import { regeneratePortalToken } from "@/app/actions/portal-actions"
+import { MetaConfigurationModal } from "@/components/modules/admin/meta-configuration-modal"
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -443,6 +444,9 @@ export default function ClientDetailPage() {
                             >
                                 <StickyNote className="h-5 w-5" />
                             </Button>
+
+                            {/* Meta Config */}
+                            <MetaConfigurationModal client={client} services={client.services || []} />
 
                             {/* Edit - Icon Only */}
                             <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>

@@ -1,6 +1,7 @@
 "use server"
 
 import { createClient } from "@/lib/supabase-server"
+import { supabaseAdmin } from "@/lib/supabase-admin"
 import { revalidatePath } from "next/cache"
 
 export async function getSettings() {
@@ -15,7 +16,8 @@ export async function getSettings() {
     if (error) {
         if (error.code === 'PGRST116') {
             // No settings found, create default
-            const { data: newData, error: createError } = await supabase
+            // Use admin client to bypass RLS for creation
+            const { data: newData, error: createError } = await supabaseAdmin
                 .from("organization_settings")
                 .insert({})
                 .select()
