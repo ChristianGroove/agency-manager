@@ -361,3 +361,34 @@ export async function getPortalQuote(token: string, quoteId: string) {
     if (error) throw error
     return data as Quote
 }
+
+export async function getPortalInvoice(token: string, invoiceId: string) {
+    // 1. Verify Client
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)
+
+    let query = supabaseAdmin.from('clients').select('id')
+
+    if (isUuid) {
+        query = query.or(`portal_short_token.eq.${token},portal_token.eq.${token}`)
+    } else {
+        query = query.eq('portal_short_token', token)
+    }
+
+    const { data: client, error: clientError } = await query.single()
+
+    if (clientError || !client) throw new Error('Unauthorized')
+
+    // 2. Fetch Invoice
+    const { data, error } = await supabaseAdmin
+        .from('invoices')
+        .select(`
+            *,
+            client:clients (*)
+        `)
+        .eq('id', invoiceId)
+        .eq('client_id', client.id)
+        .single()
+
+    if (error) throw error
+    return data as Invoice
+}

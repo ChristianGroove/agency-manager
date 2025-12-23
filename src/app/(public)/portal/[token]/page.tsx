@@ -8,6 +8,7 @@ import { Loader2, AlertTriangle, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { PortalLayout } from "@/components/modules/portal/portal-layout"
 import { QuoteDetailModal } from "@/components/modules/portal/quote-detail-modal"
+import { InvoiceDetailModal } from "@/components/modules/portal/invoice-detail-modal"
 
 export default function PortalPage() {
     const params = useParams()
@@ -186,45 +187,13 @@ export default function PortalPage() {
                 </div>
             )}
 
-            {/* Invoice Detail Modal - Can also be moved down to Layout if preferred, but OK here */}
-            {viewInvoice && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setViewInvoice(null)}>
-                    <div className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden animate-in zoom-in-95" onClick={e => e.stopPropagation()}>
-                        <div className="p-6 border-b flex justify-between items-center">
-                            <h3 className="text-lg font-bold">Factura #{viewInvoice.number}</h3>
-                            <Button variant="ghost" size="sm" onClick={() => setViewInvoice(null)}>✕</Button>
-                        </div>
-                        <div className="p-6 space-y-4">
-                            <div className="grid grid-cols-2 gap-4 text-sm">
-                                <div>
-                                    <p className="text-gray-500">Fecha de Emisión</p>
-                                    <p className="font-medium">{new Date(viewInvoice.date).toLocaleDateString()}</p>
-                                </div>
-                                <div>
-                                    <p className="text-gray-500">Fecha de Vencimiento</p>
-                                    <p className="font-medium">{viewInvoice.due_date ? new Date(viewInvoice.due_date).toLocaleDateString() : '-'}</p>
-                                </div>
-                            </div>
-
-                            <div className="border rounded-lg p-4 bg-gray-50 space-y-2">
-                                {viewInvoice.items?.map((item: any, idx: number) => (
-                                    <div key={idx} className="flex justify-between text-sm">
-                                        <span>{item.description} <span className="text-gray-400">x{item.quantity}</span></span>
-                                        <span className="font-medium">${(item.price * item.quantity).toLocaleString()}</span>
-                                    </div>
-                                ))}
-                                <div className="border-t pt-2 mt-2 flex justify-between font-bold text-gray-900">
-                                    <span>Total</span>
-                                    <span>${viewInvoice.total.toLocaleString()}</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="p-6 border-t bg-gray-50 flex justify-end">
-                            <Button onClick={() => setViewInvoice(null)}>Cerrar</Button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            {/* Invoice Detail Modal */}
+            <InvoiceDetailModal
+                invoice={viewInvoice}
+                open={!!viewInvoice}
+                onOpenChange={(open) => !open && setViewInvoice(null)}
+                token={params.token as string}
+            />
 
             {/* Quote Detail Modal */}
             <QuoteDetailModal
