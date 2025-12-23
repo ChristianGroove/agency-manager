@@ -73,6 +73,10 @@ export async function checkUpcomingPayments() {
                 await generateAutomaticInvoice(user.id, sub, sub.clients)
             }
         }
+
+        // Check for overdue invoices
+        await checkOverdueInvoices(user.id)
+
     } catch (error) {
         console.error('Error checking upcoming payments:', error)
     }
@@ -213,9 +217,55 @@ async function generateAutomaticInvoice(
                 read: false
             })
 
-        console.log(`✅ Invoice ${invoiceNumber} generated for subscription ${subscription.id}`)
     } catch (error) {
         console.error('Error generating automatic invoice:', error)
+    }
+}
+
+/**
+ * Check for overdue invoices and notify admin
+ */
+async function checkOverdueInvoices(userId: string) {
+    try {
+        const { data: invoices, error } = await supabase
+            .from('invoices')
+            .select(`
+                *,
+                client:clients(id, name)
+            `)
+            .eq('status', 'pending')
+            .lt('due_date', new Date().toISOString())
+
+        if (error) throw error
+        if (!invoices || invoices.length === 0) return
+
+        for (const invoice of invoices) {
+            // Check if we already notified recently (e.g., in last 3 days)
+            const { data: existing } = await supabase
+                .from('notifications')
+                .select('id')
+                .eq('type', 'payment_due')
+                .eq('action_url', `/invoices/${invoice.id}`)
+                .gte('created_at', new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString())
+                .single()
+
+            if (!existing) {
+                await supabase
+                    .from('notifications')
+                    .insert({
+                        user_id: userId,
+                        type: 'payment_due',
+                        title: '⚠️ Factura Vencida',
+                        message: `La factura ${invoice.number} de ${invoice.client.name} está vencida. Monto: $${invoice.total.toLocaleString()}`,
+                        client_id: invoice.client_id,
+                        action_url: `/invoices/${invoice.id}`,
+                        read: false
+                    })
+                console.log(`✅ Overdue notification sent for invoice ${invoice.number}`)
+            }
+        }
+    } catch (error) {
+        console.error('Error checking overdue invoices:', error)
     }
 }
 

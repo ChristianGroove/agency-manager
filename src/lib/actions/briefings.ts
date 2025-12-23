@@ -209,7 +209,7 @@ export async function submitBriefing(briefingId: string) {
         .select(`
             *,
             template:briefing_templates(name),
-            client:clients(name)
+            client:clients(name, user_id)
         `)
         .eq('id', briefingId)
         .single()
@@ -232,6 +232,19 @@ export async function submitBriefing(briefingId: string) {
             },
             icon: 'FileText'
         })
+
+        // Create Admin Notification
+        if (briefing.client?.user_id) {
+            await supabaseAdmin.from('notifications').insert({
+                user_id: briefing.client.user_id,
+                type: 'briefing_submitted',
+                title: '📝 Briefing Completado',
+                message: `El cliente ${briefing.client.name} ha completado el briefing: ${briefing.template?.name}`,
+                client_id: briefing.client_id,
+                action_url: `/dashboard/briefings/${briefing.id}`,
+                read: false
+            })
+        }
     }
 
     // Send email notification

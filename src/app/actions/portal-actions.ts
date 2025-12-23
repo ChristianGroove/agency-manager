@@ -114,7 +114,7 @@ export async function acceptQuote(token: string, quoteId: string) {
         // 1. Verify Client
         const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)
 
-        let query = supabaseAdmin.from('clients').select('id, name')
+        let query = supabaseAdmin.from('clients').select('id, name, user_id')
 
         if (isUuid) {
             query = query.or(`portal_short_token.eq.${token},portal_token.eq.${token}`)
@@ -150,7 +150,23 @@ export async function acceptQuote(token: string, quoteId: string) {
             icon: 'FileCheck'
         })
 
-        return { success: true }
+        // 4. Create Notification
+        if (client.user_id) {
+            await supabaseAdmin.from('notifications').insert({
+                user_id: client.user_id,
+                type: 'quote_accepted',
+                title: '✅ Cotización Aprobada',
+                message: `El cliente ${client.name} ha aprobado la cotización #${quote.number}. Monto: $${quote.total.toLocaleString()}`,
+                client_id: client.id,
+                action_url: `/dashboard/quotes/${quote.id}`,
+                read: false
+            })
+        } else {
+            console.warn('⚠️ No admin user_id found for client', client.id)
+
+
+            return { success: true }
+        }
     } catch (error) {
         console.error('acceptQuote Error:', error)
         return { success: false, error: 'Error accepting quote' }
@@ -162,7 +178,7 @@ export async function rejectQuote(token: string, quoteId: string) {
         // 1. Verify Client
         const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)
 
-        let query = supabaseAdmin.from('clients').select('id, name')
+        let query = supabaseAdmin.from('clients').select('id, name, user_id')
 
         if (isUuid) {
             query = query.or(`portal_short_token.eq.${token},portal_token.eq.${token}`)
@@ -198,6 +214,19 @@ export async function rejectQuote(token: string, quoteId: string) {
             icon: 'FileX'
         })
 
+        // 4. Create Notification
+        if (client.user_id) {
+            await supabaseAdmin.from('notifications').insert({
+                user_id: client.user_id,
+                type: 'quote_rejected',
+                title: '❌ Cotización Rechazada',
+                message: `El cliente ${client.name} ha rechazado la cotización #${quote.number}.`,
+                client_id: client.id,
+                action_url: `/dashboard/quotes/${quote.id}`,
+                read: false
+            })
+        }
+
         return { success: true }
     } catch (error) {
         console.error('rejectQuote Error:', error)
@@ -210,7 +239,7 @@ export async function registerServiceInterest(token: string, serviceId: string, 
         // 1. Verify Client
         const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)
 
-        let query = supabaseAdmin.from('clients').select('id, name')
+        let query = supabaseAdmin.from('clients').select('id, name, user_id')
 
         if (isUuid) {
             query = query.or(`portal_short_token.eq.${token},portal_token.eq.${token}`)
@@ -246,6 +275,23 @@ export async function registerServiceInterest(token: string, serviceId: string, 
                 },
                 icon: 'Heart'
             })
+
+            // 3. Create Notification
+            if (client.user_id) {
+                await supabaseAdmin.from('notifications').insert({
+                    user_id: client.user_id,
+                    type: 'service_interest',
+                    title: '❤️ Interés en Servicio',
+                    message: `El cliente ${client.name} está interesado en: ${serviceName}`,
+                    client_id: client.id,
+                    action_url: `/dashboard/clients/${client.id}`,
+                    read: false
+                })
+
+            }
+
+
+            return { success: true }
         }
 
         return { success: true }
