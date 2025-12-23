@@ -45,16 +45,15 @@ export function WhatsAppActionsModal({ isOpen, onOpenChange, client, settings }:
             case 'invoice':
                 const invoice = client.invoices?.find(i => i.id === selectedInvoiceId)
                 if (invoice) {
-                    const link = getPortalUrl(`/invoices/${invoice.id}`)
-                    message = `Hola ${client.name}, te envío el enlace de la factura #${invoice.number} por valor de $${invoice.total.toLocaleString()}. Puedes verla y descargarla aquí: ${link}`
+                    const portalLink = getPortalUrl(`/portal/${client.portal_short_token || client.portal_token}`)
+                    message = `Hola ${client.name} hemos generado una factura por $${invoice.total.toLocaleString()}, para ver los detalles ingresa a tu portal de cliente: ${portalLink}`
                 }
                 break
             case 'quote':
-                // logic later after fixing type
                 const quote = client.quotes?.find((q: any) => q.id === selectedQuoteId)
                 if (quote) {
-                    message = `Hola ${client.name}, te comparto la cotización #${quote.number} por valor de $${quote.total.toLocaleString()}.`
-                    if (quote.pdf_url) message += ` PDF: ${quote.pdf_url}`
+                    const portalLink = getPortalUrl(`/portal/${client.portal_short_token || client.portal_token}`)
+                    message = `Hola ${client.name} hemos generado una cotización por $${quote.total.toLocaleString()}, para ver los detalles ingresa a tu portal de cliente: ${portalLink}`
                 }
                 break
         }
