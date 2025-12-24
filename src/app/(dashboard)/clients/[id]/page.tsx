@@ -242,7 +242,7 @@ export default function ClientDetailPage() {
 
             // Filter out archived invoices after fetching
             if (data && data.invoices) {
-                data.invoices = data.invoices.filter((inv: any) => !inv.archived)
+                data.invoices = data.invoices.filter((inv: any) => !inv.archived && !inv.deleted_at)
             }
 
             setClient(data)

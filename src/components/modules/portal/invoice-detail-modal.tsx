@@ -27,7 +27,7 @@ export function InvoiceDetailModal({ invoice, open, onOpenChange, token }: Invoi
                             <FileText className="h-5 w-5 text-indigo-600" />
                         </div>
                         <div>
-                            <span>Factura</span>
+                            <span>Documento</span>
                             <span className="block text-sm font-normal text-gray-500">#{invoice.number}</span>
                         </div>
                     </DialogTitle>

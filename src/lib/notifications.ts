@@ -209,8 +209,8 @@ async function generateAutomaticInvoice(
             .insert({
                 user_id: userId,
                 type: 'invoice_generated',
-                title: '📄 Factura generada automáticamente',
-                message: `Se generó la factura ${invoiceNumber} para ${client.name}. Monto: $${subscription.amount.toLocaleString()}`,
+                title: '📄 Documento generado',
+                message: `Se generó el documento ${invoiceNumber} para ${client.name}. Monto: $${subscription.amount.toLocaleString()}`,
                 subscription_id: subscription.id,
                 client_id: subscription.client_id,
                 action_url: `/invoices/${invoice.id}`,
@@ -255,8 +255,8 @@ async function checkOverdueInvoices(userId: string) {
                     .insert({
                         user_id: userId,
                         type: 'payment_due',
-                        title: '⚠️ Factura Vencida',
-                        message: `La factura ${invoice.number} de ${invoice.client.name} está vencida. Monto: $${invoice.total.toLocaleString()}`,
+                        title: '⚠️ Documento Vencido',
+                        message: `El documento ${invoice.number} de ${invoice.client.name} está vencido. Monto: $${invoice.total.toLocaleString()}`,
                         client_id: invoice.client_id,
                         action_url: `/invoices/${invoice.id}`,
                         read: false

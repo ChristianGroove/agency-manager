@@ -1,58 +1,67 @@
 import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable'; // Ensure this is installed or use standard table
-import { Client, Invoice } from "@/types";
+import autoTable from 'jspdf-autotable';
+import { Client, Invoice } from "@/types/billing";
+import { getDocumentTypeLabel } from "@/lib/billing-utils";
 
 // Helper to load image
 const getBase64FromUrl = async (url: string): Promise<string> => {
-    const data = await fetch(url);
-    const blob = await data.blob();
-    return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(blob);
-        reader.onloadend = () => {
-            const base64data = reader.result;
-            resolve(base64data as string);
-        }
-    });
+    try {
+        const data = await fetch(url);
+        const blob = await data.blob();
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(blob);
+            reader.onloadend = () => {
+                const base64data = reader.result;
+                resolve(base64data as string);
+            }
+        });
+    } catch (e) {
+        console.warn("Failed to load image", e);
+        return "";
+    }
 }
 
 export const generateInvoicePDF = async (invoice: Invoice, client: Client | any, settings?: any): Promise<Blob> => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     const margin = 20;
-    const brandColor = settings?.brand_color || "#0F172A"; // Default slate-900
+    const brandColor = settings?.brand_color || "#0F172A";
 
     // --- Header ---
-    // Logo - Use invoice_logo_url if set, otherwise fallback to default Pixy dark logo
-    let logoUrl = settings?.invoice_logo_url || '/branding/logo dark.svg';
+    // Logo logic: Emitter Logo > Settings Logo > Default
+    let logoUrl = invoice.emitter?.logo_url || settings?.invoice_logo_url || '/branding/logo dark.svg';
 
-    // Ensure the URL is absolute for fetch to work properly
-    if (logoUrl.startsWith('/')) {
+    if (logoUrl?.startsWith('/')) {
         logoUrl = `${window.location.origin}${logoUrl}`;
     }
 
     if (logoUrl) {
-        try {
-            const logoBase64 = await getBase64FromUrl(logoUrl);
-            doc.addImage(logoBase64, 'SVG', margin, 15, 40, 0, undefined, 'FAST'); // Auto height
-        } catch (e) {
-            console.warn("Could not load logo for PDF", e);
-            // Fallback text if logo fails to load
+        const logoBase64 = await getBase64FromUrl(logoUrl);
+        if (logoBase64) {
+            doc.addImage(logoBase64, 'SVG', margin, 15, 40, 0, undefined, 'FAST');
+        } else {
+            // Fallback text
             doc.setFontSize(20);
             doc.setFont("helvetica", "bold");
-            doc.text(settings?.agency_name || "AGENCIA", margin, 30);
+            doc.text(invoice.emitter?.display_name || settings?.agency_name || "AGENCIA", margin, 30);
         }
     } else {
         doc.setFontSize(22);
         doc.setFont("helvetica", "bold");
-        doc.text(settings?.agency_name || "AGENCIA", margin, 30);
+        doc.text(invoice.emitter?.display_name || settings?.agency_name || "AGENCIA", margin, 30);
     }
 
-    // Invoice Label & Number
-    doc.setFontSize(28);
+    // Invoice Label (Strictly Derived)
+    // Use the helper to ensure exact match with UI labels
+    // Default to 'CUENTA DE COBRO' if not present, but should be strictly set now
+    const docType = invoice.document_type || 'CUENTA_DE_COBRO';
+    const docTitle = getDocumentTypeLabel(docType).toUpperCase();
+
+    doc.setFontSize(20); // Slightly smaller to fit long titles
     doc.setFont("helvetica", "bold");
     doc.setTextColor(brandColor);
-    doc.text("FACTURA", pageWidth - margin, 30, { align: "right" });
+    doc.text(docTitle, pageWidth - margin, 30, { align: "right" });
 
     doc.setFontSize(12);
     doc.setTextColor(100);
@@ -68,28 +77,53 @@ export const generateInvoicePDF = async (invoice: Invoice, client: Client | any,
         doc.text("PENDIENTE", pageWidth - margin, 45, { align: "right" });
     }
 
-    // --- Agency Info (Below Logo) ---
+    // --- Agency/Emitter Info (Below Logo) ---
     let yPos = 55;
     doc.setFontSize(9);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(80);
-    doc.text(settings?.agency_name || "", margin, yPos); yPos += 5;
-    if (settings?.agency_nit) { doc.text(`NIT: ${settings.agency_nit}`, margin, yPos); yPos += 5; }
-    if (settings?.agency_address) { doc.text(settings.agency_address, margin, yPos); yPos += 5; }
-    if (settings?.agency_email) { doc.text(settings.agency_email, margin, yPos); yPos += 5; }
-    if (settings?.agency_phone) { doc.text(settings.agency_phone, margin, yPos); yPos += 5; }
 
-    // --- Client Info (Right Side or Below) ---
-    // Let's align "Facturar a" below agency info but perhaps column 2?
-    // Modern layout: Left side Agency, Right side Client? Or Top/Bottom.
-    // Let's do Standard: Left: From, Right: To (below Header)
+    // Use Emitter details strictly for Legal Identity
+    // If no emitter is attached, we prefer to show nothing or a specific placeholder rather than mixing Agency Branding with Legal Data
+    const issuerName = invoice.emitter?.legal_name || invoice.emitter?.display_name || "EMISOR NO IDENTIFICADO";
 
+    // Construct ID string correctly
+    let issuerIdString = "";
+    if (invoice.emitter) {
+        const idType = invoice.emitter.identification_type || "NIT";
+        const idNum = invoice.emitter.identification_number;
+        const dv = invoice.emitter.verification_digit;
+
+        if (idType === 'NIT' && dv) {
+            issuerIdString = `NIT: ${idNum}-${dv}`;
+        } else {
+            issuerIdString = `${idType}: ${idNum}`;
+        }
+    }
+    // REMOVED LEGACY FALLBACK to settings.agency_nit per strict requirements
+
+    const issuerAddress = invoice.emitter?.address;
+    const issuerEmail = invoice.emitter?.email;
+    const issuerPhone = invoice.emitter?.phone;
+
+    // Only render if we have data
+    doc.text(issuerName, margin, yPos); yPos += 5;
+    if (issuerIdString) { doc.text(issuerIdString, margin, yPos); yPos += 5; }
+
+    // Address (Multi-line support if needed, but simple for now)
+    if (issuerAddress) { doc.text(issuerAddress, margin, yPos); yPos += 5; }
+
+    if (issuerEmail) { doc.text(issuerEmail, margin, yPos); yPos += 5; }
+    if (issuerPhone) { doc.text(issuerPhone, margin, yPos); yPos += 5; }
+
+
+    // --- Client Info ---
     // "Bill To" Section
     const rightColX = pageWidth / 2 + 10;
     yPos = 55;
     doc.setFont("helvetica", "bold");
     doc.setTextColor(0);
-    doc.text("FACTURAR A:", rightColX, yPos);
+    doc.text("CLIENTE:", rightColX, yPos);
 
     yPos += 7;
     doc.setFont("helvetica", "normal");
@@ -122,9 +156,8 @@ export const generateInvoicePDF = async (invoice: Invoice, client: Client | any,
     }
 
     // --- Items Table ---
-    const tableHeaderColor = settings?.brand_color ? settings.brand_color : [15, 23, 42]; // RGB or Hex
+    const tableHeaderColor = settings?.brand_color ? settings.brand_color : [15, 23, 42];
 
-    // Using autoTable for better layout
     autoTable(doc, {
         startY: dateY + 20,
         head: [['DESCRIPCIÓN', 'CANT', 'PRECIO UNIT.', 'TOTAL']],
@@ -138,7 +171,7 @@ export const generateInvoicePDF = async (invoice: Invoice, client: Client | any,
         headStyles: { fillColor: tableHeaderColor, textColor: 255, fontStyle: 'bold' },
         styles: { fontSize: 9, cellPadding: 4 },
         columnStyles: {
-            0: { cellWidth: 'auto' }, // Description
+            0: { cellWidth: 'auto' },
             1: { cellWidth: 20, halign: 'center' },
             2: { cellWidth: 30, halign: 'right' },
             3: { cellWidth: 30, halign: 'right' }
@@ -150,7 +183,6 @@ export const generateInvoicePDF = async (invoice: Invoice, client: Client | any,
     // @ts-ignore
     let finalY = (doc as any).lastAutoTable.finalY + 10;
 
-    // Totals Block
     const summaryX = pageWidth - margin - 70;
 
     doc.setFontSize(10);
@@ -175,6 +207,13 @@ export const generateInvoicePDF = async (invoice: Invoice, client: Client | any,
     if (settings?.invoice_footer) {
         doc.text(settings.invoice_footer, pageWidth / 2, footerY - 5, { align: "center", maxWidth: pageWidth - 40 });
     }
+
+    // Resolution Text if Juridica
+    // TODO: Add resolution Number field to Emitter in future
+    if (invoice.document_type === 'FACTURA_ELECTRONICA') {
+        doc.text("Autorización Facturación Electrónica DIAN No. [PENDIENTE]", pageWidth / 2, footerY - 10, { align: "center" });
+    }
+
     doc.text("Generado por Agency Manager", pageWidth / 2, footerY, { align: "center" });
 
     return doc.output('blob');

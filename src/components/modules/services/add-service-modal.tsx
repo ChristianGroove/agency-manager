@@ -83,6 +83,40 @@ export function AddServiceModal({ clientId, clientName, onSuccess, trigger, serv
         }
     }, [isOpen])
 
+    // Emitter Logic
+    const [emitters, setEmitters] = useState<any[]>([])
+    const [selectedEmitterId, setSelectedEmitterId] = useState<string>("")
+    const [derivedDocType, setDerivedDocType] = useState<string>("")
+
+    // Load active emitters
+    useEffect(() => {
+        import("@/lib/actions/emitters").then(async (mod) => {
+            const data = await mod.getActiveEmitters()
+            setEmitters(data)
+
+            // Auto-select if only 1 active emitter
+            if (data.length === 1) {
+                const single = data[0]
+                setSelectedEmitterId(single.id)
+                import("@/lib/billing-utils").then(utils => {
+                    setDerivedDocType(utils.getEmitterDocumentType(single.emitter_type))
+                })
+            }
+        })
+    }, [])
+
+    // Update derived type when selection changes (if > 1)
+    useEffect(() => {
+        if (!selectedEmitterId) return
+        const emitter = emitters.find(e => e.id === selectedEmitterId)
+        if (emitter) {
+            import("@/lib/billing-utils").then(utils => {
+                setDerivedDocType(utils.getEmitterDocumentType(emitter.emitter_type))
+            })
+        }
+    }, [selectedEmitterId, emitters])
+
+
     // Load service to edit
     useEffect(() => {
         if (serviceToEdit && isOpen) {
@@ -101,6 +135,11 @@ export function AddServiceModal({ clientId, clientName, onSuccess, trigger, serv
             // Reverse calculate unit price if possible, or just assume amount matches
             setUnitPrice(qty > 0 ? (amount / qty) : 0)
 
+            // Load existing emitter if present
+            if (serviceToEdit.emitter_id) {
+                setSelectedEmitterId(serviceToEdit.emitter_id)
+            }
+
         } else if (!serviceToEdit && isOpen) {
             setStep('catalog')
             setFormData({
@@ -113,8 +152,15 @@ export function AddServiceModal({ clientId, clientName, onSuccess, trigger, serv
                 status: 'active'
             })
             setUnitPrice(0)
+
+            // Re-apply default if single emitter exists
+            if (emitters.length === 1) {
+                setSelectedEmitterId(emitters[0].id)
+            } else {
+                setSelectedEmitterId("")
+            }
         }
-    }, [serviceToEdit, isOpen])
+    }, [serviceToEdit, isOpen, emitters]) // Added emitters dep
 
     const handleCatalogSelect = (item: any) => {
         const initialQty = 1
@@ -147,6 +193,13 @@ export function AddServiceModal({ clientId, clientName, onSuccess, trigger, serv
                 return
             }
 
+            // Validate Emitter Selection
+            if (!selectedEmitterId) {
+                alert("Debes seleccionar un Emisor para este servicio")
+                setLoading(false)
+                return
+            }
+
             const serviceData = {
                 client_id: clientId,
                 name: formData.name,
@@ -155,7 +208,9 @@ export function AddServiceModal({ clientId, clientName, onSuccess, trigger, serv
                 quantity: formData.quantity, // Save quantity to DB
                 type: formData.type,
                 frequency: formData.type === 'recurring' ? formData.frequency : null,
-                status: formData.status
+                status: formData.status,
+                emitter_id: selectedEmitterId,
+                document_type: derivedDocType
             }
 
             let result
@@ -191,9 +246,14 @@ export function AddServiceModal({ clientId, clientName, onSuccess, trigger, serv
                 const dueDate = new Date()
                 dueDate.setDate(dueDate.getDate() + (formData.type === 'one_off' ? 15 : 5))
 
+                // Fetch billing utils for labels just in case
+                // Actually we just need to pass the IDs
+
                 const { data: invData, error: invError } = await supabase.from('invoices').insert({
                     client_id: clientId,
                     service_id: serviceId,
+                    emitter_id: selectedEmitterId, // Attach Emitter
+                    document_type: derivedDocType,
                     number: invoiceNumber,
                     date: new Date().toISOString(),
                     due_date: dueDate.toISOString(),
@@ -268,6 +328,44 @@ export function AddServiceModal({ clientId, clientName, onSuccess, trigger, serv
                         </DialogHeader>
 
                         <div className="grid gap-6 py-4">
+                            {/* NEW: Emitter Selection Block */}
+                            {emitters.length > 0 && (
+                                <div className="space-y-2 bg-slate-50 p-3 rounded-md border border-slate-100">
+                                    <Label>Emisor de Facturación</Label>
+                                    {emitters.length === 1 ? (
+                                        <div className="text-sm font-medium text-slate-700 flex flex-col">
+                                            <span>{emitters[0].display_name}</span>
+                                            <span className="text-xs text-muted-foreground font-normal">
+                                                Se generará: {derivedDocType === 'FACTURA_ELECTRONICA' ? 'Factura Electrónica' : 'Cuenta de Cobro'}
+                                            </span>
+                                        </div>
+                                    ) : (
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="col-span-2 sm:col-span-1">
+                                                <Select
+                                                    value={selectedEmitterId}
+                                                    onValueChange={setSelectedEmitterId}
+                                                >
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="Seleccionar Emisor" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {emitters.map(e => (
+                                                            <SelectItem key={e.id} value={e.id}>{e.display_name}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                            {selectedEmitterId && (
+                                                <div className="flex items-center text-xs text-slate-500">
+                                                    Generará: {derivedDocType === 'FACTURA_ELECTRONICA' ? <strong>Factura Electrónica</strong> : <strong>Cuenta de Cobro</strong>}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
                             {/* Service Name */}
                             <div className="space-y-2">
                                 <Label htmlFor="name">Nombre del Servicio</Label>

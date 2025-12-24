@@ -102,7 +102,7 @@ export function WhatsAppShareModal({ invoice, open, onOpenChange }: WhatsAppShar
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="new_invoice">Nueva Factura</SelectItem>
+                                <SelectItem value="new_invoice">Nuevo Documento</SelectItem>
                                 <SelectItem value="reminder">Recordatorio de Pago</SelectItem>
                             </SelectContent>
                         </Select>

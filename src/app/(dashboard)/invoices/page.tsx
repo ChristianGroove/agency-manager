@@ -34,17 +34,7 @@ import {
 } from "@/components/animate-ui/components/radix/dropdown-menu"
 import { MoreVertical } from "lucide-react"
 
-interface Invoice {
-    id: string
-    number: string
-    date: string
-    due_date: string
-    total: number
-    status: string
-    client: {
-        name: string
-    }
-}
+import { Invoice } from "@/types/billing"
 
 export default function InvoicesPage() {
     const router = useRouter()
@@ -66,7 +56,7 @@ export default function InvoicesPage() {
             .is('deleted_at', null)
             .order('date', { ascending: false })
 
-        if (data) setInvoices(data)
+        if (data) setInvoices(data as unknown as Invoice[]) // Cast to new type
         setLoading(false)
     }
 
@@ -75,7 +65,7 @@ export default function InvoicesPage() {
     }, [])
 
     const handleDeleteInvoice = async (id: string) => {
-        if (!confirm("¿Estás seguro de que deseas eliminar esta factura?")) return
+        if (!confirm("¿Estás seguro de que deseas eliminar este documento de cobro?")) return
 
         setDeletingId(id)
         try {
@@ -89,7 +79,7 @@ export default function InvoicesPage() {
             await fetchInvoices()
         } catch (error) {
             console.error("Error deleting invoice:", error)
-            alert("Error al eliminar la factura")
+            alert("Error al eliminar el documento")
         } finally {
             setDeletingId(null)
         }
@@ -98,7 +88,7 @@ export default function InvoicesPage() {
     const filteredInvoices = invoices.filter(invoice => {
         const matchesSearch =
             invoice.number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            invoice.client?.name.toLowerCase().includes(searchTerm.toLowerCase())
+            invoice.client?.name.toLowerCase().includes(searchTerm.toLowerCase()) || ''
 
         const matchesStatus = statusFilter === "all" || invoice.status === statusFilter
 
@@ -110,9 +100,9 @@ export default function InvoicesPage() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h2 className="text-3xl font-bold tracking-tight text-gray-900">
-                        <SplitText>Cuentas de Cobro</SplitText>
+                        <SplitText>Documentos de Cobro</SplitText>
                     </h2>
-                    <p className="text-muted-foreground mt-1">Gestiona todas las cuentas de cobro emitidas.</p>
+                    <p className="text-muted-foreground mt-1">Gestiona todos los documentos emitidos.</p>
                 </div>
                 <div className="w-full md:w-auto">
                     <CreateInvoiceModal
@@ -182,7 +172,7 @@ export default function InvoicesPage() {
                                 ? "bg-gray-100 text-gray-900 border-gray-200 shadow-inner"
                                 : "bg-white text-gray-500 border-transparent hover:bg-gray-50 hover:text-gray-900"
                         )}
-                        title="Filtrar Facturas"
+                        title="Filtrar Documentos"
                     >
                         <ListFilter className="h-4 w-4" />
                     </button>
@@ -206,13 +196,13 @@ export default function InvoicesPage() {
                         {loading ? (
                             <TableRow>
                                 <TableCell colSpan={7} className="text-center py-8 text-gray-500">
-                                    Cargando facturas...
+                                    Cargando documentos...
                                 </TableCell>
                             </TableRow>
                         ) : filteredInvoices.length === 0 ? (
                             <TableRow>
                                 <TableCell colSpan={7} className="text-center py-8 text-gray-500">
-                                    No se encontraron facturas
+                                    No se encontraron documentos de cobro
                                 </TableCell>
                             </TableRow>
                         ) : (
@@ -249,7 +239,7 @@ export default function InvoicesPage() {
                                             <DropdownMenuContent align="end">
                                                 <DropdownMenuItem onClick={() => router.push(`/invoices/${invoice.id}`)}>
                                                     <Eye className="mr-2 h-4 w-4" />
-                                                    <span>Ver Detalles</span>
+                                                    <span>Ver Documento</span>
                                                 </DropdownMenuItem>
                                                 <CreateInvoiceModal
                                                     invoiceToEdit={invoice}

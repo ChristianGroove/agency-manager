@@ -223,7 +223,7 @@ export default function DashboardPage() {
                                 />
                             </div>
                             <p className="text-xs text-muted-foreground mt-1">
-                                {stats.paidInvoices} facturas pagadas
+                                {stats.paidInvoices} documentos pagados
                             </p>
                         </CardContent>
                     </Card>
@@ -466,7 +466,7 @@ export default function DashboardPage() {
                                 Atención Requerida
                             </h3>
                             <p className="text-gray-500 max-w-xl">
-                                Hay <span className="font-bold text-red-500">{stats.clientsWithDebt} clientes</span> con facturas vencidas este mes.
+                                Hay <span className="font-bold text-red-500">{stats.clientsWithDebt} clientes</span> con cuentas de cobro vencidas este mes.
                                 Gestionar estos cobros podría recuperar <span className="font-bold text-gray-900">${(stats.clientsWithDebt * 1500000).toLocaleString()}</span> para tu flujo de caja.
                             </p>
                         </div>

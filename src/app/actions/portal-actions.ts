@@ -37,7 +37,7 @@ export async function getPortalData(token: string) {
             { data: settings },
             { data: services }
         ] = await Promise.all([
-            supabaseAdmin.from('invoices').select('*').eq('client_id', client.id).order('created_at', { ascending: false }),
+            supabaseAdmin.from('invoices').select('*').eq('client_id', client.id).is('deleted_at', null).order('created_at', { ascending: false }),
             supabaseAdmin.from('quotes').select('*').eq('client_id', client.id).order('created_at', { ascending: false }),
             supabaseAdmin.from('briefings').select('*, template:briefing_templates(name)').eq('client_id', client.id).order('created_at', { ascending: false }),
             supabaseAdmin.from('client_events').select('*').eq('client_id', client.id).order('created_at', { ascending: false }),
@@ -461,6 +461,7 @@ export async function getPortalInvoice(token: string, invoiceId: string) {
         `)
         .eq('id', invoiceId)
         .eq('client_id', client.id)
+        .is('deleted_at', null)
         .single()
 
     if (error) throw error

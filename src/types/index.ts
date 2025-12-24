@@ -21,25 +21,17 @@ export type Service = {
     created_at: string
     client_id: string
     name: string
-    description?: string
-    status: 'active' | 'paused' | 'completed' | 'cancelled'
-    type?: 'recurring' | 'one_off' // Default is recurring
-    frequency?: 'monthly' | 'biweekly' | 'quarterly' | 'semiannual' | 'yearly'
-    amount?: number
-    quantity?: number
-    start_date?: string
-    end_date?: string
-}
-
-export type ServiceCatalogItem = {
-    id: string
-    name: string
-    description?: string
     category: string
     type: 'recurring' | 'one_off'
     frequency?: 'monthly' | 'biweekly' | 'quarterly' | 'semiannual' | 'yearly'
     base_price: number
     is_visible_in_portal: boolean
+    description?: string
+    amount?: number
+    quantity?: number
+    status?: string
+    emitter_id?: string
+    document_type?: string
 }
 
 export type Lead = {
@@ -97,6 +89,8 @@ export type Invoice = {
     client?: Client
     service_id?: string | null
     deleted_at?: string
+    emitter_id?: string
+    document_type?: string
 }
 
 export type ClientEvent = {

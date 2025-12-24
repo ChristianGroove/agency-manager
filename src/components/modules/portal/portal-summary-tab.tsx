@@ -70,7 +70,7 @@ export function PortalSummaryTab({ client, invoices, quotes, briefings, events, 
                         <div className="text-center md:text-left space-y-4 flex-1">
                             <h3 className="text-xl font-bold text-gray-900">Tareas Pendientes</h3>
                             <p className="text-gray-600">
-                                {pendingInvoices.length > 0 && `Tienes ${pendingInvoices.length} facturas pendientes. `}
+                                {pendingInvoices.length > 0 && `Tienes ${pendingInvoices.length} documentos pendientes. `}
                                 {openQuotes.length > 0 && `Tienes ${openQuotes.length} cotizaciones por revisar. `}
                                 {pendingBriefings.length > 0 && `Necesitamos tu información en ${pendingBriefings.length} briefings.`}
                             </p>

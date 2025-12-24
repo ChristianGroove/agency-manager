@@ -6,13 +6,13 @@ export const getInvoiceEmailHtml = (clientName: string, invoiceNumber: string, a
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nueva Factura de Pixy</title>
+    <title>Nuevo Documento de Cobro</title>
 </head>
 <body style="margin: 0; padding: 0; background-color: #f3f4f6; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased;">
     <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
         <!-- Logo/Header -->
         <div style="text-align: center; margin-bottom: 30px;">
-            <h1 style="color: #111827; margin: 0; font-size: 32px; font-weight: 800; letter-spacing: -1px;">¡TOC, TOC!</h1>
+            <h1 style="color: #111827; margin: 0; font-size: 32px; font-weight: 800; letter-spacing: -1px;">¡HOLA!</h1>
         </div>
 
         <!-- Main Card -->
@@ -21,7 +21,7 @@ export const getInvoiceEmailHtml = (clientName: string, invoiceNumber: string, a
             <h2 style="color: #111827; margin-top: 0; margin-bottom: 20px; font-size: 20px; font-weight: 600;">Hola, ${clientName}</h2>
             
             <p style="color: #374151; font-size: 16px; line-height: 24px; margin-bottom: 24px;">
-                Adjunto encontrarás tu factura <strong>#${invoiceNumber}</strong> por concepto de <strong>${concept}</strong>.
+                Adjunto encontrarás tu documento de cobro <strong>#${invoiceNumber}</strong> por concepto de <strong>${concept}</strong>.
             </p>
 
             <!-- Invoice Details Box -->
@@ -39,7 +39,7 @@ export const getInvoiceEmailHtml = (clientName: string, invoiceNumber: string, a
             </div>
 
             <p style="color: #374151; font-size: 16px; line-height: 24px; margin-bottom: 30px;">
-                Agradecemos tu confianza en nuestros servicios. Si tienes alguna pregunta sobre esta factura, no dudes en responder a este correo.
+                Agradecemos tu confianza en nuestros servicios. Si tienes alguna pregunta sobre este documento, no dudes en responder a este correo.
             </p>
 
             <div style="text-align: center;">

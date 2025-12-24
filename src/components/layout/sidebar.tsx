@@ -25,9 +25,10 @@ const routes = [
         href: "/hosting",
     },
     {
-        label: "Facturación",
+        title: 'Documentos de Cobro',
+        href: '/invoices',
         icon: FileText,
-        href: "/invoices",
+        variant: 'ghost'
     },
     {
         label: "Cotizaciones",

@@ -44,7 +44,9 @@ export const InvoiceTemplate = forwardRef<HTMLDivElement, InvoiceTemplateProps>(
                             </p>
                         </div>
                         <div className="text-right">
-                            <h2 className="text-2xl font-bold text-gray-900 mb-1">CUENTA DE COBRO</h2>
+                            <h2 className="text-2xl font-bold text-gray-900 mb-1">
+                                {invoice.document_type ? invoice.document_type.replace(/_/g, ' ') : 'CUENTA DE COBRO'}
+                            </h2>
                             <p className="text-lg font-bold text-gray-900 mb-1">No. {invoice.number}</p>
                             <p className="text-xs text-gray-600">Fecha: {new Date(invoice.date).toLocaleDateString()}</p>
                         </div>

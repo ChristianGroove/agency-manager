@@ -11,11 +11,14 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
-import { updateSettings } from "@/lib/actions/settings"
+import { TrashBinSettings } from "./trash-bin-settings"
+import { EmittersSettings } from "./emitters-settings"
+import { isEmittersModuleEnabled } from "@/lib/flags"
 import { Loader2, Save, CreditCard, FileText, Building2, Globe, Layout, Palette, Eye, MessageSquare, LayoutTemplate } from "lucide-react"
 import { COMMUNICATION_VARIABLES, DEFAULT_TEMPLATES } from "@/lib/communication-utils"
 import { useEffect } from "react"
 import { SplitText } from "@/components/ui/split-text"
+import { updateSettings } from "@/lib/actions/settings"
 
 export function SettingsForm({ initialSettings }: { initialSettings: any }) {
     const router = useRouter()
@@ -108,48 +111,58 @@ export function SettingsForm({ initialSettings }: { initialSettings: any }) {
                 </Button>
             </div>
 
-            <Tabs defaultValue="agency" className="w-full">
-                <TabsList className="grid w-full grid-cols-7 max-w-full">
-                    <TabsTrigger value="agency" className="flex items-center gap-2"><Building2 className="h-4 w-4" /> Agencia</TabsTrigger>
-                    <TabsTrigger value="general" className="flex items-center gap-2"><Globe className="h-4 w-4" /> General</TabsTrigger>
-                    <TabsTrigger value="billing" className="flex items-center gap-2"><FileText className="h-4 w-4" /> Facturación</TabsTrigger>
-                    <TabsTrigger value="payments" className="flex items-center gap-2"><CreditCard className="h-4 w-4" /> Pagos</TabsTrigger>
-                    <TabsTrigger value="portal" className="flex items-center gap-2"><Layout className="h-4 w-4" /> Portal</TabsTrigger>
-                    <TabsTrigger value="communication" className="flex items-center gap-2"><MessageSquare className="h-4 w-4" /> Comms</TabsTrigger>
-                    <TabsTrigger value="interface" className="flex items-center gap-2"><LayoutTemplate className="h-4 w-4" /> Interfaz</TabsTrigger>
+            <Tabs defaultValue="agency" className="w-full" suppressHydrationWarning>
+                <TabsList className="grid w-full grid-cols-7 max-w-full" suppressHydrationWarning>
+                    <TabsTrigger value="agency" className="flex items-center gap-2" suppressHydrationWarning><Building2 className="h-4 w-4" /> Agencia</TabsTrigger>
+                    <TabsTrigger value="general" className="flex items-center gap-2" suppressHydrationWarning><Globe className="h-4 w-4" /> General</TabsTrigger>
+                    <TabsTrigger value="billing" className="flex items-center gap-2" suppressHydrationWarning><FileText className="h-4 w-4" /> Cobros y Facturación</TabsTrigger>
+                    {isEmittersModuleEnabled() && (
+                        <TabsTrigger value="emitters" className="flex items-center gap-2" suppressHydrationWarning><Building2 className="h-4 w-4" /> Emisores</TabsTrigger>
+                    )}
+                    <TabsTrigger value="payments" className="flex items-center gap-2" suppressHydrationWarning><CreditCard className="h-4 w-4" /> Pagos</TabsTrigger>
+                    <TabsTrigger value="portal" className="flex items-center gap-2" suppressHydrationWarning><Layout className="h-4 w-4" /> Portal</TabsTrigger>
+                    <TabsTrigger value="communication" className="flex items-center gap-2" suppressHydrationWarning><MessageSquare className="h-4 w-4" /> Comms</TabsTrigger>
+                    <TabsTrigger value="interface" className="flex items-center gap-2" suppressHydrationWarning><LayoutTemplate className="h-4 w-4" /> Interfaz</TabsTrigger>
                 </TabsList>
 
                 {/* AGENCY TAB */}
-                <TabsContent value="agency" className="space-y-4 mt-4">
+                <TabsContent value="agency" className="space-y-4 mt-4" suppressHydrationWarning>
                     <Card>
                         <CardHeader>
                             <CardTitle>Identidad de la Agencia</CardTitle>
                             <CardDescription>
-                                Estos datos aparecerán en tus facturas, cotizaciones y portal de clientes.
+                                Estos datos aparecerán en tus cuentas de cobro, cotizaciones y portal de clientes.
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label htmlFor="agency_name">Nombre Comercial</Label>
+                                    <Label htmlFor="agency_name">Nombre Comercial / Marca</Label>
                                     <Input id="agency_name" name="agency_name" value={formData.agency_name || ''} onChange={handleChange} placeholder="Ej: Pixy Agency" />
+                                    <p className="text-xs text-muted-foreground">Nombre visible en el portal y correos.</p>
                                 </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="agency_legal_name">Razón Social</Label>
-                                    <Input id="agency_legal_name" name="agency_legal_name" value={formData.agency_legal_name || ''} onChange={handleChange} placeholder="Ej: Pixy S.A.S." />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="agency_email">Email Principal</Label>
-                                    <Input id="agency_email" name="agency_email" value={formData.agency_email || ''} onChange={handleChange} placeholder="contacto@pixy.com" />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="agency_phone">Teléfono / WhatsApp</Label>
-                                    <Input id="agency_phone" name="agency_phone" value={formData.agency_phone || ''} onChange={handleChange} placeholder="+57 300 123 4567" />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="agency_website">Sitio Web</Label>
-                                    <Input id="agency_website" name="agency_website" value={formData.agency_website || ''} onChange={handleChange} placeholder="https://pixy.com" />
-                                </div>
+                            </div>
+                            <div className="space-y-2 p-3 bg-blue-50/50 border border-blue-100 rounded-lg">
+                                <h4 className="text-sm font-semibold text-blue-800 flex items-center gap-2">
+                                    <Building2 className="h-4 w-4" />
+                                    Entidad Legal
+                                </h4>
+                                <p className="text-xs text-blue-700">
+                                    La Razón Social, NIT y datos fiscales se administran en la pestaña <strong>Emisores</strong>.
+                                    Esta pestaña es solo para identidad de marca.
+                                </p>
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="agency_email">Email Principal</Label>
+                                <Input id="agency_email" name="agency_email" value={formData.agency_email || ''} onChange={handleChange} placeholder="contacto@pixy.com" />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="agency_phone">Teléfono / WhatsApp</Label>
+                                <Input id="agency_phone" name="agency_phone" value={formData.agency_phone || ''} onChange={handleChange} placeholder="+57 300 123 4567" />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="agency_website">Sitio Web</Label>
+                                <Input id="agency_website" name="agency_website" value={formData.agency_website || ''} onChange={handleChange} placeholder="https://pixy.com" />
                             </div>
 
                             {/* Branding Section */}
@@ -160,9 +173,9 @@ export function SettingsForm({ initialSettings }: { initialSettings: any }) {
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div className="space-y-2">
-                                        <Label htmlFor="invoice_logo_url">Logo para Facturas</Label>
+                                        <Label htmlFor="invoice_logo_url">Logo para Documentos</Label>
                                         <Input id="invoice_logo_url" name="invoice_logo_url" value={formData.invoice_logo_url || ''} onChange={handleChange} placeholder="/branding/invoice-logo.png" />
-                                        <p className="text-xs text-muted-foreground">Se usará en PDFs de facturas</p>
+                                        <p className="text-xs text-muted-foreground">Se usará en PDFs de cuentas de cobro</p>
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="main_logo_url">Logo Principal (Login/Sidebar)</Label>
@@ -214,7 +227,7 @@ export function SettingsForm({ initialSettings }: { initialSettings: any }) {
                                 <div className="space-y-2">
                                     <Label htmlFor="agency_currency">Moneda Base</Label>
                                     <Select name="agency_currency" value={formData.agency_currency || 'COP'} onValueChange={(val) => handleSelectChange('agency_currency', val)}>
-                                        <SelectTrigger>
+                                        <SelectTrigger suppressHydrationWarning>
                                             <SelectValue placeholder="Seleccionar" />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -248,7 +261,7 @@ export function SettingsForm({ initialSettings }: { initialSettings: any }) {
                                 <div className="space-y-2">
                                     <Label htmlFor="default_language">Idioma de la App</Label>
                                     <Select name="default_language" value={formData.default_language || 'es'} onValueChange={(val) => handleSelectChange('default_language', val)}>
-                                        <SelectTrigger>
+                                        <SelectTrigger suppressHydrationWarning>
                                             <SelectValue placeholder="Seleccionar" />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -260,7 +273,7 @@ export function SettingsForm({ initialSettings }: { initialSettings: any }) {
                                 <div className="space-y-2">
                                     <Label htmlFor="portal_language">Idioma del Portal</Label>
                                     <Select name="portal_language" value={formData.portal_language || 'es'} onValueChange={(val) => handleSelectChange('portal_language', val)}>
-                                        <SelectTrigger>
+                                        <SelectTrigger suppressHydrationWarning>
                                             <SelectValue placeholder="Seleccionar" />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -272,7 +285,7 @@ export function SettingsForm({ initialSettings }: { initialSettings: any }) {
                                 <div className="space-y-2">
                                     <Label htmlFor="date_format">Formato de Fecha</Label>
                                     <Select name="date_format" value={formData.date_format || 'DD/MM/YYYY'} onValueChange={(val) => handleSelectChange('date_format', val)}>
-                                        <SelectTrigger>
+                                        <SelectTrigger suppressHydrationWarning>
                                             <SelectValue placeholder="Seleccionar" />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -285,7 +298,7 @@ export function SettingsForm({ initialSettings }: { initialSettings: any }) {
                                 <div className="space-y-2">
                                     <Label htmlFor="currency_format">Formato de Moneda</Label>
                                     <Select name="currency_format" value={formData.currency_format || 'es-CO'} onValueChange={(val) => handleSelectChange('currency_format', val)}>
-                                        <SelectTrigger>
+                                        <SelectTrigger suppressHydrationWarning>
                                             <SelectValue placeholder="Seleccionar" />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -304,7 +317,7 @@ export function SettingsForm({ initialSettings }: { initialSettings: any }) {
                                     name="legal_text"
                                     value={formData.legal_text || ''}
                                     onChange={handleChange}
-                                    placeholder="Términos y condiciones que aparecerán en el pie de página de facturas y cotizaciones..."
+                                    placeholder="Términos y condiciones que aparecerán en el pie de página de documentos de cobro..."
                                     className="min-h-[100px]"
                                 />
                             </div>
@@ -338,13 +351,13 @@ export function SettingsForm({ initialSettings }: { initialSettings: any }) {
                         <CardHeader>
                             <CardTitle>Configuración de Facturación</CardTitle>
                             <CardDescription>
-                                Controla cómo se generan las nuevas facturas.
+                                Controla cómo se generan las nuevos documentos de cobro.
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div className="space-y-2">
-                                    <Label htmlFor="invoice_prefix">Prefijo de Facturas</Label>
+                                    <Label htmlFor="invoice_prefix">Prefijo de Documentos</Label>
                                     <Input id="invoice_prefix" name="invoice_prefix" value={formData.invoice_prefix || 'INV-'} onChange={handleChange} placeholder="INV-" />
                                 </div>
                                 <div className="space-y-2">
@@ -369,12 +382,17 @@ export function SettingsForm({ initialSettings }: { initialSettings: any }) {
                                     name="invoice_legal_text"
                                     value={formData.invoice_legal_text || ''}
                                     onChange={handleChange}
-                                    placeholder="Texto legal específico para facturas (ej: Resolución DIAN...)"
+                                    placeholder="Texto legal específico para documentos (ej: Resolución...)"
                                     className="min-h-[100px]"
                                 />
                             </div>
                         </CardContent>
                     </Card>
+                </TabsContent>
+
+                {/* EMITTERS TAB */}
+                <TabsContent value="emitters">
+                    <EmittersSettings />
                 </TabsContent>
 
                 {/* PAYMENTS TAB */}
@@ -392,7 +410,7 @@ export function SettingsForm({ initialSettings }: { initialSettings: any }) {
                                     <div className="space-y-0.5">
                                         <Label className="text-base">Habilitar Pagos en el Portal</Label>
                                         <p className="text-sm text-muted-foreground">
-                                            Si se desactiva, los clientes verán sus facturas pero no podrán pagar en línea.
+                                            Si se desactiva, los clientes verán sus cuentas de cobro pero no podrán pagar en línea.
                                         </p>
                                     </div>
                                     <Switch
@@ -404,7 +422,7 @@ export function SettingsForm({ initialSettings }: { initialSettings: any }) {
                                     <div className="space-y-0.5">
                                         <Label className="text-base">Permitir Pago Múltiple</Label>
                                         <p className="text-sm text-muted-foreground">
-                                            Permite a los clientes seleccionar y pagar varias facturas en una sola transacción.
+                                            Permite a los clientes seleccionar y pagar varios documentos en una sola transacción.
                                         </p>
                                     </div>
                                     <Switch
@@ -523,7 +541,7 @@ export function SettingsForm({ initialSettings }: { initialSettings: any }) {
                                                 name="portal_og_description"
                                                 value={formData.portal_og_description || ''}
                                                 onChange={handleChange}
-                                                placeholder="Ej: Accede a tus facturas y proyectos en tiempo real."
+                                                placeholder="Ej: Accede a tus documentos y proyectos en tiempo real."
                                             />
                                         </div>
                                         <div className="space-y-2">

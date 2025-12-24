@@ -304,7 +304,7 @@ export function PortalDashboard({ token, client, invoices, quotes, briefings, ev
                     <div className="flex-1 text-center">
                         {pendingInvoices.length > 0 ? (
                             <p className="text-sm font-medium text-gray-700">
-                                <span className="font-bold text-gray-900">Pendientes:</span> Tienes {pendingInvoices.length} facturas por <span className="text-gray-900 font-bold">{formatCurrency(totalPending)}</span>.
+                                <span className="font-bold text-gray-900">Pendientes:</span> Tienes {pendingInvoices.length} cuentas de cobro por <span className="text-gray-900 font-bold">{formatCurrency(totalPending)}</span>.
                             </p>
                         ) : (
                             <div className="flex items-center justify-center gap-2">

@@ -160,7 +160,7 @@ export function PortalLayout({ token, client, invoices, quotes, briefings, event
                             <p className="text-3xl font-bold text-gray-900 mb-2">
                                 {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(totalPending)}
                             </p>
-                            <p className="text-sm text-gray-500 mb-4">Tienes {pendingInvoices.length} facturas por pagar.</p>
+                            <p className="text-sm text-gray-500 mb-4">Tienes {pendingInvoices.length} documentos por pagar.</p>
                             <Button
                                 className="w-full text-white bg-black hover:bg-gray-800"
                                 onClick={() => {
@@ -168,7 +168,7 @@ export function PortalLayout({ token, client, invoices, quotes, briefings, event
                                     setShowBillingAlert(false)
                                 }}
                             >
-                                Ir a Facturación
+                                Ir a Documentos
                             </Button>
                         </div>
                     </div>
@@ -247,8 +247,8 @@ function NotificationBell({ count, pendingInvoices, openQuotes, pendingBriefings
                                             <CreditCard className="h-4 w-4 text-red-600" />
                                         </div>
                                         <div>
-                                            <p className="text-sm font-medium">Facturas Vencidas</p>
-                                            <p className="text-xs text-gray-500">Tienes {pendingInvoices.length} facturas pendientes.</p>
+                                            <p className="text-sm font-medium">Documentos Vencidos</p>
+                                            <p className="text-xs text-gray-500">Tienes {pendingInvoices.length} documentos pendientes.</p>
                                         </div>
                                     </div>
                                 </div>

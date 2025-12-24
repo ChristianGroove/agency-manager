@@ -37,10 +37,10 @@ type Client = {
     email: string
     phone: string
     logo_url?: string
-    invoices: { id: string; total: number; status: string; due_date?: string }[]
-    hosting_accounts: { status: string; renewal_date: string }[]
-    subscriptions: { id: string; name: string; next_billing_date: string; status: string; amount: number; service_type: string; frequency: string }[]
-    services?: { id: string; status: string; name: string; next_billing_date?: string; amount?: number; frequency?: string }[]
+    invoices: { id: string; total: number; status: string; due_date?: string; deleted_at?: string }[]
+    hosting_accounts: { status: string; renewal_date: string; deleted_at?: string }[]
+    subscriptions: { id: string; name: string; next_billing_date: string; status: string; amount: number; service_type: string; frequency: string; deleted_at?: string }[]
+    services?: { id: string; status: string; name: string; next_billing_date?: string; amount?: number; frequency?: string; deleted_at?: string }[]
     quotes?: { id: string; number: string; total: number; status: string; pdf_url?: string }[]
     portal_token?: string
     portal_short_token?: string
@@ -138,8 +138,8 @@ export default function ClientsPage() {
           *,
           portal_token,
           portal_short_token,
-          invoices (id, total, status, due_date, number, pdf_url),
-          quotes (id, number, total, status, pdf_url),
+          invoices (id, total, status, due_date, number, pdf_url, deleted_at),
+          quotes (id, number, total, status, pdf_url, deleted_at),
           hosting_accounts (status, renewal_date),
           subscriptions (id, name, next_billing_date, status, amount, service_type, frequency),
           services (id, status)
@@ -310,7 +310,8 @@ export default function ClientsPage() {
     // Process clients with status logic for filtering
     const clientsWithStatus = clients.map(client => {
         let futureDebt = 0
-        const debt = client.invoices?.reduce((acc, inv) => {
+        const debt = client.invoices?.reduce((acc, inv: any) => {
+            if (inv.deleted_at) return acc // Skip deleted
             if (inv.status !== 'pending' && inv.status !== 'overdue') return acc
 
             if (inv.due_date) {
@@ -328,7 +329,8 @@ export default function ClientsPage() {
             return acc + inv.total
         }, 0) || 0
 
-        const activeServicesCount = client.services ? client.services.filter((s: any) => s.status === 'active').length : (client.subscriptions?.filter((s: any) => s.status === 'active').length || 0)
+        const activeServicesCount = (client.services ? client.services.filter((s: any) => s.status === 'active' && !s.deleted_at).length : 0) +
+            (client.subscriptions ? client.subscriptions.filter((s: any) => s.status === 'active' && !s.deleted_at).length : 0)
 
         let status = 'active' // Default
         if (debt > 0) status = 'overdue'
@@ -864,7 +866,7 @@ export default function ClientsPage() {
                                                     size="icon"
                                                     className="h-8 w-8 rounded-full bg-gray-50 text-gray-400 hover:bg-white hover:text-blue-600 hover:shadow-md hover:-translate-y-0.5 hover:ring-1 hover:ring-blue-100 transition-all duration-300"
                                                     onClick={() => handleOpenInvoices(client)}
-                                                    title="Ver Facturas"
+                                                    title="Ver Documentos"
                                                 >
                                                     <FileText className="h-4 w-4" />
                                                 </Button>
@@ -922,15 +924,16 @@ export default function ClientsPage() {
             < Dialog open={isInvoicesModalOpen} onOpenChange={setIsInvoicesModalOpen} >
                 <DialogContent className="sm:max-w-[500px]">
                     <DialogHeader>
-                        <DialogTitle>Facturas Rápidas</DialogTitle>
+                        <DialogTitle>Documentos Rápidos</DialogTitle>
                         <DialogDescription>
-                            Gestiona las facturas de {selectedClientForInvoices?.name}
+                            Gestiona los documentos de {selectedClientForInvoices?.name}
                         </DialogDescription>
                     </DialogHeader>
 
                     <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
                         {selectedClientForInvoices?.invoices && selectedClientForInvoices.invoices.length > 0 ? (
                             selectedClientForInvoices.invoices
+                                .filter(inv => !inv.deleted_at)
                                 .sort((a, b) => new Date(b.due_date || '').getTime() - new Date(a.due_date || '').getTime())
                                 .map(invoice => (
                                     <div key={invoice.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">

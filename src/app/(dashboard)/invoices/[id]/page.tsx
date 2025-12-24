@@ -13,6 +13,7 @@ import { ShareInvoiceModal } from "@/components/modules/invoices/share-invoice-m
 import { InvoiceTemplate } from "@/components/modules/invoices/invoice-template"
 import { ShareButton } from "@/components/animate-ui/components/community/share-button"
 import { getSettings } from "@/lib/actions/settings"
+import { getDocumentTypeLabel } from "@/lib/billing-utils"
 
 export default function InvoicePage() {
   const params = useParams()
@@ -96,7 +97,9 @@ export default function InvoicePage() {
                 </Button>
               </Link>
               <div className="h-8 w-px bg-gray-300" />
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">Factura</h1>
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+                {getDocumentTypeLabel(invoice.document_type || 'CUENTA_DE_COBRO')}
+              </h1>
             </div>
             <div className="flex items-center gap-2">
               <ShareButton
