@@ -11,6 +11,7 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Plus, Search, Filter, CreditCard, Server, Megaphone, Monitor, Box, Eye, Trash2, Loader2, RefreshCw, Zap, CalendarClock, MoreHorizontal, Pencil, FileText, PlayCircle, PauseCircle, ListFilter } from "lucide-react"
 import { Input } from "@/components/ui/input"
+import { toast } from "sonner"
 import {
     Table,
     TableBody,
@@ -96,6 +97,7 @@ export default function ServicesPage() {
     *,
     client: clients(id, name, company_name)
         `)
+            .is('deleted_at', null) // Filter out soft-deleted services
             .order('created_at', { ascending: false })
 
         if (error) {
@@ -111,15 +113,30 @@ export default function ServicesPage() {
     }, [])
 
     const handleDeleteService = async (id: string) => {
-        if (!confirm("¿Estás seguro de que deseas eliminar este contrato? Esta acción no se puede deshacer.")) return
+        if (!confirm("¿Estás seguro de eliminar este contrato? Esta acción hará lo siguiente:\n\n1. Archivará el contrato (Soft Delete).\n2. Cancelará facturas pendientes.\n\nEl historial de pagos se mantendrá intacto.")) return
 
         try {
+            // 1. Cancel Pending/Overdue Invoices linked to this service
+            const { error: invoiceError } = await supabase
+                .from('invoices')
+                .update({ status: 'cancelled' })
+                .eq('service_id', id)
+                .in('status', ['pending', 'overdue'])
+
+            if (invoiceError) {
+                console.error("Error cancelling invoices:", invoiceError)
+                // Continue with deletion even if invoice update fails (or ideally throw)
+            }
+
+            // 2. Soft Delete the Service
             const { error } = await supabase
                 .from('services')
-                .delete()
+                .update({ deleted_at: new Date().toISOString() })
                 .eq('id', id)
 
             if (error) throw error
+
+            toast.success("Contrato eliminado y deuda pendiente cancelada.")
             await fetchServices()
         } catch (error) {
             console.error("Error deleting service:", error)
