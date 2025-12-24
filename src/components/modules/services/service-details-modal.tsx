@@ -41,6 +41,7 @@ export function ServiceDetailsModal({ service, isOpen, onClose }: ServiceDetails
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden bg-white border-0 shadow-2xl rounded-2xl">
+                <DialogTitle className="sr-only">Detalles del Servicio</DialogTitle>
                 {/* Header Banner */}
                 <div className="bg-gradient-to-r from-gray-900 to-gray-800 p-6 text-white relative overflow-hidden">
                     <div className="relative z-10 flex justify-between items-start">
