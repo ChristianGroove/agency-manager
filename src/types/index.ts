@@ -117,3 +117,15 @@ export type Briefing = {
     }
     service_id?: string | null
 }
+
+export type ServiceCatalogItem = {
+    id: string
+    name: string
+    description?: string
+    category: string
+    type: 'recurring' | 'one_off'
+    frequency?: 'monthly' | 'biweekly' | 'quarterly' | 'semiannual' | 'yearly'
+    base_price: number
+    is_visible_in_portal: boolean
+    created_at?: string
+}
