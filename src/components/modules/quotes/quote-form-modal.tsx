@@ -182,7 +182,12 @@ export function QuoteFormModal({ isOpen, onClose }: QuoteFormModalProps) {
                                                                 selectedClientId === client.id ? "opacity-100" : "opacity-0"
                                                             )}
                                                         />
-                                                        {client.name} {client.company_name ? <span className="text-xs text-muted-foreground ml-1">({client.company_name})</span> : ''}
+                                                        <div className="flex flex-col">
+                                                            <span>{client.name}</span>
+                                                            {client.company_name && (
+                                                                <span className="text-xs text-muted-foreground">{client.company_name}</span>
+                                                            )}
+                                                        </div>
                                                     </CommandItem>
                                                 ))}
                                             </CommandGroup>

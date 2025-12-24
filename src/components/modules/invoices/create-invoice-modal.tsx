@@ -60,7 +60,7 @@ export function CreateInvoiceModal({ clientId, clientName, onInvoiceCreated, inv
     const router = useRouter()
     const [open, setOpen] = useState(false)
     const [loading, setLoading] = useState(false)
-    const [clients, setClients] = useState<{ id: string, name: string }[]>([])
+    const [clients, setClients] = useState<{ id: string, name: string, company_name?: string }[]>([])
     const [selectedClientId, setSelectedClientId] = useState(clientId || "")
     const [settings, setSettings] = useState<any>({})
 
@@ -164,7 +164,7 @@ export function CreateInvoiceModal({ clientId, clientName, onInvoiceCreated, inv
     const fetchClients = async () => {
         const { data } = await supabase
             .from('clients')
-            .select('id, name')
+            .select('id, name, company_name')
             .order('name')
         if (data) setClients(data)
     }
@@ -377,7 +377,7 @@ export function CreateInvoiceModal({ clientId, clientName, onInvoiceCreated, inv
                                                 {clients.map((client) => (
                                                     <CommandItem
                                                         key={client.id}
-                                                        value={client.name}
+                                                        value={`${client.name} ${client.company_name || ''}`}
                                                         onSelect={() => {
                                                             setSelectedClientId(client.id)
                                                         }}
@@ -388,7 +388,12 @@ export function CreateInvoiceModal({ clientId, clientName, onInvoiceCreated, inv
                                                                 selectedClientId === client.id ? "opacity-100" : "opacity-0"
                                                             )}
                                                         />
-                                                        {client.name}
+                                                        <div className="flex flex-col">
+                                                            <span>{client.name}</span>
+                                                            {client.company_name && (
+                                                                <span className="text-xs text-muted-foreground">{client.company_name}</span>
+                                                            )}
+                                                        </div>
                                                     </CommandItem>
                                                 ))}
                                             </CommandGroup>

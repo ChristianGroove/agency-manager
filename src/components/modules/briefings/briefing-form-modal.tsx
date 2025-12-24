@@ -35,7 +35,7 @@ export function BriefingFormModal({ isOpen, onClose }: BriefingFormModalProps) {
         try {
             const [templatesData, clientsRes] = await Promise.all([
                 getBriefingTemplates(),
-                supabase.from('clients').select('id, name').order('name')
+                supabase.from('clients').select('id, name, company_name').order('name')
             ])
 
             setTemplates(templatesData || [])

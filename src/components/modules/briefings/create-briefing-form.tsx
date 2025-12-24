@@ -28,7 +28,7 @@ import { Check, ChevronsUpDown, Loader2 } from "lucide-react"
 
 interface CreateBriefingFormProps {
     templates: BriefingTemplate[]
-    clients: { id: string, name: string }[]
+    clients: { id: string, name: string, company_name?: string }[]
     onSuccess?: () => void
     onCancel?: () => void
 }
@@ -149,7 +149,7 @@ export function CreateBriefingForm({ templates, clients, onSuccess, onCancel }: 
                                     {clients.map((c) => (
                                         <CommandItem
                                             key={c.id}
-                                            value={c.name}
+                                            value={`${c.name} ${c.company_name || ''}`}
                                             onSelect={() => handleClientChange(c.id)}
                                         >
                                             <Check
@@ -158,7 +158,12 @@ export function CreateBriefingForm({ templates, clients, onSuccess, onCancel }: 
                                                     selectedClient === c.id ? "opacity-100" : "opacity-0"
                                                 )}
                                             />
-                                            {c.name}
+                                            <div className="flex flex-col">
+                                                <span>{c.name}</span>
+                                                {c.company_name && (
+                                                    <span className="text-xs text-muted-foreground">{c.company_name}</span>
+                                                )}
+                                            </div>
                                         </CommandItem>
                                     ))}
                                 </CommandGroup>
