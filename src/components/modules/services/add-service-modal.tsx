@@ -367,30 +367,7 @@ export function AddServiceModal({ clientId, clientName, onSuccess, trigger, serv
                         </DialogHeader>
 
                         <div className="grid gap-6 py-4">
-                            {/* Client Selection (If no clientId prop) */}
-                            {!clientId && (
-                                <div className="space-y-2">
-                                    <Label>Cliente Asignado</Label>
-                                    <Select
-                                        value={selectedClientId}
-                                        onValueChange={setSelectedClientId}
-                                        disabled={isEditing || isLoadingClients}
-                                    >
-                                        <SelectTrigger>
-                                            <SelectValue placeholder={isLoadingClients ? "Cargando clientes..." : "Seleccionar Cliente"} />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {clients.map(client => (
-                                                <SelectItem key={client.id} value={client.id}>
-                                                    {client.company_name || client.name}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            )}
-
-                            {/* NEW: Emitter Selection Block */}
+                            {/* NEW: Emitter Selection Block (Moved First) */}
                             {emitters.length > 0 && (
                                 <div className="space-y-2 bg-slate-50 p-3 rounded-md border border-slate-100">
                                     <Label>Emisor de Facturación</Label>
@@ -425,6 +402,29 @@ export function AddServiceModal({ clientId, clientName, onSuccess, trigger, serv
                                             )}
                                         </div>
                                     )}
+                                </div>
+                            )}
+
+                            {/* Client Selection (If no clientId prop) */}
+                            {!clientId && (
+                                <div className="space-y-2">
+                                    <Label>Cliente Asignado</Label>
+                                    <Select
+                                        value={selectedClientId}
+                                        onValueChange={setSelectedClientId}
+                                        disabled={isEditing || isLoadingClients}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder={isLoadingClients ? "Cargando clientes..." : "Seleccionar Cliente"} />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {clients.map(client => (
+                                                <SelectItem key={client.id} value={client.id}>
+                                                    {client.company_name || client.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
                                 </div>
                             )}
 
