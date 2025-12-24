@@ -31,6 +31,14 @@ export class AdsService {
     }
 
     private normalize(insights: any, campaigns: any[]): NormalizedAdsMetrics {
+        // Zero-decimal currencies (COP, CLP, JPY, KRW, VND, etc.) 
+        // Meta API often returns these in base units. We shouldn't divide by 100 if so.
+        // Or if the budget matches user expectation as raw, we don't divide.
+        const currency = insights.account_currency || 'USD'
+        const zeroDecimalCurrencies = ['COP', 'CLP', 'JPY', 'KRW', 'VND', 'HUF', 'ISK', 'PYG', 'TWD', 'UGX']
+        const isZeroDecimal = zeroDecimalCurrencies.includes(currency)
+        const divisor = isZeroDecimal ? 1 : 100
+
         return {
             spend: parseFloat(insights.spend || '0'),
             impressions: parseInt(insights.impressions || '0'),
@@ -47,11 +55,15 @@ export class AdsService {
                     if (!actions || actions.length === 0) return { count: 0, cost: 0 }
 
                     // Tier 1: Hard Conversions (Purchases, Leads, Messages) - The likely "Result"
+                    // CRITICAL: PROCESSED LIST - DO NOT INCLUDE SUBSETS/DUPLICATES
+                    // 'lead' aggregates all leads. Do not add 'on_facebook_lead'.
+                    // 'purchase' aggregates all purchases.
+                    // 'messaging_conversation_started_7d' is the breakdown usually used for "Messaging Conversations Started".
+                    // Do not add 'messaging_first_reply' as it is a subset.
                     const tier1 = [
-                        'purchase', 'omni_purchase', 'offsite_conversion.fb_pixel_purchase', 'mobile_app_purchase',
-                        'lead', 'on_facebook_lead', 'offsite_conversion.fb_pixel_lead', 'omni_lead',
-                        'onsite_conversion.messaging_conversation_started_7d',
-                        'onsite_conversion.messaging_first_reply'
+                        'purchase',
+                        'lead',
+                        'onsite_conversion.messaging_conversation_started_7d'
                     ]
 
                     // Tier 2: Soft Conversions (Clicks, Landing Page Views) - Fallback for Traffic/Sales
@@ -78,8 +90,6 @@ export class AdsService {
 
                     // 2. If no Tier 1, and objective allows, check Tier 2
                     if (total === 0) {
-                        // For Awareness, we might skip Tier 2 unless strictly needed? 
-                        // But usually Traffic campaigns want Clicks.
                         total = sumActions(tier2)
                     }
 
@@ -100,8 +110,8 @@ export class AdsService {
                     id: c.id,
                     name: c.name,
                     status: c.status,
-                    daily_budget: c.daily_budget ? parseFloat(c.daily_budget) / 100 : undefined,
-                    lifetime_budget: c.lifetime_budget ? parseFloat(c.lifetime_budget) / 100 : undefined,
+                    daily_budget: c.daily_budget ? parseFloat(c.daily_budget) / divisor : undefined,
+                    lifetime_budget: c.lifetime_budget ? parseFloat(c.lifetime_budget) / divisor : undefined,
                     spend: spend,
                     impressions: parseInt(campaignInsights.impressions || '0'),
                     clicks: parseInt(campaignInsights.clicks || '0'),

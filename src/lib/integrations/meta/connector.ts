@@ -40,7 +40,7 @@ export class MetaConnector {
         // Implementation for Ads
         return this.fetchGraph(`/${adAccountId}/insights`, {
             date_preset: datePreset,
-            fields: 'spend,impressions,clicks,cpc,ctr,purchase_roas'
+            fields: 'spend,impressions,clicks,cpc,ctr,purchase_roas,account_currency'
         })
     }
 
