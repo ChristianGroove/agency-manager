@@ -29,7 +29,7 @@ export function BillingAutomator() {
                     if (result.error) {
                         console.error("Billing Automation Error:", result.error)
                         toast.error("Error en Automatización de Facturación", {
-                            description: `Detalle: ${result.error.message || JSON.stringify(result.error)}`
+                            description: `Detalle: ${(result.error as any).message || JSON.stringify(result.error)}`
                         })
                     }
                 }
