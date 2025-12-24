@@ -33,6 +33,7 @@ export function InsightsTab({ client, services, token }: InsightsTabProps) {
     const [adsData, setAdsData] = useState<NormalizedAdsMetrics | null>(null)
     const [socialData, setSocialData] = useState<NormalizedSocialMetrics | null>(null)
     const [activeTab, setActiveTab] = useState("ads")
+    const [datePreset, setDatePreset] = useState("last_30d") // Default to cached view
 
     // Feature Flag Check
     if (!isFeatureEnabled('meta_insights')) return null
@@ -64,7 +65,8 @@ export function InsightsTab({ client, services, token }: InsightsTabProps) {
                     return
                 }
 
-                const res = await fetch(`/api/portal/insights?token=${effectiveToken}&_t=${Date.now()}`)
+                setLoading(true) // Set loading true on re-fetch (date change)
+                const res = await fetch(`/api/portal/insights?token=${effectiveToken}&date_preset=${datePreset}&_t=${Date.now()}`)
                 if (!res.ok) throw new Error("Failed to load")
 
                 const data = await res.json()
@@ -84,12 +86,12 @@ export function InsightsTab({ client, services, token }: InsightsTabProps) {
         } else {
             setLoading(false)
         }
-    }, [hasAds, hasSocial, token])
+    }, [hasAds, hasSocial, token, datePreset])
 
 
     if (!hasAds && !hasSocial && !loading) return null
 
-    if (loading) {
+    if (loading && !adsData && !socialData) { // Only full page load if no data exists yet
         return (
             <div className="flex h-64 items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
@@ -120,7 +122,12 @@ export function InsightsTab({ client, services, token }: InsightsTabProps) {
 
                 <TabsContent value="ads" className="mt-6">
                     {hasAds && adsData ? (
-                        <AdsDashboard data={adsData} />
+                        <AdsDashboard
+                            data={adsData}
+                            datePreset={datePreset}
+                            onDatePresetChange={setDatePreset}
+                            loading={loading}
+                        />
                     ) : (
                         <EmptyState type="Ads" />
                     )}

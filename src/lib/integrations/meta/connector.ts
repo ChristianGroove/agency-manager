@@ -36,11 +36,26 @@ export class MetaConnector {
     /**
      * Get Ad Account Insights
      */
-    async getAdAccountInsights(adAccountId: string) {
+    async getAdAccountInsights(adAccountId: string, datePreset: string = 'last_30d') {
         // Implementation for Ads
         return this.fetchGraph(`/${adAccountId}/insights`, {
-            date_preset: 'last_30d',
-            fields: 'spend,impressions,clicks,cpc,ctr'
+            date_preset: datePreset,
+            fields: 'spend,impressions,clicks,cpc,ctr,purchase_roas'
+        })
+    }
+
+    // ... (rest of file)
+
+    /**
+     * Get Active Campaigns with basic insights
+     */
+    async getCampaigns(adAccountId: string, datePreset: string = 'last_30d') {
+        // Fetch campaigns, filtering for active ones
+        // Nested query for Ads and their insights matches the date preset
+        return this.fetchGraph(`/${adAccountId}/campaigns`, {
+            fields: `id,name,status,objective,daily_budget,lifetime_budget,insights.date_preset(${datePreset}){spend,impressions,clicks,cpc,ctr,actions,cost_per_action_type},ads{id,name,status,creative{thumbnail_url},insights.date_preset(${datePreset}){spend,impressions,clicks,cpc,ctr,actions,cost_per_action_type}}`,
+            effective_status: '["ACTIVE"]',
+            limit: '20'
         })
     }
 
@@ -194,17 +209,6 @@ export class MetaConnector {
         }
     }
 
-    /**
-     * Get Active Campaigns with basic insights
-     */
-    async getCampaigns(adAccountId: string) {
-        // Fetch campaigns, filtering for active ones
-        return this.fetchGraph(`/${adAccountId}/campaigns`, {
-            fields: 'id,name,status,insights.date_preset(last_30d){spend}',
-            effective_status: '["ACTIVE"]',
-            limit: '10'
-        })
-    }
 
     /**
      * Get Page Posts (Facebook)

@@ -1,17 +1,18 @@
 import { NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabase-admin"
+import { MetaConnector } from "@/lib/integrations/meta/connector"
+import { AdsService } from "@/lib/integrations/meta/ads-service"
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(req: Request) {
     const { searchParams } = new URL(req.url)
     const token = searchParams.get('token')
+    const datePreset = searchParams.get('date_preset') // 'today', 'yesterday', 'this_month'
 
     if (!token) {
         return NextResponse.json({ error: "Token required" }, { status: 400 })
     }
-
-    // ... (previous code)
 
     try {
         // 1. Verify Portal Token & Get Client
@@ -28,16 +29,45 @@ export async function GET(req: Request) {
 
         console.log(`[PortalAPI] Resolved Client: ${client.id} for token: ${token}`)
 
-        // 2. Fetch Cached Metrics
-        const { data: adsMetrics, error: adsError } = await supabaseAdmin
-            .from('meta_ads_metrics')
-            .select('*')
-            .eq('client_id', client.id)
-            .order('snapshot_date', { ascending: false })
-            .limit(1)
-            .single()
+        let adsMetrics = null
+        let isLiveFetch = false
 
-        if (adsError) console.warn("[PortalAPI] Ads Fetch Error (or empty):", adsError.message)
+        // 2. LIVE FETCH OPTION
+        // If specific date preset is requested (today/yesterday) OR just for debugging/verification, we fetch LIVE
+        if (datePreset) {
+            try {
+                const { data: config } = await supabaseAdmin
+                    .from('integration_configs')
+                    .select('access_token, ad_account_id')
+                    .eq('client_id', client.id)
+                    .eq('platform', 'meta')
+                    .single()
+
+                if (config?.access_token && config?.ad_account_id) {
+                    const connector = new MetaConnector(config.access_token)
+                    const service = new AdsService(connector)
+                    adsMetrics = await service.getMetrics(config.ad_account_id, datePreset)
+                    isLiveFetch = true
+                    console.log(`[PortalAPI] Live Fetch Success for ${datePreset}`)
+                }
+            } catch (liveError) {
+                console.error("[PortalAPI] Live Fetch Failed, falling back to cache:", liveError)
+            }
+        }
+
+        // 3. Fallback to Cache (Default behavior or if Live Fetch failed)
+        if (!adsMetrics) {
+            const { data: cachedAds, error: adsError } = await supabaseAdmin
+                .from('meta_ads_metrics')
+                .select('*')
+                .eq('client_id', client.id)
+                .order('snapshot_date', { ascending: false })
+                .limit(1)
+                .single()
+
+            if (adsError) console.warn("[PortalAPI] Ads Fetch Error (or empty):", adsError.message)
+            adsMetrics = cachedAds
+        }
 
         // 3. Get Social Data (Latest)
         const { data: socialMetrics, error: socialError } = await supabaseAdmin
