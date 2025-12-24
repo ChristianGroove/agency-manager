@@ -15,11 +15,25 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog"
+import {
+    Command,
+    CommandEmpty,
+    CommandGroup,
+    CommandInput,
+    CommandItem,
+    CommandList,
+} from "@/components/ui/command"
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover"
+import { cn } from "@/lib/utils"
+import { Check, ChevronsUpDown, Loader2, UserPlus, Users } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { LeadsService } from "@/services/leads-service"
 import { QuotesService } from "@/services/quotes-service"
 import { Client } from "@/types"
-import { Loader2, UserPlus, Users } from "lucide-react"
 import { toast } from "sonner"
 
 interface QuoteFormModalProps {
@@ -127,20 +141,55 @@ export function QuoteFormModal({ isOpen, onClose }: QuoteFormModalProps) {
                     </TabsList>
 
                     <TabsContent value="client" className="space-y-4 py-2">
-                        <div className="space-y-2">
+                        <div className="space-y-2 flex flex-col">
                             <Label>Cliente</Label>
-                            <Select value={selectedClientId} onValueChange={setSelectedClientId}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Seleccionar cliente..." />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {clients.map(client => (
-                                        <SelectItem key={client.id} value={client.id}>
-                                            {client.name} {client.company_name ? `(${client.company_name})` : ''}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                        variant="outline"
+                                        role="combobox"
+                                        className={cn(
+                                            "w-full justify-between",
+                                            !selectedClientId && "text-muted-foreground"
+                                        )}
+                                    >
+                                        {selectedClientId
+                                            ? (() => {
+                                                const c = clients.find((client) => client.id === selectedClientId)
+                                                return c ? `${c.name} ${c.company_name ? `(${c.company_name})` : ''}` : "Seleccionar cliente..."
+                                            })()
+                                            : "Seleccionar cliente..."}
+                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[400px] p-0" align="start">
+                                    <Command>
+                                        <CommandInput placeholder="Buscar cliente..." />
+                                        <CommandList className="max-h-[200px] overflow-y-auto">
+                                            <CommandEmpty>No se encontró ningún cliente.</CommandEmpty>
+                                            <CommandGroup>
+                                                {clients.map((client) => (
+                                                    <CommandItem
+                                                        key={client.id}
+                                                        value={`${client.name} ${client.company_name || ''}`}
+                                                        onSelect={() => {
+                                                            setSelectedClientId(client.id)
+                                                        }}
+                                                    >
+                                                        <Check
+                                                            className={cn(
+                                                                "mr-2 h-4 w-4",
+                                                                selectedClientId === client.id ? "opacity-100" : "opacity-0"
+                                                            )}
+                                                        />
+                                                        {client.name} {client.company_name ? <span className="text-xs text-muted-foreground ml-1">({client.company_name})</span> : ''}
+                                                    </CommandItem>
+                                                ))}
+                                            </CommandGroup>
+                                        </CommandList>
+                                    </Command>
+                                </PopoverContent>
+                            </Popover>
                         </div>
                     </TabsContent>
 

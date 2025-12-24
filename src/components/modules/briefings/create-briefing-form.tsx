@@ -9,8 +9,22 @@ import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+    Command,
+    CommandEmpty,
+    CommandGroup,
+    CommandInput,
+    CommandItem,
+    CommandList,
+} from "@/components/ui/command"
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover"
+import { cn } from "@/lib/utils"
 import { toast } from "sonner"
-import { Loader2 } from "lucide-react"
+import { Check, ChevronsUpDown, Loader2 } from "lucide-react"
 
 interface CreateBriefingFormProps {
     templates: BriefingTemplate[]
@@ -96,21 +110,62 @@ export function CreateBriefingForm({ templates, clients, onSuccess, onCancel }: 
                 )}
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2 flex flex-col">
                 <Label>Cliente (Opcional)</Label>
-                <Select value={selectedClient} onValueChange={handleClientChange}>
-                    <SelectTrigger>
-                        <SelectValue placeholder="Asociar a un cliente existente..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="none">-- Sin Cliente (Lead Nuevo) --</SelectItem>
-                        {clients.map((c) => (
-                            <SelectItem key={c.id} value={c.id}>
-                                {c.name}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
+                <Popover>
+                    <PopoverTrigger asChild>
+                        <Button
+                            variant="outline"
+                            role="combobox"
+                            className={cn(
+                                "w-full justify-between",
+                                !selectedClient || selectedClient === "none" ? "text-muted-foreground" : ""
+                            )}
+                        >
+                            {selectedClient && selectedClient !== "none"
+                                ? clients.find((c) => c.id === selectedClient)?.name
+                                : "-- Sin Cliente (Lead Nuevo) --"}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[400px] p-0" align="start">
+                        <Command>
+                            <CommandInput placeholder="Buscar cliente..." />
+                            <CommandList className="max-h-[200px] overflow-y-auto">
+                                <CommandEmpty>No se encontró ningún cliente.</CommandEmpty>
+                                <CommandGroup>
+                                    <CommandItem
+                                        value="none"
+                                        onSelect={() => handleClientChange("none")}
+                                    >
+                                        <Check
+                                            className={cn(
+                                                "mr-2 h-4 w-4",
+                                                selectedClient === "none" ? "opacity-100" : "opacity-0"
+                                            )}
+                                        />
+                                        -- Sin Cliente (Lead Nuevo) --
+                                    </CommandItem>
+                                    {clients.map((c) => (
+                                        <CommandItem
+                                            key={c.id}
+                                            value={c.name}
+                                            onSelect={() => handleClientChange(c.id)}
+                                        >
+                                            <Check
+                                                className={cn(
+                                                    "mr-2 h-4 w-4",
+                                                    selectedClient === c.id ? "opacity-100" : "opacity-0"
+                                                )}
+                                            />
+                                            {c.name}
+                                        </CommandItem>
+                                    ))}
+                                </CommandGroup>
+                            </CommandList>
+                        </Command>
+                    </PopoverContent>
+                </Popover>
             </div>
 
             <div className="pt-4 border-t border-gray-100 flex justify-end gap-2">

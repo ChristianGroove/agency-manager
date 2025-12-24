@@ -27,6 +27,21 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
+import {
+    Command,
+    CommandEmpty,
+    CommandGroup,
+    CommandInput,
+    CommandItem,
+    CommandList,
+} from "@/components/ui/command"
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover"
+import { cn } from "@/lib/utils"
+import { Check, ChevronsUpDown } from "lucide-react"
 
 
 import { Invoice, InvoiceItem, Emitter } from "@/types/billing"
@@ -335,19 +350,52 @@ export function CreateInvoiceModal({ clientId, clientName, onInvoiceCreated, inv
                     )}
 
                     {!clientId && !invoiceToEdit && (
-                        <div className="grid gap-2">
-                            <Label htmlFor="client">Cliente</Label>
-                            <select
-                                id="client"
-                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                                value={selectedClientId}
-                                onChange={(e) => setSelectedClientId(e.target.value)}
-                            >
-                                <option value="">Seleccionar cliente...</option>
-                                {clients.map(client => (
-                                    <option key={client.id} value={client.id}>{client.name}</option>
-                                ))}
-                            </select>
+                        <div className="grid gap-2 flex flex-col">
+                            <Label>Cliente</Label>
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                        variant="outline"
+                                        role="combobox"
+                                        className={cn(
+                                            "w-full justify-between",
+                                            !selectedClientId && "text-muted-foreground"
+                                        )}
+                                    >
+                                        {selectedClientId
+                                            ? clients.find((client) => client.id === selectedClientId)?.name
+                                            : "Seleccionar cliente..."}
+                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[400px] p-0" align="start">
+                                    <Command>
+                                        <CommandInput placeholder="Buscar cliente..." />
+                                        <CommandList className="max-h-[200px] overflow-y-auto">
+                                            <CommandEmpty>No se encontró ningún cliente.</CommandEmpty>
+                                            <CommandGroup>
+                                                {clients.map((client) => (
+                                                    <CommandItem
+                                                        key={client.id}
+                                                        value={client.name}
+                                                        onSelect={() => {
+                                                            setSelectedClientId(client.id)
+                                                        }}
+                                                    >
+                                                        <Check
+                                                            className={cn(
+                                                                "mr-2 h-4 w-4",
+                                                                selectedClientId === client.id ? "opacity-100" : "opacity-0"
+                                                            )}
+                                                        />
+                                                        {client.name}
+                                                    </CommandItem>
+                                                ))}
+                                            </CommandGroup>
+                                        </CommandList>
+                                    </Command>
+                                </PopoverContent>
+                            </Popover>
                         </div>
                     )}
                     <div className="grid grid-cols-2 gap-4">

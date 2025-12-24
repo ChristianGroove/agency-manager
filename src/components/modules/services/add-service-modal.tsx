@@ -443,7 +443,7 @@ export function AddServiceModal({ clientId, clientName, onSuccess, trigger, serv
                                         <PopoverContent className="w-[400px] p-0" align="start">
                                             <Command>
                                                 <CommandInput placeholder="Buscar por nombre o empresa..." />
-                                                <CommandList>
+                                                <CommandList className="max-h-[200px] overflow-y-auto">
                                                     <CommandEmpty>No se encontró ningún cliente.</CommandEmpty>
                                                     <CommandGroup>
                                                         {clients.map((client) => (
