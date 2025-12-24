@@ -148,7 +148,7 @@ export default function ClientDetailPage() {
         try {
             const { error } = await supabase
                 .from('services')
-                .delete()
+                .update({ deleted_at: new Date().toISOString() })
                 .eq('id', serviceId)
 
             if (error) throw error
@@ -241,8 +241,13 @@ export default function ClientDetailPage() {
             if (error) throw error
 
             // Filter out archived invoices after fetching
-            if (data && data.invoices) {
-                data.invoices = data.invoices.filter((inv: any) => !inv.archived && !inv.deleted_at)
+            if (data) {
+                if (data.invoices) {
+                    data.invoices = data.invoices.filter((inv: any) => !inv.archived && !inv.deleted_at)
+                }
+                if (data.services) {
+                    data.services = data.services.filter((svc: any) => !svc.deleted_at)
+                }
             }
 
             setClient(data)
