@@ -105,8 +105,8 @@ export function ServiceDetailModal({ isOpen, onOpenChange, service }: ServiceDet
                                 <div>
                                     <p className="text-sm text-gray-500 mb-1">Fecha Inicio</p>
                                     <p className="font-medium text-gray-900">
-                                        {service.start_date
-                                            ? format(new Date(service.start_date), "dd/MM/yyyy")
+                                        {service.created_at
+                                            ? format(new Date(service.created_at), "dd/MM/yyyy")
                                             : "No definida"}
                                     </p>
                                 </div>

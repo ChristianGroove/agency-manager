@@ -32,6 +32,7 @@ export type Service = {
     status?: string
     emitter_id?: string
     document_type?: string
+    next_billing_date?: string
 }
 
 export type Lead = {
