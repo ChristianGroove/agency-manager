@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Emitter } from "@/types/billing"
+import { Emitter, DocumentType } from "@/types/billing"
 import { getEmitters, createEmitter, updateEmitter } from "@/lib/actions/emitters"
 import { calculateDV, getEmitterDocumentType, getDocumentTypeLabel } from "@/lib/billing-utils"
 import { Button } from "@/components/ui/button"
@@ -48,7 +48,7 @@ export function EmittersSettings() {
                 identification_number: '',
                 display_name: '',
                 legal_name: '',
-                allowed_document_types: ['CUENTA_DE_COBRO'],
+                allowed_document_types: [DocumentType.CUENTA_DE_COBRO],
                 is_active: true,
                 is_default: emitters.length === 0
             })
