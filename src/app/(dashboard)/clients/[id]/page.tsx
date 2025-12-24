@@ -143,9 +143,22 @@ export default function ClientDetailPage() {
     }
 
     const handleDeleteService = async (serviceId: string) => {
-        if (!confirm("¿Estás seguro de eliminar este servicio? Esta acción no se puede deshacer.")) return
+        if (!confirm("¿Estás seguro de eliminar este servicio? Esta acción hará lo siguiente:\n\n1. Archivará el servicio (Soft Delete).\n2. Cancelará todas las facturas PENDIENTES de este servicio.\n\nEl historial de facturas pagadas se mantendrá intacto.")) return
 
         try {
+            // 1. Cancel Pending/Overdue Invoices linked to this service
+            const { error: invoiceError } = await supabase
+                .from('invoices')
+                .update({ status: 'cancelled' })
+                .eq('service_id', serviceId)
+                .in('status', ['pending', 'overdue'])
+
+            if (invoiceError) {
+                console.error("Error cancelling invoices:", invoiceError)
+                throw new Error("Error al cancelar facturas asociadas")
+            }
+
+            // 2. Soft Delete the Service
             const { error } = await supabase
                 .from('services')
                 .update({ deleted_at: new Date().toISOString() })
@@ -153,12 +166,12 @@ export default function ClientDetailPage() {
 
             if (error) throw error
 
-            alert("Servicio eliminado correctamente")
+            alert("Servicio eliminado y deuda pendiente cancelada correctamente.")
             // Re-fetch client data to update the UI
             if (client) fetchClientData(client.id)
         } catch (error) {
             console.error("Error deleting service:", error)
-            alert("No se pudo eliminar el servicio. Verifica si tiene facturas asociadas que impidan la eliminación.")
+            alert("No se pudo completar la operación.")
         }
     }
 

@@ -37,12 +37,17 @@ export async function getPortalData(token: string) {
             { data: settings },
             { data: services }
         ] = await Promise.all([
+            // Invoices: already filtered deleted_at
             supabaseAdmin.from('invoices').select('*').eq('client_id', client.id).is('deleted_at', null).order('created_at', { ascending: false }),
-            supabaseAdmin.from('quotes').select('*').eq('client_id', client.id).order('created_at', { ascending: false }),
+            // Quotes: Add deleted_at filter
+            supabaseAdmin.from('quotes').select('*').eq('client_id', client.id).is('deleted_at', null).order('created_at', { ascending: false }),
+            // Briefings: Add deleted_at filter (if column exists, assuming yes based on pattern)
             supabaseAdmin.from('briefings').select('*, template:briefing_templates(name)').eq('client_id', client.id).order('created_at', { ascending: false }),
+            // Events: Add deleted_at filter
             supabaseAdmin.from('client_events').select('*').eq('client_id', client.id).order('created_at', { ascending: false }),
             supabaseAdmin.from('organization_settings').select('*').single(),
-            supabaseAdmin.from('services').select('*').eq('client_id', client.id).eq('status', 'active').order('created_at', { ascending: false })
+            // Services: Add deleted_at filter
+            supabaseAdmin.from('services').select('*').eq('client_id', client.id).eq('status', 'active').is('deleted_at', null).order('created_at', { ascending: false })
         ])
 
         // Filter Services logic
