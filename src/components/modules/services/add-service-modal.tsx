@@ -13,7 +13,20 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
-import { Loader2, Plus, ArrowLeft } from "lucide-react"
+import {
+    Command,
+    CommandEmpty,
+    CommandGroup,
+    CommandInput,
+    CommandItem,
+    CommandList,
+} from "@/components/ui/command"
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover"
+import { Loader2, Plus, ArrowLeft, Check, ChevronsUpDown } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 import { ServiceCatalogSelector } from "./service-catalog-selector"
@@ -405,26 +418,65 @@ export function AddServiceModal({ clientId, clientName, onSuccess, trigger, serv
                                 </div>
                             )}
 
-                            {/* Client Selection (If no clientId prop) */}
+                            {/* Client Selection (Searchable) - If no clientId prop */}
                             {!clientId && (
-                                <div className="space-y-2">
+                                <div className="space-y-2 flex flex-col">
                                     <Label>Cliente Asignado</Label>
-                                    <Select
-                                        value={selectedClientId}
-                                        onValueChange={setSelectedClientId}
-                                        disabled={isEditing || isLoadingClients}
-                                    >
-                                        <SelectTrigger>
-                                            <SelectValue placeholder={isLoadingClients ? "Cargando clientes..." : "Seleccionar Cliente"} />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {clients.map(client => (
-                                                <SelectItem key={client.id} value={client.id}>
-                                                    {client.company_name || client.name}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                            <Button
+                                                variant="outline"
+                                                role="combobox"
+                                                className={cn(
+                                                    "w-full justify-between",
+                                                    !selectedClientId && "text-muted-foreground"
+                                                )}
+                                                disabled={isEditing || isLoadingClients}
+                                            >
+                                                {selectedClientId
+                                                    ? clients.find((client) => client.id === selectedClientId)?.company_name ||
+                                                    clients.find((client) => client.id === selectedClientId)?.name
+                                                    : isLoadingClients ? "Cargando clientes..." : "Buscar cliente..."}
+                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-[400px] p-0" align="start">
+                                            <Command>
+                                                <CommandInput placeholder="Buscar por nombre o empresa..." />
+                                                <CommandList>
+                                                    <CommandEmpty>No se encontró ningún cliente.</CommandEmpty>
+                                                    <CommandGroup>
+                                                        {clients.map((client) => (
+                                                            <CommandItem
+                                                                key={client.id}
+                                                                value={`${client.name} ${client.company_name || ''}`}
+                                                                onSelect={() => {
+                                                                    setSelectedClientId(client.id)
+                                                                    // Close popover logic implicitly needed? 
+                                                                    // Radix/shadcn popover usually handles outside click, but manual close is nice.
+                                                                    // For simplicity, we just set value. Popover stays open or user clicks away. 
+                                                                    // To close on select, we would need to control Popover open state.
+                                                                }}
+                                                            >
+                                                                <Check
+                                                                    className={cn(
+                                                                        "mr-2 h-4 w-4",
+                                                                        selectedClientId === client.id ? "opacity-100" : "opacity-0"
+                                                                    )}
+                                                                />
+                                                                <div className="flex flex-col">
+                                                                    <span>{client.name}</span>
+                                                                    {client.company_name && (
+                                                                        <span className="text-xs text-muted-foreground">{client.company_name}</span>
+                                                                    )}
+                                                                </div>
+                                                            </CommandItem>
+                                                        ))}
+                                                    </CommandGroup>
+                                                </CommandList>
+                                            </Command>
+                                        </PopoverContent>
+                                    </Popover>
                                 </div>
                             )}
 
