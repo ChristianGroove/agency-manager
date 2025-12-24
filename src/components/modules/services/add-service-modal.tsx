@@ -29,6 +29,8 @@ export interface AddServiceModalProps {
     onOpenChange?: (open: boolean) => void
 }
 
+// ... (previous imports)
+
 export function AddServiceModal({ clientId, clientName, onSuccess, trigger, serviceToEdit, open, onOpenChange }: AddServiceModalProps) {
     const [internalOpen, setInternalOpen] = useState(false)
     const isControlled = open !== undefined
@@ -41,6 +43,11 @@ export function AddServiceModal({ clientId, clientName, onSuccess, trigger, serv
 
     const [loading, setLoading] = useState(false)
     const [step, setStep] = useState<'catalog' | 'form'>('catalog')
+
+    // Client Selection Logic (if clientId not provided)
+    const [clients, setClients] = useState<any[]>([])
+    const [selectedClientId, setSelectedClientId] = useState<string>("")
+    const [isLoadingClients, setIsLoadingClients] = useState(false)
 
     // Form State
     const [formData, setFormData] = useState<Partial<Service>>({
@@ -80,8 +87,28 @@ export function AddServiceModal({ clientId, clientName, onSuccess, trigger, serv
                 status: 'active'
             })
             setUnitPrice(0)
+            if (!clientId) setSelectedClientId("")
+        } else {
+            // Load clients if we don't have a fixed clientId
+            if (!clientId) {
+                fetchClients()
+            }
         }
-    }, [isOpen])
+    }, [isOpen, clientId])
+
+    const fetchClients = async () => {
+        setIsLoadingClients(true)
+        const { data, error } = await supabase
+            .from('clients')
+            .select('id, name, company_name')
+            .is('deleted_at', null)
+            .order('name', { ascending: true })
+
+        if (!error && data) {
+            setClients(data)
+        }
+        setIsLoadingClients(false)
+    }
 
     // Emitter Logic
     const [emitters, setEmitters] = useState<any[]>([])
@@ -140,6 +167,14 @@ export function AddServiceModal({ clientId, clientName, onSuccess, trigger, serv
                 setSelectedEmitterId(serviceToEdit.emitter_id)
             }
 
+            // If editing and no prop clientId, invoke update logic if needed
+            // But usually serviceToEdit implies we know the client or it's attached. 
+            // The service object usually has client_id. 
+            // We should ideally set selectedClientId if editing.
+            if (!clientId && serviceToEdit.client_id) {
+                setSelectedClientId(serviceToEdit.client_id)
+            }
+
         } else if (!serviceToEdit && isOpen) {
             setStep('catalog')
             setFormData({
@@ -160,7 +195,7 @@ export function AddServiceModal({ clientId, clientName, onSuccess, trigger, serv
                 setSelectedEmitterId("")
             }
         }
-    }, [serviceToEdit, isOpen, emitters]) // Added emitters dep
+    }, [serviceToEdit, isOpen, emitters, clientId]) // Added emitters dep
 
     const handleCatalogSelect = (item: any) => {
         const initialQty = 1
@@ -188,8 +223,12 @@ export function AddServiceModal({ clientId, clientName, onSuccess, trigger, serv
                 return
             }
 
-            if (!clientId) {
-                alert("Error: No se ha identificado el cliente.")
+            // Determine final Client ID
+            const finalClientId = clientId || selectedClientId
+
+            if (!finalClientId) {
+                alert("Error: Debes seleccionar un cliente.")
+                setLoading(false)
                 return
             }
 
@@ -201,7 +240,7 @@ export function AddServiceModal({ clientId, clientName, onSuccess, trigger, serv
             }
 
             const serviceData = {
-                client_id: clientId,
+                client_id: finalClientId,
                 name: formData.name,
                 description: formData.description,
                 amount: formData.amount,
@@ -250,7 +289,7 @@ export function AddServiceModal({ clientId, clientName, onSuccess, trigger, serv
                 // Actually we just need to pass the IDs
 
                 const { data: invData, error: invError } = await supabase.from('invoices').insert({
-                    client_id: clientId,
+                    client_id: finalClientId,
                     service_id: serviceId,
                     emitter_id: selectedEmitterId, // Attach Emitter
                     document_type: derivedDocType,
@@ -328,6 +367,29 @@ export function AddServiceModal({ clientId, clientName, onSuccess, trigger, serv
                         </DialogHeader>
 
                         <div className="grid gap-6 py-4">
+                            {/* Client Selection (If no clientId prop) */}
+                            {!clientId && (
+                                <div className="space-y-2">
+                                    <Label>Cliente Asignado</Label>
+                                    <Select
+                                        value={selectedClientId}
+                                        onValueChange={setSelectedClientId}
+                                        disabled={isEditing || isLoadingClients}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder={isLoadingClients ? "Cargando clientes..." : "Seleccionar Cliente"} />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {clients.map(client => (
+                                                <SelectItem key={client.id} value={client.id}>
+                                                    {client.company_name || client.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            )}
+
                             {/* NEW: Emitter Selection Block */}
                             {emitters.length > 0 && (
                                 <div className="space-y-2 bg-slate-50 p-3 rounded-md border border-slate-100">
