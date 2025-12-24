@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { Client, Invoice } from "@/types/billing";
+import { Client } from "@/types";
+import { Invoice } from "@/types/billing";
 import { getDocumentTypeLabel } from "@/lib/billing-utils";
 
 // Helper to load image
