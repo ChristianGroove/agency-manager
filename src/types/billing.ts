@@ -62,3 +62,25 @@ export interface Invoice {
     // Joined emitter
     emitter?: Emitter
 }
+
+export enum BillingCycleStatus {
+    PENDING = 'pending',
+    INVOICED = 'invoiced',
+    PAID = 'paid',
+    CANCELLED = 'cancelled',
+    FAILED = 'failed'
+}
+
+export interface BillingCycle {
+    id: string
+    service_id: string
+    invoice_id?: string
+    start_date: string
+    end_date: string
+    due_date?: string
+    amount: number
+    status: BillingCycleStatus
+    created_at: string
+    updated_at?: string
+    metadata?: any
+}
