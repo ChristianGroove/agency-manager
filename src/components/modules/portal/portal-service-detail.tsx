@@ -37,10 +37,10 @@ export function PortalServiceDetail({ service, invoices, briefings, onBack, onPa
                         <div>
                             <h1 className="text-2xl font-bold text-gray-900">{service.name}</h1>
                             <div className="flex items-center gap-2 text-sm text-gray-500">
-                                {service.start_date && (
+                                {service.created_at && (
                                     <span className="flex items-center">
                                         <Calendar className="h-3 w-3 mr-1" />
-                                        Iniciado el {formatDate(service.start_date)}
+                                        Iniciado el {formatDate(service.created_at)}
                                     </span>
                                 )}
                                 <span className={`px-2 py-0.5 rounded-full text-xs font-medium uppercase tracking-wider ${service.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
