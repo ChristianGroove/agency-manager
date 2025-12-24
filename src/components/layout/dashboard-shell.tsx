@@ -5,11 +5,14 @@ import { Sidebar } from "@/components/layout/sidebar"
 import { Header } from "@/components/layout/header"
 import { cn } from "@/lib/utils"
 
+import { BillingAutomator } from "@/components/modules/billing/billing-automator"
+
 export function DashboardShell({ children }: { children: React.ReactNode }) {
     const [isCollapsed, setIsCollapsed] = useState(false)
 
     return (
         <div className="h-full relative bg-gray-50/50 min-h-screen">
+            <BillingAutomator />
             {/* Floating Sidebar */}
             <div className="hidden md:block print:hidden">
                 <Sidebar

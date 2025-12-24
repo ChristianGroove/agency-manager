@@ -33,6 +33,9 @@ export type Service = {
     emitter_id?: string
     document_type?: string
     next_billing_date?: string
+    service_start_date?: string
+    billing_cycle_start_date?: string
+    metadata?: any
 }
 
 export type Lead = {
@@ -129,4 +132,6 @@ export type ServiceCatalogItem = {
     base_price: number
     is_visible_in_portal: boolean
     created_at?: string
+    service_start_date?: string
+    billing_cycle_start_date?: string
 }
