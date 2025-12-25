@@ -130,8 +130,8 @@ export default function DashboardPage() {
                     debt: amount
                 }
             })
-                .filter(Boolean) // Remove nulls (deleted clients with debt)
-                .sort((a, b) => b.debt - a.debt) // Sort by highest debt
+                .filter((item): item is NonNullable<typeof item> => !!item) // Remove nulls and help TS inference
+                .sort((a, b) => (b?.debt || 0) - (a?.debt || 0)) // Sort by highest debt with null safety
 
             setDebtors(debtorsList)
 
