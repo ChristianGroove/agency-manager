@@ -39,9 +39,10 @@ import { toast } from "sonner"
 interface QuoteFormModalProps {
     isOpen: boolean
     onClose: () => void
+    onSuccess?: () => void
 }
 
-export function QuoteFormModal({ isOpen, onClose }: QuoteFormModalProps) {
+export function QuoteFormModal({ isOpen, onClose, onSuccess }: QuoteFormModalProps) {
     const router = useRouter()
     const [loading, setLoading] = useState(false)
     const [clients, setClients] = useState<Client[]>([])

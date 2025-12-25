@@ -76,16 +76,16 @@ export default function DashboardPage() {
     const fetchDashboardData = async () => {
         try {
             // Fetch all data in parallel
-            const [clientsRes, invoicesRes, subscriptionsRes, settingsRes] = await Promise.all([
-                supabase.from('clients').select('*'),
-                supabase.from('invoices').select('*'),
-                supabase.from('subscriptions').select('*'),
+            const [clientsRes, invoicesRes, servicesRes, settingsRes] = await Promise.all([
+                supabase.from('clients').select('*').is('deleted_at', null),
+                supabase.from('invoices').select('*').is('deleted_at', null),
+                supabase.from('services').select('*').is('deleted_at', null),
                 supabase.from('settings').select('*').single()
             ])
 
             const clients = clientsRes.data || []
             const invoices = invoicesRes.data || []
-            const subscriptions = subscriptionsRes.data || []
+            const services = servicesRes.data || []
             const settingsData = settingsRes.data || null
 
             setSettings(settingsData)
@@ -101,11 +101,12 @@ export default function DashboardPage() {
 
             const paidInvoices = invoices.filter(inv => inv.status === 'paid').length
 
-            const activeSubscriptions = subscriptions.filter(sub => sub.status === 'active').length
+            // "Active Subscriptions" now refers to Recurring Services that are active
+            const activeSubscriptions = services.filter(svc => svc.status === 'active' && svc.type === 'recurring').length
 
-            const monthlyRecurring = subscriptions
-                .filter(sub => sub.status === 'active' && sub.frequency === 'monthly')
-                .reduce((sum, sub) => sum + (sub.amount || 0), 0)
+            const monthlyRecurring = services
+                .filter(svc => svc.status === 'active' && svc.type === 'recurring' && svc.frequency === 'monthly')
+                .reduce((sum, svc) => sum + (svc.amount || 0), 0)
 
             // Calculate clients with debt
             const clientDebts = new Map()
@@ -119,13 +120,18 @@ export default function DashboardPage() {
             // Process debtors list
             const debtorsList = Array.from(clientDebts.entries()).map(([clientId, amount]) => {
                 const client = clients.find(c => c.id === clientId)
+                // Skip if client is deleted (client won't be found because we filtered clients fetch)
+                if (!client) return null
+
                 return {
                     id: clientId,
-                    name: client ? `${client.first_name || ''} ${client.last_name || ''}`.trim() || client.company_name || 'Cliente' : 'Desconocido',
-                    image: client?.logo_url || client?.avatar_url,
+                    name: `${client.first_name || ''} ${client.last_name || ''}`.trim() || client.company_name || 'Cliente',
+                    image: client.logo_url || client.avatar_url,
                     debt: amount
                 }
-            }).sort((a, b) => b.debt - a.debt) // Sort by highest debt
+            })
+                .filter(Boolean) // Remove nulls (deleted clients with debt)
+                .sort((a, b) => b.debt - a.debt) // Sort by highest debt
 
             setDebtors(debtorsList)
 
@@ -136,7 +142,7 @@ export default function DashboardPage() {
                 paidInvoices,
                 activeSubscriptions,
                 monthlyRecurring,
-                clientsWithDebt: clientDebts.size
+                clientsWithDebt: debtorsList.length
             })
         } catch (error) {
             console.error("Error fetching dashboard data:", error)
@@ -495,16 +501,28 @@ export default function DashboardPage() {
             <QuoteFormModal
                 isOpen={isQuoteModalOpen}
                 onClose={() => setIsQuoteModalOpen(false)}
+                onSuccess={() => {
+                    setIsQuoteModalOpen(false)
+                    fetchDashboardData()
+                }}
             />
 
             <BriefingFormModal
                 isOpen={isBriefingModalOpen}
                 onClose={() => setIsBriefingModalOpen(false)}
+                onSuccess={() => {
+                    setIsBriefingModalOpen(false)
+                    fetchDashboardData()
+                }}
             />
 
             <InvoiceFormModal
                 isOpen={isInvoiceModalOpen}
                 onClose={() => setIsInvoiceModalOpen(false)}
+                onSuccess={() => {
+                    setIsInvoiceModalOpen(false)
+                    fetchDashboardData()
+                }}
             />
         </div>
     )

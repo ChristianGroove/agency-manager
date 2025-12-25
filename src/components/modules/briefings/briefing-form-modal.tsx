@@ -17,9 +17,10 @@ import { Loader2 } from "lucide-react"
 interface BriefingFormModalProps {
     isOpen: boolean
     onClose: () => void
+    onSuccess?: () => void
 }
 
-export function BriefingFormModal({ isOpen, onClose }: BriefingFormModalProps) {
+export function BriefingFormModal({ isOpen, onClose, onSuccess }: BriefingFormModalProps) {
     const [loading, setLoading] = useState(true)
     const [templates, setTemplates] = useState<BriefingTemplate[]>([])
     const [clients, setClients] = useState<{ id: string, name: string }[]>([])
@@ -65,7 +66,11 @@ export function BriefingFormModal({ isOpen, onClose }: BriefingFormModalProps) {
                     <CreateBriefingForm
                         templates={templates}
                         clients={clients}
-                        onSuccess={onClose}
+                        clients={clients}
+                        onSuccess={() => {
+                            if (onSuccess) onSuccess()
+                            onClose()
+                        }}
                     />
                 )}
             </DialogContent>

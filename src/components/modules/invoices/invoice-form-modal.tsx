@@ -12,12 +12,14 @@ import { toast } from "sonner"
 interface InvoiceFormModalProps {
     isOpen: boolean
     onClose: () => void
+    onSuccess?: () => void
 }
 
-export function InvoiceFormModal({ isOpen, onClose }: InvoiceFormModalProps) {
+export function InvoiceFormModal({ isOpen, onClose, onSuccess }: InvoiceFormModalProps) {
 
     const handleSuccess = () => {
         toast.success("Factura creada correctamente")
+        if (onSuccess) onSuccess()
         onClose()
     }
 
