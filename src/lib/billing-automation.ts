@@ -16,7 +16,7 @@ export async function checkAndGenerateCycles() {
             .from('billing_cycles')
             .select(`
                 *,
-                service:services (
+                service:services!inner (
                     id,
                     name,
                     client_id,
@@ -25,10 +25,12 @@ export async function checkAndGenerateCycles() {
                     type,
                     emitter_id,
                     document_type,
-                    quantity
+                    quantity,
+                    deleted_at
                 )
             `)
             .eq('status', 'pending')
+            .is('service.deleted_at', null)
             .lte('end_date', now.toISOString())
 
         if (error) {

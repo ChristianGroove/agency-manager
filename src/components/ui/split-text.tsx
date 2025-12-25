@@ -47,7 +47,9 @@ export function SplitText({
             className={className}
             variants={container}
             initial="hidden"
+            whileInView="visible" // Change to whileInView for scroll trigger, or keep animate="visible"
             animate="visible"
+            viewport={{ once: true }}
         >
             {letters.map((letter, index) => (
                 <motion.span key={index} variants={child}>

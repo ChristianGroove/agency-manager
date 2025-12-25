@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -143,22 +144,38 @@ export default function ClientDetailPage() {
     }
 
     const handleDeleteService = async (serviceId: string) => {
-        if (!confirm("¿Estás seguro de eliminar este servicio? Esta acción hará lo siguiente:\n\n1. Archivará el servicio (Soft Delete).\n2. Cancelará todas las facturas PENDIENTES de este servicio.\n\nEl historial de facturas pagadas se mantendrá intacto.")) return
+        if (!confirm("¿Estás seguro de eliminar este servicio? Esta acción hará lo siguiente:\n\n1. Archivará el servicio.\n2. CANCELARÁ sus facturas pendientes/vencidas.\n\nEl historial de pagos se mantendrá intacto.")) return
 
         try {
-            // 1. Cancel Pending/Overdue Invoices linked to this service
-            const { error: invoiceError } = await supabase
+            // 1. Check for Pending/Overdue Invoices
+            const { data: invoicesToCancel, error: fetchError } = await supabase
                 .from('invoices')
-                .update({ status: 'cancelled' })
+                .select('id, status')
                 .eq('service_id', serviceId)
                 .in('status', ['pending', 'overdue'])
 
-            if (invoiceError) {
-                console.error("Error cancelling invoices:", invoiceError)
-                throw new Error("Error al cancelar facturas asociadas")
+            if (fetchError) console.error("Error checking invoices:", fetchError)
+
+            const count = invoicesToCancel?.length || 0
+            console.log(`Found ${count} invoices to cancel for service ${serviceId}`)
+
+            if (count > 0) {
+                // 2. Cancel them explicitly
+                const { error: invoiceError } = await supabase
+                    .from('invoices')
+                    .update({ status: 'cancelled' })
+                    .eq('service_id', serviceId)
+                    .in('status', ['pending', 'overdue'])
+
+                if (invoiceError) {
+                    console.error("Error cancelling invoices:", invoiceError)
+                    toast.error("Error al cancelar facturas. Revisa la consola.")
+                } else {
+                    console.log("Invoices cancelled successfully.")
+                }
             }
 
-            // 2. Soft Delete the Service
+            // 3. Soft Delete the Service
             const { error } = await supabase
                 .from('services')
                 .update({ deleted_at: new Date().toISOString() })
@@ -166,9 +183,10 @@ export default function ClientDetailPage() {
 
             if (error) throw error
 
-            alert("Servicio eliminado y deuda pendiente cancelada correctamente.")
-            // Re-fetch client data to update the UI
+            alert(`Servicio eliminado. ${count > 0 ? `Se cancelaron ${count} facturas pendientes.` : ''}`)
             if (client) fetchClientData(client.id)
+
+
         } catch (error) {
             console.error("Error deleting service:", error)
             alert("No se pudo completar la operación.")
@@ -903,9 +921,10 @@ export default function ClientDetailPage() {
                                                                             <Badge variant="outline" className={cn(
                                                                                 "text-[9px] px-1 py-0 h-4 border-0",
                                                                                 inv.status === 'paid' ? "bg-emerald-100 text-emerald-700" :
-                                                                                    inv.status === 'overdue' ? "bg-red-100 text-red-700" : "bg-gray-100 text-gray-700"
+                                                                                    inv.status === 'overdue' ? "bg-red-100 text-red-700" :
+                                                                                        inv.status === 'cancelled' ? "bg-gray-100 text-gray-500" : "bg-gray-100 text-gray-700"
                                                                             )}>
-                                                                                {inv.status === 'paid' ? 'Pagada' : inv.status === 'overdue' ? 'Vencida' : 'Pend.'}
+                                                                                {inv.status === 'paid' ? 'Pagada' : inv.status === 'overdue' ? 'Vencida' : inv.status === 'cancelled' ? 'Canc.' : 'Pend.'}
                                                                             </Badge>
                                                                         </td>
                                                                         <td className="py-2 pr-2 w-[24px]">

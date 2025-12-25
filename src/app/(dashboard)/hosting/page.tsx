@@ -113,22 +113,39 @@ export default function ServicesPage() {
     }, [])
 
     const handleDeleteService = async (id: string) => {
-        if (!confirm("¿Estás seguro de eliminar este contrato? Esta acción hará lo siguiente:\n\n1. Archivará el contrato (Soft Delete).\n2. Cancelará facturas pendientes.\n\nEl historial de pagos se mantendrá intacto.")) return
+        if (!confirm("¿Estás seguro de eliminar este contrato? Esta acción hará lo siguiente:\n\n1. Archivará el contrato.\n2. CANCELARÁ sus facturas pendientes/vencidas.\n\nEl historial de pagos se mantendrá intacto.")) return
 
         try {
-            // 1. Cancel Pending/Overdue Invoices linked to this service
-            const { error: invoiceError } = await supabase
+            // 1. Check for Pending/Overdue Invoices
+            const { data: invoicesToCancel, error: fetchError } = await supabase
                 .from('invoices')
-                .update({ status: 'cancelled' })
+                .select('id, status')
                 .eq('service_id', id)
                 .in('status', ['pending', 'overdue'])
 
-            if (invoiceError) {
-                console.error("Error cancelling invoices:", invoiceError)
-                // Continue with deletion even if invoice update fails (or ideally throw)
+            if (fetchError) console.error("Error checking invoices:", fetchError)
+
+            const count = invoicesToCancel?.length || 0
+            console.log(`Found ${count} invoices to cancel for service ${id}`)
+
+            if (count > 0) {
+                // 2. Cancel them explicitly
+                const { error: invoiceError } = await supabase
+                    .from('invoices')
+                    .update({ status: 'cancelled' })
+                    .eq('service_id', id)
+                    .in('status', ['pending', 'overdue'])
+
+                if (invoiceError) {
+                    console.error("Error cancelling invoices:", invoiceError)
+                    toast.error("Error al cancelar facturas. Revisa la consola.")
+                    // Don't block deletion, but warn
+                } else {
+                    console.log("Invoices cancelled successfully.")
+                }
             }
 
-            // 2. Soft Delete the Service
+            // 3. Soft Delete the Service
             const { error } = await supabase
                 .from('services')
                 .update({ deleted_at: new Date().toISOString() })
@@ -136,13 +153,16 @@ export default function ServicesPage() {
 
             if (error) throw error
 
-            toast.success("Contrato eliminado y deuda pendiente cancelada.")
+            toast.success(`Contrato eliminado. ${count > 0 ? `Se cancelaron ${count} facturas pendientes.` : ''}`)
             await fetchServices()
+
+            // 4. Force global validation (optional hook)
         } catch (error) {
             console.error("Error deleting service:", error)
-            alert("Error al eliminar el contrato")
+            toast.error("No se pudo completar la operación.")
         }
     }
+
 
     const filteredServices = services.filter(service => {
         const matchesSearch =
