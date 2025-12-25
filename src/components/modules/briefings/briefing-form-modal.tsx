@@ -66,7 +66,6 @@ export function BriefingFormModal({ isOpen, onClose, onSuccess }: BriefingFormMo
                     <CreateBriefingForm
                         templates={templates}
                         clients={clients}
-                        clients={clients}
                         onSuccess={() => {
                             if (onSuccess) onSuccess()
                             onClose()
