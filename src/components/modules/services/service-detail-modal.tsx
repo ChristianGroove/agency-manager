@@ -35,7 +35,7 @@ export function ServiceDetailModal({ isOpen, onOpenChange, service }: ServiceDet
         setLoadingCycles(true)
         const { data, error } = await supabase
             .from('billing_cycles')
-            .select('*, invoice:invoices(id, number, is_late_issued)')
+            .select('*, invoice:invoices(id, number, is_late_issued, status, due_date)')
             .eq('service_id', serviceId)
             .order('start_date', { ascending: false })
 
@@ -201,7 +201,7 @@ export function ServiceDetailModal({ isOpen, onOpenChange, service }: ServiceDet
                                             cycles.map((cycle) => (
                                                 <TableRow key={cycle.id}>
                                                     <TableCell>
-                                                        <StatusBadge status={cycle.status} type="cycle" />
+                                                        <StatusBadge status={cycle.status} type="cycle" entity={cycle} />
                                                     </TableCell>
                                                     <TableCell className="text-sm">
                                                         <div className="flex flex-col">

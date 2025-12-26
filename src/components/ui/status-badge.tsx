@@ -9,6 +9,7 @@ import {
     STATUS_COLORS
 } from "@/lib/domain-logic"
 import { resolveInvoiceStatus } from "@/lib/state-engine/document"
+import { resolveCycleStatus } from "@/lib/state-engine/cycle"
 
 type StatusType = 'service' | 'invoice' | 'cycle' | 'quote'
 
@@ -34,7 +35,11 @@ export function StatusBadge({ status, type, className, entity }: StatusBadgeProp
     } else if (type === 'service') {
         normalizedStatus = normalizeServiceStatus(status)
     } else if (type === 'cycle') {
-        normalizedStatus = normalizeCycleStatus(status)
+        if (entity) {
+            normalizedStatus = resolveCycleStatus(entity)
+        } else {
+            normalizedStatus = normalizeCycleStatus(status)
+        }
     }
 
     const label = STATUS_LABELS[normalizedStatus] || status
