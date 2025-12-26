@@ -38,17 +38,17 @@ export async function quickCreateProspect(data: QuickProspectData) {
             return { success: false, error: error.message }
         }
 
-        await logDomainEvent(
-            'client',
-            newClient.id,
-            'client.created_prospect',
-            {
+        await logDomainEvent({
+            entity_type: 'client',
+            entity_id: newClient.id,
+            event_type: 'client.created_prospect',
+            payload: {
                 name: newClient.name,
                 origin: 'quote_builder_quick_action'
             },
-            'user',
-            data.userId
-        )
+            triggered_by: 'user',
+            actor_id: data.userId
+        })
 
         revalidatePath('/quotes')
         return { success: true, client: newClient }
