@@ -861,7 +861,18 @@ export default function ClientDetailPage() {
                                                             <StatusBadge status={service.status} type="service" className="text-[10px]" entity={service} />
                                                         </div>
                                                         <div className="flex items-center text-xs text-gray-500 mt-0.5 gap-2">
-                                                            <span className="capitalize">{service.frequency === 'monthly' ? 'Mensual' : service.frequency === 'yearly' ? 'Anual' : 'Único'}</span>
+                                                            <span className="capitalize">
+                                                                {(() => {
+                                                                    const freqMap: Record<string, string> = {
+                                                                        monthly: 'Mensual',
+                                                                        biweekly: 'Quincenal',
+                                                                        quarterly: 'Trimestral',
+                                                                        semiannual: 'Semestral',
+                                                                        yearly: 'Anual'
+                                                                    }
+                                                                    return freqMap[service.frequency as string] || (service.type === 'one_off' ? 'Único' : 'Recurrente')
+                                                                })()}
+                                                            </span>
                                                         </div>
                                                     </div>
                                                 </div>
