@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { getSettings } from "@/lib/actions/settings"
-import { getActiveEmitters } from "@/lib/actions/emitters" // Import Emitter Action
+import { getActiveEmitters } from "@/lib/actions/emitters"
 import {
     Dialog,
     DialogContent,
@@ -16,10 +16,10 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Plus, Trash2, Loader2, FileText, Edit, Building2 } from "lucide-react"
+import { Plus, Trash2, Loader2, FileText, Building2 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { getDocumentTypeLabel, getEmitterDocumentType } from "@/lib/billing-utils"
-import { isEmittersModuleEnabled } from "@/lib/billing-utils" // Import helper
+import { isEmittersModuleEnabled } from "@/lib/billing-utils"
 import {
     Select,
     SelectContent,
@@ -44,7 +44,7 @@ import { cn } from "@/lib/utils"
 import { Check, ChevronsUpDown } from "lucide-react"
 
 
-import { Invoice, InvoiceItem, Emitter } from "@/types/billing"
+import { Invoice, InvoiceItem } from "@/types"
 
 type UIInvoiceItem = InvoiceItem & { ui_id: string }
 
@@ -54,13 +54,28 @@ type CreateInvoiceModalProps = {
     onInvoiceCreated?: () => void
     invoiceToEdit?: Invoice
     trigger?: React.ReactNode
+    // New Props for Linking
+    serviceId?: string
+    cycleId?: string
+    initialAmount?: number
+    defaultDescription?: string
 }
 
-export function CreateInvoiceModal({ clientId, clientName, onInvoiceCreated, invoiceToEdit, trigger }: CreateInvoiceModalProps) {
+export function CreateInvoiceModal({
+    clientId,
+    clientName,
+    onInvoiceCreated,
+    invoiceToEdit,
+    trigger,
+    serviceId,
+    cycleId,
+    initialAmount,
+    defaultDescription
+}: CreateInvoiceModalProps) {
     const router = useRouter()
     const [open, setOpen] = useState(false)
     const [loading, setLoading] = useState(false)
-    const [clients, setClients] = useState<{ id: string, name: string, company_name?: string }[]>([])
+    const [clients, setClients] = useState<{ id: string, name: string }[]>([])
     const [selectedClientId, setSelectedClientId] = useState(clientId || "")
     const [settings, setSettings] = useState<any>({})
 
@@ -73,8 +88,18 @@ export function CreateInvoiceModal({ clientId, clientName, onInvoiceCreated, inv
     // Form State
     const [invoiceNumber, setInvoiceNumber] = useState("")
     const [items, setItems] = useState<UIInvoiceItem[]>([
-        { ui_id: '1', description: 'Servicios Profesionales', quantity: 1, price: 0 }
+        { ui_id: '1', description: defaultDescription || 'Servicios Profesionales', quantity: 1, price: initialAmount || 0 }
     ])
+
+    // reset items if props change when opening
+    useEffect(() => {
+        if (open && !invoiceToEdit) {
+            setItems([
+                { ui_id: '1', description: defaultDescription || 'Servicios Profesionales', quantity: 1, price: initialAmount || 0 }
+            ])
+        }
+    }, [open, defaultDescription, initialAmount, invoiceToEdit])
+
     const [notes, setNotes] = useState("")
     const [dueDate, setDueDate] = useState("")
 
@@ -164,7 +189,7 @@ export function CreateInvoiceModal({ clientId, clientName, onInvoiceCreated, inv
     const fetchClients = async () => {
         const { data } = await supabase
             .from('clients')
-            .select('id, name, company_name')
+            .select('id, name')
             .order('name')
         if (data) setClients(data)
     }
@@ -214,9 +239,7 @@ export function CreateInvoiceModal({ clientId, clientName, onInvoiceCreated, inv
             alert("Por favor selecciona un cliente")
             return
         }
-
         // Validation: Emitter Required if module enabled and multiple exist (or just one)
-        // Actually good practice to require it always if enabled
         if (isEmittersModuleEnabled() && !selectedEmitterId && emitters.length > 0) {
             alert("Por favor selecciona un Emisor para este documento")
             return
@@ -233,41 +256,53 @@ export function CreateInvoiceModal({ clientId, clientName, onInvoiceCreated, inv
             let result;
 
             if (invoiceToEdit) {
-                // Update existing invoice
+                // Update Logic can remain direct if we don't need cycle linking on edit
+                // Or we could move this to validation too
                 result = await supabase
                     .from('invoices')
                     .update({
                         client_id: selectedClientId,
-                        emitter_id: selectedEmitterId || null, // Persist emitter
+                        emitter_id: selectedEmitterId || null,
                         number: finalNumber,
                         due_date: dueDate || null,
                         items: cleanItems,
                         total: total,
-                        document_type: derivedDocType,
+                        document_type: derivedDocType
                     })
                     .eq('id', invoiceToEdit.id)
                     .select()
                     .single()
-            } else {
-                // Create new invoice
-                result = await supabase
-                    .from('invoices')
-                    .insert({
-                        client_id: selectedClientId,
-                        emitter_id: selectedEmitterId || null, // Persist emitter
-                        number: finalNumber,
-                        date: new Date().toISOString(),
-                        due_date: dueDate || null,
-                        items: cleanItems,
-                        total: total,
-                        status: 'pending',
-                        document_type: derivedDocType
-                    })
-                    .select()
-                    .single()
-            }
 
-            if (result.error) throw result.error
+                if (result.error) throw new Error(result.error.message)
+
+            } else {
+                // CREATE using Server Action
+                // Dynamically import to ensure client usage is fine (?) 
+                // Actually server actions can be imported directly in client components in Next 14+
+                const { createInvoice } = await import('@/lib/actions/billing')
+
+                const response = await createInvoice({
+                    client_id: selectedClientId,
+                    emitter_id: selectedEmitterId || null,
+                    number: finalNumber,
+                    date: new Date().toISOString(),
+                    due_date: dueDate || null,
+                    items: cleanItems,
+                    total: total,
+                    status: 'pending',
+                    document_type: derivedDocType,
+                    // Linking props
+                    service_id: serviceId,
+                    cycle_id: cycleId
+                })
+
+                if (!response.success) {
+                    throw new Error(response.error)
+                }
+
+                // Normalize result
+                result = { data: response.data, error: null }
+            }
 
             setOpen(false)
             // Reset form for next use if creating new
@@ -282,13 +317,13 @@ export function CreateInvoiceModal({ clientId, clientName, onInvoiceCreated, inv
             if (onInvoiceCreated) onInvoiceCreated()
 
             // Redirect to the invoice view if created new, or just close if editing
-            if (!invoiceToEdit) {
+            if (!invoiceToEdit && result?.data?.id) {
                 router.push(`/invoices/${result.data.id}`)
             }
 
-        } catch (error) {
+        } catch (error: any) {
             console.error("Error saving invoice:", error)
-            alert("Error al guardar el documento.")
+            alert(`Error al guardar el documento: ${error.message}`)
         } finally {
             setLoading(false)
         }
@@ -377,7 +412,7 @@ export function CreateInvoiceModal({ clientId, clientName, onInvoiceCreated, inv
                                                 {clients.map((client) => (
                                                     <CommandItem
                                                         key={client.id}
-                                                        value={`${client.name} ${client.company_name || ''}`}
+                                                        value={`${client.name} ${(client as any).company_name || ''}`}
                                                         onSelect={() => {
                                                             setSelectedClientId(client.id)
                                                         }}
@@ -390,8 +425,8 @@ export function CreateInvoiceModal({ clientId, clientName, onInvoiceCreated, inv
                                                         />
                                                         <div className="flex flex-col">
                                                             <span>{client.name}</span>
-                                                            {client.company_name && (
-                                                                <span className="text-xs text-muted-foreground">{client.company_name}</span>
+                                                            {(client as any).company_name && (
+                                                                <span className="text-xs text-muted-foreground">{(client as any).company_name}</span>
                                                             )}
                                                         </div>
                                                     </CommandItem>

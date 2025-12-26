@@ -2,15 +2,15 @@
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import {
-    normalizeInvoiceStatus,
     normalizeServiceStatus,
     normalizeCycleStatus,
     STATUS_LABELS,
     STATUS_COLORS
 } from "@/lib/domain-logic"
-import { resolveInvoiceStatus } from "@/lib/state-engine/document"
-import { resolveCycleStatus } from "@/lib/state-engine/cycle"
+// New Domain Import
+import { resolveDocumentState } from "@/domain/state/document"
 import { resolveServiceState } from "@/lib/state-engine/service"
+import { resolveCycleStatus } from "@/lib/state-engine/cycle"
 
 type StatusType = 'service' | 'invoice' | 'cycle' | 'quote'
 
@@ -22,18 +22,31 @@ interface StatusBadgeProps {
 }
 
 export function StatusBadge({ status, type, className, entity }: StatusBadgeProps) {
+    // Default Logic (Service/Cycle still legacy/mixed)
+    let label = STATUS_LABELS[status.toLowerCase()] || status
+    let colorClass = STATUS_COLORS[status.toLowerCase()] || "bg-gray-100 text-gray-700"
+
+    // INVOICE: Use new Pure Domain
+    if (type === 'invoice') {
+        // If we have an entity, use the full resolver
+        // If not, we construct a partial object with just status
+        const docInput = entity || { status }
+        const state = resolveDocumentState(docInput)
+
+        return (
+            <Badge
+                variant="outline"
+                className={cn("px-2 py-0.5 text-xs font-medium border-0", state.color, className)}
+            >
+                {state.label}
+            </Badge>
+        )
+    }
+
+    // OTHER TYPES (Service/Cycle) - Keep existing logic for now
     let normalizedStatus = status.toLowerCase()
 
-    // Normalize based on type
-    if (type === 'invoice') {
-        if (entity) {
-            // Use new State Engine if entity is available
-            normalizedStatus = resolveInvoiceStatus(entity)
-        } else {
-            // Fallback to legacy string-based normalization
-            normalizedStatus = normalizeInvoiceStatus(status)
-        }
-    } else if (type === 'service') {
+    if (type === 'service') {
         if (entity) {
             normalizedStatus = resolveServiceState(entity)
         } else {
@@ -47,8 +60,9 @@ export function StatusBadge({ status, type, className, entity }: StatusBadgeProp
         }
     }
 
-    const label = STATUS_LABELS[normalizedStatus] || status
-    const colorClass = STATUS_COLORS[normalizedStatus] || "bg-gray-100 text-gray-700"
+    // Re-calc for non-invoice types
+    label = STATUS_LABELS[normalizedStatus] || status
+    colorClass = STATUS_COLORS[normalizedStatus] || "bg-gray-100 text-gray-700"
 
     return (
         <Badge

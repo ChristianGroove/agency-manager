@@ -35,7 +35,7 @@ import {
 } from "@/components/animate-ui/components/radix/dropdown-menu"
 import { MoreVertical } from "lucide-react"
 
-import { Invoice } from "@/types/billing"
+import { Invoice } from "@/types"
 
 export default function InvoicesPage() {
     const router = useRouter()

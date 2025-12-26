@@ -25,8 +25,8 @@
 - [x] Update `ServiceDetails` to show Cycle History <!-- id: 7 -->
 
 ## Phase 3: Invoice Generation
-- [ ] Refactor Invoice Generation to depend on Billing Cycle rules <!-- id: 8 -->
-- [ ] Ensure `Service` -> `BillingCycle` -> `Invoice` flow is respected <!-- id: 9 -->
+- [x] Refactor Invoice Generation to depend on Billing Cycle rules <!-- id: 8 -->
+- [x] Ensure `Service` -> `BillingCycle` -> `Invoice` flow is respected <!-- id: 9 -->
 
 ## Phase 4: UI & Verification
 - [x] Add "Ciclos de Facturación" view tab in Service Details <!-- id: 10 -->
@@ -90,4 +90,4 @@
 - [x] Integrate: Service Actions (Create, Pause, Resume) <!-- id: 52 -->
 - [x] Integrate: Billing Actions (Generate Cycle, Invoice) <!-- id: 53 -->
 - [x] Integrate: Payment Actions (Wompi Webhook) <!-- id: 54 -->
-- [ ] Verify: Check logs in Supabase (Manual) <!-- id: 55 -->
+- [x] Verify: Check logs in Supabase (Manual) <!-- id: 55 -->

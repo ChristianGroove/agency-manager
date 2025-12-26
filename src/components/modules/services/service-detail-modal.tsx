@@ -14,6 +14,7 @@ import { supabase } from "@/lib/supabase"
 import { useState, useEffect } from "react"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { normalizeServiceStatus, STATUS_COLORS, STATUS_LABELS } from "@/lib/domain-logic"
+import { CreateInvoiceModal } from "@/components/modules/invoices/create-invoice-modal"
 
 interface ServiceDetailModalProps {
     isOpen: boolean
@@ -225,9 +226,28 @@ export function ServiceDetailModal({ isOpen, onOpenChange, service }: ServiceDet
                                                                 )}
                                                             </div>
                                                         ) : (
-                                                            <span className="text-muted-foreground text-xs italic">
-                                                                {cycle.status === 'pending' ? 'En curso' : '-'}
-                                                            </span>
+                                                            <>
+                                                                {cycle.status === 'pending' || cycle.status === 'running' ? (
+                                                                    <CreateInvoiceModal
+                                                                        clientId={service.client_id}
+                                                                        clientName={service.name}
+                                                                        initialAmount={cycle.amount}
+                                                                        defaultDescription={`${service.name} (${format(new Date(cycle.start_date), "dd/MM")}-${format(new Date(cycle.end_date), "dd/MM")})`}
+                                                                        serviceId={service.id}
+                                                                        cycleId={cycle.id}
+                                                                        onInvoiceCreated={() => fetchCycles(service.id)}
+                                                                        trigger={
+                                                                            <Button size="sm" variant="outline" className="h-7 text-xs border-indigo-200 text-indigo-700 hover:bg-indigo-50">
+                                                                                Facturar Ahora
+                                                                            </Button>
+                                                                        }
+                                                                    />
+                                                                ) : (
+                                                                    <span className="text-muted-foreground text-xs italic">
+                                                                        {cycle.status === 'pending' ? 'En curso' : '-'}
+                                                                    </span>
+                                                                )}
+                                                            </>
                                                         )}
                                                     </TableCell>
                                                 </TableRow>

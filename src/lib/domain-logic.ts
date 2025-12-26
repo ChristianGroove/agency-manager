@@ -12,6 +12,7 @@ import { Service, Invoice, BillingCycle, ServiceStatus, InvoiceStatus, CycleStat
 // --- Normalización de Estados (Compatibilidad) ---
 
 /**
+ * @deprecated Use `resolveDocumentState` from `@/domain/state/document` instead.
  * Normaliza el estado de una factura, mapeando términos antiguos a los canónicos.
  * @param status Estado crudo de la BD
  */
