@@ -858,7 +858,7 @@ export default function ClientDetailPage() {
                                                     <div className="min-w-0">
                                                         <div className="flex items-center gap-2">
                                                             <h3 className="font-bold text-gray-900 truncate">{service.name}</h3>
-                                                            <StatusBadge status={service.status} type="service" className="text-[10px]" />
+                                                            <StatusBadge status={service.status} type="service" className="text-[10px]" entity={service} />
                                                         </div>
                                                         <div className="flex items-center text-xs text-gray-500 mt-0.5 gap-2">
                                                             <span className="capitalize">{service.frequency === 'monthly' ? 'Mensual' : service.frequency === 'yearly' ? 'Anual' : 'Único'}</span>

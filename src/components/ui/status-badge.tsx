@@ -10,6 +10,7 @@ import {
 } from "@/lib/domain-logic"
 import { resolveInvoiceStatus } from "@/lib/state-engine/document"
 import { resolveCycleStatus } from "@/lib/state-engine/cycle"
+import { resolveServiceState } from "@/lib/state-engine/service"
 
 type StatusType = 'service' | 'invoice' | 'cycle' | 'quote'
 
@@ -33,7 +34,11 @@ export function StatusBadge({ status, type, className, entity }: StatusBadgeProp
             normalizedStatus = normalizeInvoiceStatus(status)
         }
     } else if (type === 'service') {
-        normalizedStatus = normalizeServiceStatus(status)
+        if (entity) {
+            normalizedStatus = resolveServiceState(entity)
+        } else {
+            normalizedStatus = normalizeServiceStatus(status)
+        }
     } else if (type === 'cycle') {
         if (entity) {
             normalizedStatus = resolveCycleStatus(entity)

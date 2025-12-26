@@ -76,7 +76,7 @@ export function ServiceDetailModal({ isOpen, onOpenChange, service }: ServiceDet
                         <div className={`p-2 rounded-xl bg-white/50 backdrop-blur-sm shadow-sm ${statusColor}`}>
                             <Activity className="h-6 w-6" />
                         </div>
-                        <StatusBadge status={service.status || 'draft'} type="service" className="text-sm px-3 py-1 font-semibold" />
+                        <StatusBadge status={service.status || 'draft'} type="service" className="text-sm px-3 py-1 font-semibold" entity={service} />
                     </div>
                     <DialogTitle className="text-2xl font-bold text-gray-900 leading-tight">
                         {service.name}
