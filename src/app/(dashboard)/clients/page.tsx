@@ -26,25 +26,8 @@ import { getWhatsAppLink } from "@/lib/communication-utils"
 import { WhatsAppActionsModal } from "@/components/modules/clients/whatsapp-modal"
 import { AddServiceModal } from "@/components/modules/services/add-service-modal"
 import { SplitText } from "@/components/ui/split-text"
+import { Client } from "@/types"
 
-// Types
-type Client = {
-    id: string
-    created_at: string
-    user_id: string
-    name: string
-    company_name: string
-    email: string
-    phone: string
-    logo_url?: string
-    invoices: { id: string; total: number; status: string; due_date?: string; deleted_at?: string }[]
-    hosting_accounts: { status: string; renewal_date: string; deleted_at?: string }[]
-    subscriptions: { id: string; name: string; next_billing_date: string; status: string; amount: number; service_type: string; frequency: string; deleted_at?: string }[]
-    services?: { id: string; status: string; name: string; next_billing_date?: string; amount?: number; frequency?: string; deleted_at?: string }[]
-    quotes?: { id: string; number: string; total: number; status: string; pdf_url?: string }[]
-    portal_token?: string
-    portal_short_token?: string
-}
 
 export default function ClientsPage() {
     const [clients, setClients] = useState<Client[]>([])

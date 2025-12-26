@@ -18,6 +18,9 @@ export type Client = {
     portal_short_token?: string
     invoices?: Invoice[]
     quotes?: Quote[]
+    services?: Service[]
+    subscriptions?: Service[] // Subscriptions are services of type 'recurring'
+    hosting_accounts?: any[] // Todo: Define strict HostingAccount type if needed
     deleted_at?: string
 }
 
