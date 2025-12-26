@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createHash } from 'crypto'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { logDomainEvent } from "@/lib/event-logger"
 
 export async function GET() {
     return NextResponse.json({
@@ -99,7 +100,7 @@ export async function POST(request: Request) {
                         .from('invoices')
                         .update({ status: 'paid' })
                         .in('id', invoiceIds)
-                        .select('client_id, number, total')
+                        .select('id, client_id, number, total')
 
                     if (updateError) {
                         console.error('Error updating invoices:', updateError)
@@ -124,6 +125,22 @@ export async function POST(request: Request) {
                             },
                             icon: 'CreditCard'
                         })
+
+                        // Log Domain Events (Audit)
+                        for (const inv of updatedInvoices) {
+                            await logDomainEvent({
+                                entity_type: 'invoice',
+                                entity_id: inv.id || 'unknown', // Need to select ID
+                                event_type: 'invoice.paid',
+                                payload: {
+                                    reference: reference,
+                                    transaction_id: paymentTx.id,
+                                    method: 'wompi_batch'
+                                },
+                                triggered_by: 'webhook',
+                                actor_id: 'wompi'
+                            })
+                        }
                     }
                 }
 
@@ -145,7 +162,7 @@ export async function POST(request: Request) {
                         .from('invoices')
                         .update({ status: 'paid' })
                         .eq('number', invoiceNumber)
-                        .select('client_id, total')
+                        .select('id, client_id, total')
                         .single()
 
                     if (error) {
@@ -166,6 +183,20 @@ export async function POST(request: Request) {
                                     amount: updatedInvoice.total
                                 },
                                 icon: 'CreditCard'
+                            })
+
+                            // Log Domain Event (Audit)
+                            await logDomainEvent({
+                                entity_type: 'invoice',
+                                entity_id: updatedInvoice.id,
+                                event_type: 'invoice.paid',
+                                payload: {
+                                    reference: reference,
+                                    invoice_number: invoiceNumber,
+                                    method: 'wompi_direct'
+                                },
+                                triggered_by: 'webhook',
+                                actor_id: 'wompi'
                             })
                         }
                     }

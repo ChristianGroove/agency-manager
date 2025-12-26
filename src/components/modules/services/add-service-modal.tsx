@@ -33,6 +33,7 @@ import { supabase } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 import { ServiceCatalogSelector } from "./service-catalog-selector"
 import { Service } from "@/types"
+import { logDomainEventAction } from "@/app/actions/log-actions"
 
 export interface AddServiceModalProps {
     clientId?: string
@@ -423,6 +424,19 @@ export function AddServiceModal({ clientId, clientName, onSuccess, trigger, serv
             }
 
             // Success
+            await logDomainEventAction({
+                entity_type: 'service',
+                entity_id: serviceId,
+                event_type: serviceToEdit ? 'service.updated' : 'service.created',
+                payload: {
+                    name: formData.name,
+                    amount: formData.amount,
+                    type: formData.type,
+                    frequency: formData.frequency,
+                    strategy: strategy
+                }
+            })
+
             if (onSuccess) onSuccess()
             handleOpenChange(false)
             setStep('catalog')

@@ -2,6 +2,7 @@
 
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { Service } from "@/types"
+import { logDomainEvent } from "@/lib/event-logger"
 
 export async function toggleServiceStatus(
     serviceId: string,
@@ -59,6 +60,20 @@ export async function toggleServiceStatus(
                 new_status: newStatus
             },
             icon: eventIcon
+        })
+
+        // 5. Log Domain Event (Audit)
+        await logDomainEvent({
+            entity_type: 'service',
+            entity_id: serviceId,
+            event_type: newStatus === 'active' ? 'service.resumed' : 'service.paused',
+            payload: {
+                previous_status: service.status,
+                new_status: newStatus,
+                resume_options: resumeOptions,
+                service_name: service.name
+            },
+            triggered_by: 'user'
         })
 
         return { success: true }

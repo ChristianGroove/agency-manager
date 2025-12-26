@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase"
 import * as BillingUtils from "@/lib/billing-utils"
+import { logDomainEvent } from "@/lib/event-logger"
 
 /**
  * Checks for pending billing cycles that are due (end_date <= now)
@@ -107,6 +108,20 @@ export async function checkAndGenerateCycles() {
                 continue
             }
 
+            // Log Invoice Creation
+            await logDomainEvent({
+                entity_type: 'invoice',
+                entity_id: invoice.id,
+                event_type: 'invoice.created',
+                payload: {
+                    number: invoice.number,
+                    amount: invoice.total,
+                    is_late_issued: isLateIssued,
+                    cycle_id: cycle.id
+                },
+                triggered_by: 'system'
+            })
+
             // B. Update Cycle (Mark as Invoiced)
             await supabase
                 .from('billing_cycles')
@@ -117,6 +132,17 @@ export async function checkAndGenerateCycles() {
                 })
                 .eq('id', cycle.id)
 
+            // Log Cycle Invoiced
+            await logDomainEvent({
+                entity_type: 'cycle',
+                entity_id: cycle.id,
+                event_type: 'cycle.invoiced',
+                payload: {
+                    invoice_id: invoice.id
+                },
+                triggered_by: 'system'
+            })
+
             // C. Create NEXT Billing Cycle (if recurring)
             if (service.type === 'recurring' && service.frequency) {
                 const nextStart = new Date(cycle.end_date)
@@ -126,19 +152,32 @@ export async function checkAndGenerateCycles() {
                 const nextDue = new Date(nextEnd)
                 nextDue.setDate(nextDue.getDate() + 5)
 
-                const { error: nextCycleError } = await supabase.from('billing_cycles').insert({
+                const { data: nextCycleData, error: nextCycleError } = await supabase.from('billing_cycles').insert({
                     service_id: service.id,
                     start_date: nextStart.toISOString(),
                     end_date: nextEnd.toISOString(),
                     due_date: nextDue.toISOString(),
                     amount: service.amount,
                     status: 'pending'
-                })
+                }).select().single()
 
                 if (nextCycleError) {
                     console.error("Failed to create NEXT cycle:", nextCycleError)
                     throw new Error(`Error creando siguiente ciclo: ${nextCycleError.message}`)
                 }
+
+                // Log Next Cycle
+                await logDomainEvent({
+                    entity_type: 'cycle',
+                    entity_id: (nextCycleData as any)?.id || 'unknown',
+                    event_type: 'cycle.created',
+                    payload: {
+                        start_date: nextStart,
+                        end_date: nextEnd,
+                        service_id: service.id
+                    },
+                    triggered_by: 'system'
+                })
 
                 // Update Service next_billing_date
                 await supabase.from('services').update({
