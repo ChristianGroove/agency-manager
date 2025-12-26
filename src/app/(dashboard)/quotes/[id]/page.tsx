@@ -85,18 +85,18 @@ export default function QuoteDetailPage() {
             const result = await convertQuote(quote.id)
 
             if (result.success) {
-                const { servicesCreated, invoiceCreated } = result.results
+                const { servicesCreated, invoicesCreated } = result.results || { servicesCreated: 0, invoicesCreated: 0 }
                 let message = "Conversión exitosa.\n"
                 if (servicesCreated > 0) message += `✅ ${servicesCreated} Servicio(s) de suscripción creados.\n`
-                if (invoiceCreated) message += `✅ Factura de cobro único generada.\n`
+                if (invoicesCreated) message += `✅ Factura de cobro único generada.\n`
 
                 alert(message)
 
                 // Redirect logic
                 // If invoice created, go there? Or staying here is fine?
                 // User asked: "Redirigir al usuario a la vista del Cliente o del Nuevo Servicio."
-                if (result.results.invoiceId) {
-                    router.push(`/invoices/${result.results.invoiceId}`)
+                if (result.results?.unifiedInvoiceId) {
+                    router.push(`/invoices/${result.results.unifiedInvoiceId}`)
                 } else if (quote.client_id) {
                     router.push(`/clients/${quote.client_id}?tab=services`)
                 } else {
