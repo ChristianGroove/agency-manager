@@ -12,6 +12,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { supabase } from "@/lib/supabase"
 import { useState, useEffect } from "react"
+import { StatusBadge } from "@/components/ui/status-badge"
+import { normalizeServiceStatus, STATUS_COLORS, STATUS_LABELS } from "@/lib/domain-logic"
 
 interface ServiceDetailModalProps {
     isOpen: boolean
@@ -43,14 +45,18 @@ export function ServiceDetailModal({ isOpen, onOpenChange, service }: ServiceDet
 
     if (!service) return null
 
-    const statusConfig = {
-        active: { label: 'Activo', color: 'bg-emerald-100 text-emerald-700 border-emerald-200', icon: CheckCircle2 },
-        paused: { label: 'Pausado', color: 'bg-amber-100 text-amber-700 border-amber-200', icon: PauseCircle },
-        completed: { label: 'Completado', color: 'bg-blue-100 text-blue-700 border-blue-200', icon: CheckCircle2 },
-        cancelled: { label: 'Cancelado', color: 'bg-red-100 text-red-700 border-red-200', icon: XCircle },
-    }
+    const normalizedStatus = normalizeServiceStatus(service.status || '')
+    const statusColor = STATUS_COLORS[normalizedStatus] || STATUS_COLORS['draft']
+    const statusLabel = STATUS_LABELS[normalizedStatus] || service.status
 
-    const status = statusConfig[service.status as keyof typeof statusConfig] || statusConfig.active
+    const iconMap: Record<string, any> = {
+        active: CheckCircle2,
+        paused: PauseCircle,
+        cancelled: XCircle,
+        completed: CheckCircle2,
+        draft: Activity
+    }
+    const StatusIcon = iconMap[normalizedStatus] || Activity
 
     const frequencyLabels: Record<string, string> = {
         monthly: 'Mensual',
@@ -65,15 +71,12 @@ export function ServiceDetailModal({ isOpen, onOpenChange, service }: ServiceDet
             <DialogContent className="sm:max-w-[700px] p-0 overflow-hidden bg-white border-0 shadow-2xl rounded-2xl max-h-[90vh] flex flex-col">
 
                 {/* Header with Status Pattern */}
-                <div className={`p-6 border-b border-gray-100 ${status.color.replace('text-', 'bg-opacity-20 ')} bg-opacity-50 flex-none`}>
+                <div className={`p-6 border-b border-gray-100 ${statusColor.replace('text-', 'bg-opacity-20 ')} bg-opacity-50 flex-none`}>
                     <div className="flex justify-between items-start mb-4">
-                        <div className={`p-2 rounded-xl bg-white/50 backdrop-blur-sm shadow-sm ${status.color}`}>
+                        <div className={`p-2 rounded-xl bg-white/50 backdrop-blur-sm shadow-sm ${statusColor}`}>
                             <Activity className="h-6 w-6" />
                         </div>
-                        <Badge className={`${status.color} hover:${status.color} border shadow-none px-3 py-1 text-sm font-semibold rounded-lg capitalize`}>
-                            {status.icon && <status.icon className="w-3.5 h-3.5 mr-1.5" />}
-                            {status.label}
-                        </Badge>
+                        <StatusBadge status={service.status || 'draft'} type="service" className="text-sm px-3 py-1 font-semibold" />
                     </div>
                     <DialogTitle className="text-2xl font-bold text-gray-900 leading-tight">
                         {service.name}
@@ -198,15 +201,7 @@ export function ServiceDetailModal({ isOpen, onOpenChange, service }: ServiceDet
                                             cycles.map((cycle) => (
                                                 <TableRow key={cycle.id}>
                                                     <TableCell>
-                                                        <Badge variant={
-                                                            cycle.status === 'paid' ? 'default' :
-                                                                cycle.status === 'invoiced' ? 'secondary' :
-                                                                    cycle.status === 'pending' ? 'outline' : 'destructive'
-                                                        } className="capitalize shadow-none">
-                                                            {cycle.status === 'invoiced' ? 'Facturado' :
-                                                                cycle.status === 'pending' ? 'Pendiente' :
-                                                                    cycle.status === 'paid' ? 'Pagado' : cycle.status}
-                                                        </Badge>
+                                                        <StatusBadge status={cycle.status} type="cycle" />
                                                     </TableCell>
                                                     <TableCell className="text-sm">
                                                         <div className="flex flex-col">

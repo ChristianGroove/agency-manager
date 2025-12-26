@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ServiceDetailModal } from "@/components/modules/services/service-detail-modal"
+import { StatusBadge } from "@/components/ui/status-badge"
 import {
     Dialog,
     DialogContent,
@@ -849,14 +850,15 @@ export default function ClientDetailPage() {
                                                 <div className="flex items-center gap-3 overflow-hidden">
                                                     <div className={cn(
                                                         "p-2 rounded-lg shrink-0",
-                                                        service.status === 'active' ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-600"
+                                                        service.status === 'active' ? "bg-emerald-50 text-emerald-600" :
+                                                            service.status === 'paused' ? "bg-amber-50 text-amber-600" : "bg-gray-100 text-gray-500"
                                                     )}>
                                                         <Server className="h-5 w-5" />
                                                     </div>
                                                     <div className="min-w-0">
                                                         <div className="flex items-center gap-2">
                                                             <h3 className="font-bold text-gray-900 truncate">{service.name}</h3>
-                                                            {service.status === 'paused' && <Badge variant="secondary" className="text-[10px] h-4 px-1 bg-amber-100 text-amber-700">Pausado</Badge>}
+                                                            <StatusBadge status={service.status} type="service" className="text-[10px]" />
                                                         </div>
                                                         <div className="flex items-center text-xs text-gray-500 mt-0.5 gap-2">
                                                             <span className="capitalize">{service.frequency === 'monthly' ? 'Mensual' : service.frequency === 'yearly' ? 'Anual' : 'Único'}</span>
@@ -918,14 +920,7 @@ export default function ClientDetailPage() {
                                                                     <tr key={inv.id} className="hover:bg-gray-50 transition-colors group/row">
                                                                         <td className="py-2 pl-3 font-medium text-gray-700">#{inv.number}</td>
                                                                         <td className="py-2 pr-2 text-right">
-                                                                            <Badge variant="outline" className={cn(
-                                                                                "text-[9px] px-1 py-0 h-4 border-0",
-                                                                                inv.status === 'paid' ? "bg-emerald-100 text-emerald-700" :
-                                                                                    inv.status === 'overdue' ? "bg-red-100 text-red-700" :
-                                                                                        inv.status === 'cancelled' ? "bg-gray-100 text-gray-500" : "bg-gray-100 text-gray-700"
-                                                                            )}>
-                                                                                {inv.status === 'paid' ? 'Pagada' : inv.status === 'overdue' ? 'Vencida' : inv.status === 'cancelled' ? 'Canc.' : 'Pend.'}
-                                                                            </Badge>
+                                                                            <StatusBadge status={inv.status} type="invoice" />
                                                                         </td>
                                                                         <td className="py-2 pr-3 text-right">
                                                                             <div className="flex items-center justify-end gap-1 opacity-0 group-hover/row:opacity-100 transition-opacity">
@@ -1040,12 +1035,7 @@ export default function ClientDetailPage() {
                                             <div className="flex items-center gap-4">
                                                 <span className="font-medium">{inv.number}</span>
                                                 <span className="text-gray-500 text-sm">{inv.description || "Sin descripción"}</span>
-                                                <Badge variant="outline" className={cn("text-[10px]",
-                                                    inv.status === 'paid' ? "text-emerald-600 bg-emerald-50 border-emerald-100" :
-                                                        inv.status === 'overdue' ? "text-red-600 bg-red-50 border-red-100" : "text-gray-600"
-                                                )}>
-                                                    {inv.status === 'paid' ? 'Pagada' : inv.status === 'overdue' ? 'Vencida' : 'Pendiente'}
-                                                </Badge>
+                                                <StatusBadge status={inv.status} type="invoice" />
                                             </div>
                                             <div className="flex items-center gap-4">
                                                 <span className="font-bold">${inv.total.toLocaleString()}</span>

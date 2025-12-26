@@ -22,6 +22,7 @@ import {
     TableRow,
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
+import { StatusBadge } from "@/components/ui/status-badge"
 import { supabase } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 import { CreateInvoiceModal } from "@/components/modules/invoices/create-invoice-modal"
@@ -218,17 +219,7 @@ export default function InvoicesPage() {
                                         ${invoice.total.toLocaleString()}
                                     </TableCell>
                                     <TableCell>
-                                        <Badge className={cn(
-                                            "font-normal",
-                                            invoice.status === 'paid' ? "bg-green-100 text-green-700 border-green-200" :
-                                                invoice.status === 'pending' ? "bg-yellow-100 text-yellow-700 border-yellow-200" :
-                                                    invoice.status === 'cancelled' ? "bg-gray-100 text-gray-500 border-gray-200" :
-                                                        "bg-red-100 text-red-700 border-red-200"
-                                        )}>
-                                            {invoice.status === 'paid' ? 'Pagada' :
-                                                invoice.status === 'pending' ? 'Pendiente' :
-                                                    invoice.status === 'cancelled' ? 'Cancelada' : 'Vencida'}
-                                        </Badge>
+                                        <StatusBadge status={invoice.status} type="invoice" />
                                     </TableCell>
                                     <TableCell className="text-right">
                                         <DropdownMenu>

@@ -1,3 +1,8 @@
+// --- Canonical States ---
+export type ServiceStatus = 'draft' | 'active' | 'paused' | 'cancelled';
+export type CycleStatus = 'future' | 'running' | 'completed' | 'skipped';
+export type InvoiceStatus = 'draft' | 'pending' | 'paid' | 'overdue' | 'void' | 'cancelled'; // cancelled kept for backward compat
+
 export type Client = {
     id: string
     created_at: string
@@ -11,8 +16,8 @@ export type Client = {
     logo_url?: string
     portal_token?: string
     portal_short_token?: string
-    invoices?: any[]
-    quotes?: any[]
+    invoices?: Invoice[]
+    quotes?: Quote[]
     deleted_at?: string
 }
 
@@ -29,7 +34,7 @@ export type Service = {
     description?: string
     amount?: number
     quantity?: number
-    status?: string
+    status?: ServiceStatus
     emitter_id?: string
     document_type?: string
     next_billing_date?: string
@@ -88,7 +93,7 @@ export type Invoice = {
     due_date?: string
     items: InvoiceItem[]
     total: number
-    status: 'pending' | 'paid' | 'overdue' | 'cancelled'
+    status: InvoiceStatus
     pdf_url?: string
     client?: Client
     service_id?: string | null
@@ -97,6 +102,19 @@ export type Invoice = {
     document_type?: string
     is_late_issued?: boolean
     metadata?: any
+}
+
+// ... existing types
+export type BillingCycle = {
+    id: string
+    service_id: string
+    start_date: string
+    end_date: string
+    status: CycleStatus
+    amount: number
+    invoice_id?: string
+    invoice?: Invoice
+    created_at: string
 }
 
 export type ClientEvent = {

@@ -53,7 +53,7 @@ export const InvoiceTemplate = forwardRef<HTMLDivElement, InvoiceTemplateProps>(
                     </div>
 
                     {/* Professional Intro Text */}
-                    <div className="mb-6 text-center">
+                    <div className="mb-6 text-left">
                         <p className="text-sm text-gray-500 italic">
                             Presentamos el detalle de su cuenta de cobro, lista para su gestión de pago.
                         </p>
@@ -61,7 +61,7 @@ export const InvoiceTemplate = forwardRef<HTMLDivElement, InvoiceTemplateProps>(
 
                     {/* Retroactive / Scale Disclaimer Block */}
                     {(invoice.metadata?.cycle_period || invoice.is_late_issued) && (
-                        <div className="mb-6 mx-auto max-w-lg border-l-4 border-gray-300 pl-4 py-1">
+                        <div className="mb-6 text-left max-w-lg border-l-4 border-gray-300 pl-4 py-1">
                             {invoice.metadata?.cycle_period && (
                                 <p className="text-xs text-gray-600">
                                     <span className="font-bold">Periodo del Servicio:</span>{' '}
