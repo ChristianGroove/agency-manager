@@ -82,7 +82,7 @@
 - [x] Integrate: Document State (Invoices) <!-- id: 47 -->
 - [x] Integrate: Cycle State (Billing Cycles) <!-- id: 48 -->
 - [x] Integrate: Service State (Status Badge) <!-- id: 49 -->
-- [ ] Refactor: Deprecate `domain-logic.ts` (Future) <!-- id: 46 -->
+- [x] Refactor: Deprecate `domain-logic.ts` (Done & Deleted) <!-- id: 46 -->
 
 ## Phase 13: Domain Event Log (Audit)
 - [x] Schema: Create `domain_events` table migration <!-- id: 50 -->
@@ -91,3 +91,12 @@
 - [x] Integrate: Billing Actions (Generate Cycle, Invoice) <!-- id: 53 -->
 - [x] Integrate: Payment Actions (Wompi Webhook) <!-- id: 54 -->
 - [x] Verify: Check logs in Supabase (Manual) <!-- id: 55 -->
+
+## Phase 14: Client Activity Timeline (Feature)
+- [x] Logic: Create `getClientHistory` server action <!-- id: 56 -->
+- [x] UI: Create `ClientTimeline` component <!-- id: 57 -->
+- [x] Integrate: Add Timeline to Client Details View <!-- id: 58 -->
+
+## Phase 15: Client Timeline Polish (UI)
+- [x] UI: Implement Spanish translation for Event Types <!-- id: 59 -->
+- [x] UI: Improve Actor/User display logic <!-- id: 60 -->

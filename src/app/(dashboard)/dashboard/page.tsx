@@ -16,6 +16,7 @@ import { BriefingFormModal } from "@/components/modules/briefings/briefing-form-
 import CountUp from "react-countup"
 import { SplitText } from "@/components/ui/split-text"
 import { MagicCard } from "@/components/ui/magic-card"
+import { resolveDocumentState, resolveServiceState } from "@/domain/state"
 
 const Lottie = dynamic(() => import("lottie-react"), { ssr: false })
 
@@ -23,10 +24,12 @@ type DashboardStats = {
     totalClients: number
     totalRevenue: number
     pendingPayments: number
+    totalOverdue: number
     paidInvoices: number
     activeSubscriptions: number
     monthlyRecurring: number
-    clientsWithDebt: number
+    clientsWithPendingBalance: number // Any pending invoice
+    clientsWithOverdueBalance: number // Strictly overdue
 }
 
 const AGENCY_TIPS = [
@@ -42,10 +45,12 @@ export default function DashboardPage() {
         totalClients: 0,
         totalRevenue: 0,
         pendingPayments: 0,
+        totalOverdue: 0,
         paidInvoices: 0,
         activeSubscriptions: 0,
         monthlyRecurring: 0,
-        clientsWithDebt: 0
+        clientsWithPendingBalance: 0,
+        clientsWithOverdueBalance: 0
     })
     const [settings, setSettings] = useState<any>(null)
     const [loading, setLoading] = useState(true)
@@ -90,37 +95,53 @@ export default function DashboardPage() {
 
             setSettings(settingsData)
 
-            // Calculate stats
-            const totalRevenue = invoices
-                .filter(inv => inv.status === 'paid')
-                .reduce((sum, inv) => sum + (inv.total || 0), 0)
+            // Calculate stats using State Engine
+            let totalRevenue = 0
+            let pendingPayments = 0
+            let totalOverdue = 0
+            let paidInvoicesCount = 0
 
-            const pendingPayments = invoices
-                .filter(inv => inv.status === 'pending' || inv.status === 'overdue')
-                .reduce((sum, inv) => sum + (inv.total || 0), 0)
+            const clientsWithPendingSet = new Set<string>()
+            const clientsWithOverdueMap = new Map<string, number>()
 
-            const paidInvoices = invoices.filter(inv => inv.status === 'paid').length
-
-            // "Active Subscriptions" now refers to Recurring Services that are active
-            const activeSubscriptions = services.filter(svc => svc.status === 'active' && svc.type === 'recurring').length
-
-            const monthlyRecurring = services
-                .filter(svc => svc.status === 'active' && svc.type === 'recurring' && svc.frequency === 'monthly')
-                .reduce((sum, svc) => sum + (svc.amount || 0), 0)
-
-            // Calculate clients with debt
-            const clientDebts = new Map()
             invoices.forEach(inv => {
-                if (inv.status === 'pending' || inv.status === 'overdue') {
-                    const currentDebt = clientDebts.get(inv.client_id) || 0
-                    clientDebts.set(inv.client_id, currentDebt + inv.total)
+                const { status } = resolveDocumentState(inv)
+                const amount = inv.total || 0
+
+                if (status === 'paid') {
+                    totalRevenue += amount
+                    paidInvoicesCount++
+                } else if (status === 'pending') {
+                    pendingPayments += amount
+                    clientsWithPendingSet.add(inv.client_id)
+                } else if (status === 'overdue') {
+                    pendingPayments += amount // Overdue is also pending payment
+                    totalOverdue += amount
+                    clientsWithPendingSet.add(inv.client_id) // Overdue is also pending
+
+                    // Track strictly overdue clients
+                    const currentDebt = clientsWithOverdueMap.get(inv.client_id) || 0
+                    clientsWithOverdueMap.set(inv.client_id, currentDebt + amount)
                 }
             })
 
-            // Process debtors list
-            const debtorsList = Array.from(clientDebts.entries()).map(([clientId, amount]) => {
+            // Calculate Services stats
+            let activeSubscriptions = 0
+            let monthlyRecurring = 0
+
+            services.forEach(svc => {
+                const { status } = resolveServiceState(svc)
+                if (status === 'active' && svc.type === 'recurring') {
+                    activeSubscriptions++
+                    if (svc.frequency === 'monthly') {
+                        monthlyRecurring += (svc.amount || 0)
+                    }
+                }
+            })
+
+            // Process debtors list (Strictly Overdue)
+            const debtorsList = Array.from(clientsWithOverdueMap.entries()).map(([clientId, amount]) => {
                 const client = clients.find(c => c.id === clientId)
-                // Skip if client is deleted (client won't be found because we filtered clients fetch)
                 if (!client) return null
 
                 return {
@@ -130,8 +151,8 @@ export default function DashboardPage() {
                     debt: amount
                 }
             })
-                .filter((item): item is NonNullable<typeof item> => !!item) // Remove nulls and help TS inference
-                .sort((a, b) => (b?.debt || 0) - (a?.debt || 0)) // Sort by highest debt with null safety
+                .filter((item): item is NonNullable<typeof item> => !!item)
+                .sort((a, b) => (b?.debt || 0) - (a?.debt || 0))
 
             setDebtors(debtorsList)
 
@@ -139,10 +160,12 @@ export default function DashboardPage() {
                 totalClients: clients.length,
                 totalRevenue,
                 pendingPayments,
-                paidInvoices,
+                totalOverdue,
+                paidInvoices: paidInvoicesCount,
                 activeSubscriptions,
                 monthlyRecurring,
-                clientsWithDebt: debtorsList.length
+                clientsWithPendingBalance: clientsWithPendingSet.size,
+                clientsWithOverdueBalance: clientsWithOverdueMap.size
             })
         } catch (error) {
             console.error("Error fetching dashboard data:", error)
@@ -192,10 +215,10 @@ export default function DashboardPage() {
                         <CardContent>
                             <div className="text-2xl font-bold text-gray-900">{stats.totalClients}</div>
                             <p className="text-xs text-muted-foreground mt-1">
-                                {stats.clientsWithDebt > 0 ? (
-                                    <span className="text-brand-pink font-medium flex items-center gap-1">
+                                {stats.clientsWithPendingBalance > 0 ? (
+                                    <span className="text-indigo-600 font-medium flex items-center gap-1">
                                         <AlertCircle className="h-3 w-3" />
-                                        {stats.clientsWithDebt} con saldo pendiente
+                                        {stats.clientsWithPendingBalance} con saldo pendiente
                                     </span>
                                 ) : (
                                     <span className="text-green-600 flex items-center gap-1">
@@ -256,7 +279,7 @@ export default function DashboardPage() {
                                 />
                             </div>
                             <p className="text-xs text-muted-foreground mt-1">
-                                Pendientes de pago
+                                Pendientes (Vencidas + En tiempo)
                             </p>
                         </CardContent>
                     </Card>
@@ -387,11 +410,6 @@ export default function DashboardPage() {
             </div>
 
             {/* Quick Actions */}
-            {/* Quick Actions */}
-            {/* Quick Actions */}
-            {/* Quick Actions */}
-            {/* Quick Actions */}
-            {/* Quick Actions */}
             <div className="grid gap-8 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
                 <div onClick={() => setIsClientModalOpen(true)}>
                     <motion.div whileHover="hover" initial="rest" className="h-full">
@@ -472,8 +490,8 @@ export default function DashboardPage() {
                                 Atención Requerida
                             </h3>
                             <p className="text-gray-500 max-w-xl">
-                                Hay <span className="font-bold text-red-500">{stats.clientsWithDebt} clientes</span> con cuentas de cobro vencidas este mes.
-                                Gestionar estos cobros podría recuperar <span className="font-bold text-gray-900">${(stats.clientsWithDebt * 1500000).toLocaleString()}</span> para tu flujo de caja.
+                                Hay <span className="font-bold text-red-500">{stats.clientsWithOverdueBalance} clientes</span> con cuentas de cobro vencidas este mes.
+                                Gestionar estos cobros podría recuperar <span className="font-bold text-gray-900">${stats.totalOverdue.toLocaleString()}</span> para tu flujo de caja.
                             </p>
                         </div>
 

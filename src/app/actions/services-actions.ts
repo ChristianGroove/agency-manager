@@ -68,6 +68,7 @@ export async function toggleServiceStatus(
             entity_id: serviceId,
             event_type: newStatus === 'active' ? 'service.resumed' : 'service.paused',
             payload: {
+                clientId: service.client_id, // Critical for Client Timeline filtering
                 previous_status: service.status,
                 new_status: newStatus,
                 resume_options: resumeOptions,

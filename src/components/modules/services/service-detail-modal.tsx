@@ -13,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { supabase } from "@/lib/supabase"
 import { useState, useEffect } from "react"
 import { StatusBadge } from "@/components/ui/status-badge"
-import { normalizeServiceStatus, STATUS_COLORS, STATUS_LABELS } from "@/lib/domain-logic"
+import { resolveServiceState } from "@/domain/state/service"
 import { CreateInvoiceModal } from "@/components/modules/invoices/create-invoice-modal"
 
 interface ServiceDetailModalProps {
@@ -46,9 +46,8 @@ export function ServiceDetailModal({ isOpen, onOpenChange, service }: ServiceDet
 
     if (!service) return null
 
-    const normalizedStatus = normalizeServiceStatus(service.status || '')
-    const statusColor = STATUS_COLORS[normalizedStatus] || STATUS_COLORS['draft']
-    const statusLabel = STATUS_LABELS[normalizedStatus] || service.status
+    // New State Resolution
+    const { status: normalizedStatus, color: statusColor, label: statusLabel } = resolveServiceState(service)
 
     const iconMap: Record<string, any> = {
         active: CheckCircle2,
