@@ -8,6 +8,7 @@ import {
     STATUS_LABELS,
     STATUS_COLORS
 } from "@/lib/domain-logic"
+import { resolveInvoiceStatus } from "@/lib/state-engine/document"
 
 type StatusType = 'service' | 'invoice' | 'cycle' | 'quote'
 
@@ -15,14 +16,21 @@ interface StatusBadgeProps {
     status: string
     type: StatusType
     className?: string
+    entity?: any // Optional entity to perform advanced state resolution (e.g., checking due dates)
 }
 
-export function StatusBadge({ status, type, className }: StatusBadgeProps) {
+export function StatusBadge({ status, type, className, entity }: StatusBadgeProps) {
     let normalizedStatus = status.toLowerCase()
 
     // Normalize based on type
     if (type === 'invoice') {
-        normalizedStatus = normalizeInvoiceStatus(status)
+        if (entity) {
+            // Use new State Engine if entity is available
+            normalizedStatus = resolveInvoiceStatus(entity)
+        } else {
+            // Fallback to legacy string-based normalization
+            normalizedStatus = normalizeInvoiceStatus(status)
+        }
     } else if (type === 'service') {
         normalizedStatus = normalizeServiceStatus(status)
     } else if (type === 'cycle') {

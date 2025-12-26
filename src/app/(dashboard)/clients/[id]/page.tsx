@@ -920,7 +920,7 @@ export default function ClientDetailPage() {
                                                                     <tr key={inv.id} className="hover:bg-gray-50 transition-colors group/row">
                                                                         <td className="py-2 pl-3 font-medium text-gray-700">#{inv.number}</td>
                                                                         <td className="py-2 pr-2 text-right">
-                                                                            <StatusBadge status={inv.status} type="invoice" />
+                                                                            <StatusBadge status={inv.status} type="invoice" entity={inv} />
                                                                         </td>
                                                                         <td className="py-2 pr-3 text-right">
                                                                             <div className="flex items-center justify-end gap-1 opacity-0 group-hover/row:opacity-100 transition-opacity">
@@ -1035,7 +1035,7 @@ export default function ClientDetailPage() {
                                             <div className="flex items-center gap-4">
                                                 <span className="font-medium">{inv.number}</span>
                                                 <span className="text-gray-500 text-sm">{inv.description || "Sin descripción"}</span>
-                                                <StatusBadge status={inv.status} type="invoice" />
+                                                <StatusBadge status={inv.status} type="invoice" entity={inv} />
                                             </div>
                                             <div className="flex items-center gap-4">
                                                 <span className="font-bold">${inv.total.toLocaleString()}</span>

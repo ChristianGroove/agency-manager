@@ -219,7 +219,7 @@ export default function InvoicesPage() {
                                         ${invoice.total.toLocaleString()}
                                     </TableCell>
                                     <TableCell>
-                                        <StatusBadge status={invoice.status} type="invoice" />
+                                        <StatusBadge status={invoice.status} type="invoice" entity={invoice} />
                                     </TableCell>
                                     <TableCell className="text-right">
                                         <DropdownMenu>
