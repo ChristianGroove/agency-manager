@@ -59,6 +59,23 @@ export const InvoiceTemplate = forwardRef<HTMLDivElement, InvoiceTemplateProps>(
                         </p>
                     </div>
 
+                    {/* Retroactive / Scale Disclaimer Block */}
+                    {(invoice.metadata?.cycle_period || invoice.is_late_issued) && (
+                        <div className="mb-6 mx-auto max-w-lg border-l-4 border-gray-300 pl-4 py-1">
+                            {invoice.metadata?.cycle_period && (
+                                <p className="text-xs text-gray-600">
+                                    <span className="font-bold">Periodo del Servicio:</span>{' '}
+                                    {new Date(invoice.metadata.cycle_period.start).toLocaleDateString()} - {new Date(invoice.metadata.cycle_period.end).toLocaleDateString()}
+                                </p>
+                            )}
+                            {invoice.is_late_issued && (
+                                <p className="text-[10px] text-gray-500 uppercase tracking-wide mt-1 font-medium">
+                                    Documento emitido de forma posterior al periodo del servicio.
+                                </p>
+                            )}
+                        </div>
+                    )}
+
                     {/* Info Grid - Kept at top */}
                     <div className="grid grid-cols-2 gap-6 mb-4">
                         <div>

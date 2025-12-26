@@ -33,7 +33,7 @@ export function ServiceDetailModal({ isOpen, onOpenChange, service }: ServiceDet
         setLoadingCycles(true)
         const { data, error } = await supabase
             .from('billing_cycles')
-            .select('*')
+            .select('*, invoice:invoices(id, number, is_late_issued)')
             .eq('service_id', serviceId)
             .order('start_date', { ascending: false })
 
@@ -218,10 +218,17 @@ export function ServiceDetailModal({ isOpen, onOpenChange, service }: ServiceDet
                                                         ${cycle.amount.toLocaleString()}
                                                     </TableCell>
                                                     <TableCell className="text-right">
-                                                        {cycle.invoice_id ? (
-                                                            <Button variant="link" className="h-auto p-0 text-indigo-600" onClick={() => window.open(`/invoices/${cycle.invoice_id}`, '_blank')}>
-                                                                Ver Factura
-                                                            </Button>
+                                                        {cycle.invoice ? (
+                                                            <div className="flex flex-col items-end gap-1">
+                                                                <Button variant="link" className="h-auto p-0 text-indigo-600" onClick={() => window.open(`/invoices/${cycle.invoice.id}`, '_blank')}>
+                                                                    {cycle.invoice.number || 'Ver Factura'}
+                                                                </Button>
+                                                                {cycle.invoice.is_late_issued && (
+                                                                    <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4 bg-amber-50 text-amber-700 border-amber-200">
+                                                                        Emitido tardíamente
+                                                                    </Badge>
+                                                                )}
+                                                            </div>
                                                         ) : (
                                                             <span className="text-muted-foreground text-xs italic">
                                                                 {cycle.status === 'pending' ? 'En curso' : '-'}

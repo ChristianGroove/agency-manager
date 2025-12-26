@@ -120,10 +120,11 @@ export default function ClientDetailPage() {
         return linkedInvoices.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     }
 
-    // Helper: Get invoices NOT linked to any service
+    // Helper: Get invoices NOT linked to any service (Manual Invoices)
     const getUnlinkedInvoices = () => {
-        const serviceIds = client?.services?.map(s => s.id) || []
-        return client?.invoices?.filter(inv => !inv.service_id || !serviceIds.includes(inv.service_id)) || []
+        // Strictly only show invoices that have NO service_id. 
+        // Invoices linked to deleted services should generally be hidden or archived, unless manually searched.
+        return client?.invoices?.filter(inv => !inv.service_id && !inv.deleted_at) || []
     }
 
     const handlePauseService = async (id: string) => {
@@ -914,9 +915,8 @@ export default function ClientDetailPage() {
                                                         <table className="w-full text-xs text-left">
                                                             <tbody className="divide-y divide-gray-100">
                                                                 {recentInvoices.map((inv: any) => (
-                                                                    <tr key={inv.id} className="hover:bg-gray-50 transition-colors">
+                                                                    <tr key={inv.id} className="hover:bg-gray-50 transition-colors group/row">
                                                                         <td className="py-2 pl-3 font-medium text-gray-700">#{inv.number}</td>
-                                                                        <td className="py-2 text-gray-500 text-[10px]">{new Date(inv.created_at).toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' })}</td>
                                                                         <td className="py-2 pr-2 text-right">
                                                                             <Badge variant="outline" className={cn(
                                                                                 "text-[9px] px-1 py-0 h-4 border-0",
@@ -927,12 +927,55 @@ export default function ClientDetailPage() {
                                                                                 {inv.status === 'paid' ? 'Pagada' : inv.status === 'overdue' ? 'Vencida' : inv.status === 'cancelled' ? 'Canc.' : 'Pend.'}
                                                                             </Badge>
                                                                         </td>
-                                                                        <td className="py-2 pr-2 w-[24px]">
-                                                                            {inv.pdf_url && (
-                                                                                <a href={inv.pdf_url} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-indigo-600 block">
-                                                                                    <Eye className="h-3 w-3" />
-                                                                                </a>
-                                                                            )}
+                                                                        <td className="py-2 pr-3 text-right">
+                                                                            <div className="flex items-center justify-end gap-1 opacity-0 group-hover/row:opacity-100 transition-opacity">
+                                                                                {/* View */}
+                                                                                {inv.pdf_url && (
+                                                                                    <Button
+                                                                                        variant="ghost"
+                                                                                        size="icon"
+                                                                                        className="h-6 w-6 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50"
+                                                                                        title="Ver Factura"
+                                                                                        onClick={(e) => {
+                                                                                            e.stopPropagation()
+                                                                                            window.open(inv.pdf_url, '_blank')
+                                                                                        }}
+                                                                                    >
+                                                                                        <Eye className="h-3 w-3" />
+                                                                                    </Button>
+                                                                                )}
+                                                                                {/* Share */}
+                                                                                {inv.pdf_url && (
+                                                                                    <Button
+                                                                                        variant="ghost"
+                                                                                        size="icon"
+                                                                                        className="h-6 w-6 text-gray-400 hover:text-blue-600 hover:bg-blue-50"
+                                                                                        title="Compartir"
+                                                                                        onClick={(e) => {
+                                                                                            e.stopPropagation()
+                                                                                            setInvoiceToShare(inv)
+                                                                                            setIsShareInvoiceModalOpen(true)
+                                                                                        }}
+                                                                                    >
+                                                                                        <Share2 className="h-3 w-3" />
+                                                                                    </Button>
+                                                                                )}
+                                                                                {/* Pay */}
+                                                                                {inv.status !== 'paid' && inv.status !== 'cancelled' && (
+                                                                                    <Button
+                                                                                        variant="ghost"
+                                                                                        size="icon"
+                                                                                        className="h-6 w-6 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50"
+                                                                                        title="Marcar Pagada"
+                                                                                        onClick={(e) => {
+                                                                                            e.stopPropagation()
+                                                                                            handleMarkAsPaid(inv.id)
+                                                                                        }}
+                                                                                    >
+                                                                                        <CheckCircle2 className="h-3 w-3" />
+                                                                                    </Button>
+                                                                                )}
+                                                                            </div>
                                                                         </td>
                                                                     </tr>
                                                                 ))}
@@ -953,70 +996,11 @@ export default function ClientDetailPage() {
                                                     <span className="font-bold text-gray-900">${service.amount?.toLocaleString()}</span>
                                                 </div>
                                                 <div className="flex items-center gap-4">
-                                                    {/* Actions for Latest Invoice */}
-                                                    {recentInvoices.length > 0 && (
-                                                        <div className="flex items-center gap-1">
-                                                            {(() => {
-                                                                const latestInvoice = recentInvoices[0]; // Any invoice works for HTML view
-                                                                const latestUnpaidInvoice = recentInvoices.find((inv: any) => inv.status !== 'paid')
-
-                                                                return (
-                                                                    <>
-                                                                        <Button
-                                                                            type="button"
-                                                                            variant="ghost"
-                                                                            size="icon"
-                                                                            className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50"
-                                                                            title="Ver Factura"
-                                                                            onClick={(e) => {
-                                                                                e.preventDefault();
-                                                                                e.stopPropagation();
-                                                                                if (latestInvoice?.id) window.open(`/invoices/${latestInvoice.id}`, '_blank')
-                                                                            }}
-                                                                        >
-                                                                            <Eye className="h-3.5 w-3.5" />
-                                                                        </Button>
-
-                                                                        <Button
-                                                                            type="button"
-                                                                            variant="ghost"
-                                                                            size="icon"
-                                                                            className="h-7 w-7 text-gray-400 hover:text-blue-600 hover:bg-blue-50"
-                                                                            title="Compartir Factura"
-                                                                            onClick={(e) => {
-                                                                                e.preventDefault();
-                                                                                e.stopPropagation();
-                                                                                if (latestInvoice) {
-                                                                                    setInvoiceToShare(latestInvoice)
-                                                                                    setIsShareInvoiceModalOpen(true)
-                                                                                }
-                                                                            }}
-                                                                        >
-                                                                            <Share2 className="h-3.5 w-3.5" />
-                                                                        </Button>
-
-                                                                        {latestUnpaidInvoice && (
-                                                                            <Button
-                                                                                variant="ghost"
-                                                                                size="icon"
-                                                                                className="h-7 w-7 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50"
-                                                                                title={`Marcar Factura #${latestUnpaidInvoice.number} como Pagada`}
-                                                                                onClick={() => handleMarkAsPaid(latestUnpaidInvoice.id)}
-                                                                            >
-                                                                                <CheckCircle2 className="h-3.5 w-3.5" />
-                                                                            </Button>
-                                                                        )}
-                                                                    </>
-                                                                )
-                                                            })()}
-                                                        </div>
-                                                    )}
-
                                                     {service.next_billing_date && (
-                                                        <div className="text-right border-l border-gray-200 pl-4">
+                                                        <div className="text-right">
                                                             <div className="flex items-center gap-1.5 text-xs text-gray-500">
                                                                 <CalendarClock className="h-3.5 w-3.5" />
-                                                                <span>{new Date(service.next_billing_date).toLocaleDateString()}</span>
+                                                                <span>Prox: {new Date(service.next_billing_date).toLocaleDateString()}</span>
                                                             </div>
                                                         </div>
                                                     )}
@@ -1043,8 +1027,11 @@ export default function ClientDetailPage() {
                             <div className="flex items-center justify-between mb-6">
                                 <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
                                     <FileText className="h-5 w-5 text-gray-500" />
-                                    Facturas Generales (Sin Servicio)
+                                    Facturas Manuales / Ocasionales
                                 </h2>
+                                <p className="text-sm text-gray-500 max-w-2xl">
+                                    Facturas generadas manualmente que no están vinculadas a un servicio activo.
+                                </p>
                             </div>
                             <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
                                 <div className="p-4 space-y-2">

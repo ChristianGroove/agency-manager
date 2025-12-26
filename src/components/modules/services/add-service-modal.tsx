@@ -794,6 +794,9 @@ export function AddServiceModal({ clientId, clientName, onSuccess, trigger, serv
                                         <p className="text-sm text-gray-500 mt-1">
                                             Se crearán facturas y notificaciones por los ciclos pasados. Afectará métricas históricas.
                                         </p>
+                                        <p className="text-xs text-amber-600 mt-2 font-medium bg-amber-50 p-2 rounded border border-amber-200">
+                                            ⚠ Las cuentas de cobro se emitirán con la fecha actual, respetando el periodo histórico del servicio.
+                                        </p>
                                     </div>
                                 </div>
                             </div>

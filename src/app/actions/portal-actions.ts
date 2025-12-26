@@ -37,8 +37,8 @@ export async function getPortalData(token: string) {
             { data: settings },
             { data: services }
         ] = await Promise.all([
-            // Invoices: already filtered deleted_at
-            supabaseAdmin.from('invoices').select('*').eq('client_id', client.id).is('deleted_at', null).order('created_at', { ascending: false }),
+            // Invoices: Filter out cancelled and deleted
+            supabaseAdmin.from('invoices').select('*').eq('client_id', client.id).is('deleted_at', null).neq('status', 'cancelled').order('created_at', { ascending: false }),
             // Quotes: Add deleted_at filter
             supabaseAdmin.from('quotes').select('*').eq('client_id', client.id).is('deleted_at', null).order('created_at', { ascending: false }),
             // Briefings: Add deleted_at filter (if column exists, assuming yes based on pattern)

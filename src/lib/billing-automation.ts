@@ -24,9 +24,10 @@ export async function checkAndGenerateCycles() {
                     frequency,
                     type,
                     emitter_id,
-                    document_type,
+                document_type,
                     quantity,
-                    deleted_at
+                    deleted_at,
+                    metadata
                 )
             `)
             .eq('status', 'pending')
@@ -54,20 +55,28 @@ export async function checkAndGenerateCycles() {
             }
 
             // A. Generate Invoice for this cycle
-            // Use existing utils or inline logic?
-            // We need to generate an invoice.
-
             const invoiceNumber = `INV-${Date.now().toString().slice(-6)}-${Math.floor(Math.random() * 100)}`
             const issueDate = new Date()
+            const cycleEndDate = new Date(cycle.end_date)
 
-            // Due date: issue date + X days (e.g. 5 days default for recurring)
-            // Or should we use cycle.due_date? Cycle due date was estimated. 
-            // Better to recalculate from "Now" (Issue Date) or respect the original cycle plan?
-            // "Vencimiento: issue_date + 30 días (mantener lógica actual)" from prompt.
-            // Prompt says "Vencimiento: issue_date + 30 días"
+            // Check for Late Issuance (Retroactive)
+            // Rule: If cycle ended more than 4 days ago, mark as late.
+            // This handles "Generate Overdue" (months ago) and prevents flagging normal daily/weekend delays.
+            const diffTime = Math.abs(issueDate.getTime() - cycleEndDate.getTime())
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+            const isLateIssued = diffDays > 4
 
+            // Due date: issue date + 30 days (per prompt requirement)
             const dueDate = new Date(issueDate)
-            dueDate.setDate(dueDate.getDate() + 30) // Per prompt requirement
+            dueDate.setDate(dueDate.getDate() + 30)
+
+            // Invoice Metadata
+            const invoiceMetadata = {
+                ...(typeof service.metadata === 'object' ? service.metadata : {}),
+                generated_via: 'automation_v2',
+                cycle_id: cycle.id,
+                cycle_period: { start: cycle.start_date, end: cycle.end_date }
+            }
 
             // Create Invoice
             const { data: invoice, error: invError } = await supabase
@@ -76,12 +85,14 @@ export async function checkAndGenerateCycles() {
                     client_id: service.client_id,
                     service_id: service.id,
                     emitter_id: service.emitter_id,
-                    document_type: service.document_type || BillingUtils.getEmitterDocumentType('JURIDICO'), // Fallback? 
+                    document_type: service.document_type || BillingUtils.getEmitterDocumentType('JURIDICO'),
                     number: invoiceNumber,
                     date: issueDate.toISOString(),
                     due_date: dueDate.toISOString(),
-                    status: 'pending', // Pending payment
+                    status: 'pending',
                     total: cycle.amount,
+                    is_late_issued: isLateIssued,
+                    metadata: invoiceMetadata,
                     items: [{
                         description: `${service.name} (${formatDate(cycle.start_date)} - ${formatDate(cycle.end_date)})`,
                         quantity: service.quantity || 1,
@@ -111,8 +122,7 @@ export async function checkAndGenerateCycles() {
                 const nextStart = new Date(cycle.end_date)
                 const nextEnd = calculateNextEndDate(nextStart, service.frequency)
 
-                // Estimate next due date?
-                // For the cycle record, due_date is informational until invoiced.
+                // Keep next_due logic consistent or update? Keeping as is for now.
                 const nextDue = new Date(nextEnd)
                 nextDue.setDate(nextDue.getDate() + 5)
 
@@ -121,15 +131,12 @@ export async function checkAndGenerateCycles() {
                     start_date: nextStart.toISOString(),
                     end_date: nextEnd.toISOString(),
                     due_date: nextDue.toISOString(),
-                    amount: service.amount, // Assume same amount
+                    amount: service.amount,
                     status: 'pending'
                 })
 
                 if (nextCycleError) {
                     console.error("Failed to create NEXT cycle:", nextCycleError)
-                    // If we fail to create the next cycle, we should probably throw or return a partial error?
-                    // For now, let's log it so the toast picks it up if we bubble it?
-                    // Actually, we are inside a loop. We should track errors.
                     throw new Error(`Error creando siguiente ciclo: ${nextCycleError.message}`)
                 }
 

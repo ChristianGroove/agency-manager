@@ -95,6 +95,8 @@ export type Invoice = {
     deleted_at?: string
     emitter_id?: string
     document_type?: string
+    is_late_issued?: boolean
+    metadata?: any
 }
 
 export type ClientEvent = {
