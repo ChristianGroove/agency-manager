@@ -93,10 +93,11 @@ export default function ClientsPage() {
             if (error) throw error
 
             // Update local state
-            if (selectedClientForInvoices) {
+            if (selectedClientForInvoices && selectedClientForInvoices.invoices) {
                 const updatedInvoices = selectedClientForInvoices.invoices.map(inv =>
                     inv.id === invoiceId ? { ...inv, status: 'paid' } : inv
                 )
+                // @ts-ignore
                 setSelectedClientForInvoices({ ...selectedClientForInvoices, invoices: updatedInvoices })
             }
 
