@@ -17,25 +17,44 @@ import { Emitter } from "@/types"
 
 interface CreateQuoteSheetProps {
     emitters?: Emitter[]
+    open?: boolean
+    onOpenChange?: (open: boolean) => void
+    trigger?: React.ReactNode
+    onSuccess?: () => void
 }
 
-export function CreateQuoteSheet({ emitters = [] }: CreateQuoteSheetProps) {
-    const [open, setOpen] = useState(false)
+export function CreateQuoteSheet({ emitters = [], open: controlledOpen, onOpenChange: setControlledOpen, trigger, onSuccess }: CreateQuoteSheetProps) {
+    const [internalOpen, setInternalOpen] = useState(false)
+    const isControlled = controlledOpen !== undefined
+    const open = isControlled ? controlledOpen : internalOpen
+
+    const setOpen = (val: boolean) => {
+        if (!isControlled) setInternalOpen(val)
+        if (setControlledOpen) setControlledOpen(val)
+    }
+
     const router = useRouter()
 
     const handleSuccess = () => {
         setOpen(false)
-        router.refresh() // Refresh server components (table)
+        if (onSuccess) onSuccess()
+        else router.refresh()
     }
 
     return (
         <Sheet open={open} onOpenChange={setOpen}>
-            <SheetTrigger asChild>
-                <Button className="w-full md:w-auto bg-brand-pink hover:bg-brand-pink/90 text-white shadow-md border-0 transition-all hover:scale-105 active:scale-95">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Nueva Cotización
-                </Button>
-            </SheetTrigger>
+            {trigger ? (
+                <SheetTrigger asChild>
+                    {trigger}
+                </SheetTrigger>
+            ) : (
+                <SheetTrigger asChild>
+                    <Button className="w-full md:w-auto bg-brand-pink hover:bg-brand-pink/90 text-white shadow-md border-0 transition-all hover:scale-105 active:scale-95">
+                        <Plus className="mr-2 h-4 w-4" />
+                        Nueva Cotización
+                    </Button>
+                </SheetTrigger>
+            )}
             <SheetContent
                 side="right"
                 className="

@@ -156,3 +156,10 @@
 - [x] Return detailed summary of created entities <!-- id: 97 -->
 - [x] FIX: Service Amount = 0 & Next Billing Date Missing <!-- id: 98 -->
 - [x] FIX: Idempotency (Prevent Duplicate Conversion) & Verify One-Offs <!-- id: 99 -->
+
+## Phase 26: Master UI Refactor (Standardization)
+- [ ] Refactor: Create `CreateClientSheet` (Split View Preview) <!-- id: 104 -->
+- [ ] Refactor: Create `CreateServiceSheet` (Live Contract Preview) <!-- id: 105 -->
+- [ ] Refactor: Create `CreateDocumentSheet` (Mini-Invoice Preview) <!-- id: 106 -->
+- [ ] Refactor: Create `CreateBriefingSheet` (Template Info Preview) <!-- id: 107 -->
+- [ ] Cleanup: Remove old `Dialog` components (CreateClientModal, etc) <!-- id: 108 -->

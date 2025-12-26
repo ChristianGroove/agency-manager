@@ -1,44 +1,52 @@
-const { createClient } = require('@supabase/supabase-js');
+const { Client } = require('pg');
 const fs = require('fs');
 const path = require('path');
+require('dotenv').config({ path: '.env.local' });
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+// Try to get DATABASE_URL, or construct it if possible (Supabase usually provides it in env)
+const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL;
 
-if (!supabaseUrl || !supabaseServiceKey) {
-    console.error('Missing Supabase credentials');
+if (!connectionString) {
+    console.error('Missing DATABASE_URL or POSTGRES_URL in .env.local');
+    // Fallback? No, we need it.
     process.exit(1);
 }
 
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
 async function applyMigration() {
-    console.log('Applying frequency migration...');
+    const args = process.argv.slice(2);
+    if (args.length === 0) {
+        console.error('Usage: node apply-ddl.js <path-to-sql-file>');
+        process.exit(1);
+    }
 
-    // We can't run raw SQL easily without RPC or driver.
-    // I will use the "Agentic" workaround of assuming I can execute basic SQL via a known rpc if available, 
-    // OR just use the trick of "I am an admin, I can do anything".
-    // Actually, I'll use the "create a function" trick if I really need to, but let's try a simpler approach:
-    // I will just use the postgres connection string if I had it? No.
-    // I will just use the `run_command` to echo the instructions to the user? No, I must do it.
+    const sqlPath = args[0];
+    const fullPath = path.resolve(sqlPath);
 
-    // WAIT. I used `seed-services.js` before which used the JS client.
-    // The previous `multi-service-migration.sql` was NOT executed by me, it was just "I verified schema".
-    // I executed `run-migration.js` which did JS-based inserts.
-    // So `services` table exists but likely was created by previous user/migrations I didn't verify 100%.
-    // If I want to ADD A COLUMN, I MUST use SQL.
-    // I cannot use JS client `update` to add a column.
+    if (!fs.existsSync(fullPath)) {
+        console.error(`File not found: ${fullPath}`);
+        process.exit(1);
+    }
 
-    // Since I cannot reliably execute DDL (ALTER TABLE) via the JS client without specific setup,
-    // I will try to use the `psql` command if available, or just assume the user runs it?
-    // User said "Active Document: .../add_service_type.sql", implying they might be looking at SQL files.
-    // BUT I am supposed to solve it.
+    console.log(`Applying migration: ${fullPath}`);
+    const sql = fs.readFileSync(fullPath, 'utf8');
 
-    // Workaround: I will try to use `npx supabase db reset` is too destructive. 
-    // I will check if there is a `postgres` npm package installed to connect directly?
-    // Let me check package.json.
+    const client = new Client({
+        connectionString,
+        ssl: { rejectUnauthorized: false } // Supabase requires SSL
+    });
 
-    console.log("Checking for 'pg' package...");
+    try {
+        await client.connect();
+        console.log('Connected to database.');
+
+        await client.query(sql);
+        console.log('Migration applied successfully.');
+    } catch (err) {
+        console.error('Error applying migration:', err);
+        process.exit(1);
+    } finally {
+        await client.end();
+    }
 }
 
 applyMigration();

@@ -9,10 +9,10 @@ import GlassCard3D from "@/components/ui/glass-card-3d"
 import dynamic from "next/dynamic"
 import { motion, AnimatePresence } from "framer-motion"
 import AnimatedAvatarGroup from "@/components/ui/animated-avatar-group"
-import { ClientFormModal } from "@/components/modules/clients/client-form-modal"
-import { QuoteFormModal } from "@/components/modules/quotes/quote-form-modal"
-import { InvoiceFormModal } from "@/components/modules/invoices/invoice-form-modal"
-import { BriefingFormModal } from "@/components/modules/briefings/briefing-form-modal"
+import { CreateClientSheet } from "@/components/modules/clients/create-client-sheet"
+import { CreateQuoteSheet } from "@/components/modules/quotes/create-quote-sheet"
+import { CreateInvoiceSheet } from "@/components/modules/invoices/create-invoice-sheet"
+import { CreateBriefingSheet } from "@/components/modules/briefings/create-briefing-sheet"
 import CountUp from "react-countup"
 import { SplitText } from "@/components/ui/split-text"
 import { MagicCard } from "@/components/ui/magic-card"
@@ -507,36 +507,36 @@ export default function DashboardPage() {
                 </Card>
             </div>
             {/* Modals */}
-            <ClientFormModal
-                isOpen={isClientModalOpen}
-                onClose={() => setIsClientModalOpen(false)}
+            <CreateClientSheet
+                open={isClientModalOpen}
+                onOpenChange={setIsClientModalOpen}
                 onSuccess={() => {
                     setIsClientModalOpen(false)
                     fetchDashboardData() // Refresh stats
                 }}
             />
 
-            <QuoteFormModal
-                isOpen={isQuoteModalOpen}
-                onClose={() => setIsQuoteModalOpen(false)}
+            <CreateQuoteSheet
+                open={isQuoteModalOpen}
+                onOpenChange={setIsQuoteModalOpen}
                 onSuccess={() => {
                     setIsQuoteModalOpen(false)
                     fetchDashboardData()
                 }}
             />
 
-            <BriefingFormModal
-                isOpen={isBriefingModalOpen}
-                onClose={() => setIsBriefingModalOpen(false)}
+            <CreateBriefingSheet
+                open={isBriefingModalOpen}
+                onOpenChange={setIsBriefingModalOpen}
                 onSuccess={() => {
                     setIsBriefingModalOpen(false)
                     fetchDashboardData()
                 }}
             />
 
-            <InvoiceFormModal
-                isOpen={isInvoiceModalOpen}
-                onClose={() => setIsInvoiceModalOpen(false)}
+            <CreateInvoiceSheet
+                open={isInvoiceModalOpen}
+                onOpenChange={setIsInvoiceModalOpen}
                 onSuccess={() => {
                     setIsInvoiceModalOpen(false)
                     fetchDashboardData()

@@ -392,8 +392,9 @@ export async function getPortalCatalog(token: string) {
 
     // 2. Fetch Catalog (Admin bypasses RLS)
     const { data, error } = await supabaseAdmin
-        .from('service_catalog')
+        .from('services')
         .select('*')
+        .eq('is_catalog_item', true)
         .eq('is_visible_in_portal', true)
         .order('category')
 

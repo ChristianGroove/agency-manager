@@ -1,6 +1,7 @@
 "use server"
 
 import { createClient } from "@/lib/supabase-server"
+import { supabaseAdmin } from "@/lib/supabase-admin"
 import { ServiceCatalogItem } from "@/types"
 import { revalidatePath } from "next/cache"
 import { slugify } from "@/lib/utils"
@@ -26,9 +27,9 @@ export async function upsertPortfolioItem(item: Partial<ServiceCatalogItem>) {
         throw new Error("Unauthorized")
     }
 
-    // 1. Upsert Service (as Catalog Item)
-    const { data: serviceData, error: serviceError } = await supabase
-        .from('services') // Changed from service_catalog
+    // 1. Upsert Service (as Catalog Item) using Admin Client to bypass RLS
+    const { data: serviceData, error: serviceError } = await supabaseAdmin
+        .from('services')
         .upsert({
             ...(item.id ? { id: item.id } : {}),
             name: item.name,
@@ -55,7 +56,7 @@ export async function upsertPortfolioItem(item: Partial<ServiceCatalogItem>) {
 
     // Check if template exists by slug (assuming slug is unique or we use it as key)
     // Or check by Name if slug isn't reliable.
-    const { data: existingTemplate } = await supabase
+    const { data: existingTemplate } = await supabaseAdmin
         .from('briefing_templates')
         .select('id')
         .eq('slug', slug)
@@ -65,7 +66,7 @@ export async function upsertPortfolioItem(item: Partial<ServiceCatalogItem>) {
 
     if (existingTemplate) {
         // Update existing template
-        await supabase
+        await supabaseAdmin
             .from('briefing_templates')
             .update({
                 name: item.name,
@@ -75,7 +76,7 @@ export async function upsertPortfolioItem(item: Partial<ServiceCatalogItem>) {
             .eq('id', existingTemplate.id)
     } else {
         // Create new template
-        const { data: newTemplate } = await supabase
+        const { data: newTemplate } = await supabaseAdmin
             .from('briefing_templates')
             .insert({
                 name: item.name,
@@ -90,7 +91,7 @@ export async function upsertPortfolioItem(item: Partial<ServiceCatalogItem>) {
 
     // 3. Link Service to Template (Architecture Refactor Requirement)
     if (templateId && serviceData.id) {
-        await supabase.from('services').update({ briefing_template_id: templateId }).eq('id', serviceData.id)
+        await supabaseAdmin.from('services').update({ briefing_template_id: templateId }).eq('id', serviceData.id)
     }
 
     revalidatePath('/dashboard/portfolio')
@@ -178,9 +179,11 @@ const TEMPLATE_CONFIG: Record<string, { title: string, description: string, fiel
 
 export async function syncAllBriefingTemplates() {
     const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) throw new Error("Unauthorized")
 
     // 1. Get all catalog services
-    const { data: services } = await supabase.from('services').select('*').eq('is_catalog_item', true)
+    const { data: services } = await supabaseAdmin.from('services').select('*').eq('is_catalog_item', true)
     if (!services) return
 
     let createdCount = 0
@@ -191,7 +194,7 @@ export async function syncAllBriefingTemplates() {
 
         // A. Upsert Template to ensure it exists
         // We use upsert to create it if missing, or get its ID if existing
-        const { data: template, error: tmplError } = await supabase
+        const { data: template, error: tmplError } = await supabaseAdmin
             .from('briefing_templates')
             .upsert({
                 name: service.name,
@@ -208,7 +211,7 @@ export async function syncAllBriefingTemplates() {
         }
 
         // B. Check if steps exist
-        const { count } = await supabase
+        const { count } = await supabaseAdmin
             .from('briefing_steps')
             .select('*', { count: 'exact', head: true })
             .eq('template_id', template.id)
@@ -226,7 +229,7 @@ export async function syncAllBriefingTemplates() {
 
             // Insert Steps and Fields
             for (const [stepIndex, stepConfig] of config.entries()) {
-                const { data: newStep, error: stepError } = await supabase
+                const { data: newStep, error: stepError } = await supabaseAdmin
                     .from('briefing_steps')
                     .insert({
                         template_id: template.id,
@@ -249,7 +252,7 @@ export async function syncAllBriefingTemplates() {
                     order_index: f.order
                 }))
 
-                await supabase.from('briefing_fields').insert(fieldsToInsert)
+                await supabaseAdmin.from('briefing_fields').insert(fieldsToInsert)
             }
             createdCount++
         }

@@ -26,17 +26,23 @@ export default async function BriefingDetailPage({ params }: PageProps) {
 
     // Sort steps and fields
     const template = briefing.template as FullBriefingTemplate
-    const steps = template?.steps || []
-    // Note: In a real app we'd fetch the full template structure again or ensure getBriefingById returns it deep.
-    // The current getBriefingById returns template but maybe not steps/fields deep.
-    // Let's assume for now we might need to fetch the template details separately if they aren't included.
-    // Actually, getBriefingById in actions currently only includes `template:briefing_templates(*)`.
-    // It does NOT include steps/fields.
-    // We need to fetch the full template structure to render the questions.
+    const structure = template?.structure || []
 
-    // Let's refactor: We can reuse `getBriefingByToken` logic or create `getBriefingTemplateStructure`.
-    // For now, I'll just fetch the template structure here using a new action or just assume I can add it to `getBriefingById`.
-    // I'll update `getBriefingById` in the actions file to include steps and fields.
+    // Group fields by step for display
+    type GroupedStep = { id: string, title: string, fields: any[] }
+    const steps = structure.reduce<GroupedStep[]>((acc, field: any) => {
+        const stepTitle = field.step_title || 'General Details'
+        let step = acc.find(s => s.title === stepTitle)
+        if (!step) {
+            step = { id: stepTitle, title: stepTitle, fields: [] }
+            acc.push(step)
+        }
+        step.fields.push(field)
+        return acc
+    }, [])
+
+    // Note: Structure is already sorted by migration script or insertion order
+    // But we might want to sort steps? For now, insertion order is fine.
 
     const renderValue = (value: any, type: string) => {
         if (value === undefined || value === null) return <span className="text-gray-400 italic">Sin respuesta</span>

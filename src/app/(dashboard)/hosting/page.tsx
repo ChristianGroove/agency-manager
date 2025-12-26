@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
 import { supabase } from "@/lib/supabase"
-import { AddServiceModal } from "@/components/modules/services/add-service-modal"
+import { CreateServiceSheet } from "@/components/modules/services/create-service-sheet"
 import { ServiceDetailsModal } from "@/components/modules/services/service-details-modal"
 import { ResumeServiceModal } from "@/components/modules/services/resume-service-modal"
 import { toggleServiceStatus } from "@/app/actions/services-actions"
@@ -215,7 +215,7 @@ export default function ServicesPage() {
                     <p className="text-muted-foreground mt-1">Servicios contratados y proyectos en curso de tus clientes.</p>
                 </div>
                 <div className="w-full md:w-auto">
-                    <AddServiceModal
+                    <CreateServiceSheet
                         onSuccess={fetchServices}
                         trigger={
                             <Button className="w-full md:w-auto bg-brand-pink hover:bg-brand-pink/90 text-white shadow-md border-0">
@@ -441,7 +441,7 @@ export default function ServicesPage() {
                                                 </DropdownMenuItem>
 
                                                 {/* Edit triggers modal via standard open/close pattern */}
-                                                <AddServiceModal
+                                                <CreateServiceSheet
                                                     serviceToEdit={service}
                                                     clientId={service.client?.id}
                                                     onSuccess={fetchServices}

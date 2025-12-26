@@ -25,7 +25,7 @@ import { Badge } from "@/components/ui/badge"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { supabase } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
-import { CreateInvoiceModal } from "@/components/modules/invoices/create-invoice-modal"
+import { CreateInvoiceSheet } from "@/components/modules/invoices/create-invoice-sheet"
 import { SplitText } from "@/components/ui/split-text"
 import {
     DropdownMenu,
@@ -106,8 +106,8 @@ export default function InvoicesPage() {
                     <p className="text-muted-foreground mt-1">Gestiona todos los documentos emitidos.</p>
                 </div>
                 <div className="w-full md:w-auto">
-                    <CreateInvoiceModal
-                        onInvoiceCreated={fetchInvoices}
+                    <CreateInvoiceSheet
+                        onSuccess={fetchInvoices}
                     />
                 </div>
             </div>
@@ -234,9 +234,9 @@ export default function InvoicesPage() {
                                                     <Eye className="mr-2 h-4 w-4" />
                                                     <span>Ver Documento</span>
                                                 </DropdownMenuItem>
-                                                <CreateInvoiceModal
+                                                <CreateInvoiceSheet
                                                     invoiceToEdit={invoice}
-                                                    onInvoiceCreated={fetchInvoices}
+                                                    onSuccess={fetchInvoices}
                                                     trigger={
                                                         <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
                                                             <Edit className="mr-2 h-4 w-4" />

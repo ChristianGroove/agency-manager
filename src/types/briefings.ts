@@ -19,6 +19,7 @@ export interface BriefingTemplate {
     name: string
     description: string | null
     slug: string
+    structure: BriefingField[] // JSONB
     created_at: string
     updated_at: string
 }
@@ -35,16 +36,16 @@ export interface BriefingStep {
 
 export interface BriefingField {
     id: string
-    step_id: string
+    // step_id: string // Deprecated
     label: string
-    name: string
+    // name: string // Deprecated, use id or label slug
     type: BriefingFieldType
     required: boolean
-    options: string[] | null // JSONB in DB, array of strings in app
-    placeholder: string | null
-    help_text: string | null
-    order_index: number
-    created_at: string
+    options: string[] | null
+    placeholder?: string | null
+    help_text?: string | null
+    // order_index: number // Implicit in array order
+    step_title?: string // Optional for grouping
 }
 
 export interface Briefing {
@@ -80,6 +81,4 @@ export interface BriefingWithDetails extends Briefing {
     responses: BriefingResponse[]
 }
 
-export interface FullBriefingTemplate extends BriefingTemplate {
-    steps: (BriefingStep & { fields: BriefingField[] })[]
-}
+export type FullBriefingTemplate = BriefingTemplate

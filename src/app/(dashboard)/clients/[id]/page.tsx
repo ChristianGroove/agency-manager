@@ -62,9 +62,9 @@ import { logDomainEvent } from "@/lib/event-logger"
 import { supabase } from "@/lib/supabase"
 import { getSettings } from "@/lib/actions/settings"
 import { cn } from "@/lib/utils"
-import { CreateInvoiceModal } from "@/components/modules/invoices/create-invoice-modal"
+import { CreateInvoiceSheet } from "@/components/modules/invoices/create-invoice-sheet"
 import { ShareInvoiceModal } from "@/components/modules/invoices/share-invoice-modal"
-import { AddServiceModal } from "@/components/modules/services/add-service-modal"
+import { CreateServiceSheet } from "@/components/modules/services/create-service-sheet"
 import { regeneratePortalToken } from "@/app/actions/portal-actions"
 import { MetaConfigurationModal } from "@/components/modules/admin/meta-configuration-modal"
 import {
@@ -201,6 +201,7 @@ export default function ClientDetailPage() {
     const [invoiceFilter, setInvoiceFilter] = useState("all")
     const [serviceToEdit, setServiceToEdit] = useState<any>(null)
     const [isServiceModalOpen, setIsServiceModalOpen] = useState(false)
+    const [isInvoiceSheetOpen, setIsInvoiceSheetOpen] = useState(false)
 
     // Share Invoice Modal
     const [isShareInvoiceModalOpen, setIsShareInvoiceModalOpen] = useState(false)
@@ -702,6 +703,16 @@ export default function ClientDetailPage() {
                                 <Plus className="mr-2 h-4 w-4" />
                                 Nuevo Servicio
                             </Button>
+
+                            {/* Secondary Action: New Invoice */}
+                            <Button
+                                variant="outline"
+                                onClick={() => setIsInvoiceSheetOpen(true)}
+                                className="ml-2 hover:bg-slate-50 shadow-sm"
+                            >
+                                <FileText className="mr-2 h-4 w-4" />
+                                Documento
+                            </Button>
                         </div>
                     </div>
                 </div >
@@ -1139,12 +1150,21 @@ export default function ClientDetailPage() {
                 </div>
 
                 {/* Modals */}
-                <AddServiceModal
+                <CreateServiceSheet
                     clientId={client.id}
                     clientName={client.name}
                     open={isServiceModalOpen}
                     onOpenChange={setIsServiceModalOpen}
                     serviceToEdit={serviceToEdit}
+                    onSuccess={() => fetchClientData(client.id)}
+                    trigger={<span className="hidden" />}
+                />
+
+                <CreateInvoiceSheet
+                    clientId={client.id}
+                    clientName={client.name}
+                    open={isInvoiceSheetOpen}
+                    onOpenChange={setIsInvoiceSheetOpen}
                     onSuccess={() => fetchClientData(client.id)}
                     trigger={<span className="hidden" />}
                 />

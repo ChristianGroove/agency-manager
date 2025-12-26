@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Plus } from "lucide-react"
-import { BriefingFormModal } from "@/components/modules/briefings/briefing-form-modal"
+import { CreateBriefingSheet } from "@/components/modules/briefings/create-briefing-sheet"
 import { SplitText } from "@/components/ui/split-text"
 
 export function BriefingsPageHeader() {
@@ -27,9 +27,10 @@ export function BriefingsPageHeader() {
                 </Button>
             </div>
 
-            <BriefingFormModal
-                isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
+            <CreateBriefingSheet
+                open={isModalOpen}
+                onOpenChange={setIsModalOpen}
+                onSuccess={() => setIsModalOpen(false)}
             />
         </div>
     )

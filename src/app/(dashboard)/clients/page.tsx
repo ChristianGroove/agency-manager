@@ -24,10 +24,10 @@ import { cn, getPortalUrl } from "@/lib/utils"
 import { getSettings } from "@/lib/actions/settings"
 import { getWhatsAppLink } from "@/lib/communication-utils"
 import { WhatsAppActionsModal } from "@/components/modules/clients/whatsapp-modal"
-import { AddServiceModal } from "@/components/modules/services/add-service-modal"
 import { SplitText } from "@/components/ui/split-text"
 import { Client } from "@/types"
-
+import { CreateClientSheet } from "@/components/modules/clients/create-client-sheet"
+import { CreateServiceSheet } from "@/components/modules/services/create-service-sheet"
 
 export default function ClientsPage() {
     const [clients, setClients] = useState<Client[]>([])
@@ -40,29 +40,6 @@ export default function ClientsPage() {
         getSettings().then(setSettings)
     }, [])
 
-    // Create Client Modal State
-    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
-    const [creating, setCreating] = useState(false)
-    const [newClient, setNewClient] = useState({
-        name: "",
-        company_name: "",
-        nit: "",
-        email: "",
-        phone: "",
-        address: "",
-        logo_url: "",
-        facebook: "",
-        instagram: "",
-        tiktok: "",
-        website: ""
-    })
-
-    // File Upload State
-    const [selectedFile, setSelectedFile] = useState<File | null>(null)
-    const [previewUrl, setPreviewUrl] = useState<string | null>(null)
-    const fileInputRef = useRef<HTMLInputElement>(null)
-    const [isDragging, setIsDragging] = useState(false)
-
     // Invoices Modal State
     const [isInvoicesModalOpen, setIsInvoicesModalOpen] = useState(false)
     const [selectedClientForInvoices, setSelectedClientForInvoices] = useState<Client | null>(null)
@@ -70,10 +47,6 @@ export default function ClientsPage() {
     // WhatsApp Actions Modal
     const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false)
     const [selectedClientForWhatsApp, setSelectedClientForWhatsApp] = useState<Client | null>(null)
-
-    // Add Service Modal
-    const [isServiceModalOpen, setIsServiceModalOpen] = useState(false)
-    const [selectedClientForService, setSelectedClientForService] = useState<Client | null>(null)
 
     // View State
     const [isCompactView, setIsCompactView] = useState(false)
@@ -143,115 +116,6 @@ export default function ClientsPage() {
         }
     }
 
-    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) {
-            const file = e.target.files[0]
-            setSelectedFile(file)
-            setPreviewUrl(URL.createObjectURL(file))
-        }
-    }
-
-    const handleDragOver = (e: React.DragEvent) => {
-        e.preventDefault()
-        setIsDragging(true)
-    }
-
-    const handleDragLeave = (e: React.DragEvent) => {
-        e.preventDefault()
-        setIsDragging(false)
-    }
-
-    const handleDrop = (e: React.DragEvent) => {
-        e.preventDefault()
-        setIsDragging(false)
-        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-            const file = e.dataTransfer.files[0]
-            setSelectedFile(file)
-            setPreviewUrl(URL.createObjectURL(file))
-        }
-    }
-
-    const removeFile = () => {
-        setSelectedFile(null)
-        setPreviewUrl(null)
-        if (fileInputRef.current) {
-            fileInputRef.current.value = ""
-        }
-    }
-
-    const handleCreateClient = async () => {
-        setCreating(true)
-        try {
-            const { data: { user } } = await supabase.auth.getUser()
-
-            if (!user) {
-                alert("Sesión expirada. Por favor inicia sesión nuevamente.")
-                return
-            }
-
-            let finalLogoUrl = newClient.logo_url
-
-            // Upload Image if selected
-            if (selectedFile) {
-                const fileExt = selectedFile.name.split('.').pop()
-                const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
-                const filePath = `${user.id}/${fileName}`
-
-                const { data: uploadData, error: uploadError } = await supabase.storage
-                    .from('client-logos')
-                    .upload(filePath, selectedFile, {
-                        cacheControl: '3600',
-                        upsert: false
-                    })
-
-                if (uploadError) {
-                    console.error("Upload error:", uploadError)
-                    alert("Error subiendo la imagen. Por favor intenta de nuevo.")
-                    throw uploadError
-                }
-
-                // Get public URL
-                const { data: { publicUrl } } = supabase.storage
-                    .from('client-logos')
-                    .getPublicUrl(filePath)
-
-                finalLogoUrl = publicUrl
-                console.log("Logo uploaded successfully:", publicUrl)
-            }
-
-            const { error } = await supabase.from('clients').insert({
-                ...newClient,
-                logo_url: finalLogoUrl,
-                user_id: user.id
-            })
-
-            if (error) throw error
-
-            // Success
-            await fetchClients()
-            setIsCreateModalOpen(false)
-            setNewClient({
-                name: "",
-                company_name: "",
-                nit: "",
-                email: "",
-                phone: "",
-                address: "",
-                logo_url: "",
-                facebook: "",
-                instagram: "",
-                tiktok: "",
-                website: ""
-            })
-            removeFile()
-
-        } catch (error) {
-            console.error("Error creating client:", error)
-            alert("Error al crear el cliente. Verifica los datos.")
-        } finally {
-            setCreating(false)
-        }
-    }
 
     const getNextPayment = (client: Client) => {
         const dates: { date: Date, source: string }[] = []
@@ -362,204 +226,14 @@ export default function ClientsPage() {
                         </Button>
                     </Link>
 
-                    <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
-                        <DialogTrigger asChild>
-                            <Button className="h-9 px-4 bg-brand-pink hover:bg-brand-pink/90 shadow-md text-white border-0">
-                                <Plus className="mr-2 h-4 w-4" />
-                                Nuevo Cliente
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent className="sm:max-w-[550px]">
-                            <DialogHeader>
-                                <DialogTitle>Crear Nuevo Cliente</DialogTitle>
-                                <DialogDescription>
-                                    Ingresa la información básica organizada por secciones.
-                                </DialogDescription>
-                            </DialogHeader>
+                    <Link href="/debug/tokens">
+                        <Button variant="outline" className="h-9 px-4 border-gray-200 text-gray-600 hover:bg-gray-50">
+                            <AlertTriangle className="mr-2 h-4 w-4" />
+                            Tokens
+                        </Button>
+                    </Link>
 
-                            <Tabs defaultValue="profile" className="w-full mt-2">
-                                <TabsList className="grid w-full grid-cols-3 mb-4">
-                                    <TabsTrigger value="profile">Perfil</TabsTrigger>
-                                    <TabsTrigger value="contact">Contacto</TabsTrigger>
-                                    <TabsTrigger value="social">Redes</TabsTrigger>
-                                </TabsList>
-
-                                {/* TAB 1: PERFIL */}
-                                <TabsContent value="profile" className="space-y-4 py-2">
-                                    <div className="flex items-center gap-4 border p-3 rounded-lg bg-gray-50/50">
-                                        {!previewUrl ? (
-                                            <div
-                                                className={cn(
-                                                    "h-16 w-16 border-2 border-dashed rounded-full flex flex-col items-center justify-center cursor-pointer transition-all bg-white shrink-0",
-                                                    isDragging ? "border-indigo-500 bg-indigo-50" : "border-gray-300 hover:border-indigo-400"
-                                                )}
-                                                onDragOver={handleDragOver}
-                                                onDragLeave={handleDragLeave}
-                                                onDrop={handleDrop}
-                                                onClick={() => fileInputRef.current?.click()}
-                                            >
-                                                <Upload className="h-5 w-5 text-gray-400" />
-                                                <input
-                                                    type="file"
-                                                    ref={fileInputRef}
-                                                    className="hidden"
-                                                    accept="image/*"
-                                                    onChange={handleFileSelect}
-                                                />
-                                            </div>
-                                        ) : (
-                                            <div className="relative h-16 w-16 shrink-0">
-                                                <Avatar className="h-16 w-16 border-2 border-white shadow-sm">
-                                                    <AvatarImage src={previewUrl} className="object-cover" />
-                                                    <AvatarFallback>CL</AvatarFallback>
-                                                </Avatar>
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); removeFile(); }}
-                                                    className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 shadow-sm hover:bg-red-600"
-                                                >
-                                                    <X className="h-3 w-3" />
-                                                </button>
-                                            </div>
-                                        )}
-                                        <div className="flex-1">
-                                            <Label className="cursor-pointer hover:text-indigo-600 transition-colors" onClick={() => fileInputRef.current?.click()}>
-                                                Logo Corporativo <span className="text-xs text-gray-400 font-normal ml-1">(Opcional)</span>
-                                            </Label>
-                                            <p className="text-xs text-gray-500 mt-1">Sube una imagen cuadrada para mejor visualización.</p>
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-1.5">
-                                        <Label htmlFor="name">Nombre del Cliente <span className="text-red-500">*</span></Label>
-                                        <Input
-                                            id="name"
-                                            placeholder="Juan Pérez"
-                                            value={newClient.name}
-                                            onChange={(e) => setNewClient({ ...newClient, name: e.target.value })}
-                                        />
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div className="space-y-1.5">
-                                            <Label htmlFor="company">Empresa</Label>
-                                            <Input
-                                                id="company"
-                                                placeholder="Agencia S.A.S"
-                                                value={newClient.company_name}
-                                                onChange={(e) => setNewClient({ ...newClient, company_name: e.target.value })}
-                                            />
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <Label htmlFor="nit">NIT / ID</Label>
-                                            <Input
-                                                id="nit"
-                                                placeholder="900.123.456-7"
-                                                value={newClient.nit}
-                                                onChange={(e) => setNewClient({ ...newClient, nit: e.target.value })}
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <Label htmlFor="address">Dirección Fiscal</Label>
-                                        <Input
-                                            id="address"
-                                            placeholder="Calle 123 #45-67, Ciudad"
-                                            value={newClient.address}
-                                            onChange={(e) => setNewClient({ ...newClient, address: e.target.value })}
-                                        />
-                                    </div>
-                                </TabsContent>
-
-                                {/* TAB 2: CONTACTO */}
-                                <TabsContent value="contact" className="space-y-4 py-2">
-                                    <div className="space-y-1.5">
-                                        <Label htmlFor="email">Correo Electrónico <span className="text-red-500">*</span></Label>
-                                        <div className="relative">
-                                            <Mail className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
-                                            <Input
-                                                id="email"
-                                                type="email"
-                                                className="pl-9"
-                                                placeholder="cliente@empresa.com"
-                                                value={newClient.email}
-                                                onChange={(e) => setNewClient({ ...newClient, email: e.target.value })}
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <Label htmlFor="phone">Teléfono / Celular</Label>
-                                        <div className="relative">
-                                            <Phone className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
-                                            <Input
-                                                id="phone"
-                                                className="pl-9"
-                                                placeholder="+57 300 123 4567"
-                                                value={newClient.phone}
-                                                onChange={(e) => setNewClient({ ...newClient, phone: e.target.value })}
-                                            />
-                                        </div>
-                                    </div>
-                                </TabsContent>
-
-                                {/* TAB 3: REDES */}
-                                <TabsContent value="social" className="space-y-4 py-2">
-                                    <div className="space-y-1.5">
-                                        <Label htmlFor="website">Sitio Web</Label>
-                                        <div className="relative">
-                                            <Globe className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
-                                            <Input
-                                                id="website"
-                                                className="pl-9"
-                                                placeholder="https://empresa.com"
-                                                value={newClient.website}
-                                                onChange={(e) => setNewClient({ ...newClient, website: e.target.value })}
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-3 pt-2">
-                                        <div className="space-y-1.5">
-                                            <Label htmlFor="instagram">Instagram</Label>
-                                            <Input
-                                                id="instagram"
-                                                placeholder="@empresa"
-                                                value={newClient.instagram}
-                                                onChange={(e) => setNewClient({ ...newClient, instagram: e.target.value })}
-                                            />
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <Label htmlFor="facebook">Facebook</Label>
-                                            <Input
-                                                id="facebook"
-                                                placeholder="facebook.com/empresa"
-                                                value={newClient.facebook}
-                                                onChange={(e) => setNewClient({ ...newClient, facebook: e.target.value })}
-                                            />
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <Label htmlFor="tiktok">TikTok</Label>
-                                            <Input
-                                                id="tiktok"
-                                                placeholder="@empresa"
-                                                value={newClient.tiktok}
-                                                onChange={(e) => setNewClient({ ...newClient, tiktok: e.target.value })}
-                                            />
-                                        </div>
-                                    </div>
-                                </TabsContent>
-                            </Tabs>
-
-                            <DialogFooter className="pt-4 border-t border-gray-100">
-                                <Button variant="ghost" onClick={() => setIsCreateModalOpen(false)}>Cancelar</Button>
-                                <Button
-                                    onClick={handleCreateClient}
-                                    disabled={creating}
-                                    className="bg-brand-pink hover:bg-brand-pink/90 text-white"
-                                >
-                                    {creating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Crear Cliente"}
-                                </Button>
-                            </DialogFooter>
-                        </DialogContent>
-                    </Dialog>
+                    <CreateClientSheet onSuccess={fetchClients} />
                 </div>
             </div>
 
@@ -855,18 +529,21 @@ export default function ClientsPage() {
                                                     <FileText className="h-4 w-4" />
                                                 </Button>
 
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="h-8 w-8 rounded-full bg-gray-50 text-gray-400 hover:bg-white hover:text-indigo-600 hover:shadow-md hover:-translate-y-0.5 hover:ring-1 hover:ring-indigo-100 transition-all duration-300"
-                                                    onClick={() => {
-                                                        setSelectedClientForService(client)
-                                                        setIsServiceModalOpen(true)
-                                                    }}
-                                                    title="Agregar Servicio"
-                                                >
-                                                    <Plus className="h-4 w-4" />
-                                                </Button>
+                                                <CreateServiceSheet
+                                                    clientId={client.id}
+                                                    clientName={client.name}
+                                                    onSuccess={fetchClients}
+                                                    trigger={
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8 rounded-full bg-gray-50 text-gray-400 hover:bg-white hover:text-indigo-600 hover:shadow-md hover:-translate-y-0.5 hover:ring-1 hover:ring-indigo-100 transition-all duration-300"
+                                                            title="Agregar Servicio"
+                                                        >
+                                                            <Plus className="h-4 w-4" />
+                                                        </Button>
+                                                    }
+                                                />
 
                                                 {(client.portal_short_token || client.portal_token) && (
                                                     <a
@@ -962,20 +639,6 @@ export default function ClientsPage() {
                 onOpenChange={setIsWhatsAppModalOpen}
                 client={selectedClientForWhatsApp}
                 settings={settings}
-            />
-
-            {/* Add Service Modal */}
-            < AddServiceModal
-                open={isServiceModalOpen}
-                onOpenChange={setIsServiceModalOpen}
-                trigger={null}
-                clientId={selectedClientForService?.id}
-                clientName={selectedClientForService?.name}
-                onSuccess={() => {
-                    fetchClients()
-                    setIsServiceModalOpen(false)
-                }
-                }
             />
         </div >
     )
