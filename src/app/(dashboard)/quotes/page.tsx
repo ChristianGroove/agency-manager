@@ -1,11 +1,11 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { CreateQuoteSheet } from "@/components/modules/quotes/create-quote-sheet"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Plus, FileText, Download, Eye, Loader2, Trash, MoreVertical, Search, ListFilter } from "lucide-react"
+import { Plus, Download, Eye, Loader2, Trash, MoreVertical, Search, ListFilter, Copy, Send, CheckCircle, RefreshCcw, FileCheck } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
     Table,
@@ -20,22 +20,34 @@ import {
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger,
+    DropdownMenuSeparator
 } from "@/components/animate-ui/components/radix/dropdown-menu"
 import { supabase } from "@/lib/supabase"
 import { Quote } from "@/types"
 import { SplitText } from "@/components/ui/split-text"
+import { toast } from "sonner"
+import { duplicateQuote, updateQuoteStatus } from "@/lib/actions/quotes"
+import { convertQuote } from "@/app/actions/quote-conversion"
 
 export default function QuotesPage() {
     const router = useRouter()
     const [quotes, setQuotes] = useState<Quote[]>([])
     const [loading, setLoading] = useState(true)
+    const [actionLoading, setActionLoading] = useState<string | null>(null)
     const [searchTerm, setSearchTerm] = useState("")
     const [showFilters, setShowFilters] = useState(false)
     const [statusFilter, setStatusFilter] = useState("all")
+    const [emitters, setEmitters] = useState<any[]>([])
 
     useEffect(() => {
         fetchQuotes()
+        fetchEmitters()
     }, [])
+
+    const fetchEmitters = async () => {
+        const { data } = await supabase.from('emitters').select('*').eq('is_active', true)
+        if (data) setEmitters(data)
+    }
 
     const fetchQuotes = async () => {
         try {
@@ -53,12 +65,13 @@ export default function QuotesPage() {
             setQuotes(data || [])
         } catch (error) {
             console.error("Error fetching quotes:", error)
+            toast.error("Error al cargar cotizaciones")
         } finally {
             setLoading(false)
         }
     }
 
-    const deleteQuote = async (id: string) => {
+    const handleDelete = async (id: string) => {
         if (!confirm("¿Estás seguro de eliminar esta cotización?")) return
 
         try {
@@ -69,11 +82,68 @@ export default function QuotesPage() {
 
             if (error) throw error
 
-            // Update local state
             setQuotes(quotes.filter(q => q.id !== id))
+            toast.success("Cotización eliminada")
         } catch (error) {
             console.error("Error deleting quote:", error)
-            alert("Error al eliminar la cotización")
+            toast.error("Error al eliminar")
+        }
+    }
+
+    const handleDuplicate = async (quote: Quote) => {
+        setActionLoading(quote.id)
+        try {
+            const res = await duplicateQuote(quote.id)
+            if (res.success && res.quote) {
+                toast.success("Cotización duplicada como borrador")
+                fetchQuotes() // Refresh list
+                router.push(`/quotes/${res.quote.id}`)
+            } else {
+                throw new Error(res.error)
+            }
+        } catch (error: any) {
+            toast.error("Error al duplicar: " + error.message)
+        } finally {
+            setActionLoading(null)
+        }
+    }
+
+    const handleConvert = async (quote: Quote) => {
+        if (!confirm(`¿Confirmas que deseas convertir la cotización ${quote.number} en factura/servicios?`)) return
+
+        setActionLoading(quote.id)
+        try {
+            const res = await convertQuote(quote.id)
+            if (res.success) {
+                toast.success("Cotización convertida exitosamente")
+                fetchQuotes()
+                // Update local state to reflect change immediately if fetch is slow
+                setQuotes(prev => prev.map(q => q.id === quote.id ? { ...q, status: 'converted' } : q))
+            } else {
+                throw new Error(res.error)
+            }
+        } catch (error: any) {
+            toast.error("Error al convertir: " + error.message)
+        } finally {
+            setActionLoading(null)
+        }
+    }
+
+    const handleSend = async (quote: Quote) => {
+        setActionLoading(quote.id)
+        try {
+            // For now, just update status. In future, open email modal.
+            const res = await updateQuoteStatus(quote.id, 'sent')
+            if (res.success) {
+                toast.success("Estado actualizado a Enviada")
+                setQuotes(prev => prev.map(q => q.id === quote.id ? { ...q, status: 'sent' } : q))
+            } else {
+                throw new Error(res.error)
+            }
+        } catch (error: any) {
+            toast.error("Error al actualizar: " + error.message)
+        } finally {
+            setActionLoading(null)
         }
     }
 
@@ -91,6 +161,15 @@ export default function QuotesPage() {
         return matchesSearch && matchesStatus
     })
 
+    const statusConfig = {
+        draft: { label: 'Borrador', color: 'bg-gray-100 text-gray-700 hover:bg-gray-200' },
+        sent: { label: 'Enviada', color: 'bg-blue-50 text-blue-700 hover:bg-blue-100' },
+        accepted: { label: 'Aprobada', color: 'bg-green-50 text-green-700 hover:bg-green-100' },
+        converted: { label: 'Facturada', color: 'bg-purple-50 text-purple-700 hover:bg-purple-100 ring-1 ring-purple-600/20' },
+        rejected: { label: 'Rechazada', color: 'bg-red-50 text-red-700 hover:bg-red-100' },
+        expired: { label: 'Vencida', color: 'bg-orange-50 text-orange-700 hover:bg-orange-100' },
+    }
+
     return (
         <div className="space-y-8">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -98,15 +177,10 @@ export default function QuotesPage() {
                     <h2 className="text-3xl font-bold tracking-tight text-gray-900">
                         <SplitText>Cotizaciones</SplitText>
                     </h2>
-                    <p className="text-muted-foreground mt-1">Gestiona las cotizaciones y propuestas comerciales de tus clientes.</p>
+                    <p className="text-muted-foreground mt-1">Gestiona el ciclo de vida de tus propuestas comerciales.</p>
                 </div>
                 <div className="w-full md:w-auto">
-                    <Link href="/quotes/new">
-                        <Button className="w-full md:w-auto bg-brand-pink hover:bg-brand-pink/90 text-white shadow-md border-0">
-                            <Plus className="mr-2 h-4 w-4" />
-                            Nueva Cotización
-                        </Button>
-                    </Link>
+                    <CreateQuoteSheet emitters={emitters} />
                 </div>
             </div>
 
@@ -135,11 +209,8 @@ export default function QuotesPage() {
                         <div className="flex items-center gap-1.5 min-w-max">
                             <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mr-1 hidden lg:block">Estado</span>
                             {[
-                                { id: 'all', label: 'Todos', color: 'gray' },
-                                { id: 'draft', label: 'Borrador', color: 'gray' },
-                                { id: 'sent', label: 'Enviadas', color: 'blue' },
-                                { id: 'accepted', label: 'Aprobadas', color: 'green' },
-                                { id: 'rejected', label: 'Rechazadas', color: 'red' },
+                                { id: 'all', label: 'Todos' },
+                                ...Object.entries(statusConfig).map(([key, val]) => ({ id: key, label: val.label }))
                             ].map(filter => (
                                 <button
                                     key={filter.id}
@@ -147,11 +218,7 @@ export default function QuotesPage() {
                                     className={cn(
                                         "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all duration-200 whitespace-nowrap",
                                         statusFilter === filter.id
-                                            ? filter.id === 'draft' ? "bg-gray-100 text-gray-700 ring-1 ring-inset ring-gray-600/20 shadow-sm"
-                                                : filter.id === 'sent' ? "bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-600/20 shadow-sm"
-                                                    : filter.id === 'accepted' ? "bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20 shadow-sm"
-                                                        : filter.id === 'rejected' ? "bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20 shadow-sm"
-                                                            : "bg-gray-900 text-white shadow-sm"
+                                            ? "bg-gray-900 text-white shadow-sm"
                                             : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
                                     )}
                                 >
@@ -180,14 +247,14 @@ export default function QuotesPage() {
                 </div>
             </div>
 
-            <div className="rounded-md border bg-white">
+            <div className="rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden">
                 <Table>
                     <TableHeader className="bg-gray-50/50">
                         <TableRow>
-                            <TableHead>Número</TableHead>
+                            <TableHead className="w-[120px]">Número</TableHead>
                             <TableHead>Cliente / Prospecto</TableHead>
                             <TableHead>Fecha</TableHead>
-                            <TableHead>Total</TableHead>
+                            <TableHead>Total & Info</TableHead>
                             <TableHead>Estado</TableHead>
                             <TableHead className="text-right">Acciones</TableHead>
                         </TableRow>
@@ -195,72 +262,115 @@ export default function QuotesPage() {
                     <TableBody>
                         {loading ? (
                             <TableRow>
-                                <TableCell colSpan={6} className="h-24 text-center">
-                                    <div className="flex justify-center items-center">
-                                        <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                                <TableCell colSpan={6} className="h-32 text-center">
+                                    <div className="flex justify-center items-center gap-2 text-muted-foreground">
+                                        <Loader2 className="h-5 w-5 animate-spin" />
+                                        <span>Cargando...</span>
                                     </div>
                                 </TableCell>
                             </TableRow>
                         ) : filteredQuotes.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                                    No hay cotizaciones que coincidan con los filtros.
+                                <TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
+                                    No se encontraron cotizaciones.
                                 </TableCell>
                             </TableRow>
                         ) : (
                             filteredQuotes.map((quote) => {
                                 const entityName = quote.client?.name || quote.lead?.name || "Desconocido"
                                 const entityCompany = quote.client?.company_name || quote.lead?.company_name
+                                const status = statusConfig[quote.status as keyof typeof statusConfig] || statusConfig.draft
+                                const hasRecurring = quote.items?.some(i => i.is_recurring)
 
                                 return (
-                                    <TableRow key={quote.id}>
-                                        <TableCell className="font-medium">{quote.number}</TableCell>
+                                    <TableRow key={quote.id} className="group hover:bg-gray-50/50 transition-colors">
+                                        <TableCell className="font-medium text-gray-900">{quote.number}</TableCell>
                                         <TableCell>
                                             <div className="flex flex-col">
-                                                <span>{entityName}</span>
-                                                {entityCompany && <span className="text-xs text-muted-foreground">{entityCompany}</span>}
-                                                {quote.lead_id && <span className="text-[10px] text-yellow-600 font-medium">Prospecto</span>}
+                                                <span className="font-medium text-gray-700">{entityName}</span>
+                                                {entityCompany && <span className="text-xs text-gray-400">{entityCompany}</span>}
+                                                {quote.lead_id && <span className="text-[10px] text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full w-fit mt-1 font-medium">Prospecto</span>}
                                             </div>
                                         </TableCell>
-                                        <TableCell>{new Date(quote.date).toLocaleDateString()}</TableCell>
-                                        <TableCell>${quote.total.toLocaleString()}</TableCell>
+                                        <TableCell className="text-gray-500 text-sm">{new Date(quote.date).toLocaleDateString()}</TableCell>
                                         <TableCell>
-                                            <div className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent ${quote.status === 'draft' ? 'bg-gray-100 text-gray-800' :
-                                                quote.status === 'sent' ? 'bg-blue-100 text-blue-800' :
-                                                    quote.status === 'accepted' ? 'bg-green-100 text-green-800' :
-                                                        'bg-red-100 text-red-800'
-                                                }`}>
-                                                {quote.status === 'draft' ? 'Borrador' :
-                                                    quote.status === 'sent' ? 'Enviada' :
-                                                        quote.status === 'accepted' ? 'Aprobada' : 'Rechazada'}
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-bold text-gray-900">${quote.total.toLocaleString()}</span>
+                                                {hasRecurring && (
+                                                    <span className="bg-indigo-50 text-indigo-600 p-1 rounded-md" title="Incluye items recurrentes (Suscripción)">
+                                                        <RefreshCcw className="h-3 w-3" />
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className={cn(
+                                                "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold transition-all",
+                                                status.color
+                                            )}>
+                                                {/* Status Icon could go here */}
+                                                {quote.status === 'converted' && <CheckCircle className="h-3 w-3" />}
+                                                {status.label}
                                             </div>
                                         </TableCell>
                                         <TableCell className="text-right">
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8 p-0">
-                                                        <span className="sr-only">Abrir menú</span>
-                                                        <MoreVertical className="h-4 w-4" />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end">
-                                                    <DropdownMenuItem onClick={() => router.push(`/quotes/${quote.id}`)}>
-                                                        <Eye className="mr-2 h-4 w-4" />
-                                                        <span>Ver Detalle</span>
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem>
-                                                        <Download className="mr-2 h-4 w-4" />
-                                                        <span>Descargar PDF</span>
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem
-                                                        onClick={() => deleteQuote(quote.id)}
-                                                        className="text-red-600 focus:text-red-600"
-                                                    >
-                                                        <Trash className="mr-2 h-4 w-4" />
-                                                        <span>Eliminar</span>
-                                                    </DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
+                                            {actionLoading === quote.id ? (
+                                                <Loader2 className="h-4 w-4 animate-spin inline-block text-gray-400" />
+                                            ) : (
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8 p-0 text-gray-400 hover:text-gray-900 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <span className="sr-only">Abrir menú</span>
+                                                            <MoreVertical className="h-4 w-4" />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end" className="w-48">
+                                                        <DropdownMenuItem onClick={() => router.push(`/quotes/${quote.id}`)}>
+                                                            <Eye className="mr-2 h-4 w-4 text-gray-400" />
+                                                            <span>Ver Detalle</span>
+                                                        </DropdownMenuItem>
+
+                                                        <DropdownMenuItem onClick={() => handleDuplicate(quote)}>
+                                                            <Copy className="mr-2 h-4 w-4 text-gray-400" />
+                                                            <span>Duplicar</span>
+                                                        </DropdownMenuItem>
+
+                                                        <DropdownMenuItem disabled>
+                                                            <Download className="mr-2 h-4 w-4 text-gray-400" />
+                                                            <span>Descargar PDF</span>
+                                                        </DropdownMenuItem>
+
+                                                        <DropdownMenuSeparator />
+
+                                                        {quote.status === 'draft' && (
+                                                            <DropdownMenuItem onClick={() => handleSend(quote)} className="text-blue-600 focus:text-blue-700 focus:bg-blue-50">
+                                                                <Send className="mr-2 h-4 w-4" />
+                                                                <span>Marcar Enviada</span>
+                                                            </DropdownMenuItem>
+                                                        )}
+
+                                                        {quote.status === 'accepted' && (
+                                                            <DropdownMenuItem onClick={() => handleConvert(quote)} className="text-purple-600 focus:text-purple-700 focus:bg-purple-50 font-medium">
+                                                                <FileCheck className="mr-2 h-4 w-4" />
+                                                                <span>Convertir a Factura</span>
+                                                            </DropdownMenuItem>
+                                                        )}
+
+                                                        {(quote.status === 'draft' || quote.status === 'rejected') && (
+                                                            <>
+                                                                <DropdownMenuSeparator />
+                                                                <DropdownMenuItem
+                                                                    onClick={() => handleDelete(quote.id)}
+                                                                    className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                                                                >
+                                                                    <Trash className="mr-2 h-4 w-4" />
+                                                                    <span>Eliminar</span>
+                                                                </DropdownMenuItem>
+                                                            </>
+                                                        )}
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            )}
                                         </TableCell>
                                     </TableRow>
                                 )

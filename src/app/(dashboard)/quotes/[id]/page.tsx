@@ -77,15 +77,37 @@ export default function QuoteDetailPage() {
 
     const handleConvertToInvoice = async () => {
         if (!quote) return
-        if (!confirm("¿Convertir esta cotización en factura?")) return
+        if (!confirm("¿Convertir esta cotización en servicios y facturas?")) return
         setConverting(true)
         try {
-            const invoice = await QuotesService.convertQuoteToInvoice(quote.id)
-            alert("Factura generada exitosamente")
-            router.push(`/invoices/${invoice.id}`)
+            // Import dynamically or at top? using Server Action
+            const { convertQuote } = await import("@/app/actions/quote-conversion")
+            const result = await convertQuote(quote.id)
+
+            if (result.success) {
+                const { servicesCreated, invoiceCreated } = result.results
+                let message = "Conversión exitosa.\n"
+                if (servicesCreated > 0) message += `✅ ${servicesCreated} Servicio(s) de suscripción creados.\n`
+                if (invoiceCreated) message += `✅ Factura de cobro único generada.\n`
+
+                alert(message)
+
+                // Redirect logic
+                // If invoice created, go there? Or staying here is fine?
+                // User asked: "Redirigir al usuario a la vista del Cliente o del Nuevo Servicio."
+                if (result.results.invoiceId) {
+                    router.push(`/invoices/${result.results.invoiceId}`)
+                } else if (quote.client_id) {
+                    router.push(`/clients/${quote.client_id}?tab=services`)
+                } else {
+                    router.push('/dashboard')
+                }
+            } else {
+                throw new Error(result.error)
+            }
         } catch (error: any) {
             console.error(error)
-            alert(error.message || "Error al convertir a factura")
+            alert(error.message || "Error al convertir")
         } finally {
             setConverting(false)
         }

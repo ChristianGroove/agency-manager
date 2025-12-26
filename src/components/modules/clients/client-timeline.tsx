@@ -87,8 +87,8 @@ export function ClientTimeline({ clientId }: ClientTimelineProps) {
         const { entity_type, event_type, payload } = event
         const key = `${entity_type}.${event_type}`
 
-        // 1. Get Base Label
-        const baseLabel = EVENT_LABELS[key] || event.event_type.replace(/_/g, ' ')
+        // 1. Get Base Label: Try constructed key first, then raw event_type
+        const baseLabel = EVENT_LABELS[key] || EVENT_LABELS[event_type] || event.event_type.replace(/_/g, ' ')
 
         // 2. Add Detail based on Payload (Enhancement)
         if (entity_type === 'invoice') {
@@ -96,8 +96,9 @@ export function ClientTimeline({ clientId }: ClientTimelineProps) {
             if (event_type === 'paid') return `${baseLabel}: $${payload.amount?.toLocaleString() ?? '0'}`
         }
         if (entity_type === 'service') {
-            if (event_type === 'paused' || event_type === 'resumed') {
-                return baseLabel // The title says it all, details in metadata if needed
+            // Check for both raw event type (e.g. 'service.paused') or suffixed (e.g. 'paused')
+            if (event_type.includes('paused') || event_type.includes('resumed')) {
+                return baseLabel
             }
         }
 

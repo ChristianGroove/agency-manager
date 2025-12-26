@@ -34,6 +34,8 @@ export type Service = {
     frequency?: 'monthly' | 'biweekly' | 'quarterly' | 'semiannual' | 'yearly'
     base_price: number
     is_visible_in_portal: boolean
+    is_catalog_item: boolean // Distinct from "visible", this defines it as a Template/Master
+    briefing_template_id?: string
     description?: string
     amount?: number
     quantity?: number
@@ -62,6 +64,10 @@ export type QuoteItem = {
     description: string
     quantity: number
     price: number
+    catalog_item_id?: string
+    is_recurring?: boolean
+    frequency?: 'monthly' | 'biweekly' | 'quarterly' | 'semiannual' | 'yearly'
+    billing_cycle_config?: any
 }
 
 export type Quote = {
@@ -71,7 +77,7 @@ export type Quote = {
     date: string
     items: QuoteItem[]
     total: number
-    status: 'draft' | 'sent' | 'accepted' | 'rejected'
+    status: 'draft' | 'sent' | 'accepted' | 'rejected' | 'converted' | 'expired'
     pdf_url?: string
     client_id?: string | null
     lead_id?: string | null
@@ -145,6 +151,25 @@ export type Briefing = {
     service_id?: string | null
 }
 
+
+export type Emitter = {
+    id: string
+    display_name: string
+    legal_name: string
+    identification_type: string
+    identification_number: string
+    verification_digit?: string
+    address?: string
+    city?: string
+    email?: string
+    phone?: string
+    logo_url?: string
+    is_active: boolean
+    is_default: boolean
+    emitter_type: 'NATURAL' | 'JURIDICO'
+    allowed_document_types: string[]
+}
+
 export type ServiceCatalogItem = {
     id: string
     name: string
@@ -157,4 +182,5 @@ export type ServiceCatalogItem = {
     created_at?: string
     service_start_date?: string
     billing_cycle_start_date?: string
+    briefing_template_id?: string
 }

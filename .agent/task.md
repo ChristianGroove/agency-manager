@@ -82,6 +82,12 @@
 - [x] Integrate: Document State (Invoices) <!-- id: 47 -->
 - [x] Integrate: Cycle State (Billing Cycles) <!-- id: 48 -->
 - [x] Integrate: Service State (Status Badge) <!-- id: 49 -->
+
+## Phase 25: Critical Fixes & Improvements
+- [x] Add `emitter_id` to `quotes` table <!-- id: 100 -->
+- [x] Add Emitter Selector to `QuoteBuilder` <!-- id: 101 -->
+- [x] Implement Unified Invoice Conversion (Hybrid Logic) <!-- id: 102 -->
+- [x] HOTFIX: Fix Emitter Loading from `billing_emitters` <!-- id: 103 -->
 - [x] Refactor: Deprecate `domain-logic.ts` (Done & Deleted) <!-- id: 46 -->
 
 ## Phase 13: Domain Event Log (Audit)
@@ -100,3 +106,53 @@
 ## Phase 15: Client Timeline Polish (UI)
 - [x] UI: Implement Spanish translation for Event Types <!-- id: 59 -->
 - [x] UI: Improve Actor/User display logic <!-- id: 60 -->
+
+## Phase 16: Quotes Refactor - Catalog & Recurrence
+- [x] DB: Update `quote_items` schema (catalog_id, recurrence) <!-- id: 61 -->
+- [x] UI: Implement Hybrid Selector (Catalog/Manual) in QuoteForm <!-- id: 62 -->
+- [x] UI: Add Recurrence Configuration (Frequency) for items <!-- id: 63 -->
+- [x] Logic: Update Save Quote action to persist new metadata <!-- id: 64 -->
+- [x] Logic: Calculate projected recurring totals vs setup totals <!-- id: 65 -->
+
+## Phase 17: Quote Builder UX Refactor (Single View)
+- [x] Backend: Create `quickCreateProspect` server action <!-- id: 66 -->
+- [x] UI: Create `QuoteBuilder` monolithic component <!-- id: 67 -->
+- [x] UI: Connect "Convert" button in Quote Detail to new action <!-- id: 75 -->
+
+## Phase 19: Catalog & Migration Fix
+- [x] DB: Create migration for `is_visible_in_portal` <!-- id: 76 -->
+- [x] UI: Restore catalog filter in QuoteBuilder <!-- id: 77 -->
+- [x] UX: Provide instructions/UI to mark items as catalog <!-- id: 78 -->
+
+## Phase 20: Catalog Architecture Refactor
+- [x] DB: Migration for `is_catalog_item` column <!-- id: 79 -->
+- [x] DB: Script to mark existing null-client services as catalog <!-- id: 80 -->
+- [x] API: Update `QuoteBuilder` fetch to strictly use `is_catalog_item` <!-- id: 81 -->
+- [x] Logic: Update `convertQuote` to copy `briefing_template_id` <!-- id: 82 -->
+- [x] UI: Update Catalog Page to show only catalog items <!-- id: 83 -->
+- [x] UI: Integrate Smart Items (Catalog + Recurrence) into Builder <!-- id: 69 -->
+- [x] Page: Set up `/quotes/create` route <!-- id: 70 -->
+
+## Phase 21: Quotes Lifecycle & UI Upgrade
+- [x] DB: Expand Quote Status Enum (converted, expired, etc) <!-- id: 84 -->
+- [x] Backend: Implement `duplicateQuote` & Status Updates <!-- id: 85 -->
+- [x] UI: Modernize Quotes Table (Badges, Recurrence Icon) <!-- id: 86 -->
+- [x] UI: Enhanced Actions Dropdown (Duplicate, Convert, Send) <!-- id: 87 -->
+
+## Phase 22: Quote Creation UX Refactor (Sheet)
+- [x] Refactor `QuoteBuilder` to support "Sheet Mode" (Props) <!-- id: 88 -->
+- [x] Create `CreateQuoteSheet` component <!-- id: 89 -->
+- [x] Integrate Sheet into `QuotesPage` (Remove Create Page Nav) <!-- id: 90 -->
+- [x] Redesign QuoteBuilder Layout (Split View, Live Receipt) <!-- id: 91 -->
+- [x] Fix accessibility violation in CreateQuoteSheet <!-- id: 92 -->
+- [x] Apply "Floating Glass" Aesthetics (Rounded, Shadows, Backdrop) <!-- id: 93 -->
+- [x] Remove redundant "Back Arrow" in favor of Close X <!-- id: 94 -->
+
+## Phase 24: Smart Quote Conversion Logic
+- [x] Implement `convertQuoteToEntities` Bucket Logic <!-- id: 95 -->
+    - [x] Bucket A: Recurring -> Group by Frequency -> Create Service + Cycle + First Invoice
+    - [x] Bucket B: One-Off -> Create Single Pending Invoice
+- [x] Inherit `briefing_template_id` from Catalog Items <!-- id: 96 -->
+- [x] Return detailed summary of created entities <!-- id: 97 -->
+- [x] FIX: Service Amount = 0 & Next Billing Date Missing <!-- id: 98 -->
+- [x] FIX: Idempotency (Prevent Duplicate Conversion) & Verify One-Offs <!-- id: 99 -->

@@ -40,7 +40,7 @@ export default async function RootLayout({
   const settings = await getSettings();
 
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="es" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
