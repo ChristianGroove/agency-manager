@@ -41,8 +41,8 @@ export async function getPortalData(token: string) {
             supabaseAdmin.from('invoices').select('*').eq('client_id', client.id).is('deleted_at', null).neq('status', 'cancelled').order('created_at', { ascending: false }),
             // Quotes: Add deleted_at filter
             supabaseAdmin.from('quotes').select('*').eq('client_id', client.id).is('deleted_at', null).order('created_at', { ascending: false }),
-            // Briefings: Add deleted_at filter (if column exists, assuming yes based on pattern)
-            supabaseAdmin.from('briefings').select('*, template:briefing_templates(name)').eq('client_id', client.id).order('created_at', { ascending: false }),
+            // Briefings: Add deleted_at filter
+            supabaseAdmin.from('briefings').select('*, template:briefing_templates(name)').eq('client_id', client.id).is('deleted_at', null).order('created_at', { ascending: false }),
             // Events: Add deleted_at filter
             supabaseAdmin.from('client_events').select('*').eq('client_id', client.id).order('created_at', { ascending: false }),
             supabaseAdmin.from('organization_settings').select('*').single(),
@@ -321,19 +321,16 @@ export async function getPortalBriefing(token: string, briefingId: string) {
 
     if (clientError || !client) throw new Error('Unauthorized')
 
-    // 2. Fetch Briefing for this Client using Admin
+    // 2. Fetch Briefing with template structure (NEW: use structure column)
     const { data, error } = await supabaseAdmin
         .from('briefings')
         .select(`
             *,
             template:briefing_templates(
+                id,
                 name,
-                steps:briefing_steps(
-                    id, title, description, order_index,
-                    fields:briefing_fields(
-                        id, label, type, required, options, order_index
-                    )
-                )
+                description,
+                structure
             ),
             client:clients(name, email)
         `)
@@ -341,16 +338,9 @@ export async function getPortalBriefing(token: string, briefingId: string) {
         .eq('client_id', client.id) // Security Check
         .single()
 
-    if (error) throw error
-
-    // Sort steps and fields
-    if (data.template && data.template.steps) {
-        data.template.steps.sort((a: any, b: any) => a.order_index - b.order_index)
-        data.template.steps.forEach((step: any) => {
-            if (step.fields) {
-                step.fields.sort((a: any, b: any) => a.order_index - b.order_index)
-            }
-        })
+    if (error) {
+        console.error("Error fetching portal briefing:", error)
+        throw error
     }
 
     return data as PortalBriefing
@@ -379,7 +369,9 @@ export async function getPortalBriefingResponses(token: string, briefingId: stri
         .eq('briefing_id', briefingId)
 
     if (error) throw error
-    return data
+
+    // Return responses directly (values are stored as-is in JSONB)
+    return data || []
 }
 
 export async function getPortalCatalog(token: string) {
