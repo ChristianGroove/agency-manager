@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await getSettings();
   const agencyName = settings?.agency_name || "Agency Manager";
-  const faviconUrl = settings?.isotipo_url || "/branding/iso.svg";
+  const faviconUrl = settings?.favicon_url || settings?.isotipo_url || "/favicon.ico";
 
   return {
     title: agencyName,

@@ -13,9 +13,9 @@ export async function generateMetadata(
     const token = resolvedParams.token
     const settings = await getPortalMetadata(token)
 
-    const title = settings.portal_og_title || "Pixy"
-    const description = settings.portal_og_description || "Portal de clientes"
-    const image = settings.portal_og_image_url || settings.portal_logo_url || settings.isotipo_url || settings.main_logo_url || "https://mi.pixy.com.co/branding/iso.svg"
+    const title = settings.portal_og_title || settings.agency_name || "Portal de Cliente"
+    const description = settings.portal_og_description || "Acceso seguro a su cuenta"
+    const image = settings.portal_og_image_url || settings.portal_logo_url || null
 
     return {
         title: title,

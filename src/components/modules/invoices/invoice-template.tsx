@@ -242,15 +242,15 @@ export const InvoiceTemplate = forwardRef<HTMLDivElement, InvoiceTemplateProps>(
                                     rel="noopener noreferrer"
                                     className="px-2 py-0.5 text-[9px] font-medium rounded border transition-colors whitespace-nowrap"
                                     style={{
-                                        backgroundColor: `${brandingSettings?.document_primary_color || '#6D28D9'}14`,
-                                        color: brandingSettings?.document_primary_color || '#6D28D9',
-                                        borderColor: `${brandingSettings?.document_primary_color || '#6D28D9'}33`
+                                        backgroundColor: `${brandingSettings?.document_primary_color || '#6B7280'}14`,
+                                        color: brandingSettings?.document_primary_color || '#6B7280',
+                                        borderColor: `${brandingSettings?.document_primary_color || '#6B7280'}33`
                                     }}
                                     onMouseEnter={(e) => {
-                                        e.currentTarget.style.backgroundColor = `${brandingSettings?.document_primary_color || '#6D28D9'}24`
+                                        e.currentTarget.style.backgroundColor = `${brandingSettings?.document_primary_color || '#6B7280'}24`
                                     }}
                                     onMouseLeave={(e) => {
-                                        e.currentTarget.style.backgroundColor = `${brandingSettings?.document_primary_color || '#6D28D9'}14`
+                                        e.currentTarget.style.backgroundColor = `${brandingSettings?.document_primary_color || '#6B7280'}14`
                                     }}
                                 >
                                     Ir a pagar
