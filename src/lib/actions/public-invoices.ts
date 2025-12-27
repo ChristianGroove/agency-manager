@@ -46,20 +46,32 @@ export async function getPublicInvoice(id: string) {
             items: itemsData || []
         }
 
-        // Fetch Settings (Agency Branding)
-        const { data: settingsData, error: settingsError } = await supabaseAdmin
-            .from('user_settings')
-            .select('*')
-            .eq('user_id', invoiceData.user_id)
-            .single()
+        // CRITICAL FIX: Fetch settings from CLIENT's organization, not user
+        const clientOrgId = invoiceData.client?.organization_id
 
-        if (settingsError && settingsError.code !== 'PGRST116') {
-            console.error("Error fetching settings:", settingsError)
+        if (!clientOrgId) {
+            console.warn("Invoice client has no organization_id, using fallback settings")
         }
+
+        // Fetch organization settings for client's org
+        const { data: settingsData, error: settingsError } = await supabaseAdmin
+            .from('organization_settings')
+            .select('*')
+            .eq('organization_id', clientOrgId)
+            .maybeSingle()
+
+        if (settingsError) {
+            console.error("Error fetching organization settings:", settingsError)
+        }
+
+        // Fetch document branding for client's org
+        const { getDocumentBranding } = await import('@/app/actions/document-branding-actions')
+        const brandingSettings = await getDocumentBranding(clientOrgId)
 
         return {
             invoice: fullInvoice,
-            settings: settingsData || {}
+            settings: settingsData || {},
+            brandingSettings: brandingSettings || undefined
         }
 
     } catch (error) {

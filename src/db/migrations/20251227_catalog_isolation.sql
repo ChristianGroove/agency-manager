@@ -128,15 +128,3 @@ FROM service_catalog sc
 JOIN organizations o ON sc.organization_id = o.id
 GROUP BY o.name
 ORDER BY catalog_items DESC;
-
--- ================================================================
--- EXPECTED RESULTS
--- ================================================================
--- After running this migration:
--- 1. All existing items belong to Pixy Agency
--- 2. RLS is enabled on service_catalog
--- 3. Users can only see/modify their organization's catalog
--- 4. Cross-org catalog access is BLOCKED
--- ================================================================
-
-RAISE NOTICE '✅ Service catalog isolation migration complete!';
