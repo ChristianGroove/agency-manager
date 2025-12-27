@@ -16,10 +16,16 @@ export async function generateMetadata(
     const title = settings.portal_og_title || settings.agency_name || "Portal de Cliente"
     const description = settings.portal_og_description || "Acceso seguro a su cuenta"
     const image = settings.portal_og_image_url || settings.portal_logo_url || null
+    const favicon = settings.portal_favicon_url || settings.isotipo_url || "/favicon.ico"
 
     return {
         title: title,
         description: description,
+        icons: {
+            icon: favicon,
+            shortcut: favicon,
+            apple: favicon,
+        },
         openGraph: {
             title: title,
             description: description,

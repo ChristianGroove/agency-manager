@@ -150,15 +150,21 @@ export default function PortalPage() {
         )
     }
 
-    // Branding Colors Injection
+    // Branding Colors Injection + White-Label Phase 3
     const brandingStyles = {
         '--portal-primary': settings.portal_primary_color || '#F205E2',
         '--portal-secondary': settings.portal_secondary_color || '#00E0FF',
         '--primary': settings.portal_primary_color || '#F205E2', // Override Shadcn primary
+        backgroundColor: settings.portal_login_background_color || '#F3F4F6',
+        backgroundImage: settings.portal_login_background_url ? `url(${settings.portal_login_background_url})` : undefined,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundAttachment: 'fixed',
+        fontFamily: settings.brand_font_family || 'Inter, sans-serif',
     } as React.CSSProperties
 
     return (
-        <div className="min-h-screen bg-gray-50" style={brandingStyles}>
+        <div className="min-h-screen" style={brandingStyles}>
             <PortalLayout
                 token={params.token as string}
                 client={client}
