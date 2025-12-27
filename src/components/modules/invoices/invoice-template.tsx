@@ -2,10 +2,12 @@
 
 import { forwardRef } from "react"
 import { cn } from "@/lib/utils"
+import { DocumentBrandingSettings } from "@/app/actions/document-branding-actions"
 
 interface InvoiceTemplateProps {
     invoice: any
     settings: any
+    brandingSettings?: DocumentBrandingSettings
 }
 
 // Letter size dimensions in pixels at 96 DPI
@@ -13,7 +15,7 @@ interface InvoiceTemplateProps {
 // Height: 11in * 96 = 1056px
 
 export const InvoiceTemplate = forwardRef<HTMLDivElement, InvoiceTemplateProps>(
-    ({ invoice, settings }, ref) => {
+    ({ invoice, settings, brandingSettings }, ref) => {
         return (
             <div
                 ref={ref}
@@ -236,7 +238,18 @@ export const InvoiceTemplate = forwardRef<HTMLDivElement, InvoiceTemplateProps>(
                                     href={settings?.wompi_link || "#"}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="px-2 py-0.5 bg-purple-50 text-purple-600 text-[9px] font-medium rounded border border-purple-200 hover:bg-purple-100 transition-colors whitespace-nowrap"
+                                    className="px-2 py-0.5 text-[9px] font-medium rounded border transition-colors whitespace-nowrap"
+                                    style={{
+                                        backgroundColor: `${brandingSettings?.document_primary_color || '#6D28D9'}14`,
+                                        color: brandingSettings?.document_primary_color || '#6D28D9',
+                                        borderColor: `${brandingSettings?.document_primary_color || '#6D28D9'}33`
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.backgroundColor = `${brandingSettings?.document_primary_color || '#6D28D9'}24`
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.backgroundColor = `${brandingSettings?.document_primary_color || '#6D28D9'}14`
+                                    }}
                                 >
                                     Ir a pagar
                                 </a>

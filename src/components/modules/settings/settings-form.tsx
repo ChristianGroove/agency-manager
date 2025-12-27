@@ -20,7 +20,12 @@ import { useEffect } from "react"
 import { SplitText } from "@/components/ui/split-text"
 import { updateSettings } from "@/lib/actions/settings"
 
-export function SettingsForm({ initialSettings }: { initialSettings: any }) {
+interface SettingsFormProps {
+    initialSettings: any
+    activeModules: string[]
+}
+
+export function SettingsForm({ initialSettings, activeModules }: SettingsFormProps) {
     const router = useRouter()
     const [isLoading, setIsLoading] = useState(false)
     const [formData, setFormData] = useState(initialSettings || {})
@@ -96,6 +101,99 @@ export function SettingsForm({ initialSettings }: { initialSettings: any }) {
         }
     }
 
+    // ============================================
+    // DYNAMIC TABS CONFIGURATION
+    // ============================================
+
+    const TABS_CONFIG = [
+        {
+            id: 'agency',
+            label: 'Agencia',
+            icon: Building2,
+            requiredModule: null,
+            isCore: true
+        },
+        {
+            id: 'general',
+            label: 'General',
+            icon: Globe,
+            requiredModule: null,
+            isCore: true
+        },
+        {
+            id: 'billing',
+            label: 'Facturación',
+            icon: FileText,
+            requiredModule: 'module_invoicing'
+        },
+        {
+            id: 'emitters',
+            label: 'Emisores',
+            icon: Building2,
+            requiredModule: 'module_emitters',
+            featureFlag: isEmittersModuleEnabled
+        },
+        {
+            id: 'payments',
+            label: 'Pagos',
+            icon: CreditCard,
+            requiredModules: ['module_payments', 'module_invoicing'],
+            matchAny: true
+        },
+        {
+            id: 'portal',
+            label: 'Portal',
+            icon: Layout,
+            requiredModule: null,
+            customCheck: (modules: string[]) => modules.some(m => m.startsWith('module_') || m.startsWith('core_'))
+        },
+        {
+            id: 'communication',
+            label: 'Comms',
+            icon: MessageSquare,
+            requiredModules: ['module_communications', 'module_invoicing'],
+            matchAny: true
+        },
+        {
+            id: 'interface',
+            label: 'Interfaz',
+            icon: LayoutTemplate,
+            requiredModule: null,
+            isCore: true
+        }
+    ]
+
+    const getVisibleTabs = (activeModules: string[]) => {
+        return TABS_CONFIG.filter(tab => {
+            // Always show core tabs
+            if (tab.isCore) return true
+
+            // Check feature flag if exists
+            if (tab.featureFlag && !tab.featureFlag()) return false
+
+            // Custom check function
+            if (tab.customCheck) return tab.customCheck(activeModules)
+
+            // Single required module
+            if (tab.requiredModule) {
+                return activeModules.includes(tab.requiredModule)
+            }
+
+            // Multiple required modules
+            if (tab.requiredModules) {
+                if (tab.matchAny) {
+                    return tab.requiredModules.some((m: string) => activeModules.includes(m))
+                } else {
+                    return tab.requiredModules.every((m: string) => activeModules.includes(m))
+                }
+            }
+
+            return true
+        })
+    }
+
+    const visibleTabs = getVisibleTabs(activeModules)
+
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -111,18 +209,26 @@ export function SettingsForm({ initialSettings }: { initialSettings: any }) {
                 </Button>
             </div>
 
-            <Tabs defaultValue="agency" className="w-full" suppressHydrationWarning>
-                <TabsList className="grid w-full grid-cols-7 max-w-full" suppressHydrationWarning>
-                    <TabsTrigger value="agency" className="flex items-center gap-2" suppressHydrationWarning><Building2 className="h-4 w-4" /> Agencia</TabsTrigger>
-                    <TabsTrigger value="general" className="flex items-center gap-2" suppressHydrationWarning><Globe className="h-4 w-4" /> General</TabsTrigger>
-                    <TabsTrigger value="billing" className="flex items-center gap-2" suppressHydrationWarning><FileText className="h-4 w-4" /> Cobros y Facturación</TabsTrigger>
-                    {isEmittersModuleEnabled() && (
-                        <TabsTrigger value="emitters" className="flex items-center gap-2" suppressHydrationWarning><Building2 className="h-4 w-4" /> Emisores</TabsTrigger>
-                    )}
-                    <TabsTrigger value="payments" className="flex items-center gap-2" suppressHydrationWarning><CreditCard className="h-4 w-4" /> Pagos</TabsTrigger>
-                    <TabsTrigger value="portal" className="flex items-center gap-2" suppressHydrationWarning><Layout className="h-4 w-4" /> Portal</TabsTrigger>
-                    <TabsTrigger value="communication" className="flex items-center gap-2" suppressHydrationWarning><MessageSquare className="h-4 w-4" /> Comms</TabsTrigger>
-                    <TabsTrigger value="interface" className="flex items-center gap-2" suppressHydrationWarning><LayoutTemplate className="h-4 w-4" /> Interfaz</TabsTrigger>
+            <Tabs defaultValue={visibleTabs[0]?.id || 'agency'} className="w-full" suppressHydrationWarning>
+                <TabsList
+                    className="grid w-full max-w-full"
+                    style={{ gridTemplateColumns: `repeat(${visibleTabs.length}, minmax(0, 1fr))` }}
+                    suppressHydrationWarning
+                >
+                    {visibleTabs.map(tab => {
+                        const Icon = tab.icon
+                        return (
+                            <TabsTrigger
+                                key={tab.id}
+                                value={tab.id}
+                                className="flex items-center gap-2"
+                                suppressHydrationWarning
+                            >
+                                <Icon className="h-4 w-4" />
+                                {tab.label}
+                            </TabsTrigger>
+                        )
+                    })}
                 </TabsList>
 
                 {/* AGENCY TAB */}
@@ -385,6 +491,93 @@ export function SettingsForm({ initialSettings }: { initialSettings: any }) {
                                     placeholder="Texto legal específico para documentos (ej: Resolución...)"
                                     className="min-h-[100px]"
                                 />
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Document Branding Card */}
+                    <Card className="border-purple-100 bg-purple-50/30">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <Palette className="h-5 w-5 text-purple-600" />
+                                Personalización de Documentos
+                            </CardTitle>
+                            <CardDescription>
+                                Personaliza la apariencia de tus facturas y cotizaciones
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="document_primary_color">Color Principal</Label>
+                                    <div className="flex gap-2">
+                                        <Input
+                                            type="color"
+                                            id="document_primary_color"
+                                            name="document_primary_color"
+                                            value={formData.document_primary_color || '#6D28D9'}
+                                            onChange={handleChange}
+                                            className="w-20 h-10 p-1 cursor-pointer"
+                                        />
+                                        <Input
+                                            type="text"
+                                            name="document_primary_color"
+                                            value={formData.document_primary_color || '#6D28D9'}
+                                            onChange={handleChange}
+                                            placeholder="#6D28D9"
+                                            className="flex-1 font-mono"
+                                        />
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">
+                                        Color de acento en botones y elementos destacados
+                                    </p>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="document_logo_size">Tamaño del Logo</Label>
+                                    <Select
+                                        name="document_logo_size"
+                                        value={formData.document_logo_size || 'medium'}
+                                        onValueChange={(val) => handleSelectChange('document_logo_size', val)}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Seleccionar" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="small">Pequeño</SelectItem>
+                                            <SelectItem value="medium">Mediano</SelectItem>
+                                            <SelectItem value="large">Grande</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center justify-between p-3 border rounded-lg bg-white">
+                                <div className="space-y-0.5">
+                                    <Label className="text-sm">Mostrar Marca de Agua</Label>
+                                    <p className="text-xs text-muted-foreground">
+                                        Logo tenue de fondo en documentos
+                                    </p>
+                                </div>
+                                <Switch
+                                    checked={formData.document_show_watermark !== false}
+                                    onCheckedChange={(checked) => handleSwitchChange('document_show_watermark', checked)}
+                                />
+                            </div>
+
+                            {/* Preview Example */}
+                            <div className="p-4 border rounded-lg bg-white">
+                                <p className="text-xs text-muted-foreground mb-2">Vista Previa:</p>
+                                <button
+                                    className="px-4 py-2 rounded text-sm font-medium transition-colors"
+                                    style={{
+                                        backgroundColor: `${formData.document_primary_color || '#6D28D9'}14`,
+                                        color: formData.document_primary_color || '#6D28D9',
+                                        border: `1px solid ${formData.document_primary_color || '#6D28D9'}33`
+                                    }}
+                                >
+                                    Botón de Pago
+                                </button>
                             </div>
                         </CardContent>
                     </Card>

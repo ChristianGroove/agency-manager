@@ -1,16 +1,19 @@
 
+
 import { Quote, Client } from "@/types"
 import { forwardRef } from "react"
 import { cn } from "@/lib/utils"
+import { DocumentBrandingSettings } from "@/app/actions/document-branding-actions"
 
 interface QuoteTemplateProps {
     quote: Quote
     settings?: any
+    brandingSettings?: DocumentBrandingSettings
     className?: string
 }
 
 export const QuoteTemplate = forwardRef<HTMLDivElement, QuoteTemplateProps>(
-    ({ quote, settings, className }, ref) => {
+    ({ quote, settings, brandingSettings, className }, ref) => {
         const entity = quote.client || quote.lead
         const isLead = !!quote.lead_id
 
