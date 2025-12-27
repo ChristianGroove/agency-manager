@@ -93,7 +93,7 @@ export async function updateDocumentBranding(settings: Partial<DocumentBrandingS
 /**
  * Get default document branding settings
  */
-export function getDocumentBrandingDefaults(): DocumentBrandingSettings {
+export async function getDocumentBrandingDefaults(): Promise<DocumentBrandingSettings> {
     return {
         document_primary_color: '#6B7280', // gray-500 (neutral)
         document_secondary_color: '#6B7280', // gray-500 (neutral)
