@@ -1,6 +1,6 @@
 "use server"
 
-import { createAdminClient } from "@/lib/supabase-admin"
+import { supabaseAdmin } from "@/lib/supabase-admin"
 import { requireSuperAdmin } from "@/lib/auth/platform-roles"
 import { revalidatePath } from "next/cache"
 
@@ -24,8 +24,7 @@ export interface AdminOrganization {
 export async function getAdminOrganizations(): Promise<AdminOrganization[]> {
     await requireSuperAdmin()
 
-    const supabase = createAdminClient()
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
         .from('organizations')
         .select(`
             id,
@@ -56,10 +55,8 @@ export async function getAdminOrganizations(): Promise<AdminOrganization[]> {
 export async function getOrganizationDetails(orgId: string) {
     await requireSuperAdmin()
 
-    const supabase = await createClient()
-
     // Get organization
-    const { data: org, error: orgError } = await supabase
+    const { data: org, error: orgError } = await supabaseAdmin
         .from('organizations')
         .select('*')
         .eq('id', orgId)
@@ -68,13 +65,13 @@ export async function getOrganizationDetails(orgId: string) {
     if (orgError) throw orgError
 
     // Get user count
-    const { count: userCount } = await supabase
+    const { count: userCount } = await supabaseAdmin
         .from('organization_users')
         .select('*', { count: 'exact', head: true })
         .eq('organization_id', orgId)
 
     // Get client count
-    const { count: clientCount } = await supabase
+    const { count: clientCount } = await supabaseAdmin
         .from('clients')
         .select('*', { count: 'exact', head: true })
         .eq('organization_id', orgId)
@@ -98,10 +95,12 @@ export async function updateOrganizationStatus(
 ) {
     await requireSuperAdmin()
 
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    // Note: Admin client doesn't have auth.getUser(), we'll need to get from regular client
+    const { createClient } = await import("@/lib/supabase-server")
+    const regularClient = await createClient()
+    const { data: { user } } = await regularClient.auth.getUser()
 
-    const { error } = await supabase
+    const { error } = await supabaseAdmin
         .from('organizations')
         .update({
             status,
@@ -118,7 +117,7 @@ export async function updateOrganizationStatus(
 
     // Create audit log if audit table exists
     try {
-        await supabase.from('organization_audit_log').insert({
+        await supabaseAdmin.from('organization_audit_log').insert({
             organization_id: orgId,
             action: status === 'suspended' ? 'suspended' : 'activated',
             performed_by: user!.id,
@@ -141,8 +140,7 @@ export async function updateOrganizationStatus(
 export async function getOrganizationUsers(orgId: string) {
     await requireSuperAdmin()
 
-    const supabase = createAdminClient()
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
         .from('organization_users')
         .select(`
             id,
