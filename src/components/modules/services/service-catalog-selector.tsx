@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
-import { Search, Filter, ArrowRight, Server, Palette, Monitor, Globe, TrendingUp, MessageCircle, Briefcase, Lightbulb, Puzzle, Check } from "lucide-react"
+import { Search, Filter, ArrowRight, Check } from "lucide-react"
+import * as LucideIcons from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -10,32 +11,24 @@ import { supabase } from "@/lib/supabase"
 import { ServiceCatalogItem } from "@/types"
 import { cn } from "@/lib/utils"
 import { getCurrentOrganizationId } from "@/lib/actions/organizations"
+import { getCategories, ServiceCategory } from "@/app/actions/category-actions"
 
 interface ServiceCatalogSelectorProps {
     onSelect: (item: ServiceCatalogItem) => void
     onCancel: () => void
 }
 
-const CATEGORY_CONFIG = {
-    "Infraestructura & Suscripciones": { icon: Server, color: "text-blue-500", bg: "bg-blue-50", label: "Infraestructura" },
-    "Branding & Identidad": { icon: Palette, color: "text-purple-500", bg: "bg-purple-50", label: "Branding" },
-    "UX / UI & Producto Digital": { icon: Monitor, color: "text-pink-500", bg: "bg-pink-50", label: "UX / UI" },
-    "Web & Ecommerce": { icon: Globe, color: "text-indigo-500", bg: "bg-indigo-50", label: "Web / E-comm" },
-    "Marketing & Growth": { icon: TrendingUp, color: "text-green-500", bg: "bg-green-50", label: "Growth" },
-    "Social Media & Contenido": { icon: MessageCircle, color: "text-orange-500", bg: "bg-orange-50", label: "Social" },
-    "Diseño como Servicio (DaaS)": { icon: Briefcase, color: "text-cyan-500", bg: "bg-cyan-50", label: "DaaS" },
-    "Consultoría & Especialidades": { icon: Lightbulb, color: "text-amber-500", bg: "bg-amber-50", label: "Consultoría" },
-    "Servicios Flexibles / A Medida": { icon: Puzzle, color: "text-gray-500", bg: "bg-gray-50", label: "Flexible" },
-}
+// ✅ Dynamic categories loaded from database - no more hardcoded config!
 
 export function ServiceCatalogSelector({ onSelect, onCancel }: ServiceCatalogSelectorProps) {
     const [searchTerm, setSearchTerm] = useState("")
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
     const [catalogItems, setCatalogItems] = useState<ServiceCatalogItem[]>([])
+    const [categories, setCategories] = useState<ServiceCategory[]>([])
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
-        const fetchCatalog = async () => {
+        const fetchData = async () => {
             setLoading(true)
             try {
                 // SECURITY FIX: Only fetch catalog items for current organization
@@ -44,32 +37,62 @@ export function ServiceCatalogSelector({ onSelect, onCancel }: ServiceCatalogSel
                 if (!orgId) {
                     console.error("No organization selected")
                     setCatalogItems([])
+                    setCategories([])
                     return
                 }
 
-                const { data, error } = await supabase
-                    .from('service_catalog')
-                    .select('*')
-                    .eq('organization_id', orgId) // CRITICAL: Filter by organization
-                    .order('base_price', { ascending: false })
+                // Load categories and catalog items in parallel
+                const [cats, catalogData] = await Promise.all([
+                    getCategories(orgId),
+                    supabase
+                        .from('service_catalog')
+                        .select('*')
+                        .eq('organization_id', orgId)
+                        .order('base_price', { ascending: false })
+                ])
 
-                if (error) throw error
-                if (data) setCatalogItems(data as ServiceCatalogItem[])
+                setCategories(cats)
+
+                if (catalogData.error) throw catalogData.error
+                if (catalogData.data) setCatalogItems(catalogData.data as ServiceCatalogItem[])
             } catch (error) {
-                console.error("Error fetching catalog:", error)
+                console.error("Error fetching data:", error)
             } finally {
                 setLoading(false)
             }
         }
 
-        fetchCatalog()
+        fetchData()
     }, [])
+
+    // Helper function to get Lucide icon component
+    const getIcon = (iconName: string) => {
+        const IconComponent = (LucideIcons as any)[iconName] || LucideIcons.Folder
+        return IconComponent
+    }
+
+    // Helper function to get color classes for categories
+    const getColorClasses = (color: string) => {
+        const colorMap: Record<string, { text: string; bg: string }> = {
+            blue: { text: 'text-blue-500', bg: 'bg-blue-50' },
+            purple: { text: 'text-purple-500', bg: 'bg-purple-50' },
+            pink: { text: 'text-pink-500', bg: 'bg-pink-50' },
+            indigo: { text: 'text-indigo-500', bg: 'bg-indigo-50' },
+            green: { text: 'text-green-500', bg: 'bg-green-50' },
+            orange: { text: 'text-orange-500', bg: 'bg-orange-50' },
+            cyan: { text: 'text-cyan-500', bg: 'bg-cyan-50' },
+            amber: { text: 'text-amber-500', bg: 'bg-amber-50' },
+            gray: { text: 'text-gray-500', bg: 'bg-gray-50' },
+            red: { text: 'text-red-500', bg: 'bg-red-50' },
+        }
+        return colorMap[color] || colorMap.gray
+    }
 
     // DYNAMIC CATEGORY FILTERING: Only show categories with products
     const availableCategories = useMemo(() => {
         const unique = [...new Set(catalogItems.map(item => item.category))]
-        return unique.filter(cat => cat && CATEGORY_CONFIG[cat as keyof typeof CATEGORY_CONFIG])
-    }, [catalogItems])
+        return unique.filter(cat => cat && categories.find(c => c.name === cat))
+    }, [catalogItems, categories])
 
     const filteredItems = catalogItems.filter(item => {
         const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -77,10 +100,6 @@ export function ServiceCatalogSelector({ onSelect, onCancel }: ServiceCatalogSel
         const matchesCategory = selectedCategory ? item.category === selectedCategory : true
         return matchesSearch && matchesCategory
     })
-
-    // Group items by category for the "All" view if desired, or just list them.
-    // Given the request for "modern/bonito", a masonry or nice grid is good.
-    // Let's stick to the grid but with the category sidebar.
 
     return (
         <div className="flex h-[750px] w-full max-w-5xl mx-auto bg-white rounded-xl overflow-hidden shadow-2xl border border-gray-100">
@@ -109,8 +128,12 @@ export function ServiceCatalogSelector({ onSelect, onCancel }: ServiceCatalogSel
                             <>
                                 <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-3 py-2 mt-4">Categorías</div>
                                 {availableCategories.map((catName) => {
-                                    const config = CATEGORY_CONFIG[catName as keyof typeof CATEGORY_CONFIG]
-                                    if (!config) return null
+                                    // Find category from database
+                                    const category = categories.find(c => c.name === catName)
+                                    if (!category) return null
+
+                                    const Icon = getIcon(category.icon)
+                                    const colors = getColorClasses(category.color)
 
                                     return (
                                         <Button
@@ -124,15 +147,15 @@ export function ServiceCatalogSelector({ onSelect, onCancel }: ServiceCatalogSel
                                             )}
                                             onClick={() => setSelectedCategory(catName)}
                                         >
-                                            <config.icon className={cn("mr-2 h-3.5 w-3.5", config.color)} />
-                                            {config.label}
+                                            <Icon className={cn("mr-2 h-3.5 w-3.5", colors.text)} />
+                                            {category.name}
                                         </Button>
                                     )
                                 })}
                             </>
                         ) : (
                             <div className="text-center py-8 px-4">
-                                <Puzzle className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                                <LucideIcons.FolderOpen className="h-8 w-8 mx-auto mb-2 text-gray-300" />
                                 <p className="text-xs text-muted-foreground">
                                     No hay categorías disponibles.
                                 </p>
@@ -171,77 +194,49 @@ export function ServiceCatalogSelector({ onSelect, onCancel }: ServiceCatalogSel
                         </div>
                     ) : filteredItems.length === 0 ? (
                         <div className="text-center py-20 text-muted-foreground">
-                            <Puzzle className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                            <LucideIcons.Package className="h-12 w-12 mx-auto mb-3 text-gray-300" />
                             <p>No se encontraron servicios.</p>
                             <Button variant="link" onClick={() => setSelectedCategory(null)}>
                                 Ver todos los servicios
                             </Button>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-12">
-                            {filteredItems.map(item => {
-                                // Dynamic Config based on category of item
-                                const config = CATEGORY_CONFIG[item.category as keyof typeof CATEGORY_CONFIG] || { icon: Puzzle, color: 'text-gray-500', bg: 'bg-gray-50' }
-                                const Icon = config.icon
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-4">
+                            {filteredItems.map((item) => {
+                                // Find category from database
+                                const category = categories.find(c => c.name === item.category)
+                                const Icon = category ? getIcon(category.icon) : LucideIcons.Folder
+                                const colors = category ? getColorClasses(category.color) : getColorClasses('gray')
 
                                 return (
                                     <div
                                         key={item.id}
-                                        className="group relative bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-xl hover:border-indigo-100 hover:-translate-y-1 transition-all duration-300 overflow-hidden cursor-pointer flex flex-col"
                                         onClick={() => onSelect(item)}
+                                        className="group relative bg-white border border-gray-200 rounded-lg p-4 cursor-pointer hover:shadow-lg hover:border-brand transition-all duration-200"
                                     >
-                                        {/* Colored Top Banner */}
-                                        <div className={cn("h-1.5 w-full", config.bg.replace("bg-", "bg-gradient-to-r from-white to-").replace("50", "400"))} />
-
-                                        <div className="p-5 flex-1 flex flex-col">
-                                            {/* Header */}
-                                            <div className="flex justify-between items-start mb-3">
-                                                <div className={cn("p-2 rounded-lg", config.bg)}>
-                                                    <Icon className={cn("h-5 w-5", config.color)} />
-                                                </div>
-                                                <Badge
-                                                    variant="secondary"
-                                                    className={cn(
-                                                        "text-[10px] font-medium px-2 h-5 border-0",
-                                                        item.type === 'recurring'
-                                                            ? "bg-indigo-50 text-indigo-700"
-                                                            : "bg-amber-50 text-amber-700"
-                                                    )}
-                                                >
-                                                    {item.type === 'recurring' ? 'RECURRENTE' : 'ÚNICO'}
-                                                </Badge>
+                                        <div className="flex items-start gap-3">
+                                            <div className={cn("p-2 rounded-md", colors.bg)}>
+                                                <Icon className={cn("h-5 w-5", colors.text)} />
                                             </div>
-
-                                            <h3 className="font-bold text-gray-900 leading-tight mb-2 text-base group-hover:text-indigo-600 transition-colors">
-                                                {item.name}
-                                            </h3>
-
-                                            <p className="text-sm text-gray-500 line-clamp-3 mb-4 flex-1">
-                                                {item.description}
-                                            </p>
-
-                                            {/* Footer Price */}
-                                            <div className="pt-4 border-t border-gray-50 mt-auto flex items-end justify-between">
-                                                <div>
-                                                    <p className="text-xs text-gray-400 font-medium mb-0.5">Precio Base</p>
-                                                    <div className="flex items-baseline gap-1">
-                                                        <span className="text-lg font-bold text-gray-900">
-                                                            {item.base_price > 0
-                                                                ? `$${item.base_price.toLocaleString()}`
-                                                                : 'A definir'}
-                                                        </span>
-                                                        {item.type === 'recurring' && item.frequency && (
-                                                            <span className="text-xs text-gray-500 font-medium capitalize">
-                                                                / {item.frequency === 'monthly' ? 'mes' :
-                                                                    item.frequency === 'yearly' ? 'año' : item.frequency}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                                <div className="h-8 w-8 rounded-full bg-gray-50 flex items-center justify-center group-hover:bg-indigo-600 transition-colors">
-                                                    <ArrowRight className="h-4 w-4 text-gray-400 group-hover:text-white transition-colors" />
-                                                </div>
+                                            <div className="flex-1 min-w-0">
+                                                <h3 className="font-semibold text-sm text-gray-900 truncate group-hover:text-brand transition-colors">
+                                                    {item.name}
+                                                </h3>
+                                                <p className="text-xs text-gray-500 truncate">{item.category}</p>
+                                                {item.description && (
+                                                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                                                        {item.description}
+                                                    </p>
+                                                )}
                                             </div>
+                                        </div>
+                                        <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
+                                            <Badge variant="secondary" className="text-xs">
+                                                {item.frequency}
+                                            </Badge>
+                                            <span className="text-sm font-bold text-gray-900">
+                                                ${item.base_price.toLocaleString()}
+                                            </span>
                                         </div>
                                     </div>
                                 )
@@ -249,11 +244,6 @@ export function ServiceCatalogSelector({ onSelect, onCancel }: ServiceCatalogSel
                         </div>
                     )}
                 </ScrollArea>
-
-                {/* Footer Hint */}
-                <div className="bg-gray-50 border-t border-gray-100 px-6 py-3 text-xs text-center text-gray-500">
-                    Mostrando {filteredItems.length} servicios disponibles. Selecciona uno para autocompletar el formulario.
-                </div>
             </div>
         </div>
     )
