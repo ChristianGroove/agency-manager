@@ -318,9 +318,9 @@ export function PortalSettingsTab({
                         <h3 className="text-lg font-semibold mb-2">
                             Desbloquea White-Label Completo
                         </h3>
-                        <p className="text-sm text-muted-foreground mb-4">
+                        <div className="text-sm text-muted-foreground mb-4">
                             Activa el módulo <Badge variant="secondary">module_whitelabel</Badge> para acceder a:
-                        </p>
+                        </div>
                         <ul className="text-sm text-muted-foreground space-y-1 mb-4">
                             <li>✨ Favicon personalizado</li>
                             <li>✨ Pantalla de login personalizada</li>
