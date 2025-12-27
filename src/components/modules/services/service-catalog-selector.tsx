@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Search, Filter, ArrowRight, Server, Palette, Monitor, Globe, TrendingUp, MessageCircle, Briefcase, Lightbulb, Puzzle, Check } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -65,6 +65,12 @@ export function ServiceCatalogSelector({ onSelect, onCancel }: ServiceCatalogSel
         fetchCatalog()
     }, [])
 
+    // DYNAMIC CATEGORY FILTERING: Only show categories with products
+    const availableCategories = useMemo(() => {
+        const unique = [...new Set(catalogItems.map(item => item.category))]
+        return unique.filter(cat => cat && CATEGORY_CONFIG[cat as keyof typeof CATEGORY_CONFIG])
+    }, [catalogItems])
+
     const filteredItems = catalogItems.filter(item => {
         const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             (item.description && item.description.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -99,23 +105,42 @@ export function ServiceCatalogSelector({ onSelect, onCancel }: ServiceCatalogSel
                             Todos los Servicios
                         </Button>
 
-                        <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-3 py-2 mt-4">Categorías</div>
-                        {Object.entries(CATEGORY_CONFIG).map(([catName, config]) => (
-                            <Button
-                                key={catName}
-                                variant="ghost"
-                                className={cn(
-                                    "w-full justify-start text-xs h-9 transition-all",
-                                    selectedCategory === catName
-                                        ? "bg-white shadow-sm text-gray-900 font-semibold"
-                                        : "text-gray-500 hover:text-gray-900 hover:bg-white/50"
-                                )}
-                                onClick={() => setSelectedCategory(catName)}
-                            >
-                                <config.icon className={cn("mr-2 h-3.5 w-3.5", config.color)} />
-                                {config.label}
-                            </Button>
-                        ))}
+                        {availableCategories.length > 0 ? (
+                            <>
+                                <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-3 py-2 mt-4">Categorías</div>
+                                {availableCategories.map((catName) => {
+                                    const config = CATEGORY_CONFIG[catName as keyof typeof CATEGORY_CONFIG]
+                                    if (!config) return null
+
+                                    return (
+                                        <Button
+                                            key={catName}
+                                            variant="ghost"
+                                            className={cn(
+                                                "w-full justify-start text-xs h-9 transition-all",
+                                                selectedCategory === catName
+                                                    ? "bg-white shadow-sm text-gray-900 font-semibold"
+                                                    : "text-gray-500 hover:text-gray-900 hover:bg-white/50"
+                                            )}
+                                            onClick={() => setSelectedCategory(catName)}
+                                        >
+                                            <config.icon className={cn("mr-2 h-3.5 w-3.5", config.color)} />
+                                            {config.label}
+                                        </Button>
+                                    )
+                                })}
+                            </>
+                        ) : (
+                            <div className="text-center py-8 px-4">
+                                <Puzzle className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                                <p className="text-xs text-muted-foreground">
+                                    No hay categorías disponibles.
+                                </p>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    Crea tu primer servicio.
+                                </p>
+                            </div>
+                        )}
                     </div>
                 </ScrollArea>
             </div>
