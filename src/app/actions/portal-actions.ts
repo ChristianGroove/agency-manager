@@ -47,8 +47,8 @@ export async function getPortalData(token: string) {
             supabaseAdmin.from('invoices').select('*').eq('client_id', client.id).is('deleted_at', null).neq('status', 'cancelled').order('created_at', { ascending: false }),
             // Quotes: Add deleted_at filter
             supabaseAdmin.from('quotes').select('*').eq('client_id', client.id).is('deleted_at', null).order('created_at', { ascending: false }),
-            // Briefings: Add deleted_at filter
-            supabaseAdmin.from('briefings').select('*, template:briefing_templates(name)').eq('client_id', client.id).is('deleted_at', null).order('created_at', { ascending: false }),
+            // Briefings: Add deleted_at filter + organization_id for multi-tenant isolation
+            supabaseAdmin.from('briefings').select('*, template:briefing_templates(name)').eq('client_id', client.id).eq('organization_id', client.organization_id).is('deleted_at', null).order('created_at', { ascending: false }),
             // Events: Add deleted_at filter
             supabaseAdmin.from('client_events').select('*').eq('client_id', client.id).order('created_at', { ascending: false }),
             // Services: Add deleted_at filter

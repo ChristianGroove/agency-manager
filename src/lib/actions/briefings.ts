@@ -134,6 +134,34 @@ export async function createBriefing(templateId: string, clientId: string | null
         .single()
 
     if (error) throw error
+
+    // CRITICAL: Create immediate client_event notification for portal
+    if (clientId) {
+        const { supabaseAdmin } = await import('@/lib/supabase-admin')
+
+        // Fetch template name for notification
+        const { data: template } = await supabase
+            .from('briefing_templates')
+            .select('name')
+            .eq('id', templateId)
+            .single()
+
+        // Create client event (visible in portal immediately)
+        await supabaseAdmin.from('client_events').insert({
+            client_id: clientId,
+            type: 'briefing',
+            title: 'Nuevo Briefing Disponible',
+            description: `Se ha creado un nuevo briefing para ti: ${template?.name || 'Briefing'}`,
+            metadata: {
+                briefing_id: data.id,
+                template_id: templateId,
+                template_name: template?.name,
+                status: 'pending'
+            },
+            icon: 'FileText'
+        })
+    }
+
     revalidatePath('/briefings')
     return data as Briefing
 }
