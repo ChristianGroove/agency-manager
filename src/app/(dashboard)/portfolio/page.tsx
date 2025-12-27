@@ -10,7 +10,7 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Plus } from "lucide-react"
+import { Plus, Package } from "lucide-react"
 import { PortfolioList } from "@/components/modules/portfolio/portfolio-list"
 import { PortfolioServiceSheet } from "@/components/modules/portfolio/portfolio-service-sheet"
 import { CategoryManager } from "@/components/modules/services/category-manager"
@@ -20,25 +20,20 @@ import { BriefingTemplate } from "@/types/briefings"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { SplitText } from "@/components/ui/split-text"
-
 import { getSaaSProducts } from "@/lib/actions/saas"
 import { SaaSProduct } from "@/types/saas"
 import { AppList } from "@/components/modules/saas/app-list"
 import { CreateAppSheet } from "@/components/modules/saas/create-app-sheet"
-import { Package } from "lucide-react"
 
 export default function PortfolioPage() {
-    const [activeTab, setActiveTab] = useState("services")
+    const [activeTab, setActiveTab] = useState<string>("services")
 
     // Services state
     const [items, setItems] = useState<ServiceCatalogItem[]>([])
     const [loading, setLoading] = useState(true)
     const [isFormOpen, setIsFormOpen] = useState(false)
     const [itemToEdit, setItemToEdit] = useState<ServiceCatalogItem | null>(null)
-
     const [currentOrgName, setCurrentOrgName] = useState<string>('')
-
-
 
     // SaaS Apps state
     const [apps, setApps] = useState<SaaSProduct[]>([])
@@ -48,29 +43,23 @@ export default function PortfolioPage() {
     // Check if current org is Pixy Agency (SaaS Builder)
     const isPixyAgency = currentOrgName === 'Pixy Agency'
 
+    /**
+     * Fetch current organization name
+     * Uses server action to avoid next/headers import in client component
+     */
     const fetchOrgName = async () => {
         try {
-            const { getCurrentOrganizationId } = await import('@/lib/actions/organizations')
-            const { createClient } = await import('@/lib/supabase-server')
-
-            const orgId = await getCurrentOrganizationId()
-            if (!orgId) return
-
-            const supabase = await createClient()
-            const { data } = await supabase
-                .from('organizations')
-                .select('name')
-                .eq('id', orgId)
-                .single()
-
-            setCurrentOrgName(data?.name || '')
+            const { getCurrentOrgName } = await import('@/lib/actions/organizations')
+            const name = await getCurrentOrgName()
+            setCurrentOrgName(name || '')
         } catch (error) {
             console.error('Error fetching org:', error)
         }
     }
 
-
-
+    /**
+     * Fetch portfolio services for current organization
+     */
     const fetchServices = async () => {
         setLoading(true)
         try {
@@ -84,13 +73,14 @@ export default function PortfolioPage() {
         }
     }
 
-
-
-
+    /**
+     * Fetch SaaS apps assigned to organization via subscription
+     * Single Subscription Model: Each org has ONE subscription_product_id
+     */
     const fetchApps = async () => {
         setAppsLoading(true)
         try {
-            // Use server action to get subscription app (Single Subscription Model)
+            // Use server action to get subscription app
             const { getSubscriptionApp } = await import('@/lib/actions/portfolio')
             const product = await getSubscriptionApp()
             setApps(product ? [product] : [])
@@ -132,8 +122,6 @@ export default function PortfolioPage() {
         }
     }
 
-
-
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             {/* Title Row */}
@@ -142,7 +130,7 @@ export default function PortfolioPage() {
                     <SplitText>Catálogo</SplitText>
                 </h1>
                 <p className="text-muted-foreground mt-1">
-                    Servicios, plantillas y productos SaaS que ofrece tu agencia.
+                    Servicios y productos que ofrece tu agencia.
                 </p>
             </div>
 
@@ -150,7 +138,10 @@ export default function PortfolioPage() {
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 {/* Left: Tabs */}
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
-                    <TabsList className={cn("grid w-full", isPixyAgency ? "max-w-md grid-cols-2" : "max-w-xs grid-cols-1")}>
+                    <TabsList className={cn(
+                        "grid w-full",
+                        isPixyAgency ? "max-w-md grid-cols-2" : "max-w-xs grid-cols-1"
+                    )}>
                         <TabsTrigger value="services">Servicios</TabsTrigger>
                         {isPixyAgency && (
                             <TabsTrigger value="apps">
@@ -185,13 +176,13 @@ export default function PortfolioPage() {
                 </div>
             </div>
 
-            {/* Tab Content */}
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
+            {/* Tabs Content */}
+            <Tabs value={activeTab} className="space-y-4">
                 <TabsContent value="services" className="mt-0">
                     {loading ? (
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             {[1, 2, 3, 4, 5, 6].map(i => (
-                                <div key={i} className="h-40 bg-gray-100 rounded-xl animate-pulse" />
+                                <div key={i} className="h-48 bg-gray-100 rounded-xl animate-pulse" />
                             ))}
                         </div>
                     ) : (
@@ -202,8 +193,6 @@ export default function PortfolioPage() {
                         />
                     )}
                 </TabsContent>
-
-
 
                 <TabsContent value="apps" className="mt-0">
                     {appsLoading ? (
@@ -218,14 +207,13 @@ export default function PortfolioPage() {
                 </TabsContent>
             </Tabs>
 
+            {/* Sheets */}
             <PortfolioServiceSheet
                 open={isFormOpen}
                 onOpenChange={setIsFormOpen}
                 itemToEdit={itemToEdit}
                 onSuccess={fetchServices}
             />
-
-
 
             <CreateAppSheet
                 open={isAppSheetOpen}
@@ -234,8 +222,4 @@ export default function PortfolioPage() {
             />
         </div>
     )
-}
-
-function Sincronizar() {
-    return <span>Sincronizar</span>
 }
