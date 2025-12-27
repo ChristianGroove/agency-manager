@@ -34,11 +34,13 @@ BEGIN
         name,
         slug,
         description,
+        pricing_model,
         status
     ) VALUES (
         'Complete SaaS Package - Pixy',
         'complete-package-pixy',
         'Full access to all platform modules for Pixy Agency',
+        'custom',
         'active'
     )
     ON CONFLICT (name) 

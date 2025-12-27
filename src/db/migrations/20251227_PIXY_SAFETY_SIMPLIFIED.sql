@@ -33,11 +33,12 @@ BEGIN
     LIMIT 1;
     
     IF complete_package_id IS NULL THEN
-        INSERT INTO public.saas_products (name, slug, description, status)
+        INSERT INTO public.saas_products (name, slug, description, pricing_model, status)
         VALUES (
             'Complete SaaS Package - Pixy',
             'complete-package-pixy',
             'Full access to all platform modules for Pixy Agency',
+            'custom',
             'active'
         )
         RETURNING id INTO complete_package_id;
