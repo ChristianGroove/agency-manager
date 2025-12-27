@@ -23,14 +23,16 @@ export const QuoteTemplate = forwardRef<HTMLDivElement, QuoteTemplateProps>(
                 className={cn("w-full max-w-[800px] bg-white text-gray-900 p-12 shadow-lg border border-gray-200 relative overflow-hidden rounded-xl", className)}
                 style={{ minHeight: '1123px' }}
             >
-                {/* Watermark */}
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
-                    <img
-                        src="/pixy-isotipo.png"
-                        alt="Watermark"
-                        className="w-[80%] opacity-[0.03] object-contain"
-                    />
-                </div>
+                {/* Watermark - Conditional (White-Label) */}
+                {settings?.document_watermark_url && (
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
+                        <img
+                            src={settings.document_watermark_url}
+                            alt="Watermark"
+                            className="w-[80%] opacity-[0.03] object-contain"
+                        />
+                    </div>
+                )}
 
                 <div className="flex flex-col h-full relative z-10">
                     {/* Header */}
@@ -50,10 +52,10 @@ export const QuoteTemplate = forwardRef<HTMLDivElement, QuoteTemplateProps>(
                     <div className="grid grid-cols-2 gap-12 mb-12">
                         <div>
                             <h3 className="text-xs font-bold mb-3 uppercase text-gray-500 tracking-wider">Emitido por:</h3>
-                            <p className="font-bold text-base text-gray-900">{settings?.agency_name || "Pixy"}</p>
-                            <p className="text-sm text-gray-700">{settings?.company_address || "Cra 4 #40-54 Macarena / Ibagué -Tolima"}</p>
-                            <p className="text-sm text-gray-700">{settings?.company_email || "contact@pixy.com.co"}</p>
-                            <p className="text-sm font-semibold text-gray-900 mt-1">Cel: {settings?.company_phone || "+57 350 407 6800"}</p>
+                            <p className="font-bold text-base text-gray-900">{settings?.agency_name || "[ Nombre de la Empresa ]"}</p>
+                            {settings?.company_address && <p className="text-sm text-gray-700">{settings.company_address}</p>}
+                            {settings?.company_email && <p className="text-sm text-gray-700">{settings.company_email}</p>}
+                            {settings?.company_phone && <p className="text-sm font-semibold text-gray-900 mt-1">Cel: {settings.company_phone}</p>}
                         </div>
                         <div>
                             <h3 className="text-xs font-bold mb-3 uppercase text-gray-500 tracking-wider">Para:</h3>
