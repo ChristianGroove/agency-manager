@@ -96,10 +96,17 @@ export async function updateOrganizationStatus(
     await requireSuperAdmin()
 
     // Note: Admin client doesn't have auth.getUser(), we'll need to get from regular client
-    const { createClient } = await import("@/lib/supabase-server")
-    const regularClient = await createClient()
-    const { data: { user } } = await regularClient.auth.getUser()
+    let userId = 'system'
+    try {
+        const { createClient } = await import("@/lib/supabase-server")
+        const regularClient = await createClient()
+        const { data: { user } } = await regularClient.auth.getUser()
+        if (user) userId = user.id
+    } catch (e) {
+        console.warn('Failed to get current user for audit log:', e)
+    }
 
+    // Update Organization
     const { error } = await supabaseAdmin
         .from('organizations')
         .update({
@@ -111,21 +118,22 @@ export async function updateOrganizationStatus(
         .eq('id', orgId)
 
     if (error) {
-        console.error('[updateOrganizationStatus] Error:', error)
-        throw new Error('Failed to update organization status')
+        console.error('[updateOrganizationStatus] Update Error:', error)
+        throw new Error(`Failed to update organization status: ${error.message}`)
     }
 
     // Create audit log if audit table exists
     try {
-        await supabaseAdmin.from('organization_audit_log').insert({
+        const { error: auditError } = await supabaseAdmin.from('organization_audit_log').insert({
             organization_id: orgId,
             action: status === 'suspended' ? 'suspended' : 'activated',
-            performed_by: user!.id,
+            performed_by: userId,
             details: { status, reason }
         })
+        if (auditError) console.error('[updateOrganizationStatus] Audit Error:', auditError)
     } catch (auditError) {
         // Audit log table might not exist yet, that's okay
-        console.log('[updateOrganizationStatus] Audit log not available')
+        console.log('[updateOrganizationStatus] Audit log skipped/failed:', auditError)
     }
 
     revalidatePath('/platform/admin')
