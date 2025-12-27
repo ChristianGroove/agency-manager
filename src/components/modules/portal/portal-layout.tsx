@@ -90,8 +90,14 @@ export function PortalLayout({ token, client, invoices, quotes, briefings, event
     const pendingBriefings = briefings.filter(b => b.status === 'sent' || b.status === 'in_progress')
     const openQuotes = quotes.filter(q => q.status === 'sent')
 
-    // Notifications Count
-    const notificationCount = pendingInvoices.length + pendingBriefings.length + openQuotes.length
+    // Notifications Count (Module-Aware)
+    // Only count items if the corresponding module is active
+    const hasInvoicingModule = activeModules.some(m => m.slug === 'module_invoicing')
+    const hasBriefingsModule = activeModules.some(m => m.slug === 'module_briefings' || m.slug === 'core_services')
+
+    const notificationCount =
+        (hasInvoicingModule ? pendingInvoices.length + openQuotes.length : 0) +
+        (hasBriefingsModule ? pendingBriefings.length : 0)
 
     const handleViewBriefing = (id: string) => {
         // Find first tab that maps to 'services' component
