@@ -57,6 +57,23 @@ export async function getCurrentOrganizationId() {
 }
 
 /**
+ * Get current organization name
+ */
+export async function getCurrentOrgName() {
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) return null
+
+    const supabase = await createClient()
+    const { data } = await supabase
+        .from('organizations')
+        .select('name')
+        .eq('id', orgId)
+        .single()
+
+    return data?.name || null
+}
+
+/**
  * Create a new Organization (Tenant Provisioning)
  */
 export async function createOrganization(formData: {

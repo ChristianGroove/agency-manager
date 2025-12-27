@@ -10,11 +10,11 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Plus, RefreshCw, Sparkles } from "lucide-react"
+import { Plus } from "lucide-react"
 import { PortfolioList } from "@/components/modules/portfolio/portfolio-list"
 import { PortfolioServiceSheet } from "@/components/modules/portfolio/portfolio-service-sheet"
 import { CategoryManager } from "@/components/modules/services/category-manager"
-import { getPortfolioItems, deletePortfolioItem, syncAllBriefingTemplates } from "@/lib/actions/portfolio"
+import { getPortfolioItems, deletePortfolioItem } from "@/lib/actions/portfolio"
 import { ServiceCatalogItem } from "@/types"
 import { BriefingTemplate } from "@/types/briefings"
 import { toast } from "sonner"
@@ -35,7 +35,8 @@ export default function PortfolioPage() {
     const [loading, setLoading] = useState(true)
     const [isFormOpen, setIsFormOpen] = useState(false)
     const [itemToEdit, setItemToEdit] = useState<ServiceCatalogItem | null>(null)
-    const [isSyncing, setIsSyncing] = useState(false)
+
+    const [currentOrgName, setCurrentOrgName] = useState<string>('')
 
 
 
@@ -44,21 +45,31 @@ export default function PortfolioPage() {
     const [appsLoading, setAppsLoading] = useState(true)
     const [isAppSheetOpen, setIsAppSheetOpen] = useState(false)
 
-    const handleSync = async () => {
-        setIsSyncing(true)
+    // Check if current org is Pixy Agency (SaaS Builder)
+    const isPixyAgency = currentOrgName === 'Pixy Agency'
+
+    const fetchOrgName = async () => {
         try {
-            const result = await syncAllBriefingTemplates()
-            if (result && result.count > 0) {
-                toast.success(`${result.count} plantillas creadas correctamente`)
-            } else {
-                toast.info("Todas las plantillas ya están sincronizadas")
-            }
+            const { getCurrentOrganizationId } = await import('@/lib/actions/organizations')
+            const { createClient } = await import('@/lib/supabase-server')
+
+            const orgId = await getCurrentOrganizationId()
+            if (!orgId) return
+
+            const supabase = await createClient()
+            const { data } = await supabase
+                .from('organizations')
+                .select('name')
+                .eq('id', orgId)
+                .single()
+
+            setCurrentOrgName(data?.name || '')
         } catch (error) {
-            toast.error("Error al sincronizar plantillas")
-        } finally {
-            setIsSyncing(false)
+            console.error('Error fetching org:', error)
         }
     }
+
+
 
     const fetchServices = async () => {
         setLoading(true)
@@ -93,9 +104,12 @@ export default function PortfolioPage() {
     }
 
     useEffect(() => {
+        fetchOrgName()
         fetchServices()
-        fetchApps()
-    }, [])
+        if (isPixyAgency) {
+            fetchApps() // Only fetch apps if Pixy Agency
+        }
+    }, [isPixyAgency])
 
     const handleCreateService = () => {
         setItemToEdit(null)
@@ -136,12 +150,14 @@ export default function PortfolioPage() {
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 {/* Left: Tabs */}
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
-                    <TabsList className="grid w-full max-w-md grid-cols-2">
+                    <TabsList className={cn("grid w-full", isPixyAgency ? "max-w-md grid-cols-2" : "max-w-xs grid-cols-1")}>
                         <TabsTrigger value="services">Servicios</TabsTrigger>
-                        <TabsTrigger value="apps">
-                            <Package className="h-4 w-4 mr-2" />
-                            Apps SaaS
-                        </TabsTrigger>
+                        {isPixyAgency && (
+                            <TabsTrigger value="apps">
+                                <Package className="h-4 w-4 mr-2" />
+                                Apps SaaS
+                            </TabsTrigger>
+                        )}
                     </TabsList>
                 </Tabs>
 
@@ -151,14 +167,6 @@ export default function PortfolioPage() {
                         <>
                             <CategoryManager />
                             <Button
-                                onClick={handleSync}
-                                variant="outline"
-                                className="border-brand-pink/20 text-brand-pink hover:bg-brand-pink/5"
-                            >
-                                <RefreshCw className={cn("mr-2 h-4 w-4", isSyncing ? "animate-spin" : "")} />
-                                Sincronizar
-                            </Button>
-                            <Button
                                 onClick={handleCreateService}
                                 className="bg-brand-pink hover:bg-brand-pink/90 text-white shadow-lg shadow-brand-pink/20"
                             >
@@ -166,7 +174,7 @@ export default function PortfolioPage() {
                             </Button>
                         </>
                     )}
-                    {activeTab === "apps" && (
+                    {activeTab === "apps" && isPixyAgency && (
                         <Button
                             onClick={() => setIsAppSheetOpen(true)}
                             className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20"
