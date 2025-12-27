@@ -1,6 +1,6 @@
 "use server"
 
-import { createClient } from "@/lib/supabase-server"
+import { createAdminClient } from "@/lib/supabase-admin"
 import { requireSuperAdmin } from "@/lib/auth/platform-roles"
 import { revalidatePath } from "next/cache"
 
@@ -24,7 +24,7 @@ export interface AdminOrganization {
 export async function getAdminOrganizations(): Promise<AdminOrganization[]> {
     await requireSuperAdmin()
 
-    const supabase = await createClient()
+    const supabase = createAdminClient()
     const { data, error } = await supabase
         .from('organizations')
         .select(`
@@ -141,7 +141,7 @@ export async function updateOrganizationStatus(
 export async function getOrganizationUsers(orgId: string) {
     await requireSuperAdmin()
 
-    const supabase = await createClient()
+    const supabase = createAdminClient()
     const { data, error } = await supabase
         .from('organization_users')
         .select(`
