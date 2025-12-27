@@ -95,13 +95,12 @@ export async function updateDocumentBranding(settings: Partial<DocumentBrandingS
  */
 export function getDocumentBrandingDefaults(): DocumentBrandingSettings {
     return {
-        document_primary_color: '#6D28D9', // purple-600
-        document_secondary_color: '#EC4899', // pink-500
-        document_logo_url: '/branding/logo dark.svg',
+        document_primary_color: '#6B7280', // gray-500 (neutral)
+        document_secondary_color: '#6B7280', // gray-500 (neutral)
+        document_logo_url: undefined,
         document_logo_size: 'medium',
         document_template_style: 'modern',
         document_show_watermark: true,
-        document_watermark_text: undefined,
         document_font_family: 'Inter',
         document_header_text_color: '#1F2937', // gray-800
         document_footer_text_color: '#6B7280', // gray-500
