@@ -40,7 +40,6 @@ import { supabase } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { ServiceCatalogSelector } from "./service-catalog-selector"
-import { CategoryManager } from "./category-manager"
 import { logDomainEventAction } from "@/app/actions/log-actions"
 
 interface CreateServiceSheetProps {
@@ -299,17 +298,14 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
 
     return (
         <Sheet open={open} onOpenChange={setOpen}>
-            <div className="flex items-center gap-2">
-                <SheetTrigger asChild>
-                    {trigger || (
-                        <Button className="h-9 px-4 bg-brand-pink hover:bg-brand-pink/90 shadow-md text-white border-0">
-                            <Plus className="mr-2 h-4 w-4" />
-                            {serviceToEdit ? 'Editar Servicio' : 'Añadir Servicio'}
-                        </Button>
-                    )}
-                </SheetTrigger>
-                <CategoryManager />
-            </div>
+            <SheetTrigger asChild>
+                {trigger || (
+                    <Button className="h-9 px-4 bg-brand-pink hover:bg-brand-pink/90 shadow-md text-white border-0">
+                        <Plus className="mr-2 h-4 w-4" />
+                        {serviceToEdit ? 'Editar Servicio' : 'Añadir Servicio'}
+                    </Button>
+                )}
+            </SheetTrigger>
             <SheetContent
                 side="right"
                 className="

@@ -15,6 +15,7 @@ import { PortfolioList } from "@/components/modules/portfolio/portfolio-list"
 import { PortfolioServiceSheet } from "@/components/modules/portfolio/portfolio-service-sheet"
 import { BriefingTemplatesList } from "@/components/modules/briefings/briefing-templates-list"
 import { BriefingBuilderSheet } from "@/components/modules/briefings/briefing-builder-sheet"
+import { CategoryManager } from "@/components/modules/services/category-manager"
 import { getPortfolioItems, deletePortfolioItem, syncAllBriefingTemplates } from "@/lib/actions/portfolio"
 import { getBriefingTemplates, deleteBriefingTemplate } from "@/lib/actions/briefings"
 import { ServiceCatalogItem } from "@/types"
@@ -187,13 +188,14 @@ export default function PortfolioPage() {
                 <div className="flex items-center gap-2 w-full md:w-auto">
                     {activeTab === "services" && (
                         <>
+                            <CategoryManager />
                             <Button
                                 onClick={handleSync}
                                 variant="outline"
                                 className="border-brand-pink/20 text-brand-pink hover:bg-brand-pink/5"
                             >
                                 <RefreshCw className={cn("mr-2 h-4 w-4", isSyncing ? "animate-spin" : "")} />
-                                <Sincronizar />
+                                Sincronizar
                             </Button>
                             <Button
                                 onClick={handleCreateService}
