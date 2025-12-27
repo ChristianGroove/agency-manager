@@ -6,14 +6,22 @@ import { ServiceCatalogItem } from "@/types"
 import { revalidatePath } from "next/cache"
 import { slugify } from "@/lib/utils"
 
+import { getCurrentOrganizationId } from "./organizations"
+
 export async function getPortfolioItems() {
     const supabase = await createClient()
-    const { data, error } = await supabase
+    const orgId = await getCurrentOrganizationId()
+
+    let query = supabase
         .from('services')
         .select('*')
         .eq('is_catalog_item', true)
         .order('category')
         .order('name')
+
+    if (orgId) query = query.eq('organization_id', orgId)
+
+    const { data, error } = await query
 
     if (error) throw error
     return data as ServiceCatalogItem[] // Types are compatible

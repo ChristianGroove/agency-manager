@@ -50,12 +50,8 @@ export default function PaymentsPage() {
 
     const fetchTransactions = async () => {
         try {
-            const { data, error } = await supabase
-                .from('payment_transactions')
-                .select('*')
-                .order('created_at', { ascending: false })
-
-            if (error) throw error
+            const { getPaymentTransactions } = await import("@/app/actions/payments-actions")
+            const data = await getPaymentTransactions()
             setTransactions(data || [])
         } catch (error) {
             console.error('Error fetching transactions:', error)

@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { login } from "@/lib/actions/auth"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -65,6 +66,13 @@ export default function LoginPage() {
                             <div className="space-y-2">
                                 <div className="flex items-center justify-between">
                                     <Label htmlFor="password" className="text-gray-300">Contraseña</Label>
+                                    <Link
+                                        href="/forgot-password"
+                                        className="text-xs text-brand-pink hover:text-brand-pink/80 transition-colors font-medium"
+                                        tabIndex={-1}
+                                    >
+                                        ¿Olvidaste tu contraseña?
+                                    </Link>
                                 </div>
                                 <Input
                                     id="password"

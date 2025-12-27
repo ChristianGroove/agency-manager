@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
+import { updateSession } from '@/lib/supabase-middleware'
+
 const rateLimit = new Map<string, { count: number, lastReset: number }>()
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
     const url = request.nextUrl
     const hostname = request.headers.get('host') || ''
     const ip = request.headers.get('x-forwarded-for') || 'unknown'
@@ -13,6 +15,13 @@ export function middleware(request: NextRequest) {
     // We can use an environment variable or just check for the specific production domain.
     // Also support 'mi.localhost' for local testing if configured in hosts file.
     const isPortalDomain = hostname === 'mi.pixy.com.co' || hostname.startsWith('mi.')
+
+    // Initialize response
+    let response = NextResponse.next({
+        request: {
+            headers: request.headers,
+        },
+    })
 
     // 1. Portal Domain Routing
     if (isPortalDomain) {
@@ -40,28 +49,17 @@ export function middleware(request: NextRequest) {
 
         // Allow public assets
         if (path.startsWith('/_next') || path.startsWith('/static') || path.includes('.')) {
-            return NextResponse.next()
-        }
-
-        // If path is just '/', maybe show a generic login or 404? 
-        // Or if they have a token in path like mi.pixy.com.co/ABC1234
-        if (path === '/') {
+            // response is already next()
+        } else if (path === '/') {
             // For now, maybe just 404 or a generic "Welcome to Client Portal" page
             // We can rewrite to a specific landing page if it exists
-            return NextResponse.next()
-        }
-
-        // If path is like /ABC1234 (6 chars), rewrite to /portal/ABC1234
-        // We can be more loose and just rewrite everything that isn't an API route
-        if (!path.startsWith('/api')) {
+            // response is already next()
+        } else if (!path.startsWith('/api') && !path.startsWith('/portal')) {
             // Check if it looks like a token (alphanumeric)
             // Actually, we can just rewrite /:token to /portal/:token
             // But we need to be careful not to loop if we are already at /portal
-
-            if (!path.startsWith('/portal')) {
-                // Rewrite /token -> /portal/token
-                return NextResponse.rewrite(new URL(`/portal${path}`, request.url))
-            }
+            // Rewrite /token -> /portal/token
+            response = NextResponse.rewrite(new URL(`/portal${path}`, request.url))
         }
     }
 
@@ -69,7 +67,8 @@ export function middleware(request: NextRequest) {
     // We might want to BLOCK access to /portal routes from the main domain to enforce separation
     // But for now, let's just focus on the portal domain rewrite.
 
-    return NextResponse.next()
+    // Refresh Supabase Session
+    return await updateSession(request, response)
 }
 
 export const config = {

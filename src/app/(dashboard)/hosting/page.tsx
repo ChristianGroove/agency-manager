@@ -90,22 +90,15 @@ export default function ServicesPage() {
 
     const fetchServices = async () => {
         setLoading(true)
-        // Fetch from 'services' table instead of 'subscriptions'
-        const { data, error } = await supabase
-            .from('services')
-            .select(`
-    *,
-    client: clients(id, name, company_name)
-        `)
-            .is('deleted_at', null) // Filter out soft-deleted services
-            .order('created_at', { ascending: false })
-
-        if (error) {
+        try {
+            const { getServices } = await import("@/app/actions/services-actions")
+            const data = await getServices()
+            if (data) setServices(data as unknown as ServiceFromDB[])
+        } catch (error) {
             console.error("Error fetching services:", error)
-        } else if (data) {
-            setServices(data)
+        } finally {
+            setLoading(false)
         }
-        setLoading(false)
     }
 
     useEffect(() => {

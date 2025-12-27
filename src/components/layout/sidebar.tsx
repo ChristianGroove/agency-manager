@@ -59,40 +59,25 @@ const routes = [
 interface SidebarProps {
     isCollapsed: boolean;
     toggleCollapse: () => void;
+    currentOrgId: string | null;
 }
 
-export function PixyLogo({ className }: { className?: string }) {
-    return (
-        <img
-            src="/branding/iso.svg"
-            alt="Pixy"
-            className={cn("object-contain", className)}
-        />
-    )
-}
+import { OrganizationSwitcher } from "@/components/organizations/organization-switcher"
 
-export function SidebarContent({ isCollapsed = false }: { isCollapsed?: boolean }) {
+export function SidebarContent({ isCollapsed = false, currentOrgId }: { isCollapsed?: boolean, currentOrgId: string | null }) {
     const pathname = usePathname()
 
     return (
         <div className="px-3 py-6 flex-1 flex flex-col h-full">
-            <Link href="/dashboard" className={cn("flex items-center mb-10 transition-all duration-300", isCollapsed ? "justify-center px-0" : "pl-3")}>
-                <div className={cn("relative transition-all duration-300", isCollapsed ? "w-10 h-10" : "w-32 h-10")}>
-                    {isCollapsed ? (
-                        <img
-                            src="/branding/iso.svg"
-                            alt="Pixy"
-                            className="w-full h-full object-contain"
-                        />
-                    ) : (
-                        <img
-                            src="/branding/logo light.svg"
-                            alt="Pixy"
-                            className="w-full h-full object-contain object-left"
-                        />
-                    )}
-                </div>
-            </Link>
+            <div className={cn("flex items-center mb-10 transition-all duration-300", isCollapsed ? "justify-center px-0" : "px-0")}>
+                {isCollapsed ? (
+                    <div className="w-10 h-10 flex items-center justify-center bg-indigo-600 rounded-lg text-white font-bold text-sm">
+                        PX
+                    </div>
+                ) : (
+                    <OrganizationSwitcher key={currentOrgId} />
+                )}
+            </div>
 
             <div className="space-y-2 flex-1">
                 {routes.map((route) => (
@@ -129,13 +114,13 @@ export function SidebarContent({ isCollapsed = false }: { isCollapsed?: boolean 
                     </div>
                 </button>
             </div>
-        </div>
+        </div >
     )
 }
 
 
 
-export function Sidebar({ isCollapsed, toggleCollapse }: SidebarProps) {
+export function Sidebar({ isCollapsed, toggleCollapse, currentOrgId }: SidebarProps) {
     const [isDragging, setIsDragging] = React.useState(false)
     const [dragStartX, setDragStartX] = React.useState(0)
     const dragThreshold = 50 // pixels to drag before triggering collapse/expand
@@ -194,7 +179,7 @@ export function Sidebar({ isCollapsed, toggleCollapse }: SidebarProps) {
                 </div>
             </button>
 
-            <SidebarContent isCollapsed={isCollapsed} />
+            <SidebarContent isCollapsed={isCollapsed} currentOrgId={currentOrgId} />
         </div>
     )
 }

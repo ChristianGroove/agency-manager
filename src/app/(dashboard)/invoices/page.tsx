@@ -48,17 +48,15 @@ export default function InvoicesPage() {
 
     const fetchInvoices = async () => {
         setLoading(true)
-        const { data, error } = await supabase
-            .from('invoices')
-            .select(`
-                *,
-                client:clients(name)
-            `)
-            .is('deleted_at', null)
-            .order('date', { ascending: false })
-
-        if (data) setInvoices(data as unknown as Invoice[]) // Cast to new type
-        setLoading(false)
+        try {
+            const { getInvoices } = await import("@/app/actions/invoices-actions")
+            const data = await getInvoices()
+            if (data) setInvoices(data)
+        } catch (error) {
+            console.error("Error fetching invoices:", error)
+        } finally {
+            setLoading(false)
+        }
     }
 
     useEffect(() => {

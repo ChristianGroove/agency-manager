@@ -23,6 +23,12 @@ import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { SplitText } from "@/components/ui/split-text"
 
+import { getSaaSProducts } from "@/lib/actions/saas"
+import { SaaSProduct } from "@/types/saas"
+import { AppList } from "@/components/modules/saas/app-list"
+import { CreateAppSheet } from "@/components/modules/saas/create-app-sheet"
+import { Package } from "lucide-react"
+
 export default function PortfolioPage() {
     const [activeTab, setActiveTab] = useState("services")
 
@@ -38,6 +44,11 @@ export default function PortfolioPage() {
     const [templatesLoading, setTemplatesLoading] = useState(true)
     const [isBuilderOpen, setIsBuilderOpen] = useState(false)
     const [templateToEdit, setTemplateToEdit] = useState<BriefingTemplate | null>(null)
+
+    // SaaS Apps state
+    const [apps, setApps] = useState<SaaSProduct[]>([])
+    const [appsLoading, setAppsLoading] = useState(true)
+    const [isAppSheetOpen, setIsAppSheetOpen] = useState(false)
 
     const handleSync = async () => {
         setIsSyncing(true)
@@ -81,9 +92,24 @@ export default function PortfolioPage() {
         }
     }
 
+    const fetchApps = async () => {
+        setAppsLoading(true)
+        try {
+            // Using server action for apps
+            const data = await getSaaSProducts()
+            setApps(data)
+        } catch (error) {
+            console.error(error)
+            toast.error("Error al cargar Apps SaaS")
+        } finally {
+            setAppsLoading(false)
+        }
+    }
+
     useEffect(() => {
         fetchServices()
         fetchTemplates()
+        fetchApps()
     }, [])
 
     const handleCreateService = () => {
@@ -98,7 +124,6 @@ export default function PortfolioPage() {
 
     const handleDeleteService = async (id: string) => {
         if (!confirm("¿Estás seguro de eliminar este servicio? Esta acción no se puede deshacer.")) return
-
         try {
             await deletePortfolioItem(id)
             toast.success("Servicio eliminado")
@@ -120,7 +145,6 @@ export default function PortfolioPage() {
 
     const handleDeleteTemplate = async (id: string) => {
         if (!confirm("¿Estás seguro de eliminar esta plantilla? Esta acción no se puede deshacer.")) return
-
         try {
             await deleteBriefingTemplate(id)
             toast.success("Plantilla eliminada")
@@ -138,7 +162,7 @@ export default function PortfolioPage() {
                     <SplitText>Catálogo</SplitText>
                 </h1>
                 <p className="text-muted-foreground mt-1">
-                    Servicios y plantillas de briefing que ofrece tu agencia.
+                    Servicios, plantillas y productos SaaS que ofrece tu agencia.
                 </p>
             </div>
 
@@ -146,18 +170,22 @@ export default function PortfolioPage() {
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 {/* Left: Tabs */}
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
-                    <TabsList className="grid w-full max-w-md grid-cols-2">
+                    <TabsList className="grid w-full max-w-2xl grid-cols-3">
                         <TabsTrigger value="services">Servicios</TabsTrigger>
                         <TabsTrigger value="briefings">
                             <Sparkles className="h-4 w-4 mr-2" />
-                            Plantillas de Briefing
+                            Plantillas
+                        </TabsTrigger>
+                        <TabsTrigger value="apps">
+                            <Package className="h-4 w-4 mr-2" />
+                            Apps SaaS
                         </TabsTrigger>
                     </TabsList>
                 </Tabs>
 
                 {/* Right: Actions (conditional based on active tab) */}
                 <div className="flex items-center gap-2 w-full md:w-auto">
-                    {activeTab === "services" ? (
+                    {activeTab === "services" && (
                         <>
                             <Button
                                 onClick={handleSync}
@@ -174,12 +202,21 @@ export default function PortfolioPage() {
                                 <Plus className="mr-2 h-4 w-4" /> Nuevo Servicio
                             </Button>
                         </>
-                    ) : (
+                    )}
+                    {activeTab === "briefings" && (
                         <Button
                             onClick={handleCreateTemplate}
                             className="bg-pink-600 hover:bg-pink-700 text-white shadow-lg shadow-pink-500/20"
                         >
                             <Plus className="mr-2 h-4 w-4" /> Nueva Plantilla
+                        </Button>
+                    )}
+                    {activeTab === "apps" && (
+                        <Button
+                            onClick={() => setIsAppSheetOpen(true)}
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20"
+                        >
+                            <Plus className="mr-2 h-4 w-4" /> Nueva App
                         </Button>
                     )}
                 </div>
@@ -218,6 +255,18 @@ export default function PortfolioPage() {
                         />
                     )}
                 </TabsContent>
+
+                <TabsContent value="apps" className="mt-0">
+                    {appsLoading ? (
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {[1, 2, 3].map(i => (
+                                <div key={i} className="h-48 bg-gray-100 rounded-xl animate-pulse" />
+                            ))}
+                        </div>
+                    ) : (
+                        <AppList items={apps} onEdit={(app) => { }} />
+                    )}
+                </TabsContent>
             </Tabs>
 
             <PortfolioServiceSheet
@@ -232,6 +281,12 @@ export default function PortfolioPage() {
                 onOpenChange={setIsBuilderOpen}
                 templateToEdit={templateToEdit}
                 onSuccess={fetchTemplates}
+            />
+
+            <CreateAppSheet
+                open={isAppSheetOpen}
+                onOpenChange={setIsAppSheetOpen}
+                onSuccess={fetchApps}
             />
         </div>
     )

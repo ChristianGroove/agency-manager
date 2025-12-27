@@ -11,6 +11,7 @@ import {
 import { supabase } from "@/lib/supabase"
 import { NotificationList } from "./notification-list"
 import { checkUpcomingPayments } from "@/lib/notifications"
+import { getCurrentOrganizationId } from "@/lib/actions/organizations"
 
 type Notification = {
     id: string
@@ -42,10 +43,20 @@ export function NotificationBell() {
             const { data: { user } } = await supabase.auth.getUser()
             if (!user) return
 
+            // CRITICAL: Get current organization to filter notifications
+            const orgId = await getCurrentOrganizationId()
+            if (!orgId) {
+                setNotifications([])
+                setUnreadCount(0)
+                setLoading(false)
+                return
+            }
+
             const { data, error } = await supabase
                 .from('notifications')
                 .select('*')
                 .eq('user_id', user.id)
+                .eq('organization_id', orgId) // STRICT FILTERING BY ORGANIZATION
                 .order('created_at', { ascending: false })
                 .limit(10)
 
@@ -84,10 +95,15 @@ export function NotificationBell() {
             const { data: { user } } = await supabase.auth.getUser()
             if (!user) return
 
+            // CRITICAL: Get current organization to only mark this org's notifications
+            const orgId = await getCurrentOrganizationId()
+            if (!orgId) return
+
             const { error } = await supabase
                 .from('notifications')
                 .update({ read: true })
                 .eq('user_id', user.id)
+                .eq('organization_id', orgId) // STRICT FILTERING BY ORGANIZATION
                 .eq('read', false)
 
             if (error) throw error
@@ -104,9 +120,8 @@ export function NotificationBell() {
         fetchNotifications()
 
         // Poll for new notifications every 60 seconds
-        const interval = setInterval(fetchNotifications, 60000)
-
-        return () => clearInterval(interval)
+        // const interval = setInterval(fetchNotifications, 60000)
+        // return () => clearInterval(interval)
     }, [])
 
     if (!isMounted) {

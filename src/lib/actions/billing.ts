@@ -42,10 +42,16 @@ export async function createInvoice(data: CreateInvoiceDTO) {
             }
         }
 
+        const { getCurrentOrganizationId } = await import("./organizations")
+        const orgId = await getCurrentOrganizationId()
+
         // 1. Create Invoice
         const { data: invoice, error } = await supabase
             .from('invoices')
-            .insert(invoicePayload)
+            .insert({
+                ...invoicePayload,
+                organization_id: orgId!
+            })
             .select()
             .single()
 

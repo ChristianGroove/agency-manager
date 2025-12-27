@@ -7,7 +7,15 @@ import { cn } from "@/lib/utils"
 
 import { BillingAutomator } from "@/components/modules/billing/billing-automator"
 
-export function DashboardShell({ children }: { children: React.ReactNode }) {
+import { User } from "@supabase/supabase-js"
+
+interface DashboardShellProps {
+    children: React.ReactNode
+    user: User
+    currentOrgId: string | null
+}
+
+export function DashboardShell({ children, user, currentOrgId }: DashboardShellProps) {
     const [isCollapsed, setIsCollapsed] = useState(false)
 
     return (
@@ -18,6 +26,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                 <Sidebar
                     isCollapsed={isCollapsed}
                     toggleCollapse={() => setIsCollapsed(!isCollapsed)}
+                    currentOrgId={currentOrgId}
                 />
             </div>
 
@@ -29,7 +38,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                 )}
             >
                 <div className="print:hidden sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-gray-100">
-                    <Header />
+                    <Header currentOrgId={currentOrgId} />
                 </div>
                 <div className="p-6 print:p-0">
                     {children}

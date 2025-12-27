@@ -5,6 +5,7 @@ import { FullBriefingTemplate, Briefing } from "@/types/briefings"
 import { revalidatePath } from "next/cache"
 import { Resend } from 'resend'
 import { getBriefingSubmissionEmailHtml } from '@/lib/email-templates'
+import { getCurrentOrganizationId } from "./organizations"
 
 // --- Admin Actions ---
 
@@ -12,10 +13,14 @@ import { getBriefingSubmissionEmailHtml } from '@/lib/email-templates'
 
 export async function getBriefingTemplates() {
     const supabase = await createClient()
-    const { data: rawData, error } = await supabase
-        .from('briefing_templates')
-        .select('*')
-        .order('name')
+    const orgId = await getCurrentOrganizationId()
+
+    // Note: Templates might be global (system) or per-org. 
+    // If per-org, filtered by RLS. We verify explicitly.
+    let query = supabase.from('briefing_templates').select('*').order('name')
+    if (orgId) query = query.eq('organization_id', orgId)
+
+    const { data: rawData, error } = await query
 
     if (error) throw error
 
@@ -36,13 +41,17 @@ export async function createBriefingTemplate(data: {
 }) {
     const supabase = await createClient()
 
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) throw new Error("No Organization Selected")
+
     const { data: template, error } = await supabase
         .from('briefing_templates')
         .insert({
             name: data.name,
             description: data.description || null,
             slug: data.slug,
-            structure: data.structure
+            structure: data.structure,
+            organization_id: orgId
         })
         .select()
         .single()
@@ -109,13 +118,17 @@ export async function createBriefing(templateId: string, clientId: string | null
         throw new Error("User not authenticated")
     }
 
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) throw new Error("No Organization Selected")
+
     const { data, error } = await supabase
         .from('briefings')
         .insert({
             template_id: templateId,
             client_id: clientId,
             service_id: serviceId,
-            status: 'draft'
+            status: 'draft',
+            organization_id: orgId
         })
         .select()
         .single()
@@ -127,6 +140,10 @@ export async function createBriefing(templateId: string, clientId: string | null
 
 export async function getBriefings() {
     const supabase = await createClient()
+    const orgId = await getCurrentOrganizationId()
+
+    if (!orgId) return []
+
     const { data, error } = await supabase
         .from('briefings')
         .select(`
@@ -134,6 +151,7 @@ export async function getBriefings() {
             template:briefing_templates(name),
             client:clients(name, email)
         `)
+        .eq('organization_id', orgId)
         .is('deleted_at', null)
         .order('created_at', { ascending: false })
 

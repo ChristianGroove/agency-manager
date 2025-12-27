@@ -3,6 +3,8 @@
 import { createClient } from "@/lib/supabase-server"
 import { revalidatePath } from "next/cache"
 import { logDomainEvent } from "@/lib/event-logger"
+import { getCurrentOrganizationId } from "@/lib/actions/organizations"
+import { Client } from "@/types"
 
 interface QuickProspectData {
     name: string
@@ -20,9 +22,13 @@ export async function quickCreateProspect(data: QuickProspectData) {
         if (!data.name) return { success: false, error: "Missing name" }
         if (!data.userId) return { success: false, error: "Forbiden: Missing User ID" }
 
+        const orgId = await getCurrentOrganizationId()
+        if (!orgId) return { success: false, error: "No organization context found" }
+
         const { data: newClient, error } = await supabase
             .from('clients')
             .insert({
+                organization_id: orgId,
                 user_id: data.userId,
                 name: data.name,
                 email: data.email,
@@ -56,4 +62,37 @@ export async function quickCreateProspect(data: QuickProspectData) {
         console.error("Error creating prospect:", error)
         return { success: false, error: error.message || 'Failed to create prospect' }
     }
+}
+
+export async function getClients() {
+    const supabase = await createClient()
+    const orgId = await getCurrentOrganizationId()
+
+    let query = supabase
+        .from('clients')
+        .select(`
+          *,
+          portal_token,
+          portal_short_token,
+          invoices (id, total, status, due_date, number, pdf_url, deleted_at),
+          quotes (id, number, total, status, pdf_url, deleted_at),
+          hosting_accounts (status, renewal_date),
+          subscriptions (id, name, next_billing_date, status, amount, service_type, frequency),
+          services (id, status)
+        `)
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false })
+
+    if (orgId) {
+        query = query.eq('organization_id', orgId)
+    }
+
+    const { data, error } = await query
+
+    if (error) {
+        console.error("Error fetching clients:", error)
+        return []
+    }
+
+    return data as unknown as Client[]
 }

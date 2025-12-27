@@ -1,85 +1,45 @@
 'use server'
 
-import { supabaseAdmin } from "@/lib/supabase-admin"
-import { Service } from "@/types"
-import { logDomainEvent } from "@/lib/event-logger"
+import { createClient } from "@/lib/supabase-server"
+import { getCurrentOrganizationId } from "@/lib/actions/organizations"
 
-export async function toggleServiceStatus(
-    serviceId: string,
-    newStatus: 'active' | 'paused',
-    resumeOptions?: {
-        newFrequency?: string
-        newNextBillingDate?: string // ISO string or null
+export async function getServices() {
+    const supabase = await createClient()
+    const orgId = await getCurrentOrganizationId()
+
+    if (!orgId) return []
+
+    const { data, error } = await supabase
+        .from('services')
+        .select(`
+            *,
+            client: clients(id, name, company_name)
+        `)
+        .eq('organization_id', orgId)
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false })
+
+    if (error) {
+        console.error("Error fetching services:", error)
+        return []
     }
-) {
-    try {
-        // 1. Get Service Info for Log
-        const { data: service, error: fetchError } = await supabaseAdmin
-            .from('services')
-            .select('*, client:clients(id, name)')
-            .eq('id', serviceId)
-            .single()
 
-        if (fetchError || !service) throw new Error('Service not found')
+    return data
+}
 
-        // 2. Prepare Update Data
-        const updateData: any = { status: newStatus }
+export async function toggleServiceStatus(id: string, status: string) {
+    const supabase = await createClient()
+    const { error } = await supabase
+        .from('services')
+        .update({ status })
+        .eq('id', id)
 
-        if (newStatus === 'active' && resumeOptions) {
-            if (resumeOptions.newFrequency) {
-                updateData.frequency = resumeOptions.newFrequency
-            }
-            if (resumeOptions.newNextBillingDate) {
-                updateData.next_billing_date = resumeOptions.newNextBillingDate
-            }
-        }
-
-        // 3. Update Service
-        const { error: updateError } = await supabaseAdmin
-            .from('services')
-            .update(updateData)
-            .eq('id', serviceId)
-
-        if (updateError) throw updateError
-
-        // 4. Create Client Event (Log)
-        const eventTitle = newStatus === 'active' ? 'Servicio Reanudado' : 'Servicio Pausado'
-        const eventIcon = newStatus === 'active' ? 'PlayCircle' : 'PauseCircle'
-        const description = newStatus === 'active'
-            ? `Se ha reanudado el servicio: ${service.name}. ${resumeOptions?.newNextBillingDate ? 'Ciclo de facturación actualizado.' : ''}`
-            : `Se ha pausado el servicio: ${service.name}. Facturación detenida.`
-
-        await supabaseAdmin.from('client_events').insert({
-            client_id: service.client_id,
-            type: 'system',
-            title: eventTitle,
-            description: description,
-            metadata: {
-                service_id: serviceId,
-                previous_status: service.status,
-                new_status: newStatus
-            },
-            icon: eventIcon
-        })
-
-        // 5. Log Domain Event (Audit)
-        await logDomainEvent({
-            entity_type: 'service',
-            entity_id: serviceId,
-            event_type: newStatus === 'active' ? 'service.resumed' : 'service.paused',
-            payload: {
-                clientId: service.client_id, // Critical for Client Timeline filtering
-                previous_status: service.status,
-                new_status: newStatus,
-                resume_options: resumeOptions,
-                service_name: service.name
-            },
-            triggered_by: 'user'
-        })
-
-        return { success: true }
-    } catch (error) {
-        console.error('toggleServiceStatus Error:', error)
-        return { success: false, error: 'Error toggling service status' }
+    if (error) {
+        console.error("Error updating service status:", error)
+        return { success: false, error: error.message }
     }
+
+    // Revalidate relevant paths
+    // revalidatePath('/hosting') // Not needed if we return success and client refetches
+    return { success: true }
 }

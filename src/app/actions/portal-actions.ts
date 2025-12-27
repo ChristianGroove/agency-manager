@@ -28,13 +28,19 @@ export async function getPortalData(token: string) {
             throw new Error('Invalid token or client not found')
         }
 
-        // 2. Fetch Related Data in Parallel
+        // 2. First, fetch settings to check for super admin mode
+        const { data: settings } = await supabaseAdmin
+            .from('organization_settings')
+            .select('*')
+            .eq('organization_id', client.organization_id)
+            .single()
+
+        // 3. Fetch Related Data in Parallel
         const [
             { data: invoices },
             { data: quotes },
             { data: briefings },
             { data: events },
-            { data: settings },
             { data: services }
         ] = await Promise.all([
             // Invoices: Filter out cancelled and deleted
@@ -45,10 +51,50 @@ export async function getPortalData(token: string) {
             supabaseAdmin.from('briefings').select('*, template:briefing_templates(name)').eq('client_id', client.id).is('deleted_at', null).order('created_at', { ascending: false }),
             // Events: Add deleted_at filter
             supabaseAdmin.from('client_events').select('*').eq('client_id', client.id).order('created_at', { ascending: false }),
-            supabaseAdmin.from('organization_settings').select('*').single(),
             // Services: Add deleted_at filter
             supabaseAdmin.from('services').select('*').eq('client_id', client.id).eq('status', 'active').is('deleted_at', null).order('created_at', { ascending: false })
         ])
+
+        // 4. Fetch portal modules (conditional based on super admin mode)
+        let activePortalModules: Array<{
+            slug: string
+            portal_tab_label: string
+            portal_icon_key: string
+        }> = []
+
+        if (settings?.show_all_portal_modules) {
+            // Super Admin Mode: Load ALL portal modules
+            const { data: allModules } = await supabaseAdmin
+                .from('system_modules')
+                .select('key, portal_tab_label, portal_icon_key, has_client_portal_view')
+                .eq('has_client_portal_view', true)
+
+            activePortalModules = (allModules || [])
+                .filter(mod => mod && mod.portal_tab_label)
+                .map(mod => ({
+                    slug: mod.key,
+                    portal_tab_label: mod.portal_tab_label,
+                    portal_icon_key: mod.portal_icon_key
+                }))
+        } else {
+            // Normal Mode: Load only subscription-based modules  
+            const { data: productModules } = await supabaseAdmin
+                .from('saas_product_modules')
+                .select(`
+                    module:system_modules!inner(
+                        slug,
+                        portal_tab_label,
+                        portal_icon_key,
+                        has_client_portal_view
+                    )
+                `)
+                .eq('product_id', client.subscription_product_id || '')
+                .eq('system_modules.has_client_portal_view', true)
+
+            activePortalModules = (productModules || [])
+                .map((pm: any) => pm.module)
+                .filter((mod: any) => mod && mod.portal_tab_label)
+        }
 
         // Filter Services logic
         const filteredServices = (services || []).filter((service: Service) => {
@@ -71,7 +117,12 @@ export async function getPortalData(token: string) {
             briefings: (briefings || []) as Briefing[],
             events: (events || []) as ClientEvent[],
             settings: settings || {},
-            services: filteredServices as Service[]
+            services: filteredServices as Service[],
+            activePortalModules: activePortalModules as Array<{
+                slug: string
+                portal_tab_label: string
+                portal_icon_key: string
+            }>
         }
 
     } catch (error) {
@@ -83,9 +134,32 @@ export async function getPortalData(token: string) {
 
 
 export async function getPortalMetadata(token: string) {
-    // Lightweight fetch for metadata only
-    const { data: settings } = await supabaseAdmin.from('organization_settings').select('*').single()
-    return settings || {}
+    // Lightweight fetch for metadata only - NOW WITH SECURITY!
+    try {
+        // Step 1: Get client from token to know which organization
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)
+        let query = supabaseAdmin.from('clients').select('organization_id')
+
+        if (isUuid) {
+            query = query.or(`portal_short_token.eq.${token},portal_token.eq.${token}`)
+        } else {
+            query = query.eq('portal_short_token', token)
+        }
+
+        const { data: client } = await query.single()
+        if (!client) return {}
+
+        // Step 2: Get settings for THAT organization only
+        const { data: settings } = await supabaseAdmin
+            .from('organization_settings')
+            .select('*')
+            .eq('organization_id', client.organization_id)
+            .single()
+
+        return settings || {}
+    } catch {
+        return {}
+    }
 }
 
 export async function regeneratePortalToken(clientId: string) {

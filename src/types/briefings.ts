@@ -46,6 +46,7 @@ export interface BriefingField {
     help_text?: string | null
     // order_index: number // Implicit in array order
     step_title?: string // Optional for grouping
+    step_description?: string // Optional description for the step
 }
 
 export interface Briefing {

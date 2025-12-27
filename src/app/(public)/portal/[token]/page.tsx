@@ -19,6 +19,7 @@ export default function PortalPage() {
     const [briefings, setBriefings] = useState<Briefing[]>([])
     const [events, setEvents] = useState<ClientEvent[]>([])
     const [settings, setSettings] = useState<any>({})
+    const [activeModules, setActiveModules] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState("")
     const [isProcessing, setIsProcessing] = useState(false)
@@ -49,6 +50,7 @@ export default function PortalPage() {
             setEvents(data.events)
             setSettings(data.settings || {})
             setServices(data.services || [])
+            setActiveModules(data.activePortalModules || [])
         } catch (err) {
             console.error(err)
             setError("No se pudo cargar la información. El enlace puede ser inválido.")
@@ -166,6 +168,7 @@ export default function PortalPage() {
                 events={events}
                 services={services}
                 settings={settings}
+                activeModules={activeModules}
                 onPay={handlePay}
                 onViewInvoice={setViewInvoice}
                 onViewQuote={setViewQuote}

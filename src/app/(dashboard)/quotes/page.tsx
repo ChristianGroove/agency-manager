@@ -51,17 +51,8 @@ export default function QuotesPage() {
 
     const fetchQuotes = async () => {
         try {
-            const { data, error } = await supabase
-                .from('quotes')
-                .select(`
-                    *,
-                    client:clients (name, company_name),
-                    lead:leads (name, company_name)
-                `)
-                .is('deleted_at', null)
-                .order('created_at', { ascending: false })
-
-            if (error) throw error
+            const { getQuotes } = await import("@/app/actions/quotes-actions")
+            const data = await getQuotes()
             setQuotes(data || [])
         } catch (error) {
             console.error("Error fetching quotes:", error)

@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase-server"
 import { revalidatePath } from "next/cache"
 import { Quote } from "@/types"
+import { getCurrentOrganizationId } from "./organizations"
 
 export async function duplicateQuote(originalQuoteId: string) {
     const supabase = await createClient()
@@ -28,6 +29,7 @@ export async function duplicateQuote(originalQuoteId: string) {
                 ...original,
                 id: undefined, // Let DB generate new ID
                 created_at: undefined,
+                organization_id: await getCurrentOrganizationId(), // Ensure it belongs to current org
                 number: newNumber,
                 status: 'draft', // Reset to draft
                 date: new Date().toISOString(), // Today's date

@@ -7,7 +7,7 @@ import { NotificationBell } from "./notification-bell"
 import { ToolsMarquee } from "@/components/ui/tools-marquee"
 import { useEffect, useState } from "react"
 
-export function Header() {
+export function Header({ currentOrgId }: { currentOrgId: string | null }) {
     const [showMarquee, setShowMarquee] = useState(true)
 
     useEffect(() => {
@@ -38,7 +38,7 @@ export function Header() {
             </div>
 
             <div className="flex items-center gap-x-6 shrink-0 z-20 bg-white/50 px-2 rounded-full backdrop-blur-sm">
-                <NotificationBell />
+                <NotificationBell key={currentOrgId} />
                 <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold shadow-md ring-2 ring-white cursor-pointer hover:scale-105 transition-transform">
                     A
                 </div>

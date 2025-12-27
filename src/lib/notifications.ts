@@ -18,6 +18,7 @@ type Subscription = {
     next_billing_date: string
     status: string
     service_type: string
+    organization_id: string
 }
 
 type Client = {
@@ -63,14 +64,21 @@ export async function checkUpcomingPayments() {
             const billingDate = new Date(sub.next_billing_date)
             billingDate.setHours(0, 0, 0, 0)
 
+            // Safely handle joined client data (join can return null due to RLS or data integrity)
+            const client = Array.isArray(sub.clients) ? sub.clients[0] : sub.clients
+            if (!client) {
+                console.warn(`Skipping subscription ${sub.id}: Client data not found (RLS or Orphaned)`)
+                continue
+            }
+
             // Check if billing is in 2 days (send reminder)
             if (billingDate.getTime() === twoDaysFromNow.getTime()) {
-                await createPaymentReminderNotification(user.id, sub, sub.clients)
+                await createPaymentReminderNotification(user.id, sub, client)
             }
 
             // Check if billing is today (generate invoice)
             if (billingDate.getTime() === today.getTime()) {
-                await generateAutomaticInvoice(user.id, sub, sub.clients)
+                await generateAutomaticInvoice(user.id, sub, client)
             }
         }
 
@@ -105,6 +113,7 @@ async function createPaymentReminderNotification(
         const { error } = await supabase
             .from('notifications')
             .insert({
+                organization_id: subscription.organization_id, // Ensure isolation
                 user_id: userId,
                 type: 'payment_reminder',
                 title: '⏰ Próximo cobro en 2 días',
@@ -207,6 +216,7 @@ async function generateAutomaticInvoice(
         await supabase
             .from('notifications')
             .insert({
+                organization_id: subscription.organization_id,
                 user_id: userId,
                 type: 'invoice_generated',
                 title: '📄 Documento generado',
@@ -253,6 +263,7 @@ async function checkOverdueInvoices(userId: string) {
                 await supabase
                     .from('notifications')
                     .insert({
+                        organization_id: (invoice as any).organization_id,
                         user_id: userId,
                         type: 'payment_due',
                         title: '⚠️ Documento Vencido',

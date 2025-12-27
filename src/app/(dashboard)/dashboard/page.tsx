@@ -80,20 +80,11 @@ export default function DashboardPage() {
 
     const fetchDashboardData = async () => {
         try {
-            // Fetch all data in parallel
-            const [clientsRes, invoicesRes, servicesRes, settingsRes] = await Promise.all([
-                supabase.from('clients').select('*').is('deleted_at', null),
-                supabase.from('invoices').select('*').is('deleted_at', null),
-                supabase.from('services').select('*').is('deleted_at', null),
-                supabase.from('settings').select('*').single()
-            ])
+            // Import Server Action strictly
+            const { getDashboardData } = await import("@/app/actions/dashboard-actions")
+            const { clients, invoices, services, settings } = await getDashboardData()
 
-            const clients = clientsRes.data || []
-            const invoices = invoicesRes.data || []
-            const services = servicesRes.data || []
-            const settingsData = settingsRes.data || null
-
-            setSettings(settingsData)
+            setSettings(settings)
 
             // Calculate stats using State Engine
             let totalRevenue = 0
@@ -510,6 +501,7 @@ export default function DashboardPage() {
             <CreateClientSheet
                 open={isClientModalOpen}
                 onOpenChange={setIsClientModalOpen}
+                trigger={<span className="hidden" />}
                 onSuccess={() => {
                     setIsClientModalOpen(false)
                     fetchDashboardData() // Refresh stats
@@ -519,6 +511,7 @@ export default function DashboardPage() {
             <CreateQuoteSheet
                 open={isQuoteModalOpen}
                 onOpenChange={setIsQuoteModalOpen}
+                trigger={<span className="hidden" />}
                 onSuccess={() => {
                     setIsQuoteModalOpen(false)
                     fetchDashboardData()
@@ -528,6 +521,7 @@ export default function DashboardPage() {
             <CreateBriefingSheet
                 open={isBriefingModalOpen}
                 onOpenChange={setIsBriefingModalOpen}
+                trigger={<span className="hidden" />}
                 onSuccess={() => {
                     setIsBriefingModalOpen(false)
                     fetchDashboardData()
@@ -537,6 +531,7 @@ export default function DashboardPage() {
             <CreateInvoiceSheet
                 open={isInvoiceModalOpen}
                 onOpenChange={setIsInvoiceModalOpen}
+                trigger={<span className="hidden" />}
                 onSuccess={() => {
                     setIsInvoiceModalOpen(false)
                     fetchDashboardData()

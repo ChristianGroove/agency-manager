@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { Client, Invoice, Quote, Briefing, ClientEvent, Service } from "@/types"
 import { Button } from "@/components/ui/button"
-import { LayoutDashboard, Layers, CreditCard, Search, Bell, LogOut, Menu, BarChart3 } from "lucide-react"
+import { LayoutDashboard, Layers, CreditCard, Search, Bell, LogOut, Menu, BarChart3, Server } from "lucide-react"
 import { isFeatureEnabled } from "@/lib/features"
 import { cn } from "@/lib/utils"
 import { PortalSummaryTab } from "./portal-summary-tab"
@@ -25,16 +25,61 @@ interface PortalLayoutProps {
     events: ClientEvent[]
     services: Service[]
     settings: any
+    activeModules: Array<{
+        slug: string
+        portal_tab_label: string
+        portal_icon_key: string
+    }>
     onPay: (invoiceIds: string[]) => void
     onViewInvoice: (invoice: Invoice) => void
     onViewQuote: (quote: Quote) => void
     logout?: () => void
 }
 
+// Icon mapping for dynamic tabs
+const ICON_MAP: Record<string, any> = {
+    LayoutDashboard,
+    Layers,
+    CreditCard,
+    Search,
+    Server,
+    BarChart3
+}
+
+// Map module slug to component key
+function mapModuleToComponent(moduleSlug: string): string {
+    const mapping: Record<string, string> = {
+        'module_invoicing': 'billing',
+        'module_briefings': 'services',
+        'core_services': 'services',
+        'module_catalog': 'explore',
+        'meta_insights': 'insights'
+    }
+    return mapping[moduleSlug] || 'summary'
+}
+
 type TabKey = 'summary' | 'services' | 'billing' | 'explore' | 'insights'
 
-export function PortalLayout({ token, client, invoices, quotes, briefings, events, services, settings, onPay, onViewInvoice, onViewQuote }: PortalLayoutProps) {
-    const [activeTab, setActiveTab] = useState<TabKey>('summary')
+export function PortalLayout({ token, client, invoices, quotes, briefings, events, services, settings, activeModules, onPay, onViewInvoice, onViewQuote }: PortalLayoutProps) {
+    // Build dynamic tabs based on active modules
+    const dynamicTabs = [
+        // Summary is ALWAYS shown (not module-based)
+        {
+            key: 'summary',
+            component: 'summary',
+            label: 'Resumen',
+            icon: LayoutDashboard
+        },
+        // Map active modules to tabs
+        ...activeModules.map(mod => ({
+            key: mod.slug,
+            component: mapModuleToComponent(mod.slug),
+            label: mod.portal_tab_label,
+            icon: ICON_MAP[mod.portal_icon_key] || Layers
+        }))
+    ]
+
+    const [activeTab, setActiveTab] = useState(dynamicTabs[0]?.key || 'summary')
     const [viewQuote, setViewQuote] = useState<Quote | null>(null)
     const [targetBriefingId, setTargetBriefingId] = useState<string | null>(null)
     const [showBillingAlert, setShowBillingAlert] = useState(true)
@@ -49,8 +94,10 @@ export function PortalLayout({ token, client, invoices, quotes, briefings, event
     const notificationCount = pendingInvoices.length + pendingBriefings.length + openQuotes.length
 
     const handleViewBriefing = (id: string) => {
+        // Find first tab that maps to 'services' component
+        const servicesTab = dynamicTabs.find(t => t.component === 'services')
         setTargetBriefingId(id)
-        setActiveTab('services')
+        setActiveTab(servicesTab?.key || 'summary')
     }
 
     // Inject Branding Logic via CSS Variables if needed (already done in page.tsx wrapper, but good to keep in mind)
@@ -80,13 +127,15 @@ export function PortalLayout({ token, client, invoices, quotes, briefings, event
                 </div>
 
                 <nav className="flex-1 px-4 space-y-2">
-                    <NavButton active={activeTab === 'summary'} onClick={() => setActiveTab('summary')} icon={LayoutDashboard} label="Resumen" />
-                    <NavButton active={activeTab === 'services'} onClick={() => setActiveTab('services')} icon={Layers} label="Mis Servicios" />
-                    <NavButton active={activeTab === 'billing'} onClick={() => setActiveTab('billing')} icon={CreditCard} label="Pagos" />
-                    {isFeatureEnabled('meta_insights') && (
-                        <NavButton active={activeTab === 'insights'} onClick={() => setActiveTab('insights')} icon={BarChart3} label="Insights" />
-                    )}
-                    <NavButton active={activeTab === 'explore'} onClick={() => setActiveTab('explore')} icon={Search} label="Explorar" />
+                    {dynamicTabs.map(tab => (
+                        <NavButton
+                            key={tab.key}
+                            active={activeTab === tab.key}
+                            onClick={() => setActiveTab(tab.key)}
+                            icon={tab.icon}
+                            label={tab.label}
+                        />
+                    ))}
                 </nav>
 
                 <div className="p-4 border-t">
@@ -119,13 +168,14 @@ export function PortalLayout({ token, client, invoices, quotes, briefings, event
 
                 {/* Content Scrollable */}
                 <div className="flex-1 overflow-y-auto p-4 md:p-8 pb-32 md:pb-8">
-                    {activeTab === 'summary' && (
+                    {/* Find the current tab's component */}
+                    {dynamicTabs.find(t => t.key === activeTab)?.component === 'summary' && (
                         <PortalSummaryTab
                             client={client} invoices={invoices} quotes={quotes} briefings={briefings} events={events}
                             onViewQuote={onViewQuote} onViewBriefing={handleViewBriefing}
                         />
                     )}
-                    {activeTab === 'services' && (
+                    {dynamicTabs.find(t => t.key === activeTab)?.component === 'services' && (
                         <PortalServicesTab
                             token={token}
                             services={services} invoices={invoices} briefings={briefings}
@@ -134,13 +184,13 @@ export function PortalLayout({ token, client, invoices, quotes, briefings, event
                             onBriefingClosed={() => setTargetBriefingId(null)}
                         />
                     )}
-                    {activeTab === 'billing' && (
+                    {dynamicTabs.find(t => t.key === activeTab)?.component === 'billing' && (
                         <PortalBillingTab
                             invoices={invoices} settings={settings} onPay={onPay} onViewInvoice={onViewInvoice}
                         />
                     )}
-                    {activeTab === 'insights' && <InsightsTab client={client} services={services} token={token} />}
-                    {activeTab === 'explore' && <PortalCatalogTab settings={settings} client={client} token={token} />}
+                    {dynamicTabs.find(t => t.key === activeTab)?.component === 'insights' && <InsightsTab client={client} services={services} token={token} />}
+                    {dynamicTabs.find(t => t.key === activeTab)?.component === 'explore' && <PortalCatalogTab settings={settings} client={client} token={token} />}
                 </div>
 
                 {/* Billing Summary Block (Persistent Desktop) */}
@@ -164,11 +214,13 @@ export function PortalLayout({ token, client, invoices, quotes, briefings, event
                             <Button
                                 className="w-full text-white bg-black hover:bg-gray-800"
                                 onClick={() => {
-                                    setActiveTab('billing')
+                                    // Find first tab that maps to 'billing' component
+                                    const billingTab = dynamicTabs.find(t => t.component === 'billing')
+                                    setActiveTab(billingTab?.key || 'summary')
                                     setShowBillingAlert(false)
                                 }}
                             >
-                                Ir a Documentos
+                                Ir a Pagos
                             </Button>
                         </div>
                     </div>
@@ -177,13 +229,15 @@ export function PortalLayout({ token, client, invoices, quotes, briefings, event
 
             {/* ----------------- Mobile Bottom Navigation ----------------- */}
             <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t flex justify-around p-2 pb-4 z-50">
-                <MobileNavBtn active={activeTab === 'summary'} onClick={() => setActiveTab('summary')} icon={LayoutDashboard} label="Inicio" />
-                <MobileNavBtn active={activeTab === 'services'} onClick={() => setActiveTab('services')} icon={Layers} label="Mis Servicios" />
-                <MobileNavBtn active={activeTab === 'billing'} onClick={() => setActiveTab('billing')} icon={CreditCard} label="Pagos" />
-                {isFeatureEnabled('meta_insights') && (
-                    <MobileNavBtn active={activeTab === 'insights'} onClick={() => setActiveTab('insights')} icon={BarChart3} label="Insights" />
-                )}
-                <MobileNavBtn active={activeTab === 'explore'} onClick={() => setActiveTab('explore')} icon={Search} label="Explorar" />
+                {dynamicTabs.slice(0, 5).map(tab => (
+                    <MobileNavBtn
+                        key={tab.key}
+                        active={activeTab === tab.key}
+                        onClick={() => setActiveTab(tab.key)}
+                        icon={tab.icon}
+                        label={tab.label}
+                    />
+                ))}
             </nav>
 
         </div>

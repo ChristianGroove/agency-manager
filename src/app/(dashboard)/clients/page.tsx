@@ -89,25 +89,12 @@ export default function ClientsPage() {
     const fetchClients = async () => {
         setLoading(true)
         try {
-            const { data, error } = await supabase
-                .from('clients')
-                .select(`
-          *,
-          portal_token,
-          portal_short_token,
-          invoices (id, total, status, due_date, number, pdf_url, deleted_at),
-          quotes (id, number, total, status, pdf_url, deleted_at),
-          hosting_accounts (status, renewal_date),
-          subscriptions (id, name, next_billing_date, status, amount, service_type, frequency),
-          services (id, status)
-        `)
-                .is('deleted_at', null)
-
-            if (error) throw error
+            // Use Server Action to ensure Organization Context is respected
+            const { getClients } = await import("@/app/actions/clients-actions")
+            const data = await getClients()
 
             if (data) {
-                // @ts-ignore
-                setClients(data as unknown as Client[])
+                setClients(data)
             }
         } catch (error) {
             console.error("Error fetching clients:", error)
