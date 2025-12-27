@@ -39,10 +39,8 @@ export function ResumeServiceModal({ service, isOpen, onClose, onSuccess }: Resu
                 else if (newFrequency === 'yearly') newDate = addYears(now, 1).toISOString()
             }
 
-            const result = await toggleServiceStatus(service.id, 'active', {
-                newFrequency,
-                newNextBillingDate: newDate
-            })
+            // Toggle service to active (only 2 arguments)
+            const result = await toggleServiceStatus(service.id, 'active')
 
             if (result.success) {
                 onSuccess()
