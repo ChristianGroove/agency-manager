@@ -25,18 +25,28 @@ BEGIN
 END $$;
 
 -- Step 2: Ensure "Complete SaaS Package" product exists
-INSERT INTO public.saas_products (
-    name,
-    description,
-    status
-) VALUES (
-    'Complete SaaS Package - Pixy',
-    'Full access to all platform modules for Pixy Agency',
-    'active'
-)
-ON CONFLICT (name) DO UPDATE 
-SET status = 'active',
-    description = 'Full access to all platform modules for Pixy Agency';
+DO $$
+DECLARE
+    complete_package_id UUID;
+BEGIN
+    -- Insert or get existing product
+    INSERT INTO public.saas_products (
+        name,
+        description,
+        status
+    ) VALUES (
+        'Complete SaaS Package - Pixy',
+        'Full access to all platform modules for Pixy Agency',
+        'active'
+    )
+    ON CONFLICT (name) 
+    DO UPDATE SET 
+        status = 'active',
+        description = EXCLUDED.description
+    RETURNING id INTO complete_package_id;
+    
+    RAISE NOTICE 'Complete SaaS Package ID: %', complete_package_id;
+END $$;
 
 -- Step 3: Get the Complete Package ID
 DO $$
