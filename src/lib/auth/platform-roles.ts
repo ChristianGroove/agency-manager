@@ -24,7 +24,25 @@ export const getUserPlatformRole = cache(async (userId?: string): Promise<Platfo
         .from('profiles')
         .select('platform_role')
         .eq('id', userId)
-        .single()
+        .maybeSingle()
+
+
+    // If profile doesn't exist, try to create it
+    if (!data && !error) {
+        try {
+            const { error: insertError } = await supabase
+                .from('profiles')
+                .insert({ id: userId, platform_role: 'user' })
+
+            if (insertError) {
+                console.error('[getUserPlatformRole] Failed to create profile:', insertError)
+            }
+            return 'user'
+        } catch (err) {
+            console.error('[getUserPlatformRole] Insert exception:', err)
+            return 'user'
+        }
+    }
 
     if (error || !data) {
         console.error('[getUserPlatformRole] Error:', error)
