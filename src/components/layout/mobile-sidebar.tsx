@@ -7,9 +7,16 @@ import { SidebarContent } from "@/components/layout/sidebar"
 
 export function MobileSidebar() {
     const [isMounted, setIsMounted] = useState(false)
+    const [currentOrgId, setCurrentOrgId] = useState<string>('')
 
     useEffect(() => {
         setIsMounted(true)
+        // Get current org from cookie
+        const cookies = document.cookie.split(';')
+        const orgCookie = cookies.find(c => c.trim().startsWith('pixy_org_id='))
+        if (orgCookie) {
+            setCurrentOrgId(orgCookie.split('=')[1])
+        }
     }, [])
 
     if (!isMounted) {
@@ -23,7 +30,7 @@ export function MobileSidebar() {
             </SheetTrigger>
             <SheetContent side="left" className="p-0 bg-brand-dark text-white border-r border-white/10 w-72">
                 <SheetTitle className="sr-only">Menú de Navegación</SheetTitle>
-                <SidebarContent />
+                <SidebarContent currentOrgId={currentOrgId} />
             </SheetContent>
         </Sheet>
     )
