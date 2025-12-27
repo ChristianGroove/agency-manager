@@ -17,6 +17,7 @@ import CountUp from "react-countup"
 import { SplitText } from "@/components/ui/split-text"
 import { MagicCard } from "@/components/ui/magic-card"
 import { resolveDocumentState, resolveServiceState } from "@/domain/state"
+import { ModuleGuard } from "@/components/guards/module-guard"
 
 const Lottie = dynamic(() => import("lottie-react"), { ssr: false })
 
@@ -419,56 +420,62 @@ export default function DashboardPage() {
                     </motion.div>
                 </div>
 
-                <div onClick={() => setIsQuoteModalOpen(true)}>
-                    <motion.div whileHover="hover" initial="rest" className="h-full">
-                        <Card className="h-full group hover:shadow-lg transition-all duration-300 cursor-pointer border-gray-100 hover:border-yellow-500/50 hover:-translate-y-1 rounded-[30px]">
-                            <CardHeader>
-                                <CardTitle className="text-base flex items-center gap-3">
-                                    <div className="p-2.5 bg-yellow-50 rounded-lg group-hover:bg-yellow-500 group-hover:text-white transition-colors">
-                                        <motion.div variants={{ hover: { scale: 1.2, rotate: -10 }, rest: { scale: 1, rotate: 0 } }} transition={{ type: "spring", stiffness: 400, damping: 10 }}>
-                                            <FilePlus className="h-5 w-5 text-yellow-600 group-hover:text-white" />
-                                        </motion.div>
-                                    </div>
-                                    <span className="group-hover:text-yellow-600 transition-colors">Nueva Cotización</span>
-                                </CardTitle>
-                            </CardHeader>
-                        </Card>
-                    </motion.div>
-                </div>
+                <ModuleGuard module="module_quotes">
+                    <div onClick={() => setIsQuoteModalOpen(true)}>
+                        <motion.div whileHover="hover" initial="rest" className="h-full">
+                            <Card className="h-full group hover:shadow-lg transition-all duration-300 cursor-pointer border-gray-100 hover:border-yellow-500/50 hover:-translate-y-1 rounded-[30px]">
+                                <CardHeader>
+                                    <CardTitle className="text-base flex items-center gap-3">
+                                        <div className="p-2.5 bg-yellow-50 rounded-lg group-hover:bg-yellow-500 group-hover:text-white transition-colors">
+                                            <motion.div variants={{ hover: { scale: 1.2, rotate: -10 }, rest: { scale: 1, rotate: 0 } }} transition={{ type: "spring", stiffness: 400, damping: 10 }}>
+                                                <FilePlus className="h-5 w-5 text-yellow-600 group-hover:text-white" />
+                                            </motion.div>
+                                        </div>
+                                        <span className="group-hover:text-yellow-600 transition-colors">Nueva Cotización</span>
+                                    </CardTitle>
+                                </CardHeader>
+                            </Card>
+                        </motion.div>
+                    </div>
+                </ModuleGuard>
 
-                <div onClick={() => setIsBriefingModalOpen(true)}>
-                    <motion.div whileHover="hover" initial="rest" className="h-full">
-                        <Card className="h-full group hover:shadow-lg transition-all duration-300 cursor-pointer border-gray-100 hover:border-indigo-500/50 hover:-translate-y-1 rounded-[30px]">
-                            <CardHeader>
-                                <CardTitle className="text-base flex items-center gap-3">
-                                    <div className="p-2.5 bg-indigo-50 rounded-lg group-hover:bg-indigo-600 group-hover:text-white transition-colors">
-                                        <motion.div variants={{ hover: { scale: 1.2, y: -2 }, rest: { scale: 1, y: 0 } }} transition={{ type: "spring", stiffness: 400, damping: 10 }}>
-                                            <ClipboardCheck className="h-5 w-5 text-indigo-600 group-hover:text-white" />
-                                        </motion.div>
-                                    </div>
-                                    <span className="group-hover:text-indigo-600 transition-colors">Nuevo Brief</span>
-                                </CardTitle>
-                            </CardHeader>
-                        </Card>
-                    </motion.div>
-                </div>
+                <ModuleGuard module="module_briefings">
+                    <div onClick={() => setIsBriefingModalOpen(true)}>
+                        <motion.div whileHover="hover" initial="rest" className="h-full">
+                            <Card className="h-full group hover:shadow-lg transition-all duration-300 cursor-pointer border-gray-100 hover:border-indigo-500/50 hover:-translate-y-1 rounded-[30px]">
+                                <CardHeader>
+                                    <CardTitle className="text-base flex items-center gap-3">
+                                        <div className="p-2.5 bg-indigo-50 rounded-lg group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                                            <motion.div variants={{ hover: { scale: 1.2, y: -2 }, rest: { scale: 1, y: 0 } }} transition={{ type: "spring", stiffness: 400, damping: 10 }}>
+                                                <ClipboardCheck className="h-5 w-5 text-indigo-600 group-hover:text-white" />
+                                            </motion.div>
+                                        </div>
+                                        <span className="group-hover:text-indigo-600 transition-colors">Nuevo Brief</span>
+                                    </CardTitle>
+                                </CardHeader>
+                            </Card>
+                        </motion.div>
+                    </div>
+                </ModuleGuard>
 
-                <div onClick={() => setIsInvoiceModalOpen(true)}>
-                    <motion.div whileHover="hover" initial="rest" className="h-full">
-                        <Card className="h-full group hover:shadow-lg transition-all duration-300 cursor-pointer border-gray-100 hover:border-brand-pink/50 hover:-translate-y-1 rounded-[30px]">
-                            <CardHeader>
-                                <CardTitle className="text-base flex items-center gap-3">
-                                    <div className="p-2.5 bg-brand-pink/10 rounded-lg group-hover:bg-brand-pink group-hover:text-white transition-colors">
-                                        <motion.div variants={{ hover: { scale: 1.2, rotate: 15 }, rest: { scale: 1, rotate: 0 } }} transition={{ type: "spring", stiffness: 400, damping: 10 }}>
-                                            <Receipt className="h-5 w-5 text-brand-pink group-hover:text-white" />
-                                        </motion.div>
-                                    </div>
-                                    <span className="group-hover:text-brand-pink transition-colors">Nueva Factura</span>
-                                </CardTitle>
-                            </CardHeader>
-                        </Card>
-                    </motion.div>
-                </div>
+                <ModuleGuard module="module_invoicing">
+                    <div onClick={() => setIsInvoiceModalOpen(true)}>
+                        <motion.div whileHover="hover" initial="rest" className="h-full">
+                            <Card className="h-full group hover:shadow-lg transition-all duration-300 cursor-pointer border-gray-100 hover:border-brand-pink/50 hover:-translate-y-1 rounded-[30px]">
+                                <CardHeader>
+                                    <CardTitle className="text-base flex items-center gap-3">
+                                        <div className="p-2.5 bg-brand-pink/10 rounded-lg group-hover:bg-brand-pink group-hover:text-white transition-colors">
+                                            <motion.div variants={{ hover: { scale: 1.2, rotate: 15 }, rest: { scale: 1, rotate: 0 } }} transition={{ type: "spring", stiffness: 400, damping: 10 }}>
+                                                <Receipt className="h-5 w-5 text-brand-pink group-hover:text-white" />
+                                            </motion.div>
+                                        </div>
+                                        <span className="group-hover:text-brand-pink transition-colors">Nueva Factura</span>
+                                    </CardTitle>
+                                </CardHeader>
+                            </Card>
+                        </motion.div>
+                    </div>
+                </ModuleGuard>
             </div>
 
             {/* Smart Block: Debtors */}

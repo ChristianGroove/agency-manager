@@ -8,53 +8,9 @@ import { cn } from "@/lib/utils"
 
 import { logout } from "@/app/actions/logout"
 
-const routes = [
-    {
-        label: "Dashboard",
-        icon: LayoutDashboard,
-        href: "/dashboard",
-    },
-    {
-        label: "Clientes",
-        icon: Users,
-        href: "/clients",
-    },
-    {
-        label: "Contratos",
-        icon: Server,
-        href: "/hosting",
-    },
-    {
-        label: 'Documentos de Cobro',
-        href: '/invoices',
-        icon: FileText,
-    },
-    {
-        label: "Cotizaciones",
-        icon: FileText,
-        href: "/quotes",
-    },
-    {
-        label: "Briefings",
-        icon: FileText,
-        href: "/briefings",
-    },
-    {
-        label: "Catálogo",
-        icon: Briefcase,
-        href: "/portfolio",
-    },
-    {
-        label: "Pagos",
-        icon: CreditCard,
-        href: "/payments",
-    },
-    {
-        label: "Configuración",
-        icon: Settings,
-        href: "/settings",
-    },
-]
+import { OrganizationSwitcher } from "@/components/organizations/organization-switcher"
+import { useActiveModules } from "@/hooks/use-active-modules"
+import { MODULE_ROUTES, filterRoutesByModules } from "@/lib/module-config"
 
 interface SidebarProps {
     isCollapsed: boolean;
@@ -62,10 +18,12 @@ interface SidebarProps {
     currentOrgId: string | null;
 }
 
-import { OrganizationSwitcher } from "@/components/organizations/organization-switcher"
-
 export function SidebarContent({ isCollapsed = false, currentOrgId }: { isCollapsed?: boolean, currentOrgId: string | null }) {
     const pathname = usePathname()
+    const { modules, isLoading } = useActiveModules()
+
+    // Filter routes based on active modules
+    const availableRoutes = filterRoutesByModules(modules)
 
     return (
         <div className="px-3 py-6 flex-1 flex flex-col h-full">
@@ -79,27 +37,53 @@ export function SidebarContent({ isCollapsed = false, currentOrgId }: { isCollap
                 )}
             </div>
 
-            <div className="space-y-2 flex-1">
-                {routes.map((route) => (
-                    <Link
-                        key={route.href}
-                        href={route.href}
-                        className={cn(
-                            "text-sm group flex p-3 w-full font-medium cursor-pointer hover:text-white hover:bg-white/5 rounded-xl transition-all duration-200",
-                            pathname === route.href
-                                ? "text-brand-cyan bg-white/5 shadow-[0_0_15px_rgba(0,224,255,0.1)]"
-                                : "text-zinc-400",
-                            isCollapsed ? "justify-center" : "justify-start"
-                        )}
-                    >
-                        <div className="flex items-center">
-                            <route.icon className={cn("h-5 w-5 transition-colors", pathname === route.href ? "text-brand-cyan" : "text-zinc-400 group-hover:text-white", isCollapsed ? "mr-0" : "mr-3")} />
-                            {!isCollapsed && <span>{route.label}</span>}
-                        </div>
-                    </Link>
-                ))}
-            </div>
+            {/* Show loading skeleton while fetching modules */}
+            {isLoading ? (
+                <div className="space-y-2">
+                    {[...Array(6)].map((_, i) => (
+                        <div key={i} className="h-10 bg-white/5 rounded-xl animate-pulse" />
+                    ))}
+                </div>
+            ) : (
+                <nav className="space-y-2 flex-1">
+                    {availableRoutes.map((route) => {
+                        const Icon = route.icon
+                        const isActive = pathname === route.href || pathname.startsWith(`${route.href}/`)
 
+                        return (
+                            <Link key={route.href} href={route.href}>
+                                <div
+                                    className={cn(
+                                        "flex items-center gap-x-3 text-sm font-medium rounded-xl py-3 transition-all duration-200 group",
+                                        isCollapsed ? "justify-center px-2" : "px-4",
+                                        isActive
+                                            ? "bg-white/10 text-white shadow-lg shadow-indigo-500/20"
+                                            : "text-gray-300 hover:text-white hover:bg-white/5"
+                                    )}
+                                >
+                                    <Icon
+                                        className={cn(
+                                            "h-5 w-5 shrink-0 transition-transform duration-200",
+                                            isActive ? "text-white scale-110" : "text-gray-400 group-hover:text-white group-hover:scale-105"
+                                        )}
+                                    />
+                                    {!isCollapsed && (
+                                        <span className={cn(
+                                            "transition-all duration-200",
+                                            isActive ? "font-semibold" : ""
+                                        )}>
+                                            {route.label}
+                                        </span>
+                                    )}
+                                    {!isCollapsed && isActive && (
+                                        <div className="ml-auto w-1.5 h-1.5 rounded-full bg-brand-cyan animate-pulse" />
+                                    )}
+                                </div>
+                            </Link>
+                        )
+                    })}
+                </nav>
+            )}
             <div className="mt-auto pt-4 border-t border-white/5">
                 <button
                     onClick={() => logout()}
