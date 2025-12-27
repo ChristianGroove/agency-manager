@@ -13,11 +13,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Plus, RefreshCw, Sparkles } from "lucide-react"
 import { PortfolioList } from "@/components/modules/portfolio/portfolio-list"
 import { PortfolioServiceSheet } from "@/components/modules/portfolio/portfolio-service-sheet"
-import { BriefingTemplatesList } from "@/components/modules/briefings/briefing-templates-list"
-import { BriefingBuilderSheet } from "@/components/modules/briefings/briefing-builder-sheet"
 import { CategoryManager } from "@/components/modules/services/category-manager"
 import { getPortfolioItems, deletePortfolioItem, syncAllBriefingTemplates } from "@/lib/actions/portfolio"
-import { getBriefingTemplates, deleteBriefingTemplate } from "@/lib/actions/briefings"
 import { ServiceCatalogItem } from "@/types"
 import { BriefingTemplate } from "@/types/briefings"
 import { toast } from "sonner"
@@ -40,11 +37,7 @@ export default function PortfolioPage() {
     const [itemToEdit, setItemToEdit] = useState<ServiceCatalogItem | null>(null)
     const [isSyncing, setIsSyncing] = useState(false)
 
-    // Briefing templates state
-    const [templates, setTemplates] = useState<BriefingTemplate[]>([])
-    const [templatesLoading, setTemplatesLoading] = useState(true)
-    const [isBuilderOpen, setIsBuilderOpen] = useState(false)
-    const [templateToEdit, setTemplateToEdit] = useState<BriefingTemplate | null>(null)
+
 
     // SaaS Apps state
     const [apps, setApps] = useState<SaaSProduct[]>([])
@@ -80,28 +73,20 @@ export default function PortfolioPage() {
         }
     }
 
-    const fetchTemplates = async () => {
-        setTemplatesLoading(true)
-        try {
-            const data = await getBriefingTemplates()
-            setTemplates(data)
-        } catch (error) {
-            console.error(error)
-            toast.error("Error al cargar plantillas")
-        } finally {
-            setTemplatesLoading(false)
-        }
-    }
+
+
 
     const fetchApps = async () => {
         setAppsLoading(true)
         try {
-            // Using server action for apps
-            const data = await getSaaSProducts()
-            setApps(data)
+            // Use server action to get subscription app (Single Subscription Model)
+            const { getSubscriptionApp } = await import('@/lib/actions/portfolio')
+            const product = await getSubscriptionApp()
+            setApps(product ? [product] : [])
         } catch (error) {
             console.error(error)
             toast.error("Error al cargar Apps SaaS")
+            setApps([])
         } finally {
             setAppsLoading(false)
         }
@@ -109,7 +94,6 @@ export default function PortfolioPage() {
 
     useEffect(() => {
         fetchServices()
-        fetchTemplates()
         fetchApps()
     }, [])
 
@@ -134,26 +118,7 @@ export default function PortfolioPage() {
         }
     }
 
-    const handleCreateTemplate = () => {
-        setTemplateToEdit(null)
-        setIsBuilderOpen(true)
-    }
 
-    const handleEditTemplate = (template: BriefingTemplate) => {
-        setTemplateToEdit(template)
-        setIsBuilderOpen(true)
-    }
-
-    const handleDeleteTemplate = async (id: string) => {
-        if (!confirm("¿Estás seguro de eliminar esta plantilla? Esta acción no se puede deshacer.")) return
-        try {
-            await deleteBriefingTemplate(id)
-            toast.success("Plantilla eliminada")
-            fetchTemplates()
-        } catch (error: any) {
-            toast.error(error.message || "Error al eliminar la plantilla")
-        }
-    }
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -171,12 +136,8 @@ export default function PortfolioPage() {
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 {/* Left: Tabs */}
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
-                    <TabsList className="grid w-full max-w-2xl grid-cols-3">
+                    <TabsList className="grid w-full max-w-md grid-cols-2">
                         <TabsTrigger value="services">Servicios</TabsTrigger>
-                        <TabsTrigger value="briefings">
-                            <Sparkles className="h-4 w-4 mr-2" />
-                            Plantillas
-                        </TabsTrigger>
                         <TabsTrigger value="apps">
                             <Package className="h-4 w-4 mr-2" />
                             Apps SaaS
@@ -204,14 +165,6 @@ export default function PortfolioPage() {
                                 <Plus className="mr-2 h-4 w-4" /> Nuevo Servicio
                             </Button>
                         </>
-                    )}
-                    {activeTab === "briefings" && (
-                        <Button
-                            onClick={handleCreateTemplate}
-                            className="bg-pink-600 hover:bg-pink-700 text-white shadow-lg shadow-pink-500/20"
-                        >
-                            <Plus className="mr-2 h-4 w-4" /> Nueva Plantilla
-                        </Button>
                     )}
                     {activeTab === "apps" && (
                         <Button
@@ -242,21 +195,7 @@ export default function PortfolioPage() {
                     )}
                 </TabsContent>
 
-                <TabsContent value="briefings" className="mt-0">
-                    {templatesLoading ? (
-                        <div className="space-y-4">
-                            {[1, 2, 3].map(i => (
-                                <div key={i} className="h-20 bg-gray-100 rounded-xl animate-pulse" />
-                            ))}
-                        </div>
-                    ) : (
-                        <BriefingTemplatesList
-                            templates={templates}
-                            onEdit={handleEditTemplate}
-                            onDelete={handleDeleteTemplate}
-                        />
-                    )}
-                </TabsContent>
+
 
                 <TabsContent value="apps" className="mt-0">
                     {appsLoading ? (
@@ -278,12 +217,7 @@ export default function PortfolioPage() {
                 onSuccess={fetchServices}
             />
 
-            <BriefingBuilderSheet
-                open={isBuilderOpen}
-                onOpenChange={setIsBuilderOpen}
-                templateToEdit={templateToEdit}
-                onSuccess={fetchTemplates}
-            />
+
 
             <CreateAppSheet
                 open={isAppSheetOpen}

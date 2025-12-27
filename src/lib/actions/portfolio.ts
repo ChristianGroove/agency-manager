@@ -27,6 +27,38 @@ export async function getPortfolioItems() {
     return data as ServiceCatalogItem[] // Types are compatible
 }
 
+/**
+ * Get SaaS App assigned to organization via subscription
+ * Single Subscription Model: Each org has ONE subscription_product_id
+ */
+export async function getSubscriptionApp() {
+    const supabase = await createClient()
+    const orgId = await getCurrentOrganizationId()
+
+    if (!orgId) return null
+
+    // Get org's subscription product ID
+    const { data: org, error: orgError } = await supabase
+        .from('organizations')
+        .select('subscription_product_id')
+        .eq('id', orgId)
+        .single()
+
+    if (orgError || !org?.subscription_product_id) {
+        return null // No subscription assigned
+    }
+
+    // Get the SaaS product
+    const { data: product, error: productError } = await supabase
+        .from('saas_products')
+        .select('*')
+        .eq('id', org.subscription_product_id)
+        .single()
+
+    if (productError) throw productError
+    return product
+}
+
 export async function upsertPortfolioItem(item: Partial<ServiceCatalogItem>) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
