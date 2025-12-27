@@ -19,6 +19,7 @@ import { COMMUNICATION_VARIABLES, DEFAULT_TEMPLATES } from "@/lib/communication-
 import { useEffect } from "react"
 import { SplitText } from "@/components/ui/split-text"
 import { updateSettings } from "@/lib/actions/settings"
+import { PortalSettingsTab } from "./portal-settings-tab"
 
 interface SettingsFormProps {
     initialSettings: any
@@ -894,6 +895,17 @@ export function SettingsForm({ initialSettings, activeModules }: SettingsFormPro
                             </Card>
                         </div>
                     </div>
+                </TabsContent>
+
+                {/* PORTAL TAB */}
+                <TabsContent value="portal" className="space-y-4 mt-4">
+                    <PortalSettingsTab
+                        settings={formData}
+                        activeModules={activeModules}
+                        onChange={handleChange}
+                        onSelectChange={handleSelectChange}
+                        onSwitchChange={handleSwitchChange}
+                    />
                 </TabsContent>
 
                 {/* COMMUNICATION TAB */}
