@@ -2,6 +2,7 @@ import { DashboardShell } from "@/components/layout/dashboard-shell"
 import { createClient } from "@/lib/supabase-server"
 import { redirect } from "next/navigation"
 import { getCurrentOrganizationId } from "@/lib/actions/organizations"
+import { isSuperAdmin } from "@/lib/auth/platform-roles"
 
 export default async function DashboardLayout({
     children,
@@ -20,11 +21,12 @@ export default async function DashboardLayout({
     }
 
     const currentOrgId = await getCurrentOrganizationId()
+    const isAdmin = await isSuperAdmin(user.id)
 
     // Key forces a complete remount of the shell when organization changes,
     // solving the "stale UI" issue without needing a full browser reload.
     return (
-        <DashboardShell key={currentOrgId} user={user} currentOrgId={currentOrgId}>
+        <DashboardShell key={currentOrgId} user={user} currentOrgId={currentOrgId} isSuperAdmin={isAdmin}>
             {children}
         </DashboardShell>
     )

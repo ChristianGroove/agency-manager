@@ -13,9 +13,10 @@ interface DashboardShellProps {
     children: React.ReactNode
     user: User
     currentOrgId: string | null
+    isSuperAdmin?: boolean
 }
 
-export function DashboardShell({ children, user, currentOrgId }: DashboardShellProps) {
+export function DashboardShell({ children, user, currentOrgId, isSuperAdmin = false }: DashboardShellProps) {
     const [isCollapsed, setIsCollapsed] = useState(false)
 
     return (
@@ -27,6 +28,7 @@ export function DashboardShell({ children, user, currentOrgId }: DashboardShellP
                     isCollapsed={isCollapsed}
                     toggleCollapse={() => setIsCollapsed(!isCollapsed)}
                     currentOrgId={currentOrgId}
+                    isSuperAdmin={isSuperAdmin}
                 />
             </div>
 

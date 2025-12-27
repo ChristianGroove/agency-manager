@@ -3,7 +3,7 @@
 import React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, Users, Server, FileText, Settings, LogOut, CreditCard, Briefcase } from "lucide-react"
+import { LayoutDashboard, Users, Server, FileText, Settings, LogOut, CreditCard, Briefcase, Shield } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 import { logout } from "@/app/actions/logout"
@@ -16,9 +16,10 @@ interface SidebarProps {
     isCollapsed: boolean;
     toggleCollapse: () => void;
     currentOrgId: string | null;
+    isSuperAdmin?: boolean;
 }
 
-export function SidebarContent({ isCollapsed = false, currentOrgId }: { isCollapsed?: boolean, currentOrgId: string | null }) {
+export function SidebarContent({ isCollapsed = false, currentOrgId, isSuperAdmin = false }: { isCollapsed?: boolean, currentOrgId: string | null, isSuperAdmin?: boolean }) {
     const pathname = usePathname()
     const { modules, isLoading } = useActiveModules()
 
@@ -84,6 +85,47 @@ export function SidebarContent({ isCollapsed = false, currentOrgId }: { isCollap
                     })}
                 </nav>
             )}
+
+            {/* Platform Admin Section - Only for Super Admins */}
+            {isSuperAdmin && (
+                <div className="px-3 pb-4 border-t border-white/5 pt-4">
+                    {!isCollapsed && (
+                        <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2 px-1">
+                            Platform
+                        </p>
+                    )}
+                    <Link href="/platform/admin">
+                        <div
+                            className={cn(
+                                "flex items-center gap-x-3 text-sm font-medium rounded-xl py-3 transition-all duration-200 group bg-purple-500/10 border border-purple-500/20",
+                                isCollapsed ? "justify-center px-2" : "px-4",
+                                pathname.startsWith('/platform/admin')
+                                    ? "bg-purple-500/20 text-purple-300 shadow-lg shadow-purple-500/20"
+                                    : "text-purple-300 hover:text-purple-200 hover:bg-purple-500/20"
+                            )}
+                        >
+                            <Shield
+                                className={cn(
+                                    "h-5 w-5 shrink-0 transition-transform duration-200",
+                                    pathname.startsWith('/platform/admin') ? "text-purple-300 scale-110" : "text-purple-400 group-hover:text-purple-300 group-hover:scale-105"
+                                )}
+                            />
+                            {!isCollapsed && (
+                                <span className={cn(
+                                    "transition-all duration-200",
+                                    pathname.startsWith('/platform/admin') ? "font-semibold" : ""
+                                )}>
+                                    SaaS Admin
+                                </span>
+                            )}
+                            {!isCollapsed && pathname.startsWith('/platform/admin') && (
+                                <div className="ml-auto w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse" />
+                            )}
+                        </div>
+                    </Link>
+                </div>
+            )}
+
             <div className="mt-auto pt-4 border-t border-white/5">
                 <button
                     onClick={() => logout()}
@@ -104,7 +146,7 @@ export function SidebarContent({ isCollapsed = false, currentOrgId }: { isCollap
 
 
 
-export function Sidebar({ isCollapsed, toggleCollapse, currentOrgId }: SidebarProps) {
+export function Sidebar({ isCollapsed, toggleCollapse, currentOrgId, isSuperAdmin = false }: SidebarProps) {
     const [isDragging, setIsDragging] = React.useState(false)
     const [dragStartX, setDragStartX] = React.useState(0)
     const dragThreshold = 50 // pixels to drag before triggering collapse/expand
@@ -163,7 +205,7 @@ export function Sidebar({ isCollapsed, toggleCollapse, currentOrgId }: SidebarPr
                 </div>
             </button>
 
-            <SidebarContent isCollapsed={isCollapsed} currentOrgId={currentOrgId} />
+            <SidebarContent isCollapsed={isCollapsed} currentOrgId={currentOrgId} isSuperAdmin={isSuperAdmin} />
         </div>
     )
 }
