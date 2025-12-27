@@ -6,6 +6,11 @@ export const QuotesService = {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) throw new Error("User not authenticated")
 
+        // CRITICAL: Get organization context
+        const { getCurrentOrganizationId } = await import('@/lib/actions/organizations')
+        const orgId = await getCurrentOrganizationId()
+        if (!orgId) throw new Error('No organization context')
+
         // Generate number if not provided (simple logic for now, ideally should be auto-increment or fetched)
         let number = quote.number
         if (!number) {
@@ -16,6 +21,7 @@ export const QuotesService = {
         const { data, error } = await supabase
             .from('quotes')
             .insert({
+                organization_id: orgId,
                 ...quote,
                 number,
                 status: 'draft'
@@ -54,6 +60,7 @@ export const QuotesService = {
         const { data: invoice, error: invoiceError } = await supabase
             .from('invoices')
             .insert({
+                organization_id: quote.organization_id, // CRITICAL: Preserve org context
                 client_id: quote.client_id,
                 number: quote.number.replace('COT', 'FAC'), // Simple replacement logic
                 date: new Date().toISOString(),

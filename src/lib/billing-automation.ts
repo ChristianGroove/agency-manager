@@ -27,6 +27,7 @@ export async function checkAndGenerateCycles() {
                     emitter_id,
                 document_type,
                     quantity,
+                    organization_id,
                     deleted_at,
                     metadata
                 )
@@ -83,6 +84,7 @@ export async function checkAndGenerateCycles() {
             const { data: invoice, error: invError } = await supabase
                 .from('invoices')
                 .insert({
+                    organization_id: service.organization_id, // CRITICAL FIX
                     client_id: service.client_id,
                     service_id: service.id,
                     emitter_id: service.emitter_id,
@@ -153,6 +155,7 @@ export async function checkAndGenerateCycles() {
                 nextDue.setDate(nextDue.getDate() + 5)
 
                 const { data: nextCycleData, error: nextCycleError } = await supabase.from('billing_cycles').insert({
+                    organization_id: service.organization_id, // CRITICAL FIX
                     service_id: service.id,
                     start_date: nextStart.toISOString(),
                     end_date: nextEnd.toISOString(),

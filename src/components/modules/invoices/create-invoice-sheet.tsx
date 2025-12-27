@@ -129,7 +129,20 @@ export function CreateInvoiceSheet({
 
             // 2. Clients (if needed)
             if (!clientId) {
-                const { data } = await supabase.from('clients').select('id, name, company_name').is('deleted_at', null).order('name')
+                const { getCurrentOrganizationId } = await import('@/lib/actions/organizations')
+                const orgId = await getCurrentOrganizationId()
+
+                if (!orgId) {
+                    console.error('No organization context found')
+                    return
+                }
+
+                const { data } = await supabase
+                    .from('clients')
+                    .select('id, name, company_name')
+                    .eq('organization_id', orgId)
+                    .is('deleted_at', null)
+                    .order('name')
                 if (data) setClients(data)
             }
 

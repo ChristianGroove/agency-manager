@@ -82,8 +82,23 @@ export function QuoteBuilder({ onSuccess, mode = 'page', emitters = [] }: QuoteB
     // --- Data Fetching ---
     useEffect(() => {
         const fetchData = async () => {
-            // Fetch Clients
-            const { data: clientsData } = await supabase.from('clients').select('*').order('name')
+            // CRITICAL: Get organization context
+            const supabase = await import('@/lib/supabase').then(m => m.supabase)
+            const { getCurrentOrganizationId } = await import('@/lib/actions/organizations')
+            const orgId = await getCurrentOrganizationId()
+
+            if (!orgId) {
+                console.error('No organization context found')
+                return
+            }
+
+            // Fetch Clients - WITH ORGANIZATION FILTER
+            const { data: clientsData } = await supabase
+                .from('clients')
+                .select('*')
+                .eq('organization_id', orgId)
+                .is('deleted_at', null)
+                .order('name')
             if (clientsData) setClients(clientsData)
 
             // Fetch Catalog
@@ -93,6 +108,7 @@ export function QuoteBuilder({ onSuccess, mode = 'page', emitters = [] }: QuoteB
                     .from('services')
                     .select('*')
                     .eq('is_catalog_item', true)
+                    .eq('organization_id', orgId)
                     .order('name')
 
                 if (error) throw error

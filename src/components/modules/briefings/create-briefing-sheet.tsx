@@ -86,9 +86,22 @@ export function CreateBriefingSheet({
 
         setLoading(true)
         try {
+            const { getCurrentOrganizationId } = await import('@/lib/actions/organizations')
+            const orgId = await getCurrentOrganizationId()
+
+            if (!orgId) {
+                console.error('No organization context found')
+                return
+            }
+
             const [templatesData, clientsRes] = await Promise.all([
                 getBriefingTemplates(),
-                supabase.from('clients').select('id, name, company_name').order('name')
+                supabase
+                    .from('clients')
+                    .select('id, name, company_name')
+                    .eq('organization_id', orgId)
+                    .is('deleted_at', null)
+                    .order('name')
             ])
 
             setTemplates(templatesData || [])

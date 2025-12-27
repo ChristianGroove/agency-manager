@@ -132,7 +132,21 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
 
     const fetchClients = async () => {
         setIsLoadingClients(true)
-        const { data } = await supabase.from('clients').select('id, name, company_name').is('deleted_at', null).order('name')
+        const { getCurrentOrganizationId } = await import('@/lib/actions/organizations')
+        const orgId = await getCurrentOrganizationId()
+
+        if (!orgId) {
+            console.error('No organization context found')
+            setIsLoadingClients(false)
+            return
+        }
+
+        const { data } = await supabase
+            .from('clients')
+            .select('id, name, company_name')
+            .eq('organization_id', orgId)
+            .is('deleted_at', null)
+            .order('name')
         if (data) setClients(data)
         setIsLoadingClients(false)
     }
@@ -179,6 +193,12 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
         if (!finalClient) return toast.error("Debes seleccionar un cliente")
         if (!selectedEmitterId) return toast.error("Debes seleccionar un emisor")
 
+        // CRITICAL: Get organization context
+        const { getCurrentOrganizationId } = await import('@/lib/actions/organizations')
+        const orgId = await getCurrentOrganizationId()
+
+        if (!orgId) return toast.error('No se encontró contexto de organización')
+
         setLoading(true)
         try {
             const startDate = formData.service_start_date ? new Date(formData.service_start_date) : new Date()
@@ -192,6 +212,7 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
             else cycleEnd.setMonth(cycleEnd.getMonth() + 1)
 
             const servicePayload = {
+                organization_id: orgId, // CRITICAL FIX
                 client_id: finalClient,
                 name: formData.name,
                 description: formData.description,

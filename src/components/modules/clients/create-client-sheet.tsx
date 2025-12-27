@@ -78,6 +78,12 @@ export function CreateClientSheet({ onSuccess, open: controlledOpen, onOpenChang
         if (!newClient.name) return toast.error("El nombre es obligatorio")
         if (!newClient.email) return toast.error("El email es obligatorio")
 
+        // CRITICAL: Get organization context FIRST
+        const { getCurrentOrganizationId } = await import('@/lib/actions/organizations')
+        const orgId = await getCurrentOrganizationId()
+
+        if (!orgId) return toast.error('No se encontró contexto de organización')
+
         setLoading(true)
         try {
             const { data: { user } } = await supabase.auth.getUser()
@@ -105,6 +111,7 @@ export function CreateClientSheet({ onSuccess, open: controlledOpen, onOpenChang
 
             const { error } = await supabase.from('clients').insert({
                 ...newClient,
+                organization_id: orgId, // CRITICAL FIX
                 logo_url: finalLogoUrl,
                 user_id: user.id
             })
