@@ -112,8 +112,7 @@ export async function updateOrganizationStatus(
         .update({
             status,
             suspended_at: status === 'suspended' ? new Date().toISOString() : null,
-            suspended_reason: status === 'suspended' ? reason : null,
-            updated_at: new Date().toISOString()
+            suspended_reason: status === 'suspended' ? reason : null
         })
         .eq('id', orgId)
 
