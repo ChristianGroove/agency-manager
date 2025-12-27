@@ -24,11 +24,6 @@ export interface AdminOrganization {
 export async function getAdminOrganizations(): Promise<AdminOrganization[]> {
     await requireSuperAdmin()
 
-    // Debug check
-    const key = process.env.SUPABASE_SERVICE_ROLE_KEY
-    console.log('[DEBUG] Service Role Key is set:', !!key, 'Length:', key?.length || 0)
-
-
     const { data, error } = await supabaseAdmin
         .from('organizations')
         .select(`
