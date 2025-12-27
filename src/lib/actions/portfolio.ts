@@ -35,6 +35,14 @@ export async function upsertPortfolioItem(item: Partial<ServiceCatalogItem>) {
         throw new Error("Unauthorized")
     }
 
+    // CRITICAL: Get organization context
+    const { getCurrentOrganizationId } = await import('./organizations')
+    const orgId = await getCurrentOrganizationId()
+
+    if (!orgId) {
+        throw new Error('No organization context found')
+    }
+
     // 1. Upsert Service (as Catalog Item) using Admin Client to bypass RLS
     const { data: serviceData, error: serviceError } = await supabaseAdmin
         .from('services')
@@ -48,7 +56,8 @@ export async function upsertPortfolioItem(item: Partial<ServiceCatalogItem>) {
             base_price: item.base_price,
             is_visible_in_portal: item.is_visible_in_portal,
             is_catalog_item: true, // Force this flag
-            client_id: null // Ensure no client is assigned
+            client_id: null, // Ensure no client is assigned
+            organization_id: orgId // CRITICAL FIX: Inject organization context
         })
         .select()
         .single()

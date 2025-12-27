@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge"
 import { Loader2, Plus, Sparkles, Server, CheckCircle2, CreditCard } from "lucide-react"
 import { ServiceCatalogItem } from "@/types"
 import { upsertPortfolioItem } from "@/lib/actions/portfolio"
+import { getCategories, ServiceCategory } from "@/app/actions/category-actions"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 
@@ -24,17 +25,7 @@ interface PortfolioServiceSheetProps {
     onSuccess?: () => void
 }
 
-const CATEGORIES = [
-    "Infraestructura & Suscripciones",
-    "Branding & Identidad",
-    "UX / UI & Producto Digital",
-    "Web & Ecommerce",
-    "Marketing & Growth",
-    "Social Media & Contenido",
-    "Diseño como Servicio (DaaS)",
-    "Consultoría & Especialidades",
-    "Servicios Flexibles / A Medida"
-]
+
 
 export function PortfolioServiceSheet({
     open,
@@ -43,6 +34,7 @@ export function PortfolioServiceSheet({
     onSuccess
 }: PortfolioServiceSheetProps) {
     const [loading, setLoading] = useState(false)
+    const [categories, setCategories] = useState<ServiceCategory[]>([])
     const [formData, setFormData] = useState<Partial<ServiceCatalogItem>>({
         name: "",
         description: "",
@@ -53,7 +45,23 @@ export function PortfolioServiceSheet({
         is_visible_in_portal: true
     })
 
-    // Sync state
+    // Load categories
+    useEffect(() => {
+        const loadCategories = async () => {
+            try {
+                const cats = await getCategories()
+                setCategories(cats)
+            } catch (error) {
+                console.error('Error loading categories:', error)
+                toast.error('Error al cargar categorías')
+            }
+        }
+        if (open) {
+            loadCategories()
+        }
+    }, [open])
+
+    // Sync form state
     useEffect(() => {
         if (itemToEdit) {
             setFormData(itemToEdit)
@@ -141,9 +149,16 @@ export function PortfolioServiceSheet({
                                             <SelectValue placeholder="Seleccionar..." />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {CATEGORIES.map(cat => (
-                                                <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                                            ))}
+                                            {categories.length > 0 ? (
+                                                categories.map(cat => (
+                                                    <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>
+                                                ))
+                                            ) : (
+                                                <div className="px-2 py-6 text-center text-sm text-muted-foreground">
+                                                    <p>No hay categorías</p>
+                                                    <p className="text-xs mt-1">Crea una categoría primero</p>
+                                                </div>
+                                            )}
                                         </SelectContent>
                                     </Select>
                                 </div>
