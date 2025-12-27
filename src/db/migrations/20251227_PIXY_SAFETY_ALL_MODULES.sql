@@ -32,10 +32,12 @@ BEGIN
     -- Insert or get existing product
     INSERT INTO public.saas_products (
         name,
+        slug,
         description,
         status
     ) VALUES (
         'Complete SaaS Package - Pixy',
+        'complete-package-pixy',
         'Full access to all platform modules for Pixy Agency',
         'active'
     )
