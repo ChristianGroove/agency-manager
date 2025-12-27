@@ -13,7 +13,7 @@ export async function POST(request: Request) {
         // Fetch all invoices using Admin client
         const { data: invoices, error } = await supabaseAdmin
             .from('invoices')
-            .select('*')
+            .select('*, client:clients(organization_id)')
             .in('id', invoiceIds)
 
         if (error || !invoices || invoices.length !== invoiceIds.length) {
@@ -21,20 +21,47 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'One or more invoices not found' }, { status: 404 })
         }
 
+        // CRITICAL: Get organization_id from first invoice
+        const firstInvoice = invoices[0]
+        const organizationId = firstInvoice.client?.organization_id
+
+        if (!organizationId) {
+            console.error('Missing organization_id in invoice data')
+            return NextResponse.json({ error: 'Invalid invoice configuration' }, { status: 400 })
+        }
+
+        // CRITICAL: Fetch organization-specific Wompi configuration
+        const { data: orgSettings, error: settingsError } = await supabaseAdmin
+            .from('organization_settings')
+            .select('wompi_public_key, wompi_integrity_secret, wompi_currency')
+            .eq('organization_id', organizationId)
+            .single()
+
+        if (settingsError || !orgSettings) {
+            console.error('Error fetching org settings:', settingsError)
+            return NextResponse.json({
+                error: 'Payment gateway configuration not found for this organization'
+            }, { status: 500 })
+        }
+
+        // Validate Wompi configuration exists
+        if (!orgSettings.wompi_public_key || !orgSettings.wompi_integrity_secret) {
+            console.error('Wompi not configured for organization:', organizationId)
+            return NextResponse.json({
+                error: 'Payment gateway not configured. Please contact your administrator.'
+            }, { status: 400 })
+        }
+
         // Calculate total amount
         const totalAmount = invoices.reduce((sum, invoice) => sum + invoice.total, 0)
         const amountInCents = Math.round(totalAmount * 100)
 
-        const currency = process.env.NEXT_PUBLIC_WOMPI_CURRENCY || 'COP'
-        const integritySecret = process.env.WOMPI_INTEGRITY_SECRET
-
-        if (!integritySecret) {
-            return NextResponse.json({ error: 'Server configuration error' }, { status: 500 })
-        }
+        // Use organization-specific currency
+        const currency = orgSettings.wompi_currency || 'COP'
+        const integritySecret = orgSettings.wompi_integrity_secret
 
         // Generate unique reference for the TRANSACTION
         const timestamp = Date.now()
-        // Use a shorter reference format: PAY-{timestamp}-{random4chars}
         const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase()
         const reference = `PAY-${timestamp}-${randomSuffix}`
 
@@ -46,7 +73,8 @@ export async function POST(request: Request) {
                 amount_in_cents: amountInCents,
                 currency,
                 status: 'PENDING',
-                invoice_ids: invoiceIds
+                invoice_ids: invoiceIds,
+                organization_id: organizationId // Track which org this payment belongs to
             })
 
         if (transactionError) {
@@ -54,16 +82,17 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Failed to create transaction record' }, { status: 500 })
         }
 
-        // Generate Signature
+        // Generate Signature using organization's secret
         const signatureString = `${reference}${amountInCents}${currency}${integritySecret}`
         const signature = createHash('sha256').update(signatureString).digest('hex')
 
+        // Return organization-specific public key
         return NextResponse.json({
             reference,
             amountInCents,
             currency,
             signature,
-            publicKey: process.env.NEXT_PUBLIC_WOMPI_PUBLIC_KEY
+            publicKey: orgSettings.wompi_public_key
         })
 
     } catch (error) {
