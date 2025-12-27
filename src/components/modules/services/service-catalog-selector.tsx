@@ -9,6 +9,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { supabase } from "@/lib/supabase"
 import { ServiceCatalogItem } from "@/types"
 import { cn } from "@/lib/utils"
+import { getCurrentOrganizationId } from "@/lib/actions/organizations"
 
 interface ServiceCatalogSelectorProps {
     onSelect: (item: ServiceCatalogItem) => void
@@ -37,10 +38,19 @@ export function ServiceCatalogSelector({ onSelect, onCancel }: ServiceCatalogSel
         const fetchCatalog = async () => {
             setLoading(true)
             try {
+                // SECURITY FIX: Only fetch catalog items for current organization
+                const orgId = await getCurrentOrganizationId()
+
+                if (!orgId) {
+                    console.error("No organization selected")
+                    setCatalogItems([])
+                    return
+                }
+
                 const { data, error } = await supabase
                     .from('service_catalog')
                     .select('*')
-                    // Order by name inside category for consistency, or by Price desc
+                    .eq('organization_id', orgId) // CRITICAL: Filter by organization
                     .order('base_price', { ascending: false })
 
                 if (error) throw error
