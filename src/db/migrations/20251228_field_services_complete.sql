@@ -121,3 +121,56 @@ USING (
 CREATE INDEX IF NOT EXISTS idx_staff_profiles_org ON staff_profiles(organization_id);
 CREATE INDEX IF NOT EXISTS idx_appointments_org ON appointments(organization_id);
 CREATE INDEX IF NOT EXISTS idx_appointments_staff ON appointments(staff_id);
+
+-- 7. SEED DATA: Cleaning App Product Bundle
+-- This ensures it appears in the "Create Organization" dropdown.
+DO $$ 
+DECLARE 
+    v_product_id UUID;
+    mod_wf UUID;
+    mod_ops UUID;
+    mod_appt UUID;
+    mod_client UUID;
+    mod_sett UUID; 
+BEGIN
+    -- A. Ensure Modules Exist (Idempotent)
+    INSERT INTO system_modules (key, name, description, category, is_active)
+    VALUES
+        ('module_workforce', 'Gestión de Personal', 'Permite configurar tarifas y skills del staff.', 'addon', true),
+        ('module_field_ops', 'Operaciones de Campo', 'Mapa y Timeline de servicios.', 'addon', true),
+        ('module_appointments', 'Citas y Reservas', 'Gestión base de citas con contexto espacial.', 'core', true)
+    ON CONFLICT (key) DO UPDATE SET is_active = true;
+
+    -- B. Create Product
+    INSERT INTO saas_products (name, slug, description, pricing_model, base_price, status)
+    VALUES ('Cleaning Vertical', 'cleaning-app', 'Solución llave en mano para empresas de limpieza.', 'subscription', 29.00, 'published')
+    ON CONFLICT (slug) DO UPDATE SET 
+        base_price = 29.00,
+        description = 'Solución llave en mano para empresas de limpieza.'
+    RETURNING id INTO v_product_id;
+
+    -- C. Resolve IDs
+    SELECT id INTO mod_wf FROM system_modules WHERE key = 'module_workforce';
+    SELECT id INTO mod_ops FROM system_modules WHERE key = 'module_field_ops';
+    SELECT id INTO mod_appt FROM system_modules WHERE key = 'module_appointments';
+    -- Core modules usually exist from initial seed, if not, we skip linking
+    SELECT id INTO mod_client FROM system_modules WHERE key = 'core_clients';
+    SELECT id INTO mod_sett FROM system_modules WHERE key = 'core_settings';
+
+    -- D. Link Modules
+    INSERT INTO saas_product_modules (product_id, module_id, is_default_enabled)
+    VALUES 
+        (v_product_id, mod_wf, true),
+        (v_product_id, mod_ops, true),
+        (v_product_id, mod_appt, true)
+    ON CONFLICT (product_id, module_id) DO NOTHING;
+    
+    IF mod_client IS NOT NULL THEN
+        INSERT INTO saas_product_modules (product_id, module_id, is_default_enabled)
+        VALUES (v_product_id, mod_client, true)
+        ON CONFLICT (product_id, module_id) DO NOTHING;
+    END IF;
+
+    RAISE NOTICE 'Cleaning App Product Created/Updated with ID: %', v_product_id;
+END $$;
+
