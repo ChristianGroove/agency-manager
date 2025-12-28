@@ -25,12 +25,27 @@ export async function getActiveModules(orgId?: string): Promise<string[]> {
 
         if (error) {
             console.error('Error fetching active modules:', error)
-            // Return core modules as absolute fallback
             return ['core_clients', 'core_settings']
         }
 
         // data should be array of { module_key: string }
-        const moduleKeys = data?.map((row: any) => row.module_key) || []
+        let moduleKeys = data?.map((row: any) => row.module_key) || []
+
+        // FETCH MANUAL OVERRIDES
+        try {
+            const { data: orgData } = await supabase
+                .from('organizations')
+                .select('manual_module_overrides')
+                .eq('id', organizationId)
+                .single()
+
+            if (orgData?.manual_module_overrides && Array.isArray(orgData.manual_module_overrides)) {
+                // Merge and deduplicate
+                moduleKeys = Array.from(new Set([...moduleKeys, ...orgData.manual_module_overrides]))
+            }
+        } catch (overrideError) {
+            console.warn('Failed to fetch module overrides:', overrideError)
+        }
 
         return moduleKeys
     } catch (error) {

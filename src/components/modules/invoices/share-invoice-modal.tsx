@@ -36,7 +36,7 @@ export function ShareInvoiceModal({ isOpen, onOpenChange, invoice, client, setti
                 break
 
             case 'email':
-                const subject = `Factura #${invoice.number} - ${settings?.agency_name || "Agencia"}`
+                const subject = `Factura #${invoice.number} - ${settings?.agency_name || "Empresa"}`
                 const body = `Hola ${client.name},\n\nAdjunto encontrarás la factura #${invoice.number} por un valor de $${invoice.total.toLocaleString()}.\n\nPuedes verla y descargarla en el siguiente enlace:\n${invoiceUrl}\n\nGracias por tu confianza.\n\nAtentamente,\n${settings?.agency_name || "El equipo"}`
                 const mailtoLink = `mailto:${client.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
                 window.open(mailtoLink, '_blank')

@@ -3,7 +3,7 @@
 /**
  * NOMENCLATURA: Este módulo muestra "Catálogo" en la UI.
  * Backend usa tabla 'service_catalog' (NO cambiar nombres técnicos).
- * "Catálogo" = Plantillas/oferta de servicios que la agencia ofrece.
+ * "Catálogo" = Plantillas/oferta de servicios que el negocio ofrece.
  * Ver: /NOMENCLATURE.md para más info.
  */
 
@@ -130,7 +130,7 @@ export default function PortfolioPage() {
                     <SplitText>Catálogo</SplitText>
                 </h1>
                 <p className="text-muted-foreground mt-1">
-                    Servicios y productos que ofrece tu agencia.
+                    Servicios y productos que ofrece tu negocio.
                 </p>
             </div>
 

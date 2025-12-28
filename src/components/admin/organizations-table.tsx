@@ -26,9 +26,10 @@ import Link from 'next/link'
 
 interface OrganizationsTableProps {
     organizations: AdminOrganization[]
+    onSelect?: (orgId: string) => void
 }
 
-export function OrganizationsTable({ organizations }: OrganizationsTableProps) {
+export function OrganizationsTable({ organizations, onSelect }: OrganizationsTableProps) {
     const getStatusBadge = (status?: string) => {
         switch (status) {
             case 'active':
@@ -90,11 +91,22 @@ export function OrganizationsTable({ organizations }: OrganizationsTableProps) {
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end">
                                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                            <DropdownMenuItem asChild>
-                                                <Link href={`/platform/admin/organizations/${org.id}`}>
-                                                    <Eye className="mr-2 h-4 w-4" />
-                                                    View Details
-                                                </Link>
+                                            <DropdownMenuItem
+                                                onClick={() => onSelect ? onSelect(org.id) : null}
+                                                asChild={!onSelect}
+                                                className="cursor-pointer"
+                                            >
+                                                {onSelect ? (
+                                                    <span className="flex items-center w-full">
+                                                        <Eye className="mr-2 h-4 w-4" />
+                                                        View Details
+                                                    </span>
+                                                ) : (
+                                                    <Link href={`/platform/admin/organizations/${org.id}`}>
+                                                        <Eye className="mr-2 h-4 w-4" />
+                                                        View Details
+                                                    </Link>
+                                                )}
                                             </DropdownMenuItem>
                                             <DropdownMenuSeparator />
                                             {org.status === 'active' ? (

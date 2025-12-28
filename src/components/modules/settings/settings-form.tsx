@@ -32,7 +32,7 @@ export function SettingsForm({ initialSettings, activeModules }: SettingsFormPro
     const [formData, setFormData] = useState(initialSettings || {})
 
     // Local UI Settings State
-    const [showMarqueeLocal, setShowMarqueeLocal] = useState(true)
+    const [showMarqueeLocal, setShowMarqueeLocal] = useState(false)
 
     useEffect(() => {
         // Load local setting on mount
@@ -109,7 +109,7 @@ export function SettingsForm({ initialSettings, activeModules }: SettingsFormPro
     const TABS_CONFIG = [
         {
             id: 'agency',
-            label: 'Agencia',
+            label: 'Negocio',
             icon: Building2,
             requiredModule: null,
             isCore: true
@@ -202,7 +202,7 @@ export function SettingsForm({ initialSettings, activeModules }: SettingsFormPro
                     <h2 className="text-3xl font-bold tracking-tight text-gray-900">
                         <SplitText>Configuración</SplitText>
                     </h2>
-                    <p className="text-muted-foreground">Administra los datos de tu agencia y preferencias globales.</p>
+                    <p className="text-muted-foreground">Administra los datos de tu negocio y preferencias globales.</p>
                 </div>
                 <Button onClick={handleSubmit} disabled={isLoading} className="bg-brand-pink hover:bg-brand-pink/90">
                     {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
@@ -236,7 +236,7 @@ export function SettingsForm({ initialSettings, activeModules }: SettingsFormPro
                 <TabsContent value="agency" className="space-y-4 mt-4" suppressHydrationWarning>
                     <Card>
                         <CardHeader>
-                            <CardTitle>Identidad de la Agencia</CardTitle>
+                            <CardTitle>Identidad del Negocio</CardTitle>
                             <CardDescription>
                                 Estos datos aparecerán en tus cuentas de cobro, cotizaciones y portal de clientes.
                             </CardDescription>
@@ -710,7 +710,7 @@ export function SettingsForm({ initialSettings, activeModules }: SettingsFormPro
                                         />
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <Input id="portal_subdomain" name="portal_subdomain" value={formData.portal_subdomain || ''} onChange={handleChange} placeholder="mi-agencia" className="max-w-[200px]" />
+                                        <Input id="portal_subdomain" name="portal_subdomain" value={formData.portal_subdomain || ''} onChange={handleChange} placeholder="mi-negocio" className="max-w-[200px]" />
                                         <span className="text-muted-foreground text-sm">.pixy.com.co</span>
                                     </div>
 
@@ -768,7 +768,7 @@ export function SettingsForm({ initialSettings, activeModules }: SettingsFormPro
                                             name="portal_footer_text"
                                             value={formData.portal_footer_text || ''}
                                             onChange={handleChange}
-                                            placeholder="© 2024 Mi Agencia - Todos los derechos reservados"
+                                            placeholder="© 2024 Mi Empresa - Todos los derechos reservados"
                                         />
                                     </div>
                                 </CardContent>
@@ -789,7 +789,7 @@ export function SettingsForm({ initialSettings, activeModules }: SettingsFormPro
                                             onChange={handleChange}
                                             placeholder="https://..."
                                         />
-                                        <p className="text-xs text-muted-foreground">Si se deja vacío, se usará el logo de la agencia.</p>
+                                        <p className="text-xs text-muted-foreground">Si se deja vacío, se usará el logo del negocio.</p>
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-2">
@@ -834,7 +834,7 @@ export function SettingsForm({ initialSettings, activeModules }: SettingsFormPro
                                         </div>
                                     </div>
                                     <div className="flex items-center justify-between">
-                                        <Label htmlFor="portal_show_agency_name">Mostrar Nombre de Agencia</Label>
+                                        <Label htmlFor="portal_show_agency_name">Mostrar Nombre del Negocio</Label>
                                         <Switch
                                             id="portal_show_agency_name"
                                             checked={formData.portal_show_agency_name !== false}
@@ -936,7 +936,7 @@ export function SettingsForm({ initialSettings, activeModules }: SettingsFormPro
                                             name="comm_sender_name"
                                             value={formData.comm_sender_name || ''}
                                             onChange={handleChange}
-                                            placeholder="Tu Agencia"
+                                            placeholder="Tu Negocio"
                                         />
                                         <p className="text-xs text-muted-foreground">Se usará en algunos mensajes automáticos.</p>
                                     </div>

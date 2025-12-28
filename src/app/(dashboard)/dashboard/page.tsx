@@ -188,7 +188,7 @@ export default function DashboardPage() {
                 <h1 className="text-3xl font-bold text-gray-900">
                     <SplitText>Dashboard</SplitText>
                 </h1>
-                <p className="text-muted-foreground mt-1">Resumen en tiempo real de tu agencia</p>
+                <p className="text-muted-foreground mt-1">Resumen en tiempo real de tu negocio</p>
             </div>
 
             {/* Stats Grid */}

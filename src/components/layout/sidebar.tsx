@@ -3,14 +3,13 @@
 import React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, Users, Server, FileText, Settings, LogOut, CreditCard, Briefcase, Shield } from "lucide-react"
+import { Shield, LogOut } from "lucide-react"
 import { cn } from "@/lib/utils"
-
-import { logout } from "@/app/actions/logout"
-
-import { OrganizationSwitcher } from "@/components/organizations/organization-switcher"
+// Removed OrganizationSwitcher, DropdownMenu, Avatar etc.
+import { OrgBranding } from "@/components/organizations/org-branding"
 import { useActiveModules } from "@/hooks/use-active-modules"
 import { MODULE_ROUTES, filterRoutesByModules } from "@/lib/module-config"
+import { logout } from "@/app/actions/logout" // We keep logout import just in case, or remove if unused. User wants logout in header.
 
 interface SidebarProps {
     isCollapsed: boolean;
@@ -28,13 +27,14 @@ export function SidebarContent({ isCollapsed = false, currentOrgId, isSuperAdmin
 
     return (
         <div className="px-3 py-6 flex-1 flex flex-col h-full">
-            <div className={cn("flex items-center mb-10 transition-all duration-300", isCollapsed ? "justify-center px-0" : "px-0")}>
+            {/* Branding Section (replaces OrgSwitcher) */}
+            <div className={cn("flex items-center mb-10 transition-all duration-300 min-h-[48px]", isCollapsed ? "justify-center px-0" : "px-2")}>
                 {isCollapsed ? (
                     <div className="w-10 h-10 flex items-center justify-center bg-indigo-600 rounded-lg text-white font-bold text-sm">
                         PX
                     </div>
                 ) : (
-                    <OrganizationSwitcher key={currentOrgId} />
+                    <OrgBranding orgId={currentOrgId} />
                 )}
             </div>
 
@@ -126,30 +126,15 @@ export function SidebarContent({ isCollapsed = false, currentOrgId, isSuperAdmin
                 </div>
             )}
 
-            <div className="mt-auto pt-4 border-t border-white/5">
-                <button
-                    onClick={() => logout()}
-                    className={cn(
-                        "text-sm group flex p-3 w-full font-medium cursor-pointer hover:text-white hover:bg-white/10 rounded-xl transition text-zinc-400",
-                        isCollapsed ? "justify-center" : "justify-start"
-                    )}
-                >
-                    <div className="flex items-center">
-                        <LogOut className={cn("h-5 w-5 text-zinc-400 group-hover:text-white transition-all", isCollapsed ? "mr-0" : "mr-3")} />
-                        {!isCollapsed && <span>Cerrar Sesión</span>}
-                    </div>
-                </button>
-            </div>
+            {/* NO FOOTER - User Menu moved to Header */}
         </div >
     )
 }
 
-
-
 export function Sidebar({ isCollapsed, toggleCollapse, currentOrgId, isSuperAdmin = false }: SidebarProps) {
     const [isDragging, setIsDragging] = React.useState(false)
     const [dragStartX, setDragStartX] = React.useState(0)
-    const dragThreshold = 50 // pixels to drag before triggering collapse/expand
+    const dragThreshold = 50
 
     const handleDragStart = (clientX: number) => {
         setIsDragging(true)
@@ -158,17 +143,12 @@ export function Sidebar({ isCollapsed, toggleCollapse, currentOrgId, isSuperAdmi
 
     const handleDragMove = (clientX: number) => {
         if (!isDragging) return
-
         const dragDistance = clientX - dragStartX
-
-        // Only trigger if dragged more than threshold
         if (Math.abs(dragDistance) > dragThreshold) {
             if (dragDistance < 0 && !isCollapsed) {
-                // Dragged left while expanded -> collapse
                 toggleCollapse()
                 setIsDragging(false)
             } else if (dragDistance > 0 && isCollapsed) {
-                // Dragged right while collapsed -> expand
                 toggleCollapse()
                 setIsDragging(false)
             }

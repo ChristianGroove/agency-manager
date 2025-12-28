@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase-server"
 import { redirect } from "next/navigation"
 import { getCurrentOrganizationId } from "@/lib/actions/organizations"
 import { isSuperAdmin } from "@/lib/auth/platform-roles"
+import { SystemAlertBanner } from "@/components/layout/system-alert-banner"
 
 export default async function DashboardLayout({
     children,
@@ -27,6 +28,7 @@ export default async function DashboardLayout({
     // solving the "stale UI" issue without needing a full browser reload.
     return (
         <DashboardShell key={currentOrgId} user={user} currentOrgId={currentOrgId} isSuperAdmin={isAdmin}>
+            <SystemAlertBanner />
             {children}
         </DashboardShell>
     )

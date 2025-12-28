@@ -4,7 +4,7 @@ import { getActiveModules } from "@/app/actions/modules-actions"
 
 export const metadata = {
     title: "Configuración | Pixy Agency",
-    description: "Administra la configuración de tu agencia",
+    description: "Administra la configuración de tu negocio",
 }
 
 export default async function SettingsPage() {

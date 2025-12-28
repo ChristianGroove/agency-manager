@@ -36,7 +36,7 @@ export function WhatsAppActionsModal({ isOpen, onOpenChange, client, settings }:
 
         switch (action) {
             case 'chat':
-                message = `Hola ${client.name}, ¿cómo estás? Te escribo de ${settings?.agency_name || "la agencia"}.`
+                message = `Hola ${client.name}, ¿cómo estás? Te escribo de ${settings?.agency_name || "nuestra empresa"}.`
                 break
             case 'portal':
                 const link = getPortalUrl(`/portal/${client.portal_short_token || client.portal_token}`)

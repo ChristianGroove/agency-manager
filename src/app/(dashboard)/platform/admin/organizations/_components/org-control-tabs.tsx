@@ -1,53 +1,43 @@
-import { Suspense } from "react"
-import { notFound } from "next/navigation"
-import { getOrganizationDetails, getOrganizationUsers } from "@/app/actions/admin-actions"
-import { getAllSystemModules } from "@/app/actions/admin-dashboard-actions"
-import { AdminOrgHeader } from "./_components/org-header"
-import { AdminOrgUsers } from "./_components/org-users"
+"use client"
+
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Activity, ShieldCheck, Box, Users } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { OrgModulesManager } from "./_components/org-modules-manager"
-import { OrgSecurityManager } from "./_components/org-security-manager"
-import { Activity, ShieldCheck, Box } from "lucide-react"
+import { AdminOrgHeader } from "../../organizations/[id]/_components/org-header"
+import { AdminOrgUsers } from "../../organizations/[id]/_components/org-users"
+import { OrgModulesManager } from "../../organizations/[id]/_components/org-modules-manager"
+import { OrgSecurityManager } from "../../organizations/[id]/_components/org-security-manager"
 
-interface PageProps {
-    params: {
-        id: string
+interface OrgControlTabsProps {
+    data: {
+        organization: any
+        users: any[]
+        stats: {
+            users: number
+            clients: number
+        }
     }
+    allModules: any[]
 }
 
-export default async function AdminOrgDetailsPage({ params }: PageProps) {
-    const { id } = await params
-
-    // Paralell Fetching
-    const [details, users, allModules] = await Promise.all([
-        getOrganizationDetails(id).catch(() => null),
-        getOrganizationUsers(id).catch(() => []),
-        getAllSystemModules().catch(() => [])
-    ])
-
-    if (!details || !details.organization) {
-        notFound()
-    }
-
-    const { organization, stats } = details
+export function OrgControlTabs({ data, allModules }: OrgControlTabsProps) {
+    const { organization, users, stats } = data
 
     return (
-        <div className="space-y-6">
-            {/* Header with Actions (Suspend, Invite) */}
+        <div className="space-y-6 pt-4">
             <AdminOrgHeader organization={organization} />
 
             <Tabs defaultValue="overview" className="space-y-4">
-                <TabsList>
+                <TabsList className="grid w-full grid-cols-3">
                     <TabsTrigger value="overview">
                         <Activity className="h-4 w-4 mr-2" />
-                        Visión General
+                        Visión
                     </TabsTrigger>
                     <TabsTrigger value="features">
                         <Box className="h-4 w-4 mr-2" />
-                        Funcionalidades
+                        Módulos
                     </TabsTrigger>
                     <TabsTrigger value="security">
                         <ShieldCheck className="h-4 w-4 mr-2" />
@@ -57,22 +47,14 @@ export default async function AdminOrgDetailsPage({ params }: PageProps) {
 
                 {/* OVERVIEW TAB */}
                 <TabsContent value="overview" className="space-y-6">
-                    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                        {/* Stats Cards */}
+                    <div className="grid grid-cols-2 gap-4">
                         <Card>
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Usuarios Totales</CardTitle>
+                                <CardTitle className="text-sm font-medium">Usuarios</CardTitle>
+                                <Users className="h-4 w-4 text-muted-foreground" />
                             </CardHeader>
                             <CardContent>
                                 <div className="text-2xl font-bold">{stats.users}</div>
-                            </CardContent>
-                        </Card>
-                        <Card>
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Clientes</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold">{stats.clients}</div>
                             </CardContent>
                         </Card>
                         <Card>
@@ -89,7 +71,6 @@ export default async function AdminOrgDetailsPage({ params }: PageProps) {
 
                     <Separator />
 
-                    {/* Users & Invitation Section */}
                     <div className="space-y-4">
                         <AdminOrgUsers
                             organizationId={organization.id}

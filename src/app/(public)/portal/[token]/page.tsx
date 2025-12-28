@@ -144,7 +144,7 @@ export default function PortalPage() {
                 <AlertTriangle className="h-12 w-12 text-amber-500 mb-4" />
                 <h1 className="text-2xl font-bold text-gray-900 mb-2">Portal en Mantenimiento</h1>
                 <p className="text-gray-600 max-w-md">
-                    El portal de clientes no está disponible en este momento. Por favor contacta a la agencia directamente.
+                    El portal de clientes no está disponible en este momento. Por favor contacta a la empresa directamente.
                 </p>
             </div>
         )

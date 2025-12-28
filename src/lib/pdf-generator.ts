@@ -45,7 +45,7 @@ export const generateInvoicePDF = async (invoice: Invoice, client: Client | any,
             // Fallback text
             doc.setFontSize(20);
             doc.setFont("helvetica", "bold");
-            doc.text(invoice.emitter?.display_name || settings?.agency_name || "AGENCIA", margin, 30);
+            doc.text(invoice.emitter?.display_name || settings?.agency_name || "EMPRESA", margin, 30);
         }
     } else {
         doc.setFontSize(22);

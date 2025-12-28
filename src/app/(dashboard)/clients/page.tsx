@@ -136,7 +136,7 @@ export default function ClientsPage() {
     // Since this is a list page, we can fetch settings once at the top.
 
     const getClientWhatsAppLink = (phone: string, name: string) => {
-        const message = `Hola ${name}, te escribo de la agencia para revisar tus servicios.`
+        const message = `Hola ${name}, te escribo de nuestra empresa para revisar tus servicios.`
         return getWhatsAppLink(phone, message, settings)
     }
 
