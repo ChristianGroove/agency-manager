@@ -12,6 +12,7 @@ import { Plus, Search, Building2 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
+import { SetPasswordModal } from "@/components/auth/set-password-modal"
 
 export default function PlatformOrganizationsPage() {
     const [orgs, setOrgs] = useState<Organization[]>([])
@@ -22,6 +23,8 @@ export default function PlatformOrganizationsPage() {
     useEffect(() => {
         fetchOrgs()
     }, [])
+
+    // ... (fetchOrgs stays same)
 
     const fetchOrgs = async () => {
         setIsLoading(true)
@@ -51,6 +54,7 @@ export default function PlatformOrganizationsPage() {
 
     return (
         <div className="space-y-6">
+            <SetPasswordModal />
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight text-gray-900">Organizaciones</h1>

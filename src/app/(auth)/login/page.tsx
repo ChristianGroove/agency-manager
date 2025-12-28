@@ -1,9 +1,10 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { login } from "@/lib/actions/auth"
+import { getPublicBranding } from "@/app/actions/public-branding"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -15,8 +16,19 @@ import { ParticlesBackground } from "@/components/ui/particles-background"
 
 export default function LoginPage() {
     const router = useRouter()
+    const searchParams = useSearchParams()
+    const orgSlug = searchParams.get('org')
+
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const [branding, setBranding] = useState<any>(null)
+
+    // Fetch branding on mount
+    useEffect(() => {
+        if (orgSlug) {
+            getPublicBranding(orgSlug).then(setBranding).catch(() => null)
+        }
+    }, [orgSlug])
 
     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault()
@@ -32,43 +44,66 @@ export default function LoginPage() {
         }
     }
 
+    // Dynamic Styles
+    const bgImage = branding?.portal_login_background_url ? `url('${branding.portal_login_background_url}')` : undefined
+    const bgColor = branding?.portal_login_background_color || undefined
+    const logoUrl = branding?.portal_logo_url || "/branding/logo light.svg"
+    const title = branding ? `Iniciar Sesión en ${branding.name}` : "¡Bienvenido de nuevo!"
+
     return (
-        <ParticlesBackground>
-            <div className="z-10 flex flex-col items-center gap-6 animate-in fade-in zoom-in duration-500">
+        <div className="relative min-h-screen w-full overflow-hidden flex flex-col items-center justify-center">
+            {/* Dynamic Background */}
+            {branding ? (
+                <div
+                    className="absolute inset-0 z-0 bg-cover bg-center transition-all duration-700"
+                    style={{
+                        backgroundImage: bgImage,
+                        backgroundColor: bgColor || '#111827'
+                    }}
+                >
+                    <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" />
+                </div>
+            ) : (
+                <div className="absolute inset-0 z-0">
+                    <ParticlesBackground />
+                </div>
+            )}
+
+            <div className="z-10 flex flex-col items-center gap-6 animate-in fade-in zoom-in duration-500 w-full max-w-sm px-4">
                 <div className="mb-6">
                     <img
-                        src="/branding/logo light.svg"
-                        alt="Pixy"
-                        className="h-16 w-auto"
+                        src={logoUrl}
+                        alt="Logo"
+                        className="h-16 w-auto object-contain drop-shadow-lg"
                     />
                 </div>
 
-                <Card className="w-[380px] bg-black/10 backdrop-blur-md border-white/10 text-white shadow-[0_0_40px_-10px_rgba(0,0,0,0.5)] ring-1 ring-white/10 hover:ring-white/20 transition-all duration-500">
+                <Card className="w-full bg-black/20 backdrop-blur-xl border-white/10 text-white shadow-2xl ring-1 ring-white/10">
                     <CardHeader className="space-y-1 text-center pb-8">
-                        <CardTitle className="text-2xl font-bold tracking-tight">¡Bienvenido Chris!</CardTitle>
-                        <CardDescription className="text-gray-400">
+                        <CardTitle className="text-xl font-bold tracking-tight">{title}</CardTitle>
+                        <CardDescription className="text-gray-300">
                             Ingresa tus credenciales para acceder
                         </CardDescription>
                     </CardHeader>
                     <form onSubmit={handleSubmit}>
                         <CardContent className="space-y-4">
                             <div className="space-y-2">
-                                <Label htmlFor="email" className="text-gray-300">Email</Label>
+                                <Label htmlFor="email" className="text-gray-200">Email</Label>
                                 <Input
                                     id="email"
                                     name="email"
                                     type="email"
-                                    placeholder="admin@pixy.com"
+                                    placeholder="nombre@empresa.com"
                                     required
-                                    className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-brand-pink/50 focus:ring-brand-pink/20 transition-all h-11 backdrop-blur-sm"
+                                    className="bg-white/10 border-white/10 text-white placeholder:text-gray-400 focus:border-white/30 focus:ring-white/20 transition-all h-11"
                                 />
                             </div>
                             <div className="space-y-2">
                                 <div className="flex items-center justify-between">
-                                    <Label htmlFor="password" className="text-gray-300">Contraseña</Label>
+                                    <Label htmlFor="password" className="text-gray-200">Contraseña</Label>
                                     <Link
                                         href="/forgot-password"
-                                        className="text-xs text-brand-pink hover:text-brand-pink/80 transition-colors font-medium"
+                                        className="text-xs text-white/70 hover:text-white transition-colors"
                                         tabIndex={-1}
                                     >
                                         ¿Olvidaste tu contraseña?
@@ -79,11 +114,11 @@ export default function LoginPage() {
                                     name="password"
                                     type="password"
                                     required
-                                    className="bg-white/5 border-white/10 text-white focus:border-brand-pink/50 focus:ring-brand-pink/20 transition-all h-11 backdrop-blur-sm"
+                                    className="bg-white/10 border-white/10 text-white focus:border-white/30 focus:ring-white/20 transition-all h-11"
                                 />
                             </div>
                             {error && (
-                                <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-sm text-red-400 font-medium text-center animate-in fade-in slide-in-from-top-2">
+                                <div className="p-3 rounded-lg bg-red-500/20 border border-red-500/30 text-sm text-red-200 font-medium text-center animate-in fade-in slide-in-from-top-2">
                                     {error}
                                 </div>
                             )}
@@ -91,13 +126,13 @@ export default function LoginPage() {
                         <CardFooter className="pt-4 pb-8">
                             <Button
                                 type="submit"
-                                className="w-full bg-gradient-to-r from-brand-pink to-brand-pink/80 hover:from-brand-pink/90 hover:to-brand-pink/70 text-white h-11 font-medium shadow-[0_0_20px_rgba(242,5,226,0.3)] hover:shadow-[0_0_30px_rgba(242,5,226,0.5)] transition-all hover:scale-[1.02] border border-white/10"
+                                className="w-full bg-white text-black hover:bg-gray-200 h-11 font-medium transition-all"
                                 disabled={isLoading}
                             >
                                 {isLoading ? (
                                     <>
                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        Ingresando...
+                                        Verificando...
                                     </>
                                 ) : (
                                     "Iniciar Sesión"
@@ -107,10 +142,10 @@ export default function LoginPage() {
                     </form>
                 </Card>
 
-                <p className="text-sm text-gray-500/80 font-medium">
-                    &copy; 2026 Pixy Agency
+                <p className="text-sm text-white/50 font-medium z-10">
+                    &copy; 2026 {branding ? branding.name : 'Pixy Agency'}
                 </p>
             </div>
-        </ParticlesBackground>
+        </div>
     )
 }

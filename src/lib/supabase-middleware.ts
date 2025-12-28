@@ -25,11 +25,42 @@ export async function updateSession(request: NextRequest, response: NextResponse
     )
 
     try {
-        const { error } = await supabase.auth.getUser()
+        const { data: { user }, error } = await supabase.auth.getUser()
+
+        // SUSPENSION CHECK LOGIC
+        if (user && !request.nextUrl.pathname.startsWith('/suspended') && !request.nextUrl.pathname.startsWith('/api/auth')) {
+            // 1. Check if SUPER ADMIN (Bypass)
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('platform_role')
+                .eq('id', user.id)
+                .single()
+
+            if (profile?.platform_role !== 'super_admin') {
+                // 2. Check Organization Status
+                // We assume the user creates/belongs to an organization. 
+                // If the main organization is suspended, block access.
+                const { data: membership } = await supabase
+                    .from('organization_users')
+                    .select('organization:organizations!inner(status)')
+                    .eq('user_id', user.id)
+                    .maybeSingle() // Use maybeSingle to avoid infinite loops if no org found
+
+                // @ts-ignore - Supabase types might be strict about joins
+                const orgStatus = membership?.organization?.status
+
+                if (orgStatus === 'suspended') {
+                    // Block access!
+                    const url = request.nextUrl.clone()
+                    url.pathname = '/suspended'
+                    return NextResponse.redirect(url)
+                }
+            }
+        }
+
         if (error) {
             console.error("Middleware getUser error:", error)
             // We do NOT clear cookies here; let the client handle auth failure naturally
-            // Clearing cookies in middleware can cause looped logouts if the issue is transient
         }
     } catch (e) {
         console.error("Middleware unexpected error:", e)

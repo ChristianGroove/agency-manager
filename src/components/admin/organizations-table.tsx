@@ -1,8 +1,9 @@
 "use client"
 
-import { AdminOrganization } from '@/app/actions/admin-actions'
+import { AdminOrganization, updateOrganizationStatus } from '@/app/actions/admin-actions'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { toast } from 'sonner'
 import {
     Table,
     TableBody,
@@ -97,12 +98,35 @@ export function OrganizationsTable({ organizations }: OrganizationsTableProps) {
                                             </DropdownMenuItem>
                                             <DropdownMenuSeparator />
                                             {org.status === 'active' ? (
-                                                <DropdownMenuItem className="text-destructive">
+                                                <DropdownMenuItem
+                                                    className="text-destructive cursor-pointer"
+                                                    onClick={async () => {
+                                                        const result = confirm('Are you sure you want to suspend this organization? users will be blocked immediately.')
+                                                        if (!result) return
+
+                                                        try {
+                                                            await updateOrganizationStatus(org.id, 'suspended', 'Admin Action')
+                                                            toast.success('Organization suspended')
+                                                        } catch (error: any) {
+                                                            toast.error(error.message || 'Failed to suspend organization')
+                                                        }
+                                                    }}
+                                                >
                                                     <Ban className="mr-2 h-4 w-4" />
                                                     Suspend Service
                                                 </DropdownMenuItem>
                                             ) : (
-                                                <DropdownMenuItem className="text-green-600">
+                                                <DropdownMenuItem
+                                                    className="text-green-600 cursor-pointer"
+                                                    onClick={async () => {
+                                                        try {
+                                                            await updateOrganizationStatus(org.id, 'active')
+                                                            toast.success('Organization reactivated')
+                                                        } catch (error: any) {
+                                                            toast.error(error.message || 'Failed to reactivate organization')
+                                                        }
+                                                    }}
+                                                >
                                                     <CheckCircle className="mr-2 h-4 w-4" />
                                                     Reactivate
                                                 </DropdownMenuItem>
@@ -115,6 +139,6 @@ export function OrganizationsTable({ organizations }: OrganizationsTableProps) {
                     )}
                 </TableBody>
             </Table>
-        </div>
+        </div >
     )
 }

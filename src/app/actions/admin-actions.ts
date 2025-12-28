@@ -66,7 +66,7 @@ export async function getOrganizationDetails(orgId: string) {
 
     // Get user count
     const { count: userCount } = await supabaseAdmin
-        .from('organization_users')
+        .from('organization_members')
         .select('*', { count: 'exact', head: true })
         .eq('organization_id', orgId)
 
@@ -147,17 +147,43 @@ export async function updateOrganizationStatus(
 export async function getOrganizationUsers(orgId: string) {
     await requireSuperAdmin()
 
-    const { data, error } = await supabaseAdmin
-        .from('organization_users')
-        .select(`
-            id,
-            role,
-            joined_at,
-            user:users(email)
-        `)
+    const { data: members, error } = await supabaseAdmin
+        .from('organization_members')
+        .select('*')
         .eq('organization_id', orgId)
-        .order('joined_at', { ascending: false })
 
     if (error) throw error
-    return data || []
+    if (!members?.length) return []
+
+    // Fetch user details directly from Auth Admin API to ensure accuracy
+    // Profiles table might be out of sync or missing
+    const userIds = members.map(m => m.user_id)
+    const userMap = new Map<string, { email: string }>()
+
+    // Parallel fetch for speed
+    await Promise.all(userIds.map(async (uid) => {
+        const { data: { user } } = await supabaseAdmin.auth.admin.getUserById(uid)
+        if (user) {
+            userMap.set(uid, { email: user.email || 'No Email' })
+        }
+    }))
+
+    // Also fetch profiles for platform_role
+    const { data: profiles } = await supabaseAdmin
+        .from('profiles')
+        .select('id, platform_role')
+        .in('id', userIds)
+
+    return members.map(member => {
+        const authUser = userMap.get(member.user_id)
+        const profile = profiles?.find(p => p.id === member.user_id)
+
+        return {
+            ...member,
+            user: {
+                email: authUser?.email || 'Unknown (User Not Found in Auth)',
+                platform_role: profile?.platform_role || 'user'
+            }
+        }
+    })
 }

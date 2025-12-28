@@ -19,7 +19,7 @@ export const ParticlesBackground = ({
     children,
     className,
 }: {
-    children: React.ReactNode
+    children?: React.ReactNode
     className?: string
 }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null)

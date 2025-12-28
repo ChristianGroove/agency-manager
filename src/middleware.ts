@@ -1,85 +1,118 @@
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
-
-import { updateSession } from '@/lib/supabase-middleware'
-
-const rateLimit = new Map<string, { count: number, lastReset: number }>()
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { NextResponse, type NextRequest } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
 
 export async function middleware(request: NextRequest) {
-    const url = request.nextUrl
-    const hostname = request.headers.get('host') || ''
-    const ip = request.headers.get('x-forwarded-for') || 'unknown'
-
-    // Define the portal domain
-    // In development, we might use localhost:3000, so we need a way to simulate it.
-    // We can use an environment variable or just check for the specific production domain.
-    // Also support 'mi.localhost' for local testing if configured in hosts file.
-    const isPortalDomain = hostname === 'mi.pixy.com.co' || hostname.startsWith('mi.')
-
-    // Initialize response
+    // 1. Core Supabase Auth Session Handling
     let response = NextResponse.next({
         request: {
             headers: request.headers,
         },
     })
 
-    // 1. Portal Domain Routing
-    if (isPortalDomain) {
-        // Rate Limiting Logic
-        const now = Date.now()
-        const windowMs = 60 * 1000 // 1 minute
-        const limit = 60 // 60 requests per minute (1 per second)
-
-        const record = rateLimit.get(ip) || { count: 0, lastReset: now }
-
-        if (now - record.lastReset > windowMs) {
-            record.count = 0
-            record.lastReset = now
+    const supabase = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+            cookies: {
+                get(name: string) {
+                    return request.cookies.get(name)?.value
+                },
+                set(name: string, value: string, options: CookieOptions) {
+                    request.cookies.set({
+                        name,
+                        value,
+                        ...options,
+                    })
+                    response = NextResponse.next({
+                        request: {
+                            headers: request.headers,
+                        },
+                    })
+                    response.cookies.set({
+                        name,
+                        value,
+                        ...options,
+                    })
+                },
+                remove(name: string, options: CookieOptions) {
+                    request.cookies.set({
+                        name,
+                        value: '',
+                        ...options,
+                    })
+                    response = NextResponse.next({
+                        request: {
+                            headers: request.headers,
+                        },
+                    })
+                    response.cookies.set({
+                        name,
+                        value: '',
+                        ...options,
+                    })
+                },
+            },
         }
+    )
 
-        record.count++
-        rateLimit.set(ip, record)
+    const { data: { user } } = await supabase.auth.getUser()
 
-        if (record.count > limit) {
-            return new NextResponse('Too Many Requests', { status: 429 })
-        }
+    // 2. Custom Security Checks (Only for authenticated users)
+    if (user) {
+        // Exclude specific paths from checks
+        if (!request.nextUrl.pathname.startsWith('/suspended') &&
+            !request.nextUrl.pathname.startsWith('/auth') &&
+            !request.nextUrl.pathname.startsWith('/api')) {
 
-        // Routing Logic
-        const path = url.pathname
+            // Check Platform Role
+            // Need to fetch profile. Standard client is fine for this if profile is public-read
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('platform_role')
+                .eq('id', user.id)
+                .single()
 
-        // Allow public assets
-        if (path.startsWith('/_next') || path.startsWith('/static') || path.includes('.')) {
-            // response is already next()
-        } else if (path === '/') {
-            // For now, maybe just 404 or a generic "Welcome to Client Portal" page
-            // We can rewrite to a specific landing page if it exists
-            // response is already next()
-        } else if (!path.startsWith('/api') && !path.startsWith('/portal')) {
-            // Check if it looks like a token (alphanumeric)
-            // Actually, we can just rewrite /:token to /portal/:token
-            // But we need to be careful not to loop if we are already at /portal
-            // Rewrite /token -> /portal/token
-            response = NextResponse.rewrite(new URL(`/portal${path}`, request.url))
+            if (profile?.platform_role !== 'super_admin') {
+                // Check Organization Status using Admin Client (Bypass RLS)
+                // This ensures we catch suspended orgs even if the user can't "see" them
+                const adminClient = createClient(
+                    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                    process.env.SUPABASE_SERVICE_ROLE_KEY!
+                )
+
+                const { data: memberships } = await adminClient
+                    .from('organization_members')
+                    .select('organization:organizations!inner(status)')
+                    .eq('user_id', user.id)
+
+                // Block ONLY if the user has memberships AND NONE of them are active.
+                // If the user has 0 memberships (new user), we don't block (they need to accept invite).
+                if (memberships && memberships.length > 0) {
+                    const hasActiveOrg = memberships.some((m: any) => m.organization?.status === 'active')
+
+                    if (!hasActiveOrg) {
+                        const url = request.nextUrl.clone()
+                        url.pathname = '/suspended'
+                        return NextResponse.redirect(url)
+                    }
+                }
+            }
         }
     }
 
-    // 2. Main Domain Routing (control.pixy.com.co)
-    // We might want to BLOCK access to /portal routes from the main domain to enforce separation
-    // But for now, let's just focus on the portal domain rewrite.
-
-    // Refresh Supabase Session
-    return await updateSession(request, response)
+    return response
 }
 
 export const config = {
     matcher: [
         /*
          * Match all request paths except for the ones starting with:
-         * - api (API routes)
          * - _next/static (static files)
          * - _next/image (image optimization files)
          * - favicon.ico (favicon file)
+         * - public folder
          */
-        '/((?!api|_next/static|_next/image|favicon.ico).*)',
+        '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
     ],
 }
