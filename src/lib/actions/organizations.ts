@@ -163,3 +163,22 @@ export async function switchOrganization(organizationId: string) {
 
     revalidatePath('/')
 }
+
+/**
+ * Get active modules for an organization (Server Side)
+ */
+export async function getOrganizationModules(organizationId: string): Promise<string[]> {
+    const supabase = await createClient()
+
+    // 1. Fetch Organization Overrides
+    const { data } = await supabase
+        .from('organizations')
+        .select('manual_module_overrides')
+        .eq('id', organizationId)
+        .single()
+
+    // 2. TODO: Merge with Subscription Product Modules eventually.
+    // For now, we rely on the manual overrides or default product strategy.
+
+    return data?.manual_module_overrides || []
+}

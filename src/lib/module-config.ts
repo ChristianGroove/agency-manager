@@ -81,8 +81,21 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         label: 'Configuración',
         href: '/settings',
         icon: Settings,
-        isCore: true, // Core module, always visible
         category: 'core'
+    },
+    {
+        key: 'module_workforce',
+        label: 'Fuerza Laboral',
+        href: '/workforce',
+        icon: Users,
+        category: 'operations'
+    },
+    {
+        key: 'module_field_ops',
+        label: 'Operaciones',
+        href: '/ops',
+        icon: LayoutDashboard, // Or Calendar/Map icon if available
+        category: 'operations'
     }
 ]
 
