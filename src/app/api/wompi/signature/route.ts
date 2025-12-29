@@ -73,11 +73,8 @@ export async function POST(request: Request) {
                 reference,
                 amount_in_cents: amountInCents,
                 currency,
-                status: 'PENDING',
                 invoice_ids: invoiceIds,
-                // TODO: Re-enable organization_id after database schema cache is reloaded in production.
-                // Currently commented out to prevent "column not found" error due to stagnant cache.
-                // organization_id: organizationId
+                organization_id: organizationId
             })
 
         if (transactionError) {

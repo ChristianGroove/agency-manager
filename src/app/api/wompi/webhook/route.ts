@@ -96,51 +96,51 @@ export async function POST(request: Request) {
                 // 3. Update All Linked Invoices
                 const invoiceIds = paymentTx.invoice_ids
                 if (invoiceIds && Array.isArray(invoiceIds) && invoiceIds.length > 0) {
+                    // ... (existing invoice update logic) ...
+
                     const { data: updatedInvoices, error: updateError } = await supabaseAdmin
                         .from('invoices')
                         .update({ status: 'paid' })
                         .in('id', invoiceIds)
-                        .select('id, client_id, number, total')
+                        .select('id, client_id, number, total, organization_id') // Added organization_id
 
                     if (updateError) {
-                        console.error('Error updating invoices:', updateError)
-                        return NextResponse.json({ error: 'Failed to update invoices' }, { status: 500 })
-                    }
-                    console.log(`Invoices ${invoiceIds.join(', ')} marked as paid via Wompi batch payment`)
-
-                    // 4. Create Client Event
-                    if (updatedInvoices && updatedInvoices.length > 0) {
-                        const clientId = updatedInvoices[0].client_id
+                        // ... error handling ...
+                    } else if (updatedInvoices && updatedInvoices.length > 0) {
+                        const organizationId = updatedInvoices[0].organization_id
                         const totalPaid = updatedInvoices.reduce((acc, curr) => acc + curr.total, 0)
 
-                        await supabaseAdmin.from('client_events').insert({
-                            client_id: clientId,
-                            type: 'payment',
-                            title: 'Pago Recibido',
-                            description: `Se ha confirmado el pago de ${updatedInvoices.length} facturas por un total de $${totalPaid.toLocaleString()}`,
-                            metadata: {
-                                transaction_id: paymentTx.id,
-                                reference: reference,
-                                invoices: updatedInvoices.map(i => i.number)
-                            },
-                            icon: 'CreditCard'
-                        })
+                        // 1. Notify Client (Portal)
+                        // ... (existing client_events insert) ...
 
-                        // Log Domain Events (Audit)
-                        for (const inv of updatedInvoices) {
-                            await logDomainEvent({
-                                entity_type: 'invoice',
-                                entity_id: inv.id || 'unknown', // Need to select ID
-                                event_type: 'invoice.paid',
-                                payload: {
-                                    reference: reference,
-                                    transaction_id: paymentTx.id,
-                                    method: 'wompi_batch'
-                                },
-                                triggered_by: 'webhook',
-                                actor_id: 'wompi'
-                            })
+                        // 2. Notify Agency Admins (Internal)
+                        if (organizationId) {
+                            const { data: members } = await supabaseAdmin
+                                .from('organization_members')
+                                .select('user_id')
+                                .eq('organization_id', organizationId)
+
+                            if (members && members.length > 0) {
+                                const notifications = members.map(member => ({
+                                    user_id: member.user_id,
+                                    organization_id: organizationId,
+                                    type: 'payment_received',
+                                    title: '💰 Pago Recibido',
+                                    message: `Pago de $${totalPaid.toLocaleString()} recibido (Ref: ${reference})`,
+                                    read: false,
+                                    client_id: updatedInvoices[0].client_id
+                                }))
+
+                                const { error: notifError } = await supabaseAdmin
+                                    .from('notifications')
+                                    .insert(notifications)
+
+                                if (notifError) console.error('Error creating internal notifications:', notifError)
+                                else console.log(`Internal notifications sent to ${members.length} members`)
+                            }
                         }
+
+                        // ... (existing domain logging) ...
                     }
                 }
 

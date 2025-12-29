@@ -107,15 +107,14 @@ export async function GET(request: Request) {
 
         if (overdueInvoices && overdueInvoices.length > 0) {
             for (const invoice of overdueInvoices) {
-                // Check if already notified recently (3 days)
-                // We use a global check on notifications table since we are admin
-                // Note: We need to filter by org_id context if we want to be precise, but unique constraint is sufficient
+                // Check if already notified recently (3 days) OR if there is an unread notification
+                // This prevents spamming the user if they haven't seen the previous alert
                 const { data: existing } = await supabaseAdmin
                     .from('notifications')
-                    .select('id')
+                    .select('id, read')
                     .eq('type', 'payment_due')
                     .eq('action_url', `/invoices/${invoice.id}`)
-                    .gte('created_at', new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString())
+                    .or(`read.eq.false,created_at.gte.${new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()}`) // Unread OR Recent
                     .limit(1)
                     .maybeSingle();
 
