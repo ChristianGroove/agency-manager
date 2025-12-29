@@ -228,8 +228,8 @@ export async function forceLogoutUser(userId: string) {
 }
 
 export async function getMetaConfig(clientId: string) {
-    const { data } = await supabaseAdmin.from("integration_configs").select("*").eq("client_id", clientId).eq("platform", "meta").single()
-    return { config: data }
+    const { data, error } = await supabaseAdmin.from("integration_configs").select("*").eq("client_id", clientId).eq("platform", "meta").single()
+    return { config: data, error }
 }
 
 export async function saveMetaConfig(clientId: string, formData: FormData) {
