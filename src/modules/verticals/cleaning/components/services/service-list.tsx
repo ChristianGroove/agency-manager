@@ -3,18 +3,30 @@
 import { useEffect, useState } from "react"
 import { getCleaningServices, deleteCleaningService } from "../../actions/service-actions"
 import { Button } from "@/components/ui/button"
-import { Plus, Pencil, Trash2, Clock, DollarSign, MoreVertical } from "lucide-react"
+import { Plus, Pencil, Trash2, Clock, DollarSign, MoreVertical, Sparkles } from "lucide-react"
 import { ServiceForm } from "./service-form"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { toast } from "sonner"
+import { EmptyState } from "@/components/ui/empty-state"
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 interface ServiceListProps {
     viewMode?: 'list' | 'grid'
@@ -25,6 +37,7 @@ export function ServiceList({ viewMode = 'grid' }: ServiceListProps) {
     const [isLoading, setIsLoading] = useState(true)
     const [isFormOpen, setIsFormOpen] = useState(false)
     const [serviceToEdit, setServiceToEdit] = useState<any>(null)
+    const [deleteItem, setDeleteItem] = useState<any>(null)
 
     const loadServices = async () => {
         setIsLoading(true)
@@ -43,11 +56,14 @@ export function ServiceList({ viewMode = 'grid' }: ServiceListProps) {
         loadServices()
     }, [])
 
-    const handleDelete = async (service: any) => {
-        if (!confirm(`¿Eliminar "${service.name}"? Los trabajos asociados no se verán afectados.`)) return
+    const handleDelete = (service: any) => {
+        setDeleteItem(service)
+    }
 
+    const confirmDelete = async () => {
+        if (!deleteItem) return
         try {
-            const result = await deleteCleaningService(service.id)
+            const result = await deleteCleaningService(deleteItem.id)
             if (result.success) {
                 toast.success("Servicio eliminado")
                 loadServices()
@@ -57,6 +73,8 @@ export function ServiceList({ viewMode = 'grid' }: ServiceListProps) {
         } catch (error) {
             console.error(error)
             toast.error("Error inesperado")
+        } finally {
+            setDeleteItem(null)
         }
     }
 
@@ -95,15 +113,18 @@ export function ServiceList({ viewMode = 'grid' }: ServiceListProps) {
                         <h3 className="text-lg font-medium">Catálogo de Servicios</h3>
                         <p className="text-sm text-gray-500">Gestiona los tipos de limpieza que ofreces.</p>
                     </div>
-                    <Button onClick={handleCreate}>
-                        <Plus className="h-4 w-4 mr-2" />
-                        Nuevo Servicio
-                    </Button>
                 </div>
-                <div className="text-center py-12 bg-gray-50 rounded-xl border border-dashed">
-                    <p className="text-gray-500">No hay servicios registrados.</p>
-                    <Button variant="link" onClick={handleCreate}>Crear el primero</Button>
-                </div>
+                <EmptyState
+                    title="No hay servicios registrados"
+                    description="Define tus servicios de limpieza para comenzar a recibir trabajos."
+                    icon={Sparkles}
+                    action={
+                        <Button onClick={handleCreate}>
+                            <Plus className="h-4 w-4 mr-2" />
+                            Crear Primer Servicio
+                        </Button>
+                    }
+                />
                 <ServiceForm
                     open={isFormOpen}
                     onOpenChange={setIsFormOpen}
@@ -244,6 +265,24 @@ export function ServiceList({ viewMode = 'grid' }: ServiceListProps) {
                 serviceToEdit={serviceToEdit}
                 onSuccess={loadServices}
             />
+
+            <AlertDialog open={!!deleteItem} onOpenChange={(open) => !open && setDeleteItem(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Esta acción no se puede deshacer. Esto eliminará el servicio "{deleteItem?.name}" permanentemente.
+                            Los trabajos históricos asociados no se verán afectados.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">
+                            Eliminar
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     )
 }

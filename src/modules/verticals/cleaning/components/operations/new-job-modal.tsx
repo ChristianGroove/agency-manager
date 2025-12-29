@@ -14,17 +14,35 @@ import {
 } from "@/components/ui/dialog"
 import { JobForm } from "./job-form"
 
-export function NewJobModal() {
-    const [open, setOpen] = useState(false)
+export interface NewJobModalProps {
+    open?: boolean
+    onOpenChange?: (open: boolean) => void
+    trigger?: React.ReactNode
+}
+
+export function NewJobModal({ open: externalOpen, onOpenChange: externalOnOpenChange, trigger }: NewJobModalProps) {
+    const [internalOpen, setInternalOpen] = useState(false)
+
+    const isControlled = externalOpen !== undefined
+    const open = isControlled ? externalOpen : internalOpen
+    const onOpenChange = isControlled ? externalOnOpenChange : setInternalOpen
 
     return (
-        <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-                <Button>
-                    <Sparkles className="w-4 h-4 mr-2" />
-                    Nuevo Trabajo
-                </Button>
-            </DialogTrigger>
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            {trigger ? (
+                <DialogTrigger asChild>
+                    {trigger}
+                </DialogTrigger>
+            ) : (
+                !isControlled && (
+                    <DialogTrigger asChild>
+                        <Button>
+                            <Sparkles className="w-4 h-4 mr-2" />
+                            Nuevo Trabajo
+                        </Button>
+                    </DialogTrigger>
+                )
+            )}
             <DialogContent className="sm:max-w-[500px]">
                 <DialogHeader>
                     <DialogTitle>Agendar Trabajo de Limpieza</DialogTitle>
@@ -35,10 +53,10 @@ export function NewJobModal() {
 
                 <JobForm
                     onSuccess={() => {
-                        setOpen(false)
+                        onOpenChange && onOpenChange(false)
                         window.location.reload()
                     }}
-                    onCancel={() => setOpen(false)}
+                    onCancel={() => onOpenChange && onOpenChange(false)}
                 />
             </DialogContent>
         </Dialog>

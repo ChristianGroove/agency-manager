@@ -11,6 +11,17 @@ import { useState, useEffect } from "react"
 import { JobForm } from "./job-form"
 import { toast } from "sonner"
 
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+
 interface JobDetailDialogProps {
     job: CleaningJob | null
     open: boolean
@@ -22,10 +33,14 @@ export function JobDetailDialog({ job, open, onOpenChange, onUpdate }: JobDetail
     const router = useRouter()
     const [isLoading, setIsLoading] = useState(false)
     const [isEditMode, setIsEditMode] = useState(false)
+    const [showCancelAlert, setShowCancelAlert] = useState(false)
 
     // Reset edit mode when dialog closes or job changes
     useEffect(() => {
-        if (!open) setIsEditMode(false)
+        if (!open) {
+            setIsEditMode(false)
+            setShowCancelAlert(false)
+        }
     }, [open, job])
 
     if (!job) return null
@@ -56,8 +71,11 @@ export function JobDetailDialog({ job, open, onOpenChange, onUpdate }: JobDetail
         setIsLoading(false)
     }
 
-    async function handleCancel() {
-        if (!confirm("¿Estás seguro de cancelar este trabajo?")) return
+    const handleCancelClick = () => {
+        setShowCancelAlert(true)
+    }
+
+    async function confirmCancel() {
         setIsLoading(true)
         const res = await cancelJob(job!.id)
         if (res.success) {
@@ -68,6 +86,7 @@ export function JobDetailDialog({ job, open, onOpenChange, onUpdate }: JobDetail
             toast.error("Error al cancelar")
         }
         setIsLoading(false)
+        setShowCancelAlert(false)
     }
 
     const getStatusVariant = (status: string) => {
@@ -127,7 +146,7 @@ export function JobDetailDialog({ job, open, onOpenChange, onUpdate }: JobDetail
                                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setIsEditMode(true)}>
                                     <Pencil className="h-4 w-4 text-gray-500" />
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleCancel}>
+                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleCancelClick}>
                                     <Trash2 className="h-4 w-4 text-red-500" />
                                 </Button>
                             </div>
@@ -207,6 +226,23 @@ export function JobDetailDialog({ job, open, onOpenChange, onUpdate }: JobDetail
                     </div>
                 </DialogFooter>
             </DialogContent>
+
+            <AlertDialog open={showCancelAlert} onOpenChange={setShowCancelAlert}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Esta acción cancelará el trabajo y no se podrá revertir fácilmente.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Volver</AlertDialogCancel>
+                        <AlertDialogAction onClick={confirmCancel} className="bg-red-600 hover:bg-red-700">
+                            Confirmar Cancelación
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </Dialog>
     )
 }

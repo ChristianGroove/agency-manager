@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase-server"
 import { revalidatePath } from "next/cache"
+import { headers } from "next/headers"
 
 const STAFF_PATH = "/cleaning/staff"
 
@@ -137,14 +138,34 @@ export async function getStaffPortalLink(staffId: string) {
         return { success: false, error: "Personal no encontrado" }
     }
 
+    // If no access_token, generate one
     if (!staff.access_token) {
-        return { success: false, error: "Token de acceso no disponible" }
+        const newToken = crypto.randomUUID()
+        const { error: updateError } = await supabase
+            .from('cleaning_staff_profiles')
+            .update({ access_token: newToken })
+            .eq('id', staffId)
+
+        if (updateError) {
+            return { success: false, error: "Error generando token de acceso" }
+        }
+
+        staff.access_token = newToken
     }
 
     // Build full URL
-    const baseUrl = typeof window !== 'undefined'
-        ? window.location.origin
-        : (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000')
+    let baseUrl = process.env.NEXT_PUBLIC_APP_URL
+
+    if (!baseUrl) {
+        try {
+            const headersList = await headers()
+            const host = headersList.get("host")
+            const protocol = host?.includes("localhost") ? "http" : "https"
+            baseUrl = `${protocol}://${host}`
+        } catch (e) {
+            baseUrl = "http://localhost:3000"
+        }
+    }
 
     const link = `${baseUrl}/portal/${staff.access_token}`
 
@@ -153,4 +174,27 @@ export async function getStaffPortalLink(staffId: string) {
         link,
         name: `${staff.first_name} ${staff.last_name}`
     }
+}
+
+export async function regenerateStaffPortalToken(staffId: string) {
+    const supabase = await createClient()
+    const orgId = await getCurrentOrganizationId()
+
+    if (!orgId) return { success: false, error: "Organización no encontrada" }
+
+    const newToken = crypto.randomUUID()
+
+    const { error } = await supabase
+        .from('cleaning_staff_profiles')
+        .update({ access_token: newToken })
+        .eq('id', staffId)
+        .eq('organization_id', orgId)
+
+    if (error) {
+        console.error("Error regenerating token:", error)
+        return { success: false, error: "Error al regenerar token" }
+    }
+
+    revalidatePath(STAFF_PATH)
+    return { success: true }
 }

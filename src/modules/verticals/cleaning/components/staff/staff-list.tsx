@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react"
-import { getCleaningStaff, removeCleaningStaff, getStaffPortalLink } from "../../actions/staff-actions"
+import { getCleaningStaff, removeCleaningStaff, getStaffPortalLink, regenerateStaffPortalToken } from "../../actions/staff-actions"
 import { Card, CardContent } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { toast } from "sonner"
-import { MapPin, Star, DollarSign, Plus, Pencil, Trash2, Link2, MoreVertical } from "lucide-react"
+import { MapPin, Star, DollarSign, Plus, Pencil, Trash2, Link2, MoreVertical, Users, RefreshCw } from "lucide-react"
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -14,6 +14,18 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { StaffForm } from "./staff-form"
+import { EmptyState } from "@/components/ui/empty-state"
+
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 interface StaffListProps {
     viewMode?: 'list' | 'grid'
@@ -24,6 +36,7 @@ export function StaffList({ viewMode = 'grid' }: StaffListProps) {
     const [isLoading, setIsLoading] = useState(true)
     const [isFormOpen, setIsFormOpen] = useState(false)
     const [staffToEdit, setStaffToEdit] = useState<any>(null)
+    const [deleteId, setDeleteId] = useState<string | null>(null)
 
     useEffect(() => {
         loadStaff()
@@ -52,10 +65,14 @@ export function StaffList({ viewMode = 'grid' }: StaffListProps) {
         setIsFormOpen(true)
     }
 
-    const handleDelete = async (id: string) => {
-        if (!confirm("¿Eliminar este perfil de limpieza? El usuario seguirá en la organización.")) return
+    const handleDelete = (id: string) => {
+        setDeleteId(id)
+    }
+
+    const confirmDelete = async () => {
+        if (!deleteId) return
         try {
-            const res = await removeCleaningStaff(id)
+            const res = await removeCleaningStaff(deleteId)
             if (res.success) {
                 toast.success("Perfil eliminado")
                 loadStaff()
@@ -64,6 +81,8 @@ export function StaffList({ viewMode = 'grid' }: StaffListProps) {
             }
         } catch (error) {
             console.error(error)
+        } finally {
+            setDeleteId(null)
         }
     }
 
@@ -81,6 +100,22 @@ export function StaffList({ viewMode = 'grid' }: StaffListProps) {
         } catch (error) {
             console.error(error)
             toast.error("Error al copiar link")
+        }
+    }
+
+    const handleRegenerateToken = async (id: string) => {
+        try {
+            const res = await regenerateStaffPortalToken(id)
+            if (res.success) {
+                toast.success("Token regenerado correctamente")
+                // Automatically copy new link to convenience
+                handleCopyPortalLink(id)
+            } else {
+                toast.error(res.error || "Error al regenerar token")
+            }
+        } catch (error) {
+            console.error(error)
+            toast.error("Error inesperado")
         }
     }
 
@@ -102,6 +137,7 @@ export function StaffList({ viewMode = 'grid' }: StaffListProps) {
         )
     }
 
+    // ... inside component
     if (staff.length === 0) {
         return (
             <div className="space-y-6">
@@ -110,15 +146,18 @@ export function StaffList({ viewMode = 'grid' }: StaffListProps) {
                         <h3 className="text-lg font-medium">Equipo de Limpieza</h3>
                         <p className="text-sm text-gray-500">Gestiona tu personal de limpieza</p>
                     </div>
-                    <Button onClick={handleCreate}>
-                        <Plus className="h-4 w-4 mr-2" />
-                        Agregar Personal
-                    </Button>
                 </div>
-                <div className="text-center py-12 bg-gray-50 rounded-xl border border-dashed">
-                    <p className="text-gray-500">No hay personal de limpieza asignado.</p>
-                    <Button variant="link" onClick={handleCreate}>Asignar el primero</Button>
-                </div>
+                <EmptyState
+                    title="No hay personal asignado"
+                    description="Registra a tus trabajadores y supervisores para asignarles tareas."
+                    icon={Users}
+                    action={
+                        <Button onClick={handleCreate}>
+                            <Plus className="h-4 w-4 mr-2" />
+                            Agregar Primer Trabajador
+                        </Button>
+                    }
+                />
                 <StaffForm
                     open={isFormOpen}
                     onOpenChange={setIsFormOpen}
@@ -168,6 +207,10 @@ export function StaffList({ viewMode = 'grid' }: StaffListProps) {
                                                     <DropdownMenuItem onClick={() => handleCopyPortalLink(profile.id)}>
                                                         <Link2 className="h-3.5 w-3.5 mr-2" />
                                                         Copiar Link Portal
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem onClick={() => handleRegenerateToken(profile.id)}>
+                                                        <RefreshCw className="h-3.5 w-3.5 mr-2" />
+                                                        Regenerar Enlace
                                                     </DropdownMenuItem>
                                                     <DropdownMenuItem onClick={() => handleEdit(profile)}>
                                                         <Pencil className="h-3.5 w-3.5 mr-2" />
@@ -267,6 +310,10 @@ export function StaffList({ viewMode = 'grid' }: StaffListProps) {
                                                     <Link2 className="h-4 w-4 mr-2" />
                                                     Copiar Link Portal
                                                 </DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => handleRegenerateToken(profile.id)}>
+                                                    <RefreshCw className="h-4 w-4 mr-2" />
+                                                    Regenerar Enlace
+                                                </DropdownMenuItem>
                                                 <DropdownMenuItem onClick={() => handleEdit(profile)}>
                                                     <Pencil className="h-4 w-4 mr-2" />
                                                     Editar
@@ -291,6 +338,24 @@ export function StaffList({ viewMode = 'grid' }: StaffListProps) {
                 staffToEdit={staffToEdit}
                 onSuccess={loadStaff}
             />
+
+            <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Se eliminará este perfil del equipo de limpieza.
+                            El usuario seguirá existiendo en la organización pero perderá su rol y asignaciones.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">
+                            Eliminar
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     )
 }

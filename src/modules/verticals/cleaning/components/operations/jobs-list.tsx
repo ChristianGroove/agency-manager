@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
-import { Calendar, MapPin, User, Clock, MoreHorizontal, Play, CheckCircle, FileText, XCircle, Loader2, Filter } from "lucide-react"
+import { Calendar, MapPin, User, Clock, MoreHorizontal, Play, CheckCircle, FileText, XCircle, Loader2, Filter, Search } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
     DropdownMenu,
@@ -21,6 +21,8 @@ import { updateJobStatus, generateInvoiceFromJob } from "@/modules/verticals/cle
 import { useRouter } from "next/navigation"
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { EmptyState } from "@/components/ui/empty-state"
+import { Input } from "@/components/ui/input"
 
 interface JobsListProps {
     viewMode?: 'list' | 'grid'
@@ -32,6 +34,7 @@ export function JobsList({ viewMode = 'list' }: JobsListProps) {
     const [processingId, setProcessingId] = useState<string | null>(null)
     const [isMounted, setIsMounted] = useState(false)
     const [statusFilter, setStatusFilter] = useState<string>("all")
+    const [searchQuery, setSearchQuery] = useState("")
     const router = useRouter()
 
     useEffect(() => {
@@ -95,42 +98,65 @@ export function JobsList({ viewMode = 'list' }: JobsListProps) {
         return <div className="p-8 text-center text-muted-foreground">Cargando...</div>
     }
 
+    // ... inside component
     if (jobs.length === 0) {
         return (
-            <div className="flex flex-col items-center justify-center p-12 border-2 border-dashed rounded-lg bg-muted/10">
-                <Calendar className="h-12 w-12 text-muted-foreground/50 mb-4" />
-                <h3 className="text-lg font-medium text-foreground">No hay trabajos agendados</h3>
-                <p className="text-sm text-muted-foreground text-center max-w-sm mt-2">
-                    Crea un nuevo trabajo para comenzar a gestionar tu operación de limpieza.
-                </p>
-            </div>
+            <EmptyState
+                title="No hay trabajos agendados hoy"
+                description="Parece que no tienes operaciones programadas para este día."
+                icon={Calendar}
+            />
         )
     }
 
-    // Filter jobs by status
-    const filteredJobs = statusFilter === "all"
-        ? jobs
-        : jobs.filter(job => job.status === statusFilter)
+    // Filter jobs by status and search query
+    const filteredJobs = jobs.filter(job => {
+        // Status Filter
+        if (statusFilter !== "all" && job.status !== statusFilter) return false
+
+        // Search Filter
+        if (searchQuery) {
+            const query = searchQuery.toLowerCase()
+            return (
+                job.title.toLowerCase().includes(query) ||
+                job.client?.name?.toLowerCase().includes(query) ||
+                job.location_address?.toLowerCase().includes(query)
+            )
+        }
+
+        return true
+    })
 
     return (
         <div className="space-y-4">
             {/* Filter Bar */}
-            <div className="flex items-center gap-3 bg-muted/30 p-3 rounded-lg">
-                <Filter className="h-4 w-4 text-muted-foreground" />
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-[200px] bg-white">
-                        <SelectValue placeholder="Filtrar por estado" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">Todos</SelectItem>
-                        <SelectItem value="assigned">Asignados</SelectItem>
-                        <SelectItem value="in_progress">En Curso</SelectItem>
-                        <SelectItem value="completed">Completados</SelectItem>
-                        <SelectItem value="cancelled">Cancelados</SelectItem>
-                    </SelectContent>
-                </Select>
-                <div className="text-sm text-muted-foreground ml-auto">
-                    {filteredJobs.length} de {jobs.length} trabajos
+            <div className="flex flex-col sm:flex-row items-center gap-3 bg-muted/30 p-3 rounded-lg">
+                <div className="relative w-full sm:w-[300px]">
+                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        placeholder="Buscar por cliente, título..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-8 bg-white"
+                    />
+                </div>
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <Filter className="h-4 w-4 text-muted-foreground hidden sm:block" />
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                        <SelectTrigger className="w-full sm:w-[180px] bg-white">
+                            <SelectValue placeholder="Estado" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">Todos los estados</SelectItem>
+                            <SelectItem value="assigned">Asignados</SelectItem>
+                            <SelectItem value="in_progress">En Curso</SelectItem>
+                            <SelectItem value="completed">Completados</SelectItem>
+                            <SelectItem value="cancelled">Cancelados</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+                <div className="text-sm text-muted-foreground ml-auto hidden sm:block">
+                    {filteredJobs.length} resultados
                 </div>
             </div>
 

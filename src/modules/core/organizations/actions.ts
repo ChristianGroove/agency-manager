@@ -198,5 +198,29 @@ export async function getOrganizationModules(organizationId: string): Promise<st
     }
 
     // Merge unique
-    return Array.from(new Set([...manualModules, ...productModules]))
+    const activeModules = Array.from(new Set([...manualModules, ...productModules]))
+
+    // SELF-HEALING: Ensure basic cleaning modules are present for legacy/migration support
+    // This allows the "optimized" dashboard to work immediately without manual DB patches.
+    if (!activeModules.includes('module_cleaning')) {
+        console.log(`[Auto-Migration] Enabling module_cleaning for Org ${organizationId}`)
+
+        // 1. Add to set
+        activeModules.push('module_cleaning')
+        if (!activeModules.includes('vertical_cleaning')) activeModules.push('vertical_cleaning')
+
+        // 2. Persist to DB asynchronously (fire and forget)
+        supabaseAdmin
+            .from('organizations')
+            .update({
+                manual_module_overrides: Array.from(new Set([...manualModules, 'module_cleaning', 'vertical_cleaning']))
+            })
+            .eq('id', organizationId)
+            .then(({ error }) => {
+                if (error) console.error("[Auto-Migration] Failed to persist cleaning module:", error)
+                else console.log("[Auto-Migration] Success")
+            })
+    }
+
+    return activeModules
 }

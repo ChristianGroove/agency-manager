@@ -152,32 +152,42 @@ export async function getPortalData(token: string) {
                 const startOfDay = new Date()
                 startOfDay.setHours(0, 0, 0, 0)
 
-                const { data: jobs } = await supabaseAdmin
+                const { data: rawJobs, error: jobsError } = await supabaseAdmin
                     .from('appointments')
-                    .select(`
-                        id,
-                        title,
-                        description,
-                        start_time,
-                        end_time,
-                        status,
-                        address_text,
-                        location_type,
-                        client:clients (
-                            id,
-                            name,
-                            phone,
-                            address
-                        ),
-                        service:cleaning_services (
-                            id,
-                            name,
-                            estimated_duration_minutes
-                        )
-                    `)
+                    .select('*')
                     .eq('staff_id', staff.id)
                     .gte('start_time', startOfDay.toISOString())
                     .order('start_time', { ascending: true })
+
+                if (jobsError) {
+                    console.error('Error fetching jobs:', jobsError)
+                    return { type: 'staff', staff, settings: settings || {}, jobs: [] }
+                }
+
+                // Manual Joins to avoid FK issues (as seen in job-actions.ts)
+                const jobs = await Promise.all((rawJobs || []).map(async (job) => {
+                    const [clientRes, serviceRes] = await Promise.all([
+                        job.client_id
+                            ? supabaseAdmin.from('clients').select('id, name, phone, address').eq('id', job.client_id).maybeSingle()
+                            : Promise.resolve({ data: null }),
+                        job.service_id
+                            ? supabaseAdmin.from('cleaning_services').select('id, name, estimated_duration_minutes').eq('id', job.service_id).maybeSingle()
+                            : Promise.resolve({ data: null })
+                    ])
+
+                    return {
+                        id: job.id,
+                        title: job.title,
+                        description: job.description,
+                        start_time: job.start_time,
+                        end_time: job.end_time,
+                        status: job.status,
+                        address_text: job.address_text,
+                        location_type: job.location_type,
+                        client: clientRes.data,
+                        service: serviceRes.data
+                    }
+                }))
 
                 return {
                     type: 'staff',

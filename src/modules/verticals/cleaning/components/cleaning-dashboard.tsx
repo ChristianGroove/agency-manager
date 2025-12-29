@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState } from "react"
@@ -6,10 +7,17 @@ import { ServiceList } from "./services/service-list"
 import { StaffList } from "./staff/staff-list"
 import { JobsList } from "./operations/jobs-list"
 import { OperationsCalendar } from "./operations/operations-calendar"
-import { OperationsDashboard } from "./operations/operations-dashboard"
+// import { OperationsDashboard } from "./operations/operations-dashboard"
 import { PayrollStaffGrid } from "./payroll/payroll-staff-grid"
 import { NewJobModal } from "./operations/new-job-modal"
 import { Sparkles, Users, Calendar, List, Columns, DollarSign } from "lucide-react"
+
+// Dynamic Dashboard Imports REMOVED
+// import { DashboardEngine } from "@/modules/core/dashboard/engine"
+// import { CLEANING_DASHBOARD_CONFIG, registerCleaningWidgets } from "../widgets"
+
+// Initialize widgets REMOVED
+// registerCleaningWidgets()
 
 export function CleaningDashboard() {
     const [operationsView, setOperationsView] = useState<'list' | 'grid' | 'calendar'>('list')
@@ -67,7 +75,7 @@ export function CleaningDashboard() {
                             </TabsTrigger>
                         </TabsList>
 
-                        {/* View Switcher - 3 modes for Operations, 2 modes for others */}
+                        {/* View Switcher */}
                         <div className="flex items-center bg-muted p-1 rounded-md">
                             <button
                                 onClick={() => setCurrentView('list')}
@@ -98,26 +106,26 @@ export function CleaningDashboard() {
 
                 {/* Tab Content - Scrollable */}
                 <div className="flex-1 overflow-auto">
-                    <div>
-                        <TabsContent value="operations" className="space-y-4 outline-none mt-0">
-                            <OperationsDashboard />
+                    <TabsContent value="operations" className="space-y-4 outline-none mt-0">
+                        {/* Only Operations Views - No Dashboard Engine */}
+                        <div className="mt-0">
                             {operationsView === 'list' ? <JobsList viewMode="list" /> :
                                 operationsView === 'grid' ? <JobsList viewMode="grid" /> :
                                     <OperationsCalendar />}
-                        </TabsContent>
+                        </div>
+                    </TabsContent>
 
-                        <TabsContent value="services" className="space-y-4 outline-none mt-0">
-                            <ServiceList viewMode={servicesView} />
-                        </TabsContent>
+                    <TabsContent value="services" className="space-y-4 outline-none mt-0">
+                        <ServiceList viewMode={servicesView} />
+                    </TabsContent>
 
-                        <TabsContent value="staff" className="space-y-4 outline-none mt-0">
-                            <StaffList viewMode={staffView} />
-                        </TabsContent>
+                    <TabsContent value="staff" className="space-y-4 outline-none mt-0">
+                        <StaffList viewMode={staffView} />
+                    </TabsContent>
 
-                        <TabsContent value="payroll" className="space-y-4 outline-none mt-0">
-                            <PayrollStaffGrid viewMode={payrollView} />
-                        </TabsContent>
-                    </div>
+                    <TabsContent value="payroll" className="space-y-4 outline-none mt-0">
+                        <PayrollStaffGrid viewMode={payrollView} />
+                    </TabsContent>
                 </div>
             </Tabs>
         </div>
