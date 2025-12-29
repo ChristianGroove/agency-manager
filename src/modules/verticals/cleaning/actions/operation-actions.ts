@@ -101,88 +101,87 @@ export async function getOperationsMetrics(date: string) {
     endOfDay.setHours(23, 59, 59, 999)
 
     try {
-        try {
-            const { data: jobs, error } = await supabase
-                .from('appointments')
-                .select(`
+        const { data: jobs, error } = await supabase
+            .from('appointments')
+            .select(`
                 status, 
                 cleaning_services!inner(base_price)
             `)
-                .gte('start_time', startOfDay.toISOString())
-                .lte('start_time', endOfDay.toISOString())
-                .eq('organization_id', await getCurrentOrganizationId())
+            .gte('start_time', startOfDay.toISOString())
+            .lte('start_time', endOfDay.toISOString())
+            .eq('organization_id', await getCurrentOrganizationId())
 
-            if (error) throw error
+        if (error) throw error
 
-            const metrics = {
-                total: jobs.length,
-                pending: jobs.filter(j => j.status === 'pending' || j.status === 'assigned').length,
-                in_progress: jobs.filter(j => j.status === 'in_progress').length,
-                completed: jobs.filter(j => j.status === 'completed').length,
-                revenue: jobs.reduce((acc, curr) => acc + (curr.cleaning_services?.base_price || 0), 0)
-            }
+        const metrics = {
+            total: jobs.length,
+            pending: jobs.filter(j => j.status === 'pending' || j.status === 'assigned').length,
+            in_progress: jobs.filter(j => j.status === 'in_progress').length,
+            completed: jobs.filter(j => j.status === 'completed').length,
+            revenue: jobs.reduce((acc, curr) => acc + (curr.cleaning_services?.base_price || 0), 0)
+        }
 
-            return metrics
-        } catch (error) {
-            console.error('Error fetching operations metrics:', error)
-            return {
-                total: 0,
-                pending: 0,
-                in_progress: 0,
-                completed: 0,
-                revenue: 0
-            }
+        return metrics
+    } catch (error) {
+        console.error('Error fetching operations metrics:', error)
+        return {
+            total: 0,
+            pending: 0,
+            in_progress: 0,
+            completed: 0,
+            revenue: 0
         }
     }
+}
 
 export async function getWeeklyRevenue() {
-        const supabase = await createClient()
-        const orgId = await getCurrentOrganizationId()
+    const supabase = await createClient()
+    const orgId = await getCurrentOrganizationId()
 
-        // Last 7 days
-        const endDate = new Date()
-        const startDate = new Date()
-        startDate.setDate(endDate.getDate() - 6) // 7 days including today
+    // Last 7 days
+    const endDate = new Date()
+    const startDate = new Date()
+    startDate.setDate(endDate.getDate() - 6) // 7 days including today
 
-        startDate.setHours(0, 0, 0, 0)
-        endDate.setHours(23, 59, 59, 999)
+    startDate.setHours(0, 0, 0, 0)
+    endDate.setHours(23, 59, 59, 999)
 
-        try {
-            const { data: jobs, error } = await supabase
-                .from('appointments')
-                .select(`
+    try {
+        const { data: jobs, error } = await supabase
+            .from('appointments')
+            .select(`
                 start_time, 
                 cleaning_services!inner(base_price)
             `)
-                .eq('status', 'completed')
-                .gte('start_time', startDate.toISOString())
-                .lte('start_time', endDate.toISOString())
-                .eq('organization_id', orgId)
+            .eq('status', 'completed')
+            .gte('start_time', startDate.toISOString())
+            .lte('start_time', endDate.toISOString())
+            .eq('organization_id', orgId)
 
-            if (error) throw error
+        if (error) throw error
 
-            // Group by day
-            const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
-            const dailyRevenue = new Array(7).fill(0).map((_, i) => {
-                const d = new Date(startDate)
-                d.setDate(d.getDate() + i)
-                return {
-                    date: d.toISOString().split('T')[0],
-                    dayName: days[d.getDay()],
-                    revenue: 0
-                }
-            })
+        // Group by day
+        const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
+        const dailyRevenue = new Array(7).fill(0).map((_, i) => {
+            const d = new Date(startDate)
+            d.setDate(d.getDate() + i)
+            return {
+                date: d.toISOString().split('T')[0],
+                dayName: days[d.getDay()],
+                revenue: 0
+            }
+        })
 
-            jobs.forEach(job => {
-                const jobDate = job.start_time.split('T')[0]
-                const dayEntry = dailyRevenue.find(d => d.date === jobDate)
-                if (dayEntry) {
-                    dayEntry.revenue += (job.cleaning_services?.base_price || 0)
-                }
-            })
-            return dailyRevenue
-        } catch (error) {
-            console.error('Error fetching revenue:', error)
-            return []
-        }
+        jobs.forEach(job => {
+            const jobDate = job.start_time.split('T')[0]
+            const dayEntry = dailyRevenue.find(d => d.date === jobDate)
+            if (dayEntry) {
+                dayEntry.revenue += (job.cleaning_services?.base_price || 0)
+            }
+        })
+        return dailyRevenue
+    } catch (error) {
+        console.error('Error fetching revenue:', error)
+        return []
     }
+}
