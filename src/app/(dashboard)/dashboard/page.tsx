@@ -58,7 +58,11 @@ export default function DashboardPage() {
 
             // 1. Detect Type
             const modules = await getOrganizationModules(orgId)
+            console.log("🔍 DASHBOARD DEBUG:", { orgId, modules })
+
             const isCleaning = modules.includes('module_cleaning') || modules.includes('vertical_cleaning')
+            console.log("🔍 DETECTED MODE:", isCleaning ? "CLEANING" : "AGENCY")
+
             setOrgType(isCleaning ? 'cleaning' : 'agency')
 
             // 2. Load Data
