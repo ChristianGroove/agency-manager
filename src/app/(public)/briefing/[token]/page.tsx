@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation"
-import { getBriefingByToken } from "@/modules/verticals/agency/briefings/actions"
+import { getBriefingByToken, getBriefingResponses } from "@/modules/verticals/agency/briefings/actions"
 import { BriefingWizard } from "@/modules/verticals/agency/briefings/briefing-wizard"
 import { FullBriefingTemplate } from "@/types/briefings"
 import boyWithDogAnimation from "../../../../../public/animations/boy-with-dog-in-wilderness-illustration-2025-10-20-03-04-06-utc.json"
