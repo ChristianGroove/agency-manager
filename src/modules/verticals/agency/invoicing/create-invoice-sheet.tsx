@@ -240,7 +240,7 @@ export function CreateInvoiceSheet({
                     .from('invoices')
                     .update({
                         client_id: finalClient,
-                        emitter_id: selectedEmitterId || null,
+                        emitter_id: selectedEmitterId || undefined,
                         number: invoiceNumber,
                         due_date: dueDate || null,
                         items: cleanItems,

@@ -57,7 +57,7 @@ const CLEANING_SKILLS = [
 export function StaffForm({ open, onOpenChange, staffToEdit, onSuccess }: StaffFormProps) {
     const [isLoading, setIsLoading] = useState(false)
 
-    const form = useForm<FormValues>({
+    const form = useForm({
         resolver: zodResolver(formSchema),
         defaultValues: {
             firstName: "",
@@ -242,7 +242,7 @@ export function StaffForm({ open, onOpenChange, staffToEdit, onSuccess }: StaffF
                                     <FormItem>
                                         <FormLabel>Tarifa Hora ($)</FormLabel>
                                         <FormControl>
-                                            <Input type="number" {...field} />
+                                            <Input type="number" {...field} value={field.value as string | number} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -278,7 +278,7 @@ export function StaffForm({ open, onOpenChange, staffToEdit, onSuccess }: StaffF
                                                                     checked={field.value?.includes(item.id)}
                                                                     onCheckedChange={(checked) => {
                                                                         return checked
-                                                                            ? field.onChange([...field.value, item.id])
+                                                                            ? field.onChange([...(field.value || []), item.id])
                                                                             : field.onChange(
                                                                                 field.value?.filter(
                                                                                     (value) => value !== item.id

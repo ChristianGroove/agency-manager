@@ -90,6 +90,7 @@ export type Quote = {
     lead?: Lead
     service_id?: string | null
     deleted_at?: string
+    emitter_id?: string
 }
 
 export type InvoiceItem = {

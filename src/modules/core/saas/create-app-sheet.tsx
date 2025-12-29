@@ -12,7 +12,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Loader2, Save, Rocket, Info, Check, Plug } from "lucide-react"
 import { toast } from "sonner"
 import { SystemModule } from "@/types/saas" // Assuming types are here
-import { createSaaSProduct, getSystemModules } from "@/modules/core/saas/actions" // Assuming backend logic is here
+import { createSaaSProduct, getSystemModules, seedSystemModules } from "@/modules/core/saas/actions" // Assuming backend logic is here
 
 interface CreateAppSheetProps {
     open: boolean

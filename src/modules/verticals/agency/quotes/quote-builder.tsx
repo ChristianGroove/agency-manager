@@ -208,7 +208,7 @@ export function QuoteBuilder({ onSuccess, mode = 'page', emitters = [] }: QuoteB
         try {
             const response = await createQuote({
                 client_id: selectedClientId,
-                emitter_id: selectedEmitterId || null,
+                emitter_id: selectedEmitterId || undefined,
                 items: items,
                 total: total,
                 date: new Date(date).toISOString(),

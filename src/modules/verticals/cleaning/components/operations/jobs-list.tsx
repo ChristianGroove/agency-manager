@@ -272,7 +272,7 @@ export function JobsList({ viewMode = 'list' }: JobsListProps) {
                                                     </DropdownMenuItem>
                                                 )}
                                                 {job.status === 'completed' && (
-                                                    <DropdownMenuItem onClick={() => handleGenerateInvoice(job.id)}>
+                                                    <DropdownMenuItem onClick={() => handleInvoice(job.id)}>
                                                         <FileText className="mr-2 h-4 w-4" />
                                                         Generar Factura
                                                     </DropdownMenuItem>

@@ -29,11 +29,13 @@ import { useEffect } from "react"
 interface AddWorkLogModalProps {
     open: boolean
     onOpenChange: (open: boolean) => void
+    preselectedStaffId?: string
+    onSuccess?: () => void
 }
 
-export function AddWorkLogModal({ open, onOpenChange }: AddWorkLogModalProps) {
+export function AddWorkLogModal({ open, onOpenChange, preselectedStaffId, onSuccess }: AddWorkLogModalProps) {
     const [staff, setStaff] = useState<any[]>([])
-    const [selectedStaffId, setSelectedStaffId] = useState("")
+    const [selectedStaffId, setSelectedStaffId] = useState(preselectedStaffId || "")
     const [startDate, setStartDate] = useState("")
     const [startTime, setStartTime] = useState("09:00")
     const [endDate, setEndDate] = useState("")
@@ -48,8 +50,9 @@ export function AddWorkLogModal({ open, onOpenChange }: AddWorkLogModalProps) {
             const today = new Date().toISOString().split('T')[0]
             setStartDate(today)
             setEndDate(today)
+            if (preselectedStaffId) setSelectedStaffId(preselectedStaffId)
         }
-    }, [open])
+    }, [open, preselectedStaffId])
 
     const loadStaff = async () => {
         const data = await getCleaningStaff()
@@ -90,7 +93,11 @@ export function AddWorkLogModal({ open, onOpenChange }: AddWorkLogModalProps) {
                 // Reset form
                 setSelectedStaffId("")
                 setNotes("")
-                window.location.reload()
+                if (onSuccess) {
+                    onSuccess()
+                } else {
+                    window.location.reload()
+                }
             } else {
                 toast.error(result.error || "Error al crear registro")
             }

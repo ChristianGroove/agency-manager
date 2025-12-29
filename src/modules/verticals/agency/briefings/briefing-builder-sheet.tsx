@@ -14,7 +14,7 @@ import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
 import { Plus, Trash2, GripVertical, ArrowUp, ArrowDown, Loader2, Sparkles, X } from "lucide-react"
 import { BriefingTemplate, BriefingField, BriefingFieldType } from "@/types/briefings"
-import { createBriefingTemplate } from "@/modules/verticals/agency/briefings/actions"
+import { createBriefingTemplate, updateBriefingTemplate } from "@/modules/verticals/agency/briefings/actions"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 

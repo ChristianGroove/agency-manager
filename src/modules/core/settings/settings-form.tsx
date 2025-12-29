@@ -107,19 +107,30 @@ export function SettingsForm({ initialSettings, activeModules }: SettingsFormPro
     // DYNAMIC TABS CONFIGURATION
     // ============================================
 
-    const TABS_CONFIG = [
+    interface SettingsTab {
+        id: string
+        label: string
+        icon: any
+        requiredModule?: string | null
+        requiredModules?: string[]
+        matchAny?: boolean
+        isCore?: boolean
+        featureFlag?: () => boolean
+        customCheck?: (modules: string[]) => boolean
+    }
+
+    const TABS_CONFIG: SettingsTab[] = [
         {
             id: 'agency',
             label: 'Negocio',
             icon: Building2,
             requiredModule: null,
-            isCore: true,
-            featureFlag: undefined // Fix TS inference
+            isCore: true
         },
         {
             id: 'team',
             label: 'Equipo',
-            icon: Users, // Already imported
+            icon: Users,
             requiredModule: null,
             isCore: true
         },
