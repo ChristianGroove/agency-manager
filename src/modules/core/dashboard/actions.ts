@@ -2,8 +2,10 @@
 
 import { createClient } from "@/lib/supabase-server"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { unstable_noStore as noStore } from "next/cache"
 
 export async function getDashboardData() {
+    noStore()
     const supabase = await createClient()
     const orgId = await getCurrentOrganizationId()
 
