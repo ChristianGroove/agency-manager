@@ -55,7 +55,9 @@ export function PortalSummaryTab({ client, invoices, quotes, briefings, events, 
             {/* Header Greeting */}
             <div className="text-center space-y-2 mt-8">
                 <h1 className="text-3xl font-bold text-gray-900">
-                    <SplitText>{`Hola, ${client.name.split(' ')[0]} 👋`}</SplitText>
+                    <h1 className="text-3xl font-bold text-gray-900">
+                        <SplitText>{`Hola, ${(client.name?.trim() ? client.name : (client.company_name || 'Cliente')).split(' ')[0]} 👋`}</SplitText>
+                    </h1>
                 </h1>
                 <p className="text-gray-500">Aquí tienes un resumen de tu actividad.</p>
             </div>
