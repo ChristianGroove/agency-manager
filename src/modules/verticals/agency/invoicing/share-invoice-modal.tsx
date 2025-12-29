@@ -13,11 +13,12 @@ interface ShareInvoiceModalProps {
     invoice: any // Using any to avoid strict type issues with joined tables
     client: any // Using any to avoid strict type issues with local vs imported types
     settings: any
+    onSendEmail?: () => Promise<void>
 }
 
 type ChannelType = 'whatsapp' | 'email' | 'download'
 
-export function ShareInvoiceModal({ isOpen, onOpenChange, invoice, client, settings }: ShareInvoiceModalProps) {
+export function ShareInvoiceModal({ isOpen, onOpenChange, invoice, client, settings, onSendEmail }: ShareInvoiceModalProps) {
     const [channel, setChannel] = useState<ChannelType>('whatsapp')
     const [copied, setCopied] = useState(false)
     const [isGenerating, setIsGenerating] = useState(false)
@@ -28,30 +29,40 @@ export function ShareInvoiceModal({ isOpen, onOpenChange, invoice, client, setti
     const invoiceUrl = `${window.location.origin}/invoice/${invoice.id}`
 
     const handleAction = async () => {
-        switch (channel) {
-            case 'whatsapp':
-                const waMessage = `Hola ${client.name}, te comparto tu factura #${invoice.number} por valor de $${invoice.total.toLocaleString()}.\n\nPuedes verla aquí: ${invoiceUrl}`
-                const waLink = getWhatsAppLink(client.phone || "", waMessage, settings)
-                window.open(waLink, '_blank')
-                break
+        setIsGenerating(true)
+        try {
+            switch (channel) {
+                case 'whatsapp':
+                    const waMessage = `Hola ${client.name}, te comparto tu factura #${invoice.number} por valor de $${invoice.total.toLocaleString()}.\n\nPuedes verla aquí: ${invoiceUrl}`
+                    const waLink = getWhatsAppLink(client.phone || "", waMessage, settings)
+                    window.open(waLink, '_blank')
+                    break
 
-            case 'email':
-                const subject = `Factura #${invoice.number} - ${settings?.agency_name || "Empresa"}`
-                const body = `Hola ${client.name},\n\nAdjunto encontrarás la factura #${invoice.number} por un valor de $${invoice.total.toLocaleString()}.\n\nPuedes verla y descargarla en el siguiente enlace:\n${invoiceUrl}\n\nGracias por tu confianza.\n\nAtentamente,\n${settings?.agency_name || "El equipo"}`
-                const mailtoLink = `mailto:${client.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
-                window.open(mailtoLink, '_blank')
-                break
+                case 'email':
+                    if (onSendEmail) {
+                        // Use system email sending
+                        await onSendEmail()
+                        onOpenChange(false)
+                    } else {
+                        // Fallback to Mailto
+                        const subject = `Factura #${invoice.number} - ${settings?.agency_name || "Empresa"}`
+                        const body = `Hola ${client.name},\n\nAdjunto encontrarás la factura #${invoice.number} por un valor de $${invoice.total.toLocaleString()}.\n\nPuedes verla y descargarla en el siguiente enlace:\n${invoiceUrl}\n\nGracias por tu confianza.\n\nAtentamente,\n${settings?.agency_name || "El equipo"}`
+                        const mailtoLink = `mailto:${client.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+                        window.open(mailtoLink, '_blank')
+                        onOpenChange(false)
+                    }
+                    break
 
-            case 'download':
-                // Open public invoice page for Native PDF (Print)
-                // This ensures selectable text, working links, and perfect layout
-                window.open(invoiceUrl, '_blank')
-                onOpenChange(false)
-                break
-        }
-
-        if (channel !== 'download') {
-            onOpenChange(false)
+                case 'download':
+                    // Open public invoice page for Native PDF (Print)
+                    window.open(invoiceUrl, '_blank')
+                    onOpenChange(false)
+                    break
+            }
+        } catch (error) {
+            console.error("Error in action:", error)
+        } finally {
+            setIsGenerating(false)
         }
     }
 
@@ -112,8 +123,17 @@ export function ShareInvoiceModal({ isOpen, onOpenChange, invoice, client, setti
                         )}
                         {channel === 'email' && (
                             <div className="text-center space-y-1">
-                                <p className="text-sm font-medium text-gray-900">Enviar por Correo</p>
-                                <p className="text-xs text-gray-500">Se abrirá tu cliente de correo predeterminado con el asunto y enlace listos.</p>
+                                {onSendEmail ? (
+                                    <>
+                                        <p className="text-sm font-medium text-gray-900">Enviar por Sistema</p>
+                                        <p className="text-xs text-gray-500">Enviaremos un correo oficial con el PDF adjunto y la marca de tu empresa.</p>
+                                    </>
+                                ) : (
+                                    <>
+                                        <p className="text-sm font-medium text-gray-900">Enviar por Correo</p>
+                                        <p className="text-xs text-gray-500">Se abrirá tu cliente de correo predeterminado con el asunto y enlace listos.</p>
+                                    </>
+                                )}
                             </div>
                         )}
                         {channel === 'download' && (
@@ -145,13 +165,13 @@ export function ShareInvoiceModal({ isOpen, onOpenChange, invoice, client, setti
                         {isGenerating ? (
                             <>
                                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                                Generando PDF...
+                                {channel === 'email' ? 'Enviando...' : 'Procesando...'}
                             </>
                         ) : (
                             <>
                                 <span>
                                     {channel === 'whatsapp' ? 'Abrir WhatsApp' :
-                                        channel === 'email' ? 'Abrir Correo' : 'Descargar PDF'}
+                                        channel === 'email' ? 'Enviar Ahora' : 'Descargar PDF'}
                                 </span>
                                 <ArrowRight className="ml-2 h-5 w-5" />
                             </>

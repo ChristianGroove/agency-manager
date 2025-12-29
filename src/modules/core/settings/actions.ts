@@ -106,6 +106,10 @@ async function validateSettingsData(data: any, activeModules: string[]) {
         'document_font_family': 'module_invoicing',
         'document_header_text_color': 'module_invoicing',
         'document_footer_text_color': 'module_invoicing',
+
+        // Email / System Notification fields (new)
+        'email_sender_name': 'module_communications',
+        'email_reply_to': 'module_communications',
     }
 
     // Validate each field

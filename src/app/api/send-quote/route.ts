@@ -1,25 +1,14 @@
 import { NextResponse } from 'next/server';
-import { Resend } from 'resend';
 import { getQuoteEmailHtml } from '@/lib/email-templates';
+import { EmailService } from '@/modules/core/notifications/email.service';
 
 export async function POST(request: Request) {
     try {
-        const apiKey = process.env.RESEND_API_KEY;
+        const { email, quoteNumber, clientName, total, date, pdfBase64, organizationId } = await request.json();
 
-        if (!apiKey) {
-            console.error('RESEND_API_KEY is missing');
+        if (!email || !quoteNumber || !pdfBase64 || !organizationId) {
             return NextResponse.json(
-                { error: 'Server configuration error: Missing RESEND_API_KEY' },
-                { status: 500 }
-            );
-        }
-
-        const resend = new Resend(apiKey);
-        const { email, quoteNumber, clientName, total, date, pdfBase64 } = await request.json();
-
-        if (!email || !quoteNumber || !pdfBase64) {
-            return NextResponse.json(
-                { error: 'Missing required fields' },
+                { error: 'Missing required fields (email, quoteNumber, pdfBase64, organizationId)' },
                 { status: 400 }
             );
         }
@@ -28,25 +17,25 @@ export async function POST(request: Request) {
         const pdfBuffer = Buffer.from(pdfBase64.split(',')[1], 'base64');
         const emailHtml = getQuoteEmailHtml(clientName, quoteNumber, total || '$0', date || 'N/A');
 
-        const { data, error } = await resend.emails.send({
-            from: 'Pixy <cotizaciones@billing.pixy.com.co>',
-            to: [email],
+        const result = await EmailService.send({
+            to: email,
             subject: `Cotización N° ${quoteNumber} - ${clientName}`,
             html: emailHtml,
+            organizationId,
             attachments: [
                 {
                     filename: `Cotizacion_${quoteNumber}.pdf`,
                     content: pdfBuffer,
                 },
             ],
+            tags: [{ name: 'type', value: 'quote' }]
         });
 
-        if (error) {
-            console.error('Resend API Error:', error);
-            return NextResponse.json({ error: error.message || 'Error sending email', details: error }, { status: 500 });
+        if (!result.success) {
+            return NextResponse.json({ error: result.error?.message || 'Error sending email' }, { status: 500 });
         }
 
-        return NextResponse.json({ data });
+        return NextResponse.json({ data: result.data });
     } catch (error: any) {
         console.error('Internal Server Error:', error);
         return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });

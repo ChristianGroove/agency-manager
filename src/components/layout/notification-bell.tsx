@@ -10,7 +10,7 @@ import {
 } from "@/components/animate-ui/components/radix/dropdown-menu"
 import { supabase } from "@/lib/supabase"
 import { NotificationList } from "./notification-list"
-import { checkUpcomingPayments } from "@/lib/notifications"
+// import { checkUpcomingPayments } from "@/lib/notifications"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
 
 type Notification = {
@@ -37,8 +37,8 @@ export function NotificationBell() {
 
     const fetchNotifications = async () => {
         try {
-            // Check for upcoming payments and generate notifications/invoices if needed
-            await checkUpcomingPayments()
+            // Moved to server-side cron: /api/cron/billing
+            // await checkUpcomingPayments()
 
             const { data: { user } } = await supabase.auth.getUser()
             if (!user) return

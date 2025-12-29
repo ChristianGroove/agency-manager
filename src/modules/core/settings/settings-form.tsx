@@ -21,6 +21,8 @@ import { SplitText } from "@/components/ui/split-text"
 import { getSettings, updateSettings } from "@/modules/core/settings/actions"
 import { PortalSettingsTab } from "./portal-settings-tab"
 import { TeamSettingsTab } from "./team-settings-tab"
+import { EmailLogsTable } from "@/modules/core/notifications/components/email-logs-table"
+import { Bell } from "lucide-react"
 
 interface SettingsFormProps {
     initialSettings: any
@@ -140,6 +142,13 @@ export function SettingsForm({ initialSettings, activeModules }: SettingsFormPro
             icon: Globe,
             requiredModule: null,
             isCore: true
+        },
+        {
+            id: 'notifications',
+            label: 'Notificaciones',
+            icon: Bell,
+            requiredModule: 'module_communications',
+            matchAny: true // Or maybe strictly communications? The validation logic used module_communications for email settings.
         },
         {
             id: 'billing',
@@ -457,6 +466,60 @@ export function SettingsForm({ initialSettings, activeModules }: SettingsFormPro
                                     </div>
                                 </div>
                             </div>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
+                {/* NOTIFICATIONS TAB */}
+                <TabsContent value="notifications" className="space-y-4 mt-4">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Configuración de Correo</CardTitle>
+                            <CardDescription>
+                                Personaliza cómo tus clientes reciben las notificaciones por correo electrónico.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="email_sender_name">Nombre del Remitente</Label>
+                                    <Input
+                                        id="email_sender_name"
+                                        name="email_sender_name"
+                                        value={formData.email_sender_name || ''}
+                                        onChange={handleChange}
+                                        placeholder="Ej: Mi Agencia (Vía Pixy)"
+                                    />
+                                    <p className="text-xs text-muted-foreground">
+                                        El nombre que verán los clientes en su bandeja de entrada.
+                                    </p>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="email_reply_to">Correo de Respuesta (Reply-To)</Label>
+                                    <Input
+                                        id="email_reply_to"
+                                        name="email_reply_to"
+                                        value={formData.email_reply_to || ''}
+                                        onChange={handleChange}
+                                        placeholder="soporte@miagencia.com"
+                                    />
+                                    <p className="text-xs text-muted-foreground">
+                                        Si el cliente responde al correo, le llegará a esta dirección.
+                                    </p>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Registro de Actividad</CardTitle>
+                            <CardDescription>
+                                Monitorea los correos transaccionales enviados por el sistema.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <EmailLogsTable />
                         </CardContent>
                     </Card>
                 </TabsContent>

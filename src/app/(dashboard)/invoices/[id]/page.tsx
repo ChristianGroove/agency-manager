@@ -61,12 +61,50 @@ export default function InvoicePage() {
     window.print()
   }
 
-  const handleShareEmail = () => {
+  const handleSendEmailSystem = async () => {
     if (!invoice || !invoice.client) return
-    const subject = `Cuenta de Cobro N° ${invoice.number} - ${invoice.client.company_name}`
-    const body = `Hola ${invoice.client.name},\n\nAdjunto encontrarás la cuenta de cobro N° ${invoice.number}.\n\nTotal a pagar: $${invoice.total.toLocaleString()}\n\nGracias por tu confianza.`
-    const url = `mailto:${invoice.client.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
-    window.open(url, '_blank')
+    if (!invoice.client.email) return alert('El cliente no tiene un email registrado.')
+
+    try {
+      // Dynamic imports
+      const { toPng } = await import('html-to-image')
+      const jsPDF = (await import('jspdf')).default
+
+      if (!invoiceRef.current) return
+
+      const dataUrl = await toPng(invoiceRef.current, { quality: 0.95, backgroundColor: '#ffffff' })
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+      const imgProps = pdf.getImageProperties(dataUrl)
+      const pdfWidth = pdf.internal.pageSize.getWidth()
+      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width
+      pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, pdfHeight)
+      const pdfBase64 = pdf.output('datauristring')
+
+      const response = await fetch('/api/send-invoice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: invoice.client.email,
+          invoiceNumber: invoice.number,
+          clientName: invoice.client.name,
+          amount: `$${invoice.total.toLocaleString()}`,
+          dueDate: new Date(invoice.due_date || invoice.date).toLocaleDateString(),
+          pdfBase64,
+          organizationId: invoice.organization_id || settings?.organization_id // Fallback if type missing
+        })
+      })
+
+      if (!response.ok) {
+        const err = await response.json()
+        throw new Error(err.error || 'Failed to send')
+      }
+
+      alert('Factura enviada exitosamente')
+    } catch (error: any) {
+      console.error(error)
+      alert(`Error al enviar: ${error.message}`)
+      throw error // Re-throw so modal knows it failed
+    }
   }
 
   if (loading) {
@@ -131,6 +169,7 @@ export default function InvoicePage() {
         invoice={invoice}
         client={invoice.client}
         settings={settings || {}}
+        onSendEmail={handleSendEmailSystem}
       />
     </div >
   )

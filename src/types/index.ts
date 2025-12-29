@@ -91,6 +91,7 @@ export type Quote = {
     service_id?: string | null
     deleted_at?: string
     emitter_id?: string
+    organization_id: string
 }
 
 export type InvoiceItem = {
@@ -118,6 +119,7 @@ export type Invoice = {
     is_late_issued?: boolean
     metadata?: any
     cycle_id?: string
+    organization_id: string
 }
 
 // ... existing types

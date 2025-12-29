@@ -166,7 +166,8 @@ export default function QuoteDetailPage() {
                     clientName: quote.client?.name || quote.lead?.name,
                     total: `$${quote.total.toLocaleString()}`,
                     date: new Date(quote.date).toLocaleDateString(),
-                    pdfBase64
+                    pdfBase64,
+                    organizationId: quote.organization_id
                 }),
             })
 
