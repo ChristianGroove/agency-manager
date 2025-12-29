@@ -42,10 +42,21 @@ export default function InvoicePage() {
         .from('invoices')
         .select(`
           *,
-          client:clients (*)
+          client:clients (*),
+          emitter:emitters (*)
         `)
         .eq('id', id)
         .single()
+
+      if (data && !data.emitter) {
+        // Fallback: Default Emitter
+        const { data: def } = await supabase.from('emitters').select('*').eq('is_default', true).maybeSingle()
+        if (def) data.emitter = def
+        else {
+          const { data: any } = await supabase.from('emitters').select('*').limit(1).maybeSingle()
+          if (any) data.emitter = any
+        }
+      }
 
       if (error) throw error
       setInvoice(data)

@@ -78,6 +78,8 @@ async function validateSettingsData(data: any, activeModules: string[]) {
         // Payment fields - require module_payments or module_invoicing
         'wompi_public_key': 'module_payments',
         'wompi_private_key': 'module_payments',
+        'wompi_integrity_secret': 'module_payments',
+        'wompi_currency': 'module_payments',
         'wompi_test_mode': 'module_payments',
         'stripe_public_key': 'module_payments',
         'stripe_private_key': 'module_payments',

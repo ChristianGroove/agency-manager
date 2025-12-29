@@ -48,71 +48,71 @@ export const QuoteTemplate = forwardRef<HTMLDivElement, QuoteTemplateProps>(
                     </div>
 
                     {/* Info Grid */}
-                    <div className="grid grid-cols-2 gap-12 mb-12">
-                        <div>
-                            <h3 className="text-xs font-bold mb-3 uppercase text-gray-500 tracking-wider">Emitido por:</h3>
-                            <p className="font-bold text-base text-gray-900">{settings?.agency_name || "[ Nombre de la Empresa ]"}</p>
-                            {settings?.company_address && <p className="text-sm text-gray-700">{settings.company_address}</p>}
-                            {settings?.company_email && <p className="text-sm text-gray-700">{settings.company_email}</p>}
-                            {settings?.company_phone && <p className="text-sm font-semibold text-gray-900 mt-1">Cel: {settings.company_phone}</p>}
-                        </div>
-                        <div>
-                            <h3 className="text-xs font-bold mb-3 uppercase text-gray-500 tracking-wider">Para:</h3>
-                            <p className="font-bold text-base text-gray-900">{entity?.name}</p>
-                            {entity?.company_name && <p className="text-sm text-gray-700">{entity.company_name}</p>}
-                            {'nit' in (entity || {}) && <p className="text-sm text-gray-700">NIT/CC: {(entity as Client).nit}</p>}
-                            {entity?.email && <p className="text-sm text-gray-700">{entity.email}</p>}
-                            {entity?.phone && <p className="text-sm font-semibold text-gray-900 mt-1">Cel: {entity.phone}</p>}
-                            {isLead && <span className="inline-block mt-2 px-2 py-0.5 rounded text-[10px] bg-yellow-100 text-yellow-800 font-medium">Prospecto</span>}
-                        </div>
-                    </div>
+                    <h3 className="text-xs font-bold mb-3 uppercase text-gray-500 tracking-wider">Emitido por:</h3>
+                    <p className="font-bold text-base text-gray-900">{quote.emitter?.legal_name || settings?.company_name || settings?.agency_name || "[ Nombre de la Empresa ]"}</p>
+                    {(quote.emitter?.identification_number || settings?.company_nit) && <p className="text-sm text-gray-700">NIT: {quote.emitter?.identification_number || settings?.company_nit}</p>}
+                    {(quote.emitter?.address || settings?.company_address) && <p className="text-sm text-gray-700">{quote.emitter?.address || settings?.company_address}</p>}
+                    {(quote.emitter?.email || settings?.company_email || settings?.agency_email) && <p className="text-sm text-gray-700">{quote.emitter?.email || settings?.company_email || settings?.agency_email}</p>}
+                    {(quote.emitter?.phone || settings?.company_phone || settings?.agency_phone) && <p className="text-sm font-semibold text-gray-900 mt-1">Cel: {quote.emitter?.phone || settings?.company_phone || settings?.agency_phone}</p>}
+                    {settings?.agency_website && <p className="text-sm text-gray-700 mt-0.5">{settings.agency_website}</p>}
+                </div>
+                <div>
+                    <h3 className="text-xs font-bold mb-3 uppercase text-gray-500 tracking-wider">Para:</h3>
+                    <p className="font-bold text-base text-gray-900">{entity?.name}</p>
+                    {entity?.company_name && <p className="text-sm text-gray-700">{entity.company_name}</p>}
+                    {'nit' in (entity || {}) && <p className="text-sm text-gray-700">NIT/CC: {(entity as Client).nit}</p>}
+                    {entity?.email && <p className="text-sm text-gray-700">{entity.email}</p>}
+                    {entity?.phone && <p className="text-sm font-semibold text-gray-900 mt-1">Cel: {entity.phone}</p>}
+                    {isLead && <span className="inline-block mt-2 px-2 py-0.5 rounded text-[10px] bg-yellow-100 text-yellow-800 font-medium">Prospecto</span>}
+                </div>
 
-                    {/* Items Table */}
-                    <div className="mb-12 rounded-lg overflow-hidden border border-gray-200">
-                        <div className="bg-gray-50 text-gray-700 p-4 grid grid-cols-12 font-bold text-xs uppercase tracking-wider border-b border-gray-200">
-                            <div className="col-span-1 text-center">#</div>
-                            <div className="col-span-5">Descripción</div>
-                            <div className="col-span-2 text-right">Precio Unit.</div>
-                            <div className="col-span-2 text-center">Cant.</div>
-                            <div className="col-span-2 text-right">Total</div>
-                        </div>
-                        <div className="bg-white">
-                            {quote.items.length === 0 ? (
-                                <div className="p-8 text-center text-gray-500 italic">
-                                    No hay items en esta cotización.
-                                </div>
-                            ) : (
-                                quote.items.map((item, index) => (
-                                    <div key={index} className="grid grid-cols-12 p-4 text-sm border-b border-gray-100 last:border-b-0 hover:bg-gray-50/30 transition-colors">
-                                        <div className="col-span-1 text-center text-gray-500 font-medium">{index + 1}</div>
-                                        <div className="col-span-5 font-medium text-gray-900">{item.description}</div>
-                                        <div className="col-span-2 text-right text-gray-600">${item.price.toLocaleString()}</div>
-                                        <div className="col-span-2 text-center text-gray-600">{item.quantity}</div>
-                                        <div className="col-span-2 text-right font-bold text-gray-900">${(item.price * item.quantity).toLocaleString()}</div>
-                                    </div>
-                                ))
-                            )}
-                        </div>
-                    </div>
 
-                    {/* Totals */}
-                    <div className="flex justify-end mb-12">
-                        <div className="w-1/2 border-t-2 border-gray-900 pt-4">
-                            <div className="flex justify-between pt-2">
-                                <span className="text-base font-bold text-gray-900">TOTAL:</span>
-                                <span className="text-xl font-bold text-gray-900">${quote.total.toLocaleString()} COP</span>
+                {/* Items Table */}
+                <div className="mb-12 rounded-lg overflow-hidden border border-gray-200">
+                    <div className="bg-gray-50 text-gray-700 p-4 grid grid-cols-12 font-bold text-xs uppercase tracking-wider border-b border-gray-200">
+                        <div className="col-span-1 text-center">#</div>
+                        <div className="col-span-5">Descripción</div>
+                        <div className="col-span-2 text-right">Precio Unit.</div>
+                        <div className="col-span-2 text-center">Cant.</div>
+                        <div className="col-span-2 text-right">Total</div>
+                    </div>
+                    <div className="bg-white">
+                        {quote.items.length === 0 ? (
+                            <div className="p-8 text-center text-gray-500 italic">
+                                No hay items en esta cotización.
                             </div>
-                        </div>
-                    </div>
-
-                    {/* Terms */}
-                    <div className="mt-auto pt-8 border-t border-gray-100">
-                        <p className="text-[10px] text-gray-400 text-center leading-relaxed max-w-2xl mx-auto">
-                            {settings?.quote_validity_text || "Esta cotización tiene una validez de 15 días calendario. Los precios están sujetos a cambios después de este periodo."}
-                        </p>
+                        ) : (
+                            quote.items.map((item, index) => (
+                                <div key={index} className="grid grid-cols-12 p-4 text-sm border-b border-gray-100 last:border-b-0 hover:bg-gray-50/30 transition-colors">
+                                    <div className="col-span-1 text-center text-gray-500 font-medium">{index + 1}</div>
+                                    <div className="col-span-5 font-medium text-gray-900">{item.description}</div>
+                                    <div className="col-span-2 text-right text-gray-600">${item.price.toLocaleString()}</div>
+                                    <div className="col-span-2 text-center text-gray-600">{item.quantity}</div>
+                                    <div className="col-span-2 text-right font-bold text-gray-900">${(item.price * item.quantity).toLocaleString()}</div>
+                                </div>
+                            ))
+                        )}
                     </div>
                 </div>
-            </div>
+
+                {/* Totals */}
+                <div className="flex justify-end mb-12">
+                    <div className="w-1/2 border-t-2 border-gray-900 pt-4">
+                        <div className="flex justify-between pt-2">
+                            <span className="text-base font-bold text-gray-900">TOTAL:</span>
+                            <span className="text-xl font-bold text-gray-900">${quote.total.toLocaleString()} COP</span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Terms */}
+                <div className="mt-auto pt-8 border-t border-gray-100">
+                    <p className="text-[10px] text-gray-400 text-center leading-relaxed max-w-2xl mx-auto">
+                        {settings?.quote_validity_text || "Esta cotización tiene una validez de 15 días calendario. Los precios están sujetos a cambios después de este periodo."}
+                    </p>
+                </div>
+            </div >
+
         )
     }
 )

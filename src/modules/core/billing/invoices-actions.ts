@@ -51,6 +51,30 @@ export async function getInvoiceById(id: string) {
         return null
     }
 
+    if (!data.emitter) {
+        // Smart Fallback: Fetch default emitter
+        const { data: defaultEmitter } = await supabase
+            .from('emitters')
+            .select('*')
+            .eq('organization_id', orgId)
+            .eq('is_default', true)
+            .maybeSingle()
+
+        if (defaultEmitter) {
+            data.emitter = defaultEmitter
+        } else {
+            // Fallback to any active emitter
+            const { data: anyEmitter } = await supabase
+                .from('emitters')
+                .select('*')
+                .eq('organization_id', orgId)
+                .is('is_active', true)
+                .limit(1)
+                .maybeSingle()
+            if (anyEmitter) data.emitter = anyEmitter
+        }
+    }
+
     return data as unknown as Invoice
 }
 
@@ -138,7 +162,7 @@ export async function updateInvoice(id: string, data: Partial<Invoice>) {
 }
 
 export async function getPublicInvoice(id: string) {
-    const { data, error } = await supabaseAdmin
+    const { data: invoice, error } = await supabaseAdmin
         .from('invoices')
         .select(`
             *,
@@ -148,8 +172,39 @@ export async function getPublicInvoice(id: string) {
         .eq('id', id)
         .single()
 
-    if (error) {
-        return { error: error.message }
+    if (error || !invoice) {
+        return { error: error?.message || "Invoice not found" }
     }
-    return data
+
+    // Smart Fallback for Public View
+    if (!invoice.emitter) {
+        const { data: defaultEmitter } = await supabaseAdmin
+            .from('emitters')
+            .select('*')
+            .eq('organization_id', invoice.organization_id)
+            .eq('is_default', true)
+            .maybeSingle()
+
+        if (defaultEmitter) {
+            invoice.emitter = defaultEmitter
+        } else {
+            const { data: anyEmitter } = await supabaseAdmin
+                .from('emitters')
+                .select('*')
+                .eq('organization_id', invoice.organization_id)
+                .eq('is_active', true)
+                .limit(1)
+                .maybeSingle()
+            if (anyEmitter) invoice.emitter = anyEmitter
+        }
+    }
+
+    // Fetch settings for fallback
+    const { data: settings } = await supabaseAdmin
+        .from('organization_settings')
+        .select('*')
+        .eq('organization_id', invoice.organization_id)
+        .single()
+
+    return { invoice, settings }
 }

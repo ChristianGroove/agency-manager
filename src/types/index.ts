@@ -91,6 +91,7 @@ export type Quote = {
     service_id?: string | null
     deleted_at?: string
     emitter_id?: string
+    emitter?: Emitter
     organization_id: string
 }
 
@@ -115,6 +116,7 @@ export type Invoice = {
     service_id?: string | null
     deleted_at?: string
     emitter_id?: string
+    emitter?: Emitter
     document_type?: string
     is_late_issued?: boolean
     metadata?: any

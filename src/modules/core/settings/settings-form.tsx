@@ -675,6 +675,45 @@ export function SettingsForm({ initialSettings, activeModules }: SettingsFormPro
                 <TabsContent value="payments" className="space-y-4 mt-4">
                     <Card>
                         <CardHeader>
+                            <CardTitle>Cuentas y Links de Pago</CardTitle>
+                            <CardDescription>
+                                Configura los números de cuenta y enlaces que aparecerán en el pie de página de tus facturas.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="bancolombia_account">Cuenta Bancolombia</Label>
+                                    <Input id="bancolombia_account" name="bancolombia_account" value={formData.bancolombia_account || ''} onChange={handleChange} placeholder="Ahorros 000-000000-00" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="nequi_number">Nequi</Label>
+                                    <Input id="nequi_number" name="nequi_number" value={formData.nequi_number || ''} onChange={handleChange} placeholder="300 000 0000" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="daviplata_number">Daviplata</Label>
+                                    <Input id="daviplata_number" name="daviplata_number" value={formData.daviplata_number || ''} onChange={handleChange} placeholder="300 000 0000" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="bre_b_number">Cuenta Bre-B</Label>
+                                    <Input id="bre_b_number" name="bre_b_number" value={formData.bre_b_number || ''} onChange={handleChange} placeholder="0000000000" />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-1 gap-4 pt-4 border-t">
+                                <div className="space-y-2">
+                                    <Label htmlFor="wompi_link">Link de Pago Wompi</Label>
+                                    <Input id="wompi_link" name="wompi_link" value={formData.wompi_link || ''} onChange={handleChange} placeholder="https://checkout.wompi.co/l/..." />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="paypal_link">Link de Pago PayPal</Label>
+                                    <Input id="paypal_link" name="paypal_link" value={formData.paypal_link || ''} onChange={handleChange} placeholder="https://paypal.me/..." />
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader>
                             <CardTitle>Control de Pagos en Línea</CardTitle>
                             <CardDescription>
                                 Configura el comportamiento del portal de pagos y la integración con Wompi.
@@ -744,25 +783,47 @@ export function SettingsForm({ initialSettings, activeModules }: SettingsFormPro
                     <Card className="border-indigo-100 bg-indigo-50/30">
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2 text-indigo-700">
-                                <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-                                Estado de Integración Wompi
+                                Integración Wompi (API)
                             </CardTitle>
+                            <CardDescription>
+                                Configura tus llaves de API para procesar pagos automáticamente en el portal.
+                            </CardDescription>
                         </CardHeader>
-                        <CardContent>
-                            <div className="grid grid-cols-2 gap-4 text-sm">
-                                <div>
-                                    <span className="font-semibold text-gray-500">Ambiente:</span>
-                                    <p className="font-medium">{formData.wompi_environment || 'Sandbox'}</p>
+                        <CardContent className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="wompi_public_key">Llave Pública (Public Key)</Label>
+                                    <Input
+                                        id="wompi_public_key"
+                                        name="wompi_public_key"
+                                        value={formData.wompi_public_key || ''}
+                                        onChange={handleChange}
+                                        placeholder="pub_..."
+                                        className="bg-white"
+                                    />
                                 </div>
-                                <div>
-                                    <span className="font-semibold text-gray-500">Última Sincronización:</span>
-                                    <p className="font-medium">{formData.wompi_last_sync ? new Date(formData.wompi_last_sync).toLocaleString() : 'N/A'}</p>
+                                <div className="space-y-2">
+                                    <Label htmlFor="wompi_integrity_secret">Secreto de Integridad</Label>
+                                    <Input
+                                        type="password"
+                                        id="wompi_integrity_secret"
+                                        name="wompi_integrity_secret"
+                                        value={formData.wompi_integrity_secret || ''}
+                                        onChange={handleChange}
+                                        placeholder="Integrity Secret..."
+                                        className="bg-white"
+                                    />
                                 </div>
-                                <div className="col-span-2">
-                                    <p className="text-xs text-gray-500 mt-2">
-                                        * La configuración de llaves API se maneja a través de variables de entorno por seguridad.
-                                    </p>
+                            </div>
+                            <div className="flex items-center justify-between pt-2">
+                                <div className="space-y-0.5">
+                                    <Label>Ambiente de Producción</Label>
+                                    <p className="text-xs text-muted-foreground">Desactiva para usar modo Sandbox (Pruebas).</p>
                                 </div>
+                                <Switch
+                                    checked={formData.wompi_environment === 'Production'}
+                                    onCheckedChange={(checked) => setFormData((prev: any) => ({ ...prev, wompi_environment: checked ? 'Production' : 'Sandbox' }))}
+                                />
                             </div>
                         </CardContent>
                     </Card>

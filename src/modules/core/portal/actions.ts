@@ -556,7 +556,7 @@ export async function getPortalQuote(token: string, quoteId: string) {
     // 1. Verify Client
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)
 
-    let query = supabaseAdmin.from('clients').select('id')
+    let query = supabaseAdmin.from('clients').select('id, organization_id')
 
     if (isUuid) {
         query = query.or(`portal_short_token.eq.${token},portal_token.eq.${token}`)
@@ -574,13 +574,31 @@ export async function getPortalQuote(token: string, quoteId: string) {
         .select(`
             *,
             client:clients (*),
-            lead:leads (*)
+            lead:leads (*),
+            emitter:emitters (*)
         `)
         .eq('id', quoteId)
         .eq('client_id', client.id)
         .single()
 
     if (error) throw error
+
+    // Smart Fallback
+    if (!data.emitter) {
+        const { data: defaultEmitter } = await supabaseAdmin
+            .from('emitters')
+            .select('*')
+            .eq('organization_id', client.organization_id)
+            .eq('is_default', true)
+            .maybeSingle()
+        if (defaultEmitter) {
+            data.emitter = defaultEmitter
+        } else {
+            const { data: anyEmitter } = await supabaseAdmin.from('emitters').select('*').eq('organization_id', client.organization_id).eq('is_active', true).limit(1).maybeSingle()
+            if (anyEmitter) data.emitter = anyEmitter
+        }
+    }
+
     return data as Quote
 }
 
@@ -588,7 +606,7 @@ export async function getPortalInvoice(token: string, invoiceId: string) {
     // 1. Verify Client
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)
 
-    let query = supabaseAdmin.from('clients').select('id')
+    let query = supabaseAdmin.from('clients').select('id, organization_id')
 
     if (isUuid) {
         query = query.or(`portal_short_token.eq.${token},portal_token.eq.${token}`)
@@ -605,7 +623,8 @@ export async function getPortalInvoice(token: string, invoiceId: string) {
         .from('invoices')
         .select(`
             *,
-            client:clients (*)
+            client:clients (*),
+            emitter:emitters (*)
         `)
         .eq('id', invoiceId)
         .eq('client_id', client.id)
@@ -613,6 +632,23 @@ export async function getPortalInvoice(token: string, invoiceId: string) {
         .single()
 
     if (error) throw error
+
+    // Smart Fallback
+    if (!data.emitter) {
+        const { data: defaultEmitter } = await supabaseAdmin
+            .from('emitters')
+            .select('*')
+            .eq('organization_id', client.organization_id)
+            .eq('is_default', true)
+            .maybeSingle()
+        if (defaultEmitter) {
+            data.emitter = defaultEmitter
+        } else {
+            const { data: anyEmitter } = await supabaseAdmin.from('emitters').select('*').eq('organization_id', client.organization_id).eq('is_active', true).limit(1).maybeSingle()
+            if (anyEmitter) data.emitter = anyEmitter
+        }
+    }
+
     return data as Invoice
 }
 

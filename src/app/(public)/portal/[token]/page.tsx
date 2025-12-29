@@ -137,19 +137,28 @@ export default function PortalPage() {
                 body: JSON.stringify({ invoiceIds })
             })
 
-            if (!response.ok) throw new Error('Error generating signature')
+            if (!response.ok) {
+                const errorData = await response.json()
+                const errorMessage = errorData.details
+                    ? `${errorData.error}: ${errorData.details}`
+                    : (errorData.error || 'Error generating signature')
+                throw new Error(errorMessage)
+            }
 
             const { reference, amountInCents, currency, signature, publicKey } = await response.json()
 
-            const redirectUrl = window.location.href
+            // Wompi WAF blocks 'localhost' in redirect-url on Production. 
+            // We use a dummy URL for local testing to verify the Gateway loads.
+            const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            const redirectUrl = isLocalhost ? 'https://example.com' : window.location.href
 
             const wompiUrl = `https://checkout.wompi.co/p/?public-key=${publicKey}&currency=${currency}&amount-in-cents=${amountInCents}&reference=${reference}&signature:integrity=${signature}&redirect-url=${encodeURIComponent(redirectUrl)}&customer-data:email=${client?.email || ''}&customer-data:full-name=${encodeURIComponent(client?.name || '')}`
 
             window.location.href = wompiUrl
 
-        } catch (error) {
+        } catch (error: any) {
             console.error('Payment error:', error)
-            alert('Error al iniciar el pago')
+            alert(error.message || 'Error al iniciar el pago')
             setIsProcessing(false)
         }
     }

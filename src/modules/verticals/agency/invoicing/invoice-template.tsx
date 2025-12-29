@@ -84,11 +84,12 @@ export const InvoiceTemplate = forwardRef<HTMLDivElement, InvoiceTemplateProps>(
                     <div className="grid grid-cols-2 gap-6 mb-4">
                         <div>
                             <h3 className="text-[10px] font-bold mb-1.5 uppercase text-gray-500 tracking-wider">Emitido por:</h3>
-                            <p className="font-bold text-base text-gray-900">{settings?.company_name || "[ Nombre de la Empresa ]"}</p>
-                            {settings?.company_nit && <p className="text-sm text-gray-700">NIT: {settings.company_nit}</p>}
-                            {settings?.company_address && <p className="text-sm text-gray-700">{settings.company_address}</p>}
-                            {settings?.company_email && <p className="text-sm text-gray-700">{settings.company_email}</p>}
-                            {settings?.company_phone && <p className="text-sm font-semibold text-gray-900 mt-1">Cel: {settings.company_phone}</p>}
+                            <p className="font-bold text-base text-gray-900">{invoice.emitter?.legal_name || settings?.company_name || "[ Nombre de la Empresa ]"}</p>
+                            {(invoice.emitter?.identification_number || settings?.company_nit) && <p className="text-sm text-gray-700">NIT: {invoice.emitter?.identification_number || settings?.company_nit}</p>}
+                            {(invoice.emitter?.address || settings?.company_address) && <p className="text-sm text-gray-700">{invoice.emitter?.address || settings?.company_address}</p>}
+                            {(invoice.emitter?.email || settings?.company_email || settings?.agency_email) && <p className="text-sm text-gray-700">{invoice.emitter?.email || settings?.company_email || settings?.agency_email}</p>}
+                            {(invoice.emitter?.phone || settings?.company_phone || settings?.agency_phone) && <p className="text-sm font-semibold text-gray-900 mt-1">Cel: {invoice.emitter?.phone || settings?.company_phone || settings?.agency_phone}</p>}
+                            {(settings?.agency_website) && <p className="text-sm text-gray-700 mt-0.5">{settings.agency_website}</p>}
                         </div>
                         <div>
                             <h3 className="text-[10px] font-bold mb-1.5 uppercase text-gray-500 tracking-wider">Para:</h3>
@@ -153,7 +154,7 @@ export const InvoiceTemplate = forwardRef<HTMLDivElement, InvoiceTemplateProps>(
                             {/* Bancolombia */}
                             <div className="p-2 rounded-lg bg-gray-50 border border-gray-300 flex items-center justify-between gap-2">
                                 <div className="flex items-center gap-2 min-w-0">
-                                    <img src="/logos/bancolombia.png" alt="Bancolombia" className="h-4 w-4 object-contain flex-shrink-0" />
+                                    <img src="/payment-methods/bancolombia.png" alt="Bancolombia" className="h-4 w-4 object-contain flex-shrink-0" />
                                     <div className="min-w-0">
                                         <p className="text-[10px] font-bold text-gray-900 truncate">{settings?.bancolombia_account || "068 000 030 18"}</p>
                                     </div>
@@ -164,28 +165,24 @@ export const InvoiceTemplate = forwardRef<HTMLDivElement, InvoiceTemplateProps>(
                                 </button>
                             </div>
 
-                            {/* Bold */}
+                            {/* Bre-B */}
                             <div className="p-2 rounded-lg bg-gray-50 border border-gray-300 flex items-center justify-between gap-2">
                                 <div className="flex items-center gap-2 min-w-0">
-                                    <img src="/logos/bold.png" alt="Bold" className="h-4 w-4 object-contain flex-shrink-0" />
+                                    <img src="/payment-methods/bre-b.png" alt="Bre-B" className="h-4 w-4 object-contain flex-shrink-0" />
                                     <div className="min-w-0">
-                                        <p className="text-[10px] font-bold text-gray-900 truncate">Link de pago</p>
+                                        <p className="text-[10px] font-bold text-gray-900 truncate">{settings?.bre_b_number || "0090983657"}</p>
                                     </div>
                                 </div>
-                                <a
-                                    href={settings?.bold_link || "#"}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="px-2 py-0.5 bg-blue-50 text-blue-600 text-[9px] font-medium rounded border border-blue-200 hover:bg-blue-100 transition-colors whitespace-nowrap"
-                                >
-                                    Ir a pagar
-                                </a>
+                                <button className="p-1 hover:bg-gray-200 rounded text-gray-500 hover:text-gray-900 transition-colors flex-shrink-0" title="Copiar">
+                                    <span className="sr-only">Copiar</span>
+                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                                </button>
                             </div>
 
                             {/* Nequi */}
                             <div className="p-2 rounded-lg bg-gray-50 border border-gray-300 flex items-center justify-between gap-2">
                                 <div className="flex items-center gap-2 min-w-0">
-                                    <img src="/logos/nequi.png" alt="Nequi" className="h-4 w-4 object-contain flex-shrink-0" />
+                                    <img src="/payment-methods/nequi.png" alt="Nequi" className="h-4 w-4 object-contain flex-shrink-0" />
                                     <div className="min-w-0">
                                         <p className="text-[10px] font-bold text-gray-900 truncate">{settings?.nequi_number || "300 670 5958"}</p>
                                     </div>
@@ -199,7 +196,7 @@ export const InvoiceTemplate = forwardRef<HTMLDivElement, InvoiceTemplateProps>(
                             {/* Daviplata */}
                             <div className="p-2 rounded-lg bg-gray-50 border border-gray-300 flex items-center justify-between gap-2">
                                 <div className="flex items-center gap-2 min-w-0">
-                                    <img src="/logos/daviplata.png" alt="Daviplata" className="h-4 w-4 object-contain flex-shrink-0" />
+                                    <img src="/payment-methods/daviplata.png" alt="Daviplata" className="h-4 w-4 object-contain flex-shrink-0" />
                                     <div className="min-w-0">
                                         <p className="text-[10px] font-bold text-gray-900 truncate">{settings?.daviplata_number || "300 670 5958"}</p>
                                     </div>
@@ -213,16 +210,27 @@ export const InvoiceTemplate = forwardRef<HTMLDivElement, InvoiceTemplateProps>(
                             {/* PayPal */}
                             <div className="p-2 rounded-lg bg-gray-50 border border-gray-300 flex items-center justify-between gap-2">
                                 <div className="flex items-center gap-2 min-w-0">
-                                    <img src="/logos/paypal.png" alt="PayPal" className="h-4 w-4 object-contain flex-shrink-0" />
+                                    <img src="/payment-methods/paypal.png" alt="PayPal" className="h-4 w-4 object-contain flex-shrink-0" />
                                     <div className="min-w-0">
                                         <p className="text-[10px] font-bold text-gray-900 truncate">Link de pago</p>
                                     </div>
                                 </div>
                                 <a
-                                    href={settings?.paypal_link || "#"}
+                                    href={settings?.paypal_link || "https://www.paypal.com/paypalme/pixypay"}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="px-2 py-0.5 bg-blue-50 text-blue-600 text-[9px] font-medium rounded border border-blue-200 hover:bg-blue-100 transition-colors whitespace-nowrap"
+                                    className="px-2 py-0.5 text-[9px] font-medium rounded border transition-colors whitespace-nowrap"
+                                    style={{
+                                        backgroundColor: `${brandingSettings?.document_primary_color || '#6B7280'}14`,
+                                        color: brandingSettings?.document_primary_color || '#6B7280',
+                                        borderColor: `${brandingSettings?.document_primary_color || '#6B7280'}33`
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.backgroundColor = `${brandingSettings?.document_primary_color || '#6B7280'}24`
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.backgroundColor = `${brandingSettings?.document_primary_color || '#6B7280'}14`
+                                    }}
                                 >
                                     Ir a pagar
                                 </a>
@@ -231,13 +239,13 @@ export const InvoiceTemplate = forwardRef<HTMLDivElement, InvoiceTemplateProps>(
                             {/* Wompi */}
                             <div className="p-2 rounded-lg bg-gray-50 border border-gray-300 flex items-center justify-between gap-2">
                                 <div className="flex items-center gap-2 min-w-0">
-                                    <img src="/logos/wompi.png" alt="Wompi" className="h-4 w-4 object-contain flex-shrink-0" />
+                                    <img src="/payment-methods/wompi.png" alt="Wompi" className="h-4 w-4 object-contain flex-shrink-0" />
                                     <div className="min-w-0">
                                         <p className="text-[10px] font-bold text-gray-900 truncate">Link de pago</p>
                                     </div>
                                 </div>
                                 <a
-                                    href={settings?.wompi_link || "#"}
+                                    href={settings?.wompi_link || "https://checkout.wompi.co/l/7MP7DT"}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="px-2 py-0.5 text-[9px] font-medium rounded border transition-colors whitespace-nowrap"

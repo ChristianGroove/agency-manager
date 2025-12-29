@@ -43,10 +43,20 @@ export default function QuoteDetailPage() {
                 .select(`
           *,
           client:clients (*),
-          lead:leads (*)
+          lead:leads (*),
+          emitter:emitters (*)
         `)
                 .eq('id', id)
                 .single()
+
+            if (data && !data.emitter) {
+                const { data: def } = await supabase.from('emitters').select('*').eq('is_default', true).maybeSingle()
+                if (def) data.emitter = def
+                else {
+                    const { data: any } = await supabase.from('emitters').select('*').limit(1).maybeSingle()
+                    if (any) data.emitter = any
+                }
+            }
 
             if (error) throw error
             setQuote(data)

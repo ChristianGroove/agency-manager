@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createHash } from 'crypto'
+import { createHash, randomUUID } from 'crypto'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 
 export async function POST(request: Request) {
@@ -69,17 +69,24 @@ export async function POST(request: Request) {
         const { error: transactionError } = await supabaseAdmin
             .from('payment_transactions')
             .insert({
+                id: randomUUID(), // Explicitly generate ID to bypass DB default issue
                 reference,
                 amount_in_cents: amountInCents,
                 currency,
                 status: 'PENDING',
                 invoice_ids: invoiceIds,
-                organization_id: organizationId // Track which org this payment belongs to
+                // TODO: Re-enable organization_id after database schema cache is reloaded in production.
+                // Currently commented out to prevent "column not found" error due to stagnant cache.
+                // organization_id: organizationId
             })
 
         if (transactionError) {
             console.error('Error creating transaction:', transactionError)
-            return NextResponse.json({ error: 'Failed to create transaction record' }, { status: 500 })
+            return NextResponse.json({
+                error: 'Failed to create transaction record',
+                details: transactionError.message, // Expose db error to client for debugging
+                hint: transactionError.hint
+            }, { status: 500 })
         }
 
         // Generate Signature using organization's secret
@@ -95,8 +102,11 @@ export async function POST(request: Request) {
             publicKey: orgSettings.wompi_public_key
         })
 
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error generating Wompi signature:', error)
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+        return NextResponse.json({
+            error: 'Internal server error',
+            details: error.message
+        }, { status: 500 })
     }
 }
