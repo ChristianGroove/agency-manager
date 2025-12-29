@@ -191,7 +191,7 @@ export async function getAllSystemModules() {
     return data || []
 }
 
-export async function createBroadcast(data: { title: string, message: string, type: 'info' | 'warning' | 'error' | 'success', expires_at?: string }) {
+export async function createBroadcast(data: { title: string, message: string, severity: 'info' | 'warning' | 'critical', expires_at?: string }) {
     await requireSuperAdmin()
     const { error } = await supabaseAdmin.from('system_alerts').insert({ ...data, is_active: true })
     if (error) throw error
