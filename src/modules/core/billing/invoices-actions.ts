@@ -115,6 +115,8 @@ export async function createInvoice(data: Partial<Invoice> & { items: InvoiceIte
     return newInvoice
 }
 
+import { supabaseAdmin } from "@/lib/supabase-admin"
+
 export async function updateInvoice(id: string, data: Partial<Invoice>) {
     const supabase = await createClient()
     const orgId = await getCurrentOrganizationId()
@@ -133,4 +135,21 @@ export async function updateInvoice(id: string, data: Partial<Invoice>) {
 
     revalidatePath('/invoices')
     return updatedInvoice
+}
+
+export async function getPublicInvoice(id: string) {
+    const { data, error } = await supabaseAdmin
+        .from('invoices')
+        .select(`
+            *,
+            client:clients(*),
+            emitter:emitters(*)
+        `)
+        .eq('id', id)
+        .single()
+
+    if (error) {
+        return { error: error.message }
+    }
+    return data
 }

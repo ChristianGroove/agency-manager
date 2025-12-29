@@ -22,7 +22,7 @@ export default function PublicInvoicePage() {
 
             try {
                 // Use Server Action to fetch data securely bypassing RLS
-                const { getPublicInvoice } = await import("@/lib/actions/public-invoices")
+                const { getPublicInvoice } = await import("@/modules/core/billing/invoices-actions")
                 const result = await getPublicInvoice(id)
 
                 if (result.error) {

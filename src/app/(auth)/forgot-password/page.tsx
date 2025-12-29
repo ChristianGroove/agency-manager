@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { resetPassword } from "@/modules/core/auth/actions"
+import { resetPasswordRequest } from "@/modules/core/auth/actions"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -22,7 +22,7 @@ export default function ForgotPasswordPage() {
         setError(null)
 
         const formData = new FormData(event.currentTarget)
-        const result = await resetPassword(formData)
+        const result = await resetPasswordRequest(formData)
 
         if (result?.error) {
             setError(result.error)

@@ -83,7 +83,7 @@ export default function QuoteDetailPage() {
         setConverting(true)
         try {
             // Import dynamically or at top? using Server Action
-            const { convertQuote } = await import("@/app/actions/quote-conversion")
+            const { convertQuote } = await import("@/modules/verticals/agency/quotes/conversion-actions")
             const result = await convertQuote(quote.id)
 
             if (result.success) {
