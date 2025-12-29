@@ -26,7 +26,7 @@ export function CreateBroadcastDialog() {
     const [form, setForm] = useState({
         title: "",
         message: "",
-        severity: "info",
+        type: "info",
         hours_active: "24"
     })
 
@@ -40,13 +40,13 @@ export function CreateBroadcastDialog() {
             await createSystemBroadcast({
                 title: form.title,
                 message: form.message,
-                severity: form.severity as any,
+                type: form.type as any,
                 expires_at: expires.toISOString()
             })
 
             toast.success("Difusión enviada correctamente")
             setOpen(false)
-            setForm({ title: "", message: "", severity: "info", hours_active: "24" })
+            setForm({ title: "", message: "", type: "info", hours_active: "24" })
         } catch (error: any) {
             toast.error(error.message || "Error")
         } finally {
@@ -88,10 +88,10 @@ export function CreateBroadcastDialog() {
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <Label>Severidad</Label>
+                            <Label>Tipo</Label>
                             <Select
-                                value={form.severity}
-                                onValueChange={v => setForm({ ...form, severity: v })}
+                                value={form.type}
+                                onValueChange={v => setForm({ ...form, type: v })}
                             >
                                 <SelectTrigger>
                                     <SelectValue />
@@ -99,7 +99,7 @@ export function CreateBroadcastDialog() {
                                 <SelectContent>
                                     <SelectItem value="info">Info (Azul)</SelectItem>
                                     <SelectItem value="warning">Advertencia (Amarillo)</SelectItem>
-                                    <SelectItem value="critical">Crítico (Rojo)</SelectItem>
+                                    <SelectItem value="error">Crítico (Rojo)</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
