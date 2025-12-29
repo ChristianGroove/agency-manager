@@ -118,7 +118,11 @@ export async function getOperationsMetrics(date: string) {
             pending: jobs.filter(j => j.status === 'pending' || j.status === 'assigned').length,
             in_progress: jobs.filter(j => j.status === 'in_progress').length,
             completed: jobs.filter(j => j.status === 'completed').length,
-            revenue: jobs.reduce((acc, curr) => acc + (curr.cleaning_services?.base_price || 0), 0)
+            revenue: jobs.reduce((acc, curr) => {
+                const params = curr.cleaning_services as any
+                const price = Array.isArray(params) ? params[0]?.base_price : params?.base_price
+                return acc + (price || 0)
+            }, 0)
         }
 
         return metrics
@@ -175,8 +179,11 @@ export async function getWeeklyRevenue() {
         jobs.forEach(job => {
             const jobDate = job.start_time.split('T')[0]
             const dayEntry = dailyRevenue.find(d => d.date === jobDate)
+            const params = job.cleaning_services as any
+            const price = Array.isArray(params) ? params[0]?.base_price : params?.base_price
+
             if (dayEntry) {
-                dayEntry.revenue += (job.cleaning_services?.base_price || 0)
+                dayEntry.revenue += (price || 0)
             }
         })
         return dailyRevenue
