@@ -9,10 +9,10 @@ import GlassCard3D from "@/components/ui/glass-card-3d"
 import dynamic from "next/dynamic"
 import { motion, AnimatePresence } from "framer-motion"
 import AnimatedAvatarGroup from "@/components/ui/animated-avatar-group"
-import { CreateClientSheet } from "@/components/modules/clients/create-client-sheet"
-import { CreateQuoteSheet } from "@/components/modules/quotes/create-quote-sheet"
-import { CreateInvoiceSheet } from "@/components/modules/invoices/create-invoice-sheet"
-import { CreateBriefingSheet } from "@/components/modules/briefings/create-briefing-sheet"
+import { CreateClientSheet } from "@/modules/core/clients/create-client-sheet"
+import { CreateQuoteSheet } from "@/modules/verticals/agency/quotes/create-quote-sheet"
+import { CreateInvoiceSheet } from "@/modules/verticals/agency/invoicing/create-invoice-sheet"
+import { CreateBriefingSheet } from "@/modules/verticals/agency/briefings/create-briefing-sheet"
 import CountUp from "react-countup"
 import { SplitText } from "@/components/ui/split-text"
 import { MagicCard } from "@/components/ui/magic-card"
@@ -82,7 +82,7 @@ export default function DashboardPage() {
     const fetchDashboardData = async () => {
         try {
             // Import Server Action strictly
-            const { getDashboardData } = await import("@/app/actions/dashboard-actions")
+            const { getDashboardData } = await import("@/modules/core/dashboard/actions")
             const { clients, invoices, services, settings } = await getDashboardData()
 
             setSettings(settings)

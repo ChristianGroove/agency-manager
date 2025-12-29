@@ -1,7 +1,7 @@
 import { Suspense } from "react"
 import { notFound } from "next/navigation"
-import { getOrganizationDetails, getOrganizationUsers } from "@/app/actions/admin-actions"
-import { getAllSystemModules } from "@/app/actions/admin-dashboard-actions"
+import { getOrganizationDetails, getOrganizationUsers } from '@/modules/core/admin/actions'
+import { getAllSystemModules } from "@/modules/core/admin/actions"
 import { AdminOrgHeader } from "./_components/org-header"
 import { AdminOrgUsers } from "./_components/org-users"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"

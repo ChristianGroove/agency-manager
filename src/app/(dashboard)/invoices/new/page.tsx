@@ -1,4 +1,4 @@
-import { InvoiceForm } from "@/components/modules/finance/invoice-form"
+import { InvoiceForm } from "@/modules/verticals/agency/finance/invoice-form"
 
 export default function NewInvoicePage() {
     return (

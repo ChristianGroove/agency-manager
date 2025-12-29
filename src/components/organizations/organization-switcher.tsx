@@ -13,7 +13,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { CreateOrganizationSheet } from "./create-organization-sheet"
 import { OrganizationMember } from "@/types/organization"
-import { getUserOrganizations, getCurrentOrganizationId, switchOrganization } from "@/lib/actions/organizations"
+import { getUserOrganizations, switchOrganization, getCurrentOrgName, getCurrentOrganizationId } from "@/modules/core/organizations/actions"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 

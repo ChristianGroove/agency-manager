@@ -1,7 +1,7 @@
 import { DashboardShell } from "@/components/layout/dashboard-shell"
 import { createClient } from "@/lib/supabase-server"
 import { redirect } from "next/navigation"
-import { getCurrentOrganizationId } from "@/lib/actions/organizations"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
 import { isSuperAdmin } from "@/lib/auth/platform-roles"
 import { SystemAlertBanner } from "@/components/layout/system-alert-banner"
 

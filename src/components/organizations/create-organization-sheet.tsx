@@ -9,8 +9,8 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Loader2, Rocket, Building2, Package, Check } from "lucide-react"
 import { toast } from "sonner"
 import { SaaSProduct } from "@/types/saas"
-import { getSaaSProducts } from "@/lib/actions/saas" // Reuse this
-import { createOrganization } from "@/lib/actions/organizations"
+import { getSaaSProducts } from "@/modules/core/saas/actions" // Reuse this
+import { createOrganization } from "@/modules/core/organizations/actions"
 import { useRouter } from "next/navigation"
 
 interface CreateOrganizationSheetProps {

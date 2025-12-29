@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { getSettings } from "@/lib/actions/settings";
+import { getSettings } from "@/modules/core/settings/actions";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -29,7 +29,7 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-import { TrashBinModal } from "@/components/modules/trash/trash-bin-modal";
+import { TrashBinModal } from "@/modules/core/trash/trash-bin-modal";
 import { Toaster } from "sonner";
 
 export default async function RootLayout({

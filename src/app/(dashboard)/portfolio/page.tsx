@@ -11,19 +11,19 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Plus, Package } from "lucide-react"
-import { PortfolioList } from "@/components/modules/portfolio/portfolio-list"
-import { PortfolioServiceSheet } from "@/components/modules/portfolio/portfolio-service-sheet"
-import { CategoryManager } from "@/components/modules/services/category-manager"
-import { getPortfolioItems, deletePortfolioItem } from "@/lib/actions/portfolio"
+import { PortfolioList } from "@/modules/verticals/agency/portfolio/portfolio-list"
+import { PortfolioServiceSheet } from "@/modules/verticals/agency/portfolio/portfolio-service-sheet"
+import { CategoryManager } from "@/modules/verticals/agency/services/category-manager"
+import { getPortfolioItems, deletePortfolioItem } from "@/modules/verticals/agency/portfolio/actions"
 import { ServiceCatalogItem } from "@/types"
 import { BriefingTemplate } from "@/types/briefings"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { SplitText } from "@/components/ui/split-text"
-import { getSaaSProducts } from "@/lib/actions/saas"
+import { getSaaSProducts, seedSystemModules } from "@/modules/core/saas/actions"
 import { SaaSProduct } from "@/types/saas"
-import { AppList } from "@/components/modules/saas/app-list"
-import { CreateAppSheet } from "@/components/modules/saas/create-app-sheet"
+import { AppList } from "@/modules/core/saas/app-list"
+import { CreateAppSheet } from "@/modules/core/saas/create-app-sheet"
 
 export default function PortfolioPage() {
     const [activeTab, setActiveTab] = useState<string>("services")
@@ -49,7 +49,7 @@ export default function PortfolioPage() {
      */
     const fetchOrgName = async () => {
         try {
-            const { getCurrentOrgName } = await import('@/lib/actions/organizations')
+            const { getCurrentOrgName } = await import('@/modules/core/organizations/actions')
             const name = await getCurrentOrgName()
             setCurrentOrgName(name || '')
         } catch (error) {
@@ -81,7 +81,7 @@ export default function PortfolioPage() {
         setAppsLoading(true)
         try {
             // Use server action to get subscription app
-            const { getSubscriptionApp } = await import('@/lib/actions/portfolio')
+            const { getSubscriptionApp } = await import('@/modules/verticals/agency/portfolio/actions')
             const product = await getSubscriptionApp()
             setApps(product ? [product] : [])
         } catch (error) {

@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { AvatarUpload } from "./avatar-upload"
-import { updateProfile } from "@/app/actions/profile-actions"
+import { uploadAvatar, updateProfile } from "@/modules/core/auth/actions"
 import { toast } from "sonner"
 import { Loader2 } from "lucide-react"
 

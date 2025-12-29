@@ -7,10 +7,10 @@ import { Loader2, Download, Share2, Mail, ArrowLeft, UserPlus, Edit } from "luci
 import { supabase } from "@/lib/supabase"
 import Link from "next/link"
 import { Quote, Client, Lead } from "@/types"
-import { LeadsService } from "@/services/leads-service"
-import { QuotesService } from "@/services/quotes-service"
-import { QuoteTemplate } from "@/components/modules/quotes/quote-template"
-import { QuoteWhatsAppModal } from "@/components/modules/quotes/quote-whatsapp-modal"
+import { convertLeadToClient } from "@/modules/verticals/agency/leads/actions"
+
+import { QuoteTemplate } from "@/modules/verticals/agency/quotes/quote-template"
+import { QuoteWhatsAppModal } from "@/modules/verticals/agency/quotes/quote-whatsapp-modal"
 import { ShareButton } from "@/components/animate-ui/components/community/share-button"
 
 export default function QuoteDetailPage() {
@@ -63,8 +63,10 @@ export default function QuoteDetailPage() {
 
         setConverting(true)
         try {
-            const newClient = await LeadsService.convertLeadToClient(quote.lead_id)
-            alert(`¡Prospecto convertido exitosamente! Ahora es el cliente: ${newClient.name}`)
+            const res = await convertLeadToClient(quote.lead_id)
+            if (!res.success || !res.data) throw new Error(res.error)
+
+            alert(`¡Prospecto convertido exitosamente! Ahora es el cliente: ${res.data.name}`)
             // Refresh to show client data instead of lead
             fetchQuote(quote.id)
         } catch (error: any) {

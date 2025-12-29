@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { forceLogoutUser } from "@/app/actions/admin-dashboard-actions"
+import { forceLogoutUser } from "@/modules/core/admin/actions"
 import { toast } from "sonner"
 import { LogOut, ShieldAlert, Loader2 } from "lucide-react"
 import {

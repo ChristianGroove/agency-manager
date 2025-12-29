@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils"
 import { OrgBranding } from "@/components/organizations/org-branding"
 import { useActiveModules } from "@/hooks/use-active-modules"
 import { MODULE_ROUTES, filterRoutesByModules } from "@/lib/module-config"
-import { logout } from "@/app/actions/logout" // We keep logout import just in case, or remove if unused. User wants logout in header.
+import { logout } from "@/modules/core/auth/actions" // We keep logout import just in case, or remove if unused. User wants logout in header.
 
 interface SidebarProps {
     isCollapsed: boolean;

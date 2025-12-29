@@ -7,7 +7,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, Search, ExternalLink, RefreshCw } from "lucide-react"
 import { Input } from "@/components/ui/input"
-import { regeneratePortalToken } from "@/app/actions/portal-actions"
+import { regeneratePortalToken } from "@/modules/core/portal/actions"
 import { getPortalUrl } from "@/lib/utils"
 
 export default function DebugTokensPage() {

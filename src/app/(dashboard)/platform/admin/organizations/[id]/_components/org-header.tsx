@@ -1,7 +1,7 @@
 "use client"
 
 import { Badge } from "@/components/ui/badge"
-import { AdminOrganization } from "@/app/actions/admin-actions"
+import { type AdminOrganization } from "@/modules/core/admin/actions"
 import { Building2, Calendar, Globe } from "lucide-react"
 
 interface HeaderProps {

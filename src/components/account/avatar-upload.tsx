@@ -5,7 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Camera, Loader2 } from "lucide-react"
 import { toast } from "sonner"
-import { uploadAvatar } from "@/app/actions/profile-actions"
+import { uploadAvatar } from "@/modules/core/auth/actions"
 import { useRouter } from "next/navigation"
 
 interface AvatarUploadProps {

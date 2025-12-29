@@ -11,7 +11,7 @@ import {
 import { supabase } from "@/lib/supabase"
 import { NotificationList } from "./notification-list"
 import { checkUpcomingPayments } from "@/lib/notifications"
-import { getCurrentOrganizationId } from "@/lib/actions/organizations"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
 
 type Notification = {
     id: string

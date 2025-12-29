@@ -5,7 +5,7 @@ import { Sidebar } from "@/components/layout/sidebar"
 import { Header } from "@/components/layout/header"
 import { cn } from "@/lib/utils"
 
-import { BillingAutomator } from "@/components/modules/billing/billing-automator"
+import { BillingAutomator } from "@/modules/core/billing/billing-automator"
 
 import { User } from "@supabase/supabase-js"
 

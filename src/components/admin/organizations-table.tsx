@@ -1,9 +1,12 @@
 "use client"
 
-import { AdminOrganization, updateOrganizationStatus } from '@/app/actions/admin-actions'
+import { type AdminOrganization, updateOrganizationStatus, deleteOrganization } from '@/modules/core/admin/actions'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
+import { EditOrganizationDialog } from './edit-organization-dialog'
+import { useState } from 'react'
+
 import {
     Table,
     TableBody,
@@ -20,9 +23,11 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { MoreHorizontal, Eye, Ban, CheckCircle } from 'lucide-react'
+import { MoreHorizontal, Eye, Ban, CheckCircle, Pencil, Trash2 } from 'lucide-react'
 import { format } from 'date-fns'
 import Link from 'next/link'
+
+const PROTECTED_ORG_SLUGS = ['pixy', 'pixy-agency', 'pixy-pds']
 
 interface OrganizationsTableProps {
     organizations: AdminOrganization[]
@@ -30,6 +35,20 @@ interface OrganizationsTableProps {
 }
 
 export function OrganizationsTable({ organizations, onSelect }: OrganizationsTableProps) {
+    const [editOrg, setEditOrg] = useState<AdminOrganization | null>(null)
+    const [isEditOpen, setIsEditOpen] = useState(false)
+
+    const handleDelete = async (orgId: string) => {
+        if (!confirm("CRITICAL WARNING: This will permanently DELETE the organization and ALL its data (clients, invoices, etc).\n\nAre you absolutely sure?")) return;
+
+        try {
+            await deleteOrganization(orgId)
+            toast.success("Organization deleted permanently")
+        } catch (error: any) {
+            toast.error(error.message || "Failed to delete")
+        }
+    }
+
     const getStatusBadge = (status?: string) => {
         switch (status) {
             case 'active':
@@ -47,6 +66,12 @@ export function OrganizationsTable({ organizations, onSelect }: OrganizationsTab
 
     return (
         <div className="rounded-md border">
+            <EditOrganizationDialog
+                open={isEditOpen}
+                onOpenChange={setIsEditOpen}
+                organization={editOrg}
+                onSuccess={() => { }}
+            />
             <Table>
                 <TableHeader>
                     <TableRow>
@@ -68,7 +93,12 @@ export function OrganizationsTable({ organizations, onSelect }: OrganizationsTab
                     ) : (
                         organizations.map((org) => (
                             <TableRow key={org.id}>
-                                <TableCell className="font-medium">{org.name}</TableCell>
+                                <TableCell className="font-medium">
+                                    {org.name}
+                                    {PROTECTED_ORG_SLUGS.includes(org.slug) && (
+                                        <Badge variant="secondary" className="ml-2 text-[10px] h-5">Protected</Badge>
+                                    )}
+                                </TableCell>
                                 <TableCell className="font-mono text-sm">{org.slug}</TableCell>
                                 <TableCell>{getStatusBadge(org.status)}</TableCell>
                                 <TableCell>
@@ -108,40 +138,68 @@ export function OrganizationsTable({ organizations, onSelect }: OrganizationsTab
                                                     </Link>
                                                 )}
                                             </DropdownMenuItem>
-                                            <DropdownMenuSeparator />
-                                            {org.status === 'active' ? (
-                                                <DropdownMenuItem
-                                                    className="text-destructive cursor-pointer"
-                                                    onClick={async () => {
-                                                        const result = confirm('Are you sure you want to suspend this organization? users will be blocked immediately.')
-                                                        if (!result) return
 
-                                                        try {
-                                                            await updateOrganizationStatus(org.id, 'suspended', 'Admin Action')
-                                                            toast.success('Organization suspended')
-                                                        } catch (error: any) {
-                                                            toast.error(error.message || 'Failed to suspend organization')
-                                                        }
-                                                    }}
-                                                >
-                                                    <Ban className="mr-2 h-4 w-4" />
-                                                    Suspend Service
-                                                </DropdownMenuItem>
-                                            ) : (
+                                            <DropdownMenuItem
+                                                onClick={() => {
+                                                    setEditOrg(org)
+                                                    setIsEditOpen(true)
+                                                }}
+                                                className="cursor-pointer"
+                                            >
+                                                <Pencil className="mr-2 h-4 w-4" />
+                                                Edit Details
+                                            </DropdownMenuItem>
+
+                                            {!PROTECTED_ORG_SLUGS.includes(org.slug) && (
                                                 <DropdownMenuItem
-                                                    className="text-green-600 cursor-pointer"
-                                                    onClick={async () => {
-                                                        try {
-                                                            await updateOrganizationStatus(org.id, 'active')
-                                                            toast.success('Organization reactivated')
-                                                        } catch (error: any) {
-                                                            toast.error(error.message || 'Failed to reactivate organization')
-                                                        }
-                                                    }}
+                                                    onClick={() => handleDelete(org.id)}
+                                                    className="cursor-pointer text-red-600 focus:text-red-600"
                                                 >
-                                                    <CheckCircle className="mr-2 h-4 w-4" />
-                                                    Reactivate
+                                                    <Trash2 className="mr-2 h-4 w-4" />
+                                                    Delete Org
                                                 </DropdownMenuItem>
+                                            )}
+
+                                            <DropdownMenuSeparator />
+
+                                            {/* Status Actions - Only for non-protected orgs */}
+                                            {PROTECTED_ORG_SLUGS.includes(org.slug) ? null : (
+                                                <>
+                                                    {org.status === 'active' ? (
+                                                        <DropdownMenuItem
+                                                            className="text-destructive cursor-pointer"
+                                                            onClick={async () => {
+                                                                const result = confirm('Are you sure you want to suspend this organization? users will be blocked immediately.')
+                                                                if (!result) return
+
+                                                                try {
+                                                                    await updateOrganizationStatus(org.id, 'suspended', 'Admin Action')
+                                                                    toast.success('Organization suspended')
+                                                                } catch (error: any) {
+                                                                    toast.error(error.message || 'Failed to suspend organization')
+                                                                }
+                                                            }}
+                                                        >
+                                                            <Ban className="mr-2 h-4 w-4" />
+                                                            Suspend Service
+                                                        </DropdownMenuItem>
+                                                    ) : (
+                                                        <DropdownMenuItem
+                                                            className="text-green-600 cursor-pointer"
+                                                            onClick={async () => {
+                                                                try {
+                                                                    await updateOrganizationStatus(org.id, 'active')
+                                                                    toast.success('Organization reactivated')
+                                                                } catch (error: any) {
+                                                                    toast.error(error.message || 'Failed to reactivate organization')
+                                                                }
+                                                            }}
+                                                        >
+                                                            <CheckCircle className="mr-2 h-4 w-4" />
+                                                            Reactivate
+                                                        </DropdownMenuItem>
+                                                    )}
+                                                </>
                                             )}
                                         </DropdownMenuContent>
                                     </DropdownMenu>

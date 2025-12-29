@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { getActiveModules } from '@/app/actions/modules-actions'
+import { getActiveModules } from '@/modules/core/saas/actions'
 
 interface UseActiveModulesReturn {
     modules: string[]

@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { getActiveBroadcasts } from "@/app/actions/admin-dashboard-actions"
+import { getActiveBroadcasts } from "@/modules/core/admin/actions"
 import { AlertCircle, Megaphone, X } from "lucide-react"
 
 export function SystemAlertBanner() {

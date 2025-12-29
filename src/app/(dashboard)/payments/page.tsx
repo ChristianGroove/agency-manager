@@ -50,7 +50,7 @@ export default function PaymentsPage() {
 
     const fetchTransactions = async () => {
         try {
-            const { getPaymentTransactions } = await import("@/app/actions/payments-actions")
+            const { getPaymentTransactions } = await import("@/modules/core/billing/payments-actions")
             const data = await getPaymentTransactions()
             setTransactions(data || [])
         } catch (error) {

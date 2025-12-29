@@ -1,6 +1,6 @@
-import { getBriefings } from "@/lib/actions/briefings"
-import { BriefingsPageHeader } from "@/components/modules/briefings/briefings-page-header"
-import { DynamicBriefingList } from "@/components/modules/briefings/dynamic-briefing-list"
+import { getBriefings } from "@/modules/verticals/agency/briefings/actions"
+import { BriefingsPageHeader } from "@/modules/verticals/agency/briefings/briefings-page-header"
+import { DynamicBriefingList } from "@/modules/verticals/agency/briefings/dynamic-briefing-list"
 
 export default async function BriefingsPage() {
     const briefings = await getBriefings()

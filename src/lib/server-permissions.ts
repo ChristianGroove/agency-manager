@@ -1,4 +1,5 @@
-import { getCurrentOrganizationId, getOrganizationModules } from "@/lib/actions/organizations"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getOrganizationModules } from "@/modules/core/organizations/actions"
 import { redirect } from "next/navigation"
 
 export async function requireModule(moduleKey: string) {
@@ -15,4 +16,20 @@ export async function requireModule(moduleKey: string) {
     }
 
     return true
+}
+
+/**
+ * Check if the current organization has a specific feature/module enabled.
+ * Returns boolean, does NOT redirect. Use for conditional UI rendering.
+ */
+export async function hasFeature(featureKey: string): Promise<boolean> {
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) return false
+
+    const modules = await getOrganizationModules(orgId)
+
+    // Super-admin or "all" plan bypass
+    if (modules.includes("all")) return true
+
+    return modules.includes(featureKey)
 }

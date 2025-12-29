@@ -11,6 +11,8 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Plus, Search, Filter, CreditCard, Server, Megaphone, Monitor, Box, Eye, Trash2, Loader2, RefreshCw, Zap, CalendarClock, MoreHorizontal, Pencil, FileText, PlayCircle, PauseCircle, ListFilter } from "lucide-react"
 import { Input } from "@/components/ui/input"
+import { Checkbox } from "@/components/ui/checkbox"
+import { BulkActionsFloatingBar } from "@/components/shared/bulk-actions-floating-bar"
 import { toast } from "sonner"
 import {
     Table,
@@ -30,10 +32,10 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
 import { supabase } from "@/lib/supabase"
-import { CreateServiceSheet } from "@/components/modules/services/create-service-sheet"
-import { ServiceDetailsModal } from "@/components/modules/services/service-details-modal"
-import { ResumeServiceModal } from "@/components/modules/services/resume-service-modal"
-import { toggleServiceStatus } from "@/app/actions/services-actions"
+import { CreateServiceSheet } from "@/modules/verticals/agency/services/create-service-sheet"
+import { ServiceDetailsModal } from "@/modules/verticals/agency/services/service-details-modal"
+import { ResumeServiceModal } from "@/modules/verticals/agency/services/resume-service-modal"
+import { toggleServiceStatus } from "@/modules/verticals/agency/services/actions"
 import { cn } from "@/lib/utils"
 import { SplitText } from "@/components/ui/split-text"
 
@@ -58,6 +60,8 @@ export default function ServicesPage() {
     const [services, setServices] = useState<ServiceFromDB[]>([])
     const [loading, setLoading] = useState(true)
     const [searchTerm, setSearchTerm] = useState("")
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+    const [isDeleting, setIsDeleting] = useState(false)
 
     // Modern Filters
     const [showFilters, setShowFilters] = useState(false)
@@ -91,13 +95,49 @@ export default function ServicesPage() {
     const fetchServices = async () => {
         setLoading(true)
         try {
-            const { getServices } = await import("@/app/actions/services-actions")
+            const { getServices } = await import("@/modules/verticals/agency/services/actions")
             const data = await getServices()
             if (data) setServices(data as unknown as ServiceFromDB[])
         } catch (error) {
             console.error("Error fetching services:", error)
         } finally {
             setLoading(false)
+        }
+    }
+
+    const toggleSelection = (id: string) => {
+        const newSelection = new Set(selectedIds)
+        if (newSelection.has(id)) {
+            newSelection.delete(id)
+        } else {
+            newSelection.add(id)
+        }
+        setSelectedIds(newSelection)
+    }
+
+    const toggleAll = () => {
+        if (selectedIds.size === filteredServices.length) {
+            setSelectedIds(new Set())
+        } else {
+            setSelectedIds(new Set(filteredServices.map(s => s.id)))
+        }
+    }
+
+    const handleBulkDelete = async () => {
+        if (!confirm(`¿Estás seguro de eliminar ${selectedIds.size} contratos seleccionados?`)) return
+
+        setIsDeleting(true)
+        try {
+            const { deleteServices } = await import("@/modules/verticals/agency/services/actions")
+            await deleteServices(Array.from(selectedIds))
+            toast.success(`${selectedIds.size} contratos eliminados correctamente`)
+            setSelectedIds(new Set())
+            await fetchServices()
+        } catch (error) {
+            console.error("Error deleting services:", error)
+            toast.error("Error al eliminar los contratos seleccionados")
+        } finally {
+            setIsDeleting(false)
         }
     }
 
@@ -333,10 +373,22 @@ export default function ServicesPage() {
             </div>
 
             {/* Table */}
-            <div className="rounded-xl border bg-white shadow-sm overflow-hidden">
+            <div className="rounded-xl border bg-white shadow-sm overflow-hidden relative">
+                <BulkActionsFloatingBar
+                    selectedCount={selectedIds.size}
+                    onDelete={handleBulkDelete}
+                    onClearSelection={() => setSelectedIds(new Set())}
+                    isDeleting={isDeleting}
+                />
                 <Table>
                     <TableHeader>
                         <TableRow className="bg-gray-50/50 hover:bg-gray-50/50">
+                            <TableHead className="w-[50px]">
+                                <Checkbox
+                                    checked={filteredServices.length > 0 && selectedIds.size === filteredServices.length}
+                                    onCheckedChange={toggleAll}
+                                />
+                            </TableHead>
                             <TableHead >Contrato / Cliente</TableHead>
                             <TableHead>Tipo</TableHead>
                             <TableHead>Frecuencia</TableHead>
@@ -348,7 +400,7 @@ export default function ServicesPage() {
                     <TableBody>
                         {loading ? (
                             <TableRow>
-                                <TableCell colSpan={6} className="h-32 text-center">
+                                <TableCell colSpan={7} className="h-32 text-center">
                                     <div className="flex items-center justify-center gap-2 text-muted-foreground">
                                         <Loader2 className="h-5 w-5 animate-spin" />
                                         Cargando contratos...
@@ -357,13 +409,19 @@ export default function ServicesPage() {
                             </TableRow>
                         ) : filteredServices.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
+                                <TableCell colSpan={7} className="h-32 text-center text-muted-foreground">
                                     No se encontraron contratos con estos filtros.
                                 </TableCell>
                             </TableRow>
                         ) : (
                             filteredServices.map((service) => (
                                 <TableRow key={service.id} className="group hover:bg-gray-50/30 transition-colors">
+                                    <TableCell>
+                                        <Checkbox
+                                            checked={selectedIds.has(service.id)}
+                                            onCheckedChange={() => toggleSelection(service.id)}
+                                        />
+                                    </TableCell>
                                     <TableCell>
                                         <div>
                                             <p className="font-medium text-gray-900">{service.name}</p>

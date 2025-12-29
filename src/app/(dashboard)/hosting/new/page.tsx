@@ -1,4 +1,4 @@
-import { HostingForm } from "@/components/modules/hosting/hosting-form"
+import { HostingForm } from "@/modules/verticals/agency/hosting/hosting-form"
 
 export default function NewHostingPage() {
     return (

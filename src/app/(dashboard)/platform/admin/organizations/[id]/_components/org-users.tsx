@@ -15,7 +15,7 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog"
-import { inviteOrgOwner, removeOrgUser } from "@/app/actions/admin-auth-actions"
+import { inviteOrgOwner, removeOrgUser } from '@/modules/core/admin/actions'
 import { toast } from "sonner"
 import { Loader2, Mail, Trash2, Copy, Check } from "lucide-react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"

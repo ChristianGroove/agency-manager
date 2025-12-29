@@ -1,6 +1,6 @@
-import { getPortalInvoice, getPortalMetadata } from "@/app/actions/portal-actions"
+import { getPortalInvoice, getPortalMetadata } from "@/modules/core/portal/actions"
 import { notFound } from "next/navigation"
-import { InvoiceTemplate } from "@/components/modules/invoices/invoice-template"
+import { InvoiceTemplate } from "@/modules/verticals/agency/invoicing/invoice-template"
 import { Printer } from "lucide-react"
 
 interface PageProps {
@@ -39,8 +39,8 @@ export default async function PortalInvoicePrintPage({ params }: PageProps) {
                 {/* Inline script for actual click handler since onClick above is limited in Server Component */}
                 <script dangerouslySetInnerHTML={{
                     __html: `
-                    document.getElementById('print-btn').addEventListener('click', () => window.print());
-                `}} />
+document.getElementById('print-btn').addEventListener('click', () => window.print());
+`}} />
             </div>
 
             <div className="w-full max-w-[816px] bg-white shadow-xl print:shadow-none print:w-full print:max-w-none">

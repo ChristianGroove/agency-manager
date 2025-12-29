@@ -1,4 +1,4 @@
-import { getAdminOrganizations } from '@/app/actions/admin-actions'
+import { getAdminOrganizations } from '@/modules/core/admin/actions'
 import { OrganizationsTable } from '@/components/admin/organizations-table'
 import { requireSuperAdmin } from '@/lib/auth/platform-roles'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'

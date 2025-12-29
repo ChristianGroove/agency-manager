@@ -2,24 +2,36 @@
 
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
-import { getPortalData, acceptQuote, rejectQuote } from "@/app/actions/portal-actions"
+import { getPortalData, acceptQuote, rejectQuote } from "@/modules/core/portal/actions"
 import { Client, Invoice, Quote, Briefing, ClientEvent, Service } from "@/types"
 import { Loader2, AlertTriangle, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { PortalLayout } from "@/components/modules/portal/portal-layout"
-import { QuoteDetailModal } from "@/components/modules/portal/quote-detail-modal"
-import { InvoiceDetailModal } from "@/components/modules/portal/invoice-detail-modal"
+import { PortalLayout } from "@/modules/core/portal/portal-layout"
+import { WorkerPortalLayout } from "@/modules/core/portal/worker-portal-layout"
+import { QuoteDetailModal } from "@/modules/core/portal/quote-detail-modal"
+import { InvoiceDetailModal } from "@/modules/core/portal/invoice-detail-modal"
 
 export default function PortalPage() {
     const params = useParams()
+
+    // Portal Context
+    const [portalType, setPortalType] = useState<'client' | 'staff'>('client')
+
+    // Client Data
     const [client, setClient] = useState<Client | null>(null)
     const [services, setServices] = useState<Service[]>([])
     const [invoices, setInvoices] = useState<Invoice[]>([])
     const [quotes, setQuotes] = useState<Quote[]>([])
     const [briefings, setBriefings] = useState<Briefing[]>([])
     const [events, setEvents] = useState<ClientEvent[]>([])
-    const [settings, setSettings] = useState<any>({})
     const [activeModules, setActiveModules] = useState<any[]>([])
+
+    // Staff Data
+    const [staff, setStaff] = useState<any>(null)
+    const [jobs, setJobs] = useState<any[]>([])
+
+    // Shared
+    const [settings, setSettings] = useState<any>({})
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState("")
     const [isProcessing, setIsProcessing] = useState(false)
@@ -43,14 +55,23 @@ export default function PortalPage() {
     const fetchData = async (token: string) => {
         try {
             const data = await getPortalData(token)
-            setClient(data.client)
-            setInvoices(data.invoices)
-            setQuotes(data.quotes)
-            setBriefings(data.briefings)
-            setEvents(data.events)
-            setSettings(data.settings || {})
-            setServices(data.services || [])
-            setActiveModules(data.activePortalModules || [])
+
+            if (data.type === 'staff') {
+                setPortalType('staff')
+                setStaff(data.staff)
+                setJobs(data.jobs || [])
+                setSettings(data.settings || {})
+            } else {
+                setPortalType('client')
+                setClient(data.client || null)
+                setInvoices(data.invoices || [])
+                setQuotes(data.quotes || [])
+                setBriefings(data.briefings || [])
+                setEvents(data.events || [])
+                setSettings(data.settings || {})
+                setServices(data.services || [])
+                setActiveModules(data.activePortalModules || [])
+            }
         } catch (err) {
             console.error(err)
             setError("No se pudo cargar la información. El enlace puede ser inválido.")
@@ -135,20 +156,6 @@ export default function PortalPage() {
 
     if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-pink-500" /></div>
     if (error) return <div className="min-h-screen flex items-center justify-center text-red-500">{error}</div>
-    if (!client) return null
-
-    // Portal Disabled Check
-    if (settings.portal_enabled === false) {
-        return (
-            <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4 text-center">
-                <AlertTriangle className="h-12 w-12 text-amber-500 mb-4" />
-                <h1 className="text-2xl font-bold text-gray-900 mb-2">Portal en Mantenimiento</h1>
-                <p className="text-gray-600 max-w-md">
-                    El portal de clientes no está disponible en este momento. Por favor contacta a la empresa directamente.
-                </p>
-            </div>
-        )
-    }
 
     // Branding Colors Injection + White-Label Phase 3
     const brandingStyles = {
@@ -162,6 +169,40 @@ export default function PortalPage() {
         backgroundAttachment: 'fixed',
         fontFamily: settings.brand_font_family || 'Inter, sans-serif',
     } as React.CSSProperties
+
+    // -------------------------------------------------------------
+    // RENDER: STAFF PORTAL
+    // -------------------------------------------------------------
+    if (portalType === 'staff' && staff) {
+        return (
+            <div className="min-h-screen" style={brandingStyles}>
+                <WorkerPortalLayout
+                    staff={staff}
+                    jobs={jobs}
+                    settings={settings}
+                    token={params.token as string}
+                />
+            </div>
+        )
+    }
+
+    // -------------------------------------------------------------
+    // RENDER: CLIENT PORTAL (Default)
+    // -------------------------------------------------------------
+    if (!client) return null // Should not happen due to error state
+
+    // Portal Disabled Check (Only for clients maybe? or both?)
+    if (settings.portal_enabled === false) {
+        return (
+            <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4 text-center">
+                <AlertTriangle className="h-12 w-12 text-amber-500 mb-4" />
+                <h1 className="text-2xl font-bold text-gray-900 mb-2">Portal en Mantenimiento</h1>
+                <p className="text-gray-600 max-w-md">
+                    El portal de clientes no está disponible en este momento. Por favor contacta a la empresa directamente.
+                </p>
+            </div>
+        )
+    }
 
     return (
         <div className="min-h-screen" style={brandingStyles}>
@@ -217,4 +258,5 @@ export default function PortalPage() {
         </div>
     )
 }
+
 

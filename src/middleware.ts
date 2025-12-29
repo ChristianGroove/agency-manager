@@ -2,13 +2,30 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
+import { checkRateLimit } from '@/lib/security/rate-limit'
+import { applySecurityHeaders } from '@/lib/security/headers'
+
 export async function middleware(request: NextRequest) {
+    // 0. SECURITY SHIELD: Rate Limiting & Headers
+    const ip = request.headers.get('x-forwarded-for') || '127.0.0.1'
+
+    // Skip RL for static assets (handled by matcher) and internal APIs if needed
+    if (!request.nextUrl.pathname.startsWith('/_next')) {
+        const { success } = checkRateLimit(ip)
+        if (!success) {
+            return new NextResponse('Too Many Requests', { status: 429 })
+        }
+    }
+
     // 1. Core Supabase Auth Session Handling
     let response = NextResponse.next({
         request: {
             headers: request.headers,
         },
     })
+
+    // Apply WAF Headers
+    applySecurityHeaders(response.headers)
 
     const supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -29,6 +46,7 @@ export async function middleware(request: NextRequest) {
                             headers: request.headers,
                         },
                     })
+                    applySecurityHeaders(response.headers) // Re-apply on refresh
                     response.cookies.set({
                         name,
                         value,
@@ -46,6 +64,7 @@ export async function middleware(request: NextRequest) {
                             headers: request.headers,
                         },
                     })
+                    applySecurityHeaders(response.headers) // Re-apply on refresh
                     response.cookies.set({
                         name,
                         value: '',

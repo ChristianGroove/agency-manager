@@ -1,5 +1,5 @@
-import { getAdminDashboardStats, getActiveBroadcasts, getAllSystemModules } from '@/app/actions/admin-dashboard-actions'
-import { getAdminOrganizations } from '@/app/actions/admin-actions'
+import { getAdminDashboardStats, getActiveBroadcasts, getAllSystemModules } from '@/modules/core/admin/actions'
+import { getAdminOrganizations } from '@/modules/core/admin/actions'
 import { requireSuperAdmin } from '@/lib/auth/platform-roles'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Building2, Users, Bell, Activity } from 'lucide-react'
@@ -94,7 +94,7 @@ export default async function AdminDashboardPage() {
                                 {stats.recentLogs.map((log: any) => (
                                     <div key={log.id} className="flex items-start gap-4 p-3 rounded-lg border bg-card text-card-foreground shadow-sm">
                                         <div className={`mt-1 p-1 rounded-full ${log.action === 'suspended' ? 'bg-red-100 text-red-600' :
-                                                log.action === 'activated' ? 'bg-green-100 text-green-600' : 'bg-gray-100'
+                                            log.action === 'activated' ? 'bg-green-100 text-green-600' : 'bg-gray-100'
                                             }`}>
                                             <Activity className="h-4 w-4" />
                                         </div>

@@ -1,6 +1,5 @@
-
-import { getPortalQuote, getPortalMetadata } from "@/app/actions/portal-actions"
-import { QuoteTemplate } from "@/components/modules/quotes/quote-template"
+import { getPortalQuote, getPortalMetadata } from "@/modules/core/portal/actions"
+import { QuoteTemplate } from "@/modules/verticals/agency/quotes/quote-template"
 import { notFound } from "next/navigation"
 
 export default async function PortalQuotePrintPage({
@@ -23,9 +22,9 @@ export default async function PortalQuotePrintPage({
             <div className="min-h-screen bg-gray-100 flex justify-center p-8 print:p-0 print:bg-white">
                 <style type="text/css" media="print">
                     {`
-                        @page { size: auto; margin: 0mm; }
+@page { size: auto; margin: 0mm; }
                         body { margin: 0px; }
-                    `}
+`}
                 </style>
                 <div className="w-full max-w-[800px]">
                     <QuoteTemplate
@@ -47,8 +46,8 @@ export default async function PortalQuotePrintPage({
                     {/* Inline script for the button to work without client-side hydration for this simple page */}
                     <script dangerouslySetInnerHTML={{
                         __html: `
-                        document.getElementById('print-btn').addEventListener('click', () => window.print());
-                    `}} />
+document.getElementById('print-btn').addEventListener('click', () => window.print());
+`}} />
                 </div>
             </div>
         )

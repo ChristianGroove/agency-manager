@@ -1,6 +1,6 @@
 "use client"
 
-import { stopBroadcast } from "@/app/actions/admin-dashboard-actions"
+import { stopBroadcast } from "@/modules/core/admin/actions"
 import { Button } from "@/components/ui/button"
 import { Trash2, Loader2 } from "lucide-react"
 import { useState } from "react"

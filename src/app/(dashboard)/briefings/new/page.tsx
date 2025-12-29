@@ -1,5 +1,5 @@
-import { getBriefingTemplates } from "@/lib/actions/briefings"
-import { CreateBriefingForm } from "@/components/modules/briefings/create-briefing-form"
+import { getBriefingTemplates } from "@/modules/verticals/agency/briefings/actions"
+import { CreateBriefingForm } from "@/modules/verticals/agency/briefings/create-briefing-form"
 import { createClient } from "@/lib/supabase-server"
 
 export default async function NewBriefingPage() {

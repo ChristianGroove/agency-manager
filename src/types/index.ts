@@ -46,6 +46,10 @@ export type Service = {
     service_start_date?: string
     billing_cycle_start_date?: string
     metadata?: any
+    // Cleaning App 2.0 Fields
+    duration_minutes?: number
+    pricing_model?: 'fixed' | 'hourly' | 'sq_meter'
+    worker_count?: number
 }
 
 export type Lead = {
@@ -74,6 +78,7 @@ export type Quote = {
     id: string
     created_at: string
     number: string
+    title?: string // Friendly name
     date: string
     items: QuoteItem[]
     total: number
@@ -111,6 +116,7 @@ export type Invoice = {
     document_type?: string
     is_late_issued?: boolean
     metadata?: any
+    cycle_id?: string
 }
 
 // ... existing types

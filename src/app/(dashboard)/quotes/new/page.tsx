@@ -9,10 +9,10 @@ import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { supabase } from "@/lib/supabase"
-import { LeadsService } from "@/services/leads-service"
-import { QuotesService } from "@/services/quotes-service"
+import { createQuote } from "@/modules/verticals/agency/quotes/actions"
+import { createLead } from "@/modules/verticals/agency/leads/actions"
 import { Client } from "@/types"
-import { Loader2, UserPlus, Users } from "lucide-react"
+import { Loader2, Users, UserPlus } from "lucide-react"
 
 export default function NewQuotePage() {
     const router = useRouter()
@@ -41,13 +41,17 @@ export default function NewQuotePage() {
         if (!selectedClientId) return
         setLoading(true)
         try {
-            const quote = await QuotesService.createQuote({
+            const response = await createQuote({
                 client_id: selectedClientId,
                 date: new Date().toISOString(),
                 total: 0,
-                items: []
+                items: [],
+                title: 'Nueva Cotización' // Default title
             })
-            router.push(`/quotes/${quote.id}/edit`)
+
+            if (!response.success || !response.data) throw new Error(response.error)
+
+            router.push(`/quotes/${response.data.id}/edit`)
         } catch (error) {
             console.error(error)
             alert("Error al crear la cotización")
@@ -61,25 +65,31 @@ export default function NewQuotePage() {
         setLoading(true)
         try {
             // 1. Create Lead
-            const lead = await LeadsService.createLead({
+            const leadRes = await createLead({
                 name: prospectData.name,
                 company_name: prospectData.company_name,
                 email: prospectData.email,
                 phone: prospectData.phone
             })
 
+            if (!leadRes.success || !leadRes.data) throw new Error(leadRes.error)
+            const lead = leadRes.data
+
             // 2. Create Quote
-            const quote = await QuotesService.createQuote({
+            const response = await createQuote({
                 lead_id: lead.id,
                 date: new Date().toISOString(),
                 total: 0,
-                items: []
+                items: [],
+                title: 'Nueva Cotización'
             })
 
-            router.push(`/quotes/${quote.id}/edit`)
-        } catch (error) {
+            if (!response.success || !response.data) throw new Error(response.error)
+
+            router.push(`/quotes/${response.data.id}/edit`)
+        } catch (error: any) {
             console.error(error)
-            alert("Error al crear el prospecto o la cotización")
+            alert("Error al crear la cotización: " + error.message)
         } finally {
             setLoading(false)
         }

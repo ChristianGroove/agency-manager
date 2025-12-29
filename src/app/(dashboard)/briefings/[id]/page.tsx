@@ -1,4 +1,4 @@
-import { getBriefingById, getBriefingResponses } from "@/lib/actions/briefings"
+import { getBriefingById } from "@/modules/verticals/agency/briefings/actions"
 import { notFound } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"

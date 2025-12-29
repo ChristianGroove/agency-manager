@@ -3,7 +3,7 @@
  * Central mapping of modules to routes and metadata
  */
 
-import { LucideIcon, Users, Server, FileText, CreditCard, Briefcase, Settings, LayoutDashboard } from 'lucide-react'
+import { LucideIcon, Users, Server, FileText, CreditCard, Briefcase, Settings, LayoutDashboard, Sparkles } from 'lucide-react'
 
 export interface ModuleRoute {
     key: string           // Module key from system_modules
@@ -79,23 +79,17 @@ export const MODULE_ROUTES: ModuleRoute[] = [
     {
         key: 'core_settings',
         label: 'Configuración',
-        href: '/settings',
+        href: '/platform/settings',
         icon: Settings,
         category: 'core'
     },
+    // Legacy modules removed (workforce, field_ops)
     {
-        key: 'module_workforce',
-        label: 'Fuerza Laboral',
-        href: '/workforce',
-        icon: Users,
-        category: 'operations'
-    },
-    {
-        key: 'module_field_ops',
-        label: 'Operaciones',
-        href: '/ops',
-        icon: LayoutDashboard, // Or Calendar/Map icon if available
-        category: 'operations'
+        key: 'module_cleaning',
+        label: 'Limpieza',
+        href: '/cleaning',
+        icon: Sparkles,
+        category: 'services'
     }
 ]
 

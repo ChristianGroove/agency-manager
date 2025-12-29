@@ -5,7 +5,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTr
 import { Button } from "@/components/ui/button"
 import { Building2, ArrowLeft, Loader2 } from "lucide-react"
 import { OrganizationsTable } from "@/components/admin/organizations-table"
-import { getOrgManagerData } from "@/app/actions/admin-dashboard-actions"
+import { getOrgManagerData } from "@/modules/core/admin/actions"
 import { OrgControlTabs } from "../organizations/_components/org-control-tabs"
 import { toast } from "sonner"
 

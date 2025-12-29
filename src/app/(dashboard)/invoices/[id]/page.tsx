@@ -9,10 +9,10 @@ import Link from "next/link"
 
 import { Invoice } from "@/types"
 
-import { ShareInvoiceModal } from "@/components/modules/invoices/share-invoice-modal"
-import { InvoiceTemplate } from "@/components/modules/invoices/invoice-template"
+import { ShareInvoiceModal } from "@/modules/verticals/agency/invoicing/share-invoice-modal"
+import { InvoiceTemplate } from "@/modules/verticals/agency/invoicing/invoice-template"
 import { ShareButton } from "@/components/animate-ui/components/community/share-button"
-import { getSettings } from "@/lib/actions/settings"
+import { getSettings } from "@/modules/core/settings/actions"
 import { getDocumentTypeLabel } from "@/lib/billing-utils"
 
 export default function InvoicePage() {

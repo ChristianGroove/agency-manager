@@ -12,9 +12,9 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ServiceDetailModal } from "@/components/modules/services/service-detail-modal"
+import { ServiceDetailModal } from "@/modules/verticals/agency/services/service-detail-modal"
 import { StatusBadge } from "@/components/ui/status-badge"
-import { ClientTimeline } from "@/components/modules/clients/client-timeline"
+import { ClientTimeline } from "@/modules/core/clients/client-timeline"
 import {
     Dialog,
     DialogContent,
@@ -55,18 +55,18 @@ import {
     Eye,
     Share2
 } from "lucide-react"
-import { NotesModal } from "@/components/modules/clients/notes-modal"
-import { ResumeServiceModal } from "@/components/modules/services/resume-service-modal"
-import { toggleServiceStatus } from "@/app/actions/services-actions"
+import { NotesModal } from "@/modules/core/clients/notes-modal"
+import { ResumeServiceModal } from "@/modules/verticals/agency/services/resume-service-modal"
+import { toggleServiceStatus } from "@/modules/verticals/agency/services/actions"
 import { logDomainEvent } from "@/lib/event-logger"
 import { supabase } from "@/lib/supabase"
-import { getSettings } from "@/lib/actions/settings"
+import { getSettings } from "@/modules/core/settings/actions"
 import { cn } from "@/lib/utils"
-import { CreateInvoiceSheet } from "@/components/modules/invoices/create-invoice-sheet"
-import { ShareInvoiceModal } from "@/components/modules/invoices/share-invoice-modal"
-import { CreateServiceSheet } from "@/components/modules/services/create-service-sheet"
-import { regeneratePortalToken } from "@/app/actions/portal-actions"
-import { MetaConfigurationModal } from "@/components/modules/admin/meta-configuration-modal"
+import { CreateInvoiceSheet } from "@/modules/verticals/agency/invoicing/create-invoice-sheet"
+import { ShareInvoiceModal } from "@/modules/verticals/agency/invoicing/share-invoice-modal"
+import { CreateServiceSheet } from "@/modules/verticals/agency/services/create-service-sheet"
+import { regeneratePortalToken } from "@/modules/core/portal/actions"
+import { MetaConfigurationModal } from "@/modules/core/admin/meta-configuration-modal"
 import {
     DropdownMenu,
     DropdownMenuContent,

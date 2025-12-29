@@ -17,7 +17,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { User, LogOut, Settings } from "lucide-react"
 import { ProfileSheet } from "@/components/account/profile-sheet"
 import { createBrowserClient } from "@supabase/ssr"
-import { logout } from "@/app/actions/logout"
+import { logout } from "@/modules/core/auth/actions"
 
 export function Header({ currentOrgId }: { currentOrgId: string | null }) {
     const [showMarquee, setShowMarquee] = useState(false)
@@ -86,7 +86,7 @@ export function Header({ currentOrgId }: { currentOrgId: string | null }) {
 
                 {/* User Nav */}
                 <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
+                    <DropdownMenuTrigger asChild suppressHydrationWarning>
                         <Avatar className="h-9 w-9 cursor-pointer hover:scale-105 transition-transform border border-white shadow-sm" suppressHydrationWarning>
                             <AvatarImage src={user?.user_metadata?.avatar_url} />
                             <AvatarFallback className="bg-gradient-to-tr from-indigo-500 to-purple-500 text-white font-bold">
