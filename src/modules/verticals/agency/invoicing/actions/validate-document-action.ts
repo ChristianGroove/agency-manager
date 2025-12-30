@@ -20,9 +20,11 @@ export async function validateInvoiceDraft(formData: any) {
         lineItems: formData.items || [],
         totals: {
             subtotal: formData.subtotal || 0,
-            tax: 0,
-            total: formData.total || 0,
-            payableAmount: formData.total || 0
+            discountTotal: 0,
+            taxableBase: formData.subtotal || 0,
+            taxesTotal: 0,
+            withholdingsTotal: 0,
+            total: formData.total || 0
         },
         currency: 'COP'
     }
