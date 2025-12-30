@@ -23,6 +23,7 @@ import { PortalSettingsTab } from "./portal-settings-tab"
 import { TeamSettingsTab } from "./team-settings-tab"
 import { EmailLogsTable } from "@/modules/core/notifications/components/email-logs-table"
 import { Bell } from "lucide-react"
+import { BiometricButton } from "@/components/auth/biometric-button"
 
 interface SettingsFormProps {
     initialSettings: any
@@ -182,6 +183,13 @@ export function SettingsForm({ initialSettings, activeModules }: SettingsFormPro
             id: 'interface',
             label: 'Interfaz',
             icon: LayoutTemplate,
+            requiredModule: null,
+            isCore: true
+        },
+        {
+            id: 'security',
+            label: 'Seguridad',
+            icon: Lock,
             requiredModule: null,
             isCore: true
         }
@@ -1184,6 +1192,57 @@ export function SettingsForm({ initialSettings, activeModules }: SettingsFormPro
                                     checked={showMarqueeLocal}
                                     onCheckedChange={handleMarqueeChange}
                                 />
+                            </div>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
+                {/* SECURITY TAB */}
+                <TabsContent value="security" className="space-y-4 mt-4">
+                    <Card className="border-indigo-100 bg-indigo-50/20">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <Shield className="h-5 w-5 text-indigo-600" />
+                                Seguridad y Acceso
+                            </CardTitle>
+                            <CardDescription>
+                                Gestiona tus métodos de inicio de sesión y dispositivos de confianza.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
+                            <div className="flex flex-col md:flex-row gap-6">
+                                <div className="flex-1 space-y-4">
+                                    <h4 className="font-medium text-gray-900">Inicio de Sesión Biométrico</h4>
+                                    <p className="text-sm text-muted-foreground">
+                                        Registra este dispositivo para iniciar sesión usando tu huella dactilar, FaceID o Windows Hello sin necesidad de escribir tu contraseña.
+                                    </p>
+
+                                    <div className="p-4 border border-indigo-100 rounded-lg bg-white/50 space-y-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-2 bg-indigo-100 rounded-lg text-indigo-600">
+                                                <Lock className="h-5 w-5" />
+                                            </div>
+                                            <div>
+                                                <p className="font-medium text-sm text-gray-900">Passkeys (FIDO2)</p>
+                                                <p className="text-xs text-muted-foreground">El estándar más seguro de la industria.</p>
+                                            </div>
+                                        </div>
+
+                                        <BiometricButton variant="cyber" mode="register" className="w-full sm:w-auto" />
+                                    </div>
+                                </div>
+
+                                <div className="w-px bg-gray-200 hidden md:block" />
+
+                                <div className="flex-1 space-y-4">
+                                    <h4 className="font-medium text-gray-900">Sesiones Activas</h4>
+                                    <p className="text-sm text-muted-foreground">
+                                        Si ves actividad sospechosa, te recomendamos cambiar tu contraseña inmediatamente.
+                                    </p>
+                                    <Button variant="outline" className="text-red-600 border-red-100 hover:bg-red-50 hover:text-red-700">
+                                        Cerrar todas las sesiones
+                                    </Button>
+                                </div>
                             </div>
                         </CardContent>
                     </Card>

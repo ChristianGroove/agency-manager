@@ -12,6 +12,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Loader2 } from "lucide-react"
 
 import { ParticlesBackground } from "@/components/ui/particles-background"
+import { BiometricButton } from "@/components/auth/biometric-button"
 
 
 export default function LoginPage() {
@@ -85,8 +86,20 @@ export default function LoginPage() {
                             Ingresa tus credenciales para acceder
                         </CardDescription>
                     </CardHeader>
-                    <form onSubmit={handleSubmit}>
-                        <CardContent className="space-y-4">
+                    <CardContent className="space-y-4">
+                        <div className="mb-4">
+                            <BiometricButton className="w-full h-11" />
+                            <div className="relative my-4">
+                                <div className="absolute inset-0 flex items-center">
+                                    <span className="w-full border-t border-white/10" />
+                                </div>
+                                <div className="relative flex justify-center text-xs uppercase">
+                                    <span className="bg-transparent px-2 text-white/40">O continuar con email</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <form onSubmit={handleSubmit} className="space-y-4">
                             <div className="space-y-2">
                                 <Label htmlFor="email" className="text-gray-200">Email</Label>
                                 <Input
@@ -122,8 +135,6 @@ export default function LoginPage() {
                                     {error}
                                 </div>
                             )}
-                        </CardContent>
-                        <CardFooter className="pt-4 pb-8">
                             <Button
                                 type="submit"
                                 className="w-full bg-white text-black hover:bg-gray-200 h-11 font-medium transition-all"
@@ -138,8 +149,8 @@ export default function LoginPage() {
                                     "Iniciar Sesión"
                                 )}
                             </Button>
-                        </CardFooter>
-                    </form>
+                        </form>
+                    </CardContent>
                 </Card>
 
                 <p className="text-sm text-white/50 font-medium z-10">
