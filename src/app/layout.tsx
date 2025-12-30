@@ -24,9 +24,9 @@ export async function generateMetadata(): Promise<Metadata> {
     title: branding.name,
     description: `Sistema de gestión para ${branding.name}`,
     icons: {
-      icon: branding.logos.favicon || "/favicon.ico",
-      shortcut: branding.logos.favicon || "/favicon.ico",
-      apple: branding.logos.favicon || "/favicon.ico",
+      icon: branding.logos.favicon || "/pixy-isotipo.png",
+      shortcut: branding.logos.favicon || "/pixy-isotipo.png",
+      apple: branding.logos.favicon || "/pixy-isotipo.png",
     },
   };
 }

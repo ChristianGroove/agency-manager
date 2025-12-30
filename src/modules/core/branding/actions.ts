@@ -36,7 +36,7 @@ const DEFAULT_BRANDING: BrandingConfig = {
     logos: {
         main: "/branding/logo.svg",
         portal: "/branding/logo_icon.svg",
-        favicon: "/favicon.ico",
+        favicon: "/pixy-isotipo.png",
         dashboard_bg: null,
         login_bg: null
     },
