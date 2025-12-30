@@ -22,9 +22,9 @@ export async function generateMetadata(
         title: title,
         description: description,
         icons: {
-            icon: favicon,
-            shortcut: favicon,
-            apple: favicon,
+            icon: favicon + "?v=2",
+            shortcut: favicon + "?v=2",
+            apple: favicon + "?v=2",
         },
         openGraph: {
             title: title,
