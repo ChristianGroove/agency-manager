@@ -307,7 +307,8 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
                 side="right"
                 className="
                     sm:max-w-[1000px] w-full p-0 gap-0 border-none shadow-2xl
-                    mr-4 my-4 h-[calc(100vh-2rem)] rounded-3xl overflow-hidden
+                    fixed top-4 right-4 bottom-4 h-auto rounded-3xl overflow-hidden
+                    data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right
                     bg-transparent
                 "
             >
@@ -318,10 +319,10 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
                 </SheetHeader>
                 <div className="flex flex-col h-full bg-white/95 backdrop-blur-xl">
                     {/* Header */}
-                    <div className="sticky top-0 z-20 flex items-center justify-between shrink-0 px-8 py-5 bg-white/40 backdrop-blur-md border-b border-black/5">
+                    <div className="sticky top-0 z-20 flex items-center justify-between shrink-0 px-6 py-4 bg-white/40 backdrop-blur-md border-b border-black/5">
                         <div className="flex items-center gap-4">
                             {step === 'form' && !serviceToEdit && (
-                                <Button variant="ghost" size="icon" onClick={() => setStep('catalog')} className="rounded-full h-8 w-8 -ml-2">
+                                <Button variant="ghost" size="icon" onClick={() => setStep('catalog')} className="rounded-full h-8 w-8 -ml-2 hover:bg-white/50">
                                     <ArrowLeft className="h-4 w-4" />
                                 </Button>
                             )}
@@ -330,7 +331,7 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
                                     {serviceToEdit ? 'Editar Servicio' : 'Nuevo Servicio'}
                                 </h2>
                                 <p className="text-xs text-muted-foreground">
-                                    {step === 'catalog' ? 'Selecciona una plantilla base.' : 'Configura los detalles del contrato.'}
+                                    {step === 'catalog' ? 'Selecciona una plantilla.' : 'Configura los detalles del contrato.'}
                                 </p>
                             </div>
                         </div>
@@ -345,7 +346,7 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
                             {/* LEFT: FORM (OR CATALOG FULL WIDTH) */}
                             <div className={cn(
                                 "overflow-y-auto h-full relative scrollbar-thin",
-                                step === 'catalog' ? "col-span-1 p-0" : "lg:col-span-8 p-8"
+                                step === 'catalog' ? "col-span-1 p-0" : "lg:col-span-8 p-6"
                             )}>
                                 {step === 'catalog' ? (
                                     <ServiceCatalogSelector onSelect={handleCatalogSelect} onCancel={() => setOpen(false)} />
@@ -478,7 +479,7 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
 
                             {/* RIGHT: SUMMARY (Visible only in form step) */}
                             {step === 'form' && (
-                                <div className="hidden lg:flex lg:col-span-4 bg-slate-100/50 p-8 flex-col border-l border-white">
+                                <div className="hidden lg:flex lg:col-span-4 bg-slate-100/50 p-6 flex-col border-l border-white">
                                     <div className="space-y-6 animate-in slide-in-from-right-4 duration-500">
                                         <div className="text-center">
                                             <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Resumen del Contrato</h3>

@@ -76,69 +76,94 @@ export function OrganizationSwitcher() {
             </Button>
 
             <Sheet open={isOpen} onOpenChange={setIsOpen}>
-                <SheetContent side="right" className="w-[400px] sm:w-[540px]">
-                    <SheetHeader className="mb-6">
+                <SheetContent
+                    side="right"
+                    className="
+                        sm:max-w-[600px] w-full p-0 gap-0 border-none shadow-2xl
+                        mr-4 my-4 h-[calc(100vh-2rem)] rounded-3xl overflow-hidden
+                        data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:mr-6
+                        bg-transparent
+                    "
+                >
+                    <SheetHeader className="hidden">
                         <SheetTitle>Mis Organizaciones</SheetTitle>
-                        <SheetDescription>
-                            Cambia entre tus organizaciones o crea una nueva.
-                        </SheetDescription>
+                        <SheetDescription>Cambiar organización</SheetDescription>
                     </SheetHeader>
 
-                    <ScrollArea className="h-[calc(100vh-180px)] pr-4">
-                        <div className="space-y-2">
-                            {organizations.map((member) => (
-                                <div
-                                    key={member.organization_id}
-                                    onClick={() => handleSwitch(member.organization_id)}
-                                    className={`
-                                        flex items-center gap-4 p-4 rounded-xl cursor-pointer transition-all border
-                                        ${member.organization_id === currentOrgId
-                                            ? "bg-indigo-50 border-indigo-200 shadow-sm"
-                                            : "hover:bg-gray-50 border-transparent hover:border-gray-200"
-                                        }
-                                    `}
-                                >
-                                    <div className={`
-                                        flex h-12 w-12 items-center justify-center rounded-lg font-bold text-lg shadow-sm
-                                        ${member.organization_id === currentOrgId
-                                            ? "bg-indigo-600 text-white"
-                                            : "bg-white border border-gray-100 text-gray-700"
-                                        }
-                                    `}>
-                                        {member.organization?.logo_url ? (
-                                            <img src={member.organization.logo_url} alt="" className="h-full w-full object-cover rounded-lg" />
-                                        ) : (
-                                            <span>{member.organization?.name?.substring(0, 2).toUpperCase() || 'PX'}</span>
+                    <div className="flex flex-col h-full bg-white/95 backdrop-blur-xl">
+                        {/* Header */}
+                        <div className="sticky top-0 z-20 flex items-center justify-between shrink-0 px-6 py-4 bg-white/80 backdrop-blur-md border-b border-gray-100">
+                            <div>
+                                <h2 className="text-lg font-bold text-gray-900 tracking-tight leading-none">
+                                    Mis Organizaciones
+                                </h2>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    Cambia de espacio de trabajo o crea uno nuevo.
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1 overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-gray-200">
+                            <div className="space-y-3">
+                                {organizations.map((member) => (
+                                    <div
+                                        key={member.organization_id}
+                                        onClick={() => handleSwitch(member.organization_id)}
+                                        className={`
+                                            flex items-center gap-4 p-3 rounded-xl cursor-pointer transition-all border group
+                                            ${member.organization_id === currentOrgId
+                                                ? "bg-indigo-50 border-indigo-200 shadow-sm"
+                                                : "bg-white border-gray-100 hover:border-indigo-200 hover:shadow-md"
+                                            }
+                                        `}
+                                    >
+                                        <div className={`
+                                            flex h-10 w-10 shrink-0 items-center justify-center rounded-lg font-bold text-sm shadow-sm transition-transform group-hover:scale-105
+                                            ${member.organization_id === currentOrgId
+                                                ? "bg-indigo-600 text-white"
+                                                : "bg-gray-50 border border-gray-100 text-gray-600 group-hover:bg-white"
+                                            }
+                                        `}>
+                                            {member.organization?.logo_url ? (
+                                                <img src={member.organization.logo_url} alt="" className="h-full w-full object-cover rounded-lg" />
+                                            ) : (
+                                                <span>{member.organization?.name?.substring(0, 2).toUpperCase() || 'PX'}</span>
+                                            )}
+                                        </div>
+
+                                        <div className="flex-1 min-w-0">
+                                            <h3 className={`font-semibold text-sm truncate ${member.organization_id === currentOrgId ? "text-indigo-900" : "text-gray-900"}`}>
+                                                {member.organization?.name}
+                                            </h3>
+                                            <p className="text-xs text-gray-500 truncate">
+                                                {member.organization?.slug}
+                                            </p>
+                                        </div>
+
+                                        {member.organization_id === currentOrgId && (
+                                            <div className="h-6 w-6 flex items-center justify-center bg-indigo-100 text-indigo-600 rounded-full shrink-0">
+                                                <Check className="h-3.5 w-3.5" />
+                                            </div>
                                         )}
                                     </div>
-
-                                    <div className="flex-1">
-                                        <h3 className={`font-semibold ${member.organization_id === currentOrgId ? "text-indigo-900" : "text-gray-900"}`}>
-                                            {member.organization?.name}
-                                        </h3>
-                                        <p className="text-sm text-gray-500">
-                                            {member.organization?.slug}
-                                        </p>
-                                    </div>
-
-                                    {member.organization_id === currentOrgId && (
-                                        <div className="h-8 w-8 flex items-center justify-center bg-indigo-100 text-indigo-600 rounded-full">
-                                            <Check className="h-5 w-5" />
-                                        </div>
-                                    )}
-                                </div>
-                            ))}
+                                ))}
+                            </div>
                         </div>
-                    </ScrollArea>
 
-                    <div className="absolute bottom-6 left-6 right-6">
-                        <Button
-                            className="w-full h-12 text-base shadow-lg shadow-indigo-500/20"
-                            onClick={() => setIsCreateOpen(true)}
-                        >
-                            <Plus className="mr-2 h-5 w-5" />
-                            Nueva Organización
-                        </Button>
+                        {/* Footer */}
+                        <div className="sticky bottom-0 bg-white/80 backdrop-blur-md p-6 border-t border-gray-100 flex items-center justify-between z-20 gap-4">
+                            <Button variant="ghost" onClick={() => setIsOpen(false)} className="text-gray-500 hover:text-red-600 hover:bg-red-50">
+                                Cerrar
+                            </Button>
+                            <Button
+                                className="shadow-lg shadow-indigo-500/20 bg-indigo-600 hover:bg-indigo-700 text-white"
+                                onClick={() => setIsCreateOpen(true)}
+                            >
+                                <Plus className="mr-2 h-4 w-4" />
+                                Nueva Organización
+                            </Button>
+                        </div>
                     </div>
                 </SheetContent>
             </Sheet>
