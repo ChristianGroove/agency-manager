@@ -6,25 +6,35 @@ import { revalidatePath } from "next/cache"
 import { SaaSProduct, SystemModule } from "@/types/saas"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
 
+import { unstable_cache } from "next/cache"
+
 /**
  * Fetch all available system modules.
+ * Cached to prevent hitting DB on every portfolio load.
  */
-export async function getSystemModules() {
-    const supabase = await createClient()
-    const { data, error } = await supabase
-        .from("system_modules")
-        .select("*")
-        .eq("is_active", true)
-        .order("category", { ascending: false }) // Core first usually
-        .order("name", { ascending: true })
+export const getSystemModules = unstable_cache(
+    async () => {
+        const supabase = await createClient()
+        const { data, error } = await supabase
+            .from("system_modules")
+            .select("*")
+            .eq("is_active", true)
+            .order("category", { ascending: false }) // Core first usually
+            .order("name", { ascending: true })
 
-    if (error) {
-        console.error("Error fetching system modules:", error)
-        return []
+        if (error) {
+            console.error("Error fetching system modules:", error)
+            return []
+        }
+
+        return data as SystemModule[]
+    },
+    ['system-modules-list'], // Cache Key
+    {
+        revalidate: 3600, // Revalidate every hour
+        tags: ['system-modules']
     }
-
-    return data as SystemModule[]
-}
+)
 
 /**
  * Fetch all SaaS products with their associated modules.
@@ -141,70 +151,66 @@ export async function getActiveModules(orgId?: string): Promise<string[]> {
             return []
         }
 
-        // Use the safety fallback function from SQL
-        const { data, error } = await supabase
-            .rpc('get_org_modules_with_fallback', {
-                org_id: organizationId
-            })
+        // Parallelize the 3 data sources
+        const [rpcResult, overridesResult, directModulesResult] = await Promise.allSettled([
+            // 1. Safety Fallback (RPC)
+            supabase.rpc('get_org_modules_with_fallback', { org_id: organizationId }),
 
-        if (error) {
-            console.error('Error fetching active modules:', error)
-            return ['core_clients', 'core_settings']
-        }
-
-        // data should be array of { module_key: string }
-        let moduleKeys = data?.map((row: any) => row.module_key) || []
-
-        // FETCH MANUAL OVERRIDES
-        try {
-            const { data: orgData } = await supabase
+            // 2. Manual Organization Overrides
+            supabase
                 .from('organizations')
                 .select('manual_module_overrides')
                 .eq('id', organizationId)
-                .single()
+                .single(),
 
+            // 3. Direct Table Assignments (Legacy/Compat)
+            supabase
+                .from('organization_modules')
+                .select('module_key')
+                .eq('organization_id', organizationId)
+        ])
+
+        // Process RPC Result
+        let moduleKeys: string[] = []
+        if (rpcResult.status === 'fulfilled' && !rpcResult.value.error) {
+            moduleKeys = rpcResult.value.data?.map((row: any) => row.module_key) || []
+        } else {
+            // Fallback if RPC completely fails (network error, etc)
+            // But usually, RPC return { data, error } structure so the promise fulfills even on logic error.
+            if (rpcResult.status === 'rejected') console.error('RPC Error:', rpcResult.reason)
+            else console.error('RPC Database Error:', rpcResult.value.error)
+
+            // We continue, hoping other sources provide access or we fallback at end
+        }
+
+        // Process Overrides
+        if (overridesResult.status === 'fulfilled' && !overridesResult.value.error) {
+            const orgData = overridesResult.value.data
             if (orgData?.manual_module_overrides && Array.isArray(orgData.manual_module_overrides)) {
-                // Merge and deduplicate
-                moduleKeys = Array.from(new Set([...moduleKeys, ...orgData.manual_module_overrides]))
+                moduleKeys = [...moduleKeys, ...orgData.manual_module_overrides]
             }
-        } catch (overrideError) {
-            console.warn('Failed to fetch module overrides:', overrideError)
         }
 
-        // FETCH MANUAL TABLE OVERRIDES (Legacy/Direct Assignment)
-        try {
-            const { data: directModules } = await supabase
-                .from('organization_modules')
-                .select('module_key')
-                .eq('organization_id', organizationId)
-                .single() // Wait, original code had this? checking... original didn't seem to have single() on array check, let's look at array logic.
-
-            // Original code:
-            // const { data: directModules } = await supabase ... .eq('organization_id', organizationId)
-            // if (directModules && directModules.length > 0)
-
-            // I will use array logic properly here.
-        } catch (directError) {
-            // Ignoring this block as I need to rewrite it properly based on original
-        }
-
-        // Re-implementing correctly:
-        try {
-            const { data: directModules } = await supabase
-                .from('organization_modules')
-                .select('module_key')
-                .eq('organization_id', organizationId)
-
+        // Process Direct Assignments
+        if (directModulesResult.status === 'fulfilled' && !directModulesResult.value.error) {
+            const directModules = directModulesResult.value.data
             if (directModules && directModules.length > 0) {
-                const directKeys = directModules.map(m => m.module_key)
-                moduleKeys = Array.from(new Set([...moduleKeys, ...directKeys]))
+                const directKeys = directModules.map((m: any) => m.module_key)
+                moduleKeys = [...moduleKeys, ...directKeys]
             }
-        } catch (directError) {
-            console.warn('Failed to fetch direct module assignments:', directError)
         }
 
+        // Deduplicate final list
+        const uniqueKeys = Array.from(new Set(moduleKeys))
 
-        return moduleKeys
+        // If after all efforts we have nothing (and no explicit failures), fallback to core.
+        // However, RPC 'safety fallback' usually guarantees returning defaults.
+        if (uniqueKeys.length === 0) {
+            return ['core_clients', 'core_settings']
+        }
+
+        return uniqueKeys
+
     } catch (error) {
         console.error('Unexpected error in getActiveModules:', error)
         // Safety fallback

@@ -444,6 +444,7 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
                                                         href={getPortalUrl(`/portal/${client.portal_short_token || client.portal_token}`)}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
+                                                        suppressHydrationWarning
                                                     >
                                                         <Button
                                                             variant="ghost"

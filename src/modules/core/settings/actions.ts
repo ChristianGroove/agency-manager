@@ -44,6 +44,18 @@ export async function getSettings() {
             .single()
 
         if (createError) {
+            // Check for unique violation (Race condition: another request created it first)
+            if (createError.code === '23505') {
+                console.warn("[getSettings] Recovering from duplicate creation race condition")
+                const { data: existingData } = await supabaseAdmin
+                    .from("organization_settings")
+                    .select("*")
+                    .eq('organization_id', orgId)
+                    .single()
+
+                return existingData
+            }
+
             console.error("Error creating default settings:", JSON.stringify(createError, null, 2))
             // If it fails, return null but log strictly
             return null
@@ -113,8 +125,6 @@ async function validateSettingsData(data: any, activeModules: string[]) {
         'email_sender_name': 'module_communications',
         'email_reply_to': 'module_communications',
     }
-
-    // Validate each field
     for (const [key, value] of Object.entries(data)) {
         const requiredModule = fieldModuleMap[key]
 

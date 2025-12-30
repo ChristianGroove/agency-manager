@@ -11,7 +11,15 @@ export default async function DashboardLayout({
     children: React.ReactNode
 }) {
     const supabase = await createClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    // Parallel fetch: User Auth AND Current Org ID
+    // Note: getCurrentOrganizationId hits cookies first (fast), if fallback hits DB it runs parallel with Auth
+    const [userResponse, currentOrgId] = await Promise.all([
+        supabase.auth.getUser(),
+        getCurrentOrganizationId()
+    ])
+
+    const { data: { user }, error: authError } = userResponse
 
     if (authError || !user) {
         console.error("❌ [LAYOUT] Auth Error details:", {
@@ -21,7 +29,6 @@ export default async function DashboardLayout({
         redirect('/login')
     }
 
-    const currentOrgId = await getCurrentOrganizationId()
     const isAdmin = await isSuperAdmin(user.id)
 
     // Key forces a complete remount of the shell when organization changes,

@@ -134,65 +134,76 @@ export async function updatePlatformSettings(data: Partial<BrandingConfig>) {
  */
 export async function getEffectiveBranding(orgId?: string | null): Promise<BrandingConfig> {
 
-    // 1. Get Base Platform Branding (Queen Brand)
-    const platformBranding = await getPlatformSettings()
-
-    // If no org context, return platform branding (e.g. login page, landing page)
-    if (!orgId) return platformBranding
-
-    // 2. Metadata: Check Tenant Modules
-    const modules = await getActiveModules(orgId)
-    const hasWhiteLabel = modules.includes("module_whitelabel")
-
-    // If no White Label permission, force Platform Branding
-    if (!hasWhiteLabel) {
-        return platformBranding
+    // 1. If no org context, return platform branding immediately (Single DB call)
+    if (!orgId) {
+        return getPlatformSettings()
     }
 
-    // 3. User has White Label -> Fetch Tenant Overrides
     const supabase = await createClient()
-    const { data: tenantSettings } = await supabase
-        .from("organization_settings")
-        .select(`
-            agency_name,
-            agency_website,
-            main_logo_url,
-            portal_logo_url,
-            isotipo_url,
-            portal_primary_color,
-            portal_secondary_color,
-            portal_login_background_url,
-            brand_font_family,
-            portal_login_background_color,
-            social_facebook,
-            social_instagram,
-            social_twitter
-        `)
-        .eq("organization_id", orgId)
-        .single()
+
+    // 2. Parallel Fetch: Platform + Modules + Tenant Settings
+    // This reduces waterfall depth from 3 to 1
+    const [platformBranding, modules, tenantSettingsResult] = await Promise.all([
+        getPlatformSettings(),
+        getActiveModules(orgId),
+        supabase
+            .from("organization_settings")
+            .select(`
+                agency_name,
+                agency_website,
+                main_logo_url,
+                portal_logo_url,
+                isotipo_url,
+                portal_primary_color,
+                portal_secondary_color,
+                portal_login_background_url,
+                brand_font_family,
+                portal_login_background_color,
+                social_facebook,
+                social_instagram,
+                social_twitter
+            `)
+            .eq("organization_id", orgId)
+            .single()
+    ])
+
+    const { data: tenantSettings } = tenantSettingsResult
+    const hasWhiteLabel = modules.includes("module_whitelabel")
+
+    // If no tenant settings found OR no white label module, return platform branding
+    // Note: We might want to allow some settings even without WL? For now keeping strict to previous logic:
+    // Actually, previous logic said: "If no White Label permission, force Platform Branding" 
+    // BUT proceeded to check tenantSettings. 
+    // Let's keep logic: if no tenantSettings, fallback regardless. 
+    // If tenantSettings exist but NO WhiteLabel, we force platform branding usually, 
+    // but the `pick` function handles the "fallback to platform" logic.
+    // However, if `hasWhiteLabel` is false, `pick` ALWAYS returns platformVal.
 
     if (!tenantSettings) return platformBranding
 
-    // 4. Merge Tenant Settings over Platform Settings
+    // Helper to pick based on WL
+    const pick = (tenantVal: any, platformVal: any) => hasWhiteLabel ? (tenantVal || platformVal) : platformVal
+
     return {
-        name: tenantSettings.agency_name || platformBranding.name,
+        name: pick(tenantSettings.agency_name, platformBranding.name),
         logos: {
-            main: tenantSettings.main_logo_url || platformBranding.logos.main,
-            portal: tenantSettings.portal_logo_url || platformBranding.logos.portal,
-            favicon: tenantSettings.isotipo_url || platformBranding.logos.favicon,
-            login_bg: tenantSettings.portal_login_background_url || platformBranding.logos.login_bg
+            main: pick(tenantSettings.main_logo_url, platformBranding.logos.main),
+            portal: pick(tenantSettings.portal_logo_url, platformBranding.logos.portal),
+            favicon: pick(tenantSettings.isotipo_url, platformBranding.logos.favicon),
+            login_bg: pick(tenantSettings.portal_login_background_url, platformBranding.logos.login_bg)
         },
         colors: {
-            primary: tenantSettings.portal_primary_color || platformBranding.colors.primary,
-            secondary: tenantSettings.portal_secondary_color || platformBranding.colors.secondary
+            primary: pick(tenantSettings.portal_primary_color, platformBranding.colors.primary),
+            secondary: pick(tenantSettings.portal_secondary_color, platformBranding.colors.secondary)
         },
-        website: tenantSettings.agency_website || platformBranding.website,
-        font_family: tenantSettings.brand_font_family || platformBranding.font_family,
-        login_bg_color: tenantSettings.portal_login_background_color || platformBranding.login_bg_color,
+        website: pick(tenantSettings.agency_website, platformBranding.website),
+        font_family: pick(tenantSettings.brand_font_family, platformBranding.font_family),
+        login_bg_color: pick(tenantSettings.portal_login_background_color, platformBranding.login_bg_color),
+
         socials: {
-            facebook: tenantSettings.social_facebook || platformBranding.socials.facebook,
-            instagram: tenantSettings.social_instagram || platformBranding.socials.instagram,
-            twitter: tenantSettings.social_twitter || platformBranding.socials.twitter
+            facebook: pick(tenantSettings.social_facebook, platformBranding.socials.facebook),
+            instagram: pick(tenantSettings.social_instagram, platformBranding.socials.instagram),
+            twitter: pick(tenantSettings.social_twitter, platformBranding.socials.twitter)
         }
     }
 }

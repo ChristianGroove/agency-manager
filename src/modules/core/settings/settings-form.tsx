@@ -185,13 +185,6 @@ export function SettingsForm({ initialSettings, activeModules }: SettingsFormPro
             icon: LayoutTemplate,
             requiredModule: null,
             isCore: true
-        },
-        {
-            id: 'security',
-            label: 'Seguridad',
-            icon: Lock,
-            requiredModule: null,
-            isCore: true
         }
     ]
 
@@ -1213,8 +1206,17 @@ export function SettingsForm({ initialSettings, activeModules }: SettingsFormPro
                             <div className="flex flex-col md:flex-row gap-6">
                                 <div className="flex-1 space-y-4">
                                     <h4 className="font-medium text-gray-900">Inicio de Sesión Biométrico</h4>
-                                    <p className="text-sm text-muted-foreground">
-                                        Registra este dispositivo para iniciar sesión usando tu huella dactilar, FaceID o Windows Hello sin necesidad de escribir tu contraseña.
+                                    <div className="flex items-center justify-between mb-2">
+                                        <p className="text-sm text-muted-foreground">
+                                            Registra este dispositivo para iniciar sesión usando tu huella dactilar, FaceID o Windows Hello sin necesidad de escribir tu contraseña.
+                                        </p>
+                                        <Switch
+                                            checked={formData.enable_biometric_login !== false}
+                                            onCheckedChange={(checked) => handleSwitchChange('enable_biometric_login', checked)}
+                                        />
+                                    </div>
+                                    <p className="text-xs text-muted-foreground mb-4">
+                                        {formData.enable_biometric_login !== false ? "Habilitado: Los usuarios podrán ver el botón en el login." : "Deshabilitado: El botón estará oculto en la pantalla de inicio."}
                                     </p>
 
                                     <div className="p-4 border border-indigo-100 rounded-lg bg-white/50 space-y-4">

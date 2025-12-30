@@ -12,9 +12,11 @@ interface BiometricButtonProps {
     variant?: "default" | "outline" | "ghost" | "cyber"
     mode?: "login" | "register"
     onSuccess?: () => void
+    email?: string
+    iconOnly?: boolean
 }
 
-export function BiometricButton({ className, variant = "cyber", mode = "login", onSuccess }: BiometricButtonProps) {
+export function BiometricButton({ className, variant = "cyber", mode = "login", onSuccess, email, iconOnly }: BiometricButtonProps) {
     const { loginWithPasskey, registerPasskey, loading } = usePasskeys()
     const [isSupported, setIsSupported] = useState(false)
 
@@ -30,7 +32,7 @@ export function BiometricButton({ className, variant = "cyber", mode = "login", 
 
     const handleClick = async () => {
         const success = mode === "login"
-            ? await loginWithPasskey()
+            ? await loginWithPasskey(email)
             : await registerPasskey()
 
         if (success && onSuccess) onSuccess()
@@ -49,24 +51,28 @@ export function BiometricButton({ className, variant = "cyber", mode = "login", 
                             onClick={handleClick}
                             disabled={loading}
                             className={cn(
-                                "group relative w-full overflow-hidden bg-zinc-900 border border-zinc-800 text-white hover:bg-zinc-800 hover:border-indigo-500/50 transition-all duration-300",
+                                "group relative overflow-hidden bg-zinc-900 border border-zinc-800 text-white hover:bg-zinc-800 hover:border-indigo-500/50 transition-all duration-300",
                                 "shadow-[0_0_20px_-10px_rgba(99,102,241,0.3)] hover:shadow-[0_0_25px_-5px_rgba(99,102,241,0.5)]",
+                                iconOnly ? "w-12 h-12 p-0 rounded-xl" : "w-full",
                                 className
                             )}
                         >
                             <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 via-transparent to-indigo-500/10 opacity-0 group-hover:opacity-100 transition-opacity" />
 
                             {loading ? (
-                                <Loader2 className="h-5 w-5 animate-spin text-indigo-400" />
+                                <Loader2 className={cn("animate-spin text-indigo-400", iconOnly ? "h-6 w-6" : "h-5 w-5 mr-2")} />
                             ) : (
-                                <Icon className="h-5 w-5 mr-2 text-indigo-400 group-hover:text-indigo-300 transition-colors" />
+                                <Icon className={cn("text-indigo-400 group-hover:text-indigo-300 transition-colors", iconOnly ? "h-6 w-6" : "h-5 w-5 mr-2")} />
                             )}
-                            <span className="relative font-medium tracking-wide">
-                                {loading ? "Procesando..." : label}
-                            </span>
+
+                            {!iconOnly && (
+                                <span className="relative font-medium tracking-wide">
+                                    {loading ? "Procesando..." : label}
+                                </span>
+                            )}
                         </Button>
                     </TooltipTrigger>
-                    <TooltipContent side="bottom" className="bg-zinc-900 border-zinc-700 text-xs">
+                    <TooltipContent side="bottom" className="bg-zinc-900 border-zinc-700 text-xs text-gray-200">
                         <p>Usa tu huella o rostro para {mode === "login" ? "entrar" : "guardar esta llave"}</p>
                     </TooltipContent>
                 </Tooltip>

@@ -23,11 +23,16 @@ export default function LoginPage() {
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [branding, setBranding] = useState<any>(null)
+    const [email, setEmail] = useState("")
 
+    // Fetch branding on mount
     // Fetch branding on mount
     useEffect(() => {
         if (orgSlug) {
-            getPublicBranding(orgSlug).then(setBranding).catch(() => null)
+            getPublicBranding(orgSlug).then((b) => {
+                console.log("Branding loaded (Org):", b)
+                setBranding(b)
+            }).catch((e) => console.error(e))
         }
     }, [orgSlug])
 
@@ -87,17 +92,7 @@ export default function LoginPage() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        <div className="mb-4">
-                            <BiometricButton className="w-full h-11" />
-                            <div className="relative my-4">
-                                <div className="absolute inset-0 flex items-center">
-                                    <span className="w-full border-t border-white/10" />
-                                </div>
-                                <div className="relative flex justify-center text-xs uppercase">
-                                    <span className="bg-transparent px-2 text-white/40">O continuar con email</span>
-                                </div>
-                            </div>
-                        </div>
+
 
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div className="space-y-2">
@@ -106,6 +101,8 @@ export default function LoginPage() {
                                     id="email"
                                     name="email"
                                     type="email"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
                                     placeholder="nombre@empresa.com"
                                     required
                                     className="bg-white/10 border-white/10 text-white placeholder:text-gray-400 focus:border-white/30 focus:ring-white/20 transition-all h-11"
@@ -150,6 +147,11 @@ export default function LoginPage() {
                                 )}
                             </Button>
                         </form>
+
+                        <div className="flex justify-center pt-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            <BiometricButton iconOnly email={email} />
+                        </div>
+
                     </CardContent>
                 </Card>
 
