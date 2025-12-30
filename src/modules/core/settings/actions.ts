@@ -248,6 +248,7 @@ export async function updateOrganizationBranding(data: {
     portal_secondary_color?: string
     portal_title?: string
     portal_logo_url?: string
+    isotipo_url?: string
 }) {
     const supabase = await createClient()
     const orgId = await getCurrentOrganizationId()
@@ -279,7 +280,7 @@ export async function getOrganizationBranding() {
 
     const { data, error } = await supabase
         .from('organization_settings')
-        .select('portal_primary_color, portal_secondary_color, portal_title, portal_logo_url')
+        .select('portal_primary_color, portal_secondary_color, portal_title, portal_logo_url, isotipo_url')
         .eq('organization_id', orgId)
         .single()
 

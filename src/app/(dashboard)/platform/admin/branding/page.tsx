@@ -10,6 +10,7 @@ import Link from "next/link"
 import { ArrowLeft, Loader2, Save, Upload, Palette } from "lucide-react"
 import { toast } from "sonner"
 import { Separator } from "@/components/ui/separator"
+import { ImageUpload } from "@/components/ui/image-upload"
 
 export default function GlobalBrandingPage() {
     const [loading, setLoading] = useState(true)
@@ -131,36 +132,20 @@ export default function GlobalBrandingPage() {
                                 {/* Main Logo */}
                                 <div className="space-y-3">
                                     <Label>Logo Principal (Dashboard)</Label>
-                                    <div className="border border-dashed rounded-lg p-4 flex flex-col items-center justify-center gap-4 bg-gray-50/50 min-h-[120px]">
-                                        {branding.logos.main ? (
-                                            <img src={branding.logos.main} className="max-h-12 w-auto object-contain" alt="Main Logo" />
-                                        ) : (
-                                            <div className="text-xs text-start text-muted-foreground">Sin logo</div>
-                                        )}
-                                    </div>
-                                    <Input
-                                        placeholder="https://..."
-                                        value={branding.logos.main || ''}
-                                        onChange={(e) => updateLogo('main', e.target.value)}
-                                        className="text-xs"
+                                    <ImageUpload
+                                        value={branding.logos.main}
+                                        onChange={(url) => updateLogo('main', url)}
+                                        label="Subir Logo Dashboard"
                                     />
                                 </div>
 
                                 {/* Portal Logo */}
                                 <div className="space-y-3">
                                     <Label>Logo del Portal</Label>
-                                    <div className="border border-dashed rounded-lg p-4 flex flex-col items-center justify-center gap-4 bg-gray-50/50 min-h-[120px]">
-                                        {branding.logos.portal ? (
-                                            <img src={branding.logos.portal} className="max-h-12 w-auto object-contain" alt="Portal Logo" />
-                                        ) : (
-                                            <div className="text-xs text-start text-muted-foreground">Sin logo</div>
-                                        )}
-                                    </div>
-                                    <Input
-                                        placeholder="https://..."
-                                        value={branding.logos.portal || ''}
-                                        onChange={(e) => updateLogo('portal', e.target.value)}
-                                        className="text-xs"
+                                    <ImageUpload
+                                        value={branding.logos.portal}
+                                        onChange={(url) => updateLogo('portal', url)}
+                                        label="Subir Logo Portal"
                                     />
                                 </div>
                             </div>
@@ -169,18 +154,10 @@ export default function GlobalBrandingPage() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-3">
                                     <Label>Favicon / Isotipo</Label>
-                                    <div className="border border-dashed rounded-lg p-4 flex flex-col items-center justify-center gap-4 bg-gray-50/50 h-[80px]">
-                                        {branding.logos.favicon ? (
-                                            <img src={branding.logos.favicon} className="h-8 w-8 object-contain" alt="Favicon" />
-                                        ) : (
-                                            <div className="text-xs text-start text-muted-foreground">Sin icono</div>
-                                        )}
-                                    </div>
-                                    <Input
-                                        placeholder="https://..."
-                                        value={branding.logos.favicon || ''}
-                                        onChange={(e) => updateLogo('favicon', e.target.value)}
-                                        className="text-xs"
+                                    <ImageUpload
+                                        value={branding.logos.favicon}
+                                        onChange={(url) => updateLogo('favicon', url)}
+                                        label="Subir Icono (32x32)"
                                     />
                                 </div>
                             </div>
@@ -248,20 +225,11 @@ export default function GlobalBrandingPage() {
                         <CardContent>
                             <div className="space-y-3">
                                 <Label>Background URL</Label>
-                                <Input
-                                    placeholder="https://..."
-                                    value={branding.logos.login_bg || ''}
-                                    onChange={(e) => updateLogo('login_bg', e.target.value)}
+                                <ImageUpload
+                                    value={branding.logos.login_bg}
+                                    onChange={(url) => updateLogo('login_bg', url)}
+                                    label="Subir Fondo"
                                 />
-                                {branding.logos.login_bg && (
-                                    <div className="mt-4 rounded-lg overflow-hidden h-48 w-full border relative bg-gray-100">
-                                        <img
-                                            src={branding.logos.login_bg}
-                                            className="absolute inset-0 w-full h-full object-cover"
-                                            alt="Login Background"
-                                        />
-                                    </div>
-                                )}
                             </div>
                         </CardContent>
                     </Card>

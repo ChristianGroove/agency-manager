@@ -34,8 +34,8 @@ export interface BrandingConfig {
 const DEFAULT_BRANDING: BrandingConfig = {
     name: "Pixy",
     logos: {
-        main: "/branding/logo.svg",
-        portal: "/branding/logo_icon.svg",
+        main: "/branding/logo dark.svg",
+        portal: "/branding/iso.svg",
         favicon: "/pixy-isotipo.png",
         dashboard_bg: null,
         login_bg: null
@@ -206,4 +206,50 @@ export async function getEffectiveBranding(orgId?: string | null): Promise<Brand
             twitter: pick(tenantSettings.social_twitter, platformBranding.socials.twitter)
         }
     }
+}
+
+/**
+ * Upload Branding Asset (Logo, Favicon, etc.)
+ */
+export async function uploadBrandingAsset(formData: FormData) {
+    const supabase = await createClient()
+
+    // 1. Verify User (Any auth user can upload? Ideally only Admins/Owners)
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+        throw new Error("No autorizado")
+    }
+
+    const file = formData.get("file") as File
+    const bucket = formData.get("bucket") as string || "branding" // Default to branding bucket
+
+    if (!file) {
+        throw new Error("No se ha seleccionado ningún archivo")
+    }
+
+    // 2. Validate File
+    if (file.size > 5 * 1024 * 1024) throw new Error("El archivo no debe superar 5MB")
+    if (!file.type.startsWith("image/")) throw new Error("Solo imágenes son permitidas")
+
+    // 3. Upload to Storage
+    const fileExt = file.name.split(".").pop()
+    const fileName = `${user.id}/${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${fileExt}`
+
+    // Ensure bucket exists or handle error (Assuming 'branding' bucket is public)
+    const { error: uploadError } = await supabase.storage
+        .from(bucket)
+        .upload(fileName, file, {
+            upsert: true,
+        })
+
+    if (uploadError) {
+        throw new Error("Error al subir imagen: " + uploadError.message)
+    }
+
+    // 4. Get Public URL
+    const { data: { publicUrl } } = supabase.storage
+        .from(bucket)
+        .getPublicUrl(fileName)
+
+    return { success: true, url: publicUrl }
 }

@@ -9,10 +9,15 @@ import { updateOrganizationBranding, getOrganizationBranding } from '@/modules/c
 import { Loader2, Paintbrush } from "lucide-react"
 import { toast } from "sonner"
 
+import { ImageUpload } from "@/components/ui/image-upload"
+
 export default function BrandingPage() {
     const [brandColor, setBrandColor] = useState("#4F46E5")
     const [secondaryColor, setSecondaryColor] = useState("#00E0FF")
     const [portalTitle, setPortalTitle] = useState("Portal de Cliente")
+    const [portalLogo, setPortalLogo] = useState<string | null>(null)
+    const [isotipo, setIsotipo] = useState<string | null>(null)
+
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
 
@@ -27,6 +32,8 @@ export default function BrandingPage() {
                 setBrandColor(data.portal_primary_color || "#4F46E5")
                 setSecondaryColor(data.portal_secondary_color || "#00E0FF")
                 setPortalTitle(data.portal_title || "Portal de Cliente")
+                setPortalLogo(data.portal_logo_url || null)
+                setIsotipo(data.isotipo_url || null)
             }
         } catch (error) {
             console.error("Error loading branding:", error)
@@ -41,7 +48,9 @@ export default function BrandingPage() {
             await updateOrganizationBranding({
                 portal_primary_color: brandColor,
                 portal_secondary_color: secondaryColor,
-                portal_title: portalTitle
+                portal_title: portalTitle,
+                portal_logo_url: portalLogo || undefined,
+                isotipo_url: isotipo || undefined
             })
             toast.success("Configuración guardada correctamente")
         } catch (error) {
