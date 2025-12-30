@@ -1,14 +1,15 @@
 'use server'
 
 import { AIValidatorService } from "@/modules/billing/core/services/AIValidatorService"
-import { Document } from "@/modules/billing/core/entities/Document"
+import { Document, DocumentType } from "@/modules/billing/core/entities/Document"
+import { DocumentStatus } from "@/modules/billing/core/types/CoreTypes"
 
 // Helper to convert form data to Partial<Document>
 export async function validateInvoiceDraft(formData: any) {
     // 1. Map generic form data to Core Document structure roughly
     const document: Partial<Document> = {
-        type: formData.document_type === 'factura_electronica' ? 'INVOICE' : 'RECEIPT',
-        status: 'DRAFT', // It's a draft being validated
+        type: formData.document_type === 'factura_electronica' ? DocumentType.INVOICE : DocumentType.RECEIPT,
+        status: DocumentStatus.DRAFT, // It's a draft being validated
         issuer: {
             fiscalResponsibilities: formData.emitter_responsibilities || [] // We need to pass this context
         } as any,
