@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Search, Eye, Trash2, Edit, ListFilter, MoreVertical, Loader2 } from "lucide-react"
+import { Search, Eye, Trash2, Edit, ListFilter, MoreVertical, Loader2, Mail, FileText, Copy } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import { BulkActionsFloatingBar } from "@/components/shared/bulk-actions-floating-bar"
@@ -115,6 +115,38 @@ export function InvoicesView({ initialInvoices }: InvoicesViewProps) {
         }
     }
 
+    const handleSendEmail = async (invoice: Invoice) => {
+        if (!invoice.client?.email) {
+            toast.error("El cliente no tiene email registrado")
+            return
+        }
+
+        if (!confirm(`¿Enviar factura ${invoice.number} a ${invoice.client.name} (${invoice.client.email})?`)) return
+
+        try {
+            toast.loading("Enviando correo...", { id: 'sending-email' })
+            const { sendInvoiceEmail } = await import("@/modules/verticals/agency/invoicing/actions/send-invoice-email")
+            const result = await sendInvoiceEmail(invoice.id)
+
+            if (result.success) {
+                toast.success("Correo enviado exitosamente", { id: 'sending-email' })
+            } else {
+                toast.error("Error al enviar correo", { id: 'sending-email', description: result.error })
+            }
+        } catch (error) {
+            console.error(error)
+            toast.error("Error inesperado al enviar", { id: 'sending-email' })
+        }
+    }
+
+    const handleDownloadPDF = (invoice: Invoice) => {
+        window.open(`/invoices/${invoice.id}`, '_blank')
+    }
+
+    const handleDuplicate = (invoice: Invoice) => {
+        toast.info("Funcionalidad de duplicar próximamente.")
+    }
+
     const filteredInvoices = invoices.filter(invoice => {
         const matchesSearch =
             invoice.number.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -127,19 +159,7 @@ export function InvoicesView({ initialInvoices }: InvoicesViewProps) {
 
     return (
         <div className="space-y-8">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h2 className="text-3xl font-bold tracking-tight text-gray-900">
-                        <SplitText>Documentos de Cobro</SplitText>
-                    </h2>
-                    <p className="text-muted-foreground mt-1">Gestiona todos los documentos emitidos.</p>
-                </div>
-                <div className="w-full md:w-auto">
-                    <CreateInvoiceSheet
-                        onSuccess={fetchInvoices}
-                    />
-                </div>
-            </div>
+            {/* Header removed - moved to BillingControlCenter */}
 
             {/* Unified Control Block */}
             <div className="flex flex-col md:flex-row gap-3 sticky top-4 z-30">
@@ -206,6 +226,12 @@ export function InvoicesView({ initialInvoices }: InvoicesViewProps) {
                     >
                         <ListFilter className="h-4 w-4" />
                     </button>
+
+                    {/* Create Button (Integrated) */}
+                    <div className="hidden md:block h-6 w-px bg-gray-200 mx-1" />
+                    <div className="shrink-0">
+                        <CreateInvoiceSheet onSuccess={fetchInvoices} />
+                    </div>
                 </div>
             </div>
 
@@ -295,6 +321,18 @@ export function InvoicesView({ initialInvoices }: InvoicesViewProps) {
                                                         </DropdownMenuItem>
                                                     }
                                                 />
+                                                <DropdownMenuItem onClick={() => handleDownloadPDF(invoice)}>
+                                                    <FileText className="mr-2 h-4 w-4" />
+                                                    <span>PDF / Imprimir</span>
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => handleSendEmail(invoice)}>
+                                                    <Mail className="mr-2 h-4 w-4" />
+                                                    <span>Enviar Email</span>
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => handleDuplicate(invoice)}>
+                                                    <Copy className="mr-2 h-4 w-4" />
+                                                    <span>Duplicar</span>
+                                                </DropdownMenuItem>
                                                 <DropdownMenuItem
                                                     onClick={() => handleDeleteInvoice(invoice.id)}
                                                     className="text-red-600 focus:text-red-600"

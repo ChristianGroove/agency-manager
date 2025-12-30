@@ -7,6 +7,7 @@ import type { LineItem } from './LineItem'
 import type { Tax } from './Tax'
 import type { Totals } from './Totals'
 import type { CurrencyCode, Metadata } from '../types/CoreTypes'
+import { DocumentStatus, PaymentStatus } from '../types/CoreTypes'
 
 /**
  * Document Type Classification
@@ -17,18 +18,6 @@ export enum DocumentType {
     DEBIT_NOTE = 'DEBIT_NOTE',     // Debit note
     RECEIPT = 'RECEIPT',           // Receipt / Cuenta de cobro
     QUOTE = 'QUOTE'                // Quotation
-}
-
-/**
- * Document Status
- */
-export enum DocumentStatus {
-    DRAFT = 'DRAFT',         // Borrador (not used in current system)
-    ISSUED = 'ISSUED',       // Emitido (maps to 'pending')
-    PAID = 'PAID',           // Pagado
-    OVERDUE = 'OVERDUE',     // Vencido
-    VOIDED = 'VOIDED',       // Anulado  
-    CANCELLED = 'CANCELLED'  // Cancelado (legacy)
 }
 
 /**
@@ -43,6 +32,7 @@ export interface Document {
     number: string
     type: DocumentType
     status: DocumentStatus
+    paymentStatus: PaymentStatus // Separation of concerns: fiscal vs payment
 
     // Dates
     issuedAt: Date
@@ -97,6 +87,7 @@ export function createDocument(params: {
     number: string
     type: DocumentType
     status: DocumentStatus
+    paymentStatus?: PaymentStatus // Optional, defaults to UNPAID
     issuedAt: Date
     issuer: Issuer
     receiver: Receiver
@@ -116,6 +107,7 @@ export function createDocument(params: {
         number: params.number,
         type: params.type,
         status: params.status,
+        paymentStatus: params.paymentStatus || PaymentStatus.UNPAID,
         issuedAt: params.issuedAt,
         dueDate: params.dueDate,
         issuer: params.issuer,

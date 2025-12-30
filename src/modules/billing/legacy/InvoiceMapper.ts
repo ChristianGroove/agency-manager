@@ -2,7 +2,9 @@
 // CRITICAL: Must maintain exact output compatibility
 
 import type { Invoice, InvoiceItem as LegacyInvoiceItem, Client, Emitter } from '@/types'
-import type { Document, DocumentType, DocumentStatus } from '../core/entities/Document'
+import type { Document } from '../core/entities/Document'
+import { DocumentType } from '../core/entities/Document'
+import { DocumentStatus, PaymentStatus } from '../core/types/CoreTypes'
 import type { LineItem } from '../core/entities/LineItem'
 import type { Issuer, IssuerType } from '../core/entities/Issuer'
 import type { Receiver } from '../core/entities/Receiver'
@@ -28,9 +30,9 @@ export class InvoiceMapper {
         userId: string,
         issuer?: Issuer,
         receiver?: Receiver
-    ): Omit<Document, 'id' | 'createdAt' | 'audit Log'> {
+    ): Omit<Document, 'id' | 'createdAt' | 'auditLog'> {
         // Map status
-        const status = this.mapLegacyStatusToCore(invoice.status || 'pending')
+        const { status, paymentStatus } = this.mapLegacyStatusToCore(invoice.status || 'pending')
 
         // Map type based on document_type
         const type = this.mapLegacyDocumentType(invoice.document_type)
@@ -53,6 +55,7 @@ export class InvoiceMapper {
             number: invoice.number || '',
             type,
             status,
+            paymentStatus,
             issuedAt: invoice.date ? new Date(invoice.date) : new Date(),
             dueDate: invoice.due_date ? new Date(invoice.due_date) : undefined,
 
@@ -94,7 +97,7 @@ export class InvoiceMapper {
      */
     static coreToLegacy(document: Document): Partial<Invoice> & { items: LegacyInvoiceItem[] } {
         // Map status back
-        const status = this.mapCoreStatusToLegacy(document.status)
+        const status = this.mapCoreStatusToLegacy(document.status, document.paymentStatus)
 
         // Map document type back
         const document_type = this.mapCoreDocumentTypeToLegacy(document.type)
@@ -129,40 +132,48 @@ export class InvoiceMapper {
     /**
      * Map legacy status to core status
      */
-    private static mapLegacyStatusToCore(status: string): DocumentStatus {
+    private static mapLegacyStatusToCore(status: string): { status: DocumentStatus, paymentStatus: PaymentStatus } {
         switch (status) {
             case 'draft':
-                return 'DRAFT'
+                return { status: DocumentStatus.DRAFT, paymentStatus: PaymentStatus.UNPAID }
             case 'pending':
-                return 'ISSUED'
+                return { status: DocumentStatus.ISSUED, paymentStatus: PaymentStatus.UNPAID }
             case 'paid':
-                return 'PAID'
+                return { status: DocumentStatus.ISSUED, paymentStatus: PaymentStatus.PAID }
             case 'overdue':
-                return 'OVERDUE'
+                return { status: DocumentStatus.ISSUED, paymentStatus: PaymentStatus.OVERDUE }
             case 'void':
             case 'cancelled':
-                return 'VOIDED'
+                return { status: DocumentStatus.CANCELLED, paymentStatus: PaymentStatus.UNPAID }
             default:
-                return 'ISSUED'
+                return { status: DocumentStatus.ISSUED, paymentStatus: PaymentStatus.UNPAID }
         }
     }
 
     /**
      * Map core status back to legacy
      */
-    private static mapCoreStatusToLegacy(status: DocumentStatus): string {
-        switch (status) {
-            case 'DRAFT':
-                return 'draft'
-            case 'ISSUED':
-                return 'pending'
-            case 'PAID':
+    private static mapCoreStatusToLegacy(status: DocumentStatus, paymentStatus: PaymentStatus): any {
+        // 1. Handle explicit cancellations
+        if (status === DocumentStatus.CANCELLED || status === DocumentStatus.REJECTED) {
+            return 'void'
+        }
+
+        // 2. Handle Draft
+        if (status === DocumentStatus.DRAFT) {
+            return 'draft'
+        }
+
+        // 3. Handle Active States (ISSUED, SENT, VALIDATED, EXTERNAL, CONTINGENCY)
+        // For these, we rely on the Payment Status to determine the legacy view
+        switch (paymentStatus) {
+            case PaymentStatus.PAID:
                 return 'paid'
-            case 'OVERDUE':
+            case PaymentStatus.OVERDUE:
                 return 'overdue'
-            case 'VOIDED':
-            case 'CANCELLED':
-                return 'void'
+            case PaymentStatus.UNPAID:
+            case PaymentStatus.PARTIALLY_PAID:
+                return 'pending'
             default:
                 return 'pending'
         }
@@ -172,17 +183,17 @@ export class InvoiceMapper {
      * Map legacy document_type to core type
      */
     private static mapLegacyDocumentType(docType?: string): DocumentType {
-        if (!docType) return 'RECEIPT' // Default to receipt (cuenta de cobro)
+        if (!docType) return DocumentType.RECEIPT // Default to receipt (cuenta de cobro)
 
         switch (docType) {
             case 'FACTURA_ELECTRONICA':
-                return 'INVOICE'
+                return DocumentType.INVOICE
             case 'CUENTA_DE_COBRO':
-                return 'RECEIPT'
+                return DocumentType.RECEIPT
             case 'COTIZACION':
-                return 'QUOTE'
+                return DocumentType.QUOTE
             default:
-                return 'RECEIPT'
+                return DocumentType.RECEIPT
         }
     }
 
@@ -213,7 +224,13 @@ export class InvoiceMapper {
             id: 'placeholder',
             type: 'INDIVIDUAL' as IssuerType,
             legalName: 'Placeholder Issuer',
-            taxId: '000000000'
+            taxId: '000000000',
+            address: {
+                street: 'Placeholder Address',
+                city: 'Placeholder City',
+                country: 'CO'
+            },
+            email: 'placeholder@example.com'
         }
     }
 
@@ -224,7 +241,14 @@ export class InvoiceMapper {
         return {
             id: 'placeholder',
             type: 'INDIVIDUAL',
-            name: 'Placeholder Receiver'
+            name: 'Placeholder Receiver',
+            taxId: '000000000',
+            address: {
+                street: 'Placeholder Address',
+                city: 'Placeholder City',
+                country: 'CO'
+            },
+            email: 'placeholder@example.com'
         }
     }
 }

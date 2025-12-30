@@ -44,6 +44,7 @@ import { Emitter } from "@/types/billing"
 import { getEmitterDocumentType, getDocumentTypeLabel, isEmittersModuleEnabled } from "@/lib/billing-utils"
 import { Calendar } from "@/components/ui/calendar"
 import { InvoiceItem } from "@/types"
+import { AIVerificationCard } from "./components/ai-verification-card"
 
 interface CreateInvoiceSheetProps {
     clientId?: string
@@ -102,14 +103,46 @@ export function CreateInvoiceSheet({
         { ui_id: '1', description: defaultDescription || 'Servicios Profesionales', quantity: 1, price: initialAmount || 0 }
     ])
 
+    // AI Validation State
+    const [validationResult, setValidationResult] = useState<any>(null)
+    const [isValidating, setIsValidating] = useState(false)
+
     // Derived Display Data
     const displayClient = clients.find(c => c.id === selectedClientId)
     const displayClientName = clientId ? clientName : (displayClient?.name || "")
     const displayValues = {
         subtotal: items.reduce((acc, item) => acc + (item.quantity * item.price), 0),
-        tax: 0, // Simplified for now, can add tax logic if needed
+        tax: 0,
         total: items.reduce((acc, item) => acc + (item.quantity * item.price), 0),
     }
+
+    // Live AI Validation Effect
+    useEffect(() => {
+        const runValidation = async () => {
+            if (displayValues.total === 0) return
+            setIsValidating(true)
+            try {
+                // Simulate context for validation
+                const { validateInvoiceDraft } = await import("./actions/validate-document-action")
+                const result = await validateInvoiceDraft({
+                    document_type: derivedDocType,
+                    items: items,
+                    subtotal: displayValues.subtotal,
+                    total: displayValues.total,
+                    client_tax_id: '800123456', // Mock for now, would need real client data
+                    emitter_responsibilities: ['O-48'] // Mock: assume user is Responsible for VAT for demo
+                })
+                setValidationResult(result)
+            } catch (e) {
+                console.error("Validation failed", e)
+            } finally {
+                setIsValidating(false)
+            }
+        }
+
+        const timer = setTimeout(runValidation, 800) // Debounce
+        return () => clearTimeout(timer)
+    }, [displayValues.total, items, derivedDocType])
 
     // --- Load Data ---
     useEffect(() => {
@@ -352,7 +385,20 @@ export function CreateInvoiceSheet({
                                                         <Command>
                                                             <CommandInput placeholder="Buscar cliente..." />
                                                             <CommandList>
-                                                                <CommandEmpty>No encontrado.</CommandEmpty>
+                                                                <CommandEmpty>
+                                                                    <div className="p-2 text-center text-sm">
+                                                                        <p className="text-gray-500 mb-2">No encontrado.</p>
+                                                                        <Button
+                                                                            variant="outline"
+                                                                            size="sm"
+                                                                            className="w-full border-dashed"
+                                                                            onClick={() => router.push('/clients/new')}
+                                                                        >
+                                                                            <Plus className="h-4 w-4 mr-2" />
+                                                                            Crear Nuevo Cliente
+                                                                        </Button>
+                                                                    </div>
+                                                                </CommandEmpty>
                                                                 <CommandGroup>
                                                                     {clients.map(c => (
                                                                         <CommandItem key={c.id} onSelect={() => setSelectedClientId(c.id)}>
@@ -362,6 +408,17 @@ export function CreateInvoiceSheet({
                                                                     ))}
                                                                 </CommandGroup>
                                                             </CommandList>
+                                                            <div className="p-2 border-t border-gray-100 bg-gray-50">
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    className="w-full justify-start text-brand-pink"
+                                                                    onClick={() => router.push('/clients/new')}
+                                                                >
+                                                                    <Plus className="h-4 w-4 mr-2" />
+                                                                    Crear Cliente
+                                                                </Button>
+                                                            </div>
                                                         </Command>
                                                     </PopoverContent>
                                                 </Popover>
@@ -476,85 +533,102 @@ export function CreateInvoiceSheet({
                             <div className="hidden lg:flex lg:col-span-5 bg-slate-100/50 p-8 flex-col border-l border-white items-center justify-center relative overflow-hidden">
                                 <div className="absolute inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] opacity-50" />
 
-                                <div className="w-full max-w-[400px] bg-white shadow-2xl shadow-slate-200/50 rounded-lg overflow-hidden border border-slate-200 text-[10px] leading-tight flex flex-col min-h-[500px] relative z-10 animate-in zoom-in-95 duration-500">
-                                    {/* Mock Paper Header */}
-                                    <div className="h-2 bg-brand-pink w-full" />
-                                    <div className="p-6 space-y-6 flex-1">
-                                        <div className="flex justify-between items-start">
-                                            <div>
-                                                <div className="h-8 w-8 bg-gray-900 rounded-lg flex items-center justify-center text-white font-bold text-xs mb-2">
-                                                    LOGO
+                                <div className="w-full max-w-[400px] flex flex-col gap-4 relative z-10 animate-in zoom-in-95 duration-500">
+                                    {/* AI Copilot Status */}
+                                    <div className="w-full">
+                                        <AIVerificationCard result={validationResult} loading={isValidating} />
+                                    </div>
+
+                                    <div className="bg-white shadow-2xl shadow-slate-200/50 rounded-lg overflow-hidden border border-slate-200 text-[10px] leading-tight flex flex-col min-h-[500px]">
+                                        {/* Mock Paper Header */}
+                                        <div className="h-2 bg-brand-pink w-full" />
+                                        <div className="p-6 space-y-6 flex-1">
+                                            <div className="flex justify-between items-start">
+                                                <div>
+                                                    <div className="h-8 w-8 bg-gray-900 rounded-lg flex items-center justify-center text-white font-bold text-xs mb-2">
+                                                        LOGO
+                                                    </div>
+                                                    <p className="font-bold text-gray-900 text-sm">EMPRESA EJEMPLO</p>
+                                                    <p className="text-gray-400">NIT: 800.000.000-1</p>
                                                 </div>
-                                                <p className="font-bold text-gray-900 text-sm">EMPRESA EJEMPLO</p>
-                                                <p className="text-gray-400">NIT: 800.000.000-1</p>
+                                                <div className="text-right">
+                                                    <p className="font-bold text-gray-900 text-sm">{invoiceNumber || "BORRADOR"}</p>
+                                                    <p className="text-gray-400 capitalize">{getDocumentTypeLabel(derivedDocType)}</p>
+                                                    {dueDate && <p className="text-red-400 mt-1 font-medium">Vence: {dueDate}</p>}
+                                                </div>
                                             </div>
-                                            <div className="text-right">
-                                                <p className="font-bold text-gray-900 text-sm">{invoiceNumber || "BORRADOR"}</p>
-                                                <p className="text-gray-400 capitalize">{getDocumentTypeLabel(derivedDocType)}</p>
-                                                {dueDate && <p className="text-red-400 mt-1 font-medium">Vence: {dueDate}</p>}
+
+                                            <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                                                <p className="text-xs text-gray-400 uppercase tracking-wider font-bold mb-1">Cliente</p>
+                                                <p className="font-bold text-gray-900 text-sm">{displayClientName || "Por definir..."}</p>
+                                                {displayClient?.company_name && <p className="text-gray-500">{displayClient.company_name}</p>}
                                             </div>
-                                        </div>
 
-                                        <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
-                                            <p className="text-xs text-gray-400 uppercase tracking-wider font-bold mb-1">Cliente</p>
-                                            <p className="font-bold text-gray-900 text-sm">{displayClientName || "Por definir..."}</p>
-                                            {displayClient?.company_name && <p className="text-gray-500">{displayClient.company_name}</p>}
-                                        </div>
-
-                                        <div className="space-y-4">
-                                            <table className="w-full text-left">
-                                                <thead>
-                                                    <tr className="border-b border-gray-100 text-gray-400">
-                                                        <th className="pb-2 font-medium">Concepto</th>
-                                                        <th className="pb-2 text-right font-medium">Total</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="divide-y divide-gray-50">
-                                                    {items.map((item) => (
-                                                        <tr key={item.ui_id}>
-                                                            <td className="py-2 pr-2">
-                                                                <p className="font-medium text-gray-900">{item.description || "Sin descripción"}</p>
-                                                                <p className="text-gray-400">{item.quantity} x ${item.price.toLocaleString()}</p>
-                                                            </td>
-                                                            <td className="py-2 text-right font-medium text-gray-900">
-                                                                ${(item.quantity * item.price).toLocaleString()}
-                                                            </td>
+                                            <div className="space-y-4">
+                                                <table className="w-full text-left">
+                                                    <thead>
+                                                        <tr className="border-b border-gray-100 text-gray-400">
+                                                            <th className="pb-2 font-medium">Concepto</th>
+                                                            <th className="pb-2 text-right font-medium">Total</th>
                                                         </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-gray-50">
+                                                        {items.map((item) => (
+                                                            <tr key={item.ui_id}>
+                                                                <td className="py-2 pr-2">
+                                                                    <p className="font-medium text-gray-900">{item.description || "Sin descripción"}</p>
+                                                                    <p className="text-gray-400">{item.quantity} x ${item.price.toLocaleString()}</p>
+                                                                </td>
+                                                                <td className="py-2 text-right font-medium text-gray-900">
+                                                                    ${(item.quantity * item.price).toLocaleString()}
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+
+                                        {/* Footer Totals */}
+                                        <div className="bg-slate-50 p-6 border-t border-slate-100">
+                                            <div className="flex justify-between items-center mb-2">
+                                                <span className="text-gray-500">Subtotal</span>
+                                                <span className="font-medium text-gray-900">${displayValues.subtotal.toLocaleString()}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center text-lg font-bold text-brand-pink pt-2 border-t border-slate-200">
+                                                <span>Total</span>
+                                                <span>${displayValues.total.toLocaleString()}</span>
+                                            </div>
                                         </div>
                                     </div>
 
-                                    {/* Footer Totals */}
-                                    <div className="bg-slate-50 p-6 border-t border-slate-100">
-                                        <div className="flex justify-between items-center mb-2">
-                                            <span className="text-gray-500">Subtotal</span>
-                                            <span className="font-medium text-gray-900">${displayValues.subtotal.toLocaleString()}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center text-lg font-bold text-brand-pink pt-2 border-t border-slate-200">
-                                            <span>Total</span>
-                                            <span>${displayValues.total.toLocaleString()}</span>
-                                        </div>
-                                    </div>
+                                    <p className="text-xs text-slate-400 mt-4 text-center max-w-xs">
+                                        Vista previa aproximada. El documento PDF final puede variar según la plantilla configurada.
+                                    </p>
                                 </div>
-
-                                <p className="text-xs text-slate-400 mt-4 text-center max-w-xs">
-                                    Vista previa aproximada. El documento PDF final puede variar según la plantilla configurada.
-                                </p>
                             </div>
                         </div>
+
                     </div>
 
                     <div className="sticky bottom-0 bg-white/80 backdrop-blur-md p-6 border-t border-gray-100 flex items-center justify-between z-20">
                         <Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>
-                        <Button onClick={handleSave} disabled={loading || displayValues.total === 0} className="bg-black text-white px-8 rounded-xl hover:bg-gray-800">
+                        <Button
+                            onClick={handleSave}
+                            disabled={loading || displayValues.total === 0 || (validationResult?.riskLevel === 'CRITICAL')}
+                            className={cn(
+                                "px-8 rounded-xl transition-all",
+                                validationResult?.riskLevel === 'CRITICAL'
+                                    ? "bg-gray-400 cursor-not-allowed"
+                                    : "bg-black text-white hover:bg-gray-800"
+                            )}
+                        >
                             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             {invoiceToEdit ? 'Actualizar Documento' : 'Emitir Documento'}
                         </Button>
                     </div>
                 </div>
             </SheetContent>
-        </Sheet>
+        </Sheet >
     )
 }

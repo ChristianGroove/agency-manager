@@ -76,41 +76,18 @@ export default function InvoicePage() {
     if (!invoice || !invoice.client) return
     if (!invoice.client.email) return alert('El cliente no tiene un email registrado.')
 
+    if (!confirm(`¿Enviar factura ${invoice.number} a ${invoice.client.name} (${invoice.client.email})?`)) return
+
     try {
-      // Dynamic imports
-      const { toPng } = await import('html-to-image')
-      const jsPDF = (await import('jspdf')).default
+      // Use efficient Server Action
+      const { sendInvoiceEmail } = await import("@/modules/verticals/agency/invoicing/actions/send-invoice-email")
+      const result = await sendInvoiceEmail(invoice.id)
 
-      if (!invoiceRef.current) return
-
-      const dataUrl = await toPng(invoiceRef.current, { quality: 0.95, backgroundColor: '#ffffff' })
-      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
-      const imgProps = pdf.getImageProperties(dataUrl)
-      const pdfWidth = pdf.internal.pageSize.getWidth()
-      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width
-      pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, pdfHeight)
-      const pdfBase64 = pdf.output('datauristring')
-
-      const response = await fetch('/api/send-invoice', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: invoice.client.email,
-          invoiceNumber: invoice.number,
-          clientName: invoice.client.name,
-          amount: `$${invoice.total.toLocaleString()}`,
-          dueDate: new Date(invoice.due_date || invoice.date).toLocaleDateString(),
-          pdfBase64,
-          organizationId: invoice.organization_id || settings?.organization_id // Fallback if type missing
-        })
-      })
-
-      if (!response.ok) {
-        const err = await response.json()
-        throw new Error(err.error || 'Failed to send')
+      if (result.success) {
+        alert('Factura enviada exitosamente')
+      } else {
+        alert(`Error al enviar: ${result.error}`)
       }
-
-      alert('Factura enviada exitosamente')
     } catch (error: any) {
       console.error(error)
       alert(`Error al enviar: ${error.message}`)

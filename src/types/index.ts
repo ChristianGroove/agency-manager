@@ -122,6 +122,7 @@ export type Invoice = {
     metadata?: any
     cycle_id?: string
     organization_id: string
+    payment_status?: 'PAID' | 'PARTIALLY_PAID' | 'UNPAID' | 'OVERDUE' | string
 }
 
 // ... existing types

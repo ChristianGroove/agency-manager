@@ -1,7 +1,8 @@
 -- Billing Audit Log - Immutable audit trail
 -- PHASE 1: Billing Core implementation
+-- IDEMPOTENT VERSION: Safe to run multiple times
 
--- Create audit log table
+-- Create audit log table (with IF NOT EXISTS)
 CREATE TABLE IF NOT EXISTS billing_audit_log (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -29,23 +30,31 @@ CREATE TABLE IF NOT EXISTS billing_audit_log (
     previous_hash TEXT
 );
 
--- Create indexes
+-- Create indexes (with IF NOT EXISTS)
 CREATE INDEX IF NOT EXISTS idx_audit_document_id ON billing_audit_log(document_id);
 CREATE INDEX IF NOT EXISTS idx_audit_organization ON billing_audit_log(organization_id);
 CREATE INDEX IF NOT EXISTS idx_audit_timestamp ON billing_audit_log(timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_audit_user ON billing_audit_log(user_id);
 
 -- Prevent updates and deletes (immutability)
-CREATE OR REPLACE RULE no_update_audit AS
+-- Drop existing rules first to avoid conflicts
+DROP RULE IF EXISTS no_update_audit ON billing_audit_log;
+DROP RULE IF EXISTS no_delete_audit ON billing_audit_log;
+
+CREATE RULE no_update_audit AS
     ON UPDATE TO billing_audit_log
     DO INSTEAD NOTHING;
 
-CREATE OR REPLACE RULE no_delete_audit AS
+CREATE RULE no_delete_audit AS
     ON DELETE TO billing_audit_log
     DO INSTEAD NOTHING;
 
 -- RLS Policies
 ALTER TABLE billing_audit_log ENABLE ROW LEVEL SECURITY;
+
+-- Drop existing policies first
+DROP POLICY IF EXISTS "Users can insert audit logs for their org" ON billing_audit_log;
+DROP POLICY IF EXISTS "Users can read audit logs from their org" ON billing_audit_log;
 
 -- Users can only insert entries for their organization
 CREATE POLICY "Users can insert audit logs for their org"
@@ -96,7 +105,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql IMMUTABLE;
 
--- Trigger to auto-calculate hash on insert
+-- Trigger function to auto-calculate hash on insert
 CREATE OR REPLACE FUNCTION set_audit_hash()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -116,7 +125,7 @@ BEGIN
         NEW.action,
         NEW.document_id,
         NEW.organization_id,
-        v_previous_hash  
+        v_previous_hash
     );
     
     NEW.previous_hash := v_previous_hash;
@@ -125,14 +134,22 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Drop existing trigger first
+DROP TRIGGER IF EXISTS trigger_set_audit_hash ON billing_audit_log;
+
+-- Create trigger
 CREATE TRIGGER trigger_set_audit_hash
     BEFORE INSERT ON billing_audit_log
     FOR EACH ROW
     EXECUTE FUNCTION set_audit_hash();
 
--- Partition by month for performance (optional, for future)
--- Can be enabled later as volume grows
-
+-- Add comments
 COMMENT ON TABLE billing_audit_log IS 'Immutable audit trail for billing operations. No updates or deletes allowed.';
 COMMENT ON COLUMN billing_audit_log.hash IS 'SHA-256 hash of entry + previous hash (blockchain-like chain)';
 COMMENT ON COLUMN billing_audit_log.previous_hash IS 'Hash of previous entry in chain for this organization';
+
+-- Success message
+DO $$
+BEGIN
+    RAISE NOTICE 'billing_audit_log migration completed successfully';
+END $$;

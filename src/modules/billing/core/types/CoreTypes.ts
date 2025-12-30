@@ -22,6 +22,24 @@ export interface Address {
     country: CountryCode
 }
 
+export enum DocumentStatus {
+    DRAFT = 'draft',
+    ISSUED = 'issued',
+    SENT = 'sent',
+    VALIDATED = 'validated',
+    REJECTED = 'rejected',
+    EXTERNAL = 'external',
+    CANCELLED = 'cancelled',
+    CONTINGENCY = 'contingency'
+}
+
+export enum PaymentStatus {
+    UNPAID = 'UNPAID',
+    PAID = 'PAID',
+    PARTIALLY_PAID = 'PARTIALLY_PAID',
+    OVERDUE = 'OVERDUE'
+}
+
 /**
  * Metadata container for extensibility
  */

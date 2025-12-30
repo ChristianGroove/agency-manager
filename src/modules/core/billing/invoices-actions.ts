@@ -172,7 +172,7 @@ export async function createInvoice(data: Partial<Invoice> & { items: InvoiceIte
     const payload = {
         ...invoiceData,
         organization_id: orgId,
-        status: invoiceData.status || 'pending',
+        status: legacyInvoice.status || 'pending', // Use Core-derived status
         items: items, // JSONB column
         total: legacyInvoice.total // Use calculated total from Core
     }
@@ -183,10 +183,20 @@ export async function createInvoice(data: Partial<Invoice> & { items: InvoiceIte
         .select()
         .single()
 
-    if (error) throw error
+    if (error) {
+        return {
+            success: false,
+            error: error.message,
+            data: null
+        }
+    }
 
     revalidatePath('/invoices')
-    return newInvoice // ✅ IDENTICAL output to original implementation
+    return {
+        success: true,
+        data: newInvoice,
+        error: null
+    } // ✅ Format matches UI expectations
 }
 
 
@@ -209,7 +219,44 @@ export async function updateInvoice(id: string, data: Partial<Invoice>) {
     if (error) throw error
 
     revalidatePath('/invoices')
+    revalidatePath('/invoices')
     return updatedInvoice
+}
+
+export async function registerPayment(id: string, amount: number, notes?: string) {
+    const supabase = await createClient()
+    const orgId = await getCurrentOrganizationId()
+
+    if (!orgId) throw new Error("Unauthorized")
+
+    // 1. Get current invoice
+    const { data: invoice } = await supabase
+        .from('invoices')
+        .select('total, payment_status')
+        .eq('id', id)
+        .single()
+
+    if (!invoice) throw new Error("Invoice not found")
+
+    // 2. Determine new status (Simplified logic for MVP)
+    // If amount >= total -> PAID
+    // If amount < total -> PARTIALLY_PAID
+    const newStatus = amount >= invoice.total ? 'PAID' : 'PARTIALLY_PAID'
+
+    // 3. Update invoice
+    const { error } = await supabase
+        .from('invoices')
+        .update({
+            payment_status: newStatus,
+            // In a real system, we would track balance_due
+        })
+        .eq('id', id)
+        .eq('organization_id', orgId)
+
+    if (error) throw error
+
+    revalidatePath('/invoices')
+    return { success: true }
 }
 
 export async function getPublicInvoice(id: string) {
