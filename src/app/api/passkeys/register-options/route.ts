@@ -31,7 +31,7 @@ export async function POST() {
         const options = await generateRegistrationOptions({
             rpName,
             rpID,
-            userID: user.id,
+            userID: new Uint8Array(Buffer.from(user.id)),
             userName: user.email || user.id,
             userDisplayName: user.email || 'User',
             attestationType: 'none',
