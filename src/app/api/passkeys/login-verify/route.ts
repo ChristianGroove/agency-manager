@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
             expectedOrigin: origin,
             expectedRPID: rpID,
             authenticator: {
-                credentialID: new Uint8Array(Buffer.from(passkey.credential_id, 'base64url')),
+                credentialID: passkey.credential_id,
                 credentialPublicKey: new Uint8Array(Buffer.from(passkey.credential_public_key, 'base64')),
                 counter: passkey.counter,
             },
