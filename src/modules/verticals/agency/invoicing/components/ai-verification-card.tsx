@@ -20,9 +20,9 @@ export function AIVerificationCard({ result, loading }: AIVerificationCardProps)
 
     if (!result) return null
 
-    const isSafe = result.riskLevel === 'SAFE'
-    const isCritical = result.riskLevel === 'CRITICAL'
-    const isWarning = result.riskLevel === 'WARNING'
+    const isSafe = result.riskLevel === 'LOW'
+    const isCritical = result.riskLevel === 'HIGH'
+    const isWarning = result.riskLevel === 'MEDIUM'
 
     return (
         <div className={cn(
