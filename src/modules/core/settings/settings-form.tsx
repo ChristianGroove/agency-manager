@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge"
 // import { TrashBinSettings } from "./trash-bin-settings"
 import { EmittersSettings } from "./emitters-settings"
 import { isEmittersModuleEnabled } from "@/lib/flags"
-import { Loader2, Save, CreditCard, FileText, Building2, Globe, Layout, Palette, Eye, MessageSquare, LayoutTemplate, Users } from "lucide-react"
+import { Loader2, Save, CreditCard, FileText, Building2, Globe, Layout, Palette, Eye, MessageSquare, LayoutTemplate, Users, AlertTriangle, Lock, Shield } from "lucide-react"
 import { COMMUNICATION_VARIABLES, DEFAULT_TEMPLATES } from "@/lib/communication-utils"
 import { useEffect } from "react"
 import { SplitText } from "@/components/ui/split-text"
@@ -292,27 +292,61 @@ export function SettingsForm({ initialSettings, activeModules }: SettingsFormPro
 
                             {/* Branding Section */}
                             <div className="space-y-4 pt-4 border-t">
-                                <div>
-                                    <h4 className="text-sm font-semibold text-gray-900 mb-1">Sistema de Branding</h4>
-                                    <p className="text-xs text-gray-500">Configura los logos que se usarán en diferentes partes del sistema</p>
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <h4 className="text-sm font-semibold text-gray-900 mb-1">Sistema de Branding (Marca Blanca)</h4>
+                                        <p className="text-xs text-gray-500">Personaliza los logos y colores de tu portal.</p>
+                                    </div>
+                                    {!activeModules.includes('module_whitelabel') && (
+                                        <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 gap-1">
+                                            <AlertTriangle className="h-3 w-3" />
+                                            Requiere Plan Avanzado
+                                        </Badge>
+                                    )}
                                 </div>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="invoice_logo_url">Logo para Documentos</Label>
-                                        <Input id="invoice_logo_url" name="invoice_logo_url" value={formData.invoice_logo_url || ''} onChange={handleChange} placeholder="/branding/invoice-logo.png" />
-                                        <p className="text-xs text-muted-foreground">Se usará en PDFs de cuentas de cobro</p>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="main_logo_url">Logo Principal (Login/Sidebar)</Label>
-                                        <Input id="main_logo_url" name="main_logo_url" value={formData.main_logo_url || ''} onChange={handleChange} placeholder="/branding/main-logo.svg" />
-                                        <p className="text-xs text-muted-foreground">Se usará en navegación</p>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="isotipo_url">Isotipo / Favicon</Label>
-                                        <Input id="isotipo_url" name="isotipo_url" value={formData.isotipo_url || ''} onChange={handleChange} placeholder="/branding/isotipo.svg" />
-                                        <p className="text-xs text-muted-foreground">Icono compacto del sistema</p>
+
+                                <div className={!activeModules.includes('module_whitelabel') ? 'opacity-50 pointer-events-none grayscale' : ''}>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="invoice_logo_url">Logo para Documentos</Label>
+                                            <div className="relative">
+                                                <Input id="invoice_logo_url" name="invoice_logo_url" value={formData.invoice_logo_url || ''} onChange={handleChange} placeholder="/branding/invoice-logo.png" />
+                                                {!activeModules.includes('module_whitelabel') && <Lock className="absolute right-3 top-2.5 h-4 w-4 text-gray-400" />}
+                                            </div>
+                                            <p className="text-xs text-muted-foreground">Se usará en PDFs de cuentas de cobro</p>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="main_logo_url">Logo Principal (Login/Sidebar)</Label>
+                                            <div className="relative">
+                                                <Input id="main_logo_url" name="main_logo_url" value={formData.main_logo_url || ''} onChange={handleChange} placeholder="/branding/main-logo.svg" />
+                                                {!activeModules.includes('module_whitelabel') && <Lock className="absolute right-3 top-2.5 h-4 w-4 text-gray-400" />}
+                                            </div>
+                                            <p className="text-xs text-muted-foreground">Se usará en navegación</p>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="isotipo_url">Isotipo / Favicon</Label>
+                                            <div className="relative">
+                                                <Input id="isotipo_url" name="isotipo_url" value={formData.isotipo_url || ''} onChange={handleChange} placeholder="/branding/isotipo.svg" />
+                                                {!activeModules.includes('module_whitelabel') && <Lock className="absolute right-3 top-2.5 h-4 w-4 text-gray-400" />}
+                                            </div>
+                                            <p className="text-xs text-muted-foreground">Icono compacto del sistema</p>
+                                        </div>
                                     </div>
                                 </div>
+                                {!activeModules.includes('module_whitelabel') && (
+                                    <div className="rounded-lg bg-indigo-50 border border-indigo-100 p-4 flex items-center gap-3">
+                                        <div className="p-2 bg-indigo-100 rounded-full">
+                                            <Shield className="h-5 w-5 text-indigo-600" />
+                                        </div>
+                                        <div>
+                                            <h5 className="font-semibold text-indigo-900 text-sm">Gestionado por la Plataforma</h5>
+                                            <p className="text-xs text-indigo-700">Actualmente usas la marca predeterminada de Pixy. Actualiza tu plan para usar tu propia identidad.</p>
+                                        </div>
+                                        <Button size="sm" variant="outline" className="ml-auto border-indigo-200 text-indigo-700 hover:bg-indigo-100">
+                                            Activar Marca Blanca
+                                        </Button>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Social Media Section */}

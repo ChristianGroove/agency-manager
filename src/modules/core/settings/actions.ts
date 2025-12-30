@@ -202,6 +202,7 @@ export interface PublicBranding {
  */
 export async function getPublicBranding(slug: string): Promise<PublicBranding | null> {
     const supabase = await createClient()
+    const { getEffectiveBranding } = await import('@/modules/core/branding/actions')
 
     // 1. Get Org ID and Name
     const { data: org, error: orgError } = await supabase
@@ -212,25 +213,17 @@ export async function getPublicBranding(slug: string): Promise<PublicBranding | 
 
     if (orgError || !org) return null
 
-    // 2. Get Settings
-    const { data: settings } = await supabase
-        .from('organization_settings')
-        .select(`
-            portal_logo_url,
-            portal_login_background_url,
-            brand_font_family,
-            portal_login_background_color
-        `)
-        .eq('organization_id', org.id)
-        .single()
+    // 2. Get Effective Branding (handles White Label checks + Default fallbacks)
+    const branding = await getEffectiveBranding(org.id)
 
+    // 3. Map to PublicBranding interface
     return {
-        name: org.name,
+        name: branding.name,
         slug: org.slug,
-        portal_logo_url: settings?.portal_logo_url || null,
-        portal_login_background_url: settings?.portal_login_background_url || null,
-        brand_font_family: settings?.brand_font_family || null,
-        portal_login_background_color: settings?.portal_login_background_color || null
+        portal_logo_url: branding.logos.portal || null,
+        portal_login_background_url: branding.logos.login_bg || null,
+        brand_font_family: branding.font_family || null,
+        portal_login_background_color: branding.login_bg_color || null
     }
 }
 

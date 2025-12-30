@@ -110,7 +110,8 @@ export async function seedSystemModules() {
         { key: 'core_services', name: 'Service Contracts', description: 'Management of services, pricing, and contract terms.', category: 'core', is_active: true },
         { key: 'module_invoicing', name: 'Invoicing & Payments', description: 'Generate invoices, track payments, and manage billing.', category: 'addon', is_active: true },
         { key: 'module_briefings', name: 'Briefing System', description: 'Advanced forms and data collection wizard.', category: 'addon', is_active: true },
-        { key: 'module_catalog', name: 'Product Catalog', description: 'Public facing catalog for services and products.', category: 'addon', is_active: true }
+        { key: 'module_catalog', name: 'Product Catalog', description: 'Public facing catalog for services and products.', category: 'addon', is_active: true },
+        { key: 'module_whitelabel', name: 'White Labeling', description: 'Custom branding, logos, and domain settings.', category: 'addon', is_active: true }
     ]
 
     const { error } = await supabaseAdmin

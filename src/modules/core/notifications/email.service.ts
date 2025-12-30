@@ -1,5 +1,7 @@
 import { Resend } from 'resend';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { getEffectiveBranding } from '@/modules/core/branding/actions';
+import { EmailBranding } from '@/lib/email-templates';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -25,7 +27,7 @@ export class EmailService {
 
         try {
             // 1. Resolve Branding
-            const { senderName, replyTo } = await this.getSenderIdentity(organizationId);
+            const { senderName, replyTo, branding } = await this.getSenderIdentity(organizationId);
 
             // Default "From" address (Must be verified in Resend dashboard)
             // For true white-labeling, we would check organization.custom_domain here
@@ -89,26 +91,52 @@ export class EmailService {
     }
 
     /**
-     * Resolves the sender identity based on organization settings.
+     * Resolves the sender identity AND branding based on organization settings.
      */
-    private static async getSenderIdentity(organizationId: string) {
+    private static async getSenderIdentity(organizationId: string): Promise<{
+        senderName: string;
+        replyTo: string | undefined;
+        branding: EmailBranding;
+    }> {
         try {
-            // Parallel fetch for speed
-            const [orgResponse, settingsResponse] = await Promise.all([
-                supabaseAdmin.from('organizations').select('name').eq('id', organizationId).single(),
-                supabaseAdmin.from('organization_settings').select('email_sender_name, email_reply_to').eq('organization_id', organizationId).single()
-            ]);
+            // Get effective branding (handles both Platform and Tenant White Label Logic)
+            const brandingData = await getEffectiveBranding(organizationId);
 
-            const orgName = orgResponse.data?.name || 'Pixy';
-            const settings: any = settingsResponse.data || {};
+            // Fetch raw settings for reply-to (not part of visual branding usually)
+            const { data: settings } = await supabaseAdmin
+                .from('organization_settings')
+                .select('email_reply_to')
+                .eq('organization_id', organizationId)
+                .single();
+
+            // Map to EmailBranding interface
+            const emailBranding: EmailBranding = {
+                agency_name: brandingData.name,
+                primary_color: brandingData.colors.primary,
+                secondary_color: brandingData.colors.secondary,
+                logo_url: brandingData.logos.main || undefined, // Emails look better with Main logo than Icon
+                website_url: brandingData.website || 'https://www.pixy.com.co',
+                footer_text: `© ${new Date().getFullYear()} ${brandingData.name}. Todos los derechos reservados.`
+            };
 
             return {
-                senderName: settings.email_sender_name || orgName,
-                replyTo: settings.email_reply_to
+                senderName: brandingData.name, // Use branding name as sender name
+                replyTo: settings?.email_reply_to || undefined,
+                branding: emailBranding
             };
         } catch (error) {
             console.warn('[EmailService] Error resolving branding, using defaults:', error);
-            return { senderName: 'Pixy', replyTo: undefined };
+            // Fallback
+            return {
+                senderName: 'Pixy',
+                replyTo: undefined,
+                branding: {
+                    agency_name: 'Pixy',
+                    primary_color: '#4F46E5',
+                    secondary_color: '#EC4899',
+                    website_url: 'https://www.pixy.com.co'
+                }
+            };
         }
     }
 

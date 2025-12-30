@@ -420,10 +420,26 @@ export async function submitBriefing(briefingId: string) {
             const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
             const briefingLink = `${appUrl}/briefings/${briefingId}`
 
+            // Get effective branding using the briefing's organization ID
+            const { getEffectiveBranding } = await import('@/modules/core/branding/actions')
+            const brandingData = await getEffectiveBranding(briefing.organization_id)
+
+            // Map to EmailBranding interface
+            const emailBranding = {
+                agency_name: brandingData.name,
+                primary_color: brandingData.colors.primary,
+                secondary_color: brandingData.colors.secondary,
+                logo_url: brandingData.logos.main || undefined,
+                website_url: brandingData.website || 'https://www.pixy.com.co',
+                footer_text: `© ${new Date().getFullYear()} ${brandingData.name}. Todos los derechos reservados.`
+            };
+
+
             const emailHtml = getBriefingSubmissionEmailHtml(
                 briefing.client?.name || 'Cliente',
                 briefing.template?.name || 'Briefing',
-                briefingLink
+                briefingLink,
+                emailBranding
             )
 
             await resend.emails.send({

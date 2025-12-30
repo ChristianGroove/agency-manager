@@ -1,5 +1,22 @@
+// Branding Interface for Templates
+export type EmailBranding = {
+    agency_name: string;
+    primary_color: string;
+    secondary_color: string;
+    logo_url?: string;
+    website_url?: string;
+    footer_text?: string;
+}
 
-export const getInvoiceEmailHtml = (clientName: string, invoiceNumber: string, amount: string, dueDate: string, concept: string) => {
+const DEFAULT_BRANDING: EmailBranding = {
+    agency_name: 'Pixy',
+    primary_color: '#4F46E5', // Indigo-600
+    secondary_color: '#EC4899', // Pink-500
+    website_url: 'https://www.pixy.com.co',
+    footer_text: '© 2026 Pixy PDS. Todos los derechos reservados.'
+}
+
+export const getInvoiceEmailHtml = (clientName: string, invoiceNumber: string, amount: string, dueDate: string, concept: string, branding: EmailBranding = DEFAULT_BRANDING) => {
     return `
 <!DOCTYPE html>
 <html>
@@ -12,7 +29,10 @@ export const getInvoiceEmailHtml = (clientName: string, invoiceNumber: string, a
     <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
         <!-- Logo/Header -->
         <div style="text-align: center; margin-bottom: 30px;">
-            <h1 style="color: #111827; margin: 0; font-size: 32px; font-weight: 800; letter-spacing: -1px;">¡HOLA!</h1>
+             ${branding.logo_url
+            ? `<img src="${branding.logo_url}" alt="${branding.agency_name}" style="height: 40px; width: auto;">`
+            : `<h1 style="color: #111827; margin: 0; font-size: 32px; font-weight: 800; letter-spacing: -1px;">${branding.agency_name.toUpperCase()}</h1>`
+        }
         </div>
 
         <!-- Main Card -->
@@ -43,33 +63,17 @@ export const getInvoiceEmailHtml = (clientName: string, invoiceNumber: string, a
             </p>
 
             <div style="text-align: center;">
-                <a href="https://pay.pixy.com.co" style="display: inline-block; background-color: #4f46e5; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; font-size: 16px;">Métodos de pago</a>
+                <a href="${branding.website_url || '#'}" style="display: inline-block; background-color: ${branding.primary_color}; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; font-size: 16px;">Ver Documento</a>
                 <div style="margin-top: 12px;">
-                    <a href="https://www.pixy.com.co" style="color: #9ca3af; font-size: 12px; text-decoration: none;">www.pixy.com.co</a>
+                    <a href="${branding.website_url || '#'}" style="color: #9ca3af; font-size: 12px; text-decoration: none;">${branding.agency_name}</a>
                 </div>
             </div>
         </div>
 
         <!-- Footer -->
         <div style="margin-top: 40px; border-top: 1px solid #e5e7eb; padding-top: 30px;">
-            <!-- Confidentiality -->
-            <div style="margin-bottom: 20px;">
-                <h3 style="color: #9ca3af; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Confidencialidad y Protección de Datos</h3>
-                <p style="color: #9ca3af; font-size: 11px; line-height: 16px; margin: 0;">
-                    Este mensaje y sus adjuntos son confidenciales y pueden contener información privilegiada. Si no es el destinatario previsto, está prohibida su difusión. Si lo recibió por error, por favor notifíquenos y elimínelo.
-                </p>
-            </div>
-
-            <!-- Data Protection -->
-            <div>
-                <h3 style="color: #9ca3af; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Protección de Información</h3>
-                <p style="color: #9ca3af; font-size: 11px; line-height: 16px; margin: 0;">
-                    En <strong>Pixy PDS</strong>, valoramos su privacidad. Tratamos la información con estricta confidencialidad y conforme a normativas internacionales. Para más información sobre nuestras prácticas, puede responder a este correo.
-                </p>
-            </div>
-            
             <div style="text-align: center; margin-top: 30px;">
-                <p style="color: #d1d5db; font-size: 12px;">&copy; 2026 Pixy PDS. Todos los derechos reservados.</p>
+                <p style="color: #d1d5db; font-size: 12px;">&copy; ${new Date().getFullYear()} ${branding.agency_name}. Todos los derechos reservados.</p>
             </div>
         </div>
     </div>
@@ -78,20 +82,23 @@ export const getInvoiceEmailHtml = (clientName: string, invoiceNumber: string, a
     `
 }
 
-export const getQuoteEmailHtml = (clientName: string, quoteNumber: string, total: string, date: string) => {
+export const getQuoteEmailHtml = (clientName: string, quoteNumber: string, total: string, date: string, branding: EmailBranding = DEFAULT_BRANDING) => {
     return `
 <!DOCTYPE html>
 <html>
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nueva Cotización de Pixy</title>
+    <title>Nueva Cotización de ${branding.agency_name}</title>
 </head>
 <body style="margin: 0; padding: 0; background-color: #f3f4f6; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased;">
     <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
         <!-- Logo/Header -->
         <div style="text-align: center; margin-bottom: 30px;">
-            <h1 style="color: #111827; margin: 0; font-size: 32px; font-weight: 800; letter-spacing: -1px;">¡HOLA!</h1>
+             ${branding.logo_url
+            ? `<img src="${branding.logo_url}" alt="${branding.agency_name}" style="height: 40px; width: auto;">`
+            : `<h1 style="color: #111827; margin: 0; font-size: 32px; font-weight: 800; letter-spacing: -1px;">${branding.agency_name.toUpperCase()}</h1>`
+        }
         </div>
 
         <!-- Main Card -->
@@ -122,32 +129,17 @@ export const getQuoteEmailHtml = (clientName: string, quoteNumber: string, total
             </p>
 
             <div style="text-align: center;">
+                 <a href="${branding.website_url || '#'}" style="display: inline-block; background-color: ${branding.primary_color}; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; font-size: 16px;">Ver Cotización</a>
                 <div style="margin-top: 12px;">
-                    <a href="https://www.pixy.com.co" style="color: #9ca3af; font-size: 12px; text-decoration: none;">www.pixy.com.co</a>
+                    <a href="${branding.website_url || '#'}" style="color: #9ca3af; font-size: 12px; text-decoration: none;">${branding.agency_name}</a>
                 </div>
             </div>
         </div>
 
         <!-- Footer -->
         <div style="margin-top: 40px; border-top: 1px solid #e5e7eb; padding-top: 30px;">
-            <!-- Confidentiality -->
-            <div style="margin-bottom: 20px;">
-                <h3 style="color: #9ca3af; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Confidencialidad y Protección de Datos</h3>
-                <p style="color: #9ca3af; font-size: 11px; line-height: 16px; margin: 0;">
-                    Este mensaje y sus adjuntos son confidenciales y pueden contener información privilegiada. Si no es el destinatario previsto, está prohibida su difusión. Si lo recibió por error, por favor notifíquenos y elimínelo.
-                </p>
-            </div>
-
-            <!-- Data Protection -->
-            <div>
-                <h3 style="color: #9ca3af; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Protección de Información</h3>
-                <p style="color: #9ca3af; font-size: 11px; line-height: 16px; margin: 0;">
-                    En <strong>Pixy PDS</strong>, valoramos su privacidad. Tratamos la información con estricta confidencialidad y conforme a normativas internacionales. Para más información sobre nuestras prácticas, puede responder a este correo.
-                </p>
-            </div>
-            
-            <div style="text-align: center; margin-top: 30px;">
-                <p style="color: #d1d5db; font-size: 12px;">&copy; 2026 Pixy PDS. Todos los derechos reservados.</p>
+             <div style="text-align: center; margin-top: 30px;">
+                <p style="color: #d1d5db; font-size: 12px;">&copy; ${new Date().getFullYear()} ${branding.agency_name}. Todos los derechos reservados.</p>
             </div>
         </div>
     </div>
@@ -156,7 +148,7 @@ export const getQuoteEmailHtml = (clientName: string, quoteNumber: string, total
     `
 }
 
-export const getBriefingSubmissionEmailHtml = (clientName: string, templateName: string, briefingLink: string) => {
+export const getBriefingSubmissionEmailHtml = (clientName: string, templateName: string, briefingLink: string, branding: EmailBranding = DEFAULT_BRANDING) => {
     return `
 <!DOCTYPE html>
 <html>
@@ -169,7 +161,10 @@ export const getBriefingSubmissionEmailHtml = (clientName: string, templateName:
     <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
         <!-- Logo/Header -->
         <div style="text-align: center; margin-bottom: 30px;">
-            <h1 style="color: #111827; margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -1px;">NUEVO BRIEFING</h1>
+             ${branding.logo_url
+            ? `<img src="${branding.logo_url}" alt="${branding.agency_name}" style="height: 40px; width: auto;">`
+            : `<h1 style="color: #111827; margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -1px;">NUEVO BRIEFING</h1>`
+        }
         </div>
 
         <!-- Main Card -->
@@ -183,7 +178,7 @@ export const getBriefingSubmissionEmailHtml = (clientName: string, templateName:
 
             <!-- Action Button -->
             <div style="text-align: center; margin-bottom: 30px;">
-                <a href="${briefingLink}" style="display: inline-block; background-color: #F205E2; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; font-size: 16px;">Ver Respuestas</a>
+                <a href="${briefingLink}" style="display: inline-block; background-color: ${branding.primary_color}; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; font-size: 16px;">Ver Respuestas</a>
             </div>
 
             <p style="color: #374151; font-size: 14px; line-height: 20px; margin-bottom: 10px; text-align: center;">
@@ -196,7 +191,7 @@ export const getBriefingSubmissionEmailHtml = (clientName: string, templateName:
 
         <!-- Footer -->
         <div style="margin-top: 40px; text-align: center;">
-            <p style="color: #d1d5db; font-size: 12px;">&copy; ${new Date().getFullYear()} Agency Manager. Notificación automática.</p>
+            <p style="color: #d1d5db; font-size: 12px;">&copy; ${new Date().getFullYear()} ${branding.agency_name}. Notificación automática.</p>
         </div>
     </div>
 </body>

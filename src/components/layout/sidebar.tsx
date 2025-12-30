@@ -3,19 +3,57 @@
 import React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Shield, LogOut } from "lucide-react"
+import { Shield, LogOut, LayoutDashboard } from "lucide-react"
 import { cn } from "@/lib/utils"
 // Removed OrganizationSwitcher, DropdownMenu, Avatar etc.
 import { OrgBranding } from "@/components/organizations/org-branding"
 import { useActiveModules } from "@/hooks/use-active-modules"
 import { MODULE_ROUTES, filterRoutesByModules } from "@/lib/module-config"
-import { logout } from "@/modules/core/auth/actions" // We keep logout import just in case, or remove if unused. User wants logout in header.
+import { logout } from "@/modules/core/auth/actions"
+import { AdminAccessButton } from "./admin-access-button"
 
 interface SidebarProps {
     isCollapsed: boolean;
     toggleCollapse: () => void;
     currentOrgId: string | null;
     isSuperAdmin?: boolean;
+}
+
+function SidebarItem({ icon: Icon, label, href, active, collapsed, isSuperAdminRoute = false }: { icon: any, label: string, href: string, active: boolean, collapsed: boolean, isSuperAdminRoute?: boolean }) {
+    return (
+        <Link href={href}>
+            <div
+                className={cn(
+                    "flex items-center gap-x-3 text-sm font-medium rounded-xl py-3 transition-all duration-200 group",
+                    collapsed ? "justify-center px-2" : "px-4",
+                    active
+                        ? isSuperAdminRoute
+                            ? "bg-purple-500/10 text-purple-300 shadow-md shadow-purple-500/10 border border-purple-500/20"
+                            : "bg-white/10 text-white shadow-md shadow-black/20"
+                        : isSuperAdminRoute
+                            ? "text-purple-400 hover:text-purple-300 hover:bg-purple-500/10"
+                            : "text-zinc-400 hover:text-white hover:bg-white/5"
+                )}
+            >
+                <Icon
+                    className={cn(
+                        "h-5 w-5 shrink-0 transition-transform duration-200",
+                        active ? "scale-110" : "group-hover:scale-105",
+                        isSuperAdminRoute && active ? "text-purple-300" : ""
+                    )}
+                />
+                {!collapsed && (
+                    <span className={cn(
+                        "transition-all duration-200",
+                        active ? "font-semibold" : ""
+                    )}>{label}</span>
+                )}
+                {!collapsed && active && (
+                    <div className={cn("ml-auto w-1.5 h-1.5 rounded-full animate-pulse", isSuperAdminRoute ? "bg-purple-400" : "bg-brand-pink")} />
+                )}
+            </div>
+        </Link>
+    )
 }
 
 export function SidebarContent({ isCollapsed = false, currentOrgId, isSuperAdmin = false }: { isCollapsed?: boolean, currentOrgId: string | null, isSuperAdmin?: boolean }) {
@@ -47,87 +85,21 @@ export function SidebarContent({ isCollapsed = false, currentOrgId, isSuperAdmin
                 </div>
             ) : (
                 <nav className="space-y-2 flex-1">
-                    {availableRoutes.map((route) => {
-                        const Icon = route.icon
-                        const isActive = pathname === route.href || pathname.startsWith(`${route.href}/`)
+                    {availableRoutes.map((route) => (
+                        <SidebarItem
+                            key={route.href}
+                            icon={route.icon}
+                            label={route.label}
+                            href={route.href}
+                            active={pathname === route.href || pathname?.startsWith(`${route.href}/`) || false}
+                            collapsed={isCollapsed}
+                        />
+                    ))}
 
-                        return (
-                            <Link key={route.href} href={route.href}>
-                                <div
-                                    className={cn(
-                                        "flex items-center gap-x-3 text-sm font-medium rounded-xl py-3 transition-all duration-200 group",
-                                        isCollapsed ? "justify-center px-2" : "px-4",
-                                        isActive
-                                            ? "bg-white/10 text-white shadow-lg shadow-indigo-500/20"
-                                            : "text-gray-300 hover:text-white hover:bg-white/5"
-                                    )}
-                                >
-                                    <Icon
-                                        className={cn(
-                                            "h-5 w-5 shrink-0 transition-transform duration-200",
-                                            isActive ? "text-white scale-110" : "text-gray-400 group-hover:text-white group-hover:scale-105"
-                                        )}
-                                    />
-                                    {!isCollapsed && (
-                                        <span className={cn(
-                                            "transition-all duration-200",
-                                            isActive ? "font-semibold" : ""
-                                        )}>
-                                            {route.label}
-                                        </span>
-                                    )}
-                                    {!isCollapsed && isActive && (
-                                        <div className="ml-auto w-1.5 h-1.5 rounded-full bg-brand-cyan animate-pulse" />
-                                    )}
-                                </div>
-                            </Link>
-                        )
-                    })}
+
                 </nav>
             )}
-
-            {/* Platform Admin Section - Only for Super Admins */}
-            {isSuperAdmin && (
-                <div className="px-3 pb-4 border-t border-white/5 pt-4">
-                    {!isCollapsed && (
-                        <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2 px-1">
-                            Platform
-                        </p>
-                    )}
-                    <Link href="/platform/admin">
-                        <div
-                            className={cn(
-                                "flex items-center gap-x-3 text-sm font-medium rounded-xl py-3 transition-all duration-200 group bg-purple-500/10 border border-purple-500/20",
-                                isCollapsed ? "justify-center px-2" : "px-4",
-                                pathname.startsWith('/platform/admin')
-                                    ? "bg-purple-500/20 text-purple-300 shadow-lg shadow-purple-500/20"
-                                    : "text-purple-300 hover:text-purple-200 hover:bg-purple-500/20"
-                            )}
-                        >
-                            <Shield
-                                className={cn(
-                                    "h-5 w-5 shrink-0 transition-transform duration-200",
-                                    pathname.startsWith('/platform/admin') ? "text-purple-300 scale-110" : "text-purple-400 group-hover:text-purple-300 group-hover:scale-105"
-                                )}
-                            />
-                            {!isCollapsed && (
-                                <span className={cn(
-                                    "transition-all duration-200",
-                                    pathname.startsWith('/platform/admin') ? "font-semibold" : ""
-                                )}>
-                                    SaaS Admin
-                                </span>
-                            )}
-                            {!isCollapsed && pathname.startsWith('/platform/admin') && (
-                                <div className="ml-auto w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse" />
-                            )}
-                        </div>
-                    </Link>
-                </div>
-            )}
-
-            {/* NO FOOTER - User Menu moved to Header */}
-        </div >
+        </div>
     )
 }
 
@@ -184,6 +156,13 @@ export function Sidebar({ isCollapsed, toggleCollapse, currentOrgId, isSuperAdmi
                     </svg>
                 </div>
             </button>
+
+            {/* Super Admin Buttons (Absolute Positioned at edge) */}
+            {isSuperAdmin && (
+                <div className="absolute -right-3 bottom-5 z-50 flex flex-col items-end">
+                    <AdminAccessButton />
+                </div>
+            )}
 
             <SidebarContent isCollapsed={isCollapsed} currentOrgId={currentOrgId} isSuperAdmin={isSuperAdmin} />
         </div>

@@ -3,6 +3,7 @@
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { Client, Invoice, Quote, Briefing, ClientEvent, Service } from "@/types"
 import { Briefing as PortalBriefing } from "@/types/briefings"
+import { getEffectiveBranding } from "@/modules/core/branding/actions"
 
 
 
@@ -28,12 +29,28 @@ export async function getPortalData(token: string) {
         // 2. If CLIENT found, proceed with Client Portal flow
         // ---------------------------------------------------------
         if (client) {
-            // First, fetch settings to check for super admin mode
-            const { data: settings } = await supabaseAdmin
+            // First, fetch raw settings for functional flags
+            const { data: rawSettings } = await supabaseAdmin
                 .from('organization_settings')
                 .select('*')
                 .eq('organization_id', client.organization_id)
                 .single()
+
+            // Fetch Effective Branding (White Label Awareness)
+            const branding = await getEffectiveBranding(client.organization_id)
+
+            // Merge Branding into Settings
+            const settings = {
+                ...(rawSettings || {}),
+                agency_name: branding.name,
+                portal_logo_url: branding.logos.portal,
+                isotipo_url: branding.logos.favicon,
+                portal_login_background_url: branding.logos.login_bg,
+                // Map colors if used by portal (portal-layout.tsx might use inline styles or css vars, checking...)
+                // Current portal-layout doesn't seem to use colors explicitly in the lines I saw, but let's map them for consistency
+                portal_primary_color: branding.colors.primary,
+                portal_secondary_color: branding.colors.secondary
+            }
 
             // Fetch Related Data in Parallel
             const [

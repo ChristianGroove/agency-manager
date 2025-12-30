@@ -13,18 +13,20 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+import { getEffectiveBranding } from "@/modules/core/branding/actions"; // Import new action
+import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"; // Need ID
+
 export async function generateMetadata(): Promise<Metadata> {
-  const settings = await getSettings();
-  const agencyName = settings?.agency_name || "Agency Manager";
-  const faviconUrl = settings?.favicon_url || settings?.isotipo_url || "/favicon.ico";
+  const orgId = await getCurrentOrganizationId();
+  const branding = await getEffectiveBranding(orgId);
 
   return {
-    title: agencyName,
-    description: `Sistema de gestión para ${agencyName}`,
+    title: branding.name,
+    description: `Sistema de gestión para ${branding.name}`,
     icons: {
-      icon: faviconUrl,
-      shortcut: faviconUrl,
-      apple: faviconUrl,
+      icon: branding.logos.favicon || "/favicon.ico",
+      shortcut: branding.logos.favicon || "/favicon.ico",
+      apple: branding.logos.favicon || "/favicon.ico",
     },
   };
 }
