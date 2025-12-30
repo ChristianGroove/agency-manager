@@ -92,103 +92,140 @@ export function CategoryManager() {
         <>
             <Sheet open={open} onOpenChange={setOpen}>
                 <SheetTrigger asChild>
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline">
                         <Plus className="h-4 w-4 mr-2" />
                         Gestionar Categorías
                     </Button>
                 </SheetTrigger>
-                <SheetContent className="w-full sm:max-w-lg">
-                    <SheetHeader>
+                <SheetContent
+                    side="right"
+                    className="
+                        sm:max-w-[600px] w-full p-0 gap-0 border-none shadow-2xl
+                        mr-4 my-4 h-[calc(100vh-2rem)] rounded-3xl overflow-hidden
+                        data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:mr-6
+                        bg-transparent
+                    "
+                >
+                    <SheetHeader className="hidden">
                         <SheetTitle>Categorías de Servicios</SheetTitle>
-                        <SheetDescription>
-                            Organiza tu catálogo con categorías personalizadas
-                        </SheetDescription>
+                        <SheetDescription>Organiza tu catálogo.</SheetDescription>
                     </SheetHeader>
 
-                    <div className="mt-6 space-y-4">
-                        <Button
-                            onClick={handleCreateNew}
-                            className="w-full"
-                            size="sm"
-                        >
-                            <Plus className="h-4 w-4 mr-2" />
-                            Nueva Categoría
-                        </Button>
-
-                        <ScrollArea className="h-[calc(100vh-240px)]">
-                            {loading ? (
-                                <div className="flex items-center justify-center py-8">
-                                    <div className="text-sm text-muted-foreground">Cargando...</div>
+                    <div className="flex flex-col h-full bg-white/95 backdrop-blur-xl">
+                        {/* Header */}
+                        <div className="sticky top-0 z-20 flex items-center justify-between shrink-0 px-8 py-5 bg-white/40 backdrop-blur-md border-b border-black/5">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600">
+                                    <LucideIcons.FolderOpen className="h-5 w-5" />
                                 </div>
-                            ) : categories.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
-                                    <LucideIcons.FolderOpen className="h-12 w-12 text-muted-foreground/50 mb-4" />
-                                    <p className="text-sm text-muted-foreground mb-2">
-                                        No tienes categorías todavía
-                                    </p>
-                                    <p className="text-xs text-muted-foreground">
-                                        Crea tu primera categoría para organizar tus servicios
-                                    </p>
+                                <div>
+                                    <h2 className="text-xl font-bold text-gray-900 tracking-tight">Categorías</h2>
+                                    <p className="text-xs text-muted-foreground">Organiza tus servicios.</p>
                                 </div>
-                            ) : (
-                                <div className="space-y-2">
-                                    {categories.map((category) => {
-                                        const IconComponent = getIcon(category.icon)
-                                        const colors = getColorClasses(category.color)
+                            </div>
+                        </div>
 
-                                        return (
-                                            <div
-                                                key={category.id}
-                                                className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors group"
-                                            >
-                                                <div className="cursor-grab opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <GripVertical className="h-4 w-4 text-muted-foreground" />
-                                                </div>
-
-                                                <div className={`p-2 rounded-md ${colors.bg}`}>
-                                                    <IconComponent className={`h-4 w-4 ${colors.text}`} />
-                                                </div>
-
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="font-medium text-sm truncate">
-                                                        {category.name}
-                                                    </div>
-                                                    <div className="text-xs text-muted-foreground">
-                                                        {category.icon}
-                                                    </div>
-                                                </div>
-
-                                                <Badge variant="outline" className="text-xs">
-                                                    {category.color}
-                                                </Badge>
-
-                                                <div className="flex gap-1">
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-8 w-8"
-                                                        onClick={() => handleEdit(category)}
-                                                    >
-                                                        <Pencil className="h-3.5 w-3.5" />
-                                                    </Button>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-8 w-8 text-destructive hover:text-destructive"
-                                                        onClick={() => handleDelete(category.id, category.name)}
-                                                    >
-                                                        <Trash2 className="h-3.5 w-3.5" />
-                                                    </Button>
-                                                </div>
+                        {/* Content */}
+                        <div className="flex-1 overflow-hidden p-0">
+                            <ScrollArea className="h-full">
+                                <div className="p-8 pb-24">
+                                    {loading ? (
+                                        <div className="flex items-center justify-center py-20">
+                                            <div className="animate-pulse flex flex-col items-center">
+                                                <div className="h-12 w-12 bg-gray-100 rounded-full mb-4"></div>
+                                                <div className="h-4 w-32 bg-gray-100 rounded"></div>
                                             </div>
-                                        )
-                                    })}
+                                        </div>
+                                    ) : categories.length === 0 ? (
+                                        <div className="flex flex-col items-center justify-center py-20 px-4 text-center border-2 border-dashed border-gray-100 rounded-2xl bg-gray-50/50">
+                                            <LucideIcons.FolderOpen className="h-12 w-12 text-muted-foreground/30 mb-4" />
+                                            <p className="text-sm font-medium text-gray-900 mb-1">
+                                                Sin categorías
+                                            </p>
+                                            <p className="text-xs text-muted-foreground max-w-xs mx-auto mb-6">
+                                                Crea categorías para mantener tu catálogo organizado y fácil de filtrar.
+                                            </p>
+                                            <Button onClick={handleCreateNew} variant="outline">
+                                                Crear primera categoría
+                                            </Button>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-3">
+                                            {categories.map((category) => {
+                                                const IconComponent = getIcon(category.icon)
+                                                // Simplified colors for modern look
+                                                const colors = getColorClasses(category.color)
+
+                                                return (
+                                                    <div
+                                                        key={category.id}
+                                                        className="group flex items-center justify-between p-4 rounded-2xl border border-gray-100 bg-white shadow-sm hover:shadow-md hover:border-indigo-100 transition-all duration-200"
+                                                    >
+                                                        <div className="flex items-center gap-4 min-w-0">
+                                                            <div className="cursor-grab text-gray-300 hover:text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                <GripVertical className="h-4 w-4" />
+                                                            </div>
+
+                                                            <div className={`p-3 rounded-xl ${colors.bg}`}>
+                                                                <IconComponent className={`h-5 w-5 ${colors.text}`} />
+                                                            </div>
+
+                                                            <div className="min-w-0">
+                                                                <div className="font-semibold text-gray-900 truncate">
+                                                                    {category.name}
+                                                                </div>
+                                                                <div className="text-xs text-muted-foreground flex items-center gap-2">
+                                                                    <Badge variant="secondary" className="text-[10px] h-5 px-1.5 font-normal bg-gray-100 text-gray-500 border-transparent">
+                                                                        {category.color}
+                                                                    </Badge>
+                                                                    <span>•</span>
+                                                                    <span className="font-mono">{category.icon}</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200 translate-x-2 group-hover:translate-x-0">
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-9 w-9 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-full"
+                                                                onClick={() => handleEdit(category)}
+                                                            >
+                                                                <Pencil className="h-4 w-4" />
+                                                            </Button>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-9 w-9 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full"
+                                                                onClick={() => handleDelete(category.id, category.name)}
+                                                            >
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+                                                )
+                                            })}
+                                        </div>
+                                    )}
                                 </div>
-                            )}
-                        </ScrollArea>
+                            </ScrollArea>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="sticky bottom-0 bg-white/80 backdrop-blur-md p-6 border-t border-gray-100 flex items-center justify-between z-20">
+                            <Button variant="ghost" onClick={() => setOpen(false)}>Cerrar</Button>
+                            <Button
+                                onClick={handleCreateNew}
+                                size="sm"
+                                className="bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg shadow-indigo-200"
+                            >
+                                <Plus className="h-4 w-4 mr-2" />
+                                Nueva Categoría
+                            </Button>
+                        </div>
                     </div>
                 </SheetContent>
-            </Sheet>
+            </Sheet >
 
             <CategoryFormSheet
                 open={formOpen}

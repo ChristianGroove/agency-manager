@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Plus, Search, Phone, ArrowRight, AlertTriangle, CheckCircle2, Clock, Loader2, Globe, CreditCard, FileText, LayoutGrid, Rows, ListFilter } from "lucide-react"
+import { Plus, Phone, ArrowRight, AlertTriangle, CheckCircle2, Clock, CreditCard, FileText, Globe } from "lucide-react"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -24,6 +24,8 @@ import { CreateClientSheet } from "@/modules/core/clients/create-client-sheet"
 import { CreateServiceSheet } from "@/modules/verticals/agency/services/create-service-sheet"
 import { quickCreateProspect } from "@/modules/core/clients/actions"
 import { getClients } from "@/modules/core/clients/actions"
+import { SearchFilterBar, FilterOption } from "@/components/shared/search-filter-bar"
+import { ViewToggle, ViewMode } from "@/components/shared/view-toggle"
 
 interface ClientsViewProps {
     initialClients: Client[]
@@ -35,7 +37,7 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
     const [loading, setLoading] = useState(false)
     const [searchTerm, setSearchTerm] = useState("")
     const [settings, setSettings] = useState<any>(initialSettings)
-    const [showFilters, setShowFilters] = useState(false)
+
 
     // Invoices Modal State
     const [isInvoicesModalOpen, setIsInvoicesModalOpen] = useState(false)
@@ -46,7 +48,8 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
     const [selectedClientForWhatsApp, setSelectedClientForWhatsApp] = useState<Client | null>(null)
 
     // View State
-    const [isCompactView, setIsCompactView] = useState(false)
+    const [viewMode, setViewMode] = useState<ViewMode>('grid')
+
 
     const handleOpenInvoices = (client: Client) => {
         setSelectedClientForInvoices(client)
@@ -169,6 +172,8 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
         return client.status === activeFilter
     })
 
+
+
     // Counts for tabs
     const counts = {
         all: clients.length,
@@ -177,6 +182,17 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
         active: clientsWithStatus.filter(c => c.status === 'active').length,
         inactive: clientsWithStatus.filter(c => c.status === 'inactive').length,
     }
+
+    const filterOptions: FilterOption[] = [
+        { id: 'all', label: 'Todos', count: counts.all, color: 'gray' },
+        { id: 'overdue', label: 'Vencidos', count: counts.overdue, color: 'red' },
+        { id: 'urgent', label: 'Por Vencer', count: counts.urgent, color: 'amber' },
+        { id: 'active', label: 'Al día', count: counts.active, color: 'emerald' },
+        { id: 'inactive', label: 'Sin Servicio', count: counts.inactive, color: 'slate' },
+    ]
+
+    const isCompactView = viewMode === 'list'
+
 
     return (
         <div className="space-y-8 bg-gray-50/50 min-h-screen">
@@ -202,104 +218,20 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
 
             {/* Unified Control Block & View Toggle */}
             <div className="flex flex-col md:flex-row gap-3 sticky top-4 z-30">
-                {/* Search & Filters */}
-                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-1.5 flex flex-col md:flex-row items-center gap-2 flex-1 transition-all hover:shadow-md">
-                    {/* Integrated Search */}
-                    <div className="relative flex-1 w-full md:w-auto min-w-[200px] flex items-center px-3 gap-2">
-                        <Search className="h-4 w-4 text-gray-400 shrink-0" />
-                        <input
-                            placeholder="Buscar cliente rapidísimo..."
-                            className="bg-transparent border-0 focus:ring-0 text-sm w-full outline-none text-gray-700 placeholder:text-gray-400 h-9"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
-                    </div>
+                <SearchFilterBar
+                    searchTerm={searchTerm}
+                    onSearchChange={setSearchTerm}
+                    searchPlaceholder="Buscar cliente rapidísimo..."
+                    filters={filterOptions}
+                    activeFilter={activeFilter}
+                    onFilterChange={setActiveFilter}
+                />
 
-                    {/* Collapsible Filter Pills (Now Middle) */}
-                    <div className={cn(
-                        "flex items-center gap-1.5 overflow-hidden transition-all duration-300 ease-in-out",
-                        showFilters ? "max-w-[800px] opacity-100 ml-2" : "max-w-0 opacity-0 ml-0 p-0 pointer-events-none"
-                    )}>
-                        <div className="flex items-center gap-1.5 min-w-max">
-                            {[
-                                { id: 'all', label: 'Todos', count: counts.all, color: 'gray' },
-                                { id: 'overdue', label: 'Vencidos', count: counts.overdue, color: 'red' },
-                                { id: 'urgent', label: 'Por Vencer', count: counts.urgent, color: 'amber' },
-                                { id: 'active', label: 'Al día', count: counts.active, color: 'emerald' },
-                                { id: 'inactive', label: 'Sin Servicio', count: counts.inactive, color: 'slate' },
-                            ].map(filter => (
-                                <button
-                                    key={filter.id}
-                                    onClick={() => setActiveFilter(filter.id)}
-                                    className={cn(
-                                        "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all duration-200 whitespace-nowrap",
-                                        activeFilter === filter.id
-                                            ? filter.id === 'overdue' ? "bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20 shadow-sm"
-                                                : filter.id === 'urgent' ? "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/20 shadow-sm"
-                                                    : filter.id === 'active' ? "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20 shadow-sm"
-                                                        : filter.id === 'inactive' ? "bg-slate-50 text-slate-700 ring-1 ring-inset ring-slate-600/20 shadow-sm"
-                                                            : "bg-gray-900 text-white shadow-sm"
-                                            : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
-                                    )}
-                                >
-                                    <span>{filter.label}</span>
-                                    <span className={cn(
-                                        "px-1.5 py-0.5 rounded-md text-[10px]",
-                                        activeFilter === filter.id
-                                            ? "bg-white/20 text-current"
-                                            : "bg-gray-100 text-gray-600"
-                                    )}>
-                                        {filter.count}
-                                    </span>
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Divider */}
-                    <div className="h-6 w-px bg-gray-200 mx-1 hidden md:block" />
-
-                    {/* Toggle Filters Button (Fixed Right) */}
-                    <button
-                        onClick={() => setShowFilters(!showFilters)}
-                        className={cn(
-                            "flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 border",
-                            showFilters
-                                ? "bg-gray-100 text-gray-900 border-gray-200 shadow-inner"
-                                : "bg-white text-gray-500 border-transparent hover:bg-gray-50 hover:text-gray-900"
-                        )}
-                        title="Filtrar Clientes"
-                    >
-                        <ListFilter className="h-4 w-4" />
-                    </button>
-                </div>
-
-                {/* View Toggle - Separated but on same line */}
-                < div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-1.5 flex items-center transition-all hover:shadow-md h-[52px]" >
-                    <div className="flex bg-gray-50 rounded-xl p-0.5">
-                        <button
-                            onClick={() => setIsCompactView(false)}
-                            className={cn(
-                                "p-2 rounded-lg transition-all",
-                                !isCompactView ? "bg-white text-gray-900 shadow-sm ring-1 ring-black/5" : "text-gray-400 hover:text-gray-600 hover:bg-gray-100"
-                            )}
-                            title="Vista Detallada"
-                        >
-                            <LayoutGrid className="h-4 w-4" />
-                        </button>
-                        <button
-                            onClick={() => setIsCompactView(true)}
-                            className={cn(
-                                "p-2 rounded-lg transition-all",
-                                isCompactView ? "bg-white text-gray-900 shadow-sm ring-1 ring-black/5" : "text-gray-400 hover:text-gray-600 hover:bg-gray-100"
-                            )}
-                            title="Vista Compacta"
-                        >
-                            <Rows className="h-4 w-4" />
-                        </button>
-                    </div>
-                </div >
-            </div >
+                <ViewToggle
+                    view={viewMode}
+                    onViewChange={setViewMode}
+                />
+            </div>
 
             {/* Clients Grid */}
             < div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-6" >

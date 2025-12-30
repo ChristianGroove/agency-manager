@@ -15,11 +15,15 @@ import { PortfolioList } from "@/modules/verticals/agency/portfolio/portfolio-li
 import { PortfolioServiceSheet } from "@/modules/verticals/agency/portfolio/portfolio-service-sheet"
 import { CategoryManager } from "@/modules/verticals/agency/services/category-manager"
 import { getPortfolioItems, deletePortfolioItem } from "@/modules/verticals/agency/portfolio/actions"
+import { getCategories, ServiceCategory } from "@/modules/verticals/agency/categories/actions"
 import { ServiceCatalogItem } from "@/types"
 import { BriefingTemplate } from "@/types/briefings"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { SplitText } from "@/components/ui/split-text"
+import { SearchFilterBar, FilterOption } from "@/components/shared/search-filter-bar"
+import { ViewToggle, ViewMode } from "@/components/shared/view-toggle"
+import { CategorySelector } from "@/modules/verticals/agency/portfolio/category-selector"
 import { getSaaSProducts, seedSystemModules } from "@/modules/core/saas/actions"
 import { SaaSProduct } from "@/types/saas"
 import { AppList } from "@/modules/core/saas/app-list"
@@ -30,10 +34,19 @@ export default function PortfolioPage() {
 
     // Services state
     const [items, setItems] = useState<ServiceCatalogItem[]>([])
+    const [categories, setCategories] = useState<ServiceCategory[]>([])
     const [loading, setLoading] = useState(true)
     const [isFormOpen, setIsFormOpen] = useState(false)
     const [itemToEdit, setItemToEdit] = useState<ServiceCatalogItem | null>(null)
     const [currentOrgName, setCurrentOrgName] = useState<string>('')
+
+    // Filter & View State
+    const [searchTerm, setSearchTerm] = useState("")
+    const [activeCategory, setActiveCategory] = useState("all")
+    const [activePaymentFilter, setActivePaymentFilter] = useState("all") // 'all' | 'recurring' | 'one_time'
+    const [viewMode, setViewMode] = useState<ViewMode>('grid')
+
+
 
     // SaaS Apps state
     const [apps, setApps] = useState<SaaSProduct[]>([])
@@ -63,8 +76,12 @@ export default function PortfolioPage() {
     const fetchServices = async () => {
         setLoading(true)
         try {
-            const data = await getPortfolioItems()
+            const [data, cats] = await Promise.all([
+                getPortfolioItems(),
+                getCategories()
+            ])
             setItems(data)
+            setCategories(cats)
         } catch (error) {
             console.error(error)
             toast.error("Error al cargar el portafolio")
@@ -72,6 +89,7 @@ export default function PortfolioPage() {
             setLoading(false)
         }
     }
+
 
     /**
      * Fetch SaaS apps assigned to organization via subscription
@@ -124,35 +142,18 @@ export default function PortfolioPage() {
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
-            {/* Title Row */}
-            <div>
-                <h1 className="text-3xl font-bold tracking-tight text-gray-900">
-                    <SplitText>Catálogo</SplitText>
-                </h1>
-                <p className="text-muted-foreground mt-1">
-                    Servicios y productos que ofrece tu negocio.
-                </p>
-            </div>
-
-            {/* Control Row: Tabs + Actions */}
+            {/* Title Row with Actions */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                {/* Left: Tabs */}
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
-                    <TabsList className={cn(
-                        "grid w-full",
-                        isPixyAgency ? "max-w-md grid-cols-2" : "max-w-xs grid-cols-1"
-                    )}>
-                        <TabsTrigger value="services">Servicios</TabsTrigger>
-                        {isPixyAgency && (
-                            <TabsTrigger value="apps">
-                                <Package className="h-4 w-4 mr-2" />
-                                Apps SaaS
-                            </TabsTrigger>
-                        )}
-                    </TabsList>
-                </Tabs>
+                <div>
+                    <h1 className="text-3xl font-bold tracking-tight text-gray-900">
+                        <SplitText>Catálogo</SplitText>
+                    </h1>
+                    <p className="text-muted-foreground mt-1">
+                        Servicios y productos que ofrece tu negocio.
+                    </p>
+                </div>
 
-                {/* Right: Actions (conditional based on active tab) */}
+                {/* Right: Actions (moved from below) */}
                 <div className="flex items-center gap-2 w-full md:w-auto">
                     {activeTab === "services" && (
                         <>
@@ -176,9 +177,60 @@ export default function PortfolioPage() {
                 </div>
             </div>
 
-            {/* Tabs Content */}
-            <Tabs value={activeTab} className="space-y-4">
-                <TabsContent value="services" className="mt-0">
+            {/* Control Row: Tabs ONLY */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                {/* Left: Tabs */}
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 w-full">
+                    <TabsList className={cn(
+                        "grid w-full",
+                        isPixyAgency ? "max-w-md grid-cols-2" : "max-w-xs grid-cols-1"
+                    )}>
+                        <TabsTrigger value="services">Servicios</TabsTrigger>
+                        {isPixyAgency && (
+                            <TabsTrigger value="apps">
+                                <Package className="h-4 w-4 mr-2" />
+                                Apps SaaS
+                            </TabsTrigger>
+                        )}
+                    </TabsList>
+                </Tabs>
+            </div>
+
+            {/* Filter & View Bar (Only for Services Tab) */}
+            {activeTab === "services" && (
+                <div className="space-y-4 sticky top-4 z-30 bg-gray-50/95 backdrop-blur-sm py-2">
+                    <div className="flex flex-col md:flex-row gap-3">
+                        <SearchFilterBar
+                            searchTerm={searchTerm}
+                            onSearchChange={setSearchTerm}
+                            searchPlaceholder="Buscar por nombre..."
+                            filters={[
+                                { id: 'all', label: 'Todos', count: items.length, color: 'gray' },
+                                { id: 'one_off', label: 'Pago Único', count: items.filter(i => i.type === 'one_off').length, color: 'orange' },
+                                { id: 'recurring', label: 'Suscripción', count: items.filter(i => i.type === 'recurring').length, color: 'indigo' },
+                            ]}
+                            activeFilter={activePaymentFilter}
+                            onFilterChange={setActivePaymentFilter}
+                        />
+                        <ViewToggle
+                            view={viewMode}
+                            onViewChange={setViewMode}
+                        />
+                    </div>
+
+                    <div className="flex items-center">
+                        <CategorySelector
+                            categories={categories}
+                            activeCategory={activeCategory}
+                            onSelect={setActiveCategory}
+                        />
+                    </div>
+                </div>
+            )}
+
+            {/* Tabs Content - decoupled from TabsList to allow inserting FilterBar */}
+            {activeTab === "services" && (
+                <div className="mt-0">
                     {loading ? (
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             {[1, 2, 3, 4, 5, 6].map(i => (
@@ -187,14 +239,30 @@ export default function PortfolioPage() {
                         </div>
                     ) : (
                         <PortfolioList
-                            items={items}
+                            items={items.filter(item => {
+                                // 1. Search (Name only now, or maybe description)
+                                const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                    (item.description && item.description.toLowerCase().includes(searchTerm.toLowerCase()))
+
+                                // 2. Category
+                                const matchesCategory = activeCategory === 'all' ? true : item.category === activeCategory
+
+                                // 3. Payment Type
+                                const matchesPayment = activePaymentFilter === 'all' ? true : item.type === activePaymentFilter
+
+                                return matchesSearch && matchesCategory && matchesPayment
+                            })}
+                            viewMode={viewMode}
                             onEdit={handleEditService}
                             onDelete={handleDeleteService}
                         />
                     )}
-                </TabsContent>
+                </div>
+            )}
 
-                <TabsContent value="apps" className="mt-0">
+
+            {activeTab === "apps" && (
+                <div className="mt-0">
                     {appsLoading ? (
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             {[1, 2, 3].map(i => (
@@ -204,8 +272,9 @@ export default function PortfolioPage() {
                     ) : (
                         <AppList items={apps} onEdit={(app) => { }} />
                     )}
-                </TabsContent>
-            </Tabs>
+                </div>
+            )}
+
 
             {/* Sheets */}
             <PortfolioServiceSheet

@@ -6,7 +6,6 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -154,33 +153,47 @@ export function CreateBriefingSheet({
                 <div onClick={() => setOpen(true)}>{trigger}</div>
             )}
 
-            <SheetContent className="w-full max-w-[90vw] md:max-w-4xl p-0 overflow-hidden bg-white sm:rounded-l-2xl border-l shadow-2xl">
-                <div className="flex h-full flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-gray-100">
+            <SheetContent
+                side="right"
+                className="
+                    sm:max-w-[1000px] w-full p-0 gap-0 border-none shadow-2xl
+                    mr-4 my-4 h-[calc(100vh-2rem)] rounded-3xl overflow-hidden
+                    data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:mr-6
+                    bg-transparent
+                "
+            >
+                <SheetHeader className="hidden">
+                    <SheetTitle>Nuevo Briefing</SheetTitle>
+                    <SheetDescription>Genera un enlace único para recopilar información de tu cliente.</SheetDescription>
+                </SheetHeader>
+                <div className="flex flex-col h-full bg-white/95 backdrop-blur-xl">
 
-                    {/* LEFT COLUMN: Controls */}
-                    <div className="w-full md:w-[400px] flex flex-col bg-white h-full relative z-10">
-                        {/* Header */}
-                        <div className="p-6 border-b border-gray-100 bg-white sticky top-0 z-20">
-                            <div className="flex items-center gap-3 mb-2">
-                                <div className="p-2 bg-pink-50 rounded-lg text-pink-600">
-                                    <Sparkles className="h-5 w-5" />
-                                </div>
-                                <SheetTitle>Nuevo Briefing</SheetTitle>
+                    {/* Header */}
+                    <div className="sticky top-0 z-20 flex items-center justify-between shrink-0 px-8 py-5 bg-white/40 backdrop-blur-md border-b border-black/5">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-pink-50 rounded-lg text-pink-600">
+                                <Sparkles className="h-5 w-5" />
                             </div>
-                            <SheetDescription>
-                                Genera un enlace único para recopilar información de tu cliente.
-                            </SheetDescription>
+                            <div>
+                                <h2 className="text-xl font-bold text-gray-900 tracking-tight">Nuevo Briefing</h2>
+                                <p className="text-xs text-muted-foreground">Genera un enlace único para recopilar información.</p>
+                            </div>
                         </div>
+                    </div>
 
-                        <ScrollArea className="flex-1">
-                            <div className="p-6 space-y-6">
+                    {/* Split View Grid */}
+                    <div className="flex-1 overflow-hidden">
+                        <div className="h-full grid grid-cols-1 lg:grid-cols-12 divide-x divide-gray-100/50">
+
+                            {/* LEFT: Form (5/12) */}
+                            <div className="lg:col-span-5 overflow-y-auto p-8 h-full relative scrollbar-thin scrollbar-thumb-gray-200">
                                 {loading ? (
                                     <div className="flex flex-col items-center justify-center py-12 space-y-4 text-gray-400">
                                         <Loader2 className="h-8 w-8 animate-spin" />
                                         <p className="text-sm">Cargando plantillas...</p>
                                     </div>
                                 ) : (
-                                    <>
+                                    <div className="space-y-6">
                                         {/* Template Select */}
                                         <div className="space-y-3">
                                             <Label className="flex items-center gap-2">
@@ -296,112 +309,119 @@ export function CreateBriefingSheet({
                                                 Si no seleccionas un cliente, podrás compartir el enlace púbicamente y asignar el cliente después.
                                             </p>
                                         </div>
-                                    </>
+                                    </div>
                                 )}
-                            </div>
-                        </ScrollArea>
 
-                        {/* Footer Actions */}
-                        <div className="p-4 bg-gray-50 border-t border-gray-100 sticky bottom-0 z-20">
-                            <Button
-                                className="w-full bg-brand-pink hover:bg-brand-pink/90 text-white h-11 shadow-md shadow-pink-200"
-                                onClick={handleSubmit}
-                                disabled={submitting || !selectedTemplateId || loading}
-                            >
-                                {submitting ? (
-                                    <>
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        Creando Briefing...
-                                    </>
-                                ) : (
-                                    <>
-                                        Generar Enlace
-                                        <ArrowRight className="ml-2 h-4 w-4" />
-                                    </>
-                                )}
-                            </Button>
+                                <div className="h-24"></div> {/* Spacer */}
+                            </div>
+
+                            {/* RIGHT: Preview (7/12) */}
+                            <div className="hidden lg:flex lg:col-span-7 bg-slate-100/50 p-8 flex-col relative overflow-hidden">
+                                <div className="absolute inset-0 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:16px_16px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-50 pointer-events-none" />
+
+                                <div className="relative z-10 h-full flex flex-col">
+                                    <div className="mb-6">
+                                        <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                                            <FileText className="h-4 w-4" />Vista Previa del Formulario
+                                        </h3>
+                                    </div>
+
+                                    <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200">
+                                        {activeTemplate ? (
+                                            <div className="max-w-xl mx-auto space-y-8 pb-20">
+                                                {/* Mock Form Header */}
+                                                <div className="text-center space-y-4 mb-10">
+                                                    <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-indigo-100 text-indigo-600 mb-2">
+                                                        <FileText className="h-6 w-6" />
+                                                    </div>
+                                                    <h1 className="text-2xl font-bold text-gray-900">{activeTemplate.name}</h1>
+                                                    {activeTemplate.description && (
+                                                        <p className="text-gray-500 text-sm max-w-md mx-auto">{activeTemplate.description}</p>
+                                                    )}
+                                                </div>
+
+                                                {/* Steps Preview */}
+                                                {(() => {
+                                                    // Helper to group fields by step on the fly
+                                                    type GroupedStep = { id: string, title: string, fields: BriefingField[] };
+
+                                                    const groupedSteps = (activeTemplate.structure || []).reduce<GroupedStep[]>((acc, field: any) => {
+                                                        const stepTitle = field.step_title || 'General Details';
+                                                        let step = acc.find(s => s.title === stepTitle);
+                                                        if (!step) {
+                                                            step = { id: stepTitle, title: stepTitle, fields: [] };
+                                                            acc.push(step);
+                                                        }
+                                                        step.fields.push(field);
+                                                        return acc;
+                                                    }, []);
+
+                                                    return groupedSteps.map((step, index: number) => (
+                                                        <div key={index} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden opacity-90">
+                                                            <div className="bg-gray-50/80 px-4 py-3 border-b border-gray-100 flex items-center gap-3">
+                                                                <Badge variant="outline" className="bg-white h-6 w-6 flex items-center justify-center p-0 rounded-full shrink-0">
+                                                                    {index + 1}
+                                                                </Badge>
+                                                                <h4 className="font-semibold text-gray-900 text-sm">{step.title}</h4>
+                                                            </div>
+                                                            <div className="p-4 space-y-4">
+                                                                {step.fields?.map((field: any) => (
+                                                                    <div key={field.id} className="space-y-1.5 pointer-events-none select-none">
+                                                                        <div className="flex items-center justify-between">
+                                                                            <Label className="text-xs text-gray-600">{field.label}</Label>
+                                                                            {field.required && <span className="text-red-400 text-[10px]">*</span>}
+                                                                        </div>
+                                                                        {/* Mock Input based on type */}
+                                                                        <div className="h-9 w-full bg-gray-50 rounded-md border border-gray-100" />
+                                                                    </div>
+                                                                ))}
+                                                                {(!step.fields || step.fields.length === 0) && (
+                                                                    <p className="text-xs text-gray-400 italic text-center py-2">Sin campos en este paso</p>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    ));
+                                                })()}
+                                            </div>
+                                        ) : (
+                                            <div className="h-full flex flex-col items-center justify-center text-gray-400 space-y-4 min-h-[400px]">
+                                                <div className="p-4 bg-gray-100 rounded-full">
+                                                    <LayoutTemplate className="h-8 w-8 text-gray-300" />
+                                                </div>
+                                                <p className="max-w-xs text-center text-sm">
+                                                    Selecciona una plantilla a la izquierda para ver su estructura y preguntas.
+                                                </p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
                         </div>
                     </div>
 
-                    {/* RIGHT COLUMN: Preview */}
-                    <div className="flex-1 bg-gray-50/50 hidden md:block h-full overflow-hidden">
-                        <div className="h-full flex flex-col">
-                            <div className="p-4 border-b border-gray-100 bg-white/50 backdrop-blur-sm sticky top-0">
-                                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
-                                    <FileText className="h-4 w-4" /> Vista Previa del Formulario
-                                </h3>
-                            </div>
-
-                            <ScrollArea className="flex-1 p-8">
-                                {activeTemplate ? (
-                                    <div className="max-w-xl mx-auto space-y-8 pb-20">
-                                        {/* Mock Form Header */}
-                                        <div className="text-center space-y-4 mb-10">
-                                            <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-indigo-100 text-indigo-600 mb-2">
-                                                <FileText className="h-6 w-6" />
-                                            </div>
-                                            <h1 className="text-2xl font-bold text-gray-900">{activeTemplate.name}</h1>
-                                            {activeTemplate.description && (
-                                                <p className="text-gray-500 text-sm max-w-md mx-auto">{activeTemplate.description}</p>
-                                            )}
-                                        </div>
-
-                                        {/* Steps Preview */}
-                                        {(() => {
-                                            // Helper to group fields by step on the fly
-                                            type GroupedStep = { id: string, title: string, fields: BriefingField[] };
-                                            // We need to cast activeTemplate.structure to any[] or BriefingField[] if TS complains about specific props.
-
-                                            const groupedSteps = (activeTemplate.structure || []).reduce<GroupedStep[]>((acc, field: any) => {
-                                                const stepTitle = field.step_title || 'General Details';
-                                                let step = acc.find(s => s.title === stepTitle);
-                                                if (!step) {
-                                                    step = { id: stepTitle, title: stepTitle, fields: [] };
-                                                    acc.push(step);
-                                                }
-                                                step.fields.push(field);
-                                                return acc;
-                                            }, []);
-
-                                            return groupedSteps.map((step, index: number) => (
-                                                <div key={index} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden opacity-90">
-                                                    <div className="bg-gray-50/80 px-4 py-3 border-b border-gray-100 flex items-center gap-3">
-                                                        <Badge variant="outline" className="bg-white h-6 w-6 flex items-center justify-center p-0 rounded-full shrink-0">
-                                                            {index + 1}
-                                                        </Badge>
-                                                        <h4 className="font-semibold text-gray-900 text-sm">{step.title}</h4>
-                                                    </div>
-                                                    <div className="p-4 space-y-4">
-                                                        {step.fields?.map((field: any) => (
-                                                            <div key={field.id} className="space-y-1.5 pointer-events-none select-none">
-                                                                <div className="flex items-center justify-between">
-                                                                    <Label className="text-xs text-gray-600">{field.label}</Label>
-                                                                    {field.required && <span className="text-red-400 text-[10px]">*</span>}
-                                                                </div>
-                                                                {/* Mock Input based on type */}
-                                                                <div className="h-9 w-full bg-gray-50 rounded-md border border-gray-100" />
-                                                            </div>
-                                                        ))}
-                                                        {(!step.fields || step.fields.length === 0) && (
-                                                            <p className="text-xs text-gray-400 italic text-center py-2">Sin campos en este paso</p>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            ));
-                                        })()}
-                                    </div>
-                                ) : (
-                                    <div className="h-full flex flex-col items-center justify-center text-gray-400 space-y-4 min-h-[400px]">
-                                        <div className="p-4 bg-gray-100 rounded-full">
-                                            <LayoutTemplate className="h-8 w-8 text-gray-300" />
-                                        </div>
-                                        <p className="max-w-xs text-center text-sm">
-                                            Selecciona una plantilla a la izquierda para ver su estructura y preguntas.
-                                        </p>
-                                    </div>
-                                )}
-                            </ScrollArea>
-                        </div>
+                    {/* Footer Actions */}
+                    <div className="sticky bottom-0 bg-white/80 backdrop-blur-md p-6 border-t border-gray-100 flex items-center justify-between z-20">
+                        <Button variant="ghost" onClick={() => setOpen(false)} className="text-gray-500 hover:text-red-500">
+                            Cancelar
+                        </Button>
+                        <Button
+                            onClick={handleSubmit}
+                            disabled={submitting || !selectedTemplateId || loading}
+                            className="bg-black text-white hover:bg-gray-800 shadow-xl shadow-black/10 px-8 rounded-xl h-11"
+                        >
+                            {submitting ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Creando...
+                                </>
+                            ) : (
+                                <>
+                                    Generar Enlace
+                                    <ArrowRight className="ml-2 h-4 w-4" />
+                                </>
+                            )}
+                        </Button>
                     </div>
 
                 </div>

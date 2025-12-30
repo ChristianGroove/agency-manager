@@ -1,17 +1,17 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
+import { useRouter } from "next/navigation"
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Loader2, Rocket, Building2, Package, Check } from "lucide-react"
 import { toast } from "sonner"
-import { SaaSProduct } from "@/types/saas"
-import { getSaaSProducts } from "@/modules/core/saas/actions" // Reuse this
+import { SaaSProduct } from "@/types/saas" // Assuming types are here
+import { getSaaSProducts } from "@/modules/core/saas/actions" // Assuming backend logic is here
 import { createOrganization } from "@/modules/core/organizations/actions"
-import { useRouter } from "next/navigation"
 
 interface CreateOrganizationSheetProps {
     open: boolean
@@ -41,9 +41,9 @@ export function CreateOrganizationSheet({ open, onOpenChange, onSuccess }: Creat
         setLoadingProducts(true)
         try {
             const data = await getSaaSProducts()
-            // Filter only published usually, but for now allow all for demo
             setProducts(data.filter(p => p.status === 'published' || true))
         } catch (error) {
+            console.error(error)
             toast.error("Error cargando productos")
         } finally {
             setLoadingProducts(false)
@@ -72,21 +72,20 @@ export function CreateOrganizationSheet({ open, onOpenChange, onSuccess }: Creat
                 name,
                 slug,
                 subscription_product_id: selectedProductId,
-                // logo_url: '' // Todo: upload logic
             })
 
             if (result.success) {
                 toast.success(`Organización "${name}" creada correctamente`)
                 onSuccess?.()
                 onOpenChange(false)
-
-                // Force comprehensive reload to apply new context
+                // Force reload
                 window.location.href = '/'
             } else {
                 toast.error(result.error || "Error al crear la organización")
-                setIsLoading(false) // Only stop loading on error, on success we reload so keep spinner
+                setIsLoading(false)
             }
         } catch (error) {
+            console.error(error)
             toast.error("Error inesperado")
             setIsLoading(false)
         }
@@ -94,123 +93,172 @@ export function CreateOrganizationSheet({ open, onOpenChange, onSuccess }: Creat
 
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
-            <SheetContent side="right" className="w-[85vw] sm:max-w-[85vw] p-0 border-l border-white/10 bg-black/40 backdrop-blur-xl shadow-2xl">
-                <div className="flex h-full">
+            <SheetContent
+                side="right"
+                className="
+                    sm:max-w-[1000px] w-full p-0 gap-0 border-none shadow-2xl
+                    mr-4 my-4 h-[calc(100vh-2rem)] rounded-3xl overflow-hidden
+                    data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:mr-6
+                    bg-transparent
+                "
+            >
+                <SheetHeader className="hidden">
+                    <SheetTitle>Nueva Organización</SheetTitle>
+                    <SheetDescription>Crea un nuevo espacio de trabajo (Tenant).</SheetDescription>
+                </SheetHeader>
 
-                    {/* LEFT COLUMN: Identity */}
-                    <div className="w-1/2 h-full border-r border-white/5 bg-gradient-to-br from-gray-900/50 to-black/50 p-8 flex flex-col">
-                        <SheetHeader className="mb-8">
-                            <SheetTitle className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">
-                                Nueva Organización
-                            </SheetTitle>
-                            <p className="text-gray-400">Crea un nuevo espacio de trabajo (Tenant).</p>
-                        </SheetHeader>
+                <div className="flex flex-col h-full bg-white/95 backdrop-blur-xl">
 
-                        <div className="space-y-6 flex-1">
-                            <div className="space-y-4">
-                                <div className="space-y-2">
-                                    <Label className="text-gray-300">Nombre Comercial</Label>
-                                    <div className="relative">
-                                        <Building2 className="absolute left-3 top-3 h-5 w-5 text-gray-500" />
-                                        <Input
-                                            className="bg-white/5 border-white/10 text-white pl-10 h-12 text-lg focus:border-indigo-500/50"
-                                            placeholder="Ej: Barbería El Bigote"
-                                            value={name}
-                                            onChange={handleNameChange}
-                                        />
+                    {/* Header */}
+                    <div className="sticky top-0 z-20 flex items-center justify-between shrink-0 px-8 py-5 bg-white/40 backdrop-blur-md border-b border-black/5">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600">
+                                <Building2 className="h-5 w-5" />
+                            </div>
+                            <div>
+                                <h2 className="text-xl font-bold text-gray-900 tracking-tight">Nueva Organización</h2>
+                                <p className="text-xs text-muted-foreground">Configura el tenant y su paquete de software.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Split View */}
+                    <div className="flex-1 overflow-hidden">
+                        <div className="h-full grid grid-cols-1 lg:grid-cols-2 divide-x divide-gray-100/50">
+
+                            {/* LEFT: Identity */}
+                            <div className="overflow-y-auto p-8 h-full relative scrollbar-thin scrollbar-thumb-gray-200">
+                                <div className="space-y-8">
+                                    <div className="space-y-4">
+                                        <div className="space-y-3">
+                                            <Label>Nombre Comercial</Label>
+                                            <Input
+                                                className="h-12 text-lg"
+                                                placeholder="Ej: Barbería El Bigote"
+                                                value={name}
+                                                onChange={handleNameChange}
+                                            />
+                                        </div>
+
+                                        <div className="space-y-3">
+                                            <Label>URL del Espacio (Slug)</Label>
+                                            <div className="flex items-center h-11 px-3 rounded-md bg-slate-50 border border-slate-200 text-slate-500 text-sm">
+                                                app.pixy.com/
+                                                <span className="text-gray-900 font-medium ml-0.5">{slug}</span>
+                                            </div>
+                                        </div>
                                     </div>
-                                </div>
 
-                                <div className="space-y-2">
-                                    <Label className="text-gray-300">URL del Espacio (Slug)</Label>
-                                    <div className="flex items-center h-10 px-3 rounded-md bg-white/5 border border-white/10 text-gray-400 text-sm">
-                                        app.pixy.com/
-                                        <span className="text-white ml-0.5">{slug}</span>
-                                    </div>
+                                    {/* Selected Product Summary */}
+                                    {selectedProductId && (
+                                        <div className="p-5 rounded-xl bg-indigo-50 border border-indigo-100 flex items-start gap-4">
+                                            <div className="p-2 bg-indigo-100 rounded-lg text-indigo-600">
+                                                <Package className="h-5 w-5" />
+                                            </div>
+                                            <div>
+                                                <h4 className="text-sm font-semibold text-indigo-900">App Seleccionada</h4>
+                                                <p className="text-lg font-bold text-indigo-700">
+                                                    {products.find(p => p.id === selectedProductId)?.name}
+                                                </p>
+                                                <p className="text-xs text-indigo-600/80 mt-1">
+                                                    Listo para instalar en tu nuevo tenant.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
-                            {/* Selected Product Summary */}
-                            {selectedProductId && (
-                                <div className="mt-8 p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/20">
-                                    <h4 className="text-sm font-semibold text-indigo-300 mb-1">Producto Seleccionado</h4>
-                                    <p className="text-white text-lg font-medium">
-                                        {products.find(p => p.id === selectedProductId)?.name}
+                            {/* RIGHT: Product Selection */}
+                            <div className="bg-slate-50/50 p-8 flex flex-col h-full relative overflow-hidden">
+                                <div className="mb-4">
+                                    <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                                        <Package className="h-4 w-4 text-indigo-500" />
+                                        Selecciona App Base
+                                    </h3>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                        Elige el paquete de software que usará esta organización.
                                     </p>
                                 </div>
-                            )}
-                        </div>
 
-                        <div className="mt-8 pt-6 border-t border-white/10">
-                            <Button
-                                onClick={handleCreate}
-                                disabled={isLoading}
-                                className="w-full bg-indigo-600 hover:bg-indigo-500 text-white h-12 shadow-lg shadow-indigo-500/20 transition-all hover:scale-[1.02]"
-                            >
-                                {isLoading ? <Loader2 className="animate-spin mr-2" /> : <Rocket className="mr-2 h-5 w-5" />}
-                                Inicializar Organización
-                            </Button>
+                                <ScrollArea className="flex-1 -mx-2 px-2">
+                                    {loadingProducts ? (
+                                        <div className="flex items-center justify-center h-40">
+                                            <Loader2 className="h-8 w-8 text-indigo-500 animate-spin" />
+                                        </div>
+                                    ) : (
+                                        <div className="grid grid-cols-1 gap-4 pb-20">
+                                            {products.map((product) => {
+                                                const isSelected = selectedProductId === product.id
+                                                return (
+                                                    <div
+                                                        key={product.id}
+                                                        className={`
+                                                            group relative p-5 rounded-xl border transition-all duration-300 cursor-pointer text-left
+                                                            ${isSelected
+                                                                ? 'bg-white border-indigo-500 ring-2 ring-indigo-500/20 shadow-lg shadow-indigo-500/10'
+                                                                : 'bg-white border-gray-100 hover:border-gray-300 shadow-sm'}
+                                                        `}
+                                                        onClick={() => setSelectedProductId(product.id)}
+                                                    >
+                                                        <div className="flex justify-between items-start mb-2">
+                                                            <h3 className={`text-base font-bold ${isSelected ? 'text-indigo-700' : 'text-gray-900'}`}>
+                                                                {product.name}
+                                                            </h3>
+                                                            {isSelected && (
+                                                                <div className="h-5 w-5 bg-indigo-600 rounded-full flex items-center justify-center">
+                                                                    <Check className="h-3 w-3 text-white" />
+                                                                </div>
+                                                            )}
+                                                        </div>
+
+                                                        <p className="text-sm text-gray-500 mb-4 line-clamp-2">
+                                                            {product.description || "Sin descripción"}
+                                                        </p>
+
+                                                        <div className="flex items-center gap-2 pt-3 border-t border-gray-50">
+                                                            <span className="text-lg font-bold text-gray-900">
+                                                                ${product.base_price}
+                                                            </span>
+                                                            <span className="text-xs uppercase font-medium text-gray-400">
+                                                                /{product.pricing_model === 'subscription' ? 'Mes' : 'Único'}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                )
+                                            })}
+                                        </div>
+                                    )}
+                                </ScrollArea>
+                            </div>
+
                         </div>
                     </div>
 
-                    {/* RIGHT COLUMN: Product Selection */}
-                    <div className="w-1/2 h-full bg-white/5 p-0 flex flex-col relative">
-                        <div className="p-8 pb-4 border-b border-white/5 bg-white/5 backdrop-blur-lg z-10">
-                            <h3 className="text-xl font-semibold text-white flex items-center gap-2">
-                                <Package className="h-5 w-5 text-indigo-400" />
-                                Seleccionar App Base
-                            </h3>
-                            <p className="text-sm text-gray-400 mt-1">
-                                Elige el paquete de software que usará esta organización.
-                            </p>
-                        </div>
-
-                        <ScrollArea className="flex-1 p-8">
-                            {loadingProducts ? (
-                                <div className="flex items-center justify-center h-40">
-                                    <Loader2 className="h-8 w-8 text-indigo-500 animate-spin" />
-                                </div>
+                    {/* Footer */}
+                    <div className="sticky bottom-0 bg-white/80 backdrop-blur-md p-6 border-t border-gray-100 flex items-center justify-between z-20">
+                        <Button variant="ghost" onClick={() => onOpenChange(false)} className="text-gray-500 hover:text-red-500">
+                            Cancelar
+                        </Button>
+                        <Button
+                            onClick={handleCreate}
+                            disabled={isLoading}
+                            className="bg-indigo-600 text-white hover:bg-indigo-700 shadow-xl shadow-indigo-200 px-6 rounded-xl h-11"
+                        >
+                            {isLoading ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Inicializando...
+                                </>
                             ) : (
-                                <div className="grid grid-cols-1 gap-4">
-                                    {products.map((product) => {
-                                        const isSelected = selectedProductId === product.id
-                                        return (
-                                            <div
-                                                key={product.id}
-                                                className={`
-                                                    group relative p-5 rounded-xl border transition-all duration-300 cursor-pointer text-left
-                                                    ${isSelected
-                                                        ? 'bg-indigo-600 shadow-xl shadow-indigo-900/50 border-indigo-400 transform scale-[1.02]'
-                                                        : 'bg-black/40 border-white/10 hover:bg-white/5 hover:border-white/20'}
-                                                `}
-                                                onClick={() => setSelectedProductId(product.id)}
-                                            >
-                                                <div className="flex justify-between items-start mb-2">
-                                                    <h3 className={`text-lg font-bold ${isSelected ? 'text-white' : 'text-gray-200'}`}>
-                                                        {product.name}
-                                                    </h3>
-                                                    {isSelected && <Check className="h-5 w-5 text-white" />}
-                                                </div>
-
-                                                <p className={`text-sm mb-4 line-clamp-2 ${isSelected ? 'text-indigo-100' : 'text-gray-400'}`}>
-                                                    {product.description || "Sin descripción"}
-                                                </p>
-
-                                                <div className="flex items-center gap-2">
-                                                    <span className={`text-xl font-bold ${isSelected ? 'text-white' : 'text-gray-200'}`}>
-                                                        ${product.base_price}
-                                                    </span>
-                                                    <span className={`text-xs uppercase font-medium ${isSelected ? 'text-indigo-200' : 'text-gray-500'}`}>
-                                                        /{product.pricing_model === 'subscription' ? 'Mes' : 'Único'}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        )
-                                    })}
-                                </div>
+                                <>
+                                    <Rocket className="mr-2 h-4 w-4" />
+                                    Crear Organización
+                                </>
                             )}
-                        </ScrollArea>
+                        </Button>
                     </div>
+
                 </div>
             </SheetContent>
         </Sheet>

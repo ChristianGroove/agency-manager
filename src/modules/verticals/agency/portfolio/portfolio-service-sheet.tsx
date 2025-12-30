@@ -110,13 +110,13 @@ export function PortfolioServiceSheet({
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
             <SheetContent
-                className="min-w-[90vw] sm:max-w-[90vw] p-0 gap-0 border-none shadow-2xl m-4 rounded-3xl overflow-hidden bg-white"
+                className="w-full sm:max-w-5xl p-0 gap-0 border-none shadow-2xl m-4 rounded-3xl overflow-hidden bg-white"
                 side="right"
             >
                 {/* Grid Container */}
                 <div className="grid grid-cols-12 h-[calc(100vh-2rem)]">
-                    {/* LEFT PANEL: Configuration (40%) */}
-                    <div className="col-span-12 md:col-span-5 flex flex-col h-full bg-white border-r border-slate-100 overflow-y-auto">
+                    {/* LEFT PANEL: Configuration (60%) */}
+                    <div className="col-span-12 md:col-span-7 flex flex-col h-full bg-white border-r border-slate-100 overflow-y-auto">
                         {/* Header */}
                         <div className="sticky top-0 z-20 bg-white border-b border-gray-100 px-8 py-5">
                             <div className="flex items-center gap-3">
@@ -275,8 +275,8 @@ export function PortfolioServiceSheet({
                         </div>
                     </div>
 
-                    {/* RIGHT PANEL: Live Preview (60%) */}
-                    <div className="hidden md:flex col-span-7 flex-col h-full bg-slate-50/50 p-10 overflow-y-auto items-center justify-center">
+                    {/* RIGHT PANEL: Live Preview (40%) */}
+                    <div className="hidden md:flex col-span-5 flex-col h-full bg-slate-50/50 p-10 overflow-y-auto items-center justify-center">
                         <div className="w-full max-w-md space-y-6">
                             <div className="text-center space-y-2">
                                 <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">
