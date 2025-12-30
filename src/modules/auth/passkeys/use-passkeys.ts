@@ -85,7 +85,7 @@ export function usePasskeys() {
      * Attempts to log in using a Passkey.
      * Requires user's email to fetch their passkeys.
      */
-    const loginWithPasskey = async (email: string) => {
+    const loginWithPasskey = async (email?: string) => {
         setLoading(true)
         try {
             if (!email) {
