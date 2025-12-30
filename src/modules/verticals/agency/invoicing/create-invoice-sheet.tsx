@@ -300,7 +300,7 @@ export function CreateInvoiceSheet({
                     service_id: serviceId,
                     cycle_id: cycleId
                 })
-                if (!response.success) throw new Error(response.error)
+                if (!response.success) throw new Error(response.error || "Error desconocido al crear la factura")
                 result = response.data
                 toast.success("Documento creado exitosamente")
             }
