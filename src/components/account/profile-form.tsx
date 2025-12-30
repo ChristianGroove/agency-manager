@@ -47,27 +47,23 @@ export function ProfileForm({ user, profile, align = "center" }: ProfileFormProp
 
     return (
         <div className="grid gap-6">
-            {/* Avatar Section */}
+            {/* Personal Info Section with Integrated Avatar */}
             <Card>
-                <CardHeader>
-                    <CardTitle>Foto de Perfil</CardTitle>
-                    <CardDescription>Esta imagen será visible para tu equipo y en la barra lateral.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <AvatarUpload
-                        userId={user.id}
-                        currentUrl={profile?.avatar_url || user.user_metadata?.avatar_url}
-                        fullName={profile?.full_name || user.user_metadata?.full_name}
-                        align={align}
-                    />
-                </CardContent>
-            </Card>
-
-            {/* Personal Info Section */}
-            <Card>
-                <CardHeader>
-                    <CardTitle>Información Personal</CardTitle>
-                    <CardDescription>Actualiza tus datos de contacto e identidad.</CardDescription>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <div className="space-y-1">
+                        <CardTitle>Información Personal</CardTitle>
+                        <CardDescription>Actualiza tus datos de contacto e identidad.</CardDescription>
+                    </div>
+                    <div>
+                        <AvatarUpload
+                            userId={user.id}
+                            currentUrl={profile?.avatar_url || user.user_metadata?.avatar_url}
+                            fullName={profile?.full_name || user.user_metadata?.full_name}
+                            align={align}
+                            layout="horizontal"
+                            showLabel={false}
+                        />
+                    </div>
                 </CardHeader>
                 <CardContent>
                     <form action={onSubmit} className="space-y-4">

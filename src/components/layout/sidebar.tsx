@@ -99,6 +99,19 @@ export function SidebarContent({ isCollapsed = false, currentOrgId, isSuperAdmin
 
                 </nav>
             )}
+            {/* Logout Footer */}
+            <div className="mt-auto px-2 pt-4 border-t border-white/5">
+                <button
+                    onClick={() => logout()}
+                    className={cn(
+                        "w-full flex items-center gap-x-3 text-sm font-medium rounded-xl py-3 text-zinc-400 hover:text-white hover:bg-white/5 transition-all duration-200 group",
+                        isCollapsed ? "justify-center px-0" : "px-4"
+                    )}
+                >
+                    <LogOut className="h-5 w-5 shrink-0" />
+                    {!isCollapsed && <span>Cerrar Sesión</span>}
+                </button>
+            </div>
         </div>
     )
 }

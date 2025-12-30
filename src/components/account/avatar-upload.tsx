@@ -13,9 +13,11 @@ interface AvatarUploadProps {
     fullName?: string | null
     userId: string
     align?: "center" | "left"
+    layout?: "vertical" | "horizontal"
+    showLabel?: boolean
 }
 
-export function AvatarUpload({ currentUrl, fullName, userId, align = "center" }: AvatarUploadProps) {
+export function AvatarUpload({ currentUrl, fullName, userId, align = "center", layout = "vertical", showLabel = true }: AvatarUploadProps) {
     const [preview, setPreview] = useState<string | null>(currentUrl || null)
     const [isUploading, setIsUploading] = useState(false)
     const fileInputRef = useRef<HTMLInputElement>(null)
@@ -55,6 +57,48 @@ export function AvatarUpload({ currentUrl, fullName, userId, align = "center" }:
         .join("")
         .slice(0, 2)
         .toUpperCase() || "ME"
+
+    if (layout === "horizontal") {
+        return (
+            <div className="flex items-center gap-5">
+                <div className="relative group cursor-pointer shrink-0" onClick={() => fileInputRef.current?.click()}>
+                    <Avatar className="h-16 w-16 border-2 border-gray-100 shadow-sm transition-opacity group-hover:opacity-90">
+                        <AvatarImage src={preview || ""} className="object-cover" />
+                        <AvatarFallback className="text-lg bg-indigo-50 text-indigo-600 font-bold">
+                            {initials}
+                        </AvatarFallback>
+                    </Avatar>
+
+                    {/* Hover Overlay */}
+                    <div className="absolute inset-0 rounded-full flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Camera className="w-5 h-5 text-white" />
+                    </div>
+
+                    {/* Loading Overlay */}
+                    {isUploading && (
+                        <div className="absolute inset-0 rounded-full flex items-center justify-center bg-black/50">
+                            <Loader2 className="w-5 h-5 text-white animate-spin" />
+                        </div>
+                    )}
+                </div>
+
+                <div className="flex flex-col items-start gap-1">
+                    <input
+                        type="file"
+                        ref={fileInputRef}
+                        className="hidden"
+                        accept="image/*"
+                        onChange={handleFileChange}
+                    />
+                    {showLabel && (
+                        <p className="text-[10px] text-muted-foreground">
+                            Clic para cambiar<br />Máx. 5MB
+                        </p>
+                    )}
+                </div>
+            </div>
+        )
+    }
 
     return (
         <div className={`flex flex-col gap-4 ${align === "center" ? "items-center text-center" : "items-start text-left"}`}>

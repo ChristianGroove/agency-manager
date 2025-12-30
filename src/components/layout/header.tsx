@@ -84,36 +84,16 @@ export function Header({ currentOrgId }: { currentOrgId: string | null }) {
 
                 <NotificationBell key={currentOrgId} />
 
-                {/* User Nav */}
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild suppressHydrationWarning>
-                        <Avatar className="h-9 w-9 cursor-pointer hover:scale-105 transition-transform border border-white shadow-sm" suppressHydrationWarning>
-                            <AvatarImage src={user?.user_metadata?.avatar_url} />
-                            <AvatarFallback className="bg-gradient-to-tr from-indigo-500 to-purple-500 text-white font-bold">
-                                {initials}
-                            </AvatarFallback>
-                        </Avatar>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent className="w-56" align="end" forceMount>
-                        <DropdownMenuLabel className="font-normal">
-                            <div className="flex flex-col space-y-1">
-                                <p className="text-sm font-medium leading-none">{user?.user_metadata?.full_name || "Usuario"}</p>
-                                <p className="text-xs leading-none text-muted-foreground">
-                                    {user?.email}
-                                </p>
-                            </div>
-                        </DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => setIsProfileOpen(true)}>
-                            <User className="mr-2 h-4 w-4" />
-                            <span>Mi Perfil</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={handleLogout} className="text-red-600 focus:text-red-600">
-                            <LogOut className="mr-2 h-4 w-4" />
-                            <span>Cerrar Sesión</span>
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
+                {/* User Nav - Direct Profile Access */}
+                <div onClick={() => setIsProfileOpen(true)} className="cursor-pointer group">
+                    {/* Tooltip or simple hover effect could be added here if needed */}
+                    <Avatar className="h-9 w-9 border border-white shadow-sm group-hover:scale-105 transition-transform group-active:scale-95" suppressHydrationWarning>
+                        <AvatarImage src={user?.user_metadata?.avatar_url} />
+                        <AvatarFallback className="bg-gradient-to-tr from-indigo-500 to-purple-500 text-white font-bold">
+                            {initials}
+                        </AvatarFallback>
+                    </Avatar>
+                </div>
 
                 {/* Profile Sheet */}
                 <ProfileSheet open={isProfileOpen} onOpenChange={setIsProfileOpen} user={user} />
