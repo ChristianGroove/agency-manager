@@ -76,7 +76,7 @@ export function BiometricButton({ className, variant = "cyber", mode = "login", 
 
     return (
         <Button
-            variant={variant === "cyber" ? "default" : variant}
+            variant={variant as any}
             className={className}
             onClick={handleClick}
             disabled={loading}
