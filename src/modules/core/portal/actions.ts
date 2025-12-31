@@ -127,6 +127,21 @@ export async function getPortalData(token: string) {
                 return true
             })
 
+            // Fetch Active Payment Methods
+            const { data: rawPaymentMethods } = await supabaseAdmin
+                .from('organization_payment_methods')
+                .select('*')
+                .eq('organization_id', client.organization_id)
+                .eq('is_active', true)
+                .order('display_order', { ascending: true })
+
+            // Map defaults if none found (Migration fallback during rollout)
+            // If table is empty but old columns exist (handled by migration script already on DB side, 
+            // but let's ensure we return SOMETHING if the migration user didn't run it yet? 
+            // No, user said "listo", so table exists.
+
+            const activePaymentMethods = rawPaymentMethods || []
+
             return {
                 type: 'client', // Metadata
                 client: client as Client,
@@ -140,7 +155,8 @@ export async function getPortalData(token: string) {
                     slug: string
                     portal_tab_label: string
                     portal_icon_key: string
-                }>
+                }>,
+                paymentMethods: activePaymentMethods
             }
         }
 

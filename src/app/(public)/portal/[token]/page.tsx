@@ -9,7 +9,10 @@ import { Button } from "@/components/ui/button"
 import { PortalLayout } from "@/modules/core/portal/portal-layout"
 import { WorkerPortalLayout } from "@/modules/core/portal/worker-portal-layout"
 import { QuoteDetailModal } from "@/modules/core/portal/quote-detail-modal"
+import { PaymentOptionsModal } from "@/modules/core/portal/payment-options-modal"
 import { InvoiceDetailModal } from "@/modules/core/portal/invoice-detail-modal"
+
+// ... existing imports
 
 export default function PortalPage() {
     const params = useParams()
@@ -25,6 +28,11 @@ export default function PortalPage() {
     const [briefings, setBriefings] = useState<Briefing[]>([])
     const [events, setEvents] = useState<ClientEvent[]>([])
     const [activeModules, setActiveModules] = useState<any[]>([])
+
+    // Payment Methods State (NEW)
+    const [paymentMethods, setPaymentMethods] = useState<any[]>([])
+    const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false)
+    const [paymentInvoiceIds, setPaymentInvoiceIds] = useState<string[]>([])
 
     // Staff Data
     const [staff, setStaff] = useState<any>(null)
@@ -71,6 +79,7 @@ export default function PortalPage() {
                 setSettings(data.settings || {})
                 setServices(data.services || [])
                 setActiveModules(data.activePortalModules || [])
+                setPaymentMethods(data.paymentMethods || [])
             }
         } catch (err) {
             console.error(err)
@@ -116,7 +125,15 @@ export default function PortalPage() {
         }
     }
 
-    const handlePay = async (invoiceIds: string[]) => {
+    // New Handler: Open Payment Modal
+    const handlePayClick = (invoiceIds: string[]) => {
+        setPaymentInvoiceIds(invoiceIds)
+        setIsPaymentModalOpen(true)
+    }
+
+    // Old Logic moved to separate function, triggered by Modal
+    const handleWompiPay = async () => {
+        const invoiceIds = paymentInvoiceIds
         if (invoiceIds.length === 0) return
 
         // Check min payment amount
@@ -213,6 +230,11 @@ export default function PortalPage() {
         )
     }
 
+    // Determine Payment Amount
+    const paymentAmount = invoices
+        .filter(i => paymentInvoiceIds.includes(i.id))
+        .reduce((acc, curr) => acc + curr.total, 0)
+
     return (
         <div className="min-h-screen" style={brandingStyles}>
             <PortalLayout
@@ -225,9 +247,20 @@ export default function PortalPage() {
                 services={services}
                 settings={settings}
                 activeModules={activeModules}
-                onPay={handlePay}
+                onPay={handlePayClick}
                 onViewInvoice={setViewInvoice}
                 onViewQuote={setViewQuote}
+            />
+
+            {/* Payment Options Modal */}
+            <PaymentOptionsModal
+                isOpen={isPaymentModalOpen}
+                onClose={() => setIsPaymentModalOpen(false)}
+                amount={paymentAmount}
+                paymentMethods={paymentMethods}
+                onWompiPay={handleWompiPay}
+                settings={settings}
+                invoiceIds={paymentInvoiceIds}
             />
 
             {/* Success Message Modal */}
@@ -250,7 +283,7 @@ export default function PortalPage() {
             <InvoiceDetailModal
                 invoice={viewInvoice}
                 open={!!viewInvoice}
-                onOpenChange={(open) => !open && setViewInvoice(null)}
+                onOpenChange={(open: boolean) => !open && setViewInvoice(null)}
                 token={params.token as string}
             />
 
@@ -258,7 +291,7 @@ export default function PortalPage() {
             <QuoteDetailModal
                 quote={viewQuote}
                 open={!!viewQuote}
-                onOpenChange={(open) => !open && setViewQuote(null)}
+                onOpenChange={(open: boolean) => !open && setViewQuote(null)}
                 onAccept={handleAcceptQuote}
                 onReject={handleRejectQuote}
                 settings={settings}

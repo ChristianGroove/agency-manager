@@ -1,5 +1,7 @@
 "use client"
 
+import { PaymentMethodsManager } from "./payment-methods-manager"
+
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -708,44 +710,7 @@ export function SettingsForm({ initialSettings, activeModules }: SettingsFormPro
 
                 {/* PAYMENTS TAB */}
                 <TabsContent value="payments" className="space-y-4 mt-4">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Cuentas y Links de Pago</CardTitle>
-                            <CardDescription>
-                                Configura los números de cuenta y enlaces que aparecerán en el pie de página de tus facturas.
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="bancolombia_account">Cuenta Bancolombia</Label>
-                                    <Input id="bancolombia_account" name="bancolombia_account" value={formData.bancolombia_account || ''} onChange={handleChange} placeholder="Ahorros 000-000000-00" />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="nequi_number">Nequi</Label>
-                                    <Input id="nequi_number" name="nequi_number" value={formData.nequi_number || ''} onChange={handleChange} placeholder="300 000 0000" />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="daviplata_number">Daviplata</Label>
-                                    <Input id="daviplata_number" name="daviplata_number" value={formData.daviplata_number || ''} onChange={handleChange} placeholder="300 000 0000" />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="bre_b_number">Cuenta Bre-B</Label>
-                                    <Input id="bre_b_number" name="bre_b_number" value={formData.bre_b_number || ''} onChange={handleChange} placeholder="0000000000" />
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-1 gap-4 pt-4 border-t">
-                                <div className="space-y-2">
-                                    <Label htmlFor="wompi_link">Link de Pago Wompi</Label>
-                                    <Input id="wompi_link" name="wompi_link" value={formData.wompi_link || ''} onChange={handleChange} placeholder="https://checkout.wompi.co/l/..." />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="paypal_link">Link de Pago PayPal</Label>
-                                    <Input id="paypal_link" name="paypal_link" value={formData.paypal_link || ''} onChange={handleChange} placeholder="https://paypal.me/..." />
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
+                    <PaymentMethodsManager />
 
                     <Card>
                         <CardHeader>
