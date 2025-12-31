@@ -322,31 +322,15 @@ export default function ClientDetailPage() {
 
     const handleMarkAsPaid = async (invoiceId: string) => {
         try {
-            const { error } = await supabase
-                .from('invoices')
-                .update({ status: 'paid' })
-                .eq('id', invoiceId)
+            const { registerManualPayment } = await import("@/modules/core/billing/payments-actions")
+            const result = await registerManualPayment(invoiceId)
 
-            if (error) throw error
+            if (!result.success) throw new Error(result.error)
 
             // Refresh data
             fetchClientData(params.id as string)
 
-            if (client) {
-                // Log Event
-                await logDomainEvent({
-                    entity_type: 'invoice',
-                    entity_id: invoiceId,
-                    event_type: 'invoice.paid',
-                    payload: {
-                        clientId: client.id, // Critical for filtering
-                        invoice_id: invoiceId,
-                        amount: client.invoices?.find(inv => inv.id === invoiceId)?.total,
-                        manual_action: true
-                    },
-                    triggered_by: 'user'
-                })
-            }
+            // Domain event is now handled by the server action
         } catch (error) {
             console.error("Error marking invoice as paid:", error)
             alert("Error al actualizar la factura.")

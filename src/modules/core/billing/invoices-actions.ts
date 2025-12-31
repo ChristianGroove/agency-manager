@@ -232,7 +232,7 @@ export async function registerPayment(id: string, amount: number, notes?: string
     // 1. Get current invoice
     const { data: invoice } = await supabase
         .from('invoices')
-        .select('total, payment_status')
+        .select('*') // Need full object for event logging
         .eq('id', id)
         .single()
 
@@ -243,17 +243,87 @@ export async function registerPayment(id: string, amount: number, notes?: string
     // If amount < total -> PARTIALLY_PAID
     const newStatus = amount >= invoice.total ? 'PAID' : 'PARTIALLY_PAID'
 
-    // 3. Update invoice
+    // 3. Create Payment Transaction
+    // Reference format: PAY-{Timestamp}-{Random}
+    const timestamp = Date.now()
+    const random = Math.floor(Math.random() * 1000)
+    const reference = `PAY-${timestamp}-${random}`
+
+    // Use supabaseAdmin to bypass RLS for this system record creation
+    // The user has permission to pay because they are authed in the org (checked above)
+    const { supabaseAdmin } = await import("@/lib/supabase-admin")
+
+    // Prepare payload - handle potential missing metadata column safely?
+    // Ideally we should assume schema is correct, but let's be safe for now or at least catch it specifically
+    const payload: any = {
+        reference,
+        amount_in_cents: Math.round(amount * 100),
+        currency: invoice.currency || 'COP',
+        status: 'APPROVED',
+        invoice_ids: [id],
+        organization_id: orgId,
+        created_at: new Date().toISOString()
+    }
+
+    // Try to add metadata if it exists in schema (we can't easily check schema here without query)
+    // But since we asked user to migrate, let's include it. If it fails, we catch it.
+    payload.metadata = { notes }
+
+    const { error: txError } = await supabaseAdmin
+        .from('payment_transactions')
+        .insert(payload)
+
+    if (txError) {
+        console.error("Error creating payment transaction:", txError)
+        // Check if error is related to missing column
+        if (txError.message.includes('column "metadata" of relation "payment_transactions" does not exist')) {
+            // Fallback: Try insertion WITHOUT metadata
+            delete payload.metadata
+            const { error: retryError } = await supabaseAdmin
+                .from('payment_transactions')
+                .insert(payload)
+
+            if (retryError) {
+                console.error("Retry failed:", retryError)
+                throw new Error("Failed to record payment transaction: " + retryError.message)
+            }
+        } else {
+            throw new Error("Failed to record payment transaction: " + txError.message)
+        }
+    }
+
+    // 4. Update invoice
     const { error } = await supabase
         .from('invoices')
         .update({
             payment_status: newStatus,
             // In a real system, we would track balance_due
+            status: newStatus === 'PAID' ? 'paid' : invoice.status // Sync legacy status column if fully paid
         })
         .eq('id', id)
         .eq('organization_id', orgId)
 
     if (error) throw error
+
+    // 5. Log Domain Event
+    try {
+        const { logDomainEvent } = await import("@/lib/event-logger")
+        await logDomainEvent({
+            entity_type: 'invoice',
+            entity_id: id,
+            event_type: 'invoice.payment_registered',
+            payload: {
+                invoice_id: id,
+                amount_paid: amount,
+                new_status: newStatus,
+                reference,
+                notes
+            },
+            triggered_by: 'user'
+        })
+    } catch (e) {
+        console.warn("Failed to log domain event", e)
+    }
 
     revalidatePath('/invoices')
     return { success: true }

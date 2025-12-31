@@ -58,12 +58,11 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
 
     const handleMarkAsPaid = async (invoiceId: string) => {
         try {
-            const { error } = await supabase
-                .from('invoices')
-                .update({ status: 'paid' })
-                .eq('id', invoiceId)
+            // Import dynamically to avoid server component issues in client
+            const { registerManualPayment } = await import("@/modules/core/billing/payments-actions")
+            const result = await registerManualPayment(invoiceId)
 
-            if (error) throw error
+            if (!result.success) throw new Error(result.error)
 
             // Update local state
             if (selectedClientForInvoices && selectedClientForInvoices.invoices) {
@@ -78,7 +77,7 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
             fetchClients()
         } catch (error) {
             console.error("Error marking invoice as paid:", error)
-            alert("Error al actualizar la factura.")
+            alert("Error al actualizar la factura: " + (error as any).message)
         }
     }
 

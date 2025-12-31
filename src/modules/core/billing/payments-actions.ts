@@ -9,24 +9,12 @@ export async function getPaymentTransactions() {
 
     if (!orgId) return []
 
-    // 1. Get all invoices belonging to this organization
-    const { data: invoices, error: invError } = await supabase
-        .from('invoices')
-        .select('id')
-        .eq('organization_id', orgId)
-
-    if (invError || !invoices || invoices.length === 0) {
-        return [] // No invoices = No payments possible logic
-    }
-
-    const invoiceIds = invoices.map(inv => inv.id)
-
-    // 2. Fetch transactions that contain any of these invoice IDs
-    // Assuming invoice_ids is an array column
+    // 1. Fetch transactions for this organization directly
+    // This is more reliable than overlapping invoice IDs, as we now enforce organization_id on transactions
     const { data, error } = await supabase
         .from('payment_transactions')
         .select('*')
-        .overlaps('invoice_ids', invoiceIds)
+        .eq('organization_id', orgId)
         .order('created_at', { ascending: false })
 
     if (error) {
@@ -35,4 +23,35 @@ export async function getPaymentTransactions() {
     }
 
     return data
+}
+
+export async function registerManualPayment(invoiceId: string) {
+    const supabase = await createClient()
+
+    // 1. Get Invoice Details for Total
+    const { data: invoice, error: invError } = await supabase
+        .from('invoices')
+        .select('total, status')
+        .eq('id', invoiceId)
+        .single()
+
+    if (invError || !invoice) {
+        return { success: false, error: "Invoice not found" }
+    }
+
+    if (invoice.status === 'paid') {
+        return { success: true, message: "Already paid" }
+    }
+
+    // 2. Use the shared registerPayment action
+    // We import dynamically to avoid circular dependencies if any, though likely safe valid module import
+    const { registerPayment } = await import("@/modules/core/billing/invoices-actions")
+
+    try {
+        await registerPayment(invoiceId, invoice.total, "Pago manual registrado desde detalles del cliente")
+        return { success: true }
+    } catch (error: any) {
+        console.error("Error registering manual payment:", error)
+        return { success: false, error: error.message }
+    }
 }
