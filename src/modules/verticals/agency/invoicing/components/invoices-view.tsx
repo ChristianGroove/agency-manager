@@ -288,12 +288,20 @@ export function InvoicesView({ initialInvoices }: InvoicesViewProps) {
                                     </TableCell>
                                     <TableCell className="font-medium text-gray-900">{invoice.number}</TableCell>
                                     <TableCell className="font-medium text-gray-700">{invoice.client?.name}</TableCell>
-                                    <TableCell className="text-gray-500">{new Date(invoice.date).toLocaleDateString()}</TableCell>
                                     <TableCell className="text-gray-500">
-                                        {invoice.due_date ? new Date(invoice.due_date).toLocaleDateString() : '-'}
+                                        <span suppressHydrationWarning>
+                                            {new Date(invoice.date).toLocaleDateString()}
+                                        </span>
+                                    </TableCell>
+                                    <TableCell className="text-gray-500">
+                                        <span suppressHydrationWarning>
+                                            {invoice.due_date ? new Date(invoice.due_date).toLocaleDateString() : '-'}
+                                        </span>
                                     </TableCell>
                                     <TableCell className="font-medium text-gray-900">
-                                        ${invoice.total.toLocaleString()}
+                                        <span suppressHydrationWarning>
+                                            ${invoice.total.toLocaleString()}
+                                        </span>
                                     </TableCell>
                                     <TableCell>
                                         <StatusBadge status={invoice.status} type="invoice" entity={invoice} />

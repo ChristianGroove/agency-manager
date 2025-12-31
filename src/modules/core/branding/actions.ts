@@ -112,11 +112,11 @@ export async function updatePlatformSettings(data: Partial<BrandingConfig>) {
 
     const { error } = await supabaseAdmin
         .from("platform_settings")
-        .update({
+        .upsert({
+            id: 1,
             ...updatePayload,
             updated_at: new Date().toISOString()
         })
-        .eq("id", 1)
 
     if (error) {
         throw new Error(error.message)
