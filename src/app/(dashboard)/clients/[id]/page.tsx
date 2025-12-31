@@ -67,6 +67,7 @@ import { ShareInvoiceModal } from "@/modules/verticals/agency/invoicing/share-in
 import { CreateServiceSheet } from "@/modules/verticals/agency/services/create-service-sheet"
 import { regeneratePortalToken } from "@/modules/core/portal/actions"
 import { MetaConfigurationModal } from "@/modules/core/admin/meta-configuration-modal"
+import { ClientPortalSettings } from "@/modules/core/clients/components/client-portal-settings" // New Import
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -488,6 +489,9 @@ export default function ClientDetailPage() {
 
                             {/* Meta Config */}
                             <MetaConfigurationModal client={client} services={client.services || []} />
+
+                            {/* Portal Config (NEW) */}
+                            <ClientPortalSettings client={client} onUpdate={() => fetchClientData(client.id)} />
 
                             {/* Edit - Icon Only */}
                             <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>

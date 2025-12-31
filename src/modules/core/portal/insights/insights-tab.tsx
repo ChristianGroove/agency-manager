@@ -25,73 +25,82 @@ import { NormalizedAdsMetrics, NormalizedSocialMetrics } from "@/lib/integration
 interface InsightsTabProps {
     client: any
     services: any[]
-    token?: string // Optional auth token for fetching insights
+    activeModules?: any[] // Optional now
+    token?: string
+    insightsAccess?: { show: boolean, mode: { organic: boolean, ads: boolean } } // NEW
 }
 
-export function InsightsTab({ client, services, token }: InsightsTabProps) {
+export function InsightsTab({ client, services, token, insightsAccess }: InsightsTabProps) {
     const [loading, setLoading] = useState(true)
     const [adsData, setAdsData] = useState<NormalizedAdsMetrics | null>(null)
     const [socialData, setSocialData] = useState<NormalizedSocialMetrics | null>(null)
-    const [activeTab, setActiveTab] = useState("ads")
-    const [datePreset, setDatePreset] = useState("last_30d") // Default to cached view
+    const [datePreset, setDatePreset] = useState("last_30d")
+
+    // Determine initially active tab based on access
+    // If only Organic is allowed, start there. Default 'ads' if available or both.
+    const initialTab = (insightsAccess?.mode?.ads) ? "ads" : "social"
+    const [activeTab, setActiveTab] = useState(initialTab)
 
     // Feature Flag Check
     if (!isFeatureEnabled('meta_insights')) return null
 
-    // Service Check
-    // Service Check (Original logic retained but we will also check for data presence)
-    // For testing/preview purposes, if we have a token, we might want to show tabs too, 
-    // but sticking to service existence is safer. We'll make the regex very broad.
-    const hasAdsServiceConfigured = true // services.some(...) - forcing true for now to debug UI visibility
-    const hasSocialServiceConfigured = true // services.some(...) - forcing true for now to debug UI visibility
+    // Permission Check (Double safety, though Layout handles this too)
+    const showAds = insightsAccess?.mode?.ads ?? false
+    const showSocial = insightsAccess?.mode?.organic ?? false
 
-    // Derived state: Active if we have service OR we have data (meaning it was fetched successfully)
-    const hasAds = hasAdsServiceConfigured || !!adsData
-    const hasSocial = hasSocialServiceConfigured || !!socialData
-
+    // Sync active tab with permissions (Fix race condition where default favored 'social')
     useEffect(() => {
-        const loadInsights = async () => {
-            // Determine token to use (prop or URL)
-            let effectiveToken = token
-            if (!effectiveToken && typeof window !== 'undefined') {
-                const pathParts = window.location.pathname.split('/')
-                const tokenIndex = pathParts.indexOf('portal') + 1
-                if (pathParts[tokenIndex]) effectiveToken = pathParts[tokenIndex]
-            }
+        if (showAds && !showSocial && activeTab !== "ads") {
+            setActiveTab("ads")
+        } else if (!showAds && showSocial && activeTab !== "social") {
+            setActiveTab("social")
+        }
+    }, [showAds, showSocial])
 
-            try {
-                if (!effectiveToken) {
-                    console.log("No token found, skipping fetch")
-                    return
-                }
 
-                setLoading(true) // Set loading true on re-fetch (date change)
-                const res = await fetch(`/api/portal/insights?token=${effectiveToken}&date_preset=${datePreset}&_t=${Date.now()}`)
-                if (!res.ok) throw new Error("Failed to load")
-
-                const data = await res.json()
-
-                if (data.ads) setAdsData(data.ads)
-                if (data.social) setSocialData(data.social)
-
-            } catch (error) {
-                console.error("Error loading insights:", error)
-            } finally {
-                setLoading(false)
-            }
+    const loadInsights = async () => {
+        // Determine token to use (prop or URL)
+        let effectiveToken = token
+        if (!effectiveToken && typeof window !== 'undefined') {
+            const pathParts = window.location.pathname.split('/')
+            const tokenIndex = pathParts.indexOf('portal') + 1
+            if (pathParts[tokenIndex]) effectiveToken = pathParts[tokenIndex]
         }
 
-        if (hasAds || hasSocial) {
+        try {
+            if (!effectiveToken) {
+                console.log("No token found, skipping fetch")
+                return
+            }
+
+            setLoading(true)
+            const res = await fetch(`/api/portal/insights?token=${effectiveToken}&date_preset=${datePreset}&_t=${Date.now()}`)
+            if (!res.ok) throw new Error("Failed to load")
+
+            const data = await res.json()
+
+            if (data.ads) setAdsData(data.ads)
+            if (data.social) setSocialData(data.social)
+
+        } catch (error) {
+            console.error("Error loading insights:", error)
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    useEffect(() => {
+        if (showAds || showSocial) {
             loadInsights()
         } else {
             setLoading(false)
         }
-    }, [hasAds, hasSocial, token, datePreset])
+    }, [showAds, showSocial, token, datePreset])
 
 
-    if (!hasAds && !hasSocial && !loading) return null
+    if (!showAds && !showSocial) return null // Should not happen if Layout filters correctly
 
-    if (loading && !adsData && !socialData) { // Only full page load if no data exists yet
+    if (loading && !adsData && !socialData) {
         return (
             <div className="flex h-64 items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
@@ -108,20 +117,24 @@ export function InsightsTab({ client, services, token }: InsightsTabProps) {
                 <p className="text-gray-500">Métricas clave de rendimiento de tus campañas y redes sociales.</p>
             </div>
 
-            <Tabs defaultValue={hasAds ? "ads" : "social"} className="w-full">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="grid w-full md:w-[400px] grid-cols-2">
-                    <TabsTrigger value="ads" disabled={!hasAds} className="flex gap-2">
-                        <BarChart3 className="w-4 h-4" />
-                        Meta Ads
-                    </TabsTrigger>
-                    <TabsTrigger value="social" disabled={!hasSocial} className="flex gap-2">
-                        <LayoutGrid className="w-4 h-4" />
-                        Orgánico
-                    </TabsTrigger>
+                    {showAds && (
+                        <TabsTrigger value="ads" className="flex gap-2">
+                            <BarChart3 className="w-4 h-4" />
+                            Meta Ads
+                        </TabsTrigger>
+                    )}
+                    {showSocial && (
+                        <TabsTrigger value="social" className="flex gap-2">
+                            <LayoutGrid className="w-4 h-4" />
+                            Orgánico
+                        </TabsTrigger>
+                    )}
                 </TabsList>
 
                 <TabsContent value="ads" className="mt-6">
-                    {hasAds && adsData ? (
+                    {showAds && adsData ? (
                         <AdsDashboard
                             data={adsData}
                             datePreset={datePreset}
@@ -134,7 +147,7 @@ export function InsightsTab({ client, services, token }: InsightsTabProps) {
                 </TabsContent>
 
                 <TabsContent value="social" className="mt-6">
-                    {hasSocial && socialData ? (
+                    {showSocial && socialData ? (
                         <SocialDashboard data={socialData} />
                     ) : (
                         <EmptyState type="Social" />

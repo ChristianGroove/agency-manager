@@ -23,6 +23,35 @@ export function AdsDashboard({ data, datePreset, onDatePresetChange, loading }: 
         setExpandedCampaignId(expandedCampaignId === id ? null : id)
     }
 
+    // Safety Casts
+    const safeData = {
+        ...data,
+        spend: Number(data.spend || 0),
+        impressions: Number(data.impressions || 0),
+        clicks: Number(data.clicks || 0),
+        roas: Number(data.roas || 0),
+        cpc: Number(data.cpc || 0),
+        ctr: Number(data.ctr || 0),
+        campaigns: Array.isArray(data.campaigns) ? data.campaigns.map(c => ({
+            ...c,
+            spend: Number(c.spend || 0),
+            impressions: Number(c.impressions || 0),
+            clicks: Number(c.clicks || 0),
+            ctr: Number(c.ctr || 0),
+            conversions: Number(c.conversions || 0),
+            cost_per_conversion: Number(c.cost_per_conversion || 0),
+            daily_budget: c.daily_budget ? Number(c.daily_budget) : 0,
+            lifetime_budget: c.lifetime_budget ? Number(c.lifetime_budget) : 0,
+            ads: (c.ads || []).map(a => ({
+                ...a,
+                spend: Number(a.spend || 0),
+                impressions: Number(a.impressions || 0),
+                conversions: Number(a.conversions || 0),
+                cost_per_conversion: Number(a.cost_per_conversion || 0)
+            }))
+        })) : []
+    }
+
     return (
         <div className="space-y-6">
             {/* Header / Date Filter */}
@@ -62,28 +91,28 @@ export function AdsDashboard({ data, datePreset, onDatePresetChange, loading }: 
             <div className={cn("grid grid-cols-2 md:grid-cols-4 gap-4 transition-opacity duration-300", loading ? "opacity-50" : "opacity-100")}>
                 <KPICard
                     title="Inversión"
-                    value={formatCurrency(data.spend)}
+                    value={formatCurrency(safeData.spend)}
                     icon={DollarSign}
                     color="text-green-600"
                     bg="bg-green-100"
                 />
                 <KPICard
                     title="Impresiones"
-                    value={data.impressions.toLocaleString()}
+                    value={safeData.impressions.toLocaleString()}
                     icon={Eye}
                     color="text-blue-600"
                     bg="bg-blue-100"
                 />
                 <KPICard
                     title="Clics"
-                    value={data.clicks.toLocaleString()}
+                    value={safeData.clicks.toLocaleString()}
                     icon={MousePointer2}
                     color="text-purple-600"
                     bg="bg-purple-100"
                 />
                 <KPICard
                     title="ROAS"
-                    value={`${data.roas.toFixed(2)}x`}
+                    value={`${safeData.roas.toFixed(2)}x`}
                     icon={TrendingUp}
                     color="text-amber-600"
                     bg="bg-amber-100"
@@ -97,7 +126,7 @@ export function AdsDashboard({ data, datePreset, onDatePresetChange, loading }: 
                     <CardContent className="pt-6">
                         <div className="flex justify-between items-center">
                             <span className="text-sm text-gray-500">Costo por Resultado (CPA)</span>
-                            <span className="font-bold text-gray-900">{formatCurrency(data.cpc)}</span>
+                            <span className="font-bold text-gray-900">{formatCurrency(safeData.cpc)}</span>
                         </div>
                     </CardContent>
                 </Card>
@@ -105,7 +134,7 @@ export function AdsDashboard({ data, datePreset, onDatePresetChange, loading }: 
                     <CardContent className="pt-6">
                         <div className="flex justify-between items-center">
                             <span className="text-sm text-gray-500">Tasa de Clics (CTR)</span>
-                            <span className="font-bold text-gray-900">{data.ctr.toFixed(2)}%</span>
+                            <span className="font-bold text-gray-900">{safeData.ctr.toFixed(2)}%</span>
                         </div>
                     </CardContent>
                 </Card>
@@ -129,7 +158,7 @@ export function AdsDashboard({ data, datePreset, onDatePresetChange, loading }: 
                     </div>
 
                     <div className="divide-y divide-gray-100">
-                        {data.campaigns.map((campaign) => {
+                        {safeData.campaigns.map((campaign) => {
                             const isExpanded = expandedCampaignId === campaign.id
                             const hasAds = campaign.ads && campaign.ads.length > 0
                             const adCount = campaign.ads?.length || 0
@@ -262,7 +291,7 @@ export function AdsDashboard({ data, datePreset, onDatePresetChange, loading }: 
                                 </div>
                             )
                         })}
-                        {data.campaigns.length === 0 && (
+                        {safeData.campaigns.length === 0 && (
                             <div className="text-center py-8 text-gray-400">
                                 <AlertCircle className="w-8 h-8 mx-auto mb-2 opacity-50" />
                                 <p>No hay campañas activas en este período</p>
@@ -273,7 +302,7 @@ export function AdsDashboard({ data, datePreset, onDatePresetChange, loading }: 
             </Card>
 
             <p className="text-xs text-center text-gray-400 mt-4">
-                Actualizado: {new Date(data.last_updated).toLocaleString()}
+                Actualizado: {new Date(safeData.last_updated).toLocaleString()}
             </p>
         </div>
     )

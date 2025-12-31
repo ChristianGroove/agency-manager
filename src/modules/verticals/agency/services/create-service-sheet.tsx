@@ -82,6 +82,7 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
         type: 'recurring',
         frequency: 'monthly',
         status: 'active',
+        insights_access: 'NONE', // NEW
         service_start_date: new Date().toISOString()
     })
 
@@ -97,6 +98,7 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
             setFormData({
                 name: "", description: "", amount: 0, quantity: 1,
                 type: 'recurring', frequency: 'monthly', status: 'active',
+                insights_access: 'NONE',
                 service_start_date: new Date().toISOString()
             })
             setUnitPrice(0)
@@ -116,6 +118,7 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
                     type: serviceToEdit.type || 'recurring',
                     frequency: serviceToEdit.frequency || 'monthly',
                     status: serviceToEdit.status,
+                    insights_access: serviceToEdit.insights_access || 'NONE',
                     service_start_date: serviceToEdit.service_start_date || new Date().toISOString()
                 })
                 setUnitPrice((serviceToEdit.amount || 0) / (serviceToEdit.quantity || 1))
@@ -221,6 +224,7 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
                 type: formData.type,
                 frequency: formData.type === 'recurring' ? formData.frequency : null,
                 // status: 'active', // Don't reset status on edit unless intended
+                insights_access: formData.insights_access,
                 emitter_id: selectedEmitterId,
                 document_type: derivedDocType,
                 service_start_date: startDate.toISOString()
@@ -436,6 +440,22 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
                                                         </Select>
                                                     </div>
                                                 )}
+
+                                                <div className="space-y-2 col-span-2">
+                                                    <Label>Acceso a Insights (Portal)</Label>
+                                                    <Select value={formData.insights_access} onValueChange={(v) => setFormData({ ...formData, insights_access: v })}>
+                                                        <SelectTrigger><SelectValue /></SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="NONE">Sin Acceso</SelectItem>
+                                                            <SelectItem value="ORGANIC">Solo Orgánico (Redes)</SelectItem>
+                                                            <SelectItem value="ADS">Solo Ads (Publicidad)</SelectItem>
+                                                            <SelectItem value="ALL">Todo (Ads + Orgánico)</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                    <p className="text-[10px] text-gray-500">
+                                                        Activa pestañas automáticamente cuando este servicio está activo.
+                                                    </p>
+                                                </div>
                                             </div>
 
 

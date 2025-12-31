@@ -33,6 +33,7 @@ export default function PortalPage() {
     const [paymentMethods, setPaymentMethods] = useState<any[]>([])
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false)
     const [paymentInvoiceIds, setPaymentInvoiceIds] = useState<string[]>([])
+    const [insightsAccess, setInsightsAccess] = useState<any>({ show: false, mode: { organic: false, ads: false } })
 
     // Staff Data
     const [staff, setStaff] = useState<any>(null)
@@ -78,8 +79,10 @@ export default function PortalPage() {
                 setEvents(data.events || [])
                 setSettings(data.settings || {})
                 setServices(data.services || [])
+                setServices(data.services || [])
                 setActiveModules(data.activePortalModules || [])
                 setPaymentMethods(data.paymentMethods || [])
+                setInsightsAccess(data.insightsAccess || { show: false, mode: { organic: false, ads: false } })
             }
         } catch (err) {
             console.error(err)
@@ -250,6 +253,7 @@ export default function PortalPage() {
                 onPay={handlePayClick}
                 onViewInvoice={setViewInvoice}
                 onViewQuote={setViewQuote}
+                insightsAccess={insightsAccess} // NEW
             />
 
             {/* Payment Options Modal */}

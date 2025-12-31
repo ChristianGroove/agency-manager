@@ -34,6 +34,7 @@ interface PortalLayoutProps {
     onViewInvoice: (invoice: Invoice) => void
     onViewQuote: (quote: Quote) => void
     logout?: () => void
+    insightsAccess?: { show: boolean, mode: { organic: boolean, ads: boolean } } // NEW
 }
 
 // Icon mapping for dynamic tabs
@@ -60,7 +61,7 @@ function mapModuleToComponent(moduleSlug: string): string {
 
 type TabKey = 'summary' | 'services' | 'billing' | 'explore' | 'insights'
 
-export function PortalLayout({ token, client, invoices, quotes, briefings, events, services, settings, activeModules, onPay, onViewInvoice, onViewQuote }: PortalLayoutProps) {
+export function PortalLayout({ token, client, invoices, quotes, briefings, events, services, settings, activeModules, onPay, onViewInvoice, onViewQuote, insightsAccess }: PortalLayoutProps) {
     // Build dynamic tabs based on active modules
     const dynamicTabs = [
         // Summary is ALWAYS shown (not module-based)
@@ -71,12 +72,21 @@ export function PortalLayout({ token, client, invoices, quotes, briefings, event
             icon: LayoutDashboard
         },
         // Map active modules to tabs
-        ...activeModules.map(mod => ({
-            key: mod.slug,
-            component: mapModuleToComponent(mod.slug),
-            label: mod.portal_tab_label,
-            icon: ICON_MAP[mod.portal_icon_key] || Layers
-        }))
+        ...activeModules
+            .filter(mod => {
+                // SPECIAL LOGIC: Insights Module
+                if (mod.slug === 'meta_insights') {
+                    // Only show if insightsAccess.show is true
+                    return insightsAccess?.show === true
+                }
+                return true
+            })
+            .map(mod => ({
+                key: mod.slug,
+                component: mapModuleToComponent(mod.slug),
+                label: mod.portal_tab_label,
+                icon: ICON_MAP[mod.portal_icon_key] || Layers
+            }))
     ]
 
     const [activeTab, setActiveTab] = useState(dynamicTabs[0]?.key || 'summary')
@@ -195,7 +205,7 @@ export function PortalLayout({ token, client, invoices, quotes, briefings, event
                             invoices={invoices} settings={settings} onPay={onPay} onViewInvoice={onViewInvoice}
                         />
                     )}
-                    {dynamicTabs.find(t => t.key === activeTab)?.component === 'insights' && <InsightsTab client={client} services={services} token={token} />}
+                    {dynamicTabs.find(t => t.key === activeTab)?.component === 'insights' && <InsightsTab client={client} services={services} token={token} insightsAccess={insightsAccess} />}
                     {dynamicTabs.find(t => t.key === activeTab)?.component === 'explore' && <PortalCatalogTab settings={settings} client={client} token={token} />}
                 </div>
 

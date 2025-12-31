@@ -142,6 +142,51 @@ export async function getPortalData(token: string) {
 
             const activePaymentMethods = rawPaymentMethods || []
 
+            // ---------------------------------------------------------
+            // SMART INSIGHTS LOGIC
+            // ---------------------------------------------------------
+            const portalInsightsSettings = client.portal_insights_settings || { override: null, access_level: 'NONE' }
+            let showInsights = false
+            let insightsMode = { organic: false, ads: false }
+
+            if (portalInsightsSettings.override === true) {
+                // Manual Enable
+                showInsights = true
+                const level = portalInsightsSettings.access_level || 'ALL'
+                if (level === 'ALL') insightsMode = { organic: true, ads: true }
+                if (level === 'ORGANIC') insightsMode = { organic: true, ads: false }
+                if (level === 'ADS') insightsMode = { organic: false, ads: true }
+            } else if (portalInsightsSettings.override === false) {
+                // Manual Disable
+                showInsights = false
+                insightsMode = { organic: false, ads: false }
+            } else {
+                // Auto Mode (Default) - Check Services
+                const activeServices = services || []
+
+                // 1. Check for explicit "insights_access" tag
+                let hasOrganicService = activeServices.some(s => s.insights_access === 'ORGANIC' || s.insights_access === 'ALL')
+                let hasAdsService = activeServices.some(s => s.insights_access === 'ADS' || s.insights_access === 'ALL')
+
+                // 2. Legacy Fallback: Check naming conventions if not found
+                // This ensures existing services work without manual update
+                if (!hasOrganicService && !hasAdsService) {
+                    const organicKeywords = ['social media', 'community', 'redes', 'content', 'orgánico', 'organico']
+                    const adsKeywords = ['ads', 'pauta', 'trafficker', 'publicidad', 'meta', 'google', 'campaign']
+
+                    const legacyOrganic = activeServices.some(s => s.name && organicKeywords.some(k => s.name.toLowerCase().includes(k)))
+                    const legacyAds = activeServices.some(s => s.name && adsKeywords.some(k => s.name.toLowerCase().includes(k)))
+
+                    if (legacyOrganic) hasOrganicService = true
+                    if (legacyAds) hasAdsService = true
+                }
+
+                if (hasOrganicService || hasAdsService) {
+                    showInsights = true
+                    insightsMode = { organic: hasOrganicService, ads: hasAdsService }
+                }
+            }
+
             return {
                 type: 'client', // Metadata
                 client: client as Client,
@@ -156,7 +201,11 @@ export async function getPortalData(token: string) {
                     portal_tab_label: string
                     portal_icon_key: string
                 }>,
-                paymentMethods: activePaymentMethods
+                paymentMethods: activePaymentMethods,
+                insightsAccess: {
+                    show: showInsights,
+                    mode: insightsMode
+                }
             }
         }
 

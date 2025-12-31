@@ -17,20 +17,25 @@ export function slugify(text: string) {
 }
 
 export function getPortalUrl(path: string = ''): string {
-  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  try {
+    const cleanPath = path.startsWith('/') ? path : `/${path}`;
 
-  if (typeof window === 'undefined') {
-    const baseUrl = process.env.NEXT_PUBLIC_PORTAL_URL || 'https://mi.pixy.com.co';
-    return `${baseUrl}${cleanPath}`;
-  }
+    if (typeof window === 'undefined') {
+      // Server-side generation
+      if (process.env.NODE_ENV === 'development') {
+        return `http://localhost:3000${cleanPath}`;
+      }
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_PORTAL_URL || 'https://mi.pixy.com.co';
+      return `${baseUrl}${cleanPath}`;
+    }
 
-  const isLocalhost = window.location.hostname.includes('localhost') || window.location.hostname.includes('127.0.0.1');
-
-  if (isLocalhost) {
+    // Client-side generation
     return `${window.location.origin}${cleanPath}`;
+  } catch (e) {
+    // Fail safe fallback to prevent partial rendering crashes
+    console.error("getPortalUrl crash:", e);
+    return `https://mi.pixy.com.co/${path}`;
   }
-
-  return `https://mi.pixy.com.co${cleanPath}`;
 }
 
 export function formatCurrency(amount: number) {
