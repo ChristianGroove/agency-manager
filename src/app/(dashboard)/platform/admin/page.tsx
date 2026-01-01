@@ -120,6 +120,34 @@ export default async function AdminDashboardPage() {
                             </CardHeader>
                         </Card>
                     </a>
+
+                    {/* Branding Tiers Card */}
+                    <a href="/platform/admin/branding/tiers" className="block group">
+                        <Card className="h-full transition-all hover:shadow-lg hover:border-amber-500/50 cursor-pointer relative overflow-hidden">
+                            <div className="absolute top-2 right-2 bg-gradient-to-r from-amber-500 to-amber-600 text-white px-2 py-0.5 text-xs font-bold rounded">
+                                MONETIZE
+                            </div>
+                            <CardHeader>
+                                <div className="flex items-center justify-between">
+                                    <div className="p-2 rounded-lg bg-amber-500/10">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-amber-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path>
+                                            <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path>
+                                            <path d="M4 22h16"></path>
+                                            <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"></path>
+                                            <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"></path>
+                                            <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"></path>
+                                        </svg>
+                                    </div>
+                                    <ExternalLink className="h-4 w-4 text-muted-foreground group-hover:text-amber-500 transition-colors" />
+                                </div>
+                                <CardTitle className="text-base mt-4">Branding Tiers</CardTitle>
+                                <CardDescription>
+                                    Gestiona suscripciones de branding premium
+                                </CardDescription>
+                            </CardHeader>
+                        </Card>
+                    </a>
                 </div>
             </div>
 
