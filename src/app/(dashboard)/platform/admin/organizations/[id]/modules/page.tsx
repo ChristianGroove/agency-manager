@@ -8,6 +8,8 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Package, Check, X } from 'lucide-react'
 import Link from 'next/link'
+import { ModuleEnableButton } from './_components/module-enable-button'
+import { ModuleDisableButton } from './_components/module-disable-button'
 
 interface PageProps {
     params: Promise<{
@@ -133,21 +135,12 @@ export default async function OrganizationModulesPage({ params }: PageProps) {
                                         </div>
                                     </div>
                                     <div>
-                                        {module.is_core ? (
-                                            <Badge variant="secondary">
-                                                Always Active
-                                            </Badge>
-                                        ) : (
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className="text-destructive hover:text-destructive"
-                                                disabled
-                                                title="Coming soon: Smart disable with dependency check"
-                                            >
-                                                Disable
-                                            </Button>
-                                        )}
+                                        <ModuleDisableButton
+                                            moduleKey={module.key}
+                                            moduleName={module.name}
+                                            organizationId={id}
+                                            isCore={module.is_core}
+                                        />
                                     </div>
                                 </div>
                             ))
@@ -200,13 +193,14 @@ export default async function OrganizationModulesPage({ params }: PageProps) {
                                         </div>
                                     </div>
                                     <div>
-                                        <Button
-                                            size="sm"
-                                            disabled
-                                            title="Coming soon: Smart enable with dependency resolution"
-                                        >
-                                            Enable
-                                        </Button>
+                                        <ModuleEnableButton
+                                            moduleKey={module.key}
+                                            moduleName={module.name}
+                                            organizationId={id}
+                                            dependencies={module.dependencies}
+                                            isPremium={module.is_premium}
+                                            priceMonthly={module.price_monthly}
+                                        />
                                     </div>
                                 </div>
                             ))
