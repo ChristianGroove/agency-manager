@@ -26,6 +26,7 @@ ADD COLUMN IF NOT EXISTS recommended_for_verticals TEXT[] DEFAULT ARRAY['*'];
 COMMENT ON COLUMN public.saas_apps.recommended_for_verticals IS 'Array of vertical slugs this template is recommended for. Use [*] for universal templates.';
 
 -- 4. Update existing templates with vertical recommendations
+-- Use UPDATE instead of INSERT since apps already exist
 UPDATE public.saas_apps
 SET recommended_for_verticals = ARRAY['agency', 'marketing', 'creative', 'consulting']
 WHERE slug = 'marketing-agency-starter';
@@ -137,12 +138,12 @@ COMMENT ON TABLE public.saas_app_add_ons IS 'Optional add-on modules that can be
 -- Success message
 DO $$
 BEGIN
-    RAISE NOTICE '╔════════════════════════════════════════╗';
-    RAISE NOTICE '║  System Unification Complete ✓         ║';
-    RAISE NOTICE '╠════════════════════════════════════════╣';
-    RAISE NOTICE '║  • Clarified naming conventions        ║';
-    RAISE NOTICE '║  • Connected verticals to templates    ║';
-    RAISE NOTICE '║  • Created relationship views          ║';
-    RAISE NOTICE '║  • Added recommendation engine         ║';
-    RAISE NOTICE '╚════════════════════════════════════════╝';
+    RAISE NOTICE '========================================';
+    RAISE NOTICE 'System Unification Complete';
+    RAISE NOTICE '========================================';
+    RAISE NOTICE 'Clarified naming conventions';
+    RAISE NOTICE 'Connected verticals to templates';
+    RAISE NOTICE 'Created relationship views';
+    RAISE NOTICE 'Added recommendation engine';
+    RAISE NOTICE '========================================';
 END $$;
