@@ -47,8 +47,11 @@ export async function resetPasswordRequest(formData: FormData) {
     const supabase = await createClient()
     const email = formData.get('email') as string
 
+    const { getAdminUrlAsync } = await import('@/lib/utils')
+    const redirectUrl = await getAdminUrlAsync('/update-password')
+
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/update-password`,
+        redirectTo: redirectUrl,
     })
 
     if (error) {

@@ -51,8 +51,9 @@ export async function inviteMember(email: string, role: string = 'member') {
 
     // TODO: Verify if current user has permissions (Owner/Admin)
 
-    const headersList = await headers()
-    const origin = process.env.NEXT_PUBLIC_APP_URL || headersList.get('origin') || 'https://app.pixy.com.co'
+    const { getAdminUrlAsync } = await import('@/lib/utils')
+    const origin = await getAdminUrlAsync('')
+    const redirectUrl = await getAdminUrlAsync('/auth/callback?next=/dashboard')
 
     try {
         // 1. Generate Invite Link (Handle New vs Existing Users)
@@ -63,7 +64,7 @@ export async function inviteMember(email: string, role: string = 'member') {
             type: 'invite',
             email: email,
             options: {
-                redirectTo: `${origin}/auth/callback?next=/dashboard`,
+                redirectTo: redirectUrl,
                 data: { organization_id: orgId, role: role }
             }
         })
@@ -78,7 +79,7 @@ export async function inviteMember(email: string, role: string = 'member') {
                 type: 'magiclink',
                 email: email,
                 options: {
-                    redirectTo: `${origin}/auth/callback?next=/dashboard`,
+                    redirectTo: redirectUrl,
                     data: { organization_id: orgId, role: role }
                 }
             })

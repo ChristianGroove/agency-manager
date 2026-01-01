@@ -14,8 +14,9 @@ import { headers } from "next/headers"
 export async function inviteOrgOwner(email: string, orgId: string) {
     await requireSuperAdmin()
 
-    const headersList = await headers()
-    const origin = process.env.NEXT_PUBLIC_APP_URL || headersList.get('origin') || 'https://app.pixy.com.co'
+    const { getAdminUrlAsync } = await import('@/lib/utils')
+    const origin = await getAdminUrlAsync('')
+    const redirectUrl = await getAdminUrlAsync('/auth/callback?next=/platform')
 
     let linkData, linkError;
 
@@ -23,7 +24,7 @@ export async function inviteOrgOwner(email: string, orgId: string) {
         type: 'invite',
         email: email,
         options: {
-            redirectTo: `${origin}/auth/callback?next=/platform`,
+            redirectTo: redirectUrl,
             data: { organization_id: orgId, role: 'owner' }
         }
     })
@@ -36,7 +37,7 @@ export async function inviteOrgOwner(email: string, orgId: string) {
             type: 'magiclink',
             email: email,
             options: {
-                redirectTo: `${origin}/auth/callback?next=/platform`,
+                redirectTo: redirectUrl,
                 data: { organization_id: orgId, role: 'owner' }
             }
         })
@@ -103,11 +104,17 @@ export interface AdminOrganization {
     base_app_slug?: string
     suspended_at?: string
     suspended_reason?: string
+    use_custom_domains?: boolean
+    custom_admin_domain?: string | null
+    custom_portal_domain?: string | null
 }
 
 export async function getAdminOrganizations(): Promise<AdminOrganization[]> {
     await requireSuperAdmin()
-    const { data, error } = await supabaseAdmin.from('organizations').select('id, name, slug, status, subscription_status, owner_id, created_at, next_billing_date, base_app_slug, suspended_at, suspended_reason').order('created_at', { ascending: false })
+    const { data, error } = await supabaseAdmin
+        .from('organizations')
+        .select('id, name, slug, status, subscription_status, owner_id, created_at, next_billing_date, base_app_slug, suspended_at, suspended_reason, use_custom_domains, custom_admin_domain, custom_portal_domain')
+        .order('created_at', { ascending: false })
     if (error) throw new Error('Failed to fetch organizations')
     return data || []
 }

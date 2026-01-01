@@ -17,6 +17,46 @@ export async function middleware(request: NextRequest) {
         }
     }
 
+    // 0.5 SUBDOMAIN ROUTING: Enforce domain separation in production
+    if (process.env.NODE_ENV === 'production') {
+        const hostname = request.headers.get('host') || ''
+        const pathname = request.nextUrl.pathname
+
+        // Fetch platform domains from environment or database
+        const adminDomain = process.env.NEXT_PUBLIC_APP_URL?.replace(/^https?:\/\//, '') || 'control.pixy.com.co'
+        const portalDomain = process.env.NEXT_PUBLIC_PORTAL_URL?.replace(/^https?:\/\//, '') || 'mi.pixy.com.co'
+
+        // Portal routes should only be on portal domain
+        if (pathname.startsWith('/portal/')) {
+            const isOnPortalDomain = hostname === portalDomain || hostname === `www.${portalDomain}`
+
+            if (!isOnPortalDomain && hostname.includes(adminDomain)) {
+                // Redirect from admin domain to portal domain
+                const portalUrl = new URL(request.url)
+                portalUrl.host = portalDomain
+                return NextResponse.redirect(portalUrl, { status: 301 })
+            }
+        }
+
+        // Admin routes should only be on admin domain
+        const isAdminRoute = pathname.startsWith('/dashboard') ||
+            pathname.startsWith('/clients') ||
+            pathname.startsWith('/admin') ||
+            pathname.startsWith('/platform') ||
+            pathname.startsWith('/settings')
+
+        if (isAdminRoute) {
+            const isOnAdminDomain = hostname === adminDomain || hostname === `www.${adminDomain}`
+
+            if (!isOnAdminDomain && hostname.includes(portalDomain)) {
+                // Redirect from portal domain to admin domain
+                const adminUrl = new URL(request.url)
+                adminUrl.host = adminDomain
+                return NextResponse.redirect(adminUrl, { status: 301 })
+            }
+        }
+    }
+
     // 1. Core Supabase Auth Session Handling
     let response = NextResponse.next({
         request: {

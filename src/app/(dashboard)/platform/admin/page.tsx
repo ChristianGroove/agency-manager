@@ -2,7 +2,7 @@ import { getAdminDashboardStats, getActiveBroadcasts, getAllSystemModules } from
 import { getAdminOrganizations } from '@/modules/core/admin/actions'
 import { requireSuperAdmin } from '@/lib/auth/platform-roles'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Building2, Users, Bell, Activity } from 'lucide-react'
+import { Building2, Users, Bell, Activity, Globe, Palette, ExternalLink } from 'lucide-react'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
@@ -79,6 +79,48 @@ export default async function AdminDashboardPage() {
                         <p className="text-xs text-muted-foreground">Operational</p>
                     </CardContent>
                 </Card>
+            </div>
+
+            {/* Quick Access Section */}
+            <div>
+                <h2 className="text-lg font-semibold mb-4">Acceso Rápido</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {/* Domains Card */}
+                    <a href="/platform/admin/domains" className="block group">
+                        <Card className="h-full transition-all hover:shadow-lg hover:border-indigo-500/50 cursor-pointer">
+                            <CardHeader>
+                                <div className="flex items-center justify-between">
+                                    <div className="p-2 rounded-lg bg-indigo-500/10">
+                                        <Globe className="h-6 w-6 text-indigo-500" />
+                                    </div>
+                                    <ExternalLink className="h-4 w-4 text-muted-foreground group-hover:text-indigo-500 transition-colors" />
+                                </div>
+                                <CardTitle className="text-base mt-4">Gestión de Dominios</CardTitle>
+                                <CardDescription>
+                                    Configura dominios administrativos y de portales
+                                </CardDescription>
+                            </CardHeader>
+                        </Card>
+                    </a>
+
+                    {/* Branding Card */}
+                    <a href="/platform/admin/branding" className="block group">
+                        <Card className="h-full transition-all hover:shadow-lg hover:border-pink-500/50 cursor-pointer">
+                            <CardHeader>
+                                <div className="flex items-center justify-between">
+                                    <div className="p-2 rounded-lg bg-pink-500/10">
+                                        <Palette className="h-6 w-6 text-pink-500" />
+                                    </div>
+                                    <ExternalLink className="h-4 w-4 text-muted-foreground group-hover:text-pink-500 transition-colors" />
+                                </div>
+                                <CardTitle className="text-base mt-4">Marca Global</CardTitle>
+                                <CardDescription>
+                                    Define identidad visual de la plataforma
+                                </CardDescription>
+                            </CardHeader>
+                        </Card>
+                    </a>
+                </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
