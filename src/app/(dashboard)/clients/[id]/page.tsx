@@ -66,8 +66,10 @@ import { CreateInvoiceSheet } from "@/modules/verticals/agency/invoicing/create-
 import { ShareInvoiceModal } from "@/modules/verticals/agency/invoicing/share-invoice-modal"
 import { CreateServiceSheet } from "@/modules/verticals/agency/services/create-service-sheet"
 import { regeneratePortalToken } from "@/modules/core/portal/actions"
-import { MetaConfigurationModal } from "@/modules/core/admin/meta-configuration-modal"
-import { ClientPortalSettings } from "@/modules/core/clients/components/client-portal-settings" // New Import
+// ... imports ...
+import { EcosystemWidget } from "@/modules/core/marketing/ecosystem-widget"
+
+
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -126,7 +128,7 @@ export default function ClientDetailPage() {
 
     // Helper: Get invoices NOT linked to any service (Manual Invoices)
     const getUnlinkedInvoices = () => {
-        // Strictly only show invoices that have NO service_id. 
+        // Strictly only show invoices that have NO service_id.
         // Invoices linked to deleted services should generally be hidden or archived, unless manually searched.
         return client?.invoices?.filter(inv => !inv.service_id && !inv.deleted_at) || []
     }
@@ -263,15 +265,15 @@ export default function ClientDetailPage() {
             const { data, error } = await supabase
                 .from('clients')
                 .select(`
-          *,
-          services (*),
-          invoices (*),
-          hosting_accounts (*),
-          subscriptions (
-            *,
-            invoice:invoices!subscriptions_invoice_id_fkey(sent)
-          )
-        `)
+                            *,
+                            services (*),
+                            invoices (*),
+                            hosting_accounts (*),
+                            subscriptions (
+                            *,
+                            invoice:invoices!subscriptions_invoice_id_fkey(sent)
+                            )
+                            `)
                 .eq('id', id)
                 .single()
 
@@ -486,12 +488,6 @@ export default function ClientDetailPage() {
                             >
                                 <StickyNote className="h-5 w-5" />
                             </Button>
-
-                            {/* Meta Config */}
-                            <MetaConfigurationModal client={client} services={client.services || []} />
-
-                            {/* Portal Config (NEW) */}
-                            <ClientPortalSettings client={client} onUpdate={() => fetchClientData(client.id)} />
 
                             {/* Edit - Icon Only */}
                             <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
@@ -709,6 +705,11 @@ export default function ClientDetailPage() {
             {/* Main Content */}
             <div>
 
+                {/* ECOSYSTEM HUB WIDGET */}
+                <div className="mb-8 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100">
+                    <EcosystemWidget client={client} services={client.services || []} />
+                </div>
+
                 {/* Client Header Card */}
                 {/* Client Header - Split-Bar Modern Style */}
                 <div className="mb-8 rounded-2xl bg-white/90 backdrop-blur-sm border border-gray-200/50 shadow-lg overflow-hidden transition-all hover:shadow-xl sticky top-4 z-20">
@@ -831,6 +832,8 @@ export default function ClientDetailPage() {
                         </div>
                     </div>
                 </div>
+
+
 
                 {/* Unified Content View */}
                 <div className="pb-20">
