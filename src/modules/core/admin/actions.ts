@@ -97,26 +97,71 @@ export interface AdminOrganization {
     name: string
     slug: string
     status: string
-    subscription_status?: string
-    owner_id?: string
+    subscription_status: string
+    owner_id: string
     created_at: string
-    next_billing_date?: string
-    base_app_slug?: string
-    suspended_at?: string
-    suspended_reason?: string
-    use_custom_domains?: boolean
-    custom_admin_domain?: string | null
-    custom_portal_domain?: string | null
+    next_billing_date: string | null
+    base_app_slug: string | null
+    suspended_at: string | null
+    suspended_reason: string | null
+    use_custom_domains: boolean | null
+    custom_admin_domain: string | null
+    custom_portal_domain: string | null
+    branding_tier_id: string | null
+    active_app_id: string | null
+    app_activated_at: string | null
 }
 
 export async function getAdminOrganizations(): Promise<AdminOrganization[]> {
     await requireSuperAdmin()
+
     const { data, error } = await supabaseAdmin
         .from('organizations')
-        .select('id, name, slug, status, subscription_status, owner_id, created_at, next_billing_date, base_app_slug, suspended_at, suspended_reason, use_custom_domains, custom_admin_domain, custom_portal_domain')
+        .select(`
+            *,
+            custom_admin_domain,
+            custom_portal_domain,
+            use_custom_domains,
+            branding_tier_id,
+            active_app_id,
+            app_activated_at
+        `)
         .order('created_at', { ascending: false })
-    if (error) throw new Error('Failed to fetch organizations')
-    return data || []
+
+    if (error) {
+        console.error('Error fetching organizations:', error)
+        return []
+    }
+
+    return data as AdminOrganization[]
+}
+
+/**
+ * Get a single organization by ID
+ */
+export async function getAdminOrganizationById(organizationId: string): Promise<AdminOrganization | null> {
+    await requireSuperAdmin()
+
+    const { data, error } = await supabaseAdmin
+        .from('organizations')
+        .select(`
+            *,
+            custom_admin_domain,
+            custom_portal_domain,
+            use_custom_domains,
+            branding_tier_id,
+            active_app_id,
+            app_activated_at
+        `)
+        .eq('id', organizationId)
+        .single()
+
+    if (error) {
+        console.error('Error fetching organization:', error)
+        return null
+    }
+
+    return data as AdminOrganization
 }
 
 export async function getOrganizationDetails(orgId: string) {
