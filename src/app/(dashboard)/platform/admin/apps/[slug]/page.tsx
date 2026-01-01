@@ -73,10 +73,15 @@ export default async function AppDetailPage({ params }: PageProps) {
                         </div>
                     </div>
                 </div>
-                <Button disabled title="Edit functionality coming soon">
-                    <Settings className="mr-2 h-4 w-4" />
-                    Edit App
-                </Button>
+                <EditAppDialog app={{
+                    id: app.id,
+                    name: app.name,
+                    description: app.description,
+                    category: app.category,
+                    price_monthly: Number(app.price_monthly),
+                    color: app.color,
+                    is_active: app.is_active
+                }} />
             </div>
 
             {/* Metrics */}

@@ -4,8 +4,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Package, TrendingUp, Users, DollarSign, Search, Plus, Settings, Trash2 } from 'lucide-react'
+import { Package, TrendingUp, Users, DollarSign, Search, Settings, Trash2 } from 'lucide-react'
 import Link from 'next/link'
+import { CreateAppDialog } from './_components/create-app-dialog'
 
 export default async function AppsGalleryPage() {
     await requireSuperAdmin()
@@ -34,12 +35,7 @@ export default async function AppsGalleryPage() {
                         Pre-configured bundles of modules for specific use cases
                     </p>
                 </div>
-                <Link href="/platform/admin/apps/builder">
-                    <Button>
-                        <Plus className="mr-2 h-4 w-4" />
-                        Create New App
-                    </Button>
-                </Link>
+                <CreateAppDialog />
             </div>
 
             {/* Metrics */}
@@ -249,12 +245,9 @@ export default async function AppsGalleryPage() {
                     <p className="text-muted-foreground mt-2">
                         Create your first app template to get started
                     </p>
-                    <Link href="/platform/admin/apps/builder">
-                        <Button className="mt-4">
-                            <Plus className="mr-2 h-4 w-4" />
-                            Create App Template
-                        </Button>
-                    </Link>
+                    <div className="mt-4">
+                        <CreateAppDialog />
+                    </div>
                 </div>
             )}
         </div>
