@@ -93,7 +93,7 @@ INSERT INTO public.saas_apps (id, name, slug, description, long_description, cat
     true,
     true,
     1
-);
+) ON CONFLICT (id) DO NOTHING;
 
 -- App 2: Cleaning Business Pro
 INSERT INTO public.saas_apps (id, name, slug, description, long_description, category, vertical_compatibility, icon, color, price_monthly, trial_days, is_active, is_featured, sort_order) VALUES
@@ -112,7 +112,7 @@ INSERT INTO public.saas_apps (id, name, slug, description, long_description, cat
     true,
     true,
     2
-);
+) ON CONFLICT (id) DO NOTHING;
 
 -- App 3: Consulting Firm Essential
 INSERT INTO public.saas_apps (id, name, slug, description, long_description, category, vertical_compatibility, icon, color, price_monthly, trial_days, is_active, is_featured, sort_order) VALUES
@@ -131,7 +131,7 @@ INSERT INTO public.saas_apps (id, name, slug, description, long_description, cat
     true,
     FALSE,
     3
-);
+) ON CONFLICT (id) DO NOTHING;
 
 -- 6. SEED APP MODULES
 
@@ -141,7 +141,8 @@ INSERT INTO public.saas_app_modules (app_id, module_key, auto_enable, is_core, i
 ('app_marketing_starter', 'core_settings', true, true, false, 2),
 ('app_marketing_starter', 'module_quotes', true, false, false, 3),
 ('app_marketing_starter', 'module_briefings', true, false, false, 4),
-('app_marketing_starter', 'module_catalog', false, false, true, 5);  -- Optional
+('app_marketing_starter', 'module_catalog', false, false, true, 5)
+ON CONFLICT (app_id, module_key) DO NOTHING;  -- Optional
 
 -- Cleaning Business Pro modules
 INSERT INTO public.saas_app_modules (app_id, module_key, auto_enable, is_core, is_optional, sort_order) VALUES
@@ -149,7 +150,8 @@ INSERT INTO public.saas_app_modules (app_id, module_key, auto_enable, is_core, i
 ('app_cleaning_pro', 'core_settings', true, true, false, 2),
 ('app_cleaning_pro', 'module_appointments', true, false, false, 3),
 ('app_cleaning_pro', 'module_invoicing', true, false, false, 4),
-('app_cleaning_pro', 'module_payments', false, false, true, 5); -- Optional
+('app_cleaning_pro', 'module_payments', false, false, true, 5)
+ON CONFLICT (app_id, module_key) DO NOTHING; -- Optional
 
 -- Consulting Firm Essential modules
 INSERT INTO public.saas_app_modules (app_id, module_key, auto_enable, is_core, is_optional, sort_order) VALUES
@@ -157,23 +159,27 @@ INSERT INTO public.saas_app_modules (app_id, module_key, auto_enable, is_core, i
 ('app_consulting_essential', 'core_settings', true, true, false, 2),
 ('app_consulting_essential', 'module_quotes', true, false, false, 3),
 ('app_consulting_essential', 'module_briefings', true, false, false, 4),
-('app_consulting_essential', 'module_appointments', false, false, true, 5); -- Optional
+('app_consulting_essential', 'module_appointments', false, false, true, 5)
+ON CONFLICT (app_id, module_key) DO NOTHING; -- Optional
 
 -- 7. SEED RECOMMENDED ADD-ONS
 
 -- Marketing Agency Starter add-ons
 INSERT INTO public.saas_app_add_ons (app_id, add_on_type, tier_id, is_recommended, discount_percent, display_order) VALUES
 ('app_marketing_starter', 'branding', 'custom', true, 10, 1),
-('app_marketing_starter', 'branding', 'whitelabel', false, 15, 2);
+('app_marketing_starter', 'branding', 'whitelabel', false, 15, 2)
+ON CONFLICT (app_id, add_on_type, tier_id) DO NOTHING;
 
 -- Cleaning Business Pro add-ons
 INSERT INTO public.saas_app_add_ons (app_id, add_on_type, tier_id, is_recommended, discount_percent, display_order) VALUES
-('app_cleaning_pro', 'branding', 'custom', true, 10, 1);
+('app_cleaning_pro', 'branding', 'custom', true, 10, 1)
+ON CONFLICT (app_id, add_on_type, tier_id) DO NOTHING;
 
 -- Consulting Firm Essential add-ons
 INSERT INTO public.saas_app_add_ons (app_id, add_on_type, tier_id, is_recommended, discount_percent, display_order) VALUES
 ('app_consulting_essential', 'branding', 'custom', true, 10, 1),
-('app_consulting_essential', 'branding', 'whitelabel', true, 15, 2);
+('app_consulting_essential', 'branding', 'whitelabel', true, 15, 2)
+ON CONFLICT (app_id, add_on_type, tier_id) DO NOTHING;
 
 -- 8. CREATE INDEXES
 CREATE INDEX IF NOT EXISTS idx_saas_apps_category ON public.saas_apps(category);
