@@ -135,15 +135,5 @@ COMMENT ON TABLE public.saas_apps IS 'Solution Templates: Pre-configured bundles
 COMMENT ON TABLE public.saas_app_modules IS 'Modules included in each solution template';
 COMMENT ON TABLE public.saas_app_add_ons IS 'Optional add-on modules that can be purchased separately for templates';
 
--- Success message
-DO $$
-BEGIN
-    RAISE NOTICE '========================================';
-    RAISE NOTICE 'System Unification Complete';
-    RAISE NOTICE '========================================';
-    RAISE NOTICE 'Clarified naming conventions';
-    RAISE NOTICE 'Connected verticals to templates';
-    RAISE NOTICE 'Created relationship views';
-    RAISE NOTICE 'Added recommendation engine';
-    RAISE NOTICE '========================================';
-END $$;
+-- Migration complete
+-- Added: display_name columns, recommended_for_verticals, views, and recommendation function
