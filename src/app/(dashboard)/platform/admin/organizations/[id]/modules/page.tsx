@@ -61,7 +61,7 @@ export default async function OrganizationModulesPage({ params }: PageProps) {
                     <CardHeader>
                         <div className="flex items-center justify-between">
                             <div>
-                                <CardTitle>Current App Template</CardTitle>
+                                <CardTitle>Current Solution Template</CardTitle>
                                 <CardDescription>
                                     Pre-configured module bundle
                                 </CardDescription>

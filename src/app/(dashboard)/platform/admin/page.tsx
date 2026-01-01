@@ -159,7 +159,7 @@ export default async function AdminDashboardPage() {
                                     </div>
                                     <ExternalLink className="h-4 w-4 text-muted-foreground group-hover:text-purple-500 transition-colors" />
                                 </div>
-                                <CardTitle className="text-base mt-4">App Templates</CardTitle>
+                                <CardTitle className="text-base mt-4">Solution Templates</CardTitle>
                                 <CardDescription>
                                     Pre-configured module bundles for different use cases
                                 </CardDescription>

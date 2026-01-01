@@ -47,7 +47,7 @@ export function EditAppDialog({ app }: EditAppDialogProps) {
             const result = await updateApp(app.id, updates)
 
             if (result.success) {
-                toast.success('App updated successfully!', {
+                toast.success('Template updated successfully!', {
                     description: `Changes to "${updates.name}" have been saved.`,
                     duration: 4000
                 })
