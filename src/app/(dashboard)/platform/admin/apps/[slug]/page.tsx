@@ -32,7 +32,7 @@ export default async function AppDetailPage({ params }: PageProps) {
             <Link href="/platform/admin/apps">
                 <Button variant="ghost" size="sm">
                     <ArrowLeft className="mr-2 h-4 w-4" />
-                    Back to Apps
+                    Back to Templates
                 </Button>
             </Link>
 
@@ -95,7 +95,7 @@ export default async function AppDetailPage({ params }: PageProps) {
                     <CardContent>
                         <div className="text-2xl font-bold">{app.active_org_count}</div>
                         <p className="text-xs text-muted-foreground">
-                            Using this app
+                            Using this template
                         </p>
                     </CardContent>
                 </Card>

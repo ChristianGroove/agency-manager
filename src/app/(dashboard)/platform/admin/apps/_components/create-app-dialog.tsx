@@ -33,7 +33,7 @@ export function CreateAppDialog() {
             })
 
             if (result.success) {
-                toast.success('App created successfully!')
+                toast.success('Template created successfully!')
                 setIsOpen(false)
                 router.refresh()
                     // Reset form
@@ -57,7 +57,7 @@ export function CreateAppDialog() {
             <DialogTrigger asChild>
                 <Button>
                     <Plus className="mr-2 h-4 w-4" />
-                    Create New App
+                    Create Template
                 </Button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -67,7 +67,7 @@ export function CreateAppDialog() {
                             <Package className="h-5 w-5 text-purple-500" />
                         </div>
                         <div>
-                            <DialogTitle>Create App Template</DialogTitle>
+                            <DialogTitle>Create Solution Template</DialogTitle>
                             <DialogDescription>
                                 Build a new pre-configured module bundle
                             </DialogDescription>
@@ -78,7 +78,7 @@ export function CreateAppDialog() {
                 <form onSubmit={handleSubmit} className="space-y-4">
                     {/* App Name */}
                     <div className="space-y-2">
-                        <Label htmlFor="name">App Name *</Label>
+                        <Label htmlFor="name">Template Name *</Label>
                         <Input
                             id="name"
                             name="name"
@@ -171,7 +171,7 @@ export function CreateAppDialog() {
 
                     {/* Info Note */}
                     <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 text-sm text-blue-600 dark:text-blue-400">
-                        <strong>Note:</strong> Configure modules and add-ons from the app detail page after creation.
+                        <strong>Note:</strong> Configure modules and add-ons from the template detail page after creation.
                     </div>
 
                     {/* Actions */}
@@ -181,7 +181,7 @@ export function CreateAppDialog() {
                         </Button>
                         <Button type="submit" className="flex-1" disabled={isSubmitting}>
                             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            {isSubmitting ? 'Creating...' : 'Create App'}
+                            {isSubmitting ? 'Creating...' : 'Create Template'}
                         </Button>
                     </div>
                 </form>

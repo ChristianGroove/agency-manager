@@ -74,7 +74,7 @@ export function EditAppDialog({ app }: EditAppDialogProps) {
             <DialogTrigger asChild>
                 <Button>
                     <Settings className="mr-2 h-4 w-4" />
-                    Edit App
+                    Edit Template
                 </Button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -84,9 +84,9 @@ export function EditAppDialog({ app }: EditAppDialogProps) {
                             <Settings className="h-5 w-5 text-blue-500" />
                         </div>
                         <div>
-                            <DialogTitle>Edit App Template</DialogTitle>
+                            <DialogTitle>Edit Solution Template</DialogTitle>
                             <DialogDescription>
-                                Update app details. Changes will affect all organizations using this template.
+                                Update template details. Changes will affect all organizations using this template.
                             </DialogDescription>
                         </div>
                     </div>
@@ -97,13 +97,13 @@ export function EditAppDialog({ app }: EditAppDialogProps) {
                     <div className="flex gap-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
                         <AlertCircle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
                         <div className="text-sm text-amber-700 dark:text-amber-400">
-                            <strong>Important:</strong> Changing the name or price will be visible to all organizations currently using this app template.
+                            <strong>Important:</strong> Changing the name or price will be visible to all organizations currently using this template.
                         </div>
                     </div>
 
                     {/* App Name */}
                     <div className="space-y-2">
-                        <Label htmlFor="edit-name">App Name *</Label>
+                        <Label htmlFor="edit-name">Template Name *</Label>
                         <Input
                             id="edit-name"
                             name="name"

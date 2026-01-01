@@ -30,7 +30,7 @@ export default async function AppsGalleryPage() {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">App Templates</h1>
+                    <h1 className="text-3xl font-bold tracking-tight">Solution Templates</h1>
                     <p className="text-muted-foreground">
                         Pre-configured bundles of modules for specific use cases
                     </p>
@@ -42,7 +42,7 @@ export default async function AppsGalleryPage() {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Total Apps</CardTitle>
+                        <CardTitle className="text-sm font-medium">Total Templates</CardTitle>
                         <Package className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
@@ -61,7 +61,7 @@ export default async function AppsGalleryPage() {
                     <CardContent>
                         <div className="text-2xl font-bold">{totalOrganizations}</div>
                         <p className="text-xs text-muted-foreground">
-                            Using apps
+                            Using templates
                         </p>
                     </CardContent>
                 </Card>
@@ -76,7 +76,7 @@ export default async function AppsGalleryPage() {
                             ${totalRevenue.toFixed(2)}
                         </div>
                         <p className="text-xs text-muted-foreground">
-                            From app subscriptions
+                            From template subscriptions
                         </p>
                     </CardContent>
                 </Card>
@@ -91,7 +91,7 @@ export default async function AppsGalleryPage() {
                             ${apps.length > 0 ? (apps.reduce((sum, a) => sum + Number(a.price_monthly), 0) / apps.length).toFixed(2) : '0.00'}
                         </div>
                         <p className="text-xs text-muted-foreground">
-                            Per app/month
+                            Per template/month
                         </p>
                     </CardContent>
                 </Card>
@@ -102,7 +102,7 @@ export default async function AppsGalleryPage() {
                 <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
-                        placeholder="Search apps..."
+                        placeholder="Search templates..."
                         className="pl-10"
                     />
                 </div>
@@ -241,7 +241,7 @@ export default async function AppsGalleryPage() {
             {apps.length === 0 && (
                 <div className="text-center py-12">
                     <Package className="mx-auto h-12 w-12 text-muted-foreground" />
-                    <h3 className="mt-4 text-lg font-semibold">No apps found</h3>
+                    <h3 className="mt-4 text-lg font-semibold">No templates found</h3>
                     <p className="text-muted-foreground mt-2">
                         Create your first app template to get started
                     </p>
