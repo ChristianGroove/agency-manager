@@ -45,7 +45,7 @@ SELECT DISTINCT
     a.name as template_name,
     a.slug as template_slug,
     a.recommended_for_verticals,
-    jsonb_array_elements_text(am.modules) as module_key,
+    am.module_key,
     sm.name as module_name,
     sm.description as module_description,
     sm.category as module_category,
@@ -53,8 +53,8 @@ SELECT DISTINCT
     sm.icon,
     sm.color
 FROM public.saas_apps a
-CROSS JOIN LATERAL jsonb_array_elements(a.modules) am(modules)
-LEFT JOIN public.system_modules sm ON sm.key = jsonb_array_elements_text(am.modules)
+INNER JOIN public.saas_app_modules am ON am.app_id = a.id
+LEFT JOIN public.system_modules sm ON sm.key = am.module_key
 WHERE a.is_active = true;
 
 COMMENT ON VIEW public.v_template_modules IS 'Shows which modules are included in each solution template';
@@ -104,7 +104,7 @@ BEGIN
         a.slug,
         a.category,
         a.price_monthly,
-        (SELECT COUNT(*) FROM jsonb_array_elements(a.modules))::INTEGER as module_count,
+        (SELECT COUNT(*) FROM public.saas_app_modules WHERE app_id = a.id)::INTEGER as module_count,
         CASE 
             WHEN a.recommended_for_verticals @> ARRAY[p_vertical] THEN 100
             WHEN a.recommended_for_verticals @> ARRAY['*'] THEN 50

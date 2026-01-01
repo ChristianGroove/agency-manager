@@ -209,47 +209,72 @@ export async function getCurrentOrganizationApp() {
 // ============================================
 
 /**
- * Super Admin: Get all apps (including inactive)
+ * Super Admin: Get all solution templates with usage stats
+ * Note: "Apps" = Solution Templates (pre-configured module bundles)
  */
 export async function getAllAppsAdmin(): Promise<AppWithDetails[]> {
     await requireSuperAdmin()
 
-    const { data: apps } = await supabaseAdmin
-        .from('saas_apps')
-        .select('*')
-        .order('sort_order', { ascending: true })
+    try {
+        const { data: apps } = await supabaseAdmin
+            .from('saas_apps')
+            .select('*')
+            .order('sort_order', { ascending: true })
 
-    if (!apps) return []
+        if (!apps) return []
 
-    // Enrich with details
-    const enriched = await Promise.all(
-        apps.map(async (app) => {
-            const { data: modules } = await supabaseAdmin
-                .from('saas_app_modules')
-                .select('*')
-                .eq('app_id', app.id)
+        // Enrich with details
+        const enriched = await Promise.all(
+            apps.map(async (app) => {
+                const { data: modules } = await supabaseAdmin
+                    .from('saas_app_modules')
+                    .select('*')
+                    .eq('app_id', app.id)
 
-            const { data: addOns } = await supabaseAdmin
-                .from('saas_app_add_ons')
-                .select('*')
-                .eq('app_id', app.id)
+                const { data: addOns } = await supabaseAdmin
+                    .from('saas_app_add_ons')
+                    .select('*')
+                    .eq('app_id', app.id)
 
-            const { count: orgCount } = await supabaseAdmin
-                .from('organizations')
-                .select('id', { count: 'exact', head: true })
-                .eq('active_app_id', app.id)
+                const { count: orgCount } = await supabaseAdmin
+                    .from('organizations')
+                    .select('id', { count: 'exact', head: true })
+                    .eq('active_app_id', app.id)
 
-            return {
-                ...(app as SaasApp),
-                modules: (modules as AppModule[]) || [],
-                recommended_add_ons: (addOns as AppAddOn[]) || [],
-                module_count: modules?.length || 0,
-                active_org_count: orgCount || 0
-            }
-        })
-    )
+                return {
+                    ...(app as SaasApp),
+                    modules: (modules as AppModule[]) || [],
+                    recommended_add_ons: (addOns as AppAddOn[]) || [],
+                    module_count: modules?.length || 0,
+                    active_org_count: orgCount || 0
+                }
+            })
+        )
 
-    return enriched
+        return enriched
+    } catch (error: any) {
+        console.error('Error getting solution templates:', error)
+        return []
+    }
+}
+
+/**
+ * Get recommended solution templates for a specific vertical
+ */
+export async function getTemplatesForVertical(vertical: string) {
+    await requireSuperAdmin()
+
+    try {
+        const { data, error } = await supabaseAdmin
+            .rpc('get_recommended_templates_for_vertical', { p_vertical: vertical })
+
+        if (error) throw error
+
+        return data || []
+    } catch (error: any) {
+        console.error('Error getting templates for vertical:', error)
+        return []
+    }
 }
 
 /**
