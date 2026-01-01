@@ -2,7 +2,7 @@ import { getAdminDashboardStats, getActiveBroadcasts, getAllSystemModules } from
 import { getAdminOrganizations } from '@/modules/core/admin/actions'
 import { requireSuperAdmin } from '@/lib/auth/platform-roles'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Building2, Users, Bell, Activity, Globe, Palette, ExternalLink } from 'lucide-react'
+import { Building2, Users, Bell, Activity, Globe, Palette, ExternalLink, Package } from 'lucide-react'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
@@ -144,6 +144,24 @@ export default async function AdminDashboardPage() {
                                 <CardTitle className="text-base mt-4">Branding Tiers</CardTitle>
                                 <CardDescription>
                                     Gestiona suscripciones de branding premium
+                                </CardDescription>
+                            </CardHeader>
+                        </Card>
+                    </a>
+
+                    {/* Apps Card */}
+                    <a href="/platform/admin/apps" className="block group">
+                        <Card className="h-full transition-all hover:shadow-lg hover:border-purple-500/50 cursor-pointer">
+                            <CardHeader>
+                                <div className="flex items-center justify-between">
+                                    <div className="p-2 rounded-lg bg-purple-500/10">
+                                        <Package className="h-6 w-6 text-purple-500" />
+                                    </div>
+                                    <ExternalLink className="h-4 w-4 text-muted-foreground group-hover:text-purple-500 transition-colors" />
+                                </div>
+                                <CardTitle className="text-base mt-4">App Templates</CardTitle>
+                                <CardDescription>
+                                    Pre-configured module bundles for different use cases
                                 </CardDescription>
                             </CardHeader>
                         </Card>
