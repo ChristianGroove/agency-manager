@@ -304,19 +304,21 @@ export function EcosystemHubModal({ client, services, open: controlledOpen, onOp
                                             {/* Screen Content */}
                                             <div className="bg-gray-50 w-full h-full rounded-2xl overflow-hidden relative">
                                                 <div className="absolute inset-0 overflow-y-auto scrollbar-hide">
-                                                    <div className="scale-[0.85] origin-top w-[117%]">
-                                                        <InsightsTab
-                                                            client={client}
-                                                            services={services}
-                                                            token={client.portal_short_token}
-                                                            insightsAccess={{
-                                                                show: isEffectiveEnabled,
-                                                                mode: {
-                                                                    ads: (accessLevel === 'ALL' || accessLevel === 'ADS'),
-                                                                    organic: (accessLevel === 'ALL' || accessLevel === 'ORGANIC')
-                                                                }
-                                                            }}
-                                                        />
+                                                    <div className="scale-[0.7] origin-top w-full text-sm">
+                                                        <div className="[&_*]:!text-xs [&_h1]:!text-lg [&_h2]:!text-base [&_h3]:!text-sm">
+                                                            <InsightsTab
+                                                                client={client}
+                                                                services={services}
+                                                                token={client.portal_short_token}
+                                                                insightsAccess={{
+                                                                    show: isEffectiveEnabled,
+                                                                    mode: {
+                                                                        ads: (accessLevel === 'ALL' || accessLevel === 'ADS'),
+                                                                        organic: (accessLevel === 'ALL' || accessLevel === 'ORGANIC')
+                                                                    }
+                                                                }}
+                                                            />
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
