@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Package, Users, DollarSign, Settings } from 'lucide-react'
 import Link from 'next/link'
+import { EditAppDialog } from './_components/edit-app-dialog'
 
 interface PageProps {
     params: Promise<{
