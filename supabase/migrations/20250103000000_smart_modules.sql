@@ -10,7 +10,7 @@
 ALTER TABLE public.system_modules
 DROP CONSTRAINT IF EXISTS system_modules_category_check;
 
--- Now add columns with new constraint
+-- Now add columns without constraint
 ALTER TABLE public.system_modules
 ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'vertical_specific',
 ADD COLUMN IF NOT EXISTS dependencies JSONB DEFAULT '[]'::jsonb,
@@ -25,10 +25,25 @@ ADD COLUMN IF NOT EXISTS is_premium BOOLEAN DEFAULT FALSE,
 ADD COLUMN IF NOT EXISTS price_monthly DECIMAL(10,2) DEFAULT 0,
 ADD COLUMN IF NOT EXISTS display_order INTEGER DEFAULT 0;
 
--- Add the check constraint separately
-ALTER TABLE public.system_modules
-ADD CONSTRAINT system_modules_category_check 
-CHECK (category IN ('core', 'vertical_specific', 'add_on', 'premium'));
+-- Fix any existing invalid category values
+UPDATE public.system_modules
+SET category = 'vertical_specific'
+WHERE category IS NULL 
+   OR category NOT IN ('core', 'vertical_specific', 'add_on', 'premium');
+
+-- Now add the check constraint safely
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'system_modules_category_check' 
+        AND conrelid = 'public.system_modules'::regclass
+    ) THEN
+        ALTER TABLE public.system_modules
+        ADD CONSTRAINT system_modules_category_check 
+        CHECK (category IN ('core', 'vertical_specific', 'add_on', 'premium'));
+    END IF;
+END $$;
 
 COMMENT ON COLUMN public.system_modules.category IS 'Module category: core, vertical_specific, add_on, premium';
 COMMENT ON COLUMN public.system_modules.dependencies IS 'Array of dependency objects with module_key, type (required/recommended), and reason';
