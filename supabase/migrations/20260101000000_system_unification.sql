@@ -72,7 +72,7 @@ SELECT
     a.category as template_category,
     a.price_monthly as template_price,
     o.app_activated_at,
-    COALESCE(array_length(o.manual_module_overrides, 1), 0) as active_module_count
+    COALESCE(jsonb_array_length(o.manual_module_overrides), 0) as active_module_count
 FROM public.organizations o
 LEFT JOIN public.saas_apps a ON a.id = o.active_app_id
 WHERE o.active_app_id IS NOT NULL;
