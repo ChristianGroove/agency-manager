@@ -5,9 +5,14 @@
 -- ============================================
 
 -- 1. EXTEND SYSTEM_MODULES with Smart Features
+
+-- First, drop existing category constraint if it exists
 ALTER TABLE public.system_modules
-ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'vertical_specific'
-    CHECK (category IN ('core', 'vertical_specific', 'add_on', 'premium')),
+DROP CONSTRAINT IF EXISTS system_modules_category_check;
+
+-- Now add columns with new constraint
+ALTER TABLE public.system_modules
+ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'vertical_specific',
 ADD COLUMN IF NOT EXISTS dependencies JSONB DEFAULT '[]'::jsonb,
 ADD COLUMN IF NOT EXISTS conflicts_with TEXT[] DEFAULT ARRAY[]::TEXT[],
 ADD COLUMN IF NOT EXISTS compatible_verticals TEXT[] DEFAULT ARRAY['*'],
@@ -19,6 +24,11 @@ ADD COLUMN IF NOT EXISTS requires_configuration BOOLEAN DEFAULT FALSE,
 ADD COLUMN IF NOT EXISTS is_premium BOOLEAN DEFAULT FALSE,
 ADD COLUMN IF NOT EXISTS price_monthly DECIMAL(10,2) DEFAULT 0,
 ADD COLUMN IF NOT EXISTS display_order INTEGER DEFAULT 0;
+
+-- Add the check constraint separately
+ALTER TABLE public.system_modules
+ADD CONSTRAINT system_modules_category_check 
+CHECK (category IN ('core', 'vertical_specific', 'add_on', 'premium'));
 
 COMMENT ON COLUMN public.system_modules.category IS 'Module category: core, vertical_specific, add_on, premium';
 COMMENT ON COLUMN public.system_modules.dependencies IS 'Array of dependency objects with module_key, type (required/recommended), and reason';
