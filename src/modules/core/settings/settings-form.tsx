@@ -27,12 +27,31 @@ import { EmailLogsTable } from "@/modules/core/notifications/components/email-lo
 import { Bell } from "lucide-react"
 import { BiometricButton } from "@/components/auth/biometric-button"
 
+import { SubscriptionSettingsTab } from "./subscription-settings-tab"
+import { SaasApp } from "@/modules/core/saas/app-management-actions"
+
 interface SettingsFormProps {
     initialSettings: any
     activeModules: string[]
+    subscriptionApp?: SaasApp | null
 }
 
-export function SettingsForm({ initialSettings, activeModules }: SettingsFormProps) {
+export function SettingsForm({ initialSettings, activeModules, subscriptionApp }: SettingsFormProps) {
+    // ... existing code ...
+
+    // ADD LOCAL STATE FOR SUBSCRIPTION APP (Optional, mostly passed down)
+    // No need for state if it's display only.
+
+    // ... inside TABS_CONFIG
+
+    // ...
+
+    // ... inside TabsContent render
+    {/* SUBSCRIPTION TAB */ }
+    <TabsContent value="subscription" className="space-y-4 mt-4">
+        <SubscriptionSettingsTab app={subscriptionApp || null} />
+    </TabsContent>
+
     const router = useRouter()
     const [isLoading, setIsLoading] = useState(false)
     const [formData, setFormData] = useState(initialSettings || {})
@@ -129,6 +148,13 @@ export function SettingsForm({ initialSettings, activeModules }: SettingsFormPro
             id: 'agency',
             label: 'Negocio',
             icon: Building2,
+            requiredModule: null,
+            isCore: true
+        },
+        {
+            id: 'subscription',
+            label: 'Suscripción',
+            icon: CreditCard,
             requiredModule: null,
             isCore: true
         },
@@ -259,7 +285,7 @@ export function SettingsForm({ initialSettings, activeModules }: SettingsFormPro
                 </TabsList>
 
                 {/* TEAM TAB */}
-                <TabsContent value="team" className="space-y-4 mt-4">
+                <TabsContent value="team" className="space-y-4 mt-4" suppressHydrationWarning>
                     <TeamSettingsTab />
                 </TabsContent>
 
@@ -410,7 +436,7 @@ export function SettingsForm({ initialSettings, activeModules }: SettingsFormPro
                 </TabsContent>
 
                 {/* GENERAL TAB */}
-                <TabsContent value="general" className="space-y-4 mt-4">
+                <TabsContent value="general" className="space-y-4 mt-4" suppressHydrationWarning>
                     <Card>
                         <CardHeader>
                             <CardTitle>Configuración Regional y Legal</CardTitle>
@@ -508,7 +534,7 @@ export function SettingsForm({ initialSettings, activeModules }: SettingsFormPro
                 </TabsContent>
 
                 {/* NOTIFICATIONS TAB */}
-                <TabsContent value="notifications" className="space-y-4 mt-4">
+                <TabsContent value="notifications" className="space-y-4 mt-4" suppressHydrationWarning>
                     <Card>
                         <CardHeader>
                             <CardTitle>Configuración de Correo</CardTitle>
@@ -562,7 +588,7 @@ export function SettingsForm({ initialSettings, activeModules }: SettingsFormPro
                 </TabsContent>
 
                 {/* BILLING TAB */}
-                <TabsContent value="billing" className="space-y-6 mt-4">
+                <TabsContent value="billing" className="space-y-6 mt-4" suppressHydrationWarning>
 
                     {/* EMITTERS SECTION - Moved here by user request */}
                     <div>
@@ -709,7 +735,7 @@ export function SettingsForm({ initialSettings, activeModules }: SettingsFormPro
                 </TabsContent>
 
                 {/* PAYMENTS TAB */}
-                <TabsContent value="payments" className="space-y-4 mt-4">
+                <TabsContent value="payments" className="space-y-4 mt-4" suppressHydrationWarning>
                     <PaymentMethodsManager />
 
                     <Card>
@@ -830,7 +856,7 @@ export function SettingsForm({ initialSettings, activeModules }: SettingsFormPro
                 </TabsContent>
 
                 {/* PORTAL TAB */}
-                <TabsContent value="portal" className="space-y-4 mt-4">
+                <TabsContent value="portal" className="space-y-4 mt-4" suppressHydrationWarning>
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                         {/* Left Column: General & Branding */}
                         <div className="lg:col-span-2 space-y-4">
@@ -1041,7 +1067,7 @@ export function SettingsForm({ initialSettings, activeModules }: SettingsFormPro
                 </TabsContent>
 
                 {/* PORTAL TAB */}
-                <TabsContent value="portal" className="space-y-4 mt-4">
+                <TabsContent value="portal" className="space-y-4 mt-4" suppressHydrationWarning>
                     <PortalSettingsTab
                         settings={formData}
                         activeModules={activeModules}
@@ -1052,7 +1078,7 @@ export function SettingsForm({ initialSettings, activeModules }: SettingsFormPro
                 </TabsContent>
 
                 {/* COMMUNICATION TAB */}
-                <TabsContent value="communication" className="space-y-4 mt-4">
+                <TabsContent value="communication" className="space-y-4 mt-4" suppressHydrationWarning>
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                         {/* Left Column: General Settings */}
                         <div className="space-y-4">
@@ -1129,8 +1155,16 @@ export function SettingsForm({ initialSettings, activeModules }: SettingsFormPro
                         </div>
                     </div>
                 </TabsContent>
+
+                {/* SUBSCRIPTION TAB */}
+                <TabsContent value="subscription" className="space-y-4 mt-4" suppressHydrationWarning>
+                    <SubscriptionSettingsTab app={subscriptionApp || null} />
+                </TabsContent>
+
+
+
                 {/* INTERFACE TAB */}
-                <TabsContent value="interface" className="space-y-4 mt-4">
+                <TabsContent value="interface" className="space-y-4 mt-4" suppressHydrationWarning>
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2"><LayoutTemplate className="h-4 w-4" /> Personalización de Interfaz</CardTitle>
@@ -1156,7 +1190,7 @@ export function SettingsForm({ initialSettings, activeModules }: SettingsFormPro
                 </TabsContent>
 
                 {/* SECURITY TAB */}
-                <TabsContent value="security" className="space-y-4 mt-4">
+                <TabsContent value="security" className="space-y-4 mt-4" suppressHydrationWarning>
                     <Card className="border-indigo-100 bg-indigo-50/20">
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">

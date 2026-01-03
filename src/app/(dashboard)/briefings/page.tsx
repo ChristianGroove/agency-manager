@@ -1,16 +1,19 @@
-import { getBriefings } from "@/modules/verticals/agency/briefings/actions"
-import { BriefingsPageHeader } from "@/modules/verticals/agency/briefings/briefings-page-header"
-import { DynamicBriefingList } from "@/modules/verticals/agency/briefings/dynamic-briefing-list"
+
+import { getFormSubmissions } from "@/modules/core/forms/actions"
+import { FormPageHeader } from "@/modules/core/forms/form-page-header"
+import { DynamicFormList } from "@/modules/core/forms/dynamic-form-list"
 
 export default async function BriefingsPage() {
-    const briefings = await getBriefings()
+    const submissions = await getFormSubmissions()
 
     return (
         <div className="space-y-8">
-            <BriefingsPageHeader />
+            <FormPageHeader />
 
-            <DynamicBriefingList briefings={briefings || []} />
+            <DynamicFormList submissions={submissions || []} />
         </div>
     )
 }
+
+
 

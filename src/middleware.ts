@@ -6,6 +6,11 @@ import { checkRateLimit } from '@/lib/security/rate-limit'
 import { applySecurityHeaders } from '@/lib/security/headers'
 
 export async function middleware(request: NextRequest) {
+    // Skip middleware for Webhooks (Stateless, handled by route signature checks)
+    if (request.nextUrl.pathname.startsWith('/api/webhooks')) {
+        return NextResponse.next()
+    }
+
     // 0. SECURITY SHIELD: Rate Limiting & Headers
     const ip = request.headers.get('x-forwarded-for') || '127.0.0.1'
 

@@ -46,12 +46,32 @@ export function OrganizationSwitcher() {
 
     const handleSwitch = async (orgId: string) => {
         try {
+            // Show loading state
+            toast.loading("Cambiando de organización...")
+
+            // Switch organization (sets cookie)
             await switchOrganization(orgId)
+
+            // Close modal immediately
             setIsOpen(false)
+
+            // Small delay to ensure cookie propagation
+            await new Promise(resolve => setTimeout(resolve, 100))
+
+            // Navigate to root and force refresh
+            // Using router instead of window.location to preserve session
+            router.push('/')
             router.refresh()
-            toast.success("Organización cambiada")
+
+            // Success toast after navigation
+            setTimeout(() => {
+                toast.dismiss()
+                toast.success("Organización cambiada")
+            }, 300)
         } catch (error) {
+            toast.dismiss()
             toast.error("Error cambiando de organización")
+            console.error(error)
         }
     }
 

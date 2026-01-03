@@ -25,12 +25,29 @@ export async function getSettings() {
     }
 
     if (!data) {
+        // SECURITY: Verify membership before using Admin to create defaults
+        // This prevents unauthorized users (who get null due to RLS) from triggering creation
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return null
+
+        const { data: member } = await supabase
+            .from('organization_members')
+            .select('id')
+            .eq('organization_id', orgId)
+            .eq('user_id', user.id)
+            .maybeSingle()
+
+        if (!member) {
+            // User is not a member, so the "null" result was due to RLS (or invalid org), not missing settings
+            return null
+        }
+
         // No settings found, create default for this Org
         // Provide defaults for potential NOT NULL columns
         const defaultSettings = {
             organization_id: orgId,
             agency_name: 'My Agency', // Fallback
-            agency_email: 'contact@example.com',
+            agency_email: user.email || 'contact@example.com',
             agency_currency: 'USD',
             default_language: 'en',
             portal_enabled: true

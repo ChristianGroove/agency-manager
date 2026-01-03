@@ -46,6 +46,7 @@ export type Service = {
     service_start_date?: string
     billing_cycle_start_date?: string
     metadata?: any
+    client?: Client
     // Cleaning App 2.0 Fields
     duration_minutes?: number
     pricing_model?: 'fixed' | 'hourly' | 'sq_meter'
@@ -56,12 +57,21 @@ export type Lead = {
     id: string
     created_at: string
     user_id: string
+    organization_id: string
     name: string
     company_name?: string
     email?: string
     phone?: string
-    status: 'open' | 'converted' | 'lost'
+    status: string // Dynamic status from pipeline_stages (e.g. 'open', 'contacted', 'won', 'lost')
     notes?: string
+    // Advanced fields
+    score?: number
+    tags?: string[]
+    source?: string
+    assigned_to?: string
+    estimated_value?: number
+    next_follow_up_at?: string
+    metadata?: any
 }
 
 export type QuoteItem = {
@@ -182,7 +192,7 @@ export type Emitter = {
     allowed_document_types: string[]
 }
 
-export type ServiceCatalogItem = {
+export type ServiceCatalogItem<TMetadata = Record<string, any>> = {
     id: string
     name: string
     description?: string
@@ -194,5 +204,41 @@ export type ServiceCatalogItem = {
     created_at?: string
     service_start_date?: string
     billing_cycle_start_date?: string
-    briefing_template_id?: string
+    briefing_template_id?: string // Deprecated: Use metadata.briefing_template_id
+    metadata?: TMetadata
+    is_system_template?: boolean
+    organization_id: string
+}
+
+export type WorkOrder = {
+    id: string
+    organization_id: string
+    client_id?: string
+    service_id?: string
+    form_submission_id?: string
+    assigned_staff_id?: string
+    title: string
+    description?: string
+    status: 'pending' | 'scheduled' | 'in_progress' | 'completed' | 'cancelled' | 'blocked'
+    priority: 'low' | 'normal' | 'high' | 'urgent'
+    start_time?: string
+    end_time?: string
+    location_type?: 'at_client_address' | 'remote' | 'at_office'
+    location_address?: string
+    vertical: string
+    tags?: string[]
+    price_quoted?: number
+    currency?: string
+    metadata?: any
+    created_at: string
+    updated_at?: string
+    // Expanded relations
+    client?: Client
+    service?: ServiceCatalogItem
+    assignee?: {
+        user_id: string
+        first_name: string
+        last_name: string
+        email: string
+    }
 }

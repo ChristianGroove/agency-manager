@@ -9,8 +9,8 @@ import Link from "next/link"
 
 import { Invoice } from "@/types"
 
-import { ShareInvoiceModal } from "@/modules/verticals/agency/invoicing/share-invoice-modal"
-import { InvoiceTemplate } from "@/modules/verticals/agency/invoicing/invoice-template"
+import { ShareInvoiceModal } from "@/modules/core/billing/share-invoice-modal"
+import { InvoiceTemplate } from "@/modules/core/billing/invoice-template"
 import { ShareButton } from "@/components/animate-ui/components/community/share-button"
 import { getSettings } from "@/modules/core/settings/actions"
 import { getDocumentTypeLabel } from "@/lib/billing-utils"
@@ -80,7 +80,7 @@ export default function InvoicePage() {
 
     try {
       // Use efficient Server Action
-      const { sendInvoiceEmail } = await import("@/modules/verticals/agency/invoicing/actions/send-invoice-email")
+      const { sendInvoiceEmail } = await import("@/modules/core/billing/actions/send-invoice-email")
       const result = await sendInvoiceEmail(invoice.id)
 
       if (result.success) {

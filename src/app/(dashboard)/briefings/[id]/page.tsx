@@ -1,11 +1,11 @@
-import { getBriefingById, getBriefingResponses } from "@/modules/verticals/agency/briefings/actions"
+import { getSubmissionById, getSubmissionResponses } from "@/modules/core/forms/actions"
 import { notFound } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, ExternalLink } from "lucide-react"
 import Link from "next/link"
-import { FullBriefingTemplate } from "@/types/briefings"
+import { FormTemplate } from "@/modules/core/forms/actions"
 
 interface PageProps {
     params: Promise<{
@@ -15,17 +15,18 @@ interface PageProps {
 
 export default async function BriefingDetailPage({ params }: PageProps) {
     const { id } = await params
-    const briefing = await getBriefingById(id)
+    const briefing = await getSubmissionById(id)
 
     if (!briefing) {
         notFound()
     }
 
-    const responses = await getBriefingResponses(briefing.id)
+    const responses = await getSubmissionResponses(briefing.id)
+
     const responsesMap = new Map(responses?.map((r: any) => [r.field_id, r.value]))
 
     // Sort steps and fields
-    const template = briefing.template as FullBriefingTemplate
+    const template = briefing.template as unknown as FormTemplate
     const structure = template?.structure || []
 
     // Group fields by step for display
@@ -40,6 +41,7 @@ export default async function BriefingDetailPage({ params }: PageProps) {
         step.fields.push(field)
         return acc
     }, [])
+
 
     // Note: Structure is already sorted by migration script or insertion order
     // But we might want to sort steps? For now, insertion order is fine.

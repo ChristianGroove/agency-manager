@@ -21,9 +21,10 @@ interface EditAppDialogProps {
         color: string
         is_active: boolean
     }
+    dict: any
 }
 
-export function EditAppDialog({ app }: EditAppDialogProps) {
+export function EditAppDialog({ app, dict }: EditAppDialogProps) {
     const router = useRouter()
     const [isOpen, setIsOpen] = useState(false)
     const [isSubmitting, setIsSubmitting] = useState(false)
@@ -47,7 +48,7 @@ export function EditAppDialog({ app }: EditAppDialogProps) {
             const result = await updateApp(app.id, updates)
 
             if (result.success) {
-                toast.success('Template updated successfully!', {
+                toast.success(dict.toast.updated, {
                     description: `Changes to "${updates.name}" have been saved.`,
                     duration: 4000
                 })
@@ -84,9 +85,9 @@ export function EditAppDialog({ app }: EditAppDialogProps) {
                             <Settings className="h-5 w-5 text-blue-500" />
                         </div>
                         <div>
-                            <DialogTitle>Edit Solution Template</DialogTitle>
+                            <DialogTitle>{dict.edit_dialog_title}</DialogTitle>
                             <DialogDescription>
-                                Update template details. Changes will affect all organizations using this template.
+                                {dict.description}
                             </DialogDescription>
                         </div>
                     </div>
@@ -102,8 +103,8 @@ export function EditAppDialog({ app }: EditAppDialogProps) {
                     </div>
 
                     {/* App Name */}
-                    <div className="space-y-2">
-                        <Label htmlFor="edit-name">Template Name *</Label>
+                    <div className="grid gap-2">
+                        <Label htmlFor="name">{dict.form.name}</Label>
                         <Input
                             id="edit-name"
                             name="name"
@@ -114,8 +115,8 @@ export function EditAppDialog({ app }: EditAppDialogProps) {
                     </div>
 
                     {/* Description */}
-                    <div className="space-y-2">
-                        <Label htmlFor="edit-description">Description *</Label>
+                    <div className="grid gap-2">
+                        <Label htmlFor="description">{dict.form.description}</Label>
                         <Textarea
                             id="edit-description"
                             name="description"
@@ -127,8 +128,8 @@ export function EditAppDialog({ app }: EditAppDialogProps) {
                     </div>
 
                     {/* Category */}
-                    <div className="space-y-2">
-                        <Label htmlFor="edit-category">Category *</Label>
+                    <div className="grid gap-2">
+                        <Label htmlFor="category">{dict.form.category}</Label>
                         <Input
                             id="edit-category"
                             name="category"
@@ -139,8 +140,8 @@ export function EditAppDialog({ app }: EditAppDialogProps) {
                     </div>
 
                     {/* Pricing */}
-                    <div className="space-y-2">
-                        <Label htmlFor="edit-price">Monthly Price ($) *</Label>
+                    <div className="grid gap-2">
+                        <Label htmlFor="price_monthly">{dict.form.price}</Label>
                         <Input
                             id="edit-price"
                             name="price_monthly"
@@ -207,7 +208,7 @@ export function EditAppDialog({ app }: EditAppDialogProps) {
                         </Button>
                         <Button type="submit" className="flex-1" disabled={isSubmitting}>
                             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            {isSubmitting ? 'Saving Changes...' : 'Save Changes'}
+                            {isSubmitting ? 'Saving Changes...' : dict.form.save}
                         </Button>
                     </div>
                 </form>

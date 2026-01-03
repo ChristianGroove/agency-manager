@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import { supabase } from "@/lib/supabase"
-import { InvoiceTemplate } from "@/modules/verticals/agency/invoicing/invoice-template"
+import { InvoiceTemplate } from "@/modules/core/billing/invoice-template"
 import { Loader2, Download, Printer } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Toaster } from "sonner"

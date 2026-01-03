@@ -13,11 +13,15 @@ export type SaaSProduct = {
     name: string
     slug: string
     description: string | null
-    pricing_model: 'subscription' | 'one_time'
-    base_price: number
-    status: 'draft' | 'published' | 'archived'
+    category: string
+    logo?: string
+    image?: string
+    price_monthly: number
+    pricing_model?: string
+    features?: string[]
+    metadata?: any
+    is_active: boolean
     created_at: string
-    modules?: SystemModule[] // Joined modules
 }
 
 export type SaaSProductModule = {

@@ -1,9 +1,9 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Briefing, FullBriefingTemplate } from "@/types/briefings"
+import { FormSubmission, FormTemplate } from "@/modules/core/forms/actions"
 import { getPortalBriefing, getPortalBriefingResponses } from "@/modules/core/portal/actions"
-import { BriefingWizard } from "@/modules/verticals/agency/briefings/briefing-wizard"
+import { FormWizard } from "@/modules/core/forms/form-wizard"
 import { Loader2, ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -14,7 +14,7 @@ interface PortalBriefingViewProps {
 }
 
 export function PortalBriefingView({ token, briefingId, onBack }: PortalBriefingViewProps) {
-    const [briefing, setBriefing] = useState<Briefing | null>(null)
+    const [briefing, setBriefing] = useState<FormSubmission | null>(null)
     const [responses, setResponses] = useState<Record<string, any>>({})
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState("")
@@ -27,7 +27,7 @@ export function PortalBriefingView({ token, briefingId, onBack }: PortalBriefing
                     getPortalBriefingResponses(token, briefingId)
                 ])
 
-                setBriefing(briefingData)
+                setBriefing(briefingData as unknown as FormSubmission)
 
                 // Transform responses
                 const initialResponses: Record<string, any> = {}
@@ -38,20 +38,20 @@ export function PortalBriefingView({ token, briefingId, onBack }: PortalBriefing
 
             } catch (err) {
                 console.error("Failed to load briefing", err)
-                setError("Error al cargar el briefing. Por favor intenta de nuevo.")
+                setError("Error al cargar el formulario. Por favor intenta de nuevo.")
             } finally {
                 setLoading(false)
             }
         }
 
         load()
-    }, [briefingId])
+    }, [briefingId, token])
 
     if (loading) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[50vh]">
                 <Loader2 className="h-8 w-8 animate-spin text-pink-500 mb-4" />
-                <p className="text-gray-500">Cargando briefing...</p>
+                <p className="text-gray-500">Cargando formulario...</p>
             </div>
         )
     }
@@ -59,7 +59,7 @@ export function PortalBriefingView({ token, briefingId, onBack }: PortalBriefing
     if (error || !briefing) {
         return (
             <div className="text-center py-12">
-                <p className="text-red-500 mb-4">{error || "Briefing no encontrado"}</p>
+                <p className="text-red-500 mb-4">{error || "Formulario no encontrado"}</p>
                 <Button onClick={onBack} variant="outline">Volver</Button>
             </div>
         )
@@ -75,11 +75,12 @@ export function PortalBriefingView({ token, briefingId, onBack }: PortalBriefing
                 </Button>
             </div>
 
-            <BriefingWizard
-                briefing={briefing}
-                template={briefing.template as FullBriefingTemplate}
+            <FormWizard
+                submission={briefing}
+                template={briefing.template as unknown as FormTemplate}
                 initialResponses={responses}
             />
         </div>
     )
 }
+

@@ -9,13 +9,12 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Plus, Package } from "lucide-react"
-import { PortfolioList } from "@/modules/verticals/agency/portfolio/portfolio-list"
-import { PortfolioServiceSheet } from "@/modules/verticals/agency/portfolio/portfolio-service-sheet"
-import { CategoryManager } from "@/modules/verticals/agency/services/category-manager"
-import { getPortfolioItems, deletePortfolioItem } from "@/modules/verticals/agency/portfolio/actions"
-import { getCategories, ServiceCategory } from "@/modules/verticals/agency/categories/actions"
+import { Plus } from "lucide-react"
+import { CatalogList } from "@/modules/core/catalog/catalog-list"
+import { CatalogServiceSheet } from "@/modules/core/catalog/catalog-service-sheet"
+import { CategoryManager } from "@/modules/core/catalog/components/category-manager"
+import { getCatalogItems, deleteCatalogItem } from "@/modules/core/catalog/actions"
+import { getCategories, ServiceCategory } from "@/modules/core/catalog/categories-actions"
 import { ServiceCatalogItem } from "@/types"
 import { BriefingTemplate } from "@/types/briefings"
 import { toast } from "sonner"
@@ -23,11 +22,9 @@ import { cn } from "@/lib/utils"
 import { SplitText } from "@/components/ui/split-text"
 import { SearchFilterBar, FilterOption } from "@/components/shared/search-filter-bar"
 import { ViewToggle, ViewMode } from "@/components/shared/view-toggle"
-import { CategorySelector } from "@/modules/verticals/agency/portfolio/category-selector"
-import { getSaaSProducts, seedSystemModules } from "@/modules/core/saas/actions"
-import { SaaSProduct } from "@/types/saas"
-import { AppList } from "@/modules/core/saas/app-list"
-import { CreateAppSheet } from "@/modules/core/saas/create-app-sheet"
+import { CategorySelector } from "@/modules/core/catalog/category-selector"
+import { TemplateImporter } from "@/modules/core/catalog/template-importer"
+
 
 export default function PortfolioPage() {
     const [activeTab, setActiveTab] = useState<string>("services")
@@ -45,16 +42,6 @@ export default function PortfolioPage() {
     const [activeCategory, setActiveCategory] = useState("all")
     const [activePaymentFilter, setActivePaymentFilter] = useState("all") // 'all' | 'recurring' | 'one_time'
     const [viewMode, setViewMode] = useState<ViewMode>('grid')
-
-
-
-    // SaaS Apps state
-    const [apps, setApps] = useState<SaaSProduct[]>([])
-    const [appsLoading, setAppsLoading] = useState(true)
-    const [isAppSheetOpen, setIsAppSheetOpen] = useState(false)
-
-    // Check if current org is Pixy Agency (SaaS Builder)
-    const isPixyAgency = currentOrgName === 'Pixy Agency'
 
     /**
      * Fetch current organization name
@@ -77,7 +64,7 @@ export default function PortfolioPage() {
         setLoading(true)
         try {
             const [data, cats] = await Promise.all([
-                getPortfolioItems(),
+                getCatalogItems(),
                 getCategories()
             ])
             setItems(data)
@@ -90,34 +77,10 @@ export default function PortfolioPage() {
         }
     }
 
-
-    /**
-     * Fetch SaaS apps assigned to organization via subscription
-     * Single Subscription Model: Each org has ONE subscription_product_id
-     */
-    const fetchApps = async () => {
-        setAppsLoading(true)
-        try {
-            // Use server action to get subscription app
-            const { getSubscriptionApp } = await import('@/modules/verticals/agency/portfolio/actions')
-            const product = await getSubscriptionApp()
-            setApps(product ? [product] : [])
-        } catch (error) {
-            console.error(error)
-            toast.error("Error al cargar Apps SaaS")
-            setApps([])
-        } finally {
-            setAppsLoading(false)
-        }
-    }
-
     useEffect(() => {
         fetchOrgName()
         fetchServices()
-        if (isPixyAgency) {
-            fetchApps() // Only fetch apps if Pixy Agency
-        }
-    }, [isPixyAgency])
+    }, [])
 
     const handleCreateService = () => {
         setItemToEdit(null)
@@ -132,7 +95,7 @@ export default function PortfolioPage() {
     const handleDeleteService = async (id: string) => {
         if (!confirm("¿Estás seguro de eliminar este servicio? Esta acción no se puede deshacer.")) return
         try {
-            await deletePortfolioItem(id)
+            await deleteCatalogItem(id)
             toast.success("Servicio eliminado")
             fetchServices()
         } catch (error) {
@@ -153,141 +116,85 @@ export default function PortfolioPage() {
                     </p>
                 </div>
 
-                {/* Right: Actions (moved from below) */}
+                {/* Right: Actions */}
                 <div className="flex items-center gap-2 w-full md:w-auto">
-                    {activeTab === "services" && (
-                        <>
-                            <CategoryManager />
-                            <Button
-                                onClick={handleCreateService}
-                                className="bg-brand-pink hover:bg-brand-pink/90 text-white shadow-lg shadow-brand-pink/20"
-                            >
-                                <Plus className="mr-2 h-4 w-4" /> Nuevo Servicio
-                            </Button>
-                        </>
-                    )}
-                    {activeTab === "apps" && isPixyAgency && (
-                        <Button
-                            onClick={() => setIsAppSheetOpen(true)}
-                            className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20"
-                        >
-                            <Plus className="mr-2 h-4 w-4" /> Nueva App
-                        </Button>
-                    )}
+                    <TemplateImporter onSuccess={fetchServices} />
+                    <CategoryManager />
+                    <Button
+                        onClick={handleCreateService}
+                        className="bg-brand-pink hover:bg-brand-pink/90 text-white shadow-lg shadow-brand-pink/20"
+                    >
+                        <Plus className="mr-2 h-4 w-4" /> Nuevo Servicio
+                    </Button>
                 </div>
             </div>
 
-            {/* Control Row: Tabs ONLY */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                {/* Left: Tabs */}
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 w-full">
-                    <TabsList className={cn(
-                        "grid w-full",
-                        isPixyAgency ? "max-w-md grid-cols-2" : "max-w-xs grid-cols-1"
-                    )}>
-                        <TabsTrigger value="services">Servicios</TabsTrigger>
-                        {isPixyAgency && (
-                            <TabsTrigger value="apps">
-                                <Package className="h-4 w-4 mr-2" />
-                                Apps SaaS
-                            </TabsTrigger>
-                        )}
-                    </TabsList>
-                </Tabs>
+            {/* Filter & View Bar */}
+            <div className="space-y-4 sticky top-4 z-30 bg-gray-50/95 backdrop-blur-sm py-2">
+                <div className="flex flex-col md:flex-row gap-3">
+                    <SearchFilterBar
+                        searchTerm={searchTerm}
+                        onSearchChange={setSearchTerm}
+                        searchPlaceholder="Buscar por nombre..."
+                        filters={[
+                            { id: 'all', label: 'Todos', count: items.length, color: 'gray' },
+                            { id: 'one_off', label: 'Pago Único', count: items.filter(i => i.type === 'one_off').length, color: 'orange' },
+                            { id: 'recurring', label: 'Suscripción', count: items.filter(i => i.type === 'recurring').length, color: 'indigo' },
+                        ]}
+                        activeFilter={activePaymentFilter}
+                        onFilterChange={setActivePaymentFilter}
+                    />
+                    <ViewToggle
+                        view={viewMode}
+                        onViewChange={setViewMode}
+                    />
+                </div>
+
+                <div className="flex items-center">
+                    <CategorySelector
+                        categories={categories}
+                        activeCategory={activeCategory}
+                        onSelect={setActiveCategory}
+                    />
+                </div>
             </div>
 
-            {/* Filter & View Bar (Only for Services Tab) */}
-            {activeTab === "services" && (
-                <div className="space-y-4 sticky top-4 z-30 bg-gray-50/95 backdrop-blur-sm py-2">
-                    <div className="flex flex-col md:flex-row gap-3">
-                        <SearchFilterBar
-                            searchTerm={searchTerm}
-                            onSearchChange={setSearchTerm}
-                            searchPlaceholder="Buscar por nombre..."
-                            filters={[
-                                { id: 'all', label: 'Todos', count: items.length, color: 'gray' },
-                                { id: 'one_off', label: 'Pago Único', count: items.filter(i => i.type === 'one_off').length, color: 'orange' },
-                                { id: 'recurring', label: 'Suscripción', count: items.filter(i => i.type === 'recurring').length, color: 'indigo' },
-                            ]}
-                            activeFilter={activePaymentFilter}
-                            onFilterChange={setActivePaymentFilter}
-                        />
-                        <ViewToggle
-                            view={viewMode}
-                            onViewChange={setViewMode}
-                        />
+            {/* Content */}
+            <div className="mt-0">
+                {loading ? (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {[1, 2, 3, 4, 5, 6].map(i => (
+                            <div key={i} className="h-48 bg-gray-100 rounded-xl animate-pulse" />
+                        ))}
                     </div>
+                ) : (
+                    <CatalogList
+                        items={items.filter(item => {
+                            // 1. Search (Name only now, or maybe description)
+                            const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                (item.description && item.description.toLowerCase().includes(searchTerm.toLowerCase()))
 
-                    <div className="flex items-center">
-                        <CategorySelector
-                            categories={categories}
-                            activeCategory={activeCategory}
-                            onSelect={setActiveCategory}
-                        />
-                    </div>
-                </div>
-            )}
+                            // 2. Category
+                            const matchesCategory = activeCategory === 'all' ? true : item.category === activeCategory
 
-            {/* Tabs Content - decoupled from TabsList to allow inserting FilterBar */}
-            {activeTab === "services" && (
-                <div className="mt-0">
-                    {loading ? (
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            {[1, 2, 3, 4, 5, 6].map(i => (
-                                <div key={i} className="h-48 bg-gray-100 rounded-xl animate-pulse" />
-                            ))}
-                        </div>
-                    ) : (
-                        <PortfolioList
-                            items={items.filter(item => {
-                                // 1. Search (Name only now, or maybe description)
-                                const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                                    (item.description && item.description.toLowerCase().includes(searchTerm.toLowerCase()))
+                            // 3. Payment Type
+                            const matchesPayment = activePaymentFilter === 'all' ? true : item.type === activePaymentFilter
 
-                                // 2. Category
-                                const matchesCategory = activeCategory === 'all' ? true : item.category === activeCategory
-
-                                // 3. Payment Type
-                                const matchesPayment = activePaymentFilter === 'all' ? true : item.type === activePaymentFilter
-
-                                return matchesSearch && matchesCategory && matchesPayment
-                            })}
-                            viewMode={viewMode}
-                            onEdit={handleEditService}
-                            onDelete={handleDeleteService}
-                        />
-                    )}
-                </div>
-            )}
-
-
-            {activeTab === "apps" && (
-                <div className="mt-0">
-                    {appsLoading ? (
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            {[1, 2, 3].map(i => (
-                                <div key={i} className="h-48 bg-gray-100 rounded-xl animate-pulse" />
-                            ))}
-                        </div>
-                    ) : (
-                        <AppList items={apps} onEdit={(app) => { }} />
-                    )}
-                </div>
-            )}
-
+                            return matchesSearch && matchesCategory && matchesPayment
+                        })}
+                        viewMode={viewMode}
+                        onEdit={handleEditService}
+                        onDelete={handleDeleteService}
+                    />
+                )}
+            </div>
 
             {/* Sheets */}
-            <PortfolioServiceSheet
+            <CatalogServiceSheet
                 open={isFormOpen}
                 onOpenChange={setIsFormOpen}
                 itemToEdit={itemToEdit}
                 onSuccess={fetchServices}
-            />
-
-            <CreateAppSheet
-                open={isAppSheetOpen}
-                onOpenChange={setIsAppSheetOpen}
-                onSuccess={fetchApps}
             />
         </div>
     )

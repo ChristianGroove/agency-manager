@@ -105,9 +105,12 @@ export async function getClients() {
         .is('deleted_at', null)
         .order('created_at', { ascending: false })
 
-    if (orgId) {
-        query = query.eq('organization_id', orgId)
+    if (!orgId) {
+        return [] // Strict safety: No Org ID = No Clients
     }
+
+    // Filter by organization
+    query = query.eq('organization_id', orgId)
 
     const { data, error } = await query
 

@@ -2,6 +2,7 @@ import { Suspense } from "react"
 import { SettingsForm } from "@/modules/core/settings/settings-form"
 import { getSettings } from "@/modules/core/settings/actions"
 import { getOrganizationModules, getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getSubscriptionApp } from "@/modules/core/catalog/actions"
 import { Loader2 } from "lucide-react"
 
 export const metadata = {
@@ -17,9 +18,10 @@ export default async function SettingsPage() {
     }
 
     // Fetch data in parallel
-    const [settings, activeModules] = await Promise.all([
+    const [settings, activeModules, subscriptionApp] = await Promise.all([
         getSettings(),
-        getOrganizationModules(orgId)
+        getOrganizationModules(orgId),
+        getSubscriptionApp()
     ])
 
     return (
@@ -28,6 +30,7 @@ export default async function SettingsPage() {
                 <SettingsForm
                     initialSettings={settings || {}}
                     activeModules={activeModules || []}
+                    subscriptionApp={subscriptionApp}
                 />
             </Suspense>
         </div>

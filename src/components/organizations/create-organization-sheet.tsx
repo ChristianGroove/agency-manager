@@ -71,15 +71,20 @@ export function CreateOrganizationSheet({ open, onOpenChange, onSuccess }: Creat
             const result = await createOrganization({
                 name,
                 slug,
-                subscription_product_id: selectedProductId,
+                app_id: selectedProductId, // Changed from subscription_product_id to app_id
             })
 
             if (result.success) {
                 toast.success(`Organización "${name}" creada correctamente`)
                 onSuccess?.()
                 onOpenChange(false)
-                // Force reload
-                window.location.href = '/'
+
+                // Small delay to ensure cookie propagation
+                await new Promise(resolve => setTimeout(resolve, 100))
+
+                // Navigate using router to preserve session
+                router.push('/')
+                router.refresh()
             } else {
                 toast.error(result.error || "Error al crear la organización")
                 setIsLoading(false)

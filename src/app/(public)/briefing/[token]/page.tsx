@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation"
-import { getBriefingByToken, getBriefingResponses } from "@/modules/verticals/agency/briefings/actions"
-import { BriefingWizard } from "@/modules/verticals/agency/briefings/briefing-wizard"
-import { FullBriefingTemplate } from "@/types/briefings"
+import { getSubmissionByToken, getSubmissionResponses } from "@/modules/core/forms/actions"
+import { FormWizard } from "@/modules/core/forms/form-wizard"
+import { FormTemplate } from "@/modules/core/forms/actions"
 import boyWithDogAnimation from "../../../../../public/animations/boy-with-dog-in-wilderness-illustration-2025-10-20-03-04-06-utc.json"
 import { LottieAnimation } from "@/components/ui/lottie-animation"
 
@@ -13,17 +13,17 @@ interface PageProps {
 
 export default async function BriefingPage({ params }: PageProps) {
     const { token } = await params
-    const data = await getBriefingByToken(token)
+    const data = await getSubmissionByToken(token)
 
     if (!data) {
         notFound()
     }
 
     const briefing = data
-    const template = briefing.template as FullBriefingTemplate
+    const template = briefing.template as unknown as FormTemplate
 
     // Fetch existing responses if any (to resume progress)
-    const existingResponses = await getBriefingResponses(briefing.id)
+    const existingResponses = await getSubmissionResponses(briefing.id)
 
     // Transform responses to a map for easier consumption
     const initialResponses: Record<string, any> = {}
@@ -49,10 +49,11 @@ export default async function BriefingPage({ params }: PageProps) {
     }
 
     return (
-        <BriefingWizard
-            briefing={briefing}
+        <FormWizard
+            submission={briefing}
             template={template}
             initialResponses={initialResponses}
         />
     )
 }
+

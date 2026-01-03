@@ -1,4 +1,4 @@
-import { QuoteBuilder } from "@/modules/verticals/agency/quotes/quote-builder"
+import { QuoteBuilder } from "@/modules/core/quotes/quote-builder"
 
 export default function CreateQuotePage() {
     return (

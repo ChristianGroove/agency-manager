@@ -39,30 +39,27 @@ export const getSystemModules = unstable_cache(
 /**
  * Fetch all SaaS products with their associated modules.
  */
+// Re-export type from admin module for consistency
+import { SaasApp } from './app-management-actions'
+
+/**
+ * Fetch all SaaS products (Now Solution Templates from saas_apps).
+ * Unified to use the same source of truth as Admin.
+ */
 export async function getSaaSProducts() {
     const supabase = await createClient()
     const { data, error } = await supabase
-        .from("saas_products")
-        .select(`
-            *,
-            saas_product_modules (
-                module_id
-            )
-        `)
-        .order("created_at", { ascending: false })
+        .from("saas_apps")
+        .select(`*`)
+        .eq('is_active', true)
+        .order("sort_order", { ascending: true })
 
     if (error) {
         console.error("Error fetching apps:", error)
         return []
     }
 
-    // Transform to include module details if needed, but for now we just need the count or list
-    // Ideally we would join with system_modules, but Supabase standard client joins can be tricky with many-to-many
-    // For listing, we might just want the basic info. 
-    // Let's refine the query to fetch the actual modules if possible, or we can fetch them separately/client-side map.
-    // simpler: fetch all modules and all products, map in UI.
-
-    return data as SaaSProduct[]
+    return data as SaasApp[]
 }
 
 /**

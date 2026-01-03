@@ -13,7 +13,11 @@ if (!supabaseServiceRoleKey) {
 }
 
 // WARNING: This client has admin privileges. Only use in server-side API routes.
-export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey || '', {
+// We use a fallback key to prevents crash on build/import if env var is missing (common in CI or partial dev envs)
+// However, actual Admin logic will fail if the key is invalid.
+const adminKey = supabaseServiceRoleKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.PLACEHOLDER_KEY'
+
+export const supabaseAdmin = createClient(supabaseUrl, adminKey, {
     auth: {
         autoRefreshToken: false,
         persistSession: false

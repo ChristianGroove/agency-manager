@@ -1,6 +1,6 @@
 "use client"
 
-import { InvoiceTemplate } from "@/modules/verticals/agency/invoicing/invoice-template"
+import { InvoiceTemplate } from "@/modules/core/billing/invoice-template"
 import { Printer } from "lucide-react"
 
 interface ClientPageProps {

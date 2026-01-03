@@ -1,7 +1,7 @@
 
-import { getQuotes } from "@/modules/verticals/agency/quotes/actions"
+import { getQuotes } from "@/modules/core/quotes/actions"
 import { createClient } from "@/lib/supabase-server"
-import { QuotesView } from "@/modules/verticals/agency/quotes/components/quotes-view"
+import { QuotesView } from "@/modules/core/quotes/components/quotes-view"
 import { Suspense } from "react"
 
 export const metadata = {

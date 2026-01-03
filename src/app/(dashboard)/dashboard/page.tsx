@@ -11,10 +11,10 @@ import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
 
 // Modals
 import { CreateClientSheet } from "@/modules/core/clients/create-client-sheet"
-import { CreateQuoteSheet } from "@/modules/verticals/agency/quotes/create-quote-sheet"
-import { CreateInvoiceSheet } from "@/modules/verticals/agency/invoicing/create-invoice-sheet"
-import { CreateBriefingSheet } from "@/modules/verticals/agency/briefings/create-briefing-sheet"
-import { NewJobModal } from "@/modules/verticals/cleaning/components/operations/new-job-modal"
+import { CreateQuoteSheet } from "@/modules/core/quotes/create-quote-sheet"
+import { CreateInvoiceSheet } from "@/modules/core/billing/create-invoice-sheet"
+import { CreateFormSheet } from "@/modules/core/forms/create-form-sheet"
+import { NewJobModal } from "@/modules/core/work-orders/components/new-job-modal"
 
 // Utils
 import { resolveDocumentState, resolveServiceState } from "@/domain/state"
@@ -191,7 +191,7 @@ export default function DashboardPage() {
 
     // --- CLEANING ADAPTER (Enhanced) ---
     const loadCleaningData = async (orgId: string) => {
-        const { getOperationsMetrics, getWeeklyRevenue } = await import("@/modules/verticals/cleaning/actions/operation-actions")
+        const { getOperationsMetrics, getWeeklyRevenue } = await import("@/modules/core/work-orders/actions/operation-actions")
         const { getDashboardData } = await import("@/modules/core/dashboard/actions")
 
         const [metrics, revenueData, coreData] = await Promise.all([
@@ -323,11 +323,10 @@ export default function DashboardPage() {
                 trigger={<span className="hidden" />}
                 onSuccess={() => { setIsQuoteModalOpen(false); loadDashboard() }}
             />
-            <CreateBriefingSheet
+            <CreateFormSheet
                 open={isBriefingModalOpen}
                 onOpenChange={setIsBriefingModalOpen}
-                trigger={<span className="hidden" />}
-                onSuccess={() => { setIsBriefingModalOpen(false); loadDashboard() }}
+                onSuccess={() => setIsBriefingModalOpen(false)}
             />
             <CreateInvoiceSheet
                 open={isInvoiceModalOpen}

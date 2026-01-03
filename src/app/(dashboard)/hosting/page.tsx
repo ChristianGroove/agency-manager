@@ -32,32 +32,17 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
 import { supabase } from "@/lib/supabase"
-import { CreateServiceSheet } from "@/modules/verticals/agency/services/create-service-sheet"
-import { ServiceDetailsModal } from "@/modules/verticals/agency/services/service-details-modal"
-import { ResumeServiceModal } from "@/modules/verticals/agency/services/resume-service-modal"
-import { toggleServiceStatus } from "@/modules/verticals/agency/services/actions"
+import { CreateServiceSheet } from "@/modules/core/billing/components/create-service-sheet"
+import { ServiceDetailModal } from "@/modules/core/billing/components/service-detail-modal"
+import { ResumeServiceModal } from "@/modules/core/billing/components/resume-service-modal"
+import { toggleServiceStatus } from "@/modules/core/billing/services-actions"
 import { cn } from "@/lib/utils"
 import { SplitText } from "@/components/ui/split-text"
 
-interface ServiceFromDB {
-    id: string
-    name: string
-    description?: string
-    type: 'recurring' | 'one_off'
-    frequency?: string
-    amount: number
-    status: string
-    created_at?: string
-    client: {
-        id: string
-        name: string
-        company_name: string
-    }
-    // Optional: Include invoice info if needed, but keeping it simple for now
-}
+import { Service } from "@/types"
 
 export default function ServicesPage() {
-    const [services, setServices] = useState<ServiceFromDB[]>([])
+    const [services, setServices] = useState<Service[]>([])
     const [loading, setLoading] = useState(true)
     const [searchTerm, setSearchTerm] = useState("")
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -69,11 +54,11 @@ export default function ServicesPage() {
     const [typeFilter, setTypeFilter] = useState<string>("all")
 
     // Details Modal State
-    const [selectedServiceForDetails, setSelectedServiceForDetails] = useState<ServiceFromDB | null>(null)
+    const [selectedServiceForDetails, setSelectedServiceForDetails] = useState<Service | null>(null)
     const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false)
 
     // Resume Modal State
-    const [selectedServiceForResume, setSelectedServiceForResume] = useState<ServiceFromDB | null>(null)
+    const [selectedServiceForResume, setSelectedServiceForResume] = useState<Service | null>(null)
     const [isResumeModalOpen, setIsResumeModalOpen] = useState(false)
 
     const handlePauseService = async (id: string) => {
@@ -95,9 +80,9 @@ export default function ServicesPage() {
     const fetchServices = async () => {
         setLoading(true)
         try {
-            const { getServices } = await import("@/modules/verticals/agency/services/actions")
+            const { getServices } = await import("@/modules/core/billing/services-actions")
             const data = await getServices()
-            if (data) setServices(data as unknown as ServiceFromDB[])
+            if (data) setServices(data as unknown as Service[])
         } catch (error) {
             console.error("Error fetching services:", error)
         } finally {
@@ -128,7 +113,7 @@ export default function ServicesPage() {
 
         setIsDeleting(true)
         try {
-            const { deleteServices } = await import("@/modules/verticals/agency/services/actions")
+            const { deleteServices } = await import("@/modules/core/billing/services-actions")
             await deleteServices(Array.from(selectedIds))
             toast.success(`${selectedIds.size} contratos eliminados correctamente`)
             setSelectedIds(new Set())
@@ -544,10 +529,10 @@ export default function ServicesPage() {
                 </Table>
             </div>
 
-            <ServiceDetailsModal
+            <ServiceDetailModal
                 service={selectedServiceForDetails}
                 isOpen={isDetailsModalOpen}
-                onClose={() => setIsDetailsModalOpen(false)}
+                onOpenChange={setIsDetailsModalOpen}
             />
 
             <ResumeServiceModal

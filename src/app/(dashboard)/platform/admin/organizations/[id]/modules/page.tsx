@@ -7,9 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Package, Check, X } from 'lucide-react'
+import { OrgModuleCard } from '@/modules/admin/components/org-module-card'
 import Link from 'next/link'
-import { ModuleEnableButton } from './_components/module-enable-button'
-import { ModuleDisableButton } from './_components/module-disable-button'
 
 interface PageProps {
     params: Promise<{
@@ -102,47 +101,13 @@ export default async function OrganizationModulesPage({ params }: PageProps) {
                                 No active modules
                             </div>
                         ) : (
-                            activeModules.map((module) => (
-                                <div
+                            activeModules.map((module: any) => (
+                                <OrgModuleCard
                                     key={module.id}
-                                    className="flex items-center justify-between p-4 rounded-lg border bg-card"
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <div
-                                            className="p-2 rounded-lg"
-                                            style={{
-                                                backgroundColor: `${module.color}15`,
-                                                color: module.color
-                                            }}
-                                        >
-                                            <Check className="h-4 w-4" />
-                                        </div>
-                                        <div>
-                                            <div className="font-medium">{module.name}</div>
-                                            <div className="text-sm text-muted-foreground">
-                                                {module.description || module.key}
-                                            </div>
-                                            <div className="flex gap-2 mt-1">
-                                                {module.is_core && (
-                                                    <Badge variant="secondary" className="text-xs">
-                                                        Core
-                                                    </Badge>
-                                                )}
-                                                <Badge variant="outline" className="text-xs">
-                                                    {module.category}
-                                                </Badge>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <ModuleDisableButton
-                                            moduleKey={module.key}
-                                            moduleName={module.name}
-                                            organizationId={id}
-                                            isCore={module.is_core}
-                                        />
-                                    </div>
-                                </div>
+                                    module={module}
+                                    isActive={true}
+                                    organizationId={id}
+                                />
                             ))
                         )}
                     </div>
@@ -164,45 +129,13 @@ export default async function OrganizationModulesPage({ params }: PageProps) {
                                 All compatible modules are already active
                             </div>
                         ) : (
-                            availableModules.map((module) => (
-                                <div
+                            availableModules.map((module: any) => (
+                                <OrgModuleCard
                                     key={module.id}
-                                    className="flex items-center justify-between p-4 rounded-lg border bg-muted/30"
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <div
-                                            className="p-2 rounded-lg bg-muted"
-                                        >
-                                            <X className="h-4 w-4 text-muted-foreground" />
-                                        </div>
-                                        <div>
-                                            <div className="font-medium">{module.name}</div>
-                                            <div className="text-sm text-muted-foreground">
-                                                {module.description || module.key}
-                                            </div>
-                                            <div className="flex gap-2 mt-1">
-                                                <Badge variant="outline" className="text-xs">
-                                                    {module.category}
-                                                </Badge>
-                                                {module.is_premium && (
-                                                    <Badge className="text-xs bg-gradient-to-r from-amber-500 to-amber-600">
-                                                        Premium ${module.price_monthly}/mo
-                                                    </Badge>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <ModuleEnableButton
-                                            moduleKey={module.key}
-                                            moduleName={module.name}
-                                            organizationId={id}
-                                            dependencies={module.dependencies}
-                                            isPremium={module.is_premium}
-                                            priceMonthly={module.price_monthly}
-                                        />
-                                    </div>
-                                </div>
+                                    module={module}
+                                    isActive={false}
+                                    organizationId={id}
+                                />
                             ))
                         )}
                     </div>

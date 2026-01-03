@@ -1,9 +1,9 @@
-import { getBriefingTemplates } from "@/modules/verticals/agency/briefings/actions"
-import { CreateBriefingForm } from "@/modules/verticals/agency/briefings/create-briefing-form"
+import { getFormTemplates } from "@/modules/core/forms/actions"
+import { CreateFormSubmission } from "@/modules/core/forms/create-form-submission"
 import { createClient } from "@/lib/supabase-server"
 
 export default async function NewBriefingPage() {
-    const templates = await getBriefingTemplates()
+    const templates = await getFormTemplates()
 
     // Fetch clients for the select dropdown
     const supabase = await createClient()
@@ -15,14 +15,14 @@ export default async function NewBriefingPage() {
     return (
         <div className="max-w-2xl mx-auto space-y-6">
             <div>
-                <h1 className="text-3xl font-bold tracking-tight">Nuevo Briefing</h1>
+                <h1 className="text-3xl font-bold tracking-tight">Nuevo Formulario / Briefing</h1>
                 <p className="text-muted-foreground">
-                    Selecciona una plantilla y un cliente para generar un nuevo enlace de briefing.
+                    Selecciona una plantilla y un cliente para generar un nuevo enlace.
                 </p>
             </div>
 
             <div className="bg-white p-6 rounded-lg border shadow-sm">
-                <CreateBriefingForm
+                <CreateFormSubmission
                     templates={templates || []}
                     clients={clients || []}
                 />

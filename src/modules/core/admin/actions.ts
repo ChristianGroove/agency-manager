@@ -306,14 +306,21 @@ export async function saveMetaConfig(clientId: string, formData: FormData) {
 export async function getOrgManagerData(orgId: string) {
     await requireSuperAdmin()
 
-    const [orgDetails, users] = await Promise.all([
+    // Dynamic import to avoid circular dependencies if any, though likely safe
+    const { getOrganizationActiveModules } = await import('@/modules/core/saas/module-management-actions')
+
+    const [orgDetails, users, activeModules] = await Promise.all([
         getOrganizationDetails(orgId),
-        getOrganizationUsers(orgId)
+        getOrganizationUsers(orgId),
+        getOrganizationActiveModules(orgId)
     ])
 
     return {
         organization: orgDetails.organization,
-        stats: orgDetails.stats,
+        stats: {
+            ...orgDetails.stats,
+            activeModules: activeModules.length
+        },
         users: users
     }
 }

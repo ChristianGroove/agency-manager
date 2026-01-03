@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { OrgModulesManager } from "./_components/org-modules-manager"
+import { OrgSmartModulesView } from "../_components/org-smart-modules-view"
 import { OrgSecurityManager } from "./_components/org-security-manager"
 import { Activity, ShieldCheck, Box } from "lucide-react"
 
@@ -100,11 +100,11 @@ export default async function AdminOrgDetailsPage({ params }: PageProps) {
                 </TabsContent>
 
                 {/* FEATURES TAB */}
+                {/* FEATURES TAB */}
                 <TabsContent value="features">
-                    <OrgModulesManager
+                    <OrgSmartModulesView
                         orgId={organization.id}
                         allModules={allModules}
-                        manualOverrides={organization.manual_module_overrides}
                     />
                 </TabsContent>
 

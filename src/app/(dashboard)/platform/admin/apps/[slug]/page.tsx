@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { ArrowLeft, Package, Users, DollarSign, Settings } from 'lucide-react'
 import Link from 'next/link'
 import { EditAppDialog } from './_components/edit-app-dialog'
+import { getDictionary } from "@/lib/i18n"
 
 interface PageProps {
     params: Promise<{
@@ -16,6 +17,7 @@ interface PageProps {
 
 export default async function AppDetailPage({ params }: PageProps) {
     await requireSuperAdmin()
+    const t = await getDictionary()
 
     const { slug } = await params
     const app = await getAppBySlug(slug)
@@ -32,7 +34,7 @@ export default async function AppDetailPage({ params }: PageProps) {
             <Link href="/platform/admin/apps">
                 <Button variant="ghost" size="sm">
                     <ArrowLeft className="mr-2 h-4 w-4" />
-                    Back to Templates
+                    {t.admin.back_button}
                 </Button>
             </Link>
 
@@ -53,28 +55,28 @@ export default async function AppDetailPage({ params }: PageProps) {
                             <h1 className="text-3xl font-bold">{app.name}</h1>
                             {app.is_featured && (
                                 <Badge className="bg-gradient-to-r from-amber-500 to-amber-600 border-0">
-                                    ⭐ Featured
+                                    ⭐ {t.admin.featured}
                                 </Badge>
                             )}
                             {!app.is_active && (
-                                <Badge variant="secondary">Inactive</Badge>
+                                <Badge variant="secondary">{t.admin.inactive}</Badge>
                             )}
                         </div>
                         <p className="text-muted-foreground mt-1">{app.description}</p>
                         <div className="flex items-center gap-3 mt-2">
                             <Badge variant="outline">{app.category}</Badge>
                             <span className="text-sm font-semibold" style={{ color: app.color }}>
-                                ${app.price_monthly}/month
+                                ${app.price_monthly}{t.admin.per_month}
                             </span>
                             {app.trial_days > 0 && (
                                 <span className="text-sm text-muted-foreground">
-                                    • {app.trial_days}-day trial
+                                    • {app.trial_days} {t.admin.trial_days_label}
                                 </span>
                             )}
                         </div>
                     </div>
                 </div>
-                <EditAppDialog app={{
+                <EditAppDialog dict={t.admin} app={{
                     id: app.id,
                     name: app.name,
                     description: app.description,
@@ -89,13 +91,13 @@ export default async function AppDetailPage({ params }: PageProps) {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Active Organizations</CardTitle>
+                        <CardTitle className="text-sm font-medium">{t.admin.active_organizations}</CardTitle>
                         <Users className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">{app.active_org_count}</div>
                         <p className="text-xs text-muted-foreground">
-                            Using this template
+                            {t.admin.using_template}
                         </p>
                     </CardContent>
                 </Card>

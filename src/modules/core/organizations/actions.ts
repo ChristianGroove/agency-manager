@@ -77,7 +77,7 @@ export async function createOrganization(formData: {
     name: string
     slug: string
     logo_url?: string
-    subscription_product_id: string
+    app_id: string // Changed from subscription_product_id to app_id
 }) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -95,7 +95,8 @@ export async function createOrganization(formData: {
                 name: formData.name,
                 slug: formData.slug,
                 logo_url: formData.logo_url,
-                subscription_product_id: formData.subscription_product_id,
+                active_app_id: formData.app_id, // Changed to active_app_id
+                app_activated_at: new Date().toISOString(),
                 subscription_status: 'active' // Trial/Active by default
             })
             .select()
@@ -114,7 +115,19 @@ export async function createOrganization(formData: {
 
         if (memberError) throw memberError
 
-        // 3. Switch Context Immediately
+        // 3. Activate app modules using the helper function
+        const { error: appError } = await supabaseAdmin.rpc('assign_app_to_organization', {
+            p_organization_id: newOrg.id,
+            p_app_id: formData.app_id,
+            p_enable_optional_modules: true
+        })
+
+        if (appError) {
+            console.error("Error assigning app:", appError)
+            // Don't fail if app assignment fails, org is created
+        }
+
+        // 4. Switch Context Immediately
         await switchOrganization(newOrg.id)
 
         return { success: true, data: newOrg }

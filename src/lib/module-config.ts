@@ -3,117 +3,170 @@
  * Central mapping of modules to routes and metadata
  */
 
-import { LucideIcon, Users, Server, FileText, CreditCard, Briefcase, Settings, LayoutDashboard, Sparkles } from 'lucide-react'
+import {
+    LayoutDashboard,
+    Users,
+    Calendar,
+    Target,
+    Bot,
+    Workflow,
+    Briefcase,
+    Store,
+    FileText,
+    CreditCard,
+    Settings,
+    Grid,
+    Server,
+    Sparkles,
+    Megaphone
+} from 'lucide-react'
+
+export type ModuleCategory = 'core' | 'operations' | 'automation' | 'finance' | 'config';
 
 export interface ModuleRoute {
-    key: string           // Module key from system_modules
-    label: string         // Display name
-    href: string          // Route path
-    icon: LucideIcon      // Icon component
-    isCore?: boolean      // If true, always visible (bypasses subscription check)
-    category?: string     // Optional grouping
+    key: string
+    label: string
+    href: string
+    icon: any
+    isCore?: boolean
+    category: ModuleCategory
+    description?: string
 }
 
 /**
  * Complete module-to-route mapping
- * Used by Sidebar to filter navigation
+ * Restored to match EXISTING file structure to prevent 404s
  */
 export const MODULE_ROUTES: ModuleRoute[] = [
+    // --- CORE (Siempre visible) ---
     {
         key: 'dashboard',
         label: 'Dashboard',
         href: '/dashboard',
         icon: LayoutDashboard,
-        isCore: true, // Always visible
+        isCore: true,
+        category: 'core'
     },
     {
         key: 'core_clients',
         label: 'Clientes',
         href: '/clients',
         icon: Users,
-        isCore: true, // Core module, always visible
+        isCore: true, // Always visible
         category: 'core'
     },
+    // Calendar placeholder (Point to dashboard or remove if not ready, strictly keeping what works)
+    // Removed core_calendar as no route exists yet. User requested "no ocultar nada" (existing) not "invent new".
+
+    // --- VENTAS / SALES ---
     {
-        key: 'core_hosting',
-        label: 'Contratos',
-        href: '/hosting',
-        icon: Server,
-        category: 'core'
-    },
-    {
-        key: 'module_invoicing',
-        label: 'Documentos de Cobro',
-        href: '/invoices',
-        icon: FileText,
-        category: 'billing'
+        key: 'core_crm', // Key used in database usually
+        label: 'CRM / Leads',
+        href: '/crm',
+        icon: Users,
+        isCore: false, // Can be disabled
+        category: 'operations' // Using Operations/Sales concept
     },
     {
         key: 'module_quotes',
         label: 'Cotizaciones',
         href: '/quotes',
         icon: FileText,
-        category: 'sales'
+        category: 'operations'
     },
+
+    // --- AUTOMATIZACIÓN ---
+    {
+        key: 'module_automation',
+        label: 'Automatización',
+        href: '/automations',
+        icon: Bot,
+        isCore: true, // Currently core for MVP
+        category: 'automation'
+    },
+    // Campaigns removed as no route exists yet
+
+    // --- OPERACIONES / PROYECTOS ---
     {
         key: 'module_briefings',
-        label: 'Briefings',
-        href: '/briefings',
-        icon: FileText,
-        category: 'projects'
+        label: 'Briefings', // Kept original name to match route
+        href: '/briefings', // RESTORED VALID PATH
+        icon: Briefcase,
+        category: 'operations'
     },
     {
         key: 'module_catalog',
         label: 'Catálogo',
-        href: '/portfolio',
-        icon: Briefcase,
-        category: 'products'
+        href: '/portfolio', // RESTORED VALID PATH
+        icon: Store,
+        category: 'operations'
+    },
+    {
+        key: 'core_hosting',
+        label: 'Contratos / Hosting',
+        href: '/hosting',
+        icon: Server,
+        category: 'operations'
+    },
+    {
+        key: 'module_cleaning',
+        label: 'Limpieza (Ops)',
+        href: '/cleaning',
+        icon: Sparkles,
+        category: 'operations'
+    },
+
+    // --- FINANZAS ---
+    {
+        key: 'module_invoicing',
+        label: 'Documentos de Cobro',
+        href: '/invoices',
+        icon: FileText,
+        category: 'finance'
     },
     {
         key: 'module_payments',
         label: 'Pagos',
         href: '/payments',
         icon: CreditCard,
-        category: 'billing'
+        category: 'finance'
+    },
+
+    // --- CONFIGURACIÓN ---
+    {
+        key: 'core_apps',
+        label: 'App Store',
+        href: '/platform/apps',
+        icon: Grid,
+        isCore: true,
+        category: 'config'
     },
     {
         key: 'core_settings',
         label: 'Configuración',
         href: '/platform/settings',
         icon: Settings,
-        category: 'core'
-    },
-    // Legacy modules removed (workforce, field_ops)
-    {
-        key: 'module_cleaning',
-        label: 'Limpieza',
-        href: '/cleaning',
-        icon: Sparkles,
-        category: 'services'
+        isCore: true,
+        category: 'config'
     }
 ]
 
-/**
- * Core modules that should ALWAYS be accessible
- * Even if organization has no active subscription
- */
-export const CORE_MODULES = [
-    'core_clients',
-    'core_settings'
-]
+export const CATEGORY_LABELS: Record<ModuleCategory, string> = {
+    core: 'Principal',
+    operations: 'Operaciones',
+    automation: 'Automatización',
+    finance: 'Finanzas',
+    config: 'Plataforma'
+};
 
 /**
- * Helper to filter routes based on active modules
+ * Filter routes based on active modules
  */
 export function filterRoutesByModules(activeModules: string[]): ModuleRoute[] {
     return MODULE_ROUTES.filter(route => {
-        // Always show dashboard
-        if (route.key === 'dashboard') return true
-
-        // Always show core modules
         if (route.isCore) return true
-
-        // Check if module is active
+        // If activeModules is empty/null, maybe default to showing everything? 
+        // Or respect the strict check. For now strict.
         return activeModules.includes(route.key)
     })
 }
@@ -123,12 +176,4 @@ export function filterRoutesByModules(activeModules: string[]): ModuleRoute[] {
  */
 export function getModuleRoute(moduleKey: string): ModuleRoute | undefined {
     return MODULE_ROUTES.find(r => r.key === moduleKey)
-}
-
-/**
- * Check if a route requires module subscription
- */
-export function isProtectedRoute(pathname: string): boolean {
-    const route = MODULE_ROUTES.find(r => pathname.startsWith(r.href))
-    return route ? !route.isCore && route.key !== 'dashboard' : false
 }

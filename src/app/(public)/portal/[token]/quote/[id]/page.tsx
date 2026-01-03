@@ -1,5 +1,5 @@
 import { getPortalQuote, getPortalMetadata } from "@/modules/core/portal/actions"
-import { QuoteTemplate } from "@/modules/verticals/agency/quotes/quote-template"
+import { QuoteTemplate } from "@/modules/core/quotes/quote-template"
 import { notFound } from "next/navigation"
 
 export default async function PortalQuotePrintPage({

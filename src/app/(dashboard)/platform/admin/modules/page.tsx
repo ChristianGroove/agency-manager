@@ -1,47 +1,27 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { CheckCircle2, XCircle } from "lucide-react"
+
+import { ModulesTable } from "@/modules/admin/components/modules-table"
+import { SplitText } from "@/components/ui/split-text"
+import { Metadata } from "next"
+
+export const metadata: Metadata = {
+    title: "Gestión de Módulos",
+    description: "Administración global de los módulos del sistema"
+}
 
 export default function ModulesPage() {
-    // This would typically fetch from system_modules table
-    const modules = [
-        { name: "module_invoicing", label: "Facturación", enabled: true },
-        { name: "module_payments", label: "Pagos", enabled: true },
-        { name: "module_communications", label: "Comunicaciones", enabled: true },
-        { name: "module_whitelabel", label: "Marca Blanca", enabled: true },
-        { name: "core_crm", label: "CRM Core", enabled: true },
-    ]
-
     return (
-        <div className="space-y-6">
-            <div>
-                <h1 className="text-3xl font-bold tracking-tight">Módulos del Sistema</h1>
-                <p className="text-muted-foreground">Vista general de los módulos disponibles en la plataforma.</p>
+        <div className="space-y-8 p-6 md:p-8">
+            <div className="flex flex-col gap-2">
+                <h2 className="text-3xl font-bold tracking-tight text-gray-900">
+                    <SplitText>Catálogo de Módulos (Core)</SplitText>
+                </h2>
+                <p className="text-muted-foreground">
+                    Gestiona los bloques fundamentales del sistema. Aquí puedes ver dependencias, versiones y estado de obsolescencia.
+                </p>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {modules.map((module) => (
-                    <Card key={module.name}>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">
-                                {module.label}
-                            </CardTitle>
-                            {module.enabled ? (
-                                <CheckCircle2 className="h-4 w-4 text-green-500" />
-                            ) : (
-                                <XCircle className="h-4 w-4 text-red-500" />
-                            )}
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-xs text-muted-foreground font-mono mt-2">
-                                {module.name}
-                            </div>
-                            <Badge variant={module.enabled ? "default" : "secondary"} className="mt-4">
-                                {module.enabled ? "Activo Globalmente" : "Inactivo"}
-                            </Badge>
-                        </CardContent>
-                    </Card>
-                ))}
+            <div className="flex flex-col gap-6">
+                <ModulesTable />
             </div>
         </div>
     )

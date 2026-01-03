@@ -610,7 +610,7 @@ export async function getPortalCatalog(token: string) {
     // 1. Verify Client
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)
 
-    let query = supabaseAdmin.from('clients').select('id')
+    let query = supabaseAdmin.from('clients').select('id, organization_id')
 
     if (isUuid) {
         query = query.or(`portal_short_token.eq.${token},portal_token.eq.${token}`)
@@ -626,6 +626,7 @@ export async function getPortalCatalog(token: string) {
     const { data, error } = await supabaseAdmin
         .from('services')
         .select('*')
+        .eq('organization_id', client.organization_id) // ✅ Fix: Isolate by Org
         .eq('is_catalog_item', true)
         .eq('is_visible_in_portal', true)
         .order('category')

@@ -6,13 +6,13 @@ import { Emitter } from "@/types/billing"
 
 export async function getActiveEmitters() {
     const supabase = await createClient()
-    // Relaxed filter: Rely on RLS to show all emitters accessable by user
-    // This matches the behavior in the Quotes module
+    const orgId = await getCurrentOrganizationId()
 
     const { data, error } = await supabase
         .from('emitters')
         .select('*')
         .eq('is_active', true)
+        .eq('organization_id', orgId) // Strict filtering
         .order('created_at', { ascending: false })
 
     if (error) {
@@ -30,11 +30,11 @@ export async function getEmitters() {
     const orgId = await getCurrentOrganizationId()
     console.log("DEBUG: getEmitters called. Context OrgId:", orgId)
 
-    // Relaxed filter: Rely on RLS to show all emitters accessable by user
-    // even if they don't match the current specific organization context cookie.
+    // Strict filtering: Do NOT rely solely on RLS
     const { data, error } = await supabase
         .from('emitters')
         .select('*')
+        .eq('organization_id', orgId) // Strict filtering
         .order('created_at', { ascending: false })
 
     if (error) {
@@ -70,11 +70,15 @@ export async function createEmitter(data: Partial<Emitter>) {
 
 export async function updateEmitter(id: string, data: Partial<Emitter>) {
     const supabase = await createClient()
+    const orgId = await getCurrentOrganizationId()
+
+    if (!orgId) throw new Error("No organization context")
 
     const { data: result, error } = await supabase
         .from('emitters')
         .update(data)
         .eq('id', id)
+        .eq('organization_id', orgId)
         .select()
         .single()
 
@@ -87,11 +91,15 @@ export async function updateEmitter(id: string, data: Partial<Emitter>) {
 
 export async function deleteEmitter(id: string) {
     const supabase = await createClient()
+    const orgId = await getCurrentOrganizationId()
+
+    if (!orgId) throw new Error("No organization context")
 
     const { error } = await supabase
         .from('emitters')
         .delete()
         .eq('id', id)
+        .eq('organization_id', orgId)
 
     if (error) throw error
     return { success: true }
