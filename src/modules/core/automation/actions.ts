@@ -165,6 +165,7 @@ export async function getExecutionHistory(limit: number = 50) {
         .from('workflow_executions')
         .select(`
             id,
+            workflow_id,
             status,
             started_at,
             completed_at,
