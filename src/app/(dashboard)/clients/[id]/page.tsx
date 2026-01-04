@@ -277,7 +277,7 @@ export default function ClientDetailPage() {
                             hosting_accounts (*),
                             subscriptions (
                             *,
-                            invoice:invoices!subscriptions_invoice_id_fkey(sent)
+                            invoice:invoices(sent)
                             )
                             `)
                 .eq('id', id)
@@ -296,8 +296,9 @@ export default function ClientDetailPage() {
             }
 
             setClient(data)
-        } catch (error) {
+        } catch (error: any) {
             console.error("Error fetching client:", error)
+            setSettings({ ...settings, error: error.message || error })
         } finally {
             setLoading(false)
         }
@@ -432,8 +433,24 @@ export default function ClientDetailPage() {
 
     if (!client) {
         return (
-            <div className="p-8">
-                <p className="text-muted-foreground">Cliente no encontrado</p>
+            <div className="p-8 flex flex-col items-center justify-center min-h-[400px] gap-4">
+                <AlertCircle className="h-10 w-10 text-red-500 opacity-50" />
+                <h2 className="text-xl font-semibold">No se pudo cargar el cliente</h2>
+                <div className="bg-slate-100 dark:bg-slate-900 p-4 rounded-md max-w-lg w-full text-xs font-mono overflow-auto">
+                    <p className="font-bold text-slate-500">DEBUG INFO:</p>
+                    <p>Client ID: {params.id}</p>
+                    {settings?.error && (
+                        <p className="text-red-600 mt-2">Error: {JSON.stringify(settings.error)}</p>
+                    )}
+                </div>
+                <Button onClick={() => window.location.reload()}>
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Reintentar
+                </Button>
+                <Button variant="ghost" onClick={() => router.push('/clients')}>
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Volver a la lista
+                </Button>
             </div>
         )
     }
