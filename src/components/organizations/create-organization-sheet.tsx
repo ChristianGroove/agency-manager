@@ -9,8 +9,8 @@ import { Label } from "@/components/ui/label"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Loader2, Rocket, Building2, Package, Check } from "lucide-react"
 import { toast } from "sonner"
-import { SaaSProduct } from "@/types/saas" // Assuming types are here
 import { getSaaSProducts } from "@/modules/core/saas/actions" // Assuming backend logic is here
+import { SaasApp } from "@/modules/core/saas/app-management-actions"
 import { createOrganization } from "@/modules/core/organizations/actions"
 
 interface CreateOrganizationSheetProps {
@@ -22,7 +22,7 @@ interface CreateOrganizationSheetProps {
 export function CreateOrganizationSheet({ open, onOpenChange, onSuccess }: CreateOrganizationSheetProps) {
     const router = useRouter()
     const [isLoading, setIsLoading] = useState(false)
-    const [products, setProducts] = useState<SaaSProduct[]>([])
+    const [products, setProducts] = useState<SaasApp[]>([])
     const [loadingProducts, setLoadingProducts] = useState(true)
 
     // Form State
@@ -223,10 +223,10 @@ export function CreateOrganizationSheet({ open, onOpenChange, onSuccess }: Creat
 
                                                         <div className="flex items-center gap-2 pt-3 border-t border-gray-50">
                                                             <span className="text-lg font-bold text-gray-900">
-                                                                ${product.base_price}
+                                                                ${product.price_monthly}
                                                             </span>
                                                             <span className="text-xs uppercase font-medium text-gray-400">
-                                                                /{product.pricing_model === 'subscription' ? 'Mes' : 'Único'}
+                                                                /{product.price_monthly > 0 ? 'Mes' : 'Único'}
                                                             </span>
                                                         </div>
                                                     </div>
