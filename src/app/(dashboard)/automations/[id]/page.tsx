@@ -378,7 +378,7 @@ function WorkflowEditorContent({ id }: { id: string }) {
 
         const loadingToast = toast.loading('Guardando workflow...');
         try {
-            await saveWorkflow(id, workflowName, workflowDescription, { nodes, edges }, isActive);
+            await saveWorkflow(id, workflowName, workflowDescription, { nodes: nodes as any, edges: edges as any }, isActive);
             toast.dismiss(loadingToast);
             toast.success('Workflow guardado correctamente');
         } catch (error) {
