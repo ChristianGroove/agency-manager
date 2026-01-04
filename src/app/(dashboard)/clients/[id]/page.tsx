@@ -297,8 +297,35 @@ export default function ClientDetailPage() {
 
             setClient(data)
         } catch (error: any) {
-            console.error("Error fetching client:", error)
+            console.error("Error fetching client (Complex):", error)
             setSettings({ ...settings, error: error.message || error })
+
+            // FALLBACK: Try fetching just the client without relations
+            try {
+                console.log("Attempting Fallback Fetch...")
+                const { data: fallbackData, error: fallbackError } = await supabase
+                    .from('clients')
+                    .select('*')
+                    .eq('id', id)
+                    .single()
+
+                if (fallbackError) throw fallbackError
+
+                if (fallbackData) {
+                    console.log("Fallback Fetch Successful")
+                    setClient({
+                        ...fallbackData,
+                        invoices: [],
+                        services: [],
+                        hosting_accounts: [],
+                        subscriptions: []
+                    })
+                    toast.warning("Modo Seguro: Algunos datos relacionados (facturas/servicios) no pudieron cargarse.")
+                }
+            } catch (finalError: any) {
+                console.error("Fallback failed:", finalError)
+                setSettings({ ...settings, error: `Complex: ${error.message} | Fallback: ${finalError.message}` })
+            }
         } finally {
             setLoading(false)
         }
