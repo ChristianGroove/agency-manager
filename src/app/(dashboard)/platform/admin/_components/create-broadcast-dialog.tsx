@@ -19,7 +19,11 @@ import { createSystemBroadcast } from "@/modules/core/admin/actions"
 import { toast } from "sonner"
 import { Megaphone } from "lucide-react"
 
-export function CreateBroadcastDialog() {
+interface CreateBroadcastDialogProps {
+    trigger?: React.ReactNode
+}
+
+export function CreateBroadcastDialog({ trigger }: CreateBroadcastDialogProps) {
     const [open, setOpen] = useState(false)
     const [loading, setLoading] = useState(false)
 
