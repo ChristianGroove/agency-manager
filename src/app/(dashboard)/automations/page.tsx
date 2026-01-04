@@ -33,7 +33,10 @@ export default async function AutomationsPage() {
                     failedToday: stats.failed,
                     activeWorkflows: workflowsResult.data?.filter(w => w.is_active).length || 0
                 } : undefined}
-                recentExecutions={executions || []}
+                recentExecutions={executions?.map((e: any) => ({
+                    ...e,
+                    workflow: Array.isArray(e.workflows) ? e.workflows[0] : e.workflows
+                })) || []}
             />
         </GrowthEcosystemShell>
     )
