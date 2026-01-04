@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { CreateInvoiceSheet } from "@/modules/core/billing/components/create-invoice-sheet"
+import { CreateInvoiceSheet } from "@/modules/core/billing/create-invoice-sheet"
 import { Loader2 } from "lucide-react"
 
 export default function NewInvoicePage() {

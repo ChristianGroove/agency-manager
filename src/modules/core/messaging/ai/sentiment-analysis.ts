@@ -1,4 +1,4 @@
-"use server"
+// "use server" removed partially
 
 import OpenAI from "openai"
 
@@ -22,6 +22,7 @@ export async function analyzeSentiment(messageContent: string): Promise<{
     result?: SentimentResult
     error?: string
 }> {
+    "use server"
     try {
         const completion = await openai.chat.completions.create({
             model: 'gpt-3.5-turbo',
@@ -128,6 +129,7 @@ export async function saveSentimentAnalysis(
     conversationId: string,
     result: SentimentResult
 ) {
+    "use server"
     const { createClient } = await import('@/lib/supabase-server')
     const supabase = await createClient()
 
@@ -163,6 +165,7 @@ export async function autoEscalateIfNeeded(
     conversationId: string,
     result: SentimentResult
 ) {
+    "use server"
     if (!result.needsEscalation) return
 
     const { createClient } = await import('@/lib/supabase-server')

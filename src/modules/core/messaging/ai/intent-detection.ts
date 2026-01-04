@@ -1,4 +1,4 @@
-"use server"
+// "use server" removed from top
 
 import OpenAI from "openai"
 import { supabaseAdmin } from "@/lib/supabase-admin"
@@ -68,6 +68,7 @@ export async function detectIntent(messageContent: string): Promise<{
     result?: IntentResult
     error?: string
 }> {
+    "use server"
     const startTime = Date.now()
 
     try {
@@ -167,6 +168,7 @@ export async function saveIntent(
     messageId: string,
     result: IntentResult
 ) {
+    "use server"
     const { error } = await supabaseAdmin
         .from('conversation_intents')
         .insert({
@@ -193,6 +195,7 @@ export async function applyIntentRouting(
     intent: string,
     confidence: number
 ) {
+    "use server"
     // Find matching routing rule
     const { data: rules } = await supabaseAdmin
         .from('intent_routing_rules')
