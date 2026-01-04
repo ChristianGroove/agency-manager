@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
         const result = await generateSmartReplies({
             conversationHistory,
             customerContext: {
-                name: conversation?.leads?.name || undefined,
+                name: Array.isArray(conversation?.leads) ? conversation?.leads[0]?.name : (conversation?.leads as any)?.name || undefined,
                 tags: conversation?.tags || [],
                 priority: conversation?.priority || undefined
             },
