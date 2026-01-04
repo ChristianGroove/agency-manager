@@ -108,18 +108,18 @@ export async function getPortalData(token: string) {
             }
 
             // AUTO LOGICS -----------------------------
-            const showHosting = resolveModuleVisibility('hosting', () => (hostingAccounts && hostingAccounts.length > 0))
+            const showHosting = resolveModuleVisibility('hosting', () => !!(hostingAccounts && hostingAccounts.length > 0))
 
             const showServices = resolveModuleVisibility('services', () => {
                 const hasServices = services && services.length > 0
                 const hasBriefings = briefings && briefings.length > 0
-                return hasServices || hasBriefings
+                return !!(hasServices || hasBriefings)
             })
 
             const showBilling = resolveModuleVisibility('billing', () => {
                 const hasInvoices = invoices && invoices.length > 0
                 const hasQuotes = quotes && quotes.length > 0
-                return hasInvoices || hasQuotes
+                return !!(hasInvoices || hasQuotes)
             })
 
             // Filter Services (One-Off Logic remains but wrapped in visibility check implies if tab is hidden, services list is moot but good to keep logic)
@@ -130,7 +130,7 @@ export async function getPortalData(token: string) {
                         inv.service_id === service.id &&
                         (inv.status === 'pending' || inv.status === 'overdue')
                     )
-                    return hasPendingOrOverdue
+                    return !!hasPendingOrOverdue
                 }
                 return true
             })
@@ -185,7 +185,7 @@ export async function getPortalData(token: string) {
                 services: filteredServices as Service[],
                 hostingAccounts: (hostingAccounts || []) as any[],
                 activePortalModules: computedModules,
-                paymentMethods: activePaymentMethods,
+                paymentMethods: [],
                 insightsAccess: {
                     show: showInsights,
                     mode: { organic: true, ads: true }

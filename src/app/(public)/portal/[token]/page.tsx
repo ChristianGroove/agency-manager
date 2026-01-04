@@ -80,7 +80,6 @@ export default function PortalPage() {
                 setEvents(data.events || [])
                 setSettings(data.settings || {})
                 setServices(data.services || [])
-                setServices(data.services || [])
                 setHostingAccounts(data.hostingAccounts || [])
                 setActiveModules(data.activePortalModules || [])
                 setPaymentMethods(data.paymentMethods || [])

@@ -12,6 +12,8 @@ export async function getSettings() {
 
     if (!orgId) return null
 
+    console.log("[getSettings] Fetching for Org ID:", orgId)
+
     // Try to get the settings
     const { data, error } = await supabase
         .from("organization_settings")
@@ -20,7 +22,13 @@ export async function getSettings() {
         .maybeSingle()
 
     if (error) {
-        console.error("Error fetching settings:", error)
+        console.error("Error fetching settings:", {
+            message: error.message,
+            code: error.code,
+            details: error.details,
+            hint: error.hint,
+            fullError: JSON.stringify(error, null, 2)
+        })
         return null
     }
 

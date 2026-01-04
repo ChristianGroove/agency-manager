@@ -23,6 +23,7 @@ interface PortalGovernanceSheetProps {
 }
 
 export function PortalGovernanceSheet({ client, globalSettings, trigger, open: controlledOpen, onOpenChange }: PortalGovernanceSheetProps) {
+    console.log("PortalGovernanceSheet Client:", client)
     const [internalOpen, setInternalOpen] = useState(false)
     const isControlled = controlledOpen !== undefined
     const open = isControlled ? controlledOpen : internalOpen
@@ -170,10 +171,10 @@ export function PortalGovernanceSheet({ client, globalSettings, trigger, open: c
                     <div className="p-6 bg-white border-t border-gray-100 flex-shrink-0">
                         <Button
                             className="w-full bg-black text-white hover:bg-gray-800"
-                            onClick={() => window.open(`/portal/${client.portal_token}`, '_blank')}
+                            onClick={() => window.open(`/portal/${client.portal_short_token || client.portal_token}`, '_blank')}
                         >
                             <ExternalLink className="mr-2 h-4 w-4" />
-                            Ver Portal como Cliente
+                            Ver portal del cliente
                         </Button>
                     </div>
                 </div>

@@ -24,6 +24,7 @@ export default function DebugTokensPage() {
         const { data, error } = await supabase
             .from('clients')
             .select('id, name, portal_short_token')
+            .is('deleted_at', null)
             .order('name')
 
         if (error) {

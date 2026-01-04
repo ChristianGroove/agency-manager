@@ -363,7 +363,7 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
                                                 {/* Tags */}
                                                 {conv.tags && conv.tags.length > 0 && (
                                                     <div className="flex gap-1">
-                                                        {conv.tags.slice(0, 2).map((tag, idx) => (
+                                                        {conv.tags.slice(0, 2).map((tag: string, idx: number) => (
                                                             <Badge key={idx} variant="outline" className="text-[10px] px-1 py-0">
                                                                 {tag}
                                                             </Badge>

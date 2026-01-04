@@ -280,6 +280,7 @@ export default function ClientDetailPage() {
                 .from('clients')
                 .select(`
                             *,
+                            portal_short_token,
                             services (*),
                             invoices (*),
                             hosting_accounts (*),
@@ -795,21 +796,26 @@ export default function ClientDetailPage() {
             <div>
 
                 {/* Sheets Init */}
-                <PortalGovernanceSheet
-                    client={client}
-                    globalSettings={settings}
-                    open={isPortalSheetOpen}
-                    onOpenChange={setIsPortalSheetOpen}
-                    trigger={<span className="hidden" />}
-                />
+                {/* Sheets Init */}
+                {client && (
+                    <>
+                        <PortalGovernanceSheet
+                            client={client as any}
+                            globalSettings={settings}
+                            open={isPortalSheetOpen}
+                            onOpenChange={setIsPortalSheetOpen}
+                            trigger={<span className="hidden" />}
+                        />
 
-                <EcosystemSheet
-                    client={client}
-                    services={client.services || []}
-                    open={isEcosystemSheetOpen}
-                    onOpenChange={setIsEcosystemSheetOpen}
-                    trigger={<span className="hidden" />}
-                />
+                        <EcosystemSheet
+                            client={client as any}
+                            services={client.services || []}
+                            open={isEcosystemSheetOpen}
+                            onOpenChange={setIsEcosystemSheetOpen}
+                            trigger={<span className="hidden" />}
+                        />
+                    </>
+                )}
 
                 {/* Client Header Card */}
                 {/* Client Header - Split-Bar Modern Style */}
