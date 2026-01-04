@@ -104,7 +104,7 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
         if (!error && data) {
             setConversations(data as Conversation[])
         } else if (error) {
-            console.error('[ConversationList] Error fetching conversations:', error)
+            console.error('[ConversationList] Error fetching conversations:', JSON.stringify(error, null, 2))
         }
         setLoading(false)
     }
