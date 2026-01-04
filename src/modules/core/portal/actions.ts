@@ -75,48 +75,54 @@ export async function getPortalData(token: string) {
                 supabaseAdmin.from('hosting_accounts').select('*').eq('client_id', client.id).eq('status', 'active').order('created_at', { ascending: false })
             ])
 
-            // Fetch portal modules (conditional based on super admin mode)
-            let activePortalModules: Array<{
-                slug: string
-                portal_tab_label: string
-                portal_icon_key: string
-            }> = []
+            // ---------------------------------------------------------
+            // 3. SMART MODULE RESOLUTION (Hierarchical)
+            // ---------------------------------------------------------
+            const portalConfig = client.portal_config || { enabled: true, modules: {} }
+            const globalModules = settings.portal_modules || {} // Defined in settings-form.tsx
 
-            if (settings?.show_all_portal_modules) {
-                // Super Admin Mode: Load ALL portal modules
-                const { data: allModules } = await supabaseAdmin
-                    .from('system_modules')
-                    .select('key, portal_tab_label, portal_icon_key, has_client_portal_view')
-                    .eq('has_client_portal_view', true)
+            // Resolution Helper
+            const resolveModuleVisibility = (key: string, autoLogic: () => boolean): boolean => {
+                // 1. GLOBAL CHECK (Master Switch)
+                let globalKey = key
+                if (key === 'billing') globalKey = 'invoices' // map mismatch
+                if (key === 'services') globalKey = 'briefings' // map mismatch
 
-                activePortalModules = (allModules || [])
-                    .filter(mod => mod && mod.portal_tab_label)
-                    .map(mod => ({
-                        slug: mod.key,
-                        portal_tab_label: mod.portal_tab_label,
-                        portal_icon_key: mod.portal_icon_key
-                    }))
-            } else {
-                // Normal Mode: Load only subscription-based modules  
-                const { data: productModules } = await supabaseAdmin
-                    .from('saas_product_modules')
-                    .select(`
-                        module:system_modules!inner(
-                            slug,
-                            portal_tab_label,
-                            portal_icon_key,
-                            has_client_portal_view
-                        )
-                    `)
-                    .eq('product_id', client.subscription_product_id || '')
-                    .eq('system_modules.has_client_portal_view', true)
+                // Allow specific handling for billing which depends on either invoices or payments
+                if (key === 'billing') {
+                    if (globalModules.invoices === false && globalModules.payments === false) return false
+                } else {
+                    if (globalModules[globalKey] === false) return false
+                }
 
-                activePortalModules = (productModules || [])
-                    .map((pm: any) => pm.module)
-                    .filter((mod: any) => mod && mod.portal_tab_label)
+                // 2. CLIENT MASTER SWITCH
+                if (portalConfig.enabled === false) return false
+
+                // 3. CLIENT OVERRIDE
+                const clientMode = portalConfig.modules?.[key]?.mode || 'auto'
+                if (clientMode === 'on') return true
+                if (clientMode === 'off') return false
+
+                // 4. AUTO LOGIC
+                return autoLogic()
             }
 
-            // Filter Services logic
+            // AUTO LOGICS -----------------------------
+            const showHosting = resolveModuleVisibility('hosting', () => (hostingAccounts && hostingAccounts.length > 0))
+
+            const showServices = resolveModuleVisibility('services', () => {
+                const hasServices = services && services.length > 0
+                const hasBriefings = briefings && briefings.length > 0
+                return hasServices || hasBriefings
+            })
+
+            const showBilling = resolveModuleVisibility('billing', () => {
+                const hasInvoices = invoices && invoices.length > 0
+                const hasQuotes = quotes && quotes.length > 0
+                return hasInvoices || hasQuotes
+            })
+
+            // Filter Services (One-Off Logic remains but wrapped in visibility check implies if tab is hidden, services list is moot but good to keep logic)
             const filteredServices = (services || []).filter((service: Service) => {
                 if (service.type === 'one_off') {
                     // One-off: Show ONLY if active AND has pending/overdue invoices
@@ -126,68 +132,46 @@ export async function getPortalData(token: string) {
                     )
                     return hasPendingOrOverdue
                 }
-                // Recurring services are shown if active (already filtered by query)
                 return true
             })
 
-            // Fetch Active Payment Methods
-            const { data: rawPaymentMethods } = await supabaseAdmin
-                .from('organization_payment_methods')
-                .select('*')
-                .eq('organization_id', client.organization_id)
-                .eq('is_active', true)
-                .order('display_order', { ascending: true })
-
-            // Map defaults if none found (Migration fallback during rollout)
-            // If table is empty but old columns exist (handled by migration script already on DB side, 
-            // but let's ensure we return SOMETHING if the migration user didn't run it yet? 
-            // No, user said "listo", so table exists.
-
-            const activePaymentMethods = rawPaymentMethods || []
-
-            // ---------------------------------------------------------
-            // SMART INSIGHTS LOGIC
-            // ---------------------------------------------------------
-            const portalInsightsSettings = client.portal_insights_settings || { override: null, access_level: 'NONE' }
-            let showInsights = false
-            let insightsMode = { organic: false, ads: false }
-
-            if (portalInsightsSettings.override === true) {
-                // Manual Enable
-                showInsights = true
-                const level = portalInsightsSettings.access_level || 'ALL'
-                if (level === 'ALL') insightsMode = { organic: true, ads: true }
-                if (level === 'ORGANIC') insightsMode = { organic: true, ads: false }
-                if (level === 'ADS') insightsMode = { organic: false, ads: true }
-            } else if (portalInsightsSettings.override === false) {
-                // Manual Disable
-                showInsights = false
-                insightsMode = { organic: false, ads: false }
-            } else {
-                // Auto Mode (Default) - Check Services
+            const showInsights = resolveModuleVisibility('insights', () => {
                 const activeServices = services || []
+                const portalInsightsSettings = client.portal_insights_settings || { override: null, access_level: 'NONE' }
 
-                // 1. Check for explicit "insights_access" tag
-                let hasOrganicService = activeServices.some(s => s.insights_access === 'ORGANIC' || s.insights_access === 'ALL')
-                let hasAdsService = activeServices.some(s => s.insights_access === 'ADS' || s.insights_access === 'ALL')
+                // Legacy support
+                if (portalInsightsSettings.override === true) return true
+                if (portalInsightsSettings.override === false) return false
 
-                // 2. Legacy Fallback: Check naming conventions if not found
-                // This ensures existing services work without manual update
-                if (!hasOrganicService && !hasAdsService) {
-                    const organicKeywords = ['social media', 'community', 'redes', 'content', 'orgánico', 'organico']
-                    const adsKeywords = ['ads', 'pauta', 'trafficker', 'publicidad', 'meta', 'google', 'campaign']
+                // Keyword detection
+                const organicKeywords = ['social media', 'community', 'redes', 'content', 'orgánico', 'organico']
+                const adsKeywords = ['ads', 'pauta', 'trafficker', 'publicidad', 'meta', 'google', 'campaign']
 
-                    const legacyOrganic = activeServices.some(s => s.name && organicKeywords.some(k => s.name.toLowerCase().includes(k)))
-                    const legacyAds = activeServices.some(s => s.name && adsKeywords.some(k => s.name.toLowerCase().includes(k)))
+                return activeServices.some(s => {
+                    const name = (s.name || '').toLowerCase()
+                    const access = s.insights_access
+                    if (access === 'ORGANIC' || access === 'ADS' || access === 'ALL') return true
+                    return organicKeywords.some(k => name.includes(k)) || adsKeywords.some(k => name.includes(k))
+                })
+            })
 
-                    if (legacyOrganic) hasOrganicService = true
-                    if (legacyAds) hasAdsService = true
-                }
+            // BUILD ACTIVE MODULES LIST
+            const computedModules = []
 
-                if (hasOrganicService || hasAdsService) {
-                    showInsights = true
-                    insightsMode = { organic: hasOrganicService, ads: hasAdsService }
-                }
+            if (resolveModuleVisibility('summary', () => true)) {
+                computedModules.push({ slug: 'core_summary', portal_tab_label: 'Resumen', portal_icon_key: 'Layout' })
+            }
+            if (showBilling) {
+                computedModules.push({ slug: 'core_billing', portal_tab_label: 'Facturación', portal_icon_key: 'CreditCard' })
+            }
+            if (showServices) {
+                computedModules.push({ slug: 'core_services', portal_tab_label: 'Servicios', portal_icon_key: 'Briefcase' })
+            }
+            if (showHosting) {
+                computedModules.push({ slug: 'core_hosting', portal_tab_label: 'Hosting', portal_icon_key: 'Server' })
+            }
+            if (resolveModuleVisibility('catalog', () => true)) {
+                computedModules.push({ slug: 'core_catalog', portal_tab_label: 'Explorar', portal_icon_key: 'Globe' })
             }
 
             return {
@@ -199,16 +183,12 @@ export async function getPortalData(token: string) {
                 events: (events || []) as ClientEvent[],
                 settings: settings || {},
                 services: filteredServices as Service[],
-                hostingAccounts: (hostingAccounts || []) as any[], // Typing lazily for now to avoid type errors
-                activePortalModules: activePortalModules as Array<{
-                    slug: string
-                    portal_tab_label: string
-                    portal_icon_key: string
-                }>,
+                hostingAccounts: (hostingAccounts || []) as any[],
+                activePortalModules: computedModules,
                 paymentMethods: activePaymentMethods,
                 insightsAccess: {
                     show: showInsights,
-                    mode: insightsMode
+                    mode: { organic: true, ads: true }
                 }
             }
         }
@@ -822,5 +802,20 @@ export async function completeJob(token: string, jobId: string) {
     } catch (error) {
         console.error('completeJob Error:', error)
         return { success: false, error: 'Error completing job' }
+    }
+}
+
+export async function updateClientPortalConfig(clientId: string, config: any) {
+    try {
+        const { error } = await supabaseAdmin
+            .from('clients')
+            .update({ portal_config: config })
+            .eq('id', clientId)
+
+        if (error) throw error
+        return { success: true }
+    } catch (error) {
+        console.error('updateClientPortalConfig Error:', error)
+        throw error
     }
 }

@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Plus, Search, Server, Globe, ExternalLink, MoreHorizontal, Pencil, Trash2, CheckCircle2, AlertCircle } from "lucide-react"
+import { Plus, Server, ExternalLink, MoreHorizontal, Pencil, Trash2 } from "lucide-react"
 import {
     Table,
     TableBody,
@@ -37,6 +36,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
 import { format } from "date-fns"
+import { SearchFilterBar, FilterOption } from "@/components/shared/search-filter-bar"
 import { CreateHostingSheet } from "@/modules/core/hosting/components/create-hosting-sheet"
 
 export default function HostingPage() {
@@ -45,6 +45,7 @@ export default function HostingPage() {
     const [searchTerm, setSearchTerm] = useState("")
     const [isCreateOpen, setIsCreateOpen] = useState(false)
     const [selectedAccount, setSelectedAccount] = useState<any>(null)
+    const [activeFilter, setActiveFilter] = useState("all")
 
     const fetchAccounts = async () => {
         setLoading(true)
@@ -76,10 +77,28 @@ export default function HostingPage() {
         }
     }
 
-    const filtered = accounts.filter(acc =>
-        acc.domain_url.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        acc.client?.name.toLowerCase().includes(searchTerm.toLowerCase())
-    )
+    const filtered = accounts.filter(acc => {
+        const matchesSearch = acc.domain_url.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            acc.client?.name.toLowerCase().includes(searchTerm.toLowerCase())
+
+        if (!matchesSearch) return false
+        if (activeFilter === 'all') return true
+        return acc.status === activeFilter
+    })
+
+    const counts = {
+        all: accounts.length,
+        active: accounts.filter(a => a.status === 'active').length,
+        suspended: accounts.filter(a => a.status === 'suspended').length,
+        cancelled: accounts.filter(a => a.status === 'cancelled').length
+    }
+
+    const filterOptions: FilterOption[] = [
+        { id: 'all', label: 'Todos', count: counts.all, color: 'gray' },
+        { id: 'active', label: 'Activos', count: counts.active, color: 'emerald' },
+        { id: 'suspended', label: 'Suspendidos', count: counts.suspended, color: 'amber' },
+        { id: 'cancelled', label: 'Cancelados', count: counts.cancelled, color: 'red' },
+    ]
 
     return (
         <div className="space-y-6">
@@ -94,15 +113,14 @@ export default function HostingPage() {
                 </Button>
             </div>
 
-            <div className="flex items-center gap-4 bg-white p-2 rounded-xl border shadow-sm">
-                <Search className="ml-2 h-4 w-4 text-gray-400" />
-                <Input
-                    placeholder="Buscar dominio o cliente..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="border-0 focus-visible:ring-0"
-                />
-            </div>
+            <SearchFilterBar
+                searchTerm={searchTerm}
+                onSearchChange={setSearchTerm}
+                searchPlaceholder="Buscar dominio o cliente..."
+                activeFilter={activeFilter}
+                onFilterChange={setActiveFilter}
+                filters={filterOptions}
+            />
 
             <div className="rounded-xl border bg-white shadow-sm overflow-hidden">
                 <Table>

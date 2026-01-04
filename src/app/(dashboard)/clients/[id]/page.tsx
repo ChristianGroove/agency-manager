@@ -53,7 +53,8 @@ import {
     PlayCircle,
     StickyNote,
     Eye,
-    Share2
+    Share2,
+    Layout
 } from "lucide-react"
 import { NotesModal } from "@/modules/core/clients/notes-modal"
 import { ResumeServiceModal } from "@/modules/core/billing/components/resume-service-modal"
@@ -69,7 +70,8 @@ import { CreateHostingSheet } from "@/modules/core/hosting/components/create-hos
 import { HostingCard } from "@/modules/core/hosting/components/hosting-card"
 import { regeneratePortalToken } from "@/modules/core/portal/actions"
 // ... imports ...
-import { EcosystemWidget } from "@/modules/core/marketing/ecosystem-widget"
+import { PortalGovernanceSheet } from "@/components/sheets/portal-governance-sheet"
+import { EcosystemSheet } from "@/components/sheets/ecosystem-sheet"
 
 
 import {
@@ -109,6 +111,7 @@ export default function ClientDetailPage() {
     const [client, setClient] = useState<Client | null>(null)
     const [loading, setLoading] = useState(true)
     const [settings, setSettings] = useState<any>(null)
+    const [serviceViewMode, setServiceViewMode] = useState<'list' | 'grid'>('list')
 
     useEffect(() => {
         getSettings().then(setSettings)
@@ -122,6 +125,10 @@ export default function ClientDetailPage() {
     // Hosting State
     const [isHostingSheetOpen, setIsHostingSheetOpen] = useState(false)
     const [selectedAccountForSheet, setSelectedAccountForSheet] = useState<any>(null)
+
+    // Sheet State (Moved to top level)
+    const [isPortalSheetOpen, setIsPortalSheetOpen] = useState(false)
+    const [isEcosystemSheetOpen, setIsEcosystemSheetOpen] = useState(false)
 
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
     const [selectedServiceForDetail, setSelectedServiceForDetail] = useState<any>(null)
@@ -439,7 +446,7 @@ export default function ClientDetailPage() {
         ?.filter(inv => inv.status === 'paid')
         .reduce((sum, inv) => sum + (inv.total || 0), 0) || 0
 
-    const activeServices = client?.subscriptions?.filter(sub => sub.status === 'active').length || 0
+    const activeServices = client?.services?.filter(svc => svc.status === 'active').length || 0
 
     const filteredInvoices = client?.invoices?.filter(inv => {
         if (invoiceFilter === 'all') return true
@@ -483,26 +490,57 @@ export default function ClientDetailPage() {
         )
     }
 
+
+
+    // ... (keep existing returns)
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100/50">
             {/* Sticky Header */}
-            <div className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border border-gray-200/50 shadow-sm rounded-xl mb-6">
-                <div className="px-8 py-4">
+            <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-gray-200/50 shadow-sm mb-6">
+                <div className="max-w-[1600px] mx-auto px-6 py-3">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
                             <Button
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => router.push('/clients')}
-                                className="hover:bg-gray-100"
+                                className="h-8 w-8 p-0 rounded-full hover:bg-gray-100"
                             >
-                                <ArrowLeft className="h-4 w-4 mr-2" />
-                                Volver
+                                <ArrowLeft className="h-4 w-4 text-gray-600" />
                             </Button>
-                            <div className="h-8 w-px bg-gray-300" />
-                            <h1 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">Cliente</h1>
+
+                            <div className="flex flex-col">
+                                <h1 className="text-lg font-bold text-gray-900 leading-none">{client.name}</h1>
+                                {client.company_name && <span className="text-xs text-gray-500 font-medium">{client.company_name}</span>}
+                            </div>
                         </div>
+
                         <div className="flex items-center gap-2">
+                            {/* Portal Governance Trigger */}
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setIsPortalSheetOpen(true)}
+                                className="h-8 text-xs bg-white/50 hover:bg-white border-gray-200 text-gray-600 gap-2"
+                            >
+                                <Layout className="h-3.5 w-3.5" />
+                                Gestión de Portal
+                            </Button>
+
+                            {/* Connectivity Trigger */}
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setIsEcosystemSheetOpen(true)}
+                                className="h-8 text-xs bg-white/50 hover:bg-white border-gray-200 text-gray-600 gap-2"
+                            >
+                                <Globe className="h-3.5 w-3.5" />
+                                Conectividad
+                            </Button>
+
+                            <div className="h-4 w-px bg-gray-200 mx-1" />
+
                             {/* Delete - Icon Only */}
                             <Button
                                 variant="ghost"
@@ -756,10 +794,22 @@ export default function ClientDetailPage() {
             {/* Main Content */}
             <div>
 
-                {/* ECOSYSTEM HUB WIDGET */}
-                <div className="mb-8 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100">
-                    <EcosystemWidget client={client} services={client.services || []} />
-                </div>
+                {/* Sheets Init */}
+                <PortalGovernanceSheet
+                    client={client}
+                    globalSettings={settings}
+                    open={isPortalSheetOpen}
+                    onOpenChange={setIsPortalSheetOpen}
+                    trigger={<span className="hidden" />}
+                />
+
+                <EcosystemSheet
+                    client={client}
+                    services={client.services || []}
+                    open={isEcosystemSheetOpen}
+                    onOpenChange={setIsEcosystemSheetOpen}
+                    trigger={<span className="hidden" />}
+                />
 
                 {/* Client Header Card */}
                 {/* Client Header - Split-Bar Modern Style */}
@@ -904,17 +954,41 @@ export default function ClientDetailPage() {
                             </TabsTrigger>
                         </TabsList>
 
-                        <TabsContent value="overview" className="space-y-8 animate-in fade-in-50 slide-in-from-bottom-2 duration-500">
-                            {/* 1. Services & Their Invoices (The Core View) */}
-                            <div className="space-y-6">
+                        <TabsContent value="overview" className="space-y-8 animate-in fade-in-50 slide-in-from-bottom-2 duration-500 pb-20">
+
+                            {/* 1. SERVICES SECTION (Full Width) */}
+                            <div className="flex flex-col gap-6">
                                 <div className="flex items-center justify-between">
                                     <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
                                         <Server className="h-5 w-5 text-indigo-600" />
                                         Servicios Activos & Facturación
                                     </h2>
+
+                                    <div className="flex bg-gray-100/50 p-1 rounded-lg border border-gray-200">
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => setServiceViewMode('list')}
+                                            className={cn("h-7 w-7 p-0 rounded-md", serviceViewMode === 'list' && "bg-white shadow-sm text-indigo-600")}
+                                        >
+                                            <div className="h-4 w-4 flex flex-col gap-0.5 justify-center transform scale-90">
+                                                <div className="w-full h-0.5 bg-current rounded-full" />
+                                                <div className="w-full h-0.5 bg-current rounded-full" />
+                                                <div className="w-full h-0.5 bg-current rounded-full" />
+                                            </div>
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => setServiceViewMode('grid')}
+                                            className={cn("h-7 w-7 p-0 rounded-md", serviceViewMode === 'grid' && "bg-white shadow-sm text-indigo-600")}
+                                        >
+                                            <Layout className="h-3.5 w-3.5" />
+                                        </Button>
+                                    </div>
                                 </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                                <div className={cn("grid gap-4", serviceViewMode === 'grid' ? "grid-cols-1 md:grid-cols-2 xl:grid-cols-3" : "grid-cols-1")}>
                                     {client.services && client.services.length > 0 ? (
                                         client.services.map((service: any) => {
                                             const linkedInvoices = getServiceInvoices(service.id)
@@ -926,178 +1000,116 @@ export default function ClientDetailPage() {
                                             return (
                                                 <div
                                                     key={service.id}
-                                                    className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all flex flex-col h-full overflow-hidden group cursor-pointer hover:border-indigo-300"
+                                                    className={cn(
+                                                        "bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all flex h-full overflow-hidden group cursor-pointer hover:border-indigo-300",
+                                                        serviceViewMode === 'list' ? "flex-col md:flex-row items-stretch" : "flex-col"
+                                                    )}
                                                     onClick={() => {
                                                         setSelectedServiceForDetail(service)
                                                         setIsDetailModalOpen(true)
                                                     }}
                                                 >
-                                                    {/* 1. Header: Icon, Name, Actions */}
-                                                    <div className="p-4 flex items-start justify-between gap-3">
-                                                        <div className="flex items-center gap-3 overflow-hidden">
-                                                            <div className={cn(
-                                                                "p-2 rounded-lg shrink-0",
-                                                                service.status === 'active' ? "bg-emerald-50 text-emerald-600" :
-                                                                    service.status === 'paused' ? "bg-amber-50 text-amber-600" : "bg-gray-100 text-gray-500"
-                                                            )}>
-                                                                <Server className="h-5 w-5" />
-                                                            </div>
-                                                            <div className="min-w-0">
-                                                                <div className="flex items-center gap-2">
-                                                                    <h3 className="font-bold text-gray-900 truncate">{service.name}</h3>
-                                                                    <StatusBadge status={service.status} type="service" className="text-[10px]" entity={service} />
+                                                    {/* 1. Service Info */}
+                                                    <div className={cn("p-4 flex gap-3", serviceViewMode === 'list' ? "w-full md:w-[350px] md:border-r border-gray-100" : "items-start justify-between border-b border-gray-100")}>
+                                                        <div className="flex flex-col justify-between flex-1">
+                                                            <div className="flex items-start gap-3">
+                                                                <div className={cn(
+                                                                    "p-2 rounded-lg shrink-0",
+                                                                    service.status === 'active' ? "bg-emerald-50 text-emerald-600" :
+                                                                        service.status === 'paused' ? "bg-amber-50 text-amber-600" : "bg-gray-100 text-gray-500"
+                                                                )}>
+                                                                    <Server className="h-5 w-5" />
                                                                 </div>
-                                                                <div className="flex items-center text-xs text-gray-500 mt-0.5 gap-2">
-                                                                    <span>
-                                                                        {(() => {
-                                                                            const freqMap: Record<string, string> = {
-                                                                                monthly: 'Mensual',
-                                                                                biweekly: 'Quincenal',
-                                                                                quarterly: 'Trimestral',
-                                                                                semiannual: 'Semestral',
-                                                                                yearly: 'Anual'
-                                                                            }
-                                                                            return freqMap[service.frequency as string] || (service.type === 'one_off' ? 'Único' : 'Recurrente')
-                                                                        })()}
-                                                                    </span>
+                                                                <div>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <h3 className="font-bold text-gray-900 truncate max-w-[180px]">{service.name}</h3>
+                                                                        <StatusBadge status={service.status} type="service" className="text-[10px]" entity={service} />
+                                                                    </div>
+                                                                    <div className="flex flex-col gap-1 mt-1">
+                                                                        <div className="flex items-center text-xs text-gray-500 gap-2">
+                                                                            <span className="capitalize">{service.frequency === 'monthly' ? 'Mensual' : service.frequency}</span>
+                                                                            <span className="text-gray-300">•</span>
+                                                                            <span className="font-medium text-gray-700">${service.amount?.toLocaleString()}</span>
+                                                                        </div>
+                                                                        {/* Next Invoice Indicator */}
+                                                                        {(service.next_billing_date || client.subscriptions?.find((s: any) => s.service_id === service.id)?.next_billing_date) && (
+                                                                            <div className="flex items-center gap-1.5 text-[10px]">
+                                                                                <CalendarClock className="h-3 w-3 text-indigo-500" />
+                                                                                <span className="text-gray-500 font-medium">
+                                                                                    Próxima: <span className="text-indigo-700">
+                                                                                        {new Date(service.next_billing_date || client.subscriptions?.find((s: any) => s.service_id === service.id)?.next_billing_date).toLocaleDateString()}
+                                                                                    </span>
+                                                                                </span>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
                                                                 </div>
                                                             </div>
-                                                        </div>
 
-                                                        <DropdownMenu>
-                                                            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-gray-600 shrink-0">
-                                                                    <MoreVertical className="h-4 w-4" />
-                                                                </Button>
-                                                            </DropdownMenuTrigger>
-                                                            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                                                                <DropdownMenuItem onClick={(e) => {
-                                                                    e.stopPropagation()
-                                                                    setServiceToEdit(service)
-                                                                    setIsServiceModalOpen(true)
-                                                                }}>
-                                                                    <Edit className="mr-2 h-4 w-4" /> Editar
-                                                                </DropdownMenuItem>
-                                                                {service.status === 'active' ? (
-                                                                    <DropdownMenuItem onClick={(e) => {
+                                                            {/* Only in List Mode: Action Buttons row at bottom of this col */}
+                                                            {serviceViewMode === 'list' && (
+                                                                <div className="mt-4 flex items-center gap-2">
+                                                                    <Button variant="ghost" size="sm" className="h-7 text-xs bg-gray-50 text-gray-600 hover:text-indigo-600" onClick={(e) => {
                                                                         e.stopPropagation()
-                                                                        handlePauseService(service.id)
-                                                                    }} className="text-amber-600">
-                                                                        <PauseCircle className="mr-2 h-4 w-4" /> Pausar
-                                                                    </DropdownMenuItem>
-                                                                ) : (
-                                                                    <DropdownMenuItem onClick={(e) => {
-                                                                        e.stopPropagation()
-                                                                        setSelectedServiceForResume(service)
-                                                                        setIsResumeModalOpen(true)
-                                                                    }} className="text-emerald-600">
-                                                                        <PlayCircle className="mr-2 h-4 w-4" /> Reanudar
-                                                                    </DropdownMenuItem>
-                                                                )}
-                                                                <DropdownMenuSeparator />
-                                                                <DropdownMenuItem
-                                                                    onClick={(e) => {
+                                                                        setServiceToEdit(service)
+                                                                        setIsServiceModalOpen(true)
+                                                                    }}>
+                                                                        Editar
+                                                                    </Button>
+                                                                    <Button variant="ghost" size="sm" className="h-7 text-xs bg-gray-50 text-gray-600 hover:text-red-500" onClick={(e) => {
                                                                         e.stopPropagation()
                                                                         handleDeleteService(service.id)
-                                                                    }}
-                                                                    className="text-red-600 focus:text-red-600 focus:bg-red-50"
-                                                                >
-                                                                    <Trash2 className="mr-2 h-4 w-4" /> Eliminar
-                                                                </DropdownMenuItem>
-                                                            </DropdownMenuContent>
-                                                        </DropdownMenu>
-                                                    </div>
-
-                                                    {/* 2. Middle: Compact Invoice Table */}
-                                                    <div className="px-4 py-2 flex-1">
-                                                        {recentInvoices.length > 0 ? (
-                                                            <div className="bg-gray-50/50 rounded-lg border border-gray-100 overflow-hidden">
-                                                                <table className="w-full text-xs text-left">
-                                                                    <tbody className="divide-y divide-gray-100">
-                                                                        {recentInvoices.map((inv: any) => (
-                                                                            <tr key={inv.id} className="hover:bg-gray-50 transition-colors group/row">
-                                                                                <td className="py-2 pl-3 font-medium text-gray-700">#{inv.number}</td>
-                                                                                <td className="py-2 pr-2 text-right">
-                                                                                    <StatusBadge status={inv.status} type="invoice" entity={inv} />
-                                                                                </td>
-                                                                                <td className="py-2 pr-3 text-right">
-                                                                                    <div className="flex items-center justify-end gap-1 opacity-0 group-hover/row:opacity-100 transition-opacity">
-                                                                                        {/* View */}
-                                                                                        {inv.pdf_url && (
-                                                                                            <Button
-                                                                                                variant="ghost"
-                                                                                                size="icon"
-                                                                                                className="h-6 w-6 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50"
-                                                                                                title="Ver Factura"
-                                                                                                onClick={(e) => {
-                                                                                                    e.stopPropagation()
-                                                                                                    window.open(inv.pdf_url, '_blank')
-                                                                                                }}
-                                                                                            >
-                                                                                                <Eye className="h-3 w-3" />
-                                                                                            </Button>
-                                                                                        )}
-                                                                                        {/* Share */}
-                                                                                        {inv.pdf_url && (
-                                                                                            <Button
-                                                                                                variant="ghost"
-                                                                                                size="icon"
-                                                                                                className="h-6 w-6 text-gray-400 hover:text-blue-600 hover:bg-blue-50"
-                                                                                                title="Compartir"
-                                                                                                onClick={(e) => {
-                                                                                                    e.stopPropagation()
-                                                                                                    setInvoiceToShare(inv)
-                                                                                                    setIsShareInvoiceModalOpen(true)
-                                                                                                }}
-                                                                                            >
-                                                                                                <Share2 className="h-3 w-3" />
-                                                                                            </Button>
-                                                                                        )}
-                                                                                        {/* Pay */}
-                                                                                        {inv.status !== 'paid' && inv.status !== 'cancelled' && (
-                                                                                            <Button
-                                                                                                variant="ghost"
-                                                                                                size="icon"
-                                                                                                className="h-6 w-6 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50"
-                                                                                                title="Marcar Pagada"
-                                                                                                onClick={(e) => {
-                                                                                                    e.stopPropagation()
-                                                                                                    handleMarkAsPaid(inv.id)
-                                                                                                }}
-                                                                                            >
-                                                                                                <CheckCircle2 className="h-3 w-3" />
-                                                                                            </Button>
-                                                                                        )}
-                                                                                    </div>
-                                                                                </td>
-                                                                            </tr>
-                                                                        ))}
-                                                                    </tbody>
-                                                                </table>
-                                                            </div>
-                                                        ) : (
-                                                            <div className="h-full flex items-center justify-center p-4 bg-gray-50/30 rounded-lg border border-gray-100 border-dashed">
-                                                                <span className="text-[10px] text-gray-400 italic">Sin facturas recientes</span>
-                                                            </div>
-                                                        )}
-                                                    </div>
-
-                                                    {/* 3. Footer: Cost & Billing Date */}
-                                                    <div className="mt-2 py-3 px-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
-                                                        <div className="flex flex-col">
-                                                            <span className="text-[10px] text-gray-500 uppercase font-semibold">Costo</span>
-                                                            <span className="font-bold text-gray-900">${service.amount?.toLocaleString()}</span>
-                                                        </div>
-                                                        <div className="flex items-center gap-4">
-                                                            {service.next_billing_date && (
-                                                                <div className="text-right">
-                                                                    <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                                                                        <CalendarClock className="h-3.5 w-3.5" />
-                                                                        <span>Prox: {new Date(service.next_billing_date).toLocaleDateString()}</span>
-                                                                    </div>
+                                                                    }}>
+                                                                        Pausar/Baja
+                                                                    </Button>
                                                                 </div>
                                                             )}
                                                         </div>
+                                                        {serviceViewMode === 'grid' && (
+                                                            <DropdownMenu>
+                                                                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-gray-600 shrink-0">
+                                                                        <MoreVertical className="h-4 w-4" />
+                                                                    </Button>
+                                                                </DropdownMenuTrigger>
+                                                                <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                                                                    <DropdownMenuItem onClick={(e) => {
+                                                                        e.stopPropagation()
+                                                                        setServiceToEdit(service)
+                                                                        setIsServiceModalOpen(true)
+                                                                    }}>
+                                                                        <Edit className="mr-2 h-4 w-4" /> Editar
+                                                                    </DropdownMenuItem>
+                                                                    <DropdownMenuItem
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation()
+                                                                            handleDeleteService(service.id)
+                                                                        }}
+                                                                        className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                                                                    >
+                                                                        <Trash2 className="mr-2 h-4 w-4" /> Eliminar
+                                                                    </DropdownMenuItem>
+                                                                </DropdownMenuContent>
+                                                            </DropdownMenu>
+                                                        )}
+                                                    </div>
+
+                                                    {/* 2. Invoices List */}
+                                                    <div className="flex-1 bg-gray-50/50 p-2 md:p-3 overflow-hidden flex flex-col">
+                                                        {recentInvoices.length > 0 ? (
+                                                            <div className="space-y-1">
+                                                                {recentInvoices.map((inv: any) => (
+                                                                    <div key={inv.id} className="bg-white p-2 rounded-lg border border-gray-100 flex items-center justify-between text-xs hover:border-indigo-100 transition-colors">
+                                                                        <span className="font-medium text-gray-600">#{inv.number}</span>
+                                                                        <StatusBadge status={inv.status} type="invoice" entity={inv} className="scale-90 origin-right" />
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        ) : (
+                                                            <div className="h-full flex items-center justify-center text-[10px] text-gray-400 italic">
+                                                                Sin facturación reciente
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </div>
                                             )
@@ -1114,7 +1126,7 @@ export default function ClientDetailPage() {
                                 </div>
                             </div>
 
-                            {/* 2. Unlinked / General Invoices */}
+                            {/* 2. OCCASIONAL INVOICES SECTION (Below Services) */}
                             {getUnlinkedInvoices().length > 0 && (
                                 <div className="pt-8 border-t border-gray-200">
                                     <div className="flex items-center justify-between mb-6">
@@ -1122,37 +1134,58 @@ export default function ClientDetailPage() {
                                             <FileText className="h-5 w-5 text-gray-500" />
                                             Facturas Manuales / Ocasionales
                                         </h2>
-                                        <p className="text-sm text-gray-500 max-w-2xl">
-                                            Facturas generadas manualmente que no están vinculadas a un servicio activo.
-                                        </p>
+                                        <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full font-medium">
+                                            {getUnlinkedInvoices().length} facturas
+                                        </span>
                                     </div>
                                     <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
                                         <div className="p-4 space-y-2">
                                             {getUnlinkedInvoices().map((inv: any) => (
-                                                <div key={inv.id} className="flex items-center justify-between p-3 border-b border-gray-100 last:border-0 hover:bg-gray-50">
-                                                    <div className="flex items-center gap-4">
-                                                        <span className="font-medium">{inv.number}</span>
-                                                        <span className="text-gray-500 text-sm">{inv.description || "Sin descripción"}</span>
-                                                        <StatusBadge status={inv.status} type="invoice" entity={inv} />
-                                                    </div>
-                                                    <div className="flex items-center gap-4">
-                                                        <span className="font-bold">${inv.total.toLocaleString()}</span>
-                                                        <div className="flex items-center gap-1">
+                                                <div key={inv.id} className="bg-white p-3 border-b border-gray-100 last:border-0 hover:bg-gray-50 transition-colors group">
+                                                    <div className="grid grid-cols-12 items-center gap-4">
+                                                        {/* Col 1-5: Info */}
+                                                        <div className="col-span-5 flex items-center gap-2 overflow-hidden">
+                                                            <div className="h-8 w-8 rounded-full bg-gray-50 flex items-center justify-center shrink-0">
+                                                                <FileText className="h-4 w-4 text-gray-400" />
+                                                            </div>
+                                                            <div className="min-w-0">
+                                                                <p className="font-bold text-gray-900 text-sm truncate">{inv.number}</p>
+                                                                <p className="text-[10px] text-gray-400 truncate">{new Date(inv.created_at).toLocaleDateString()}</p>
+                                                            </div>
+                                                            {inv.description && (
+                                                                <div className="hidden xl:block border-l border-gray-200 pl-4 ml-2 truncate text-sm text-gray-500">
+                                                                    {inv.description}
+                                                                </div>
+                                                            )}
+                                                        </div>
+
+                                                        {/* Col 6-7: Status */}
+                                                        <div className="col-span-3 flex justify-center">
+                                                            <StatusBadge status={inv.status} type="invoice" entity={inv} className="scale-90" />
+                                                        </div>
+
+                                                        {/* Col 8-9: Amount */}
+                                                        <div className="col-span-2 text-right">
+                                                            <span className="font-bold text-gray-900 text-sm whitespace-nowrap">${inv.total.toLocaleString()}</span>
+                                                        </div>
+
+                                                        {/* Col 10-12: Actions */}
+                                                        <div className="col-span-2 flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                             <Button
                                                                 variant="ghost"
                                                                 size="icon"
-                                                                className={cn("h-8 w-8 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50", !inv.pdf_url && "opacity-50 cursor-not-allowed")}
+                                                                className={cn("h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50", !inv.pdf_url && "opacity-50 cursor-not-allowed")}
                                                                 title={inv.pdf_url ? "Ver Factura" : "Sin PDF disponible"}
                                                                 disabled={!inv.pdf_url}
                                                                 onClick={() => inv.pdf_url && window.open(inv.pdf_url, '_blank')}
                                                             >
-                                                                <Eye className="h-4 w-4" />
+                                                                <Eye className="h-3.5 w-3.5" />
                                                             </Button>
 
                                                             <Button
                                                                 variant="ghost"
                                                                 size="icon"
-                                                                className={cn("h-8 w-8 text-gray-400 hover:text-blue-600 hover:bg-blue-50", !inv.pdf_url && "opacity-50 cursor-not-allowed")}
+                                                                className={cn("h-7 w-7 text-gray-400 hover:text-blue-600 hover:bg-blue-50", !inv.pdf_url && "opacity-50 cursor-not-allowed")}
                                                                 title={inv.pdf_url ? "Compartir Factura" : "Sin PDF disponible"}
                                                                 disabled={!inv.pdf_url}
                                                                 onClick={() => {
@@ -1162,18 +1195,18 @@ export default function ClientDetailPage() {
                                                                     }
                                                                 }}
                                                             >
-                                                                <Share2 className="h-4 w-4" />
+                                                                <Share2 className="h-3.5 w-3.5" />
                                                             </Button>
 
                                                             {inv.status !== 'paid' && (
                                                                 <Button
                                                                     variant="ghost"
                                                                     size="icon"
-                                                                    className="h-8 w-8 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50"
+                                                                    className="h-7 w-7 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50"
                                                                     title="Marcar como Pagada"
                                                                     onClick={() => handleMarkAsPaid(inv.id)}
                                                                 >
-                                                                    <CheckCircle2 className="h-4 w-4" />
+                                                                    <CheckCircle2 className="h-3.5 w-3.5" />
                                                                 </Button>
                                                             )}
                                                         </div>

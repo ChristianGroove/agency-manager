@@ -21,6 +21,10 @@ export type Client = {
     services?: Service[]
     subscriptions?: Service[] // Subscriptions are services of type 'recurring'
     hosting_accounts?: any[] // Todo: Define strict HostingAccount type if needed
+    portal_config?: {
+        enabled?: boolean
+        modules?: Record<string, { mode: 'auto' | 'on' | 'off', access_level?: string }>
+    }
     deleted_at?: string
 }
 

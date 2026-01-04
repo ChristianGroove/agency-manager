@@ -145,7 +145,10 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
                     return acc
                 }
             }
-            return acc + inv.total
+
+            // If no due date, treat as pending/future, not overdue
+            futureDebt += inv.total
+            return acc
         }, 0) || 0
 
         const activeServicesCount = (client.services ? client.services.filter((s: any) => s.status === 'active' && !s.deleted_at).length : 0) +
@@ -247,8 +250,11 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
                         filteredClients.map((client: any) => {
                             const { debt, futureDebt, nextPayment, daysToPay, activeServicesCount } = client
 
-                            const isOverdue = daysToPay !== null && daysToPay < 0
-                            const isUrgent = daysToPay !== null && daysToPay <= 5 && daysToPay >= 0
+                            const isOverdue = daysToPay !== null && daysToPay < 0 && debt > 0
+                            const isUrgent = daysToPay !== null && (
+                                (daysToPay <= 5 && daysToPay >= 0) ||
+                                (daysToPay < 0 && debt === 0)
+                            )
 
                             return (
                                 <div key={client.id} className="group relative">
@@ -365,7 +371,12 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
                                                                         "text-xs font-medium uppercase tracking-wide",
                                                                         isOverdue ? "text-red-700" : isUrgent ? "text-amber-700" : "text-gray-600"
                                                                     )}>
-                                                                        {isOverdue ? "¡Vencido!" : "Próximo Pago"}
+                                                                        {isOverdue
+                                                                            ? "¡Vencido!"
+                                                                            : (daysToPay !== null && daysToPay < 0)
+                                                                                ? "Pendiente"
+                                                                                : "Próximo Pago"
+                                                                        }
                                                                     </span>
                                                                 </div>
                                                                 <Badge variant="secondary" className={cn(
@@ -376,7 +387,9 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
                                                                             ? "bg-amber-100 text-amber-700 hover:bg-amber-200"
                                                                             : "bg-gray-200 text-gray-700 hover:bg-gray-300"
                                                                 )}>
-                                                                    {isOverdue ? `Hace ${Math.abs(daysToPay!)}d` : `${daysToPay}d`}
+                                                                    {daysToPay !== null && daysToPay < 0
+                                                                        ? `Hace ${Math.abs(daysToPay!)}d`
+                                                                        : `${daysToPay}d`}
                                                                 </Badge>
                                                             </div>
                                                             <p className={cn(
