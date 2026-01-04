@@ -62,10 +62,10 @@ export function ChatWindow({ conversationId, initialMessages = [] }: ChatWindowP
         setMessages(prev => [...prev, optimisticMsg])
         setNewMessage('')
 
-        const result = await sendMessage({
-            conversation_id: conversationId,
-            content: optimisticMsg.content!
-        })
+        const result = await sendMessage(
+            conversationId,
+            optimisticMsg.content!
+        )
 
         if (!result.success) {
             toast.error('Error enviando mensaje')

@@ -65,7 +65,7 @@ export class InboxService {
             const { automationTrigger } = await import("../automation/automation-trigger.service")
             // Fire and forget - don't block the webhook response
             automationTrigger.evaluateInput(
-                msg.content,
+                typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content),
                 conversation.id,
                 msg.channel,
                 msg.from,

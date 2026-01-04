@@ -903,7 +903,7 @@ export default function ClientDetailPage() {
                                                                     <StatusBadge status={service.status} type="service" className="text-[10px]" entity={service} />
                                                                 </div>
                                                                 <div className="flex items-center text-xs text-gray-500 mt-0.5 gap-2">
-                                                                    <span className="capitalize">
+                                                                    <span>
                                                                         {(() => {
                                                                             const freqMap: Record<string, string> = {
                                                                                 monthly: 'Mensual',

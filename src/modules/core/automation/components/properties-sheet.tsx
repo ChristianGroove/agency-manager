@@ -990,7 +990,7 @@ export function PropertiesSheet({ node, isOpen, onClose, onUpdate, onDelete, onD
                             <div className="space-y-2">
                                 <div className="flex justify-between">
                                     <Label>Creatividad (Temperatura)</Label>
-                                    <span className="text-xs text-muted-foreground">{formData.temperature || 0.7}</span>
+                                    <span className="text-xs text-muted-foreground">{(formData.temperature as number) || 0.7}</span>
                                 </div>
                                 <Input
                                     type="number"

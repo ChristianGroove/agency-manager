@@ -71,12 +71,12 @@ export async function createSaaSProduct(productData: Partial<SaaSProduct>, modul
         const { data: product, error: productError } = await supabaseAdmin
             .from("saas_products")
             .insert({
-                name: productData.name,
-                slug: productData.slug,
-                description: productData.description,
-                pricing_model: productData.pricing_model,
-                base_price: productData.base_price,
-                status: productData.status || 'draft'
+                name: (productData as any).name,
+                slug: (productData as any).slug,
+                description: (productData as any).description,
+                pricing_model: (productData as any).pricing_model,
+                price_monthly: (productData as any).base_price,
+                status: (productData as any).status || 'draft'
             })
             .select()
             .single()

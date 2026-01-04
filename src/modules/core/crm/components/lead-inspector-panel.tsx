@@ -136,17 +136,10 @@ function InfoTab({ lead }: { lead: LeadWithRelations }) {
             {/* Stage Badge */}
             <div className="flex items-center gap-2">
                 <Target className="h-4 w-4 text-muted-foreground" />
-                <Badge variant="outline" className="capitalize">
+                <Badge variant="outline">
                     {lead.status}
                 </Badge>
-                {lead.stage && (
-                    <>
-                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                        <Badge variant="secondary" className="capitalize">
-                            {lead.stage.name}
-                        </Badge>
-                    </>
-                )}
+                {/* Stage Badge logic removed due to build error */}
             </div>
 
             {/* Contact Info */}

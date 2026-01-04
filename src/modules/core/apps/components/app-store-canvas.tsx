@@ -22,14 +22,14 @@ import { Loader2, ShoppingCart, Info, LayoutTemplate } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 
 const nodeTypes = {
-    appNode: AppStoreNode
+    appNode: AppStoreNode as any
 }
 
 const CATEGORY_ORDER = ['config', 'core', 'operations', 'finance', 'automation']
 
 export function AppStoreCanvas() {
-    const [nodes, setNodes, onNodesChange] = useNodesState([])
-    const [edges, setEdges, onEdgesChange] = useEdgesState([])
+    const [nodes, setNodes, onNodesChange] = useNodesState<Node<AppNodeData>>([])
+    const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
     const [isLoading, setIsLoading] = useState(true)
     const [systemModules, setSystemModules] = useState<SystemModule[]>([])
     const [activeModules, setActiveModules] = useState<string[]>([])
@@ -61,7 +61,7 @@ export function AppStoreCanvas() {
     }
 
     // Structured Auto-Layout
-    const getLayoutedElements = (nodes: Node[], edges: Edge[]) => {
+    const getLayoutedElements = (nodes: Node<AppNodeData>[], edges: Edge[]) => {
         const dagreGraph = new dagre.graphlib.Graph()
         dagreGraph.setDefaultEdgeLabel(() => ({}))
 

@@ -106,11 +106,11 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
             {/* Header / Profile */}
             <div className="p-6 flex flex-col items-center text-center border-b">
                 <Avatar className="h-20 w-20 mb-4">
-                    <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${lead.name || 'Unknown'}`} />
-                    <AvatarFallback>{(lead.name || 'UN').slice(0, 2).toUpperCase()}</AvatarFallback>
+                    <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${lead.title || 'Unknown'}`} />
+                    <AvatarFallback>{(lead.title || 'UN').slice(0, 2).toUpperCase()}</AvatarFallback>
                 </Avatar>
-                <h2 className="text-lg font-bold">{lead.name || 'Unknown Contact'}</h2>
-                <Badge variant="secondary" className="mt-2 capitalize">
+                <h2 className="text-lg font-bold">{lead.title || 'Unknown Contact'}</h2>
+                <Badge variant="secondary" className="mt-2">
                     {lead.status}
                 </Badge>
             </div>

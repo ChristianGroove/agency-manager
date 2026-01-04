@@ -17,7 +17,7 @@ import {
     TooltipTrigger,
 } from "@/components/ui/tooltip"
 
-export interface AppNodeData {
+export interface AppNodeData extends Record<string, unknown> {
     key: string;
     label: string;
     description: string;
@@ -35,7 +35,7 @@ const getIcon = (name: string): LucideIcon => {
     return Icons[name] || Icons.Box;
 };
 
-const AppStoreNode = ({ data, selected }: NodeProps<AppNodeData>) => {
+const AppStoreNode = ({ data, selected }: NodeProps<any>) => {
     const Icon = getIcon(data.iconName);
 
     // State Logic

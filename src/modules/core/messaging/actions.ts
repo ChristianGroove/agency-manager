@@ -214,6 +214,8 @@ export async function sendMessage(conversationId: string, payload: string, id?: 
     // 6. Save to Database
     // Use user email or 'Agent' as sender
     const senderId = user.email || 'Agent'
+    const messageId = id || providerResult.messageId!
+
     await inboxService.saveOutboundMessage(
         conversationId,
         content,
@@ -223,8 +225,15 @@ export async function sendMessage(conversationId: string, payload: string, id?: 
         channel // Pass resolved channel
     )
 
+    // Fetch the created message to return
+    const { data: createdMessage } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('id', messageId)
+        .single()
+
     revalidatePath('/inbox')
-    return { success: true }
+    return { success: true, data: createdMessage }
 }
 
 export async function markConversationAsRead(conversationId: string) {
@@ -292,4 +301,20 @@ export async function simulateInboundMessage(fromPhone: string = '555001122', me
         console.error('Simulation Failed:', error)
         return { success: false, message: error.message }
     }
+}
+
+export async function getMessages(conversationId: string) {
+    const supabase = await createClient()
+    const { data: messages, error } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('conversation_id', conversationId)
+        .order('created_at', { ascending: true })
+
+    if (error) {
+        console.error("Failed to fetch messages:", error)
+        return []
+    }
+
+    return messages
 }

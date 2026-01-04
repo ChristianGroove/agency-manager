@@ -277,12 +277,12 @@ export function LeadTasksTab({ leadId, tasks, onUpdate }: LeadTasksTabProps) {
                                 </div>
 
                                 <div className="flex items-center gap-3 mt-3 text-xs">
-                                    <Badge variant="outline" className="capitalize">
+                                    <Badge variant="outline">
                                         {task.task_type.replace('_', ' ')}
                                     </Badge>
 
                                     <span className={cn(
-                                        "px-2 py-0.5 rounded-full font-medium capitalize",
+                                        "px-2 py-0.5 rounded-full font-medium",
                                         priorityColors[task.priority] || priorityColors.medium
                                     )}>
                                         {task.priority === 'urgent' && <AlertCircle className="h-3 w-3 inline mr-1" />}

@@ -157,7 +157,7 @@ export function LeadEmailsTab({ leadId, leadEmail, emails, onUpdate }: LeadEmail
                                                     <span>{formatDistanceToNow(new Date(email.created_at), { addSuffix: true, locale: es })}</span>
                                                 </div>
                                             </div>
-                                            <Badge variant={email.status === 'sent' ? 'default' : 'secondary'} className="capitalize">
+                                            <Badge variant={email.status === 'sent' ? 'default' : 'secondary'}>
                                                 {email.status}
                                             </Badge>
                                         </div>

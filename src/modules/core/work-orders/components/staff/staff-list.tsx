@@ -227,7 +227,7 @@ export function StaffList({ viewMode = 'grid' }: StaffListProps) {
                                             <Badge variant={profile.is_available ? "default" : "secondary"} className="h-4 text-[10px] px-1">
                                                 {profile.is_available ? 'Disponible' : 'No Disp.'}
                                             </Badge>
-                                            <span className="text-xs text-muted-foreground capitalize">{profile.role}</span>
+                                            <span className="text-xs text-muted-foreground">{profile.role}</span>
                                         </div>
                                         <div className="flex items-center gap-1 mt-1 text-xs font-medium text-green-600">
                                             <DollarSign className="h-3 w-3" />
@@ -236,7 +236,7 @@ export function StaffList({ viewMode = 'grid' }: StaffListProps) {
                                         {profile.skills && profile.skills.length > 0 && (
                                             <div className="flex flex-wrap gap-1 mt-1.5">
                                                 {profile.skills.slice(0, 2).map((skill: string) => (
-                                                    <span key={skill} className="text-[10px] bg-blue-50 text-blue-700 px-1 py-0.5 rounded capitalize">
+                                                    <span key={skill} className="text-[10px] bg-blue-50 text-blue-700 px-1 py-0.5 rounded">
                                                         {skill}
                                                     </span>
                                                 ))}
@@ -282,13 +282,13 @@ export function StaffList({ viewMode = 'grid' }: StaffListProps) {
                                             {profile.is_available ? 'Disponible' : 'No Disponible'}
                                         </Badge>
                                     </TableCell>
-                                    <TableCell className="capitalize">{profile.role}</TableCell>
+                                    <TableCell>{profile.role}</TableCell>
                                     <TableCell className="font-medium text-green-600">${profile.hourly_rate?.toLocaleString()}</TableCell>
                                     <TableCell>
                                         {profile.skills && profile.skills.length > 0 ? (
                                             <div className="flex flex-wrap gap-1">
                                                 {profile.skills.slice(0, 3).map((skill: string) => (
-                                                    <span key={skill} className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded capitalize">
+                                                    <span key={skill} className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded">
                                                         {skill}
                                                     </span>
                                                 ))}

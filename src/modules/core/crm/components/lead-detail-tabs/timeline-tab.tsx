@@ -107,11 +107,15 @@ export function LeadTimelineTab({ activities }: LeadTimelineTabProps) {
                                             {activity.activity_type === 'score_updated' && (
                                                 <div className="flex items-center gap-2">
                                                     <span>Score: {activity.metadata.new_score}</span>
-                                                    {activity.metadata.factors && (
-                                                        <span className="text-muted-foreground">
-                                                            ({Object.keys(activity.metadata.factors).filter(k => activity.metadata.factors[k]).length} factores)
-                                                        </span>
-                                                    )}
+                                                    {activity.metadata.factors && (() => {
+                                                        const factors = activity.metadata.factors as Record<string, any>
+                                                        const factorCount = Object.keys(factors).filter(k => factors[k]).length
+                                                        return (
+                                                            <span className="text-muted-foreground">
+                                                                ({factorCount} factores)
+                                                            </span>
+                                                        )
+                                                    })()}
                                                 </div>
                                             )}
                                         </div>

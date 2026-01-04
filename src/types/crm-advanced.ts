@@ -2,7 +2,7 @@
 // CRM Advanced Types
 // ============================================
 
-import { Database } from '@/types/database'
+import { Database } from '@/types/supabase'
 
 // Enhanced Lead with new fields
 export interface Lead {

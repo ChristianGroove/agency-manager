@@ -293,7 +293,7 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
                         <div className="flex items-center gap-2">
                             <h3 className="font-semibold text-sm leading-tight text-foreground">{leadName}</h3>
                             {conversation?.leads?.status && (
-                                <Badge variant="outline" className="text-[10px] h-5 capitalize">
+                                <Badge variant="outline" className="text-[10px] h-5">
                                     <Target className="h-3 w-3 mr-1" />
                                     {conversation.leads.status}
                                 </Badge>

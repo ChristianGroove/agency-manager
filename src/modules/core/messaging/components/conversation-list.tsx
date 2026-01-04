@@ -343,7 +343,7 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
                                             </p>
 
                                             <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
-                                                {(conv.channel === 'whatsapp' || conv.channel === 'evolution') && (
+                                                {((conv.channel as any) === 'whatsapp' || (conv.channel as any) === 'evolution') && (
                                                     <MessageSquare className="h-3 w-3" />
                                                 )}
 
