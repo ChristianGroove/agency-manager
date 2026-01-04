@@ -28,6 +28,7 @@ export default function PortalPage() {
     const [briefings, setBriefings] = useState<Briefing[]>([])
     const [events, setEvents] = useState<ClientEvent[]>([])
     const [activeModules, setActiveModules] = useState<any[]>([])
+    const [hostingAccounts, setHostingAccounts] = useState<any[]>([])
 
     // Payment Methods State (NEW)
     const [paymentMethods, setPaymentMethods] = useState<any[]>([])
@@ -80,6 +81,7 @@ export default function PortalPage() {
                 setSettings(data.settings || {})
                 setServices(data.services || [])
                 setServices(data.services || [])
+                setHostingAccounts(data.hostingAccounts || [])
                 setActiveModules(data.activePortalModules || [])
                 setPaymentMethods(data.paymentMethods || [])
                 setInsightsAccess(data.insightsAccess || { show: false, mode: { organic: false, ads: false } })
@@ -250,6 +252,7 @@ export default function PortalPage() {
                 services={services}
                 settings={settings}
                 activeModules={activeModules}
+                hostingAccounts={hostingAccounts}
                 onPay={handlePayClick}
                 onViewInvoice={setViewInvoice}
                 onViewQuote={setViewQuote}

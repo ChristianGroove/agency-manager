@@ -15,6 +15,7 @@ import { QuoteDetailModal } from "./quote-detail-modal"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Badge } from "@/components/ui/badge"
+import { PortalHostingTab } from "./portal-hosting-tab"
 
 interface PortalLayoutProps {
     token: string
@@ -24,6 +25,7 @@ interface PortalLayoutProps {
     briefings: Briefing[]
     events: ClientEvent[]
     services: Service[]
+    hostingAccounts?: any[] // Optional to avoid breaking existing calls immediately
     settings: any
     activeModules: Array<{
         slug: string
@@ -59,9 +61,9 @@ function mapModuleToComponent(moduleSlug: string): string {
     return mapping[moduleSlug] || 'summary'
 }
 
-type TabKey = 'summary' | 'services' | 'billing' | 'explore' | 'insights'
+type TabKey = 'summary' | 'services' | 'billing' | 'explore' | 'insights' | 'hosting'
 
-export function PortalLayout({ token, client, invoices, quotes, briefings, events, services, settings, activeModules, onPay, onViewInvoice, onViewQuote, insightsAccess }: PortalLayoutProps) {
+export function PortalLayout({ token, client, invoices, quotes, briefings, events, services, hostingAccounts = [], settings, activeModules, onPay, onViewInvoice, onViewQuote, insightsAccess }: PortalLayoutProps) {
     // Build dynamic tabs based on active modules
     const dynamicTabs = [
         // Summary is ALWAYS shown (not module-based)
@@ -71,6 +73,13 @@ export function PortalLayout({ token, client, invoices, quotes, briefings, event
             label: 'Resumen',
             icon: LayoutDashboard
         },
+        // Hosting Tab (Auto-detected)
+        ...(hostingAccounts && hostingAccounts.length > 0 ? [{
+            key: 'hosting',
+            component: 'hosting',
+            label: 'Hosting',
+            icon: Server
+        }] : []),
         // Map active modules to tabs
         ...activeModules
             .filter(mod => {
@@ -207,6 +216,7 @@ export function PortalLayout({ token, client, invoices, quotes, briefings, event
                     )}
                     {dynamicTabs.find(t => t.key === activeTab)?.component === 'insights' && <InsightsTab client={client} services={services} token={token} insightsAccess={insightsAccess} />}
                     {dynamicTabs.find(t => t.key === activeTab)?.component === 'explore' && <PortalCatalogTab settings={settings} client={client} token={token} />}
+                    {dynamicTabs.find(t => t.key === activeTab)?.component === 'hosting' && <PortalHostingTab hostingAccounts={hostingAccounts || []} />}
                 </div>
 
                 {/* Billing Summary Block (Persistent Desktop) */}

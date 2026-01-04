@@ -58,7 +58,8 @@ export async function getPortalData(token: string) {
                 { data: quotes },
                 { data: briefings },
                 { data: events },
-                { data: services }
+                { data: services },
+                { data: hostingAccounts }
             ] = await Promise.all([
                 // Invoices: Filter out cancelled and deleted
                 supabaseAdmin.from('invoices').select('*').eq('client_id', client.id).is('deleted_at', null).neq('status', 'cancelled').order('created_at', { ascending: false }),
@@ -69,7 +70,9 @@ export async function getPortalData(token: string) {
                 // Events: Add deleted_at filter
                 supabaseAdmin.from('client_events').select('*').eq('client_id', client.id).order('created_at', { ascending: false }),
                 // Services: Add deleted_at filter
-                supabaseAdmin.from('services').select('*').eq('client_id', client.id).eq('status', 'active').is('deleted_at', null).order('created_at', { ascending: false })
+                supabaseAdmin.from('services').select('*').eq('client_id', client.id).eq('status', 'active').is('deleted_at', null).order('created_at', { ascending: false }),
+                // Hosting: Fetch active accounts
+                supabaseAdmin.from('hosting_accounts').select('*').eq('client_id', client.id).eq('status', 'active').order('created_at', { ascending: false })
             ])
 
             // Fetch portal modules (conditional based on super admin mode)
@@ -196,6 +199,7 @@ export async function getPortalData(token: string) {
                 events: (events || []) as ClientEvent[],
                 settings: settings || {},
                 services: filteredServices as Service[],
+                hostingAccounts: (hostingAccounts || []) as any[], // Typing lazily for now to avoid type errors
                 activePortalModules: activePortalModules as Array<{
                     slug: string
                     portal_tab_label: string
