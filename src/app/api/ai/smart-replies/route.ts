@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
         // Fetch conversation history (last 10 messages)
         const { data: messages, error: messagesError } = await supabase
             .from('messages')
-            .select('content, direction, created_at')
+            .select('id, content, direction, created_at')
             .eq('conversation_id', conversationId)
             .order('created_at', { ascending: false })
             .limit(10)
