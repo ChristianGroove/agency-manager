@@ -4,7 +4,7 @@ import OpenAI from "openai"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 
 const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
+    apiKey: process.env.OPENAI_API_KEY || "stub_key_for_build_only",
 })
 
 interface IntentResult {

@@ -179,6 +179,77 @@ export interface Database {
                     description?: string | null
                 }
             }
+            work_orders: {
+                Row: {
+                    id: string
+                    organization_id: string
+                    client_id: string | null
+                    service_id: string | null
+                    form_submission_id: string | null
+                    assigned_staff_id: string | null
+                    title: string
+                    description: string | null
+                    status: string
+                    priority: string | null
+                    start_time: string | null
+                    end_time: string | null
+                    location_type: string | null
+                    location_address: string | null
+                    vertical: string
+                    tags: string[] | null
+                    price_quoted: number | null
+                    currency: string | null
+                    metadata: Json | null
+                    created_at: string
+                    updated_at: string | null
+                }
+                Insert: {
+                    id?: string
+                    organization_id: string
+                    client_id?: string | null
+                    service_id?: string | null
+                    form_submission_id?: string | null
+                    assigned_staff_id?: string | null
+                    title: string
+                    description?: string | null
+                    status?: string
+                    priority?: string | null
+                    start_time?: string | null
+                    end_time?: string | null
+                    location_type?: string | null
+                    location_address?: string | null
+                    vertical?: string
+                    tags?: string[] | null
+                    price_quoted?: number | null
+                    currency?: string | null
+                    metadata?: Json | null
+                    created_at?: string
+                    updated_at?: string | null
+                }
+                Update: {
+                    id?: string
+                    organization_id?: string
+                    client_id?: string | null
+                    service_id?: string | null
+                    form_submission_id?: string | null
+                    assigned_staff_id?: string | null
+                    title?: string
+                    description?: string | null
+                    status?: string
+                    priority?: string | null
+                    start_time?: string | null
+                    end_time?: string | null
+                    location_type?: string | null
+                    location_address?: string | null
+                    vertical?: string
+                    tags?: string[] | null
+                    price_quoted?: number | null
+                    currency?: string | null
+                    metadata?: Json | null
+                    created_at?: string
+                    updated_at?: string | null
+                }
+            }
         }
         Views: {
             [_ in never]: never

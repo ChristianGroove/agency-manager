@@ -11,66 +11,49 @@ import { addMinutes } from "date-fns"
  * Universal Work Order Creation
  * Supports any vertical by checking the current organization's active app or explicit parameter.
  */
-export async function createWorkOrder(data: {
-    clientId: string
-    serviceId: string
-    staffId?: string
-    startTime: string // ISO string
-    address?: string
-    notes?: string
-    vertical?: string // Optional override
-    title?: string // Optional override
-}) {
+export async function createWorkOrder(data: Partial<WorkOrder>) {
     try {
         const supabase = await createClient()
         const orgId = await getCurrentOrganizationId()
 
         if (!orgId) return { success: false, error: "Unauthorized" }
 
-        // 1. Fetch Service details (Duration, Name, etc.)
-        const { data: service } = await supabase
-            .from('service_catalog')
-            .select('*')
-            .eq('id', data.serviceId)
-            .single()
+        // 1. Fetch Service details if service_id provided
+        let serviceDetails = null
+        if (data.service_id) {
+            const { data: service } = await supabase
+                .from('service_catalog')
+                .select('*')
+                .eq('id', data.service_id)
+                .single()
+            serviceDetails = service
+        }
 
-        if (!service) return { success: false, error: "Service not found" }
-
-        // 2. Calculate End Time
-        // Metadata structure validation is important here. We assume strict typing in future but relaxed now.
-        const duration = service.metadata?.duration_minutes || 60
-        const startDate = new Date(data.startTime)
-        const endDate = addMinutes(startDate, duration)
-
-        // 3. Determine Vertical
-        let vertical = data.vertical || 'generic'
-        if (!data.vertical) {
-            // Fallback: Check active app for this org
-            // Simplification: We assume the service's category implies context, or we just default to 'generic'
-            // Ideally we query saas_apps join, but for now let's rely on what the UI sends or service category
-            if (service.category === 'cleaning') vertical = 'cleaning'
-            else if (service.category === 'maintenance') vertical = 'maintenance'
+        // 2. Prepare Payload
+        // Use provided end_time or calculate from service duration
+        let endTime = data.end_time
+        if (!endTime && data.start_time && serviceDetails) {
+            const duration = serviceDetails.metadata?.duration_minutes || 60
+            endTime = addMinutes(new Date(data.start_time), duration).toISOString()
         }
 
         const payload = {
             organization_id: orgId,
-            client_id: data.clientId,
-            service_id: data.serviceId,
-            assigned_staff_id: data.staffId || null,
-            title: data.title || service.name,
-            description: data.notes || '',
-            start_time: data.startTime,
-            end_time: endDate.toISOString(),
-            status: 'scheduled',
-            vertical: vertical,
-            location_type: 'at_client_address',
-            location_address: data.address || '',
+            client_id: data.client_id,
+            service_id: data.service_id,
+            assigned_staff_id: data.assigned_staff_id,
+            title: data.title || serviceDetails?.name || 'Nuevo Trabajo',
+            description: data.description || '',
+            start_time: data.start_time,
+            end_time: endTime,
+            status: data.status || 'pending',
+            priority: data.priority || 'normal',
+            vertical: data.vertical || 'generic',
+            location_type: data.location_type || 'at_client_address',
+            location_address: data.location_address || '',
             metadata: {
                 source: 'admin_panel',
-                service_snapshot: {
-                    name: service.name,
-                    price: service.base_price
-                }
+                ...data.metadata
             }
         }
 
