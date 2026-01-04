@@ -25,7 +25,14 @@ export default async function AutomationsPage() {
         <GrowthEcosystemShell>
             <AutomationsView
                 workflows={workflowsResult.data || []}
-                stats={stats || undefined}
+                stats={stats ? {
+                    totalExecutions: stats.total,
+                    successRate: stats.total > 0 ? Math.round((stats.success / stats.total) * 100) : 0,
+                    avgExecutionTime: Math.round(stats.avgDuration / 1000), // convert to seconds
+                    todayExecutions: stats.total, // fallback for now as API doesn't distinguish
+                    failedToday: stats.failed,
+                    activeWorkflows: workflowsResult.data?.filter(w => w.is_active).length || 0
+                } : undefined}
                 recentExecutions={executions || []}
             />
         </GrowthEcosystemShell>
