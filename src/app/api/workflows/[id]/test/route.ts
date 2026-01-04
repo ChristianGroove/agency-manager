@@ -4,8 +4,9 @@ import { WorkflowDefinition } from '@/modules/core/automation/engine';
 
 export async function POST(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    props: { params: Promise<{ id: string }> }
 ) {
+    const params = await props.params;
     try {
         const body = await request.json();
         const { workflowDefinition, testData } = body as {
