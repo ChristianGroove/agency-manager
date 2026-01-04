@@ -66,6 +66,7 @@ import { CreateInvoiceSheet } from "@/modules/core/billing/create-invoice-sheet"
 import { ShareInvoiceModal } from "@/modules/core/billing/share-invoice-modal"
 import { CreateServiceSheet } from "@/modules/core/billing/components/create-service-sheet"
 import { CreateHostingSheet } from "@/modules/core/hosting/components/create-hosting-sheet"
+import { HostingCard } from "@/modules/core/hosting/components/hosting-card"
 import { regeneratePortalToken } from "@/modules/core/portal/actions"
 // ... imports ...
 import { EcosystemWidget } from "@/modules/core/marketing/ecosystem-widget"
@@ -1209,38 +1210,24 @@ export default function ClientDetailPage() {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     {client.hosting_accounts && client.hosting_accounts.length > 0 ? (
                                         client.hosting_accounts.map((acc: any) => (
-                                            <div key={acc.id} className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm hover:shadow-md transition-all">
-                                                <div className="flex justify-between items-start mb-2">
-                                                    <div>
-                                                        <a href={`https://${acc.domain_url}`} target="_blank" rel="noreferrer" className="flex items-center gap-1 font-bold text-lg text-indigo-600 hover:underline">
-                                                            {acc.domain_url}
-                                                            <ExternalLink className="h-3 w-3" />
-                                                        </a>
-                                                        <p className="text-sm text-gray-500">{acc.provider_name} • {acc.plan_name}</p>
-                                                    </div>
-                                                    <Badge className={acc.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-700'}>
-                                                        {acc.status}
-                                                    </Badge>
-                                                </div>
-                                                <div className="grid grid-cols-2 gap-2 text-sm mt-3 bg-gray-50 p-2 rounded-lg">
-                                                    <div>
-                                                        <span className="text-gray-400 block text-xs">IP Servidor</span>
-                                                        <span className="font-mono text-gray-700">{acc.server_ip || '---'}</span>
-                                                    </div>
-                                                    <div>
-                                                        <span className="text-gray-400 block text-xs">Renovación</span>
-                                                        <span className="text-gray-700">{acc.renewal_date ? new Date(acc.renewal_date).toLocaleDateString() : '---'}</span>
-                                                    </div>
-                                                </div>
-                                                <div className="mt-3 flex justify-end gap-2">
-                                                    <Button variant="ghost" size="sm" onClick={() => { setSelectedAccountForSheet(acc); setIsHostingSheetOpen(true); }}>
-                                                        <Edit className="h-3 w-3 mr-1" /> Editar
-                                                    </Button>
-                                                    <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700 hover:bg-red-50">
-                                                        <Trash2 className="h-3 w-3 mr-1" />
-                                                    </Button>
-                                                </div>
-                                            </div>
+                                            <HostingCard
+                                                key={acc.id}
+                                                account={acc}
+                                                onEdit={(account) => { setSelectedAccountForSheet(account); setIsHostingSheetOpen(true); }}
+                                                onDelete={async (id) => {
+                                                    if (!confirm("¿Estás seguro de eliminar este hosting?")) return
+                                                    try {
+                                                        const { error } = await supabase
+                                                            .from('hosting_accounts')
+                                                            .delete()
+                                                            .eq('id', id)
+                                                        if (error) throw error
+                                                        fetchClientData(client.id)
+                                                    } catch (err) {
+                                                        toast.error("Error al eliminar hosting")
+                                                    }
+                                                }}
+                                            />
                                         ))
                                     ) : (
                                         <div className="col-span-full text-center py-12 bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
