@@ -28,6 +28,7 @@ export interface SaasApp {
     sort_order: number
     metadata?: Record<string, any>
     created_at: string
+    status?: string
 }
 
 export interface AppModule {
@@ -203,7 +204,8 @@ export async function getCurrentOrganizationApp() {
                 category: 'general',
                 icon: 'Box',
                 color: '#64748b',
-                created_at: new Date().toISOString()
+                created_at: new Date().toISOString(),
+                status: 'published'
             } as SaasApp,
             activated_at: new Date().toISOString(),
             metadata: {}
@@ -231,7 +233,8 @@ export async function getCurrentOrganizationApp() {
                 is_active: true,
                 is_featured: true,
                 sort_order: 1,
-                created_at: new Date().toISOString()
+                created_at: new Date().toISOString(),
+                status: 'published'
             } as SaasApp,
             activated_at: new Date().toISOString(), // Todo: Fetch actual vertical assignment time if needed
             metadata: { type: 'vertical', key: 'agency' }
