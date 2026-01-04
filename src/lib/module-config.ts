@@ -12,16 +12,18 @@ import {
     Workflow,
     Briefcase,
     Store,
+    Link2,
     FileText,
     CreditCard,
     Settings,
     Grid,
     Server,
     Sparkles,
-    Megaphone
+    Megaphone,
+    MessageSquare
 } from 'lucide-react'
 
-export type ModuleCategory = 'core' | 'operations' | 'automation' | 'finance' | 'config';
+export type ModuleCategory = 'core' | 'crm' | 'operations' | 'finance' | 'config';
 
 export interface ModuleRoute {
     key: string
@@ -35,7 +37,7 @@ export interface ModuleRoute {
 
 /**
  * Complete module-to-route mapping
- * Restored to match EXISTING file structure to prevent 404s
+ * CRM ecosystem consolidated under /crm/*
  */
 export const MODULE_ROUTES: ModuleRoute[] = [
     // --- CORE (Siempre visible) ---
@@ -47,26 +49,19 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         isCore: true,
         category: 'core'
     },
-    {
-        key: 'core_clients',
-        label: 'Clientes',
-        href: '/clients',
-        icon: Users,
-        isCore: true, // Always visible
-        category: 'core'
-    },
-    // Calendar placeholder (Point to dashboard or remove if not ready, strictly keeping what works)
-    // Removed core_calendar as no route exists yet. User requested "no ocultar nada" (existing) not "invent new".
 
-    // --- VENTAS / SALES ---
+    // --- CRM ECOSYSTEM ---
     {
-        key: 'core_crm', // Key used in database usually
-        label: 'CRM / Leads',
+        key: 'crm_hub',
+        label: 'CRM',
         href: '/crm',
-        icon: Users,
-        isCore: false, // Can be disabled
-        category: 'operations' // Using Operations/Sales concept
+        icon: Target,
+        isCore: true,
+        category: 'crm',
+        description: 'Centro de Relaciones con Clientes'
     },
+
+    // --- OPERACIONES / PROYECTOS ---
     {
         key: 'module_quotes',
         label: 'Cotizaciones',
@@ -74,37 +69,31 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         icon: FileText,
         category: 'operations'
     },
-
-    // --- AUTOMATIZACIÓN ---
-    {
-        key: 'module_automation',
-        label: 'Automatización',
-        href: '/automations',
-        icon: Bot,
-        isCore: true, // Currently core for MVP
-        category: 'automation'
-    },
-    // Campaigns removed as no route exists yet
-
-    // --- OPERACIONES / PROYECTOS ---
     {
         key: 'module_briefings',
-        label: 'Briefings', // Kept original name to match route
-        href: '/briefings', // RESTORED VALID PATH
+        label: 'Briefings',
+        href: '/briefings',
         icon: Briefcase,
         category: 'operations'
     },
     {
         key: 'module_catalog',
         label: 'Catálogo',
-        href: '/portfolio', // RESTORED VALID PATH
+        href: '/portfolio',
         icon: Store,
         category: 'operations'
     },
     {
-        key: 'core_hosting',
-        label: 'Contratos / Hosting',
+        key: 'module_contracts',
+        label: 'Contratos',
         href: '/hosting',
+        icon: FileText,
+        category: 'operations'
+    },
+    {
+        key: 'module_hosting',
+        label: 'Hosting Web',
+        href: '/platform/hosting-accounts',
         icon: Server,
         category: 'operations'
     },
@@ -114,6 +103,14 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         href: '/cleaning',
         icon: Sparkles,
         category: 'operations'
+    },
+    {
+        key: 'core_integrations',
+        label: 'Integraciones',
+        href: '/platform/integrations',
+        icon: Link2,
+        isCore: true,
+        category: 'config'
     },
 
     // --- FINANZAS ---
@@ -153,8 +150,8 @@ export const MODULE_ROUTES: ModuleRoute[] = [
 
 export const CATEGORY_LABELS: Record<ModuleCategory, string> = {
     core: 'Principal',
+    crm: 'CRM',
     operations: 'Operaciones',
-    automation: 'Automatización',
     finance: 'Finanzas',
     config: 'Plataforma'
 };

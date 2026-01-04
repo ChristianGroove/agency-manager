@@ -138,6 +138,10 @@ export async function seedSystemModules() {
  * Gets the list of active module keys for the current organization
  * Uses the fallback function for safety - returns core modules if no subscription
  */
+/**
+ * Gets the list of active module keys for the current organization
+ * Uses the strict Verticals Architecture (with manual overrides fallback)
+ */
 export async function getActiveModules(orgId?: string): Promise<string[]> {
     try {
         const supabase = await createClient()
@@ -148,63 +152,48 @@ export async function getActiveModules(orgId?: string): Promise<string[]> {
             return []
         }
 
-        // Parallelize the 3 data sources
-        const [rpcResult, overridesResult, directModulesResult] = await Promise.allSettled([
-            // 1. Safety Fallback (RPC)
-            supabase.rpc('get_org_modules_with_fallback', { org_id: organizationId }),
+        // 1. Get Organization Vertical & Overrides
+        const { data: org, error: orgError } = await supabase
+            .from('organizations')
+            .select('vertical_key, manual_module_overrides')
+            .eq('id', organizationId)
+            .single()
 
-            // 2. Manual Organization Overrides
-            supabase
-                .from('organizations')
-                .select('manual_module_overrides')
-                .eq('id', organizationId)
-                .single(),
-
-            // 3. Direct Table Assignments (Legacy/Compat)
-            supabase
-                .from('organization_modules')
-                .select('module_key')
-                .eq('organization_id', organizationId)
-        ])
-
-        // Process RPC Result
-        let moduleKeys: string[] = []
-        if (rpcResult.status === 'fulfilled' && !rpcResult.value.error) {
-            moduleKeys = rpcResult.value.data?.map((row: any) => row.module_key) || []
-        } else {
-            // Fallback if RPC completely fails (network error, etc)
-            // But usually, RPC return { data, error } structure so the promise fulfills even on logic error.
-            if (rpcResult.status === 'rejected') console.error('RPC Error:', rpcResult.reason)
-            else console.error('RPC Database Error:', rpcResult.value.error)
-
-            // We continue, hoping other sources provide access or we fallback at end
-        }
-
-        // Process Overrides
-        if (overridesResult.status === 'fulfilled' && !overridesResult.value.error) {
-            const orgData = overridesResult.value.data
-            if (orgData?.manual_module_overrides && Array.isArray(orgData.manual_module_overrides)) {
-                moduleKeys = [...moduleKeys, ...orgData.manual_module_overrides]
-            }
-        }
-
-        // Process Direct Assignments
-        if (directModulesResult.status === 'fulfilled' && !directModulesResult.value.error) {
-            const directModules = directModulesResult.value.data
-            if (directModules && directModules.length > 0) {
-                const directKeys = directModules.map((m: any) => m.module_key)
-                moduleKeys = [...moduleKeys, ...directKeys]
-            }
-        }
-
-        // Deduplicate final list
-        const uniqueKeys = Array.from(new Set(moduleKeys))
-
-        // If after all efforts we have nothing (and no explicit failures), fallback to core.
-        // However, RPC 'safety fallback' usually guarantees returning defaults.
-        if (uniqueKeys.length === 0) {
+        if (orgError || !org) {
+            console.error('Error fetching organization config:', orgError)
+            // Fallback to core if org fetch fails
             return ['core_clients', 'core_settings']
         }
+
+        const verticalKey = org.vertical_key
+        const manualOverrides = org.manual_module_overrides as string[] || []
+
+        // 2. Fetch Vertical Modules
+        let verticalModules: string[] = []
+        if (verticalKey) {
+            const { data: vModules, error: vmError } = await supabase
+                .from('vertical_modules')
+                .select('module_key')
+                .eq('vertical_key', verticalKey)
+
+            if (!vmError && vModules) {
+                verticalModules = vModules.map(m => m.module_key)
+            }
+        } else {
+            // Legacy/No-Vertical fallback: Check manual assignments or return basic set
+            // For transition period, we might want to default to 'agency' modules if no vertical set?
+            // But migration should have set it.
+            console.warn('Organization has no vertical assigned. Falling back to core.')
+            verticalModules = ['core_clients', 'core_settings']
+        }
+
+        // 3. Merge & Deduplicate
+        const allModules = [...verticalModules, ...manualOverrides]
+        const uniqueKeys = Array.from(new Set(allModules))
+
+        // 4. Ensure Core Modules are always present (Safety Net)
+        if (!uniqueKeys.includes('core_clients')) uniqueKeys.push('core_clients')
+        if (!uniqueKeys.includes('core_settings')) uniqueKeys.push('core_settings')
 
         return uniqueKeys
 
@@ -233,6 +222,10 @@ export async function verifyModuleAccess(moduleKey: string, orgId?: string): Pro
  * Gets detailed module information for the organization
  * Includes module metadata like name, category, icon, etc.
  */
+/**
+ * Gets detailed module information for the organization
+ * Includes module metadata like name, category, icon, etc.
+ */
 export async function getActiveModulesDetailed(orgId?: string) {
     try {
         const supabase = await createClient()
@@ -242,6 +235,12 @@ export async function getActiveModulesDetailed(orgId?: string) {
             return []
         }
 
+        // Reuse the single source of truth logic
+        const activeKeys = await getActiveModules(organizationId)
+
+        if (activeKeys.length === 0) return []
+
+        // Fetch details for these keys
         const { data, error } = await supabase
             .from('system_modules')
             .select(`
@@ -250,20 +249,12 @@ export async function getActiveModulesDetailed(orgId?: string) {
                 name,
                 description,
                 category,
-                icon,
-                saas_product_modules!inner (
-                    product_id,
-                    saas_products!inner (
-                        id,
-                        organization_saas_products!inner (
-                            organization_id,
-                            status
-                        )
-                    )
-                )
+                icon
             `)
-            .eq('saas_product_modules.saas_products.organization_saas_products.organization_id', organizationId)
-            .eq('saas_product_modules.saas_products.organization_saas_products.status', 'active')
+            .in('key', activeKeys)
+            .eq('is_active', true)
+            .order('category', { ascending: false })
+            .order('name')
 
         if (error) {
             console.error('Error fetching detailed modules:', error)

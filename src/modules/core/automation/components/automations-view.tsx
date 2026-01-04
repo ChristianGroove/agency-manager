@@ -135,7 +135,7 @@ export function AutomationsView({
                         <Sparkles className="h-4 w-4 mr-2" />
                         Templates
                     </Button>
-                    <Link href={`/automations/${crypto.randomUUID()}`}>
+                    <Link href="/crm/automations/new">
                         <Button className="shadow-lg shadow-indigo-500/20 bg-indigo-600 hover:bg-indigo-700 text-white">
                             <Plus className="h-4 w-4 mr-2" />
                             Nuevo Workflow
@@ -214,7 +214,7 @@ export function AutomationsView({
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="grid grid-cols-2 gap-3">
-                        <Link href="/automations/analytics">
+                        <Link href="/crm/automations/analytics">
                             <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer group">
                                 <BarChart3 className="h-5 w-5 text-blue-500 mb-2 group-hover:scale-110 transition-transform" />
                                 <p className="font-medium text-sm">Analytics</p>
@@ -229,7 +229,7 @@ export function AutomationsView({
                             <p className="font-medium text-sm">Templates</p>
                             <p className="text-xs text-slate-500">Explorar plantillas</p>
                         </div>
-                        <Link href={`/automations/${crypto.randomUUID()}`}>
+                        <Link href="/crm/automations/new">
                             <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer group">
                                 <Plus className="h-5 w-5 text-purple-500 mb-2 group-hover:scale-110 transition-transform" />
                                 <p className="font-medium text-sm">Crear Nuevo</p>
@@ -253,7 +253,7 @@ export function AutomationsView({
                             <PlayCircle className="h-4 w-4 text-slate-500" />
                             Ejecuciones Recientes
                         </CardTitle>
-                        <Link href="/automations/analytics">
+                        <Link href="/crm/automations/analytics">
                             <Button variant="ghost" size="sm" className="text-xs">
                                 Ver todas <ArrowRight className="h-3 w-3 ml-1" />
                             </Button>

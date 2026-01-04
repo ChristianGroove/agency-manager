@@ -128,7 +128,9 @@ export class WebhookManager {
         }
 
         // 3. Find or Create Lead associated with this phone number (now handled by inboxService, but we check for workflows)
-        const supabase = await createClient()
+        // Use Admin client because Webhooks are unauthenticated system events
+        const { supabaseAdmin } = await import('@/lib/supabase-admin')
+        const supabase = supabaseAdmin
 
         // 4. Trigger Automation Workflows
         const { data: workflows, error } = await supabase
@@ -145,48 +147,87 @@ export class WebhookManager {
         console.log(`[WebhookManager] Found ${workflows.length} active workflows candidates`)
 
         for (const wf of workflows) {
+            // Check channel config match
+            const config = wf.trigger_config as Record<string, unknown>
+
+            // If workflow is specific to a channel, check match
+            if (config?.channel && config.channel !== msg.channel) {
+                continue
+            }
+
+            // If workflow is specific to a keyword (optional)
+            if (config?.keyword && msg.content.type === 'text') {
+                const keyword = (config.keyword as string).toLowerCase()
+                const text = (msg.content.text || '').toLowerCase()
+                if (!text.includes(keyword)) continue
+            }
+
+
+            // Initialize Context
+            const context = {
+                message: {
+                    id: msg.id,
+                    text: msg.content.text,
+                    mediaUrl: msg.content.mediaUrl,
+                    sender: msg.from,
+                    channel: msg.channel,
+                    timestamp: msg.timestamp,
+                    conversationId: conversationId
+                },
+                lead: {
+                    phone: msg.from,
+                    name: msg.senderName || "Unknown"
+                }
+            }
+
+            // Create Execution Record
+            const { data: execution, error: execError } = await supabase
+                .from('workflow_executions')
+                .insert({
+                    organization_id: wf.organization_id,
+                    workflow_id: wf.id,
+                    status: 'running',
+                    started_at: new Date().toISOString(),
+                    context: context
+                })
+                .select()
+                .single()
+
+            if (execError) {
+                console.error("[WebhookManager] Failed to create execution record:", execError)
+                continue
+            }
+
             try {
-                // Check channel config match
-                const config = wf.trigger_config as Record<string, unknown>
-
-                // If workflow is specific to a channel, check match
-                if (config?.channel && config.channel !== msg.channel) {
-                    continue
-                }
-
-                // If workflow is specific to a keyword (optional)
-                if (config?.keyword && msg.content.type === 'text') {
-                    const keyword = (config.keyword as string).toLowerCase()
-                    const text = (msg.content.text || '').toLowerCase()
-                    if (!text.includes(keyword)) continue
-                }
-
-                console.log(`[WebhookManager] Starting workflow ${wf.name} (${wf.id})`)
+                console.log(`[WebhookManager] Starting workflow ${wf.name} (${wf.id}) Execution: ${execution.id}`)
                 const definition = wf.definition as WorkflowDefinition
-
-                // Initialize Engine with Context
-                const context = {
-                    message: {
-                        id: msg.id,
-                        text: msg.content.text,
-                        mediaUrl: msg.content.mediaUrl,
-                        sender: msg.from,
-                        channel: msg.channel,
-                        timestamp: msg.timestamp,
-                        conversationId: conversationId // Add context
-                    },
-                    lead: {
-                        phone: msg.from,
-                        name: msg.senderName || "Unknown"
-                    }
-                }
 
                 const engine = new WorkflowEngine(definition, context)
                 await engine.start()
 
-            } catch (err) {
+                // Update Execution Status: Completed
+                await supabase
+                    .from('workflow_executions')
+                    .update({
+                        status: 'completed',
+                        completed_at: new Date().toISOString()
+                    })
+                    .eq('id', execution.id)
+
+            } catch (err: any) {
                 console.error(`[WebhookManager] Failed to run workflow ${wf.id}:`, err)
+
+                // Update Execution Status: Failed
+                await supabase
+                    .from('workflow_executions')
+                    .update({
+                        status: 'failed',
+                        completed_at: new Date().toISOString(),
+                        error_message: err.message
+                    })
+                    .eq('id', execution.id)
             }
+
         }
     }
 }

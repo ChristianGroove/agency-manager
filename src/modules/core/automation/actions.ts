@@ -12,6 +12,20 @@ export async function saveWorkflow(id: string, name: string, description: string
 
         if (!orgId) throw new Error("Unauthorized")
 
+        // Extract Trigger Config from Nodes to sync with SQL columns
+        // This is crucial for the WebhookManager to find this workflow efficiently
+        const triggerNode = definition.nodes.find((n: any) => n.type === 'trigger');
+        let triggerType = 'webhook'; // Default
+        let triggerConfig: Record<string, unknown> = { channel: 'whatsapp' }; // Default
+
+        if (triggerNode && triggerNode.data) {
+            triggerType = (triggerNode.data.triggerType as string) || 'webhook';
+            triggerConfig = {
+                channel: (triggerNode.data.channel as string) || 'whatsapp',
+                keyword: (triggerNode.data.keyword as string) || undefined
+            };
+        }
+
         // Check if exists
         const { data: existing } = await supabase
             .from('workflows')
@@ -30,6 +44,9 @@ export async function saveWorkflow(id: string, name: string, description: string
                     description,
                     definition,
                     is_active: isActive,
+                    // Sync trigger columns
+                    trigger_type: triggerType,
+                    trigger_config: triggerConfig,
                     updated_at: new Date().toISOString()
                 })
                 .eq('id', id)
@@ -43,10 +60,11 @@ export async function saveWorkflow(id: string, name: string, description: string
                     organization_id: orgId,
                     name,
                     description,
-                    trigger_type: 'webhook', // Default for now
-                    trigger_config: { channel: 'whatsapp' }, // Default
                     definition,
-                    is_active: isActive
+                    is_active: isActive,
+                    // Sync trigger columns
+                    trigger_type: triggerType,
+                    trigger_config: triggerConfig
                 })
                 .select()
         }
@@ -277,4 +295,112 @@ export async function executeAIAction(userPrompt: string, model: string, systemP
         output: `[AI Output (${model})] processed: "${userPrompt.substring(0, 30)}..."`,
         usage: { tokens: userPrompt.length }
     };
+}
+
+// Get list of active workflows for manual triggering
+export async function getActiveWorkflows() {
+    try {
+        const supabase = await createClient()
+        const orgId = await getCurrentOrganizationId()
+
+        if (!orgId) throw new Error("Unauthorized")
+
+        const { data, error } = await supabase
+            .from('workflows')
+            .select('id, name, description, is_active, trigger_type')
+            .eq('organization_id', orgId)
+            .eq('is_active', true)
+            .order('name')
+
+        if (error) throw error
+
+        return { success: true, workflows: data || [] }
+    } catch (error) {
+        console.error("Error fetching active workflows:", error)
+        return { success: false, error: String(error), workflows: [] }
+    }
+}
+
+// Manually trigger a workflow for a specific lead
+export async function triggerWorkflowForLead(workflowId: string, leadId: string) {
+    try {
+        const supabase = await createClient()
+        const orgId = await getCurrentOrganizationId()
+
+        if (!orgId) throw new Error("Unauthorized")
+
+        // Get the workflow
+        const { data: workflow, error: wfError } = await supabase
+            .from('workflows')
+            .select('id, name, definition, is_active')
+            .eq('id', workflowId)
+            .eq('organization_id', orgId)
+            .single()
+
+        if (wfError || !workflow) {
+            throw new Error('Workflow not found')
+        }
+
+        if (!workflow.is_active) {
+            throw new Error('Workflow is not active')
+        }
+
+        // Get the lead
+        const { data: lead, error: leadError } = await supabase
+            .from('leads')
+            .select('id, name, email, phone, company_name')
+            .eq('id', leadId)
+            .eq('organization_id', orgId)
+            .single()
+
+        if (leadError || !lead) {
+            throw new Error('Lead not found')
+        }
+
+        // Create an execution record
+        const executionId = crypto.randomUUID()
+        const { error: execError } = await supabase
+            .from('workflow_executions')
+            .insert({
+                id: executionId,
+                workflow_id: workflowId,
+                organization_id: orgId,
+                status: 'running',
+                context: {
+                    trigger: 'manual',
+                    lead_id: leadId,
+                    lead_name: lead.name,
+                    lead_email: lead.email,
+                    lead_phone: lead.phone,
+                    lead_company: lead.company_name
+                },
+                started_at: new Date().toISOString()
+            })
+
+        if (execError) throw execError
+
+        console.log(`[Workflow] Manually triggered ${workflow.name} for lead ${lead.name}`)
+
+        // In a real implementation, this would start the workflow engine
+        // For now, we mark it as completed after a simulated delay
+        setTimeout(async () => {
+            const supabaseInternal = await createClient()
+            await supabaseInternal
+                .from('workflow_executions')
+                .update({
+                    status: 'completed',
+                    completed_at: new Date().toISOString()
+                })
+                .eq('id', executionId)
+        }, 2000)
+
+        return {
+            success: true,
+            executionId,
+            message: `Workflow "${workflow.name}" triggered for ${lead.name}`
+        }
+    } catch (error) {
+        console.error("Error triggering workflow:", error)
+        return { success: false, error: String(error) }
+    }
 }

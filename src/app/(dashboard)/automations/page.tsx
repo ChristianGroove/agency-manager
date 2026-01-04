@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase-server"
 import { AutomationsView } from "@/modules/core/automation/components/automations-view"
 import { getWorkflowStats, getExecutionHistory } from "@/modules/core/automation/actions"
+import { GrowthEcosystemShell } from "@/modules/core/layout/growth-ecosystem-shell"
 
 export const metadata = {
     title: "Centro de Control - Automations",
@@ -21,10 +22,12 @@ export default async function AutomationsPage() {
     ])
 
     return (
-        <AutomationsView
-            workflows={workflowsResult.data || []}
-            stats={stats || undefined}
-            recentExecutions={executions || []}
-        />
+        <GrowthEcosystemShell>
+            <AutomationsView
+                workflows={workflowsResult.data || []}
+                stats={stats || undefined}
+                recentExecutions={executions || []}
+            />
+        </GrowthEcosystemShell>
     )
 }

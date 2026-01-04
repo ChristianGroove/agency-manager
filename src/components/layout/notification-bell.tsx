@@ -25,7 +25,11 @@ type Notification = {
     subscription_id?: string
 }
 
-export function NotificationBell() {
+interface NotificationBellProps {
+    trigger?: React.ReactNode
+}
+
+export function NotificationBell({ trigger }: NotificationBellProps) {
     const [notifications, setNotifications] = useState<Notification[]>([])
     const [unreadCount, setUnreadCount] = useState(0)
     const [loading, setLoading] = useState(true)
@@ -131,12 +135,21 @@ export function NotificationBell() {
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="relative text-gray-500 hover:text-gray-900 transition-colors">
-                    <Bell className="h-5 w-5" />
-                    {unreadCount > 0 && (
-                        <span className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white animate-pulse" />
-                    )}
-                </Button>
+                {trigger ? (
+                    <div className="cursor-pointer relative">
+                        {trigger}
+                        {unreadCount > 0 && (
+                            <span className="absolute top-0 right-0 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white animate-pulse" />
+                        )}
+                    </div>
+                ) : (
+                    <Button variant="ghost" size="icon" className="relative text-gray-500 hover:text-gray-900 transition-colors">
+                        <Bell className="h-5 w-5" />
+                        {unreadCount > 0 && (
+                            <span className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white animate-pulse" />
+                        )}
+                    </Button>
+                )}
             </DropdownMenuTrigger>
 
             <DropdownMenuContent align="end" className="p-0 border-0 shadow-xl rounded-xl overflow-hidden md:w-[400px] w-[350px]">

@@ -33,14 +33,20 @@ export async function deleteConversation(conversationId: string) {
     const supabase = await createClient()
 
     // Messages will be deleted automatically by CASCADE
-    const { error } = await supabase
+    // Messages will be deleted automatically by CASCADE
+    const { error, count } = await supabase
         .from('conversations')
-        .delete()
+        .delete({ count: 'exact' })
         .eq('id', conversationId)
 
     if (error) {
         console.error('[ConversationActions] Failed to delete:', error)
         return { success: false, error: error.message }
+    }
+
+    if (count === 0) {
+        console.error('[ConversationActions] No rows deleted. Likely permission denied or not found.')
+        return { success: false, error: "Could not delete conversation. Permission denied or already deleted." }
     }
 
     revalidatePath('/inbox')
@@ -86,6 +92,30 @@ export async function unarchiveConversation(conversationId: string) {
 
     if (error) {
         console.error('[ConversationActions] Failed to unarchive:', error)
+        return { success: false, error: error.message }
+    }
+
+    revalidatePath('/inbox')
+    return { success: true }
+}
+
+/**
+ * Snooze a conversation
+ */
+export async function snoozeConversation(conversationId: string, until: Date) {
+    const supabase = await createClient()
+
+    const { error } = await supabase
+        .from('conversations')
+        .update({
+            status: 'snoozed',
+            snoozed_until: until.toISOString(),
+            updated_at: new Date().toISOString()
+        })
+        .eq('id', conversationId)
+
+    if (error) {
+        console.error('[ConversationActions] Failed to snooze:', error)
         return { success: false, error: error.message }
     }
 

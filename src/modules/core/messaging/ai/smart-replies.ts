@@ -2,9 +2,13 @@
 
 import OpenAI from "openai"
 
-const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-})
+const getOpenAI = () => {
+    const apiKey = process.env.OPENAI_API_KEY
+    if (!apiKey) {
+        throw new Error("Missing credentials. Please set OPENAI_API_KEY environment variable.")
+    }
+    return new OpenAI({ apiKey })
+}
 
 interface Message {
     role: 'system' | 'user' | 'assistant'
@@ -50,7 +54,7 @@ export async function generateSmartReplies(
         ]
 
         // Generate responses with OpenAI
-        const completion = await openai.chat.completions.create({
+        const completion = await getOpenAI().chat.completions.create({
             model: 'gpt-4-turbo-preview',
             messages,
             temperature: 0.7,
@@ -171,4 +175,42 @@ export async function markSuggestionUsed(
             used_at: new Date().toISOString()
         })
         .eq('id', suggestionId)
+}
+
+/**
+ * Refine a draft message to be more professional and clear
+ */
+export async function refineDraftContent(content: string): Promise<{ success: boolean; refined?: string; error?: string }> {
+    try {
+        if (!content || content.length < 5) return { success: false, error: 'Content too short' }
+
+        const completion = await getOpenAI().chat.completions.create({
+            model: 'gpt-4o-mini',
+            messages: [
+                {
+                    role: 'system',
+                    content: `You are an expert copywriter. 
+                    Task: Rewrite the user's draft to be more professional, clear, and friendly.
+                    Rules:
+                    - Fix grammar/spelling.
+                    - Improve flow and tone.
+                    - Keep any variables like {{name}} intact.
+                    - Do not add explanations or quotes. Just return the rewriten text.`
+                },
+                {
+                    role: 'user',
+                    content
+                }
+            ],
+            temperature: 0.7,
+            max_tokens: 500,
+        })
+
+        const refined = completion.choices[0]?.message?.content
+        return { success: true, refined: refined || content }
+
+    } catch (error: any) {
+        console.error('[SmartReplies] Refine failed:', error)
+        return { success: false, error: error.message }
+    }
 }

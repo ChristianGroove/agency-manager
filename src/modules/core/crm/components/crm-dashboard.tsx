@@ -7,7 +7,7 @@ import { getPipelineStages, PipelineStage } from "../pipeline-actions"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Users, TrendingUp, CheckCircle2, XCircle, MoreHorizontal, ArrowRight, Mail, Phone, GripVertical, Settings, Trophy, Edit, ChevronDown, ChevronUp, BarChart3, UserPlus, Eye, Upload } from "lucide-react"
+import { Plus, Users, TrendingUp, CheckCircle2, XCircle, MoreHorizontal, ArrowRight, Mail, Phone, GripVertical, Settings, Trophy, Edit, ChevronDown, ChevronUp, BarChart3, UserPlus, Eye, Upload, MessageSquare } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { CreateLeadSheet } from "./create-lead-sheet"
@@ -15,7 +15,7 @@ import { EditLeadSheet } from "./edit-lead-sheet"
 import { LeadFilters } from "./lead-filters"
 import { useLeadFilters } from "./hooks/use-lead-filters"
 import { PipelineAnalytics } from "./pipeline-analytics"
-import { LeadDetailModal } from "./lead-detail-modal"
+import { useLeadInspector } from "./lead-inspector-context"
 import { AssignLeadSheet } from "./assign-lead-sheet"
 import { ImportLeadsSheet } from "./import-leads-sheet"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
@@ -37,13 +37,14 @@ const ICON_MAP: Record<string, any> = {
 }
 
 // Draggable Lead Card Component
-function LeadCard({ lead, onConvert, onMarkLost, onEdit, onView, onAssign, isDragging }: {
+function LeadCard({ lead, onConvert, onMarkLost, onEdit, onView, onAssign, onMessage, isDragging }: {
     lead: Lead;
     onConvert: (id: string) => void;
     onMarkLost: (id: string) => void;
     onEdit: (lead: Lead) => void;
     onView: (lead: Lead) => void;
     onAssign: (lead: Lead) => void;
+    onMessage: (lead: Lead) => void;
     isDragging?: boolean
 }) {
     const {
@@ -104,6 +105,10 @@ function LeadCard({ lead, onConvert, onMarkLost, onEdit, onView, onAssign, isDra
                             <DropdownMenuItem onClick={() => onView(lead)}>
                                 <Eye className="mr-2 h-4 w-4" />
                                 Ver Detalle Completo
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => onMessage(lead)}>
+                                <MessageSquare className="mr-2 h-4 w-4" />
+                                Enviar Mensaje
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => onAssign(lead)}>
                                 <UserPlus className="mr-2 h-4 w-4" />
@@ -196,6 +201,7 @@ export function CRMDashboard() {
     const [importSheetOpen, setImportSheetOpen] = useState(false)
 
     const router = useRouter()
+    const { openInspector } = useLeadInspector()
 
     const sensors = useSensors(
         useSensor(PointerSensor, {
@@ -268,13 +274,22 @@ export function CRMDashboard() {
     }
 
     function handleViewLead(lead: Lead) {
-        setViewingLeadId(lead.id)
-        setDetailModalOpen(true)
+        openInspector(lead.id)
     }
 
     function handleAssignLead(lead: Lead) {
         setAssigningLeadId(lead.id)
         setAssignSheetOpen(true)
+    }
+
+    function handleMessageLead(lead: Lead) {
+        // Navigate to inbox with lead's phone or email
+        const contact = lead.phone || lead.email
+        if (contact) {
+            router.push(`/crm/inbox?contact=${encodeURIComponent(contact)}`)
+        } else {
+            toast.error('Este lead no tiene teléfono ni email')
+        }
     }
 
     function handleDragStart(event: DragStartEvent) {
@@ -351,7 +366,7 @@ export function CRMDashboard() {
                 <div className="shrink-0 space-y-4 mb-6">
                     <div className="flex items-center justify-between">
                         <div>
-                            <h1 className="text-3xl font-bold tracking-tight">CRM & Leads</h1>
+                            <h1 className="text-3xl font-bold tracking-tight">Pipeline</h1>
                             <p className="text-muted-foreground">
                                 Arrastra leads entre etapas para actualizar su estado.
                             </p>
@@ -490,6 +505,7 @@ export function CRMDashboard() {
                                                             onEdit={handleEditLead}
                                                             onView={handleViewLead}
                                                             onAssign={handleAssignLead}
+                                                            onMessage={handleMessageLead}
                                                             isDragging={lead.id === activeId}
                                                         />
                                                     ))
@@ -530,13 +546,7 @@ export function CRMDashboard() {
                     onSuccess={loadData}
                 />
 
-                {/* Advanced Features Modals */}
-                <LeadDetailModal
-                    leadId={viewingLeadId}
-                    open={detailModalOpen}
-                    onClose={() => setDetailModalOpen(false)}
-                    onUpdate={loadData}
-                />
+                {/* Lead Inspector now handled globally via context */}
 
                 <AssignLeadSheet
                     open={assignSheetOpen}

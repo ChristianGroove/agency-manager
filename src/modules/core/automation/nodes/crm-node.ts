@@ -3,7 +3,7 @@
  * Enables workflows to interact with the CRM module
  */
 
-import { createLead, updateLeadStatus } from '@/modules/core/crm/leads-actions';
+import { createLead, createLeadSystem, updateLeadStatus } from '@/modules/core/crm/leads-actions';
 import { ContextManager } from '../context-manager';
 
 export interface CRMNodeData {
@@ -54,16 +54,30 @@ export class CRMNode {
         const company = this.contextManager.resolve(data.leadCompany || '');
         const notes = this.contextManager.resolve(data.leadNotes || '');
 
-        console.log('[CRM Node] Creating lead:', { name, email, phone, company });
+        // Check for System Context (Automation background run)
+        const organizationId = this.contextManager.get('organization_id') as string | undefined;
 
-        const result = await createLead({
-            name,
-            email: email || undefined,
-            phone: phone || undefined,
-            company_name: company || undefined,
-            notes: notes || undefined,
-            pipeline_stage_id: data.pipelineStageId || undefined,
-        });
+        console.log('[CRM Node] Creating lead:', { name, email, phone, company, organizationId });
+
+        let result;
+
+        if (organizationId) {
+            console.log('[CRM Node] Using System Action (Background)');
+            result = await createLeadSystem({
+                name,
+                email: email || undefined,
+                phone: phone || undefined,
+                company_name: company || undefined,
+            }, organizationId);
+        } else {
+            console.log('[CRM Node] Using User Action (Foreground)');
+            result = await createLead({
+                name,
+                email: email || undefined,
+                phone: phone || undefined,
+                company_name: company || undefined,
+            });
+        }
 
         if (result.success && result.data) {
             // Store lead ID in context for future nodes

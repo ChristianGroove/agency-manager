@@ -1,4 +1,5 @@
 import { InboxLayout } from "@/modules/core/messaging/components/inbox-layout"
+import { GrowthEcosystemShell } from "@/modules/core/layout/growth-ecosystem-shell"
 
 export const metadata = {
     title: "Inbox | Ultra-Modern",
@@ -7,8 +8,10 @@ export const metadata = {
 
 export default function InboxPage() {
     return (
-        <div className="h-[calc(100vh-4rem)] overflow-hidden">
-            <InboxLayout />
-        </div>
+        <GrowthEcosystemShell fullHeight noPadding>
+            <div className="h-[calc(100vh-8.5rem)] overflow-hidden">
+                <InboxLayout />
+            </div>
+        </GrowthEcosystemShell>
     )
 }

@@ -2,6 +2,7 @@
 import { getClients } from "@/modules/core/clients/actions"
 import { getSettings } from "@/modules/core/settings/actions"
 import { ClientsView } from "@/modules/core/clients/components/clients-view"
+import { GrowthEcosystemShell } from "@/modules/core/layout/growth-ecosystem-shell"
 import { Suspense } from "react"
 
 export const metadata = {
@@ -17,11 +18,13 @@ export default async function ClientsPage() {
     ])
 
     return (
-        <Suspense fallback={<div className="p-8 text-center text-gray-500">Cargando clientes...</div>}>
-            <ClientsView
-                initialClients={clients || []}
-                initialSettings={settings}
-            />
-        </Suspense>
+        <GrowthEcosystemShell>
+            <Suspense fallback={<div className="p-8 text-center text-gray-500">Cargando clientes...</div>}>
+                <ClientsView
+                    initialClients={clients || []}
+                    initialSettings={settings}
+                />
+            </Suspense>
+        </GrowthEcosystemShell>
     )
 }

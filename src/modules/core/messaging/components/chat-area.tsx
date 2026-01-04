@@ -2,17 +2,22 @@
 
 import { useEffect, useRef, useState } from "react"
 import { supabase } from "@/lib/supabase"
-import { Send, Phone, MoreVertical, Sidebar, Paperclip, Smile, Check, CheckCheck, User, X } from "lucide-react"
+import { Send, Phone, MoreVertical, Sidebar, Paperclip, Smile, Check, CheckCheck, User, X, Target } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
+import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { Database } from "@/types/supabase"
 import { sendMessage, markConversationAsRead } from "../actions"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { MessageBubble } from "./message-bubble"
+import { ConversationActionsMenu } from "./conversation-actions-menu"
 import dynamic from 'next/dynamic'
+import { toast } from "sonner"
+import { SavedRepliesSheet } from "./saved-replies-sheet"
+import { QuickReplySelector } from "./quick-reply-selector"
 
 const EmojiPicker = dynamic(() => import('emoji-picker-react'), { ssr: false })
 
@@ -21,6 +26,7 @@ type Conversation = Database['public']['Tables']['conversations']['Row'] & {
     leads: {
         name: string | null
         phone: string | null
+        status: string | null
     } | null
 }
 
@@ -37,90 +43,88 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
     const [sending, setSending] = useState(false)
     const [showEmojiPicker, setShowEmojiPicker] = useState(false)
     const [uploading, setUploading] = useState(false)
+    const [isInternal, setIsInternal] = useState(false)
+    // New Sheet State
+    const [isRepliesSheetOpen, setIsRepliesSheetOpen] = useState(false)
+
     const scrollRef = useRef<HTMLDivElement>(null)
     const fileInputRef = useRef<HTMLInputElement>(null)
 
-    // Fetch Conversation Details & Mark as Read
-    useEffect(() => {
-        const fetchConversation = async () => {
-            const { data } = await supabase
-                .from('conversations')
-                .select('*, leads(name, phone)')
-                .eq('id', conversationId)
-                .single()
+    const scrollToBottom = () => {
+        setTimeout(() => {
+            if (scrollRef.current) {
+                scrollRef.current.scrollIntoView({ behavior: 'smooth' })
+            }
+        }, 100)
+    }
 
-            if (data) setConversation(data as Conversation)
-
-            // Mark as Read
-            await markConversationAsRead(conversationId)
-        }
-        fetchConversation()
-    }, [conversationId])
-
-    // Subscribe to realtime changes
     useEffect(() => {
         if (!conversationId) return
 
-        const channel = supabase
-            .channel(`conversation:${conversationId}`)
-            .on(
-                'postgres_changes',
-                {
-                    event: 'INSERT',
-                    schema: 'public',
-                    table: 'messages',
-                    filter: `conversation_id=eq.${conversationId}`
-                },
-                (payload) => {
-                    console.log('[ChatArea] Realtime message received:', payload.new)
-                    setMessages(prev => {
-                        // Avoid duplicates if opportunistic update or race condition
-                        if (prev.some(m => m.id === payload.new.id)) return prev
-                        return [...prev, payload.new as Message]
-                    })
-                    scrollToBottom()
+        const fetchConversation = async () => {
+            const { data, error } = await supabase
+                .from('conversations')
+                .select(`
+                    *,
+                    leads (
+                        name,
+                        phone,
+                        status
+                    )
+                `)
+                .eq('id', conversationId)
+                .single()
+
+            if (data) {
+                setConversation(data as any)
+                // Mark as read immediately on open
+                if (data.unread_count > 0) {
+                    markConversationAsRead(conversationId)
                 }
-            )
-            .subscribe((status) => {
-                console.log('[ChatArea] Subscription status:', status)
-            })
-
-        return () => {
-            supabase.removeChannel(channel)
+            }
         }
-    }, [conversationId])
 
-    // Fetch Messages
-    useEffect(() => {
         const fetchMessages = async () => {
-            if (!conversationId) return
-
             const { data, error } = await supabase
                 .from('messages')
                 .select('*')
                 .eq('conversation_id', conversationId)
                 .order('created_at', { ascending: true })
 
-            if (error) {
-                console.error('Error fetching messages:', error)
-            } else {
-                setMessages(data as Message[])
-                scrollToBottom()
+            if (data) {
+                setMessages(data)
+                // Scroll to bottom
+                setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
             }
         }
+
+        fetchConversation()
         fetchMessages()
+
+        // Realtime Subscriptions
+        const channel = supabase
+            .channel(`conversation-${conversationId}`)
+            .on('postgres_changes',
+                { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${conversationId}` },
+                (payload) => {
+                    const newMsg = payload.new as Message
+                    setMessages((prev) => [...prev, newMsg])
+                    setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
+
+                    // Mark as read if it's inbound
+                    if (newMsg.direction === 'inbound') {
+                        markConversationAsRead(conversationId)
+                    }
+                }
+            )
+            .subscribe()
+
+        return () => {
+            supabase.removeChannel(channel)
+        }
     }, [conversationId])
 
-    const scrollToBottom = () => {
-        // Use timeout to ensure DOM update
-        setTimeout(() => {
-            if (scrollRef.current) {
-                scrollRef.current.scrollIntoView({ behavior: 'auto', block: 'end' })
-            }
-        }, 100)
-    }
-
-    const handleSend = async (contentOverride?: string, type: 'text' | 'image' | 'video' | 'audio' | 'document' = 'text', mediaUrl?: string) => {
+    const handleSend = async (contentOverride?: string, type: 'text' | 'image' | 'video' | 'audio' | 'document' | 'note' = 'text', mediaUrl?: string) => {
         const textContent = contentOverride !== undefined ? contentOverride : inputValue.trim()
         if (!textContent && !mediaUrl && !sending) return
 
@@ -133,14 +137,27 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
 
         // Determine message content structure
         let messageContent: any
-        if (type === 'text') {
-            messageContent = { type: 'text', text: textContent }
-        } else {
+
+        // Force 'note' type if internal mode is active
+        // Preserve original type in metadata/props if needed for rendering
+        if (isInternal) {
             messageContent = {
-                type,
-                url: mediaUrl,
-                caption: textContent,
-                filename: type === 'document' ? textContent : undefined // store filename in caption or separate field if needed
+                type: 'note',
+                text: textContent,
+                url: mediaUrl, // Pass media even for notes
+                originalType: type
+            }
+        } else {
+            // Standard External Message
+            if (type === 'text') {
+                messageContent = { type: 'text', text: textContent }
+            } else {
+                messageContent = {
+                    type: type,
+                    url: mediaUrl,
+                    caption: textContent,
+                    filename: type === 'document' ? textContent : undefined
+                }
             }
         }
 
@@ -163,24 +180,13 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
         scrollToBottom()
 
         try {
-            // If it's media, we might need a different sending strategy or just pass the JSON
-            // For now, assuming sendMessage handles the text content, we might need to update sendMessage to accept JSON or overloading it
-            // Since existing sendMessage takes string, we'll stringify for now or refactor sendMessage. 
-            // IMPORTANT: The server action `sendMessage` likely expects a string. We should check that.
-            // If `sendMessage` only sends text to Meta API, we need to update it to support media templates/urls.
-            // For now, we will focus on storing it correctly in DB. The actual integration with Meta API for media is a separate backend task.
-            // We will send the stringified JSON or modify sendMessage separately. 
-
-            // Temporary: We'll send the text representation to the backend action for now
-            // Ideally, we should update `sendMessage` signature.
             const payload = JSON.stringify(messageContent)
-            const result = await sendMessage(conversationId, payload, optimisticId) // Passing JSON string AND explicit ID
+            const result = await sendMessage(conversationId, payload, optimisticId)
 
             if (!result.success) {
-                console.error("Failed to send", result.error)
-                // Optionally remove the optimistic message on failure
+                console.error("Failed to send", (result as any).error)
                 setMessages(prev => prev.filter(m => m.id !== optimisticId))
-                alert("Failed to send message")
+                toast.error("Failed to send message", { description: (result as any).error || "Unknown error" })
             }
         } catch (error) {
             console.error("Failed to send", error)
@@ -197,6 +203,26 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
         }
     }
 
+    const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        const val = e.target.value
+        setInputValue(val)
+        e.target.style.height = 'auto'
+        e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`
+
+        if (val === '/') {
+            // We can still trigger the sheet on slash if desired, or just let users use the button
+            // For now, let's auto-open the sheet on slash as a "power user" shortcut, 
+            // but maybe clear the slash
+            setIsRepliesSheetOpen(true)
+            setInputValue('')
+        }
+    }
+
+    const handleTemplateSelect = (content: string) => {
+        setInputValue(content)
+        // Auto focus
+    }
+
     const onEmojiClick = (emojiObject: any) => {
         setInputValue(prev => prev + emojiObject.emoji)
     }
@@ -205,9 +231,8 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
         const file = e.target.files?.[0]
         if (!file) return
 
-        // Validate file size/type if needed
-        if (file.size > 10 * 1024 * 1024) { // 10MB limit
-            alert("File too large")
+        if (file.size > 10 * 1024 * 1024) {
+            toast.error("File to large (max 10MB)")
             return
         }
 
@@ -227,19 +252,16 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
                 .from('chat-attachments')
                 .getPublicUrl(filePath)
 
-            // Determine type
             let type: 'image' | 'video' | 'audio' | 'document' = 'document'
             if (file.type.startsWith('image/')) type = 'image'
             else if (file.type.startsWith('video/')) type = 'video'
             else if (file.type.startsWith('audio/')) type = 'audio'
 
-            // Send message with media
-            // Use the file name as caption or just empty
             await handleSend(file.name, type, publicUrl)
 
         } catch (error) {
             console.error("Upload failed", error)
-            alert("Failed to upload file")
+            toast.error("Failed to upload file")
         } finally {
             setUploading(false)
             if (fileInputRef.current) fileInputRef.current.value = ''
@@ -252,6 +274,12 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
 
     return (
         <div className="flex flex-col h-full bg-[#efeae2] dark:bg-zinc-950/30 overflow-hidden relative">
+            <SavedRepliesSheet
+                open={isRepliesSheetOpen}
+                onOpenChange={setIsRepliesSheetOpen}
+                onSelect={handleTemplateSelect}
+            />
+
             {/* Header */}
             <div className="h-16 border-b flex items-center justify-between px-4 bg-white dark:bg-zinc-900 shadow-sm z-10 w-full shrink-0">
                 <div className="flex items-center gap-3">
@@ -262,7 +290,15 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
                         </AvatarFallback>
                     </Avatar>
                     <div className="flex flex-col">
-                        <h3 className="font-semibold text-sm leading-tight text-foreground">{leadName}</h3>
+                        <div className="flex items-center gap-2">
+                            <h3 className="font-semibold text-sm leading-tight text-foreground">{leadName}</h3>
+                            {conversation?.leads?.status && (
+                                <Badge variant="outline" className="text-[10px] h-5 capitalize">
+                                    <Target className="h-3 w-3 mr-1" />
+                                    {conversation.leads.status}
+                                </Badge>
+                            )}
+                        </div>
                         <p className="text-[11px] text-muted-foreground">WhatsApp • {conversation?.id.slice(0, 8)}</p>
                     </div>
                 </div>
@@ -270,6 +306,7 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
                     <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
                         <Phone className="h-5 w-5" />
                     </Button>
+                    <ConversationActionsMenu conversationId={conversationId} />
                     <Button variant="ghost" size="icon" onClick={onToggleContext} className={cn("text-muted-foreground hover:text-foreground", isContextOpen && "bg-muted")}>
                         <Sidebar className="h-5 w-5" />
                     </Button>
@@ -280,28 +317,19 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
             <ScrollArea className="flex-1 p-2 md:p-4 min-h-0">
                 <div className="flex flex-col gap-2 max-w-4xl mx-auto py-2">
                     {messages.map((msg, index) => {
-                        // Date Separator Logic
                         const currentDate = new Date(msg.created_at).toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })
                         const prevDate = index > 0 ? new Date(messages[index - 1].created_at).toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' }) : null
                         const showDateSeparator = currentDate !== prevDate
 
-                        // Safe transform for content
                         let content: any = msg.content
                         if (typeof content !== 'object' || content === null) {
                             content = { type: 'text', text: String(content) }
                         } else if (!content.type && content.text) {
-                            // Recover legacy text messages if any
                             content = { type: 'text', text: content.text }
                         }
 
-                        // Map mediaUrl (Backend/Provider) to url (MessageBubble)
                         if (content.mediaUrl && !content.url) {
                             content.url = content.mediaUrl
-                        }
-
-                        // DEBUG: Log message content
-                        if (index === 0) {
-                            console.log('[ChatArea] Rendering first message:', { raw: msg.content, transformed: content, direction: msg.direction })
                         }
 
                         return (
@@ -328,6 +356,38 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
 
             {/* Input Area */}
             <div className="p-3 bg-white dark:bg-zinc-900 items-end flex gap-2 border-t relative z-20">
+                {/* Removed floating chips */}
+
+                {/* Internal Mode Toggle */}
+                <div className="absolute -top-12 right-4 z-30">
+                    <Button
+                        variant={isInternal ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setIsInternal(!isInternal)}
+                        className={cn(
+                            "rounded-full shadow-lg transition-all gap-2 h-8 text-xs font-medium",
+                            isInternal
+                                ? "bg-yellow-400 hover:bg-yellow-500 text-yellow-950 border-yellow-500"
+                                : "bg-background/80 backdrop-blur hover:bg-background border-dashed text-muted-foreground"
+                        )}
+                    >
+                        {isInternal ? (
+                            <>
+                                <span className="relative flex h-2 w-2">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-600 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-yellow-700"></span>
+                                </span>
+                                Note Mode
+                            </>
+                        ) : (
+                            <>
+                                📝 Note
+                            </>
+                        )}
+                    </Button>
+                </div>
+
+
                 {/* Emoji Picker Popover */}
                 {showEmojiPicker && (
                     <div className="absolute bottom-16 left-2 z-50 shadow-xl border rounded-xl overflow-hidden">
@@ -341,6 +401,12 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
                 )}
 
                 <div className="flex gap-2">
+                    {/* NEW Quick Reply Selector */}
+                    <QuickReplySelector
+                        onSelect={handleTemplateSelect}
+                        onManage={() => setIsRepliesSheetOpen(true)}
+                    />
+
                     <Button
                         variant="ghost"
                         size="icon"
@@ -371,13 +437,9 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
                 <div className="flex-1 bg-muted/30 rounded-2xl border focus-within:ring-1 focus-within:ring-blue-500 focus-within:bg-background transition-all flex items-center px-4 py-2">
                     <Textarea
                         value={inputValue}
-                        onChange={(e) => {
-                            setInputValue(e.target.value)
-                            e.target.style.height = 'auto'
-                            e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`
-                        }}
+                        onChange={handleInputChange}
                         onKeyDown={handleKeyDown}
-                        placeholder="Type a message..."
+                        placeholder="Type a message... (Tip: Type '/' for saved replies)"
                         className="min-h-[24px] max-h-[120px] w-full border-none shadow-none focus-visible:ring-0 p-0 bg-transparent resize-none leading-relaxed"
                         rows={1}
                         style={{ height: inputValue ? 'auto' : '24px' }}

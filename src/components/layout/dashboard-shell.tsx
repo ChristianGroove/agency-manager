@@ -29,6 +29,7 @@ export function DashboardShell({ children, user, currentOrgId, isSuperAdmin = fa
                     toggleCollapse={() => setIsCollapsed(!isCollapsed)}
                     currentOrgId={currentOrgId}
                     isSuperAdmin={isSuperAdmin}
+                    user={user}
                 />
             </div>
 
@@ -36,13 +37,10 @@ export function DashboardShell({ children, user, currentOrgId, isSuperAdmin = fa
             <main
                 className={cn(
                     "transition-all duration-300 ease-in-out min-h-screen flex flex-col print:pl-0 print:p-0 pl-0",
-                    isCollapsed ? "md:pl-[120px]" : "md:pl-[330px]" // 20px margin + width + gap
+                    isCollapsed ? "md:pl-[88px]" : "md:pl-[280px]" // sidebar width (w-64=256px) + gap (16px left + 8px gap)
                 )}
             >
-                <div className="print:hidden sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-gray-100">
-                    <Header currentOrgId={currentOrgId} />
-                </div>
-                <div className="p-6 print:p-0">
+                <div className="flex-1 p-6 print:p-0">
                     {children}
                 </div>
             </main>

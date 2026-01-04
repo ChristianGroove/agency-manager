@@ -17,7 +17,11 @@ import { getUserOrganizations, switchOrganization, getCurrentOrgName, getCurrent
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 
-export function OrganizationSwitcher() {
+interface OrganizationSwitcherProps {
+    trigger?: React.ReactNode
+}
+
+export function OrganizationSwitcher({ trigger }: OrganizationSwitcherProps) {
     const router = useRouter()
     const [organizations, setOrganizations] = useState<OrganizationMember[]>([])
     const [currentOrgId, setCurrentOrgId] = useState<string | null>(null)
@@ -86,14 +90,20 @@ export function OrganizationSwitcher() {
 
     return (
         <>
-            <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setIsOpen(true)}
-                className="text-gray-500 hover:text-indigo-600 hover:bg-indigo-50"
-            >
-                <Building2 className="h-5 w-5" />
-            </Button>
+            {trigger ? (
+                <div onClick={() => setIsOpen(true)} className="cursor-pointer">
+                    {trigger}
+                </div>
+            ) : (
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setIsOpen(true)}
+                    className="text-gray-500 hover:text-indigo-600 hover:bg-indigo-50"
+                >
+                    <Building2 className="h-5 w-5" />
+                </Button>
+            )}
 
             <Sheet open={isOpen} onOpenChange={setIsOpen}>
                 <SheetContent

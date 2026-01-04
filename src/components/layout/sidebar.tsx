@@ -1,30 +1,36 @@
 "use client"
 
-import React from "react"
+import React, { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LogOut } from "lucide-react"
+import { LogOut, ChevronDown } from "lucide-react"
 import { cn } from "@/lib/utils"
-// Removed OrganizationSwitcher, DropdownMenu, Avatar etc.
 import { OrgBranding } from "@/components/organizations/org-branding"
 import { useActiveModules } from "@/hooks/use-active-modules"
 import { MODULE_ROUTES, filterRoutesByModules, CATEGORY_LABELS, ModuleCategory } from "@/lib/module-config"
 import { logout } from "@/modules/core/auth/actions"
-import { AdminAccessButton } from "./admin-access-button"
+import { SidebarFloatingActions } from "./sidebar-floating-actions"
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 interface SidebarProps {
     isCollapsed: boolean;
     toggleCollapse: () => void;
     currentOrgId: string | null;
     isSuperAdmin?: boolean;
+    user?: any
 }
 
 function SidebarItem({ icon: Icon, label, href, active, collapsed, isSuperAdminRoute = false }: { icon: any, label: string, href: string, active: boolean, collapsed: boolean, isSuperAdminRoute?: boolean }) {
-    return (
+    const content = (
         <Link href={href}>
             <div
                 className={cn(
-                    "flex items-center gap-x-3 text-sm font-medium rounded-xl py-2.5 transition-all duration-200 group",
+                    "flex items-center gap-x-3 text-sm font-medium rounded-xl py-2 transition-all duration-200 group",
                     collapsed ? "justify-center px-2" : "px-3",
                     active
                         ? isSuperAdminRoute
@@ -37,14 +43,14 @@ function SidebarItem({ icon: Icon, label, href, active, collapsed, isSuperAdminR
             >
                 <Icon
                     className={cn(
-                        "h-5 w-5 shrink-0 transition-transform duration-200",
+                        "h-4 w-4 shrink-0 transition-transform duration-200",
                         active ? "scale-110" : "group-hover:scale-105",
                         isSuperAdminRoute && active ? "text-purple-300" : ""
                     )}
                 />
                 {!collapsed && (
                     <span className={cn(
-                        "transition-all duration-200 truncate",
+                        "transition-all duration-200 truncate text-[13px]",
                         active ? "font-semibold" : ""
                     )}>{label}</span>
                 )}
@@ -54,17 +60,54 @@ function SidebarItem({ icon: Icon, label, href, active, collapsed, isSuperAdminR
             </div>
         </Link>
     )
+
+    if (collapsed) {
+        return (
+            <Tooltip delayDuration={0}>
+                <TooltipTrigger asChild>
+                    {content}
+                </TooltipTrigger>
+                <TooltipContent side="right" className="font-semibold bg-brand-dark border-white/10 text-white">
+                    {label}
+                </TooltipContent>
+            </Tooltip>
+        )
+    }
+
+    return content
 }
 
-function SidebarSection({ title, children, collapsed }: { title: string, children: React.ReactNode, collapsed: boolean }) {
-    if (collapsed) return <div className="space-y-1 mb-4">{children}</div>
+function SidebarSection({
+    title,
+    children,
+    collapsed,
+    isExpanded,
+    onToggle
+}: {
+    title: string,
+    children: React.ReactNode,
+    collapsed: boolean,
+    isExpanded: boolean,
+    onToggle: () => void
+}) {
+    if (collapsed) return <div className="space-y-0.5 mb-2">{children}</div>
 
     return (
-        <div className="mb-6">
-            <h3 className="px-3 text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">
-                {title}
-            </h3>
-            <div className="space-y-1">
+        <div className="mb-2">
+            <button
+                onClick={onToggle}
+                className="w-full flex items-center justify-between px-3 py-1.5 text-xs font-semibold text-zinc-500 uppercase tracking-wider hover:text-zinc-400 transition-colors"
+            >
+                <span>{title}</span>
+                <ChevronDown className={cn(
+                    "h-3 w-3 transition-transform duration-200",
+                    isExpanded ? "" : "-rotate-90"
+                )} />
+            </button>
+            <div className={cn(
+                "space-y-0.5 overflow-hidden transition-all duration-200",
+                isExpanded ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"
+            )}>
                 {children}
             </div>
         </div>
@@ -74,6 +117,22 @@ function SidebarSection({ title, children, collapsed }: { title: string, childre
 export function SidebarContent({ isCollapsed = false, currentOrgId, isSuperAdmin = false }: { isCollapsed?: boolean, currentOrgId: string | null, isSuperAdmin?: boolean }) {
     const pathname = usePathname()
     const { modules, isLoading } = useActiveModules()
+
+    // Track which categories are expanded - default all expanded
+    const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({
+        core: true,
+        crm: true,
+        operations: true,
+        finance: true,
+        config: true
+    })
+
+    const toggleCategory = (category: string) => {
+        setExpandedCategories(prev => ({
+            ...prev,
+            [category]: !prev[category]
+        }))
+    }
 
     // Filter routes based on active modules
     const availableRoutes = filterRoutesByModules(modules)
@@ -87,14 +146,14 @@ export function SidebarContent({ isCollapsed = false, currentOrgId, isSuperAdmin
     }, {} as Record<string, typeof availableRoutes>)
 
     // Order of categories
-    const categoryOrder: ModuleCategory[] = ['core', 'operations', 'automation', 'finance', 'config']
+    const categoryOrder: ModuleCategory[] = ['core', 'crm', 'operations', 'finance', 'config']
 
     return (
-        <div className="px-3 py-6 flex-1 flex flex-col h-full overflow-y-auto custom-scrollbar">
-            {/* Branding Section */}
-            <div className={cn("flex items-center mb-8 transition-all duration-300 min-h-[48px]", isCollapsed ? "justify-center px-0" : "px-2")}>
+        <div className="px-4 py-6 flex-1 flex flex-col h-full overflow-hidden">
+            {/* Branding Section - Compact */}
+            <div className={cn("flex items-center mb-6 transition-all duration-300 min-h-[40px]", isCollapsed ? "justify-center px-0" : "px-2")}>
                 {isCollapsed ? (
-                    <div className="w-10 h-10 flex items-center justify-center bg-indigo-600 rounded-lg text-white font-bold text-sm shadow-lg shadow-indigo-500/20">
+                    <div className="w-9 h-9 flex items-center justify-center bg-indigo-600 rounded-lg text-white font-bold text-xs shadow-lg shadow-indigo-500/20">
                         PX
                     </div>
                 ) : (
@@ -104,30 +163,47 @@ export function SidebarContent({ isCollapsed = false, currentOrgId, isSuperAdmin
 
             {/* Show loading skeleton while fetching modules */}
             {isLoading ? (
-                <div className="space-y-4">
+                <div className="space-y-2">
                     {[...Array(3)].map((_, i) => (
-                        <div key={i} className="space-y-2">
-                            <div className="h-3 w-20 bg-white/5 rounded mx-3 mb-2" />
-                            {[...Array(3)].map((_, j) => (
-                                <div key={j} className="h-10 bg-white/5 rounded-xl animate-pulse" />
+                        <div key={i} className="space-y-1">
+                            <div className="h-3 w-16 bg-white/5 rounded mx-3" />
+                            {[...Array(2)].map((_, j) => (
+                                <div key={j} className="h-8 bg-white/5 rounded-xl animate-pulse" />
                             ))}
                         </div>
                     ))}
                 </div>
             ) : (
-                <nav className="flex-1">
+                <nav className="flex-1 overflow-y-auto custom-scrollbar pr-1">
                     {categoryOrder.map(category => {
                         const routes = groupedRoutes[category]
                         if (!routes || routes.length === 0) return null
 
-                        // Core modules don't need a section title if it's the first one
-                        const showTitle = category !== 'core'
+                        // Core modules don't need a section title
+                        if (category === 'core') {
+                            return (
+                                <div key={category} className="space-y-0.5 mb-2">
+                                    {routes.map(route => (
+                                        <SidebarItem
+                                            key={route.href}
+                                            icon={route.icon}
+                                            label={route.label}
+                                            href={route.href}
+                                            active={pathname === route.href || pathname?.startsWith(`${route.href}/`) || false}
+                                            collapsed={isCollapsed}
+                                        />
+                                    ))}
+                                </div>
+                            )
+                        }
 
                         return (
                             <SidebarSection
                                 key={category}
                                 title={CATEGORY_LABELS[category]}
                                 collapsed={isCollapsed}
+                                isExpanded={expandedCategories[category] ?? true}
+                                onToggle={() => toggleCategory(category)}
                             >
                                 {routes.map(route => (
                                     <SidebarItem
@@ -145,24 +221,24 @@ export function SidebarContent({ isCollapsed = false, currentOrgId, isSuperAdmin
                 </nav>
             )}
 
-            {/* Logout Footer */}
-            <div className="mt-auto pt-4 border-t border-white/5">
+            {/* Logout Footer - Compact */}
+            <div className="mt-auto pt-2 border-t border-white/5">
                 <button
                     onClick={() => logout()}
                     className={cn(
-                        "w-full flex items-center gap-x-3 text-sm font-medium rounded-xl py-2.5 text-zinc-400 hover:text-white hover:bg-white/5 transition-all duration-200 group",
+                        "w-full flex items-center gap-x-3 text-sm font-medium rounded-xl py-2 text-zinc-400 hover:text-white hover:bg-white/5 transition-all duration-200 group",
                         isCollapsed ? "justify-center px-0" : "px-3"
                     )}
                 >
-                    <LogOut className="h-5 w-5 shrink-0" />
-                    {!isCollapsed && <span>Cerrar Sesión</span>}
+                    <LogOut className="h-4 w-4 shrink-0" />
+                    {!isCollapsed && <span className="text-[13px]">Cerrar Sesión</span>}
                 </button>
             </div>
         </div>
     )
 }
 
-export function Sidebar({ isCollapsed, toggleCollapse, currentOrgId, isSuperAdmin = false }: SidebarProps) {
+export function Sidebar({ isCollapsed, toggleCollapse, currentOrgId, isSuperAdmin = false, user }: SidebarProps) {
     const [isDragging, setIsDragging] = React.useState(false)
     const [dragStartX, setDragStartX] = React.useState(0)
     const dragThreshold = 50
@@ -191,42 +267,46 @@ export function Sidebar({ isCollapsed, toggleCollapse, currentOrgId, isSuperAdmi
     }
 
     return (
-        <div
-            className={cn(
-                "fixed left-5 top-5 bottom-5 h-auto bg-brand-dark/95 backdrop-blur-xl text-white rounded-2xl transition-all duration-300 ease-in-out z-50 flex flex-col shadow-2xl border border-white/10 select-none",
-                isCollapsed ? "w-20" : "w-64"
-            )}
-            style={{
-                boxShadow: "0 20px 40px -12px rgba(0,0,0,0.5)"
-            }}
-            onMouseDown={(e) => handleDragStart(e.clientX)}
-            onMouseMove={(e) => handleDragMove(e.clientX)}
-            onMouseUp={handleDragEnd}
-            onMouseLeave={handleDragEnd}
-            onTouchStart={(e) => handleDragStart(e.touches[0].clientX)}
-            onTouchMove={(e) => handleDragMove(e.touches[0].clientX)}
-            onTouchEnd={handleDragEnd}
-        >
-            {/* Toggle Button */}
-            <button
-                onClick={toggleCollapse}
-                className="absolute -right-3 top-8 bg-brand-pink rounded-full p-1 shadow-lg hover:scale-110 transition-transform z-50 border border-white/10"
+        <TooltipProvider>
+            <div
+                className={cn(
+                    "fixed left-4 top-4 bottom-4 h-auto bg-brand-dark/95 backdrop-blur-xl text-white rounded-2xl transition-all duration-300 ease-in-out z-50 flex flex-col shadow-2xl border border-white/10 select-none",
+                    isCollapsed ? "w-16" : "w-64"
+                )}
+                style={{
+                    boxShadow: "0 20px 40px -12px rgba(0,0,0,0.5)"
+                }}
+                onMouseDown={(e) => handleDragStart(e.clientX)}
+                onMouseMove={(e) => handleDragMove(e.clientX)}
+                onMouseUp={handleDragEnd}
+                onMouseLeave={handleDragEnd}
+                onTouchStart={(e) => handleDragStart(e.touches[0].clientX)}
+                onTouchMove={(e) => handleDragMove(e.touches[0].clientX)}
+                onTouchEnd={handleDragEnd}
             >
-                <div className={cn("transition-transform duration-300 text-white", isCollapsed ? "rotate-180" : "")}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M15 18l-6-6 6-6" />
-                    </svg>
-                </div>
-            </button>
+                {/* Toggle Button */}
+                <button
+                    onClick={toggleCollapse}
+                    className="absolute -right-3 top-8 bg-brand-pink rounded-full p-1 shadow-lg hover:scale-110 transition-transform z-50 border border-white/10"
+                >
+                    <div className={cn("transition-transform duration-300 text-white", isCollapsed ? "rotate-180" : "")}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M15 18l-6-6 6-6" />
+                        </svg>
+                    </div>
+                </button>
 
-            {/* Super Admin Buttons (Absolute Positioned at edge) */}
-            {isSuperAdmin && (
+                {/* Floating Actions (General + Admin) */}
                 <div className="absolute -right-3 bottom-5 z-50 flex flex-col items-end">
-                    <AdminAccessButton />
+                    <SidebarFloatingActions
+                        isSuperAdmin={isSuperAdmin}
+                        user={user}
+                        currentOrgId={currentOrgId}
+                    />
                 </div>
-            )}
 
-            <SidebarContent isCollapsed={isCollapsed} currentOrgId={currentOrgId} isSuperAdmin={isSuperAdmin} />
-        </div>
+                <SidebarContent isCollapsed={isCollapsed} currentOrgId={currentOrgId} isSuperAdmin={isSuperAdmin} />
+            </div>
+        </TooltipProvider>
     )
 }

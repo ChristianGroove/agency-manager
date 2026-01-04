@@ -65,6 +65,7 @@ import { cn } from "@/lib/utils"
 import { CreateInvoiceSheet } from "@/modules/core/billing/create-invoice-sheet"
 import { ShareInvoiceModal } from "@/modules/core/billing/share-invoice-modal"
 import { CreateServiceSheet } from "@/modules/core/billing/components/create-service-sheet"
+import { CreateHostingSheet } from "@/modules/core/hosting/components/create-hosting-sheet"
 import { regeneratePortalToken } from "@/modules/core/portal/actions"
 // ... imports ...
 import { EcosystemWidget } from "@/modules/core/marketing/ecosystem-widget"
@@ -116,6 +117,11 @@ export default function ClientDetailPage() {
     const [isNotesModalOpen, setIsNotesModalOpen] = useState(false)
     const [selectedServiceForResume, setSelectedServiceForResume] = useState<any>(null)
     const [isResumeModalOpen, setIsResumeModalOpen] = useState(false)
+
+    // Hosting State
+    const [isHostingSheetOpen, setIsHostingSheetOpen] = useState(false)
+    const [selectedAccountForSheet, setSelectedAccountForSheet] = useState<any>(null)
+
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
     const [selectedServiceForDetail, setSelectedServiceForDetail] = useState<any>(null)
 
@@ -847,6 +853,10 @@ export default function ClientDetailPage() {
                                 <CalendarClock className="h-4 w-4 mr-2" />
                                 Historial de Actividad
                             </TabsTrigger>
+                            <TabsTrigger value="hosting" className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-indigo-600 data-[state=active]:shadow-sm">
+                                <Server className="h-4 w-4 mr-2" />
+                                Hosting Web
+                            </TabsTrigger>
                         </TabsList>
 
                         <TabsContent value="overview" className="space-y-8 animate-in fade-in-50 slide-in-from-bottom-2 duration-500">
@@ -1137,6 +1147,66 @@ export default function ClientDetailPage() {
                                 <ClientTimeline clientId={client.id} />
                             </div>
                         </TabsContent>
+
+                        {/* NEW: Hosting Tab */}
+                        <TabsContent value="hosting" className="animate-in fade-in-50 slide-in-from-bottom-2 duration-500">
+                            <div className="space-y-6">
+                                <div className="flex items-center justify-between">
+                                    <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                                        <Server className="h-5 w-5 text-indigo-600" />
+                                        Cuentas de Hosting
+                                    </h2>
+                                    <Button onClick={() => { setSelectedAccountForSheet(null); setIsHostingSheetOpen(true); }} className="bg-brand-pink text-white hover:bg-brand-pink/90">
+                                        <Plus className="mr-2 h-4 w-4" />
+                                        Nuevo Hosting
+                                    </Button>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {client.hosting_accounts && client.hosting_accounts.length > 0 ? (
+                                        client.hosting_accounts.map((acc: any) => (
+                                            <div key={acc.id} className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm hover:shadow-md transition-all">
+                                                <div className="flex justify-between items-start mb-2">
+                                                    <div>
+                                                        <a href={`https://${acc.domain_url}`} target="_blank" rel="noreferrer" className="flex items-center gap-1 font-bold text-lg text-indigo-600 hover:underline">
+                                                            {acc.domain_url}
+                                                            <ExternalLink className="h-3 w-3" />
+                                                        </a>
+                                                        <p className="text-sm text-gray-500">{acc.provider_name} • {acc.plan_name}</p>
+                                                    </div>
+                                                    <Badge className={acc.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-700'}>
+                                                        {acc.status}
+                                                    </Badge>
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-2 text-sm mt-3 bg-gray-50 p-2 rounded-lg">
+                                                    <div>
+                                                        <span className="text-gray-400 block text-xs">IP Servidor</span>
+                                                        <span className="font-mono text-gray-700">{acc.server_ip || '---'}</span>
+                                                    </div>
+                                                    <div>
+                                                        <span className="text-gray-400 block text-xs">Renovación</span>
+                                                        <span className="text-gray-700">{acc.renewal_date ? new Date(acc.renewal_date).toLocaleDateString() : '---'}</span>
+                                                    </div>
+                                                </div>
+                                                <div className="mt-3 flex justify-end gap-2">
+                                                    <Button variant="ghost" size="sm" onClick={() => { setSelectedAccountForSheet(acc); setIsHostingSheetOpen(true); }}>
+                                                        <Edit className="h-3 w-3 mr-1" /> Editar
+                                                    </Button>
+                                                    <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700 hover:bg-red-50">
+                                                        <Trash2 className="h-3 w-3 mr-1" />
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div className="col-span-full text-center py-12 bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
+                                            <Server className="h-10 w-10 text-gray-300 mx-auto mb-3" />
+                                            <p className="text-gray-500">No hay cuentas de hosting registradas.</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </TabsContent>
                     </Tabs>
                 </div>
 
@@ -1158,6 +1228,14 @@ export default function ClientDetailPage() {
                     onOpenChange={setIsInvoiceSheetOpen}
                     onSuccess={() => fetchClientData(client.id)}
                     trigger={<span className="hidden" />}
+                />
+
+                <CreateHostingSheet
+                    clientId={client.id}
+                    open={isHostingSheetOpen}
+                    onOpenChange={setIsHostingSheetOpen}
+                    accountToEdit={selectedAccountForSheet}
+                    onSuccess={() => fetchClientData(client.id)}
                 />
 
                 <NotesModal

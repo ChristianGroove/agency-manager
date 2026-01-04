@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from "react"
 import { supabase } from "@/lib/supabase"
 import { formatDistanceToNow } from "date-fns"
-import { Search, MessageSquare, Phone, User, Check, CheckCheck, Filter, Archive, UserCheck } from "lucide-react"
+import { Search, MessageSquare, Phone, User, Check, CheckCheck, Filter, Archive, UserCheck, Clock } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -13,13 +13,23 @@ import { Database } from "@/types/supabase"
 import { InboxSettingsSheet } from "./inbox-settings-sheet"
 import { Settings as SettingsIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { ConversationActionsMenu } from "./conversation-actions-menu"
 
 // Extended type to include joined lead data
+// Extended type to include joined lead data and missing columns
 type Conversation = Database['public']['Tables']['conversations']['Row'] & {
     leads: {
         name: string | null
         phone: string | null
     } | null
+    integration_connections: {
+        connection_name: string | null
+        provider_key: string | null
+    } | null
+    // Add missing fields locally until types are regenerated
+    state?: 'active' | 'archived' | 'closed'
+    tags?: string[]
+    priority?: string
 }
 
 interface ConversationListProps {
@@ -27,7 +37,7 @@ interface ConversationListProps {
     onSelect: (id: string) => void
 }
 
-type FilterTab = 'all' | 'unread' | 'assigned' | 'archived'
+type FilterTab = 'all' | 'unread' | 'assigned' | 'archived' | 'snoozed'
 
 export function ConversationList({ selectedId, onSelect }: ConversationListProps) {
     const [conversations, setConversations] = useState<Conversation[]>([])
@@ -55,7 +65,7 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
 
         let query = supabase
             .from('conversations')
-            .select('*, leads(name, phone)')
+            .select('*, leads(name, phone), integration_connections(connection_name, provider_key)')
             .order('last_message_at', { ascending: false })
 
         console.log('[ConversationList] Active filter:', activeFilter)
@@ -63,19 +73,23 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
         // Apply filter
         switch (activeFilter) {
             case 'unread':
-                query = query.gt('unread_count', 0)
+                query = query.gt('unread_count', 0).neq('state', 'archived').neq('status', 'snoozed')
                 break
             case 'assigned':
                 if (currentUserId) {
-                    query = query.eq('assigned_to', currentUserId)
+                    query = query.eq('assigned_to', currentUserId).neq('state', 'archived').neq('status', 'snoozed')
                 }
                 break
             case 'archived':
                 query = query.eq('state', 'archived')
                 break
+            case 'snoozed':
+                query = query.eq('status', 'snoozed')
+                break
             case 'all':
             default:
-                query = query.neq('state', 'archived') // Exclude archived by default
+                // Exclude archived AND snoozed by default from main list
+                query = query.neq('state', 'archived').neq('status', 'snoozed')
                 break
         }
 
@@ -129,10 +143,12 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
             const leadName = conv.leads?.name?.toLowerCase() || ''
             const leadPhone = conv.leads?.phone?.toLowerCase() || ''
             const lastMessage = conv.last_message?.toLowerCase() || ''
+            const connectionName = conv.integration_connections?.connection_name?.toLowerCase() || ''
 
             return leadName.includes(query) ||
                 leadPhone.includes(query) ||
-                lastMessage.includes(query)
+                lastMessage.includes(query) ||
+                connectionName.includes(query)
         })
 
         console.log('[ConversationList] Filtered result:', filtered.length)
@@ -142,10 +158,11 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
     // Count badges for tabs
     const counts = useMemo(() => {
         return {
-            all: conversations.filter(c => c.state !== 'archived').length,
-            unread: conversations.filter(c => c.unread_count > 0).length,
-            assigned: conversations.filter(c => c.assigned_to === currentUserId).length,
-            archived: conversations.filter(c => c.state === 'archived').length
+            all: conversations.filter(c => c.state !== 'archived' && c.status !== 'snoozed').length,
+            unread: conversations.filter(c => c.unread_count > 0 && c.state !== 'archived' && c.status !== 'snoozed').length,
+            assigned: conversations.filter(c => c.assigned_to === currentUserId && c.state !== 'archived').length,
+            archived: conversations.filter(c => c.state === 'archived').length,
+            snoozed: conversations.filter(c => c.status === 'snoozed').length
         }
     }, [conversations, currentUserId])
 
@@ -201,14 +218,9 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
 
                 {/* Filter Tabs */}
                 <Tabs value={activeFilter} onValueChange={(v) => setActiveFilter(v as FilterTab)}>
-                    <TabsList className="grid w-full grid-cols-4">
+                    <TabsList className="grid w-full grid-cols-5">
                         <TabsTrigger value="all" className="text-xs">
                             All
-                            {counts.all > 0 && (
-                                <Badge variant="secondary" className="ml-1 px-1 min-w-[20px] h-5">
-                                    {counts.all}
-                                </Badge>
-                            )}
                         </TabsTrigger>
                         <TabsTrigger value="unread" className="text-xs">
                             Unread
@@ -219,11 +231,13 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
                             )}
                         </TabsTrigger>
                         <TabsTrigger value="assigned" className="text-xs">
-                            <UserCheck className="h-3 w-3 mr-1" />
-                            Mine
+                            <UserCheck className="h-3 w-3" />
+                        </TabsTrigger>
+                        <TabsTrigger value="snoozed" className="text-xs">
+                            <Clock className="h-3 w-3" />
                         </TabsTrigger>
                         <TabsTrigger value="archived" className="text-xs">
-                            <Archive className="h-3 w-3 mr-1" />
+                            <Archive className="h-3 w-3" />
                         </TabsTrigger>
                     </TabsList>
                 </Tabs>
@@ -250,13 +264,22 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
                             const isSelected = conv.id === selectedId
                             const isUnread = conv.unread_count > 0
                             const priorityIcon = getPriorityIcon(conv.priority)
+                            const connectionName = conv.integration_connections?.connection_name
 
                             return (
-                                <button
+                                <div
                                     key={conv.id}
                                     onClick={() => onSelect(conv.id)}
+                                    role="button"
+                                    tabIndex={0}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' || e.key === ' ') {
+                                            e.preventDefault()
+                                            onSelect(conv.id)
+                                        }
+                                    }}
                                     className={cn(
-                                        "w-full p-4 text-left hover:bg-muted/50 transition-colors relative",
+                                        "w-full p-4 text-left hover:bg-muted/50 transition-colors relative cursor-pointer outline-none focus:bg-muted/50",
                                         isSelected && "bg-muted",
                                         isUnread && "bg-blue-50 dark:bg-blue-950/20"
                                     )}
@@ -299,6 +322,16 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
                                                             {conv.unread_count}
                                                         </Badge>
                                                     )}
+                                                    <div onClick={(e) => e.stopPropagation()}>
+                                                        <ConversationActionsMenu
+                                                            conversationId={conv.id}
+                                                            isArchived={conv.state === 'archived'}
+                                                            onActionComplete={() => {
+                                                                console.log('Action complete, refreshing list...')
+                                                                fetchConversations()
+                                                            }}
+                                                        />
+                                                    </div>
                                                 </div>
                                             </div>
 
@@ -309,10 +342,17 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
                                                 {conv.last_message || "No messages yet"}
                                             </p>
 
-                                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                                {conv.channel === 'whatsapp' && (
-                                                    <Phone className="h-3 w-3" />
+                                            <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
+                                                {(conv.channel === 'whatsapp' || conv.channel === 'evolution') && (
+                                                    <MessageSquare className="h-3 w-3" />
                                                 )}
+
+                                                {connectionName && (
+                                                    <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4 font-normal bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700">
+                                                        {connectionName}
+                                                    </Badge>
+                                                )}
+
                                                 <span>
                                                     {conv.last_message_at
                                                         ? formatDistanceToNow(new Date(conv.last_message_at), { addSuffix: true })
@@ -333,7 +373,7 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
                                             </div>
                                         </div>
                                     </div>
-                                </button>
+                                </div>
                             )
                         })}
                     </div>

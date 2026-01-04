@@ -58,7 +58,22 @@ export class InboxService {
 
         // 4. Update triggers automatically via DB
         // The DB trigger 'update_conversation_last_message' handles unread_count increment and last_message update.
-        console.log(`[InboxService] Message saved, triggers will update conversation ${conversation.id}`)
+        console.log(`[InboxService] Message saved automatically`)
+
+        // 5. Trigger Automation
+        try {
+            const { automationTrigger } = await import("../automation/automation-trigger.service")
+            // Fire and forget - don't block the webhook response
+            automationTrigger.evaluateInput(
+                msg.content,
+                conversation.id,
+                msg.channel,
+                msg.from,
+                conversation.lead_id // Using conversation's lead reference
+            ).catch(err => console.error('[InboxService] Automation Trigger Error:', err))
+        } catch (e) {
+            console.error('[InboxService] Failed to load automation service:', e)
+        }
 
         return { success: true, conversationId: conversation.id }
     }
@@ -109,16 +124,82 @@ export class InboxService {
             console.log('[InboxService] Created new lead:', lead.id)
         }
 
-        // 3. Find existing conversation for THIS specific lead/phone + channel
-        // CRITICAL: Always filter by lead_id to prevent grouping different senders
-        const { data: existingConv } = await supabase
+        // 2. Resolve Connection ID (Multi-Tenancy / Multi-Account)
+        let connectionId: string | null = null;
+
+        // Try to find connection based on metadata
+        const metadata = msg.metadata as any;
+        if (metadata) {
+            let query = supabase.from('integration_connections').select('id').eq('organization_id', orgId).eq('status', 'active');
+            let matched = false;
+
+            // Strategy A: Meta WhatsApp (phone_number_id)
+            if (msg.channel === 'whatsapp' && metadata.phone_number_id) {
+                // We need to filter JSONB credentials. Note: This requires non-encrypted storage or metadata index
+                // For MVP with small table, we can fetch matching org connections and filter in code or use postgres json arrow
+                // Using Postgres JSON arrow:
+                // query = query.eq('credentials->>phoneNumberId', metadata.phone_number_id) // Syntax depends on driver support/types
+                // Safer to fetch applicable connections and filter in memory since list is small per org
+
+                const { data: connections } = await supabase
+                    .from('integration_connections')
+                    .select('id, credentials')
+                    .eq('organization_id', orgId)
+                    .eq('provider_key', 'meta_whatsapp')
+                    .eq('status', 'active');
+
+                if (connections) {
+                    const found = connections.find((c: any) => c.credentials?.phoneNumberId === metadata.phone_number_id);
+                    if (found) {
+                        connectionId = found.id;
+                        matched = true;
+                        console.log(`[InboxService] Resolved Connection ID (Meta): ${connectionId}`);
+                    }
+                }
+            }
+
+            // Strategy B: Evolution API (instance)
+            if (!matched && msg.channel === 'evolution' && metadata.instance) {
+                const { data: connections } = await supabase
+                    .from('integration_connections')
+                    .select('id, credentials')
+                    .eq('organization_id', orgId)
+                    .eq('provider_key', 'evolution_api')
+                    .eq('status', 'active');
+
+                if (connections) {
+                    const found = connections.find((c: any) => c.credentials?.instanceName === metadata.instance);
+                    if (found) {
+                        connectionId = found.id;
+                        matched = true;
+                        console.log(`[InboxService] Resolved Connection ID (Evolution): ${connectionId}`);
+                    }
+                }
+            }
+        }
+
+        // 3. Find with Connection Filter
+        let convQuery = supabase
             .from('conversations')
-            .select('id, phone, state, status')
+            .select('id, phone, state, status, connection_id')
             .eq('channel', msg.channel)
-            .eq('lead_id', lead.id) // CRITICAL: Filter by lead to isolate conversations
-            .order('updated_at', { ascending: false })
-            .limit(1)
-            .single()
+            .eq('lead_id', lead.id)
+            .order('updated_at', { ascending: false });
+
+        // CRITICAL: If we resolved a specific connection, filter by it.
+        // If we didn't resolve (legacy/mock), look for one with NULL connection_id OR any (backward compat?)
+        // Strict Mode: If connectionId is known, MUST match.
+        if (connectionId) {
+            convQuery = convQuery.eq('connection_id', connectionId);
+        } else {
+            // For legacy compatibility, if we have no idea which connection, we might pick the most recent one 
+            // OR specifically look for null. Let's filter for NULL to avoid accidental merging with specific lines.
+            // But for now, to be safe with existing data (which has null), we allow null matching.
+            // Actually, if we want to separate "Legacy" from "New Multi-Account", we should prefer null here.
+            // However, users might migrate. Let's just not filter by connection_id if null, risks merging, but safe for single-account.
+        }
+
+        const { data: existingConv } = await convQuery.limit(1).single();
 
         if (existingConv) {
             console.log('[InboxService] Found existing conversation:', existingConv.id)
@@ -133,6 +214,12 @@ export class InboxService {
                 updates.phone = msg.from
             }
 
+            // Auto-heal connection_id if missing and we found one now
+            if (!existingConv.connection_id && connectionId) {
+                updates.connection_id = connectionId;
+                console.log('[InboxService] Auto-healing conversation connection_id');
+            }
+
             if (Object.keys(updates).length > 0) {
                 await supabase.from('conversations').update(updates).eq('id', existingConv.id)
                 console.log('[InboxService] Updated conversation:', updates)
@@ -142,7 +229,7 @@ export class InboxService {
         }
 
         // 4. Create new conversation
-        console.log('[InboxService] Creating new conversation for lead:', lead.id)
+        console.log('[InboxService] Creating new conversation for lead:', lead.id, 'Connection:', connectionId)
         const { data: newConv, error: createError } = await supabase.from('conversations').insert({
             organization_id: orgId,
             lead_id: lead.id,
@@ -152,7 +239,8 @@ export class InboxService {
             state: 'active',
             last_message: msg.content,
             last_message_at: new Date().toISOString(),
-            unread_count: 1
+            unread_count: 1,
+            connection_id: connectionId // New field
         }).select().single()
 
         if (createError) {
@@ -167,14 +255,14 @@ export class InboxService {
     /**
      * Save an outbound message sent by an agent
      */
-    async saveOutboundMessage(conversationId: string, content: any, externalId: string | null = null, sender: string = 'Agent', id?: string) {
+    async saveOutboundMessage(conversationId: string, content: any, externalId: string | null = null, sender: string = 'Agent', id?: string, channel: string = 'whatsapp') {
         const supabase = supabaseAdmin
 
         const { error } = await supabase.from('messages').insert({
             id: id, // Optional explicit ID
             conversation_id: conversationId,
             direction: 'outbound',
-            channel: 'whatsapp',
+            channel: channel,
             content: content,
             status: 'sent',
             external_id: externalId,

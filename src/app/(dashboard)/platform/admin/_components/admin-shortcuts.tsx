@@ -24,15 +24,6 @@ export function AdminShortcuts({ t }: { t: any }) {
             hover: "hover:border-pink-200 hover:shadow-pink-100"
         },
         {
-            title: "Módulos y Plantillas",
-            description: "Catálogo SaaS",
-            icon: Package,
-            href: "/platform/admin/apps",
-            color: "text-purple-500",
-            bg: "bg-purple-50",
-            hover: "hover:border-purple-200 hover:shadow-purple-100"
-        },
-        {
             title: "Planes de Branding",
             description: "Monetización",
             icon: Settings,

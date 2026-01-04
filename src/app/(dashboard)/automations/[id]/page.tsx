@@ -485,7 +485,7 @@ function WorkflowEditorContent({ id }: { id: string }) {
 
             {/* Floating Toolbar (Top Center) */}
             <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-white/20 shadow-lg rounded-full px-6 py-2 flex items-center gap-4 animate-in fade-in slide-in-from-top-4 duration-500">
-                <Button size="icon" variant="ghost" className="rounded-full" onClick={() => router.push('/automations')}>
+                <Button size="icon" variant="ghost" className="rounded-full" onClick={() => router.push('/crm/automations')}>
                     <ArrowLeft className="h-4 w-4" />
                 </Button>
 

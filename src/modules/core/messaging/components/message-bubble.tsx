@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils"
 import { Check, CheckCheck, FileIcon, Volume2, Play } from "lucide-react"
 
 interface MessageContent {
-    type: 'text' | 'image' | 'audio' | 'video' | 'document' | 'location'
+    type: 'text' | 'image' | 'audio' | 'video' | 'document' | 'location' | 'note'
     text?: string
     url?: string
     caption?: string
@@ -114,6 +114,16 @@ function renderContent(content: any, isOutbound: boolean) {
                         <span className="text-[10px] text-muted-foreground uppercase">{content.mimeType?.split('/')[1] || 'FILE'}</span>
                     </div>
                 </a>
+            )
+
+        case 'note':
+            return (
+                <div className="flex flex-col gap-1 -mx-1 -my-1 p-2 bg-yellow-100/50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800/50">
+                    <span className="text-[10px] font-bold text-yellow-700 dark:text-yellow-500 uppercase tracking-wider flex items-center gap-1">
+                        📝 Internal Note
+                    </span>
+                    <p className="whitespace-pre-wrap leading-relaxed text-[15px] italic text-yellow-900 dark:text-yellow-100">{text}</p>
+                </div>
             )
 
         case 'text':

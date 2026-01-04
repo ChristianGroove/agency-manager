@@ -1,3 +1,5 @@
+import { ChannelType } from "@/types/messaging"
+
 export interface SendMessageOptions {
     to: string;
     content: {
@@ -20,7 +22,7 @@ export interface WebhookValidationResult {
 export interface IncomingMessage {
     id: string;
     externalId: string;
-    channel: 'whatsapp' | 'instagram' | 'messenger';
+    channel: ChannelType;
     from: string;
     senderName?: string;
     content: {

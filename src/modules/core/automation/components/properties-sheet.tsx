@@ -303,6 +303,67 @@ export function PropertiesSheet({ node, isOpen, onClose, onUpdate, onDelete, onD
                         </div>
                     </div>
 
+
+                    {node.type === 'trigger' && (
+                        <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                            <Separator className="bg-slate-100 dark:bg-slate-800" />
+                            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Configuración de Trigger</Label>
+
+                            <div className="space-y-3">
+                                <Label>Tipo de Disparador</Label>
+                                <Select
+                                    value={(formData.triggerType as string) || 'webhook'}
+                                    onValueChange={(v) => handleChange('triggerType', v)}
+                                >
+                                    <SelectTrigger className="h-10 bg-slate-50 dark:bg-slate-900">
+                                        <SelectValue placeholder="Seleccionar tipo" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="webhook">Mensaje Entrante (Webhook)</SelectItem>
+                                        <SelectItem value="manual" disabled>Manual / API (Próximamente)</SelectItem>
+                                        <SelectItem value="schedule" disabled>Programado (Próximamente)</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {formData.triggerType === 'webhook' && (
+                                <div className="space-y-4 p-4 bg-amber-50/50 dark:bg-amber-950/20 rounded-lg border border-amber-100 dark:border-amber-900/50">
+                                    <div className="space-y-2">
+                                        <Label>Canal</Label>
+                                        <Select
+                                            value={(formData.channel as string) || 'whatsapp'}
+                                            onValueChange={(v) => handleChange('channel', v)}
+                                        >
+                                            <SelectTrigger className="bg-white dark:bg-slate-900">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="whatsapp">WhatsApp</SelectItem>
+                                                <SelectItem value="email">Email</SelectItem>
+                                                <SelectItem value="sms">SMS</SelectItem>
+                                                <SelectItem value="instagram">Instagram</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        <p className="text-xs text-muted-foreground">El workflow se ejecutará cuando llegue un mensaje por este canal.</p>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label>Palabra Clave (Opcional)</Label>
+                                        <Input
+                                            value={(formData.keyword as string) || ''}
+                                            onChange={(e) => handleChange('keyword', e.target.value)}
+                                            placeholder="ej. info, precios, hola"
+                                            className="bg-white dark:bg-slate-900"
+                                        />
+                                        <p className="text-xs text-muted-foreground">
+                                            Si se deja vacío, se ejecutará para <strong>cualquier mensaje</strong> en este canal.
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     {node.type === 'action' && (
                         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
                             <Separator className="bg-slate-100 dark:bg-slate-800" />

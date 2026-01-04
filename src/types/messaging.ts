@@ -1,4 +1,4 @@
-export type ChannelType = 'whatsapp' | 'email' | 'messenger' | 'instagram' | 'sms'
+export type ChannelType = 'whatsapp' | 'email' | 'messenger' | 'instagram' | 'sms' | 'evolution'
 export type ConversationStatus = 'open' | 'closed' | 'archived' | 'snoozed'
 export type MessageDirection = 'inbound' | 'outbound'
 export type MessageStatus = 'sending' | 'sent' | 'delivered' | 'read' | 'failed'

@@ -174,6 +174,10 @@ export async function getAppsForVertical(vertical: string): Promise<SaasApp[]> {
 /**
  * Get current organization's active app
  */
+/**
+ * Get current organization's active app (Vertical)
+ * BRIDGE: Maps the new Vertical System to the old "App" interface for frontend compatibility
+ */
 export async function getCurrentOrganizationApp() {
     const organizationId = await getCurrentOrganizationId()
 
@@ -181,27 +185,57 @@ export async function getCurrentOrganizationApp() {
 
     const supabase = await createClient()
 
+    // 1. Fetch Vertical Key
     const { data: org } = await supabase
         .from('organizations')
-        .select(`
-            active_app_id,
-            app_activated_at,
-            app_metadata,
-            active_app:saas_apps!active_app_id (*)
-        `)
+        .select('vertical_key')
         .eq('id', organizationId)
         .single()
 
-    if (!org || !org.active_app_id) return null
-
-    // active_app is an array due to Supabase relation, get first element
-    const activeApp = Array.isArray(org.active_app) ? org.active_app[0] : org.active_app
-
-    return {
-        app: activeApp as SaasApp,
-        activated_at: org.app_activated_at,
-        metadata: org.app_metadata
+    if (!org || !org.vertical_key) {
+        // Fallback for organizations not yet migrated
+        return {
+            app: {
+                id: 'legacy_fallback',
+                name: 'Legacy Workspace',
+                slug: 'legacy',
+                category: 'general',
+                icon: 'Box',
+                color: '#64748b'
+            } as SaasApp,
+            activated_at: new Date().toISOString(),
+            metadata: {}
+        }
     }
+
+    // 2. Return Vertical Definition disguised as an "App"
+    // This allows the existing UI to render "Agency OS" without a full rewrite
+    // In future, we should rename the UI components.
+
+    // Hardcoded definition based on seed, could be fetched from 'verticals' table
+    if (org.vertical_key === 'agency') {
+        return {
+            app: {
+                id: 'vertical_agency',
+                name: 'Agency OS',
+                slug: 'agency-os',
+                description: 'Operating System for Marketing Agencies',
+                category: 'agency',
+                icon: 'Briefcase',
+                color: '#ec4899', // Pink brand
+                vertical_compatibility: ['agency'],
+                price_monthly: 0,
+                trial_days: 0,
+                is_active: true,
+                is_featured: true,
+                sort_order: 1
+            } as SaasApp,
+            activated_at: new Date().toISOString(), // Todo: Fetch actual vertical assignment time if needed
+            metadata: { type: 'vertical', key: 'agency' }
+        }
+    }
+
+    return null
 }
 
 // ============================================
