@@ -636,10 +636,10 @@ function WorkflowEditorContent({ id }: { id: string }) {
             <WorkflowSettingsSheet
                 isOpen={isSettingsOpen}
                 onClose={() => setIsSettingsOpen(false)}
-                name={workflowName}
-                description={workflowDescription}
-                active={isActive}
-                onUpdate={(name: string, description: string, active: boolean) => {
+                initialName={workflowName}
+                initialDescription={workflowDescription}
+                initialIsActive={isActive}
+                onSave={async (name: string, description: string, active: boolean) => {
                     setWorkflowName(name);
                     setWorkflowDescription(description);
                     setIsActive(active);
