@@ -41,12 +41,31 @@ export function UpdatePasswordForm() {
                 // Try to recover from Hash explicitly if no session yet
                 const hash = window.location.hash
                 if (hash && hash.includes("access_token")) {
-                    console.log("Recovering session from hash...")
-                    const { error } = await supabase.auth.initialize()
-                    if (error) setError(error.message)
+                    console.log("Recovering session from hash mechanism...")
+
+                    // MANUAL HYDRATION (Bypass PKCE check for legacy implicit links)
+                    const params = new URLSearchParams(hash.substring(1)) // remove #
+                    const access_token = params.get("access_token")
+                    const refresh_token = params.get("refresh_token")
+
+                    if (!access_token || !refresh_token) {
+                        setError("Token incompleto en el enlace.")
+                        return
+                    }
+
+                    const { error } = await supabase.auth.setSession({
+                        access_token,
+                        refresh_token
+                    })
+
+                    if (error) {
+                        console.error("Session Set Error:", error)
+                        setError(error.message)
+                    } else {
+                        console.log("Session hydrated successfully from hash.")
+                    }
                 } else {
                     // No session, no token -> Invalid state
-                    // setError("No se detectó una sesión válida. Solicita un nuevo enlace.")
                 }
             }
         }
