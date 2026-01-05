@@ -30,6 +30,13 @@ export async function middleware(request: NextRequest) {
 
     const isMainDomain = currentHost === 'www' || currentHost === 'app' || currentHost === hostname || currentHost === 'localhost:3000'
 
+    // DEPRECATION: Redirect 'control' to 'app'
+    if (currentHost === 'control') {
+        const url = request.nextUrl.clone()
+        url.host = process.env.NEXT_PUBLIC_APP_URL || 'app.pixy.com.co'
+        return NextResponse.redirect(url, 308)
+    }
+
     // Prepare Request Headers (to pass context to Server Components)
     const requestHeaders = new Headers(request.headers)
 

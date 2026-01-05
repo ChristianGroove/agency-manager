@@ -279,7 +279,7 @@ export default function UnifiedDomainsPage() {
                                     <Input
                                         value={globalAdminDomain}
                                         onChange={(e) => setGlobalAdminDomain(e.target.value.toLowerCase())}
-                                        placeholder="control.pixy.com.co"
+                                        placeholder="app.pixy.com.co"
                                         className="font-mono"
                                     />
                                 </div>
