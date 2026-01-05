@@ -17,8 +17,7 @@ export function UpdatePasswordForm() {
     // Handle Hash Recovery on Mount
     useEffect(() => {
         const handleRecovery = async () => {
-            const { createClient } = await import("@/lib/supabase-client")
-            const supabase = createClient()
+            const { supabase } = await import("@/lib/supabase")
 
             // Check if we have a session
             const { data: { session } } = await supabase.auth.getSession()
@@ -55,8 +54,8 @@ export function UpdatePasswordForm() {
         }
 
         // Use Client SDK for Update (Works with the recovered session above)
-        const { createClient } = await import("@/lib/supabase-client")
-        const supabase = createClient()
+        // We use the singleton from @/lib/supabase which is configured with createBrowserClient
+        const { supabase } = await import("@/lib/supabase")
 
         const { error } = await supabase.auth.updateUser({
             password: password
