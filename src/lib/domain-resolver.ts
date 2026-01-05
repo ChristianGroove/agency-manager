@@ -155,8 +155,8 @@ export async function getPortalUrl(
 ): Promise<string> {
     const cleanPath = path.startsWith('/') ? path : `/${path}`
 
-    // Development mode: always use localhost
-    if (process.env.NODE_ENV === 'development') {
+    // Development mode: always use localhost ONLY if NEXT_PUBLIC_APP_URL is not set
+    if (process.env.NODE_ENV === 'development' && !process.env.NEXT_PUBLIC_APP_URL) {
         return `http://localhost:3000${cleanPath}`
     }
 
@@ -187,8 +187,8 @@ export async function getAdminUrl(
 ): Promise<string> {
     const cleanPath = path.startsWith('/') ? path : `/${path}`
 
-    // Development mode: always use localhost
-    if (process.env.NODE_ENV === 'development') {
+    // Development mode: always use localhost ONLY if NEXT_PUBLIC_APP_URL is not set
+    if (process.env.NODE_ENV === 'development' && !process.env.NEXT_PUBLIC_APP_URL) {
         return `http://localhost:3000${cleanPath}`
     }
 
