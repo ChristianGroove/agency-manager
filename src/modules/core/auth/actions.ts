@@ -82,23 +82,25 @@ export async function resetPasswordRequest(formData: FormData) {
         return { success: false, error: "Failed to generate recovery link" }
     }
 
-    // 2. Send Email (Custom Service)
-    const { emailService } = await import('@/modules/core/communication/email-service')
+    try {
+        // 2. Send Email (Custom Service)
+        const { emailService } = await import('@/modules/core/communication/email-service')
 
-    // We can fetch agency info if needed for branding (e.g. determine which org the user belongs to)
-    // For now, using default 'Agencia OS' branding or user's specific context if known.
-    // Ideally we'd look up the user's primary organization here.
+        const sendResult = await emailService.sendEmail(email, 'password-reset', {
+            agency_name: 'Agencia OS',
+            link: actionLink
+        })
 
-    const sendResult = await emailService.sendEmail(email, 'password-reset', {
-        agency_name: 'Agencia OS', // Default or fetch dynamic name
-        link: actionLink
-    })
+        if (!sendResult.success) {
+            console.error("Email send failed:", sendResult.error)
+            return { success: false, error: `Error enviando correo: ${sendResult.error}` }
+        }
 
-    if (!sendResult.success) {
-        return { success: false, error: sendResult.error }
+        return { success: true }
+    } catch (err: any) {
+        console.error("Critical error in resetPasswordRequest:", err)
+        return { success: false, error: "Error interno del sistema. Contacte soporte." }
     }
-
-    return { success: true }
 }
 
 export async function updatePassword(formData: FormData) {

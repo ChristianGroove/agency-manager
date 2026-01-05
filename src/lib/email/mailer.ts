@@ -17,6 +17,10 @@ export const transporter = nodemailer.createTransport({
         user: SMTP_USER,
         pass: SMTP_PASS,
     },
+    // Fail fast if connection hangs
+    connectionTimeout: 10000,
+    greetingTimeout: 5000,
+    socketTimeout: 10000,
 });
 
 export const SENDER_EMAIL = `"${process.env.SMTP_SENDER_NAME || 'Soporte Pixy'}" <${SMTP_USER}>`;
