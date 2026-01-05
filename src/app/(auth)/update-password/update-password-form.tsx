@@ -19,24 +19,42 @@ export function UpdatePasswordForm() {
         const handleRecovery = async () => {
             const { supabase } = await import("@/lib/supabase")
 
-            // Check if we have a session
+            // 1. Detect Explicit Errors in URL (e.g. otp_expired)
+            const params = new URLSearchParams(window.location.hash.substring(1)) // Remove #
+            const errorDescription = params.get("error_description")
+            const errorCode = params.get("error_code")
+
+            if (errorCode || errorDescription) {
+                console.error("Link Error:", errorCode, errorDescription)
+                setError(
+                    errorCode === "otp_expired"
+                        ? "Este enlace ha expirado o ya fue utilizado. Por favor solicita uno nuevo."
+                        : (errorDescription || "Enlace inválido") + plusDecoder(errorDescription)
+                )
+                return
+            }
+
+            // 2. Check/Recover Session
             const { data: { session } } = await supabase.auth.getSession()
 
             if (!session) {
-                // Try to recover from Hash
+                // Try to recover from Hash explicitly if no session yet
                 const hash = window.location.hash
                 if (hash && hash.includes("access_token")) {
                     console.log("Recovering session from hash...")
-                    // Supabase auto-detects hash, but we can force a check
-                    await supabase.auth.initialize()
+                    const { error } = await supabase.auth.initialize()
+                    if (error) setError(error.message)
                 } else {
-                    // No session, no hash -> probably invalid access
-                    // Optional: redirect to login if you want to be strict
+                    // No session, no token -> Invalid state
+                    // setError("No se detectó una sesión válida. Solicita un nuevo enlace.")
                 }
             }
         }
         handleRecovery()
     }, [])
+
+    // Helper to decode + to space if needed, though URLSearchParams handles much
+    const plusDecoder = (str: string | null) => str ? str.replace(/\+/g, ' ') : ""
 
     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault()
