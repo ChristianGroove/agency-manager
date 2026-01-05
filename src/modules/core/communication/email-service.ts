@@ -19,12 +19,24 @@ export const emailService = {
         // We fetch all potential matches and pick the most specific one in code logic
         // or via clever SQL. Doing simple fetch for simplicity.
 
-        const { data: templates, error } = await supabaseAdmin
+        let query = supabaseAdmin
             .from('email_templates')
             .select('*')
             .eq('slug', templateSlug)
-            .or(`organization_id.eq.${context?.organizationId},organization_id.is.null`)
-            .or(`vertical_slug.eq.${context?.verticalSlug},vertical_slug.is.null`);
+
+        if (context?.organizationId) {
+            query = query.or(`organization_id.eq.${context.organizationId},organization_id.is.null`)
+        } else {
+            query = query.is('organization_id', null)
+        }
+
+        if (context?.verticalSlug) {
+            query = query.or(`vertical_slug.eq.${context.verticalSlug},vertical_slug.is.null`)
+        } else {
+            query = query.is('vertical_slug', null)
+        }
+
+        const { data: templates, error } = await query
 
         if (error || !templates || templates.length === 0) {
             console.error(`[EmailService] Template '${templateSlug}' not found!`, error);
