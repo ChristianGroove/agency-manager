@@ -12,6 +12,32 @@ import { ParticlesBackground } from "@/components/ui/particles-background"
 export function UpdatePasswordForm() {
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const [message, setMessage] = useState<string | null>(null)
+
+    // Handle Hash Recovery on Mount
+    useEffect(() => {
+        const handleRecovery = async () => {
+            const { createClient } = await import("@/lib/supabase-client")
+            const supabase = createClient()
+
+            // Check if we have a session
+            const { data: { session } } = await supabase.auth.getSession()
+
+            if (!session) {
+                // Try to recover from Hash
+                const hash = window.location.hash
+                if (hash && hash.includes("access_token")) {
+                    console.log("Recovering session from hash...")
+                    // Supabase auto-detects hash, but we can force a check
+                    await supabase.auth.initialize()
+                } else {
+                    // No session, no hash -> probably invalid access
+                    // Optional: redirect to login if you want to be strict
+                }
+            }
+        }
+        handleRecovery()
+    }, [])
 
     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault()
@@ -19,11 +45,31 @@ export function UpdatePasswordForm() {
         setError(null)
 
         const formData = new FormData(event.currentTarget)
-        const result = await updatePassword(formData)
+        const password = formData.get("password") as string
+        const confirmPassword = formData.get("confirmPassword") as string
 
-        if (result?.error) {
-            setError(result.error)
+        if (password !== confirmPassword) {
+            setError("Las contraseñas no coinciden")
             setIsLoading(false)
+            return
+        }
+
+        // Use Client SDK for Update (Works with the recovered session above)
+        const { createClient } = await import("@/lib/supabase-client")
+        const supabase = createClient()
+
+        const { error } = await supabase.auth.updateUser({
+            password: password
+        })
+
+        if (error) {
+            setError(error.message)
+            setIsLoading(false)
+        } else {
+            setMessage("Contraseña actualizada correctamente. Redirigiendo...")
+            setTimeout(() => {
+                window.location.href = "/login" // Force hard reload to login
+            }, 2000)
         }
     }
 

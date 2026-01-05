@@ -4,6 +4,8 @@ import { UpdatePasswordForm } from "./update-password-form"
 
 export default async function UpdatePasswordPage() {
     // Verify session server-side
+    // DISABLED: We allow client-side hash recovery for Implicit Flow
+    /*
     const supabase = await createClient()
     const { data: { session } } = await supabase.auth.getSession()
 
@@ -12,6 +14,7 @@ export default async function UpdatePasswordPage() {
         // Or the callback failed.
         redirect("/login?error=recovery_session_missing")
     }
+    */
 
     return <UpdatePasswordForm />
 }
