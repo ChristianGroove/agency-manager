@@ -53,7 +53,7 @@ export function getAdminUrl(path: string = ''): string {
     return `http://localhost:3000${cleanPath}`
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'control.pixy.com.co'
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'app.pixy.com.co'
   return `https://${baseUrl}${cleanPath}`
 }
 

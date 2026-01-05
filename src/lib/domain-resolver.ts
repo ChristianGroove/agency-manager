@@ -39,7 +39,7 @@ const orgDomainsCache = new Map<string, { data: DomainConfig; lastFetch: number 
 // ============================================
 
 const FALLBACK_DOMAINS: DomainConfig = {
-    admin: 'control.pixy.com.co',
+    admin: 'app.pixy.com.co',
     portal: 'mi.pixy.com.co'
 }
 
