@@ -27,8 +27,8 @@ export function ModularDashboardLayout({ data }: { data: DashboardDataProps }) {
                 <p className="text-muted-foreground mt-1">Resumen en tiempo real de tu negocio</p>
             </div>
 
-            {/* 1. Stats Grid (4 Cols) */}
-            <div className="grid gap-8 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
+            {/* 1. Stats Grid (Dynamic) */}
+            <div className={`grid gap-8 grid-cols-1 md:grid-cols-2 lg:grid-cols-${Math.min(data.stats.length, 4)}`}>
                 {data.stats.map((stat, i) => (
                     <MagicStatCard key={i} {...stat} />
                 ))}
@@ -47,8 +47,8 @@ export function ModularDashboardLayout({ data }: { data: DashboardDataProps }) {
                 )}
             </div>
 
-            {/* 3. Quick Actions (4 Cols) */}
-            <div className="grid gap-8 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
+            {/* 3. Quick Actions (Dynamic Grid) */}
+            <div className="grid gap-6 grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-5">
                 {data.quickActions.map((action, i) => (
                     <QuickAction key={i} {...action} />
                 ))}

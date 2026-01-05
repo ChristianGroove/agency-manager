@@ -22,50 +22,29 @@ export async function middleware(request: NextRequest) {
         }
     }
 
-    // 0.5 SUBDOMAIN ROUTING: Enforce domain separation in production
-    if (process.env.NODE_ENV === 'production') {
-        const hostname = request.headers.get('host') || ''
-        const pathname = request.nextUrl.pathname
+    // 0.5 SUBDOMAIN ROUTING: Multi-Tenant Architecture
+    const hostname = request.headers.get('host') || ''
+    const currentHost = process.env.NODE_ENV === 'production' && process.env.NEXT_PUBLIC_ROOT_DOMAIN
+        ? hostname.replace(`.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}`, '')
+        : hostname.replace(`.localhost:3000`, '')
 
-        // Fetch platform domains from environment or database
-        const adminDomain = process.env.NEXT_PUBLIC_APP_URL?.replace(/^https?:\/\//, '') || 'control.pixy.com.co'
-        const portalDomain = process.env.NEXT_PUBLIC_PORTAL_URL?.replace(/^https?:\/\//, '') || 'mi.pixy.com.co'
+    const isMainDomain = currentHost === 'www' || currentHost === 'app' || currentHost === hostname || currentHost === 'localhost:3000'
 
-        // Portal routes should only be on portal domain
-        if (pathname.startsWith('/portal/')) {
-            const isOnPortalDomain = hostname === portalDomain || hostname === `www.${portalDomain}`
+    // Prepare Request Headers (to pass context to Server Components)
+    const requestHeaders = new Headers(request.headers)
 
-            if (!isOnPortalDomain && hostname.includes(adminDomain)) {
-                // Redirect from admin domain to portal domain
-                const portalUrl = new URL(request.url)
-                portalUrl.host = portalDomain
-                return NextResponse.redirect(portalUrl, { status: 301 })
-            }
-        }
-
-        // Admin routes should only be on admin domain
-        const isAdminRoute = pathname.startsWith('/dashboard') ||
-            pathname.startsWith('/clients') ||
-            pathname.startsWith('/admin') ||
-            pathname.startsWith('/platform') ||
-            pathname.startsWith('/settings')
-
-        if (isAdminRoute) {
-            const isOnAdminDomain = hostname === adminDomain || hostname === `www.${adminDomain}`
-
-            if (!isOnAdminDomain && hostname.includes(portalDomain)) {
-                // Redirect from portal domain to admin domain
-                const adminUrl = new URL(request.url)
-                adminUrl.host = adminDomain
-                return NextResponse.redirect(adminUrl, { status: 301 })
-            }
-        }
+    if (!isMainDomain) {
+        // We are on a Tenant Subdomain
+        requestHeaders.set('x-tenant-slug', currentHost)
+    } else {
+        // We are on Main Domain
+        requestHeaders.delete('x-tenant-slug')
     }
 
-    // 1. Core Supabase Auth Session Handling
+    // 1. Core Supabase Auth Session Handling (Initialize Response with modified headers)
     let response = NextResponse.next({
         request: {
-            headers: request.headers,
+            headers: requestHeaders,
         },
     })
 

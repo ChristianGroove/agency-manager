@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase-server"
 import { revalidatePath } from "next/cache"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { inngest } from "@/lib/inngest/client"
 import { WorkflowDefinition } from "./engine"
 
 export async function saveWorkflow(id: string, name: string, description: string, definition: WorkflowDefinition, isActive: boolean = false) {
@@ -358,6 +359,11 @@ export async function triggerWorkflowForLead(workflowId: string, leadId: string)
             throw new Error('Lead not found')
         }
 
+
+
+        const { assertUsageAllowed } = await import("@/modules/core/billing/usage-limiter");
+        await assertUsageAllowed({ organizationId: orgId, engine: 'automation' });
+
         // Create an execution record
         const executionId = crypto.randomUUID()
         const { error: execError } = await supabase
@@ -366,7 +372,7 @@ export async function triggerWorkflowForLead(workflowId: string, leadId: string)
                 id: executionId,
                 workflow_id: workflowId,
                 organization_id: orgId,
-                status: 'running',
+                status: 'pending', // Pending worker pickup
                 context: {
                     trigger: 'manual',
                     lead_id: leadId,
@@ -380,25 +386,23 @@ export async function triggerWorkflowForLead(workflowId: string, leadId: string)
 
         if (execError) throw execError
 
-        console.log(`[Workflow] Manually triggered ${workflow.name} for lead ${lead.name}`)
+        console.log(`[Workflow] Dispatching Inngest event for ${workflow.name}`)
 
-        // In a real implementation, this would start the workflow engine
-        // For now, we mark it as completed after a simulated delay
-        setTimeout(async () => {
-            const supabaseInternal = await createClient()
-            await supabaseInternal
-                .from('workflow_executions')
-                .update({
-                    status: 'completed',
-                    completed_at: new Date().toISOString()
-                })
-                .eq('id', executionId)
-        }, 2000)
+        // DISPATCH WORKER
+        await inngest.send({
+            name: "automation.execute",
+            data: {
+                executionId,
+                organizationId: orgId,
+                workflowId,
+                workflowVersionId: 'latest' // we should track versions ideally
+            }
+        })
 
         return {
             success: true,
             executionId,
-            message: `Workflow "${workflow.name}" triggered for ${lead.name}`
+            message: `Workflow "${workflow.name}" queued for execution`
         }
     } catch (error) {
         console.error("Error triggering workflow:", error)

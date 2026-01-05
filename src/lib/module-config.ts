@@ -145,6 +145,16 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         icon: Settings,
         isCore: true,
         category: 'config'
+    },
+    // --- RESELLER MANAGEMENT ---
+    // Invisible for normal clients, visible for Resellers via sidebar logic
+    {
+        key: 'reseller_tenants',
+        label: 'Mis Clientes',
+        href: '/platform/organizations',
+        icon: Users, // Using Users icon
+        category: 'core', // Put in core to appear at top
+        isCore: false // Not core for everyone, logic will handle visibility
     }
 ]
 

@@ -64,12 +64,19 @@ export async function resumeSuspendedWorkflow(
             throw new Error("Workflow definition not found")
         }
 
+        // Create response payload from process result
+        const responsePayload = {
+            content: processResult.userInput,
+            buttonId: processResult.buttonId,
+            nextBranchId: processResult.nextBranchId
+        }
+
         // 4. Update Pending Input Record (Mark as Completed)
         await supabase
             .from('workflow_pending_inputs')
             .update({
                 status: 'completed',
-                response: processResult.data,
+                response: responsePayload,
                 completed_at: new Date().toISOString()
             })
             .eq('id', pendingInputId)
@@ -80,7 +87,7 @@ export async function resumeSuspendedWorkflow(
         // Prepare Resume Context
         const context = execution.context || {}
         const resumeContext = {
-            _resumedInputResponse: processResult.data
+            _resumedInputResponse: responsePayload
         }
 
         engine = new WorkflowEngine(workflow.definition as WorkflowDefinition, context)

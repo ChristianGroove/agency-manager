@@ -38,6 +38,7 @@ import { cn } from '@/lib/utils'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { getActiveWorkflows, triggerWorkflowForLead } from '@/modules/core/automation/actions'
+import { CreateOrganizationSheet } from '@/components/organizations/create-organization-sheet'
 
 // Trigger Automation Button with Workflow Selector
 function TriggerAutomationButton({ leadId }: { leadId: string }) {
@@ -199,7 +200,41 @@ function InfoTab({ lead }: { lead: LeadWithRelations }) {
                 </Button>
                 <TriggerAutomationButton leadId={lead.id} />
             </div>
+
+            <div className="pt-4 border-t border-dashed">
+                <PromoteToTenantButton lead={lead} />
+            </div>
         </div>
+    )
+}
+
+function PromoteToTenantButton({ lead }: { lead: LeadWithRelations }) {
+    const [open, setOpen] = useState(false)
+
+    return (
+        <>
+            <Button
+                variant="secondary"
+                className="w-full bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200"
+                onClick={() => setOpen(true)}
+            >
+                <Building2 className="h-4 w-4 mr-2" />
+                Convertir a Organización (Tenant)
+            </Button>
+
+            <CreateOrganizationSheet
+                open={open}
+                onOpenChange={setOpen}
+                initialData={{
+                    name: lead.company_name || lead.name,
+                    email: lead.email || undefined
+                }}
+                onSuccess={() => {
+                    // Optional: Mark lead as 'converted' via action
+                    // updateLeadStatus(lead.id, 'won')
+                }}
+            />
+        </>
     )
 }
 

@@ -20,6 +20,8 @@ export class EvolutionProvider implements MessagingProvider {
         // Normalize endpoint (trim slashes)
         const url = `${baseUrl.replace(/\/$/, '')}/message/sendText/${instanceName}`
 
+        const textContent = options.content.type === 'text' ? options.content.text : (options.content as any).text || '';
+
         const body = {
             number: options.to,
             options: {
@@ -28,7 +30,7 @@ export class EvolutionProvider implements MessagingProvider {
                 linkPreview: false
             },
             textMessage: {
-                text: options.content.text
+                text: textContent
             }
         }
 

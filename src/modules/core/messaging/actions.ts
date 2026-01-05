@@ -1,10 +1,10 @@
 "use server"
 
-import { createClient } from "@/lib/supabase-server"
 import { revalidatePath } from "next/cache"
 import { MetaProvider } from "./providers/meta-provider"
 import { inboxService } from "./inbox-service"
 import { supabaseAdmin } from "@/lib/supabase-admin"
+import { createClient } from "@/lib/supabase-server" // Add missing import if needed, assuming implicit or I should add it. Wait, sendMessage uses createClient.
 
 // Ensure env vars are loaded/checked securely in a real app
 const META_API_TOKEN = process.env.META_API_TOKEN!
@@ -180,6 +180,9 @@ export async function sendMessage(conversationId: string, payload: string, id?: 
     let providerResult = { success: true, messageId: `internal_${Date.now()}_${Math.random().toString(36).substring(7)}`, error: null };
 
     if (content.type !== 'note') {
+        const { assertUsageAllowed } = await import("@/modules/core/billing/usage-limiter");
+        await assertUsageAllowed({ organizationId: conversation.organization_id, engine: 'messaging' });
+
         try {
             const result = await provider.sendMessage(providerOptions)
             if (!result.success) {

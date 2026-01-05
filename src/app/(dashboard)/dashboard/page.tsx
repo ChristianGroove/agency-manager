@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Users, DollarSign, FileText, CreditCard, TrendingUp, AlertCircle, UserPlus, FilePlus, ClipboardCheck, Receipt, Sparkles, Calendar, PlayCircle, CheckCircle2, Clock } from "lucide-react"
+import { Users, DollarSign, FileText, CreditCard, TrendingUp, AlertCircle, UserPlus, FilePlus, ClipboardCheck, Receipt, Sparkles, Calendar, PlayCircle, CheckCircle2, Clock, Building2 } from "lucide-react"
 import CountUp from "react-countup"
 
 // Modular System
@@ -57,16 +57,21 @@ export default function DashboardPage() {
             if (!orgId) return
 
             // 1. Detect Type
-            const modules = await getOrganizationModules(orgId)
-            console.log("🔍 DASHBOARD DEBUG:", { orgId, modules })
+            const { getCurrentOrgDetails } = await import("@/modules/core/organizations/actions")
+            const [modules, orgDetails] = await Promise.all([
+                getOrganizationModules(orgId),
+                getCurrentOrgDetails()
+            ])
+
+            console.log("🔍 DASHBOARD DEBUG:", { orgId, modules, type: orgDetails?.organization_type })
 
             const isCleaning = modules.includes('module_cleaning') || modules.includes('vertical_cleaning')
-            console.log("🔍 DETECTED MODE:", isCleaning ? "CLEANING" : "AGENCY")
-
-            setOrgType(isCleaning ? 'cleaning' : 'agency')
+            const isReseller = orgDetails?.organization_type === 'reseller' || orgDetails?.organization_type === 'platform'
 
             // 2. Load Data
-            if (isCleaning) {
+            if (isReseller) {
+                await loadResellerData(orgId)
+            } else if (isCleaning) {
                 await loadCleaningData(orgId)
             } else {
                 await loadAgencyData()
@@ -76,6 +81,114 @@ export default function DashboardPage() {
         } finally {
             setLoading(false)
         }
+    }
+
+    // --- RESELLER ADAPTER ---
+    const loadResellerData = async (orgId: string) => {
+        const { supabase } = await import("@/lib/supabase")
+
+        // Fetch Tenants
+        const { count: tenantCount, data: tenants } = await supabase
+            .from('organizations')
+            .select('id, name, logo_url, status', { count: 'exact' })
+            .eq('parent_organization_id', orgId)
+
+        // Fetch CRM Data (Revenue)
+        const { getDashboardData } = await import("@/modules/core/dashboard/actions")
+        const { invoices, settings } = await getDashboardData()
+
+        // Calculate Revenue and Debtors
+        let totalRevenue = 0
+        let pendingPayments = 0
+        let totalOverdue = 0
+        const clientsWithOverdueMap = new Map<string, number>()
+
+        invoices.forEach(inv => {
+            const { status } = resolveDocumentState(inv)
+            const amount = inv.total || 0
+
+            if (status === 'paid') totalRevenue += amount
+            else if (status === 'pending') pendingPayments += amount
+            else if (status === 'overdue') {
+                pendingPayments += amount
+                totalOverdue += amount
+                clientsWithOverdueMap.set(inv.client_id, (clientsWithOverdueMap.get(inv.client_id) || 0) + amount)
+            }
+        })
+
+        // Prepare Debtors List
+        // We need client names. Invoices have client_id. 
+        // We might need to fetch clients if not available in `invoices` join (usually getDashboardData fetches invoices with client)
+        // Let's assume invoices has client relation or we fetch clients.
+        // `getDashboardData` returns `clients` too. Let's use it.
+        const { clients } = await getDashboardData()
+
+        const debtors = Array.from(clientsWithOverdueMap.entries()).map(([clientId, amount]) => {
+            const client = clients.find(c => c.id === clientId)
+            if (!client) return null
+            return {
+                id: clientId,
+                name: `${client.first_name} ${client.last_name}`.trim() || client.company_name || 'Cliente',
+                image: client.logo_url || client.avatar_url,
+                debt: amount
+            }
+        }).filter(Boolean) as any[]
+
+        const data: DashboardDataProps = {
+            stats: [
+                {
+                    title: "Tenants Activos",
+                    value: tenantCount || 0,
+                    icon: Building2,
+                    subtext: "Clientes SaaS gestionados"
+                },
+                {
+                    title: "Ingresos Totales",
+                    value: <CountUp end={totalRevenue} duration={2} separator="," prefix="$" />,
+                    icon: DollarSign,
+                    subtext: "Facturado a clientes"
+                },
+                {
+                    title: "Por Cobrar",
+                    value: <CountUp end={pendingPayments} duration={2} separator="," prefix="$" />,
+                    icon: AlertCircle,
+                    subtext: "Saldo pendiente"
+                },
+                {
+                    title: "Ticket Promedio",
+                    value: <CountUp end={(tenantCount ?? 0) > 0 ? totalRevenue / (tenantCount ?? 1) : 0} duration={2} separator="," prefix="$" />,
+                    icon: CreditCard,
+                    subtext: "Ingreso por Tenant (ARPU)"
+                }
+            ],
+            revenueHero: {
+                title: "Ingresos Recurrentes (SaaS)",
+                value: <CountUp end={totalRevenue} duration={2} separator="," />, // Placeholder for MRR
+                unit: "COP/mes",
+                tips: ["Ofrece planes anuales para mejorar el flujo.", "Revisa el uso de tus clientes top."]
+            },
+            social: {
+                facebook: settings?.social_facebook,
+                instagram: settings?.social_instagram,
+                twitter: settings?.social_twitter,
+                fbFollowers: settings?.social_facebook_followers,
+                igFollowers: settings?.social_instagram_followers
+            },
+            quickActions: [
+                { title: "Nuevo Tenant", icon: Building2, colorClass: "bg-purple-50 text-purple-600 group-hover:bg-purple-600 group-hover:text-white", onClick: () => window.location.href = '/platform/organizations' },
+                { title: "Nuevo Cliente", icon: UserPlus, colorClass: "bg-brand-cyan/10 text-brand-cyan group-hover:bg-brand-cyan group-hover:text-white", onClick: () => setIsClientModalOpen(true) },
+                { title: "Nueva Cotización", icon: FilePlus, colorClass: "bg-yellow-50 text-yellow-600 group-hover:bg-yellow-500 group-hover:text-white", onClick: () => setIsQuoteModalOpen(true) },
+                { title: "Nuevo Brief", icon: ClipboardCheck, colorClass: "bg-indigo-50 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white", onClick: () => setIsBriefingModalOpen(true) },
+                { title: "Nueva Factura", icon: Receipt, colorClass: "bg-brand-pink/10 text-brand-pink group-hover:bg-brand-pink group-hover:text-white", onClick: () => setIsInvoiceModalOpen(true) }
+            ],
+            smartAlert: clientsWithOverdueMap.size > 0 ? {
+                title: "Atención Requerida (Cartera)",
+                message: <span>Hay <span className="font-bold text-red-500">{clientsWithOverdueMap.size} clientes/tenants</span> con cuentas vencidas. Total: <span className="font-bold text-gray-900">${totalOverdue.toLocaleString()}</span>.</span>,
+                itemsHeading: "En Mora",
+                items: debtors
+            } : undefined
+        }
+        setDashboardData(data)
     }
 
     // --- AGENCY ADAPTER ---

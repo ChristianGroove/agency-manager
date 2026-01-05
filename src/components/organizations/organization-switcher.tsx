@@ -79,9 +79,9 @@ export function OrganizationSwitcher({ trigger }: OrganizationSwitcherProps) {
         }
     }
 
-    // Conditional Rendering: Only show if loading or has > 1 organization
-    if (!isLoading && organizations.length <= 1) {
-        return null
+    // Always show to allow creation of new organizations
+    if (!isLoading && organizations.length === 0) {
+        return null // Only hide if 0? Or maybe show empty state? usually > 0 if logged in.
     }
 
     if (isLoading) {
@@ -141,15 +141,21 @@ export function OrganizationSwitcher({ trigger }: OrganizationSwitcherProps) {
                                         key={member.organization_id}
                                         onClick={() => handleSwitch(member.organization_id)}
                                         className={`
-                                            flex items-center gap-4 p-3 rounded-xl cursor-pointer transition-all border group
+                                            flex items-center gap-4 p-3 rounded-xl cursor-pointer transition-all border group relative overflow-hidden
                                             ${member.organization_id === currentOrgId
                                                 ? "bg-indigo-50 border-indigo-200 shadow-sm"
                                                 : "bg-white border-gray-100 hover:border-indigo-200 hover:shadow-md"
                                             }
                                         `}
                                     >
+                                        {/* Status Line */}
+                                        <div className={`absolute left-0 top-0 bottom-0 w-1 ${member.organization?.organization_type === 'reseller' ? 'bg-blue-500' :
+                                                member.organization?.organization_type === 'platform' ? 'bg-purple-500' :
+                                                    'bg-gray-200'
+                                            }`} />
+
                                         <div className={`
-                                            flex h-10 w-10 shrink-0 items-center justify-center rounded-lg font-bold text-sm shadow-sm transition-transform group-hover:scale-105
+                                            flex h-10 w-10 shrink-0 items-center justify-center rounded-lg font-bold text-sm shadow-sm transition-transform group-hover:scale-105 ml-2
                                             ${member.organization_id === currentOrgId
                                                 ? "bg-indigo-600 text-white"
                                                 : "bg-gray-50 border border-gray-100 text-gray-600 group-hover:bg-white"
@@ -163,11 +169,27 @@ export function OrganizationSwitcher({ trigger }: OrganizationSwitcherProps) {
                                         </div>
 
                                         <div className="flex-1 min-w-0">
-                                            <h3 className={`font-semibold text-sm truncate ${member.organization_id === currentOrgId ? "text-indigo-900" : "text-gray-900"}`}>
-                                                {member.organization?.name}
-                                            </h3>
-                                            <p className="text-xs text-gray-500 truncate">
-                                                {member.organization?.slug}
+                                            <div className="flex items-center gap-2 mb-0.5">
+                                                <h3 className={`font-semibold text-sm truncate ${member.organization_id === currentOrgId ? "text-indigo-900" : "text-gray-900"}`}>
+                                                    {member.organization?.name}
+                                                </h3>
+                                                {member.organization?.organization_type === 'reseller' && (
+                                                    <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700 border border-blue-200 uppercase tracking-wider">
+                                                        Reseller
+                                                    </span>
+                                                )}
+                                                {member.organization?.organization_type === 'platform' && (
+                                                    <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-700 border border-purple-200 uppercase tracking-wider">
+                                                        Platform
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            <p className="text-xs text-gray-500 truncate flex items-center gap-1">
+                                                <span className="font-mono">{member.organization?.slug}</span>
+                                                {member.organization?.parent_organization_id && ( // Note: We might need to join parent info in query if we want name, for now just showing visual clue
+                                                    <span className="text-gray-400">• Sub-cuenta</span>
+                                                )}
                                             </p>
                                         </div>
 

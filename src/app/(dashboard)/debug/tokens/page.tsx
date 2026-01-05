@@ -21,9 +21,23 @@ export default function DebugTokensPage() {
     }, [])
 
     const fetchClients = async () => {
+        // 1. Get Organization ID from Cookie (Client Side)
+        const getOrgId = () => {
+            const match = document.cookie.match(new RegExp('(^| )pixy_org_id=([^;]+)'))
+            return match ? match[2] : null
+        }
+        const currentOrgId = getOrgId()
+
+        if (!currentOrgId) {
+            // Fallback or Empty
+            setClients([])
+            return
+        }
+
         const { data, error } = await supabase
             .from('clients')
             .select('id, name, portal_short_token')
+            .eq('organization_id', currentOrgId) // CRITICAL SECURITY FIX
             .is('deleted_at', null)
             .order('name')
 

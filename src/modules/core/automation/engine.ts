@@ -1,4 +1,5 @@
 import { ContextManager } from './context-manager'
+import { trackUsage } from '@/modules/core/billing/usage-tracker'
 import { CRMNode, CRMNodeData } from './nodes/crm-node'
 import { HTTPNode, HTTPNodeData } from './nodes/http-node'
 import { EmailNode, EmailNodeData } from './nodes/email-node'
@@ -21,7 +22,8 @@ export interface WorkflowEdge {
     id: string
     source: string
     target: string
-    sourceHandle?: string
+    sourceHandle?: string | null
+    targetHandle?: string | null
     label?: string
 }
 
@@ -54,6 +56,22 @@ export class WorkflowEngine {
         const triggerNode = this.definition.nodes.find(n => n.type === 'trigger')
         if (!triggerNode) {
             throw new Error("No trigger node found in workflow")
+        }
+
+        // Track Usage: automation.execute
+        // We assume context has organization_id. If not, we might need to pass it or extract safe.
+        // Usually WorkflowEngine is initialized with organization_id in context or has access.
+        // Checking constructor... it accepts initialContext.
+        const orgId = this.context.organization_id as string
+        if (orgId) {
+            void trackUsage({
+                organizationId: orgId,
+                engine: 'automation',
+                action: 'automation.execute',
+                metadata: {
+                    workflow_id: (this.context.workflow as any)?.id // if available
+                }
+            })
         }
 
         this.currentStepId = triggerNode.id
@@ -109,7 +127,7 @@ export class WorkflowEngine {
         }
     }
 
-    private getNextNodes(node: WorkflowNode): WorkflowNode[] {
+    public getNextNodes(node: WorkflowNode): WorkflowNode[] {
         const outEdges = this.definition.edges.filter(e => e.source === node.id)
         let filteredEdges = outEdges
 
@@ -180,7 +198,7 @@ export class WorkflowEngine {
         return this.definition.nodes.filter(n => targetIds.includes(n.id))
     }
 
-    private async executeNodeLogic(node: WorkflowNode): Promise<void> {
+    public async executeNodeLogic(node: WorkflowNode): Promise<void> {
         switch (node.type) {
             case 'trigger':
                 // Initial context setup
@@ -412,11 +430,12 @@ export class WorkflowEngine {
                         // We map button IDs to valid branches implies we accept 'button_click' or text matching title
                         const waitConfig: WaitInputNodeData = {
                             timeout: '24h', // Default for buttons
-                            inputType: 'button_click'
+                            inputType: 'button_click',
+                            timeoutAction: 'continue'
                             // storeAs is optional
                         }
 
-                        const waitResult = await waitNode.startWaiting(executionId, node.id, waitConfig)
+                        const waitResult = await waitNode.startWaiting(waitConfig, executionId, node.id)
                         if (waitResult.suspended) {
                             console.log(`[Buttons] Workflow suspended waiting for user interaction on buttons.`)
                             throw new Error("WORKFLOW_SUSPENDED")

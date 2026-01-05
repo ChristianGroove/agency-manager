@@ -15,6 +15,8 @@ export interface WorkflowTemplate {
         source: string;
         target: string;
         label?: string;
+        sourceHandle?: string | null;
+        targetHandle?: string | null;
     }>;
     requiredIntegrations: string[];
     estimatedSetupTime: string;

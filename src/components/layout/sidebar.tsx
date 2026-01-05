@@ -3,7 +3,7 @@
 import React, { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LogOut, ChevronDown } from "lucide-react"
+import { LogOut, ChevronDown, Users } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { OrgBranding } from "@/components/organizations/org-branding"
 import { useActiveModules } from "@/hooks/use-active-modules"
@@ -116,7 +116,7 @@ function SidebarSection({
 
 export function SidebarContent({ isCollapsed = false, currentOrgId, isSuperAdmin = false }: { isCollapsed?: boolean, currentOrgId: string | null, isSuperAdmin?: boolean }) {
     const pathname = usePathname()
-    const { modules, isLoading } = useActiveModules()
+    const { modules, isLoading, organizationType } = useActiveModules()
 
     // Track which categories are expanded - default all expanded
     const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({
@@ -136,6 +136,23 @@ export function SidebarContent({ isCollapsed = false, currentOrgId, isSuperAdmin
 
     // Filter routes based on active modules
     const availableRoutes = filterRoutesByModules(modules)
+
+    // INJECT RESELLER ROUTES
+    if (organizationType === 'reseller' || organizationType === 'platform') {
+        const resellerRoute = {
+            key: 'reseller_tenants',
+            label: 'Mis Clientes',
+            href: '/platform/organizations',
+            icon: Users,
+            category: 'core' as ModuleCategory,
+            isCore: true
+        }
+
+        // Prevent duplicate if already exists (shouldn't happen with filterRoutesByModules, but safe check)
+        if (!availableRoutes.find(r => r.key === 'reseller_tenants')) {
+            availableRoutes.splice(1, 0, resellerRoute) // Insert after Dashboard
+        }
+    }
 
     // Group routes by category
     const groupedRoutes = availableRoutes.reduce((acc, route) => {

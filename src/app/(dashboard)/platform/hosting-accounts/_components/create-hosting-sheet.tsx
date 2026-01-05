@@ -75,7 +75,20 @@ export function CreateHostingSheet({ open, onOpenChange, onSuccess, accountToEdi
     }, [open, accountToEdit])
 
     const fetchClients = async () => {
-        const { data } = await supabase.from('clients').select('id, name').order('name')
+        // 1. Safe Filter
+        const getOrgId = () => {
+            const match = document.cookie.match(new RegExp('(^| )pixy_org_id=([^;]+)'))
+            return match ? match[2] : null
+        }
+        const currentOrgId = getOrgId()
+
+        let query = supabase.from('clients').select('id, name').order('name')
+
+        if (currentOrgId) {
+            query = query.eq('organization_id', currentOrgId) // FILTER
+        }
+
+        const { data } = await query
         if (data) setClients(data)
     }
 

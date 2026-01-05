@@ -633,7 +633,14 @@ function WorkflowEditorContent({ id }: { id: string }) {
                 onOpenChange={setTestPanelOpen}
                 workflowDefinition={{
                     nodes: nodes.map((n) => ({ ...n, data: n.data as Record<string, unknown> })) as any,
-                    edges: edges.map((e) => ({ ...e })),
+                    edges: edges.map((e) => ({
+                        id: e.id,
+                        source: e.source,
+                        target: e.target,
+                        sourceHandle: e.sourceHandle,
+                        targetHandle: e.targetHandle,
+                        label: typeof e.label === 'string' ? e.label : undefined
+                    })),
                 }}
             />
 

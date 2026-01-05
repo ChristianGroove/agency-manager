@@ -11,6 +11,7 @@ interface UseActiveModulesReturn {
     hasModule: (moduleKey: string) => boolean
     refresh: () => Promise<void>
     userRole: string | null
+    organizationType?: 'platform' | 'reseller' | 'client'
 }
 
 // Map between module_config keys and permission module keys
@@ -53,48 +54,44 @@ export function useActiveModules(): UseActiveModulesReturn {
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState<Error | null>(null)
     const [userRole, setUserRole] = useState<string | null>(null)
+    const [organizationType, setOrganizationType] = useState<'platform' | 'reseller' | 'client'>('client')
 
     const fetchModules = useCallback(async () => {
         setIsLoading(true)
         setError(null)
 
         try {
-            // Fetch org modules and user permissions in parallel
-            const [orgModules, userPerms] = await Promise.all([
+            // Fetch org modules, user permissions, AND org details in parallel
+            // We import getCurrentOrgDetails dynamically to avoid cycles if any
+            const { getCurrentOrgDetails } = await import('@/modules/core/organizations/actions')
+
+            const [orgModules, userPerms, orgDetails] = await Promise.all([
                 getActiveModules(),
-                getCurrentUserPermissions()
+                getCurrentUserPermissions(),
+                getCurrentOrgDetails()
             ])
 
             setUserRole(userPerms?.role || null)
+            if (orgDetails?.organization_type) {
+                setOrganizationType(orgDetails.organization_type as any)
+            }
 
             // If user has permissions, filter org modules by their access
             if (userPerms?.permissions?.modules) {
                 const filteredModules = orgModules.filter(orgModule => {
-                    // Map org module key to permission module key
                     const permKey = MODULE_PERMISSION_MAP[orgModule]
-
-                    // If no mapping exists (core modules), allow
-                    if (!permKey) {
-                        return true
-                    }
-
-                    // Check if user has access to this module
+                    if (!permKey) return true
                     const modules = userPerms.permissions.modules as Record<string, boolean> | undefined
                     const hasAccess = modules?.[permKey]
-
-                    // If explicitly set to false, deny. Otherwise allow (undefined = allowed for admins/owners)
                     return hasAccess !== false
                 })
-
                 setModules(filteredModules)
             } else {
-                // No user permissions (maybe owner/super admin), show all org modules
                 setModules(orgModules)
             }
         } catch (err) {
             console.error('Error fetching modules:', err)
             setError(err as Error)
-            // Fallback to core modules
             setModules(['core_clients', 'core_settings'])
         } finally {
             setIsLoading(false)
@@ -138,7 +135,7 @@ export function useActiveModules(): UseActiveModulesReturn {
         error,
         hasModule,
         refresh,
-        userRole
+        userRole,
+        organizationType
     }
 }
-

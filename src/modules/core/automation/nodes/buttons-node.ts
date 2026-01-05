@@ -65,7 +65,7 @@ export class ButtonsNode {
             const footer = data.footer ? this.contextManager.resolve(data.footer) : undefined
 
             // Get conversation info from context
-            const conversationId = data.conversationId || this.contextManager.get('conversation.id')
+            const conversationId = (data.conversationId || this.contextManager.get('conversation.id')) as string
             const recipientPhone = this.contextManager.get('message.sender') ||
                 this.contextManager.get('lead.phone')
 

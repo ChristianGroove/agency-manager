@@ -46,6 +46,7 @@
     "emoji-picker-react": "^4.16.1",
     "framer-motion": "^12.23.26",
     "html-to-image": "^1.11.13",
+    "inngest": "^3.48.1",
     "jspdf": "^3.0.4",
     "jspdf-autotable": "^5.0.2",
     "lottie-react": "^2.4.1",

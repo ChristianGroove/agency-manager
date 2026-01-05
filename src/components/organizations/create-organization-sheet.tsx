@@ -7,19 +7,23 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Loader2, Rocket, Building2, Package, Check } from "lucide-react"
+import { Loader2, Rocket, Building2, Package, Check, User } from "lucide-react"
 import { toast } from "sonner"
 import { getSaaSProducts } from "@/modules/core/saas/actions" // Assuming backend logic is here
 import { SaasApp } from "@/modules/core/saas/app-management-actions"
-import { createOrganization } from "@/modules/core/organizations/actions"
+import { createOrganization, getCurrentOrgDetails } from "@/modules/core/organizations/actions"
 
 interface CreateOrganizationSheetProps {
     open: boolean
     onOpenChange: (open: boolean) => void
     onSuccess?: () => void
+    initialData?: {
+        name?: string
+        email?: string
+    }
 }
 
-export function CreateOrganizationSheet({ open, onOpenChange, onSuccess }: CreateOrganizationSheetProps) {
+export function CreateOrganizationSheet({ open, onOpenChange, onSuccess, initialData }: CreateOrganizationSheetProps) {
     const router = useRouter()
     const [isLoading, setIsLoading] = useState(false)
     const [products, setProducts] = useState<SaasApp[]>([])
@@ -28,23 +32,53 @@ export function CreateOrganizationSheet({ open, onOpenChange, onSuccess }: Creat
     // Form State
     const [name, setName] = useState("")
     const [slug, setSlug] = useState("")
+    const [adminEmail, setAdminEmail] = useState("")
     const [selectedProductId, setSelectedProductId] = useState<string | null>(null)
 
-    // Fetch products
+    // V2: Hierarchy State
+    const [currentParentOrg, setCurrentParentOrg] = useState<any>(null)
+    const [orgType, setOrgType] = useState<'reseller' | 'client'>('client')
+
+    // Fetch products and context
     useEffect(() => {
         if (open) {
-            fetchProducts()
+            fetchInitialData()
+            // Automagic Pre-fill
+            if (initialData) {
+                if (initialData.name) {
+                    setName(initialData.name)
+                    // Generate Slug
+                    setSlug(initialData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, ''))
+                }
+                if (initialData.email) {
+                    setAdminEmail(initialData.email)
+                }
+            } else {
+                // Reset if no initial data (typical behavior for shared sheet)
+                // But wait, if user closes and reopens manual, should it reset? 
+                // Best to reset form on open if NOT initialData, or just rely on state preservation if intended.
+                // For now, let's keep simple.
+            }
         }
-    }, [open])
+    }, [open, initialData])
 
-    const fetchProducts = async () => {
+    const fetchInitialData = async () => {
         setLoadingProducts(true)
         try {
-            const data = await getSaaSProducts()
-            setProducts(data.filter(p => p.status === 'published' || true))
+            const [prods, orgDetails] = await Promise.all([
+                getSaaSProducts(),
+                getCurrentOrgDetails()
+            ])
+            setProducts(prods.filter(p => p.is_active))
+            setCurrentParentOrg(orgDetails)
+
+            // Auto-set type based on parent
+            if (orgDetails?.organization_type === 'reseller') {
+                setOrgType('client')
+            }
         } catch (error) {
             console.error(error)
-            toast.error("Error cargando productos")
+            toast.error("Error cargando datos")
         } finally {
             setLoadingProducts(false)
         }
@@ -68,10 +102,22 @@ export function CreateOrganizationSheet({ open, onOpenChange, onSuccess }: Creat
 
         setIsLoading(true)
         try {
+            // Logic:
+            // If Platform -> Parent = NULL (unless user wants to nest?), Type = User Selected
+            // If Reseller -> Parent = CurrentOrg, Type = Client
+
+            let parentId = null
+            if (currentParentOrg?.organization_type === 'reseller') {
+                parentId = currentParentOrg.id
+            }
+
             const result = await createOrganization({
                 name,
                 slug,
-                app_id: selectedProductId, // Changed from subscription_product_id to app_id
+                app_id: selectedProductId,
+                parent_organization_id: parentId, // V2
+                organization_type: orgType, // V2
+                admin_email: adminEmail || undefined, // New: Automated Onboarding
             })
 
             if (result.success) {
@@ -152,6 +198,86 @@ export function CreateOrganizationSheet({ open, onOpenChange, onSuccess }: Creat
                                                 <span className="text-gray-900 font-medium ml-0.5">{slug}</span>
                                             </div>
                                         </div>
+
+                                        <div className="space-y-3 pt-2">
+                                            <Label className="flex items-center justify-between">
+                                                <span>Email del Administrador</span>
+                                                <span className="text-xs font-normal text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">Automático</span>
+                                            </Label>
+                                            <Input
+                                                className="h-11"
+                                                placeholder="admin@cliente.com (Opcional)"
+                                                value={adminEmail}
+                                                onChange={(e) => setAdminEmail(e.target.value)}
+                                            />
+                                            <p className="text-[11px] text-muted-foreground">
+                                                Si ingresas un correo, le enviaremos una invitación mágica para acceder instantáneamente a esta organización.
+                                            </p>
+                                        </div>
+
+                                        {/* V2: Hierarchy Logic */}
+                                        {currentParentOrg?.organization_type === 'platform' && (
+                                            <div className="pt-4 border-t border-gray-100">
+                                                <Label className="text-gray-900 mb-4 block">Tipo de Organización</Label>
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div
+                                                        onClick={() => setOrgType('reseller')}
+                                                        className={`
+                                                            group relative cursor-pointer p-4 rounded-xl border-2 transition-all duration-200
+                                                            ${orgType === 'reseller'
+                                                                ? 'border-gray-900 bg-gray-50'
+                                                                : 'border-gray-100 bg-white hover:border-gray-200 hover:bg-gray-50/50'
+                                                            }
+                                                        `}
+                                                    >
+                                                        <div className={`mb-3 h-8 w-8 rounded-lg flex items-center justify-center transition-colors ${orgType === 'reseller' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500 group-hover:bg-gray-200'}`}>
+                                                            <Building2 className="h-4 w-4" />
+                                                        </div>
+                                                        <div className="font-semibold text-sm text-gray-900">Reseller</div>
+                                                        <div className="text-xs text-gray-500 mt-0.5">Agencia / Franquicia</div>
+
+                                                        {orgType === 'reseller' && (
+                                                            <div className="absolute top-3 right-3 h-2 w-2 rounded-full bg-green-500" />
+                                                        )}
+                                                    </div>
+
+                                                    <div
+                                                        onClick={() => setOrgType('client')}
+                                                        className={`
+                                                            group relative cursor-pointer p-4 rounded-xl border-2 transition-all duration-200
+                                                            ${orgType === 'client'
+                                                                ? 'border-gray-900 bg-gray-50'
+                                                                : 'border-gray-100 bg-white hover:border-gray-200 hover:bg-gray-50/50'
+                                                            }
+                                                        `}
+                                                    >
+                                                        <div className={`mb-3 h-8 w-8 rounded-lg flex items-center justify-center transition-colors ${orgType === 'client' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500 group-hover:bg-gray-200'}`}>
+                                                            <User className="h-4 w-4" />
+                                                        </div>
+                                                        <div className="font-semibold text-sm text-gray-900">Cliente Final</div>
+                                                        <div className="text-xs text-gray-500 mt-0.5">Cuenta Directa</div>
+
+                                                        {orgType === 'client' && (
+                                                            <div className="absolute top-3 right-3 h-2 w-2 rounded-full bg-green-500" />
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {currentParentOrg?.organization_type === 'reseller' && (
+                                            <div className="p-4 bg-blue-50 rounded-xl border border-blue-100 flex items-center gap-3">
+                                                <div className="h-8 w-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-bold text-xs">
+                                                    R
+                                                </div>
+                                                <div>
+                                                    <div className="text-xs font-bold text-blue-900 uppercase">Reseller Mode</div>
+                                                    <div className="text-xs text-blue-700">
+                                                        Creando Cliente bajo <span className="font-bold">{currentParentOrg.name}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* Selected Product Summary */}
