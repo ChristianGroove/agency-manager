@@ -99,7 +99,8 @@ export async function resetPasswordRequest(formData: FormData) {
         return { success: true }
     } catch (err: any) {
         console.error("Critical error in resetPasswordRequest:", err)
-        return { success: false, error: "Error interno del sistema. Contacte soporte." }
+        // DEBUG: Exposing full error to UI for diagnosis
+        return { success: false, error: err.message || "Unknown error" }
     }
 }
 
