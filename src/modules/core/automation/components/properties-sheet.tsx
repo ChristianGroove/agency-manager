@@ -11,7 +11,8 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Node } from '@xyflow/react';
-import { Trash2, Copy, Zap, Box, Settings2, X, Check, Database, Globe, Mail, MessageSquare, Plus, AlertCircle } from 'lucide-react';
+import { Trash2, Copy, Zap, Box, Settings2, X, Check, Database, Globe, Mail, MessageSquare, Plus, AlertCircle, MousePointer, Clock, Tag, ArrowRightCircle } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 
@@ -201,6 +202,29 @@ export function PropertiesSheet({ node, isOpen, onClose, onUpdate, onDelete, onD
             }
         }
 
+        // Buttons node validations
+        if (node.type === 'buttons') {
+            if (!formData.body || (formData.body as string).trim() === '') {
+                newErrors.body = 'El mensaje es requerido';
+            }
+            if (formData.messageType === 'buttons') {
+                const buttons = (formData.buttons as any[]) || [];
+                if (buttons.length === 0) {
+                    newErrors.buttons = 'Agrega al menos un botón';
+                }
+                if (buttons.some(b => !b.title)) {
+                    newErrors.buttons = 'Todos los botones deben tener texto';
+                }
+            }
+        }
+
+        // WaitInput node validations
+        if (node.type === 'wait_input') {
+            if (!formData.timeout) {
+                newErrors.timeout = 'Define un tiempo máximo de espera';
+            }
+        }
+
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
@@ -252,6 +276,22 @@ export function PropertiesSheet({ node, isOpen, onClose, onUpdate, onDelete, onD
         HeaderIcon = MessageSquare;
         headerColor = "bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400";
         typeLabel = "SMS";
+    } else if (node.type === 'buttons') {
+        HeaderIcon = MousePointer;
+        headerColor = "bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400";
+        typeLabel = "Interactive Buttons";
+    } else if (node.type === 'wait_input') {
+        HeaderIcon = Clock;
+        headerColor = "bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400";
+        typeLabel = "Wait For Input";
+    } else if (node.type === 'tag') {
+        HeaderIcon = Tag;
+        headerColor = "bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400";
+        typeLabel = "Manage Tags";
+    } else if (node.type === 'stage') {
+        HeaderIcon = ArrowRightCircle;
+        headerColor = "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400";
+        typeLabel = "Change Stage";
     } else {
         // Action defaults
         HeaderIcon = Box;
@@ -1001,6 +1041,269 @@ export function PropertiesSheet({ node, isOpen, onClose, onUpdate, onDelete, onD
                                     onChange={(e) => handleChange('temperature', parseFloat(e.target.value))}
                                     className="bg-slate-50 dark:bg-slate-900"
                                 />
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Buttons Node Configuration */}
+                    {node.type === 'buttons' && (
+                        <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                            <Separator className="bg-slate-100 dark:bg-slate-800" />
+                            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                Configuración de Botones
+                            </Label>
+
+                            <div className="space-y-3">
+                                <Label>Tipo de Mensaje</Label>
+                                <Select
+                                    value={(formData.messageType as string) || 'buttons'}
+                                    onValueChange={(v) => handleChange('messageType', v)}
+                                >
+                                    <SelectTrigger className="h-10 bg-slate-50 dark:bg-slate-900">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="buttons">Botones Simples (Max 3)</SelectItem>
+                                        <SelectItem value="list">Lista de Opciones (Max 10)</SelectItem>
+                                        <SelectItem value="cta" disabled>Llamada a la Acción (URL/Tel)</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label>Cuerpo del Mensaje<span className="text-red-500 ml-1">*</span></Label>
+                                <Textarea
+                                    value={(formData.body as string) || ''}
+                                    onChange={(e) => handleChange('body', e.target.value)}
+                                    placeholder="Selecciona una opción del menú..."
+                                    rows={4}
+                                    className="resize-none bg-slate-50 dark:bg-slate-900 font-mono text-sm"
+                                />
+                                <p className="text-xs text-muted-foreground">Soporta variables {'{{...}}'}</p>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label>Encabezado (Opcional)</Label>
+                                    <Input
+                                        value={(formData.header as string) || ''}
+                                        onChange={(e) => handleChange('header', e.target.value)}
+                                        placeholder="Negrita superior"
+                                        className="bg-slate-50 dark:bg-slate-900"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Pie de página (Opcional)</Label>
+                                    <Input
+                                        value={(formData.footer as string) || ''}
+                                        onChange={(e) => handleChange('footer', e.target.value)}
+                                        placeholder="Texto gris pequeño"
+                                        className="bg-slate-50 dark:bg-slate-900"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-3 pt-2">
+                                <div className="flex items-center justify-between">
+                                    <Label>Opciones (Botones)</Label>
+                                    <span className="text-xs text-muted-foreground">
+                                        {((formData.buttons as any[]) || []).length} / {formData.messageType === 'list' ? 10 : 3}
+                                    </span>
+                                </div>
+
+                                {((formData.buttons as Array<{ id: string, title: string }>) || []).map((btn, index) => (
+                                    <div key={index} className="flex gap-2 items-center">
+                                        <div className="grid grid-cols-[1fr,auto] gap-2 flex-1">
+                                            <Input
+                                                value={btn.title}
+                                                onChange={(e) => {
+                                                    const buttons = (formData.buttons as any[]) || [];
+                                                    buttons[index] = { ...buttons[index], title: e.target.value };
+                                                    handleChange('buttons', buttons);
+                                                }}
+                                                placeholder={`Opción ${index + 1}`}
+                                                className="h-9 bg-white dark:bg-slate-950"
+                                            />
+                                            <div className="h-9 px-3 flex items-center justify-center bg-slate-100 rounded text-xs font-mono text-slate-500">
+                                                {btn.id}
+                                            </div>
+                                        </div>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => {
+                                                const buttons = (formData.buttons as any[]) || [];
+                                                handleChange('buttons', buttons.filter((_, i) => i !== index));
+                                            }}
+                                            className="h-9 w-9 text-slate-400 hover:text-red-500"
+                                        >
+                                            <Trash2 size={16} />
+                                        </Button>
+                                    </div>
+                                ))}
+
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                        const buttons = (formData.buttons as any[]) || [];
+                                        const max = formData.messageType === 'list' ? 10 : 3;
+                                        if (buttons.length >= max) {
+                                            toast.error(`Máximo ${max} opciones permitidas`);
+                                            return;
+                                        }
+                                        const newId = `btn_${Math.random().toString(36).substr(2, 5)}`;
+                                        handleChange('buttons', [...buttons, { id: newId, title: '' }]);
+                                    }}
+                                    className="w-full border-dashed"
+                                >
+                                    <Plus size={14} className="mr-2" />
+                                    Agregar Opción
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Wait Input Configuration */}
+                    {node.type === 'wait_input' && (
+                        <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                            <Separator className="bg-slate-100 dark:bg-slate-800" />
+                            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                Configuración de Espera
+                            </Label>
+
+                            <div className="space-y-3">
+                                <Label>Tipo de Respuesta Esperada</Label>
+                                <Select
+                                    value={(formData.inputType as string) || 'any'}
+                                    onValueChange={(v) => handleChange('inputType', v)}
+                                >
+                                    <SelectTrigger className="h-10 bg-slate-50 dark:bg-slate-900">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="any">Cualquier Respuesta</SelectItem>
+                                        <SelectItem value="text">Solo Texto</SelectItem>
+                                        <SelectItem value="button_click">Clic en Botón (Interactivo)</SelectItem>
+                                        <SelectItem value="image">Imagen / Foto</SelectItem>
+                                        <SelectItem value="location">Ubicación</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label>Guardar Respuesta en Variable</Label>
+                                <div className="relative">
+                                    <Input
+                                        value={(formData.storeAs as string) || ''}
+                                        onChange={(e) => handleChange('storeAs', e.target.value)}
+                                        placeholder="ej. respuesta_cliente"
+                                        className="bg-slate-50 dark:bg-slate-900 pl-9"
+                                    />
+                                    <span className="absolute left-3 top-2.5 text-slate-400 font-mono text-sm">{'{{'}</span>
+                                    <span className="absolute right-3 top-2.5 text-slate-400 font-mono text-sm">{'}}'}</span>
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                    Podrás usar esta variable en pasos siguientes como {'{{respuesta_cliente}}'}
+                                </p>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label>Tiempo Máximo (Timeout)</Label>
+                                    <Input
+                                        value={(formData.timeout as string) || '1h'}
+                                        onChange={(e) => handleChange('timeout', e.target.value)}
+                                        placeholder="ej. 30m, 1h, 24h"
+                                        className="bg-slate-50 dark:bg-slate-900"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Acción al Expirar</Label>
+                                    <Select
+                                        value={(formData.timeoutAction as string) || 'continue'}
+                                        onValueChange={(v) => handleChange('timeoutAction', v)}
+                                    >
+                                        <SelectTrigger className="bg-slate-50 dark:bg-slate-900">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="continue">Continuar flujo</SelectItem>
+                                            <SelectItem value="branch">Branch (Camino alternativo)</SelectItem>
+                                            <SelectItem value="stop">Detener workflow</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Tag Node Configuration */}
+                    {node.type === 'tag' && (
+                        <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                            <Separator className="bg-slate-100 dark:bg-slate-800" />
+                            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                Configuración de Etiqueta
+                            </Label>
+
+                            <div className="space-y-3">
+                                <Label>Acción</Label>
+                                <Select
+                                    value={(formData.action as string) || 'add'}
+                                    onValueChange={(v) => handleChange('action', v)}
+                                >
+                                    <SelectTrigger className="h-10 bg-slate-50 dark:bg-slate-900">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="add">Añadir Etiqueta</SelectItem>
+                                        <SelectItem value="remove">Quitar Etiqueta</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label>Nombre de la Etiqueta</Label>
+                                <Input
+                                    value={(formData.tagName as string) || ''}
+                                    onChange={(e) => handleChange('tagName', e.target.value)}
+                                    placeholder="Ej. Interesado, VIP"
+                                    className="bg-slate-50 dark:bg-slate-900"
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                    Escribe el nombre exacto de la etiqueta. Si no existe, se creará automáticamente en "Añadir".
+                                </p>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Stage Node Configuration */}
+                    {node.type === 'stage' && (
+                        <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                            <Separator className="bg-slate-100 dark:bg-slate-800" />
+                            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                Configuración de Etapa (Pipeline)
+                            </Label>
+
+                            <div className="space-y-3">
+                                <Label>Mover a Etapa</Label>
+                                <Select
+                                    value={(formData.status as string) || 'new'}
+                                    onValueChange={(v) => handleChange('status', v)}
+                                >
+                                    <SelectTrigger className="h-10 bg-slate-50 dark:bg-slate-900">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="open">Abierto / Nuevo</SelectItem>
+                                        <SelectItem value="contacted">Contactado</SelectItem>
+                                        <SelectItem value="qualified">Calificado</SelectItem>
+                                        <SelectItem value="proposal">Propuesta Enviada</SelectItem>
+                                        <SelectItem value="negotiation">Negociación</SelectItem>
+                                        <SelectItem value="converted">Convertido / Ganado</SelectItem>
+                                        <SelectItem value="lost">Perdido</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
                         </div>
                     )}

@@ -118,7 +118,36 @@ export class WebhookManager {
 
         const conversationId = result.conversationId
 
-        // 2. AUTO ASSIGNMENT
+        // 2. CHECK SUSPENDED WORKFLOWS (Pending Inputs)
+        // Use Admin client because Webhooks are unauthenticated system events
+        const { supabaseAdmin } = await import('@/lib/supabase-admin')
+        const supabase = supabaseAdmin
+
+        // Find active pending input for this conversation
+        const { data: pendingInput } = await supabase
+            .from('workflow_pending_inputs')
+            .select('*')
+            .eq('conversation_id', conversationId)
+            .eq('status', 'waiting')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single()
+
+        if (pendingInput) {
+            console.log(`[WebhookManager] Found pending input for conversation ${conversationId}`)
+            const { resumeSuspendedWorkflow } = await import('@/modules/core/automation/runner')
+
+            // Resume
+            const result = await resumeSuspendedWorkflow(pendingInput.execution_id, pendingInput.id, msg)
+
+            if (result.success) {
+                console.log(`[WebhookManager] Workflow resumed successfully. Stopping further processing.`)
+                return // STOP HERE
+            }
+            // If resume failed (e.g. validation error), we proceed to possibly trigger other workflows or assignment
+        }
+
+        // 3. AUTO ASSIGNMENT
         // Import dynamically to avoid circular dependencies if any (though assignment-engine is "use server")
         try {
             const { assignConversation } = await import('./assignment-engine')
@@ -127,12 +156,10 @@ export class WebhookManager {
             console.error('[WebhookManager] Failed to run auto-assignment:', assignError)
         }
 
-        // 3. Find or Create Lead associated with this phone number (now handled by inboxService, but we check for workflows)
-        // Use Admin client because Webhooks are unauthenticated system events
-        const { supabaseAdmin } = await import('@/lib/supabase-admin')
-        const supabase = supabaseAdmin
+        // 4. Find or Create Lead associated with this phone number (now handled by inboxService, but we check for workflows)
+        // (Supabase admin already imported above)
 
-        // 4. Trigger Automation Workflows
+        // 5. Trigger Automation Workflows
         const { data: workflows, error } = await supabase
             .from('workflows')
             .select('*')

@@ -3,6 +3,11 @@ import { CRMNode, CRMNodeData } from './nodes/crm-node'
 import { HTTPNode, HTTPNodeData } from './nodes/http-node'
 import { EmailNode, EmailNodeData } from './nodes/email-node'
 import { SMSNode, SMSNodeData } from './nodes/sms-node'
+import { ButtonsNode, ButtonsNodeData } from './nodes/buttons-node'
+import { WaitInputNode, WaitInputNodeData } from './nodes/wait-input-node'
+
+import { TagNode, TagNodeData } from './nodes/tag-node'
+import { StageNode, StageNodeData } from './nodes/stage-node'
 import { queueWorkflowForResume } from './actions'
 
 export interface WorkflowNode {
@@ -121,6 +126,54 @@ export class WorkflowEngine {
             // Correctly filter by matching sourceHandle to the selected Path ID
             filteredEdges = outEdges.filter(e => e.sourceHandle === selectedPathId)
             console.log(`[Navigation] AB Split: ${selectedPathId} -> Following edge with handle: ${selectedPathId}`)
+        }
+        else if (node.type === 'buttons') {
+            // Check if we have a result from a button click (after suspension)
+            const result = this.context._lastInputResult as any
+
+            if (result && result.buttonId) {
+                // If we have a button ID, follow the specific handle
+                const buttonEdge = outEdges.find(e => e.sourceHandle === result.buttonId)
+                if (buttonEdge) {
+                    filteredEdges = [buttonEdge]
+                } else {
+                    // Fallback to 'continue' if specific button path not found
+                    filteredEdges = outEdges.filter(e => e.sourceHandle === 'continue')
+                }
+            } else {
+                // No result (pass-through mode) or Fallback
+                filteredEdges = outEdges.filter(e => e.sourceHandle === 'continue')
+                // If no continue edge, fallback to all (e.g. simple flow)
+                if (filteredEdges.length === 0) filteredEdges = outEdges
+            }
+        }
+
+        else if (node.type === 'wait_input') {
+            // WaitInput might have branching based on input!
+            const result = this.context._lastInputResult as any
+            if (result && result.nextBranchId) {
+                filteredEdges = outEdges.filter(e => e.sourceHandle === result.nextBranchId || e.sourceHandle === 'success')
+                // Prefer specific branch, fallback to success?
+                // Actually logic should be precise.
+                const branchEdge = outEdges.find(e => e.sourceHandle === result.nextBranchId)
+                if (branchEdge) {
+                    filteredEdges = [branchEdge]
+                } else {
+                    // Fallback to success/default
+                    filteredEdges = outEdges.filter(e => e.sourceHandle === 'success')
+                }
+            } else if (result && result.error) {
+                // Error path?
+            } else {
+                filteredEdges = outEdges.filter(e => e.sourceHandle === 'success' || e.sourceHandle === 'timeout')
+                // If we are here, we probably finished waiting.
+                // Check if it was a timeout
+                if (this.context._lastInputTimeout) {
+                    filteredEdges = outEdges.filter(e => e.sourceHandle === 'timeout')
+                } else {
+                    filteredEdges = outEdges.filter(e => e.sourceHandle === 'success')
+                }
+            }
         }
 
         const targetIds = filteredEdges.map(e => e.target)
@@ -320,6 +373,133 @@ export class WorkflowEngine {
 
                 console.log(`[AI-Agent] Output: ${mockOutput}`);
                 break;
+            }
+
+            case 'buttons': {
+                // Check if Resuming
+                const pendingInputResponse = this.context._resumedInputResponse as any
+
+                if (pendingInputResponse) {
+                    // RESUMED
+                    console.log(`[Buttons] Resumed with input:`, pendingInputResponse)
+
+                    const resultObj: any = {
+                        userInput: pendingInputResponse.content,
+                        buttonId: pendingInputResponse.buttonId
+                    }
+                    this.context._lastInputResult = resultObj
+                    delete this.context._resumedInputResponse
+                } else {
+                    // EXECUTE NODE (Send Message)
+                    const buttonsNode = new ButtonsNode(this.contextManager)
+                    const result = await buttonsNode.execute(node.data as unknown as ButtonsNodeData)
+                    if (!result.success) {
+                        throw new Error(result.error || 'Failed to send buttons')
+                    }
+
+                    // CHECK IF WE NEED TO WAIT (Hybrid Mode)
+                    // If there are outgoing edges connected to specific buttons, we MUST wait.
+                    const outEdges = this.definition.edges.filter(e => e.source === node.id && e.sourceHandle !== 'continue')
+
+                    // Or if explicitly configured to wait
+                    const shouldWait = (node.data as any).waitForResponse || outEdges.length > 0
+
+                    if (shouldWait) {
+                        const waitNode = new WaitInputNode(this.contextManager)
+                        const executionId = this.context.executionId as string
+
+                        // Create implicit configuration for waiting
+                        // We map button IDs to valid branches implies we accept 'button_click' or text matching title
+                        const waitConfig: WaitInputNodeData = {
+                            timeout: '24h', // Default for buttons
+                            inputType: 'button_click'
+                            // storeAs is optional
+                        }
+
+                        const waitResult = await waitNode.startWaiting(executionId, node.id, waitConfig)
+                        if (waitResult.suspended) {
+                            console.log(`[Buttons] Workflow suspended waiting for user interaction on buttons.`)
+                            throw new Error("WORKFLOW_SUSPENDED")
+                        }
+                    }
+                }
+                break;
+            }
+
+            case 'wait_input': {
+                const waitNode = new WaitInputNode(this.contextManager)
+                // This node is tricky. It usually suspends execution.
+                // We need to pass the Execution ID to it.
+                const executionId = this.context.executionId as string
+
+                // If we are RESUMING, we should have the input data in context already
+                // checking if we are resuming...
+                const pendingInputResponse = this.context._resumedInputResponse as any
+
+                if (pendingInputResponse) {
+                    // We have resumed! Process the input
+                    // Actually, the input processing might happen BEFORE resuming, 
+                    // and we just get the result here.
+                    // But usually we need to store the result in the context variable requested.
+
+                    const data = node.data as unknown as WaitInputNodeData
+                    if (data.storeAs) {
+                        this.contextManager.set(data.storeAs, pendingInputResponse)
+                    }
+
+                    // Set navigation flags
+                    const resultObj: any = {
+                        userInput: pendingInputResponse.content,
+                        buttonId: pendingInputResponse.buttonId,
+                        nextBranchId: pendingInputResponse.nextBranchId
+                    }
+
+                    // If it was a button click, we might need to map it again if not done
+                    if (data.buttonBranches && pendingInputResponse.buttonId) {
+                        resultObj.nextBranchId = data.buttonBranches[pendingInputResponse.buttonId]
+                    }
+
+                    this.context._lastInputResult = resultObj
+
+                    // Cleanup
+                    delete this.context._resumedInputResponse
+                    console.log(`[WaitInput] Resumed with input:`, pendingInputResponse)
+
+                } else {
+                    // SUSPEND
+                    const result = await waitNode.startWaiting(
+                        node.data as unknown as WaitInputNodeData,
+                        executionId,
+                        node.id
+                    )
+
+                    if (result.suspended) {
+                        this.context._suspended = {
+                            stepId: node.id,
+                            reason: 'wait_input'
+                        }
+                        console.log(`[WaitInput] Execution suspended for input.`)
+                        throw new Error("WORKFLOW_SUSPENDED")
+                    } else if (!result.success) {
+                        throw new Error(result.error)
+                    }
+                }
+                break;
+            }
+
+
+            case 'tag': {
+                const tagNode = new TagNode(this.contextManager)
+                const result = await tagNode.execute(node.data as unknown as TagNodeData)
+                if (!result.success) throw new Error(result.error || 'Failed to update tags')
+                break
+            }
+
+            case 'stage': {
+                const stageNode = new StageNode(this.contextManager)
+                const result = await stageNode.execute(node.data as unknown as StageNodeData)
+                if (!result.success) throw new Error(result.error || 'Failed to update stage')
+                break
             }
         }
     }

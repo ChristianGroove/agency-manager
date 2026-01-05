@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase-server"
 import { revalidatePath } from "next/cache"
 import { MetaProvider } from "./providers/meta-provider"
 import { inboxService } from "./inbox-service"
+import { supabaseAdmin } from "@/lib/supabase-admin"
 
 // Ensure env vars are loaded/checked securely in a real app
 const META_API_TOKEN = process.env.META_API_TOKEN!
@@ -302,6 +303,138 @@ export async function simulateInboundMessage(fromPhone: string = '555001122', me
         return { success: false, message: error.message }
     }
 }
+
+export async function sendOutboundMessage(conversationId: string, content: any, channel: string = 'whatsapp') {
+    // Wrapper for automation to use the existing logic or simplified logic
+    // We need to robustly handle the context where there might not be an active user session (automation)
+
+    // For now, we reuse the logic but we need to bypass the "User Auth" check if it's a system action.
+    // However, sendMessage heavily relies on `supabase.auth.getUser()`.
+    // Let's create a specialized version for automation that uses supabaseAdmin or skips auth checks.
+
+    const supabase = supabaseAdmin // Use Admin for automation to bypass RLS policies
+
+    // 1. Fetch Conversation
+    const { data: conversation, error: convError } = await supabase
+        .from('conversations')
+        .select(`
+            *,
+            leads ( phone, name )
+        `)
+        .eq('id', conversationId)
+        .single()
+
+    if (convError || !conversation) {
+        return { success: false, error: `Conversation not found: ${convError?.message}` }
+    }
+
+    const recipientPhone = conversation.leads?.phone || conversation.phone
+    if (!recipientPhone) return { success: false, error: "No recipient phone" }
+
+    // 2. Resolve Connection (Simple Default Strategy for Automation)
+    // We assume default connection for the channel
+    let provider: any = null
+    const providerKey = channel === 'evolution' ? 'evolution_api' : 'meta_whatsapp'
+
+    // Try bound connection first
+    let connection: any = null
+    if ((conversation as any).connection_id) {
+        const { data: boundConn } = await supabase
+            .from('integration_connections')
+            .select('*')
+            .eq('id', (conversation as any).connection_id)
+            .single()
+        connection = boundConn
+    }
+
+    if (!connection) {
+        const { data: defaultConn } = await supabase
+            .from('integration_connections')
+            .select('*')
+            .eq('organization_id', conversation.organization_id)
+            .eq('provider_key', providerKey)
+            .eq('status', 'active')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single()
+        connection = defaultConn
+    }
+
+    // Initialize Provider
+    if (connection) {
+        const creds = connection.credentials as any
+        if (channel === 'evolution') {
+            const { EvolutionProvider } = await import("./providers/evolution-provider")
+            provider = new EvolutionProvider({
+                baseUrl: creds.baseUrl,
+                apiKey: creds.apiKey,
+                instanceName: creds.instanceName
+            })
+        } else {
+            const { MetaProvider } = await import("./providers/meta-provider")
+            if (creds.mock_auth) {
+                provider = new MetaProvider(process.env.META_API_TOKEN!, process.env.META_PHONE_NUMBER_ID!, process.env.META_VERIFY_TOKEN!)
+            } else {
+                provider = new MetaProvider(creds.accessToken, creds.phoneNumberId, process.env.META_VERIFY_TOKEN!)
+            }
+        }
+    } else {
+        // Fallback Env
+        if (channel === 'whatsapp') {
+            const { MetaProvider } = await import("./providers/meta-provider")
+            provider = new MetaProvider(process.env.META_API_TOKEN!, process.env.META_PHONE_NUMBER_ID!, process.env.META_VERIFY_TOKEN!)
+        } else {
+            return { success: false, error: "No connection configuration found" }
+        }
+    }
+
+    // 3. Normalize Content & Send
+    // Content is already an object (ButtonsNode passes object)
+    const providerOptions: any = {
+        to: recipientPhone,
+        content: {
+            type: content.type === 'document' ? 'image' : content.type,
+            text: content.text || content.body || content.caption, // Fallback for various structures
+            mediaUrl: content.url || content.mediaUrl,
+            // For interactive messages (buttons-node passes these)
+            buttons: content.buttons,
+            sections: content.sections,
+            buttonText: content.buttonText,
+            header: content.header,
+            footer: content.footer
+        }
+    }
+
+    // Special handling for interactive types in MetaProvider
+    if (['interactive_buttons', 'interactive_list', 'interactive_cta'].includes(content.type)) {
+        providerOptions.content = content // Pass the full structured object for MetaProvider to handle
+    }
+
+    try {
+        const result = await provider.sendMessage(providerOptions)
+        if (!result.success) throw new Error(result.error)
+
+        // 4. Save to DB (As System/Bot)
+        const senderId = 'Automation Bot'
+        const messageId = result.messageId || `auto_${Date.now()}`
+
+        await inboxService.saveOutboundMessage(
+            conversationId,
+            content, // Save structured content
+            messageId,
+            senderId,
+            undefined,
+            channel
+        )
+
+        return { success: true, externalId: messageId }
+
+    } catch (e: any) {
+        console.error('[sendOutboundMessage] Error:', e)
+        return { success: false, error: e.message }
+    }
+}
+
 
 export async function getMessages(conversationId: string) {
     const supabase = await createClient()

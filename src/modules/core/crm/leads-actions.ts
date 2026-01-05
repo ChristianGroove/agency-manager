@@ -84,6 +84,30 @@ export async function createLeadSystem(input: CreateLeadInput, organizationId: s
     }
 }
 
+export async function updateLeadStatusSystem(leadId: string, newStatus: string, organizationId?: string): Promise<ActionResponse<Lead>> {
+    try {
+        const query = supabaseAdmin
+            .from('leads')
+            .update({ status: newStatus })
+            .eq('id', leadId)
+
+        // Extra safety if org ID provided
+        if (organizationId) {
+            query.eq('organization_id', organizationId)
+        }
+
+        const { data, error } = await query
+            .select()
+            .single()
+
+        if (error) throw error
+        return { success: true, data: data as Lead }
+    } catch (error: any) {
+        console.error("Error updating lead status (system):", error)
+        return { success: false, error: error.message }
+    }
+}
+
 export async function convertLeadToClient(leadId: string): Promise<ActionResponse<Client>> {
     const supabase = await createClient()
 

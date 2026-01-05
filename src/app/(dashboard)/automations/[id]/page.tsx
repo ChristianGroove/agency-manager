@@ -19,7 +19,7 @@ import {
 import '@xyflow/react/dist/style.css';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Save, Settings2, Box, Zap, ArrowLeft, Database, Undo2, Redo2, Globe, Mail, MessageSquare, Sparkles, GitBranch, Split, FlaskConical, LayoutGrid } from 'lucide-react';
+import { Save, Settings2, Box, Zap, ArrowLeft, Database, Undo2, Redo2, Globe, Mail, MessageSquare, Sparkles, GitBranch, Split, FlaskConical, LayoutGrid, MousePointer, Clock, Tag, ArrowRightCircle, Smartphone } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 
@@ -28,9 +28,14 @@ import ActionNode from '@/modules/core/automation/components/nodes/ActionNode';
 import CRMNode from '@/modules/core/automation/components/nodes/CRMNode';
 import HTTPNode from '@/modules/core/automation/components/nodes/HTTPNode';
 import EmailNode from '@/modules/core/automation/components/nodes/EmailNode';
+import { cn } from '@/lib/utils';
 import SMSNode from '@/modules/core/automation/components/nodes/SMSNode';
 import ABTestNode from '@/modules/core/automation/components/nodes/ABTestNode';
 import AIAgentNode from '@/modules/core/automation/components/nodes/AIAgentNode';
+import ButtonsNode from '@/modules/core/automation/components/nodes/ButtonsNode';
+import WaitInputNode from '@/modules/core/automation/components/nodes/WaitInputNode';
+import TagNode from '@/modules/core/automation/components/nodes/TagNode';
+import StageNode from '@/modules/core/automation/components/nodes/StageNode';
 import { PropertiesSheet } from '@/modules/core/automation/components/properties-sheet';
 import { TestPanel } from '@/modules/core/automation/components/test-panel';
 import { AISuggestionsPanel } from '@/modules/core/automation/components/ai-suggestions-panel';
@@ -38,6 +43,8 @@ import { createWorkflowVersion, getWorkflow, saveWorkflow } from '@/modules/core
 import { VersionHistorySheet } from '@/modules/core/automation/components/version-history-sheet';
 import { WorkflowSettingsSheet } from '@/modules/core/automation/components/workflow-settings-sheet';
 import { WORKFLOW_TEMPLATES } from '@/modules/core/automation/templates';
+import { getLayoutedElements } from '@/modules/core/automation/utils/layout-utils';
+import { SimulatorOverlay } from '@/modules/core/automation/components/simulator/SimulatorOverlay';
 
 const nodeTypes = {
     trigger: TriggerNode,
@@ -48,6 +55,10 @@ const nodeTypes = {
     sms: SMSNode,
     ab_test: ABTestNode,
     ai_agent: AIAgentNode,
+    buttons: ButtonsNode,
+    wait_input: WaitInputNode,
+    tag: TagNode,
+    stage: StageNode,
 };
 
 function WorkflowEditorContent({ id }: { id: string }) {
@@ -73,6 +84,8 @@ function WorkflowEditorContent({ id }: { id: string }) {
     // Undo/Redo history
     const [history, setHistory] = useState<{ nodes: Node[]; edges: Edge[] }[]>([]);
     const [historyIndex, setHistoryIndex] = useState(-1);
+
+    const [simulatorOpen, setSimulatorOpen] = useState(false);
 
     // Load workflow
     useEffect(() => {
@@ -427,43 +440,17 @@ function WorkflowEditorContent({ id }: { id: string }) {
             return;
         }
 
-        // Simple vertical layout algorithm
-        const nodeSpacingY = 150;
-        const nodeSpacingX = 250;
-
-        // Find trigger nodes (roots)
-        const triggerNodes = nodes.filter(n => n.type === 'trigger');
-        const otherNodes = nodes.filter(n => n.type !== 'trigger');
-
-        // Position trigger nodes at top
-        const newNodes = [...nodes];
-        triggerNodes.forEach((trigger, i) => {
-            const nodeIndex = newNodes.findIndex(n => n.id === trigger.id);
-            if (nodeIndex !== -1) {
-                newNodes[nodeIndex] = {
-                    ...newNodes[nodeIndex],
-                    position: { x: i * nodeSpacingX + 100, y: 50 }
-                };
-            }
-        });
-
-        // Position other nodes below
-        otherNodes.forEach((node, i) => {
-            const nodeIndex = newNodes.findIndex(n => n.id === node.id);
-            if (nodeIndex !== -1) {
-                const row = Math.floor(i / 3) + 1;
-                const col = i % 3;
-                newNodes[nodeIndex] = {
-                    ...newNodes[nodeIndex],
-                    position: { x: col * nodeSpacingX + 100, y: row * nodeSpacingY + 50 }
-                };
-            }
-        });
-
-        setNodes(newNodes);
-        saveToHistory();
-        toast.success('Nodos organizados automáticamente');
-    }, [nodes, setNodes, saveToHistory]);
+        try {
+            const layouted = getLayoutedElements(nodes, edges, { direction: 'TB' });
+            setNodes([...layouted.nodes]);
+            setEdges([...layouted.edges]);
+            saveToHistory();
+            toast.success('Nodos organizados automáticamente');
+        } catch (error) {
+            console.error('Layout error:', error);
+            toast.error('Error al organizar nodos');
+        }
+    }, [nodes, edges, setNodes, setEdges, saveToHistory]);
 
     if (isLoading) {
         return (
@@ -474,7 +461,7 @@ function WorkflowEditorContent({ id }: { id: string }) {
     }
 
     return (
-        <div className="fixed inset-0 md:left-[330px] top-[65px] flex flex-col bg-slate-100 dark:bg-slate-950 z-0">
+        <div className="relative w-full h-[calc(100vh-4rem)] flex flex-col bg-slate-100 dark:bg-slate-950">
             {/* Version History Sheet */}
             <VersionHistorySheet
                 workflowId={id}
@@ -514,8 +501,13 @@ function WorkflowEditorContent({ id }: { id: string }) {
                     <GitBranch className="h-4 w-4" />
                 </Button>
 
-                <Button size="icon" variant="ghost" className="rounded-full" onClick={() => setTestPanelOpen(true)} title="Test Workflow">
+                <Button size="icon" variant="ghost" className="rounded-full" onClick={() => setTestPanelOpen(true)} title="Debug & Dry Run (Panél de Pruebas)">
                     <FlaskConical className="h-4 w-4" />
+                </Button>
+
+                <Button size="sm" variant={simulatorOpen ? "default" : "secondary"} className={cn("rounded-full px-3 text-xs transition-colors", simulatorOpen ? "bg-emerald-600 hover:bg-emerald-700 text-white" : "bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400")} onClick={() => setSimulatorOpen(prev => !prev)} title={simulatorOpen ? "Cerrar Simulador" : "Abrir Simulador Visual"}>
+                    <Smartphone className="h-3.5 w-3.5 mr-2" />
+                    {simulatorOpen ? 'Ocultar' : 'Simular'}
                 </Button>
 
                 <Button size="icon" variant="ghost" className="rounded-full" onClick={() => setAIPanelOpen(true)} title="AI Suggestions">
@@ -566,6 +558,18 @@ function WorkflowEditorContent({ id }: { id: string }) {
                     <div className="h-10 w-10 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center shadow-sm cursor-grab hover:scale-110 transition-transform" draggable onDragStart={(e) => onDragStart(e, 'ai_agent')} title="AI Agent Node">
                         <Sparkles size={20} className="text-purple-600" />
                     </div>
+                    <div className="h-10 w-10 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center shadow-sm cursor-grab hover:scale-110 transition-transform" draggable onDragStart={(e) => onDragStart(e, 'buttons')} title="Botones Interactivos">
+                        <MousePointer size={20} className="text-violet-500" />
+                    </div>
+                    <div className="h-10 w-10 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center shadow-sm cursor-grab hover:scale-110 transition-transform" draggable onDragStart={(e) => onDragStart(e, 'wait_input')} title="Esperar Respuesta">
+                        <Clock size={20} className="text-amber-500" />
+                    </div>
+                    <div className="h-10 w-10 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center shadow-sm cursor-grab hover:scale-110 transition-transform" draggable onDragStart={(e) => onDragStart(e, 'tag')} title="Gestionar Etiquetas">
+                        <Tag size={20} className="text-orange-500" />
+                    </div>
+                    <div className="h-10 w-10 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center shadow-sm cursor-grab hover:scale-110 transition-transform" draggable onDragStart={(e) => onDragStart(e, 'stage')} title="Cambiar Etapa">
+                        <ArrowRightCircle size={20} className="text-blue-600" />
+                    </div>
                 </div>
             </div>
 
@@ -582,6 +586,7 @@ function WorkflowEditorContent({ id }: { id: string }) {
                     nodeTypes={nodeTypes}
                     onNodeClick={onNodeClick}
                     fitView
+                    proOptions={{ hideAttribution: true }}
                     className="bg-slate-50 dark:bg-slate-950"
                 >
                     <Controls
@@ -622,14 +627,22 @@ function WorkflowEditorContent({ id }: { id: string }) {
                 onAddNode={handleAddAISuggestion as any}
             />
 
-            {/* Test Panel */}
+            {/* Test Panel (Debug / Dry Run) */}
             <TestPanel
                 open={testPanelOpen}
                 onOpenChange={setTestPanelOpen}
                 workflowDefinition={{
                     nodes: nodes.map((n) => ({ ...n, data: n.data as Record<string, unknown> })) as any,
-                    edges: edges.map((e) => ({ id: e.id, source: e.source, target: e.target })),
+                    edges: edges.map((e) => ({ ...e })),
                 }}
+            />
+
+            {/* Visual Simulator Overlay */}
+            <SimulatorOverlay
+                open={simulatorOpen}
+                onClose={() => setSimulatorOpen(false)}
+                nodes={nodes}
+                edges={edges}
             />
 
             {/* Settings Sheet */}

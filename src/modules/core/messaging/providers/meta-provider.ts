@@ -275,6 +275,7 @@ export class MetaProvider implements MessagingProvider {
 
     /**
      * Helper to build Axios/Fetch payload for Meta API
+     * Supports: text, image, video, audio, document, template, interactive buttons/lists/cta
      */
     private buildPayload(options: SendMessageOptions): any {
         const payload: any = {
@@ -283,36 +284,154 @@ export class MetaProvider implements MessagingProvider {
             to: options.to,
         };
 
-        if (options.content.type === 'text') {
-            payload.type = 'text';
-            payload.text = { body: options.content.text };
-        } else if (options.content.type === 'template') {
-            payload.type = 'template';
-            payload.template = {
-                name: options.content.templateName,
-                language: { code: options.content.templateLanguage || 'en_US' },
-                components: []
-            };
+        const content = options.content;
 
-            // Handle variables logic here if needed
-            // For MVP, simplistic variable mapping
-        } else if (options.content.type === 'image') {
-            payload.type = 'image';
-            payload.image = { link: options.content.mediaUrl };
-        } else if (options.content.type === 'video') {
-            payload.type = 'video';
-            payload.video = { link: options.content.mediaUrl };
-        } else if (options.content.type === 'audio') {
-            payload.type = 'audio';
-            payload.audio = { link: options.content.mediaUrl };
-        } else if (options.content.type === 'document') {
-            payload.type = 'document';
-            payload.document = {
-                link: options.content.mediaUrl,
-                caption: options.content.text // documents can have captions
-            };
+        switch (content.type) {
+            case 'text':
+                payload.type = 'text';
+                payload.text = { body: content.text };
+                break;
+
+            case 'template':
+                payload.type = 'template';
+                payload.template = {
+                    name: content.templateName,
+                    language: { code: content.templateLanguage || 'en_US' },
+                    components: []
+                };
+                break;
+
+            case 'image':
+                payload.type = 'image';
+                payload.image = {
+                    link: content.mediaUrl,
+                    caption: content.caption
+                };
+                break;
+
+            case 'video':
+                payload.type = 'video';
+                payload.video = {
+                    link: content.mediaUrl,
+                    caption: content.caption
+                };
+                break;
+
+            case 'audio':
+                payload.type = 'audio';
+                payload.audio = { link: content.mediaUrl };
+                break;
+
+            case 'document':
+                payload.type = 'document';
+                payload.document = {
+                    link: content.mediaUrl,
+                    caption: content.caption,
+                    filename: content.filename
+                };
+                break;
+
+            case 'interactive_buttons':
+                payload.type = 'interactive';
+                payload.interactive = {
+                    type: 'button',
+                    body: { text: content.body },
+                    action: {
+                        buttons: content.buttons.slice(0, 3).map(btn => ({
+                            type: 'reply',
+                            reply: {
+                                id: btn.id,
+                                title: btn.title.substring(0, 20)  // Max 20 chars
+                            }
+                        }))
+                    }
+                };
+                // Optional header
+                if (content.header) {
+                    if (content.header.type === 'text') {
+                        payload.interactive.header = { type: 'text', text: content.header.text };
+                    } else if (content.header.mediaUrl) {
+                        payload.interactive.header = {
+                            type: content.header.type,
+                            [content.header.type]: { link: content.header.mediaUrl }
+                        };
+                    }
+                }
+                // Optional footer
+                if (content.footer) {
+                    payload.interactive.footer = { text: content.footer };
+                }
+                break;
+
+            case 'interactive_list':
+                payload.type = 'interactive';
+                payload.interactive = {
+                    type: 'list',
+                    body: { text: content.body },
+                    action: {
+                        button: content.buttonText.substring(0, 20),  // Menu button text
+                        sections: content.sections.slice(0, 10).map(section => ({
+                            title: section.title?.substring(0, 24),
+                            rows: section.rows.slice(0, 10).map(row => ({
+                                id: row.id,
+                                title: row.title.substring(0, 24),
+                                description: row.description?.substring(0, 72)
+                            }))
+                        }))
+                    }
+                };
+                if (content.header) {
+                    payload.interactive.header = { type: 'text', text: content.header };
+                }
+                if (content.footer) {
+                    payload.interactive.footer = { text: content.footer };
+                }
+                break;
+
+            case 'interactive_cta':
+                payload.type = 'interactive';
+                payload.interactive = {
+                    type: 'cta_url',
+                    body: { text: content.body },
+                    action: {
+                        name: 'cta_url',
+                        parameters: {
+                            display_text: content.buttons[0]?.text || 'Ver más',
+                            url: content.buttons[0]?.url || ''
+                        }
+                    }
+                };
+                if (content.header) {
+                    if (content.header.type === 'text') {
+                        payload.interactive.header = { type: 'text', text: content.header.text };
+                    } else if (content.header.mediaUrl) {
+                        payload.interactive.header = {
+                            type: content.header.type,
+                            [content.header.type]: { link: content.header.mediaUrl }
+                        };
+                    }
+                }
+                if (content.footer) {
+                    payload.interactive.footer = { text: content.footer };
+                }
+                break;
+
+            case 'location_request':
+                payload.type = 'interactive';
+                payload.interactive = {
+                    type: 'location_request_message',
+                    body: { text: content.body },
+                    action: { name: 'send_location' }
+                };
+                break;
+
+            default:
+                console.warn('[MetaProvider] Unknown message type:', (content as any).type);
+                payload.type = 'text';
+                payload.text = { body: 'Mensaje no soportado' };
         }
 
         return payload;
     }
 }
+
