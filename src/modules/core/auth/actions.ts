@@ -77,9 +77,18 @@ export async function resetPasswordRequest(formData: FormData) {
         return { success: false, error: linkError.message }
     }
 
-    const actionLink = linkData.properties?.action_link
+    let actionLink = linkData.properties?.action_link
     if (!actionLink) {
         return { success: false, error: "Failed to generate recovery link" }
+    }
+
+    // SANITIZATION: If Supabase returns localhost (due to config), force overwrite it to production
+    if (actionLink.includes('localhost')) {
+        console.log("SANITIZE: Replacing localhost in actionLink with app.pixy.com.co")
+        actionLink = actionLink.replace('http://localhost:3000', 'https://app.pixy.com.co')
+        actionLink = actionLink.replace('http://127.0.0.1:3000', 'https://app.pixy.com.co')
+        // Also fix encoded redirect_to if present
+        actionLink = actionLink.replace('redirect_to=http%3A%2F%2Flocalhost%3A3000', 'redirect_to=https%3A%2F%2Fapp.pixy.com.co')
     }
 
     try {
