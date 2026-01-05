@@ -59,12 +59,43 @@ export async function resetPasswordRequest(formData: FormData) {
 
     const redirectUrl = `${redirectBase}/update-password`
 
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: redirectUrl,
+    // 1. Generate Link (Admin API) - We do NOT ask Supabase to send the email
+    // We import admin client dynamically or use a service role helper if available here. 
+    // Since this is a server action, let's use the admin client directly.
+    const { supabaseAdmin } = await import('@/lib/supabase-admin')
+
+    const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+        type: 'recovery',
+        email,
+        options: {
+            redirectTo: redirectUrl
+        }
     })
 
-    if (error) {
-        return { success: false, error: error.message }
+    if (linkError) {
+        console.error("Link generation failed:", linkError)
+        return { success: false, error: linkError.message }
+    }
+
+    const actionLink = linkData.properties?.action_link
+    if (!actionLink) {
+        return { success: false, error: "Failed to generate recovery link" }
+    }
+
+    // 2. Send Email (Custom Service)
+    const { emailService } = await import('@/modules/core/communication/email-service')
+
+    // We can fetch agency info if needed for branding (e.g. determine which org the user belongs to)
+    // For now, using default 'Agencia OS' branding or user's specific context if known.
+    // Ideally we'd look up the user's primary organization here.
+
+    const sendResult = await emailService.sendEmail(email, 'password-reset', {
+        agency_name: 'Agencia OS', // Default or fetch dynamic name
+        link: actionLink
+    })
+
+    if (!sendResult.success) {
+        return { success: false, error: sendResult.error }
     }
 
     return { success: true }
