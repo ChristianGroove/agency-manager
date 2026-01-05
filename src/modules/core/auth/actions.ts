@@ -47,15 +47,14 @@ export async function resetPasswordRequest(formData: FormData) {
     const supabase = await createClient()
     const email = formData.get('email') as string
 
-    // NUCLEAR OPTION: Force production URL logic to prevent localhost leaks
-    let redirectBase = 'https://app.pixy.com.co' // Default production
+    // NUCLEAR OPTION: Force production URL logic strictly
+    // We intentionally ignore NODE_ENV=development here to prevent localhost leaks in password emails
+    let redirectBase = 'https://app.pixy.com.co'
 
     if (process.env.NEXT_PUBLIC_APP_URL && !process.env.NEXT_PUBLIC_APP_URL.includes('localhost')) {
         redirectBase = process.env.NEXT_PUBLIC_APP_URL.startsWith('http')
             ? process.env.NEXT_PUBLIC_APP_URL
             : `https://${process.env.NEXT_PUBLIC_APP_URL}`
-    } else if (process.env.NODE_ENV === 'development') {
-        redirectBase = 'http://localhost:3000'
     }
 
     const redirectUrl = `${redirectBase}/update-password`
