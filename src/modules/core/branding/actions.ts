@@ -5,6 +5,7 @@ import { supabaseAdmin } from "@/lib/supabase-admin"
 import { revalidatePath } from "next/cache"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
 import { getActiveModules } from "@/modules/core/saas/actions"
+import { requireOrgRole } from "@/lib/auth/org-roles"
 
 export interface BrandingConfig {
     name: string
@@ -22,11 +23,20 @@ export interface BrandingConfig {
     website?: string
     font_family?: string | null
     login_bg_color?: string | null
+    custom_domain?: string | null
+    invoice_footer?: string | null
+    portal_title?: string | null  // Custom title for client portal
+
+    // Document Specifics
+    document_logo_size?: 'small' | 'medium' | 'large'
+    document_show_watermark?: boolean
+
     socials: {
         facebook?: string
         instagram?: string
         twitter?: string
         linkedin?: string
+        youtube?: string
     }
 }
 
@@ -146,7 +156,7 @@ export async function getEffectiveBranding(orgId?: string | null): Promise<Brand
     const [platformBranding, modules, tenantSettingsResult] = await Promise.all([
         getPlatformSettings(),
         getActiveModules(orgId),
-        supabase
+        supabaseAdmin
             .from("organization_settings")
             .select(`
                 agency_name,
@@ -161,7 +171,13 @@ export async function getEffectiveBranding(orgId?: string | null): Promise<Brand
                 portal_login_background_color,
                 social_facebook,
                 social_instagram,
-                social_twitter
+                social_twitter,
+                social_linkedin,
+                social_youtube,
+                custom_domain,
+                invoice_footer,
+                document_logo_size,
+                document_show_watermark
             `)
             .eq("organization_id", orgId)
             .single()
@@ -199,11 +215,17 @@ export async function getEffectiveBranding(orgId?: string | null): Promise<Brand
         website: pick(tenantSettings.agency_website, platformBranding.website),
         font_family: pick(tenantSettings.brand_font_family, platformBranding.font_family),
         login_bg_color: pick(tenantSettings.portal_login_background_color, platformBranding.login_bg_color),
+        custom_domain: tenantSettings.custom_domain || null,
+        invoice_footer: tenantSettings.invoice_footer || null,
+        document_logo_size: tenantSettings.document_logo_size || 'medium',
+        document_show_watermark: tenantSettings.document_show_watermark ?? true,
 
         socials: {
             facebook: pick(tenantSettings.social_facebook, platformBranding.socials.facebook),
             instagram: pick(tenantSettings.social_instagram, platformBranding.socials.instagram),
-            twitter: pick(tenantSettings.social_twitter, platformBranding.socials.twitter)
+            twitter: pick(tenantSettings.social_twitter, platformBranding.socials.twitter),
+            linkedin: pick(tenantSettings.social_linkedin, platformBranding.socials.linkedin),
+            youtube: pick(tenantSettings.social_youtube, platformBranding.socials.youtube),
         }
     }
 }
@@ -218,6 +240,18 @@ export async function uploadBrandingAsset(formData: FormData) {
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
         throw new Error("No autorizado")
+    }
+
+    // Verify Admin for uploads
+    const orgId = await getCurrentOrganizationId()
+    if (orgId) {
+        // Only check if inside org context. If global profile upload, maybe skip?
+        // Branding is usually Org.
+        try {
+            await requireOrgRole('admin')
+        } catch (e) {
+            throw new Error("Unauthorized")
+        }
     }
 
     const file = formData.get("file") as File
@@ -252,4 +286,81 @@ export async function uploadBrandingAsset(formData: FormData) {
         .getPublicUrl(fileName)
 
     return { success: true, url: publicUrl }
+}
+
+/**
+ * Update Effective Branding (Organization Level)
+ */
+export async function updateOrganizationBranding(settings: BrandingConfig) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+        throw new Error("Unauthorized")
+    }
+
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) {
+        throw new Error("Organization not found")
+    }
+
+    try {
+        await requireOrgRole('admin')
+    } catch (e) {
+        throw new Error("Unauthorized: Requires admin role")
+    }
+
+    // Map BrandingConfig back to DB columns
+    // We update 'organization_settings'. 
+    // Note: We should probably check permissions (Owner/Admin) here, but assuming orgId context implies access for now.
+
+    const payload: any = {
+        organization_id: orgId,
+        updated_at: new Date().toISOString(),
+
+        // Identity
+        agency_name: settings.name,
+        agency_website: settings.website,
+        main_logo_url: settings.logos.main,
+        portal_logo_url: settings.logos.portal,
+        isotipo_url: settings.logos.favicon,
+
+        // Portal & Review
+        portal_primary_color: settings.colors.primary,
+        portal_secondary_color: settings.colors.secondary,
+        portal_login_background_url: settings.logos.login_bg,
+        brand_font_family: settings.font_family,
+        portal_login_background_color: settings.login_bg_color,
+
+        // Socials
+        social_facebook: settings.socials.facebook,
+        social_instagram: settings.socials.instagram,
+        social_twitter: settings.socials.twitter,
+        social_linkedin: settings.socials.linkedin,
+        social_youtube: settings.socials.youtube,
+
+        // New Fields
+        custom_domain: settings.custom_domain,
+        invoice_footer: settings.invoice_footer,
+        document_logo_size: settings.document_logo_size,
+        document_show_watermark: settings.document_show_watermark,
+    }
+
+    // Remove undefined values to avoid overwriting with null if we want partial updates?
+    // But BrandingConfig is "Complete" state from UI usually.
+    // However, if we pass undefined, Supabase might ignore or error.
+    // Let's clean payload.
+    Object.keys(payload).forEach(key => payload[key] === undefined && delete payload[key])
+
+    const { error } = await supabase
+        .from("organization_settings")
+        .upsert(payload, { onConflict: "organization_id" })
+
+    if (error) {
+        throw new Error("Failed to save branding: " + error.message)
+    }
+
+    revalidatePath("/platform/settings/branding")
+    revalidatePath("/platform/settings")
+    return { success: true }
 }

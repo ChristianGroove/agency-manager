@@ -1,8 +1,10 @@
 import { Suspense } from "react"
 import { SettingsForm } from "@/modules/core/settings/settings-form"
 import { getSettings } from "@/modules/core/settings/actions"
+import { getEffectiveBranding } from "@/modules/core/branding/actions"
 import { getOrganizationModules, getCurrentOrganizationId } from "@/modules/core/organizations/actions"
 import { getSubscriptionApp } from "@/modules/core/catalog/actions"
+import { getCurrentOrgRole } from "@/lib/auth/org-roles"
 import { Loader2 } from "lucide-react"
 
 export const metadata = {
@@ -17,11 +19,12 @@ export default async function SettingsPage() {
         return <div>Error: Organización no encontrada</div>
     }
 
-    // Fetch data in parallel
-    const [settings, activeModules, subscriptionApp] = await Promise.all([
+    const [settings, activeModules, subscriptionApp, brandingSettings, userRole] = await Promise.all([
         getSettings(),
         getOrganizationModules(orgId),
-        getSubscriptionApp()
+        getSubscriptionApp(),
+        getEffectiveBranding(orgId),
+        getCurrentOrgRole()
     ])
 
     return (
@@ -29,8 +32,10 @@ export default async function SettingsPage() {
             <Suspense fallback={<SettingsLoading />}>
                 <SettingsForm
                     initialSettings={settings || {}}
+                    brandingSettings={brandingSettings}
                     activeModules={activeModules || []}
                     subscriptionApp={subscriptionApp}
+                    userRole={userRole || 'member'}
                 />
             </Suspense>
         </div>

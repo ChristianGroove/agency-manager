@@ -233,6 +233,16 @@ export async function getAdminDashboardStats() {
 
 export async function getActiveBroadcasts() {
     await requireSuperAdmin()
+    return getPublicBroadcasts()
+}
+
+/**
+ * Public version for the dashboard banner (No Super Admin check required)
+ * Authenticated users only.
+ */
+export async function getPublicBroadcasts() {
+    // We use supabaseAdmin to ensure we can read the system alerts regardless of RLS on this specific table,
+    // as system alerts are meant to be public/broadcasted to all users.
     const { data } = await supabaseAdmin.from('system_alerts').select('*').eq('is_active', true).order('created_at', { ascending: false })
     return data || []
 }

@@ -5,6 +5,7 @@ import { supabaseAdmin } from "@/lib/supabase-admin"
 import { revalidatePath } from "next/cache"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
 import { getActiveModules } from "@/modules/core/saas/actions"
+import { requireOrgRole } from "@/lib/auth/org-roles"
 
 export async function getSettings() {
     const supabase = await createClient()
@@ -192,6 +193,12 @@ export async function updateSettings(data: any) {
         return { error: "Settings ID is required" }
     }
 
+    try {
+        await requireOrgRole('admin')
+    } catch (e) {
+        return { error: "Unauthorized: Requires admin role" }
+    }
+
     // SECURITY: Verify module access before allowing updates
     const activeModules = await getActiveModules(orgId)
     const validatedData = await validateSettingsData(updateData, activeModules || [])
@@ -279,6 +286,8 @@ export async function updateOrganizationBranding(data: {
     const orgId = await getCurrentOrganizationId()
 
     if (!orgId) throw new Error("No organization context")
+
+    await requireOrgRole('admin') // Strict check
 
     // Upsert organization_settings
     const { error } = await supabase
@@ -383,6 +392,12 @@ export async function updateDocumentBranding(settings: Partial<DocumentBrandingS
 
     if (!orgId) {
         return { error: "No organization selected" }
+    }
+
+    try {
+        await requireOrgRole('admin')
+    } catch (e) {
+        return { error: "Unauthorized" }
     }
 
     const { error } = await supabase

@@ -9,9 +9,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, UserPlus, Trash2, Mail, Shield, User } from "lucide-react"
+import { Loader2, UserPlus, Trash2, Mail, Shield, User, Pencil } from "lucide-react"
 import { toast } from "sonner"
 import { getOrganizationMembers, inviteMember, removeMember } from "./actions/team-actions"
+import { MemberEditSheet } from "./member-edit-sheet"
 
 export function TeamSettingsTab() {
     const [members, setMembers] = useState<any[]>([])
@@ -22,6 +23,10 @@ export function TeamSettingsTab() {
     const [inviteEmail, setInviteEmail] = useState("")
     const [inviteRole, setInviteRole] = useState("member")
     const [isInviting, setIsInviting] = useState(false)
+
+    // Edit member state
+    const [editingMember, setEditingMember] = useState<any>(null)
+    const [isEditOpen, setIsEditOpen] = useState(false)
 
     const loadMembers = async () => {
         setIsLoading(true)
@@ -187,16 +192,29 @@ export function TeamSettingsTab() {
                                             </div>
                                         </TableCell>
                                         <TableCell className="text-right">
-                                            {member.role !== 'owner' && (
+                                            <div className="flex items-center justify-end gap-1">
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
-                                                    className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                                                    onClick={() => handleRemove(member.user_id)}
+                                                    className="text-gray-500 hover:text-indigo-600 hover:bg-indigo-50"
+                                                    onClick={() => {
+                                                        setEditingMember(member)
+                                                        setIsEditOpen(true)
+                                                    }}
                                                 >
-                                                    <Trash2 className="h-4 w-4" />
+                                                    <Pencil className="h-4 w-4" />
                                                 </Button>
-                                            )}
+                                                {member.role !== 'owner' && (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                                                        onClick={() => handleRemove(member.user_id)}
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                )}
+                                            </div>
                                         </TableCell>
                                     </TableRow>
                                 ))
@@ -216,6 +234,14 @@ export function TeamSettingsTab() {
                     </p>
                 </div>
             </div>
+
+            {/* Member Edit Sheet */}
+            <MemberEditSheet
+                open={isEditOpen}
+                onOpenChange={setIsEditOpen}
+                member={editingMember}
+                onSave={loadMembers}
+            />
         </div>
     )
 }

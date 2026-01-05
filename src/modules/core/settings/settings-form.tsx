@@ -21,7 +21,10 @@ import { COMMUNICATION_VARIABLES, DEFAULT_TEMPLATES } from "@/lib/communication-
 import { useEffect } from "react"
 import { SplitText } from "@/components/ui/split-text"
 import { getSettings, updateSettings } from "@/modules/core/settings/actions"
-import { PortalSettingsTab } from "./portal-settings-tab"
+import { BrandingConfig } from "@/modules/core/branding/actions"
+import { BrandCenterSheet } from "@/modules/core/branding/components/brand-center-sheet"
+import { OrganizationRole } from "@/lib/auth/org-roles"
+
 import { TeamSettingsTab } from "./team-settings-tab"
 import { EmailLogsTable } from "@/modules/core/notifications/components/email-logs-table"
 import { Bell } from "lucide-react"
@@ -34,9 +37,11 @@ interface SettingsFormProps {
     initialSettings: any
     activeModules: string[]
     subscriptionApp?: SaasApp | null
+    brandingSettings?: BrandingConfig
+    userRole: OrganizationRole
 }
 
-export function SettingsForm({ initialSettings, activeModules, subscriptionApp }: SettingsFormProps) {
+export function SettingsForm({ initialSettings, activeModules, subscriptionApp, brandingSettings, userRole }: SettingsFormProps) {
     // ... existing code ...
 
     // ADD LOCAL STATE FOR SUBSCRIPTION APP (Optional, mostly passed down)
@@ -58,6 +63,7 @@ export function SettingsForm({ initialSettings, activeModules, subscriptionApp }
 
     // Local UI Settings State
     const [showMarqueeLocal, setShowMarqueeLocal] = useState(false)
+    const [showBrandCenter, setShowBrandCenter] = useState(false)
 
     useEffect(() => {
         // Load local setting on mount
@@ -139,18 +145,13 @@ export function SettingsForm({ initialSettings, activeModules, subscriptionApp }
         requiredModules?: string[]
         matchAny?: boolean
         isCore?: boolean
+        minRole?: OrganizationRole
         featureFlag?: () => boolean
         customCheck?: (modules: string[]) => boolean
     }
 
     const TABS_CONFIG: SettingsTab[] = [
-        {
-            id: 'agency',
-            label: 'Negocio',
-            icon: Building2,
-            requiredModule: null,
-            isCore: true
-        },
+
         {
             id: 'subscription',
             label: 'Suscripción',
@@ -163,27 +164,31 @@ export function SettingsForm({ initialSettings, activeModules, subscriptionApp }
             label: 'Equipo',
             icon: Users,
             requiredModule: null,
-            isCore: true
+            isCore: true,
+            minRole: 'admin'
         },
         {
             id: 'general',
             label: 'General',
             icon: Globe,
             requiredModule: null,
-            isCore: true
+            isCore: true,
+            minRole: 'member'
         },
         {
             id: 'notifications',
             label: 'Notificaciones',
             icon: Bell,
             requiredModule: 'module_communications',
-            matchAny: true // Or maybe strictly communications? The validation logic used module_communications for email settings.
+            matchAny: true,
+            minRole: 'member'
         },
         {
             id: 'billing',
             label: 'Facturación',
             icon: FileText,
-            requiredModule: 'module_invoicing'
+            requiredModule: 'module_invoicing',
+            minRole: 'admin'
         },
 
         {
@@ -191,7 +196,8 @@ export function SettingsForm({ initialSettings, activeModules, subscriptionApp }
             label: 'Pagos',
             icon: CreditCard,
             requiredModules: ['module_payments', 'module_invoicing'],
-            matchAny: true
+            matchAny: true,
+            minRole: 'admin'
         },
         {
             id: 'portal',
@@ -218,7 +224,13 @@ export function SettingsForm({ initialSettings, activeModules, subscriptionApp }
 
     const getVisibleTabs = (activeModules: string[]) => {
         return TABS_CONFIG.filter(tab => {
-            // Always show core tabs
+            // 1. RBAC Check
+            if (tab.minRole) {
+                if (tab.minRole === 'admin' && userRole === 'member') return false
+                if (tab.minRole === 'owner' && userRole !== 'owner') return false
+            }
+
+            // Always show core tabs (subject to RBAC above)
             if (tab.isCore) return true
 
             // Check feature flag if exists
@@ -249,6 +261,14 @@ export function SettingsForm({ initialSettings, activeModules, subscriptionApp }
 
     return (
         <div className="space-y-6">
+            {brandingSettings && (
+                <BrandCenterSheet
+                    open={showBrandCenter}
+                    onOpenChange={setShowBrandCenter}
+                    settings={brandingSettings}
+                    activeModules={activeModules}
+                />
+            )}
             <div className="flex items-center justify-between">
                 <div>
                     <h2 className="text-3xl font-bold tracking-tight text-gray-900">
@@ -256,13 +276,15 @@ export function SettingsForm({ initialSettings, activeModules, subscriptionApp }
                     </h2>
                     <p className="text-muted-foreground">Administra los datos de tu negocio y preferencias globales.</p>
                 </div>
-                <Button onClick={handleSubmit} disabled={isLoading} className="bg-brand-pink hover:bg-brand-pink/90">
-                    {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                    Guardar Cambios
-                </Button>
+                {userRole !== 'member' && (
+                    <Button onClick={handleSubmit} disabled={isLoading} className="bg-brand-pink hover:bg-brand-pink/90">
+                        {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                        Guardar Cambios
+                    </Button>
+                )}
             </div>
 
-            <Tabs defaultValue={visibleTabs[0]?.id || 'agency'} className="w-full" suppressHydrationWarning>
+            <Tabs defaultValue={visibleTabs[0]?.id || 'general'} className="w-full" suppressHydrationWarning>
                 <TabsList
                     className="grid w-full max-w-full"
                     style={{ gridTemplateColumns: `repeat(${visibleTabs.length}, minmax(0, 1fr))` }}
@@ -289,151 +311,7 @@ export function SettingsForm({ initialSettings, activeModules, subscriptionApp }
                     <TeamSettingsTab />
                 </TabsContent>
 
-                {/* AGENCY TAB */}
-                <TabsContent value="agency" className="space-y-4 mt-4" suppressHydrationWarning>
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Identidad del Negocio</CardTitle>
-                            <CardDescription>
-                                Estos datos aparecerán en tus cuentas de cobro, cotizaciones y portal de clientes.
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="agency_name">Nombre Comercial / Marca</Label>
-                                    <Input id="agency_name" name="agency_name" value={formData.agency_name || ''} onChange={handleChange} placeholder="Ej: Pixy Agency" />
-                                    <p className="text-xs text-muted-foreground">Nombre visible en el portal y correos.</p>
-                                </div>
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="agency_email">Email Principal</Label>
-                                <Input id="agency_email" name="agency_email" value={formData.agency_email || ''} onChange={handleChange} placeholder="contacto@pixy.com" />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="agency_phone">Teléfono / WhatsApp</Label>
-                                <Input id="agency_phone" name="agency_phone" value={formData.agency_phone || ''} onChange={handleChange} placeholder="+57 300 123 4567" />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="agency_website">Sitio Web</Label>
-                                <Input id="agency_website" name="agency_website" value={formData.agency_website || ''} onChange={handleChange} placeholder="https://pixy.com" />
-                            </div>
 
-                            {/* Branding Section */}
-                            <div className="space-y-4 pt-4 border-t">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <h4 className="text-sm font-semibold text-gray-900 mb-1">Sistema de Branding (Marca Blanca)</h4>
-                                        <p className="text-xs text-gray-500">Personaliza los logos y colores de tu portal.</p>
-                                    </div>
-                                    {!activeModules.includes('module_whitelabel') && (
-                                        <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 gap-1">
-                                            <AlertTriangle className="h-3 w-3" />
-                                            Requiere Plan Avanzado
-                                        </Badge>
-                                    )}
-                                </div>
-
-                                <div className={!activeModules.includes('module_whitelabel') ? 'opacity-50 pointer-events-none grayscale' : ''}>
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                        <div className="space-y-2">
-                                            <Label htmlFor="invoice_logo_url">Logo para Documentos</Label>
-                                            <div className="relative">
-                                                <Input id="invoice_logo_url" name="invoice_logo_url" value={formData.invoice_logo_url || ''} onChange={handleChange} placeholder="/branding/invoice-logo.png" />
-                                                {!activeModules.includes('module_whitelabel') && <Lock className="absolute right-3 top-2.5 h-4 w-4 text-gray-400" />}
-                                            </div>
-                                            <p className="text-xs text-muted-foreground">Se usará en PDFs de cuentas de cobro</p>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="main_logo_url">Logo Principal (Login/Sidebar)</Label>
-                                            <div className="relative">
-                                                <Input id="main_logo_url" name="main_logo_url" value={formData.main_logo_url || ''} onChange={handleChange} placeholder="/branding/main-logo.svg" />
-                                                {!activeModules.includes('module_whitelabel') && <Lock className="absolute right-3 top-2.5 h-4 w-4 text-gray-400" />}
-                                            </div>
-                                            <p className="text-xs text-muted-foreground">Se usará en navegación</p>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="isotipo_url">Isotipo / Favicon</Label>
-                                            <div className="relative">
-                                                <Input id="isotipo_url" name="isotipo_url" value={formData.isotipo_url || ''} onChange={handleChange} placeholder="/branding/isotipo.svg" />
-                                                {!activeModules.includes('module_whitelabel') && <Lock className="absolute right-3 top-2.5 h-4 w-4 text-gray-400" />}
-                                            </div>
-                                            <p className="text-xs text-muted-foreground">Icono compacto del sistema</p>
-                                        </div>
-                                    </div>
-                                </div>
-                                {!activeModules.includes('module_whitelabel') && (
-                                    <div className="rounded-lg bg-indigo-50 border border-indigo-100 p-4 flex items-center gap-3">
-                                        <div className="p-2 bg-indigo-100 rounded-full">
-                                            <Shield className="h-5 w-5 text-indigo-600" />
-                                        </div>
-                                        <div>
-                                            <h5 className="font-semibold text-indigo-900 text-sm">Gestionado por la Plataforma</h5>
-                                            <p className="text-xs text-indigo-700">Actualmente usas la marca predeterminada de Pixy. Actualiza tu plan para usar tu propia identidad.</p>
-                                        </div>
-                                        <Button size="sm" variant="outline" className="ml-auto border-indigo-200 text-indigo-700 hover:bg-indigo-100">
-                                            Activar Marca Blanca
-                                        </Button>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Social Media Section */}
-                            <div className="space-y-4 pt-4 border-t">
-                                <div>
-                                    <h4 className="text-sm font-semibold text-gray-900 mb-1">Redes Sociales</h4>
-                                    <p className="text-xs text-gray-500">Configura tus perfiles de redes sociales y estadísticas</p>
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="social_facebook">Facebook URL</Label>
-                                        <Input id="social_facebook" name="social_facebook" value={formData.social_facebook || ''} onChange={handleChange} placeholder="https://facebook.com/pixypds" />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="social_facebook_followers">Seguidores Facebook</Label>
-                                        <Input type="number" id="social_facebook_followers" name="social_facebook_followers" value={formData.social_facebook_followers || ''} onChange={handleChange} placeholder="1250" />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="social_instagram">Instagram URL</Label>
-                                        <Input id="social_instagram" name="social_instagram" value={formData.social_instagram || ''} onChange={handleChange} placeholder="https://instagram.com/pixypds" />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="social_instagram_followers">Seguidores Instagram</Label>
-                                        <Input type="number" id="social_instagram_followers" name="social_instagram_followers" value={formData.social_instagram_followers || ''} onChange={handleChange} placeholder="3400" />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="social_twitter">Twitter/X URL</Label>
-                                        <Input id="social_twitter" name="social_twitter" value={formData.social_twitter || ''} onChange={handleChange} placeholder="https://twitter.com/pixypds" />
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="agency_country">País</Label>
-                                    <Input id="agency_country" name="agency_country" value={formData.agency_country || ''} onChange={handleChange} />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="agency_currency">Moneda Base</Label>
-                                    <Select name="agency_currency" value={formData.agency_currency || 'COP'} onValueChange={(val) => handleSelectChange('agency_currency', val)}>
-                                        <SelectTrigger suppressHydrationWarning>
-                                            <SelectValue placeholder="Seleccionar" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="COP">COP (Peso Colombiano)</SelectItem>
-                                            <SelectItem value="USD">USD (Dólar Americano)</SelectItem>
-                                            <SelectItem value="EUR">EUR (Euro)</SelectItem>
-                                            <SelectItem value="MXN">MXN (Peso Mexicano)</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="agency_timezone">Zona Horaria</Label>
-                                    <Input id="agency_timezone" name="agency_timezone" value={formData.agency_timezone || ''} onChange={handleChange} />
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </TabsContent>
 
                 {/* GENERAL TAB */}
                 <TabsContent value="general" className="space-y-4 mt-4" suppressHydrationWarning>
@@ -444,7 +322,88 @@ export function SettingsForm({ initialSettings, activeModules, subscriptionApp }
                                 Define los formatos y textos legales predeterminados.
                             </CardDescription>
                         </CardHeader>
-                        <CardContent className="space-y-4">
+                        <CardContent className="space-y-6">
+                            {/* Identity Section (Read Only) */}
+                            <div className="space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <h3 className="text-lg font-medium">Identidad de la Marca</h3>
+                                    {userRole !== 'member' && (
+                                        <Button
+                                            variant="outline"
+                                            className="border-blue-200 text-blue-700 hover:bg-blue-100"
+                                            onClick={() => setShowBrandCenter(true)}
+                                        >
+                                            Abrir Centro de Marca
+                                        </Button>
+                                    )}
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label className="text-muted-foreground">Nombre Comercial</Label>
+                                        <Input value={formData.agency_name || ''} disabled className="bg-muted" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-muted-foreground">Sitio Web</Label>
+                                        <Input value={formData.agency_website || ''} disabled className="bg-muted" />
+                                    </div>
+                                </div>
+                                <p className="text-xs text-muted-foreground bg-blue-50/50 p-2 rounded border border-blue-100/50">
+                                    <Building2 className="inline h-3 w-3 mr-1" />
+                                    Estos datos se sincronizan automáticamente con el Centro de Marca.
+                                </p>
+                            </div>
+
+                            <div className="h-px bg-border my-2" />
+
+                            {/* Contact Info */}
+                            <div className="space-y-4">
+                                <h3 className="text-lg font-medium">Información de Contacto</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="agency_email">Email Administrativo</Label>
+                                        <Input id="agency_email" name="agency_email" value={formData.agency_email || ''} onChange={handleChange} placeholder="contacto@pixy.com" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="agency_phone">Teléfono / WhatsApp</Label>
+                                        <Input id="agency_phone" name="agency_phone" value={formData.agency_phone || ''} onChange={handleChange} placeholder="+57 300 123 4567" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="h-px bg-border my-2" />
+
+                            {/* Regional Settings */}
+                            <div className="space-y-4">
+                                <h3 className="text-lg font-medium">Configuración Regional</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="agency_country">País</Label>
+                                        <Input id="agency_country" name="agency_country" value={formData.agency_country || ''} onChange={handleChange} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="agency_currency">Moneda Base</Label>
+                                        <Select name="agency_currency" value={formData.agency_currency || 'COP'} onValueChange={(val) => handleSelectChange('agency_currency', val)}>
+                                            <SelectTrigger suppressHydrationWarning>
+                                                <SelectValue placeholder="Seleccionar" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="COP">COP (Peso Colombiano)</SelectItem>
+                                                <SelectItem value="USD">USD (Dólar Americano)</SelectItem>
+                                                <SelectItem value="EUR">EUR (Euro)</SelectItem>
+                                                <SelectItem value="MXN">MXN (Peso Mexicano)</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="agency_timezone">Zona Horaria</Label>
+                                        <Input id="agency_timezone" name="agency_timezone" value={formData.agency_timezone || ''} onChange={handleChange} />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="h-px bg-border my-2" />
+
+                            <h3 className="text-lg font-medium">Preferencias del Sistema</h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="default_language">Idioma de la App</Label>
@@ -646,92 +605,7 @@ export function SettingsForm({ initialSettings, activeModules, subscriptionApp }
                         </CardContent>
                     </Card>
 
-                    {/* Document Branding Card */}
-                    <Card className="border-purple-100 bg-purple-50/30">
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <Palette className="h-5 w-5 text-purple-600" />
-                                Personalización de Documentos
-                            </CardTitle>
-                            <CardDescription>
-                                Personaliza la apariencia de tus facturas y cotizaciones
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="document_primary_color">Color Principal</Label>
-                                    <div className="flex gap-2">
-                                        <Input
-                                            type="color"
-                                            id="document_primary_color"
-                                            name="document_primary_color"
-                                            value={formData.document_primary_color || '#6D28D9'}
-                                            onChange={handleChange}
-                                            className="w-20 h-10 p-1 cursor-pointer"
-                                        />
-                                        <Input
-                                            type="text"
-                                            name="document_primary_color"
-                                            value={formData.document_primary_color || '#6D28D9'}
-                                            onChange={handleChange}
-                                            placeholder="#6D28D9"
-                                            className="flex-1 font-mono"
-                                        />
-                                    </div>
-                                    <p className="text-xs text-muted-foreground">
-                                        Color de acento en botones y elementos destacados
-                                    </p>
-                                </div>
 
-                                <div className="space-y-2">
-                                    <Label htmlFor="document_logo_size">Tamaño del Logo</Label>
-                                    <Select
-                                        name="document_logo_size"
-                                        value={formData.document_logo_size || 'medium'}
-                                        onValueChange={(val) => handleSelectChange('document_logo_size', val)}
-                                    >
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Seleccionar" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="small">Pequeño</SelectItem>
-                                            <SelectItem value="medium">Mediano</SelectItem>
-                                            <SelectItem value="large">Grande</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
-
-                            <div className="flex items-center justify-between p-3 border rounded-lg bg-white">
-                                <div className="space-y-0.5">
-                                    <Label className="text-sm">Mostrar Marca de Agua</Label>
-                                    <p className="text-xs text-muted-foreground">
-                                        Logo tenue de fondo en documentos
-                                    </p>
-                                </div>
-                                <Switch
-                                    checked={formData.document_show_watermark !== false}
-                                    onCheckedChange={(checked) => handleSwitchChange('document_show_watermark', checked)}
-                                />
-                            </div>
-
-                            {/* Preview Example */}
-                            <div className="p-4 border rounded-lg bg-white">
-                                <p className="text-xs text-muted-foreground mb-2">Vista Previa:</p>
-                                <button
-                                    className="px-4 py-2 rounded text-sm font-medium transition-colors"
-                                    style={{
-                                        backgroundColor: `${formData.document_primary_color || '#6D28D9'}14`,
-                                        color: formData.document_primary_color || '#6D28D9',
-                                        border: `1px solid ${formData.document_primary_color || '#6D28D9'}33`
-                                    }}
-                                >
-                                    Botón de Pago
-                                </button>
-                            </div>
-                        </CardContent>
-                    </Card>
                 </TabsContent>
 
                 {/* PAYMENTS TAB */}
@@ -884,142 +758,28 @@ export function SettingsForm({ initialSettings, activeModules, subscriptionApp }
                                     </div>
 
 
-                                    {/* Metadata Section */}
-                                    <div className="space-y-4 pt-4 border-t">
-                                        <h4 className="text-sm font-medium">Metadatos (SEO y Compartir)</h4>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="portal_og_title">Título al Compartir</Label>
-                                            <Input
-                                                id="portal_og_title"
-                                                name="portal_og_title"
-                                                value={formData.portal_og_title || ''}
-                                                onChange={handleChange}
-                                                placeholder="Ej: Portal de Clientes - Pixy Agency"
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="portal_og_description">Descripción al Compartir</Label>
-                                            <Input
-                                                id="portal_og_description"
-                                                name="portal_og_description"
-                                                value={formData.portal_og_description || ''}
-                                                onChange={handleChange}
-                                                placeholder="Ej: Accede a tus documentos y proyectos en tiempo real."
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="portal_og_image_url">URL de Imagen (Preview)</Label>
-                                            <Input
-                                                id="portal_og_image_url"
-                                                name="portal_og_image_url"
-                                                value={formData.portal_og_image_url || ''}
-                                                onChange={handleChange}
-                                                placeholder="https://..."
-                                            />
-                                            <p className="text-xs text-muted-foreground">Opcional. Si no se define, se usará el logo.</p>
-                                        </div>
-                                    </div>
 
-                                    <div className="space-y-2">
-                                        <Label htmlFor="portal_welcome_message">Mensaje de Bienvenida</Label>
-                                        <Textarea
-                                            id="portal_welcome_message"
-                                            name="portal_welcome_message"
-                                            value={formData.portal_welcome_message || ''}
-                                            onChange={handleChange}
-                                            placeholder="¡Hola! Bienvenido a tu portal de clientes..."
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="portal_footer_text">Texto del Pie de Página</Label>
-                                        <Input
-                                            id="portal_footer_text"
-                                            name="portal_footer_text"
-                                            value={formData.portal_footer_text || ''}
-                                            onChange={handleChange}
-                                            placeholder="© 2024 Mi Empresa - Todos los derechos reservados"
-                                        />
-                                    </div>
                                 </CardContent>
                             </Card>
 
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle className="flex items-center gap-2"><Palette className="h-4 w-4" /> Branding</CardTitle>
-                                    <CardDescription>Personaliza la apariencia del portal.</CardDescription>
-                                </CardHeader>
-                                <CardContent className="space-y-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="portal_logo_url">URL del Logo del Portal</Label>
-                                        <Input
-                                            id="portal_logo_url"
-                                            name="portal_logo_url"
-                                            value={formData.portal_logo_url || ''}
-                                            onChange={handleChange}
-                                            placeholder="https://..."
-                                        />
-                                        <p className="text-xs text-muted-foreground">Si se deja vacío, se usará el logo del negocio.</p>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <Label htmlFor="portal_primary_color">Color Primario</Label>
-                                            <div className="flex gap-2">
-                                                <Input
-                                                    type="color"
-                                                    id="portal_primary_color"
-                                                    name="portal_primary_color"
-                                                    value={formData.portal_primary_color || '#000000'}
-                                                    onChange={handleChange}
-                                                    className="w-12 h-10 p-1 cursor-pointer"
-                                                />
-                                                <Input
-                                                    name="portal_primary_color"
-                                                    value={formData.portal_primary_color || ''}
-                                                    onChange={handleChange}
-                                                    placeholder="#000000"
-                                                    className="flex-1"
-                                                />
-                                            </div>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="portal_secondary_color">Color Secundario</Label>
-                                            <div className="flex gap-2">
-                                                <Input
-                                                    type="color"
-                                                    id="portal_secondary_color"
-                                                    name="portal_secondary_color"
-                                                    value={formData.portal_secondary_color || '#ffffff'}
-                                                    onChange={handleChange}
-                                                    className="w-12 h-10 p-1 cursor-pointer"
-                                                />
-                                                <Input
-                                                    name="portal_secondary_color"
-                                                    value={formData.portal_secondary_color || ''}
-                                                    onChange={handleChange}
-                                                    placeholder="#ffffff"
-                                                    className="flex-1"
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center justify-between">
-                                        <Label htmlFor="portal_show_agency_name">Mostrar Nombre del Negocio</Label>
-                                        <Switch
-                                            id="portal_show_agency_name"
-                                            checked={formData.portal_show_agency_name !== false}
-                                            onCheckedChange={(checked) => handleSwitchChange('portal_show_agency_name', checked)}
-                                        />
-                                    </div>
-                                    <div className="flex items-center justify-between">
-                                        <Label htmlFor="portal_show_contact_info">Mostrar Info de Contacto</Label>
-                                        <Switch
-                                            id="portal_show_contact_info"
-                                            checked={formData.portal_show_contact_info !== false}
-                                            onCheckedChange={(checked) => handleSwitchChange('portal_show_contact_info', checked)}
-                                        />
-                                    </div>
-                                </CardContent>
-                            </Card>
+                            <div className="rounded-lg bg-blue-50 border border-blue-100 p-6 text-center">
+                                <div className="mx-auto bg-blue-100 rounded-full w-10 h-10 flex items-center justify-center mb-3">
+                                    <Palette className="h-5 w-5 text-blue-600" />
+                                </div>
+                                <h3 className="text-base font-semibold text-blue-900 mb-1">El Branding del Portal cambió de lugar</h3>
+                                <p className="text-sm text-blue-700 mb-4 max-w-sm mx-auto">
+                                    Personaliza colores, logos y vista previa en el Centro de Marca.
+                                </p>
+                                {userRole !== 'member' && (
+                                    <Button
+                                        size="sm"
+                                        className="bg-blue-600 hover:bg-blue-700 text-white"
+                                        onClick={() => setShowBrandCenter(true)}
+                                    >
+                                        Abrir Centro de Marca
+                                    </Button>
+                                )}
+                            </div>
                         </div>
 
                         {/* Right Column: Modules */}
@@ -1064,17 +824,6 @@ export function SettingsForm({ initialSettings, activeModules, subscriptionApp }
                             </Card>
                         </div>
                     </div>
-                </TabsContent>
-
-                {/* PORTAL TAB */}
-                <TabsContent value="portal" className="space-y-4 mt-4" suppressHydrationWarning>
-                    <PortalSettingsTab
-                        settings={formData}
-                        activeModules={activeModules}
-                        onChange={handleChange}
-                        onSelectChange={handleSelectChange}
-                        onSwitchChange={handleSwitchChange}
-                    />
                 </TabsContent>
 
                 {/* COMMUNICATION TAB */}

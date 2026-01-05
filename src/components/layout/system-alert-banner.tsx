@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { getActiveBroadcasts } from "@/modules/core/admin/actions"
+import { getPublicBroadcasts } from "@/modules/core/admin/actions"
 import { AlertCircle, Megaphone, X } from "lucide-react"
 
 export function SystemAlertBanner() {
@@ -14,7 +14,7 @@ export function SystemAlertBanner() {
             // In a real app, use SWR or React Query for background polling
             // For now, load on mount.
             try {
-                const data = await getActiveBroadcasts()
+                const data = await getPublicBroadcasts()
                 setAlerts(data)
             } catch (e) {
                 console.error("Failed to fetch alerts", e)

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { getActiveModules } from '@/modules/core/saas/actions'
+import { getCurrentUserPermissions } from '@/modules/core/settings/actions/team-actions'
 
 interface UseActiveModulesReturn {
     modules: string[]
@@ -9,24 +10,87 @@ interface UseActiveModulesReturn {
     error: Error | null
     hasModule: (moduleKey: string) => boolean
     refresh: () => Promise<void>
+    userRole: string | null
+}
+
+// Map between module_config keys and permission module keys
+// IMPORTANT: All org modules must be mapped here to enable permission filtering
+const MODULE_PERMISSION_MAP: Record<string, string> = {
+    // Core modules (typically always allowed, but can be restricted)
+    'core_clients': 'crm',          // Core clients maps to CRM permission
+    'core_settings': 'settings',    // Settings access
+
+    // Standard modules
+    'module_crm': 'crm',
+    'module_invoicing': 'invoicing',
+    'module_projects': 'projects',
+    'module_support': 'support',
+    'module_communications': 'communications',
+    'module_payments': 'payments',
+    'module_reports': 'reports',
+
+    // Agency vertical modules
+    'module_briefings': 'projects',       // Briefings are part of projects
+    'module_catalog': 'crm',              // Catalog is client-facing (CRM)
+    'module_messaging': 'communications', // Messaging is communications
+    'module_whitelabel': 'settings',      // Whitelabel is settings/branding
+    'module_contracts': 'invoicing',      // Contracts relate to invoicing
+    'module_hosting': 'projects',         // Hosting relates to projects
+    'module_automation': 'communications', // Automation is communications
+
+    // Cleaning vertical modules
+    'module_appointments': 'appointments',
+    'module_staff': 'staff',
+    'module_payroll': 'payroll',
 }
 
 /**
  * Client hook to fetch and cache active modules for current organization
- * Automatically refetches when organization context changes
+ * Also checks user's module permissions and filters accordingly
  */
 export function useActiveModules(): UseActiveModulesReturn {
     const [modules, setModules] = useState<string[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState<Error | null>(null)
+    const [userRole, setUserRole] = useState<string | null>(null)
 
     const fetchModules = useCallback(async () => {
         setIsLoading(true)
         setError(null)
 
         try {
-            const activeModules = await getActiveModules()
-            setModules(activeModules)
+            // Fetch org modules and user permissions in parallel
+            const [orgModules, userPerms] = await Promise.all([
+                getActiveModules(),
+                getCurrentUserPermissions()
+            ])
+
+            setUserRole(userPerms?.role || null)
+
+            // If user has permissions, filter org modules by their access
+            if (userPerms?.permissions?.modules) {
+                const filteredModules = orgModules.filter(orgModule => {
+                    // Map org module key to permission module key
+                    const permKey = MODULE_PERMISSION_MAP[orgModule]
+
+                    // If no mapping exists (core modules), allow
+                    if (!permKey) {
+                        return true
+                    }
+
+                    // Check if user has access to this module
+                    const modules = userPerms.permissions.modules as Record<string, boolean> | undefined
+                    const hasAccess = modules?.[permKey]
+
+                    // If explicitly set to false, deny. Otherwise allow (undefined = allowed for admins/owners)
+                    return hasAccess !== false
+                })
+
+                setModules(filteredModules)
+            } else {
+                // No user permissions (maybe owner/super admin), show all org modules
+                setModules(orgModules)
+            }
         } catch (err) {
             console.error('Error fetching modules:', err)
             setError(err as Error)
@@ -73,6 +137,8 @@ export function useActiveModules(): UseActiveModulesReturn {
         isLoading,
         error,
         hasModule,
-        refresh
+        refresh,
+        userRole
     }
 }
+

@@ -153,7 +153,7 @@ export async function getActiveModules(orgId?: string): Promise<string[]> {
         }
 
         // 1. Get Organization Vertical & Overrides
-        const { data: org, error: orgError } = await supabase
+        const { data: org, error: orgError } = await supabaseAdmin
             .from('organizations')
             .select('vertical_key, manual_module_overrides')
             .eq('id', organizationId)

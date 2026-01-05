@@ -3,42 +3,54 @@
 import { createClient } from "@/lib/supabase-server"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { requireOrgRole } from "@/lib/auth/org-roles"
 import { revalidatePath } from "next/cache"
 import { headers } from "next/headers"
 
 /**
  * Get members of the current active organization
+ * Uses supabaseAdmin to bypass RLS and ensure all members are visible
  */
 export async function getOrganizationMembers() {
-    const supabase = await createClient()
     const orgId = await getCurrentOrganizationId()
 
     if (!orgId) return []
 
-    const { data, error } = await supabase
+    // Use admin client to bypass RLS on organization_members
+    const { data: members, error } = await supabaseAdmin
         .from('organization_members')
-        .select(`
-            *,
-            user:users (
-                id,
-                email,
-                full_name,
-                avatar_url
-            )
-        `)
+        .select('*')
         .eq('organization_id', orgId)
-
-    // Note: 'users' table might not be directly accessible depending on RLS policy on 'public.users'.
-    // If it fails, we used 'profiles' in other places. Usually 'auth.users' is hidden.
-    // However, existing codebase seems to use 'users' linked table or similar view.
-    // If 'user:users' fails, we might need to fetch profiles.
 
     if (error) {
         console.error("Error fetching members:", error)
         return []
     }
 
-    return data
+    if (!members || members.length === 0) return []
+
+    // Fetch user profiles separately using admin
+    const userIds = members.map(m => m.user_id)
+    const { data: profiles } = await supabaseAdmin
+        .from('profiles')
+        .select('id, full_name, avatar_url')
+        .in('id', userIds)
+
+    // Get emails from auth.users (admin only)
+    const { data: authUsers } = await supabaseAdmin.auth.admin.listUsers()
+    const userMap = new Map(authUsers?.users?.map(u => [u.id, u.email]) || [])
+    const profileMap = new Map(profiles?.map(p => [p.id, p]) || [])
+
+    // Combine data
+    return members.map(member => ({
+        ...member,
+        user: {
+            id: member.user_id,
+            email: userMap.get(member.user_id) || 'Sin Email',
+            full_name: profileMap.get(member.user_id)?.full_name || null,
+            avatar_url: profileMap.get(member.user_id)?.avatar_url || null,
+        }
+    }))
 }
 
 /**
@@ -49,7 +61,12 @@ export async function inviteMember(email: string, role: string = 'member') {
     const orgId = await getCurrentOrganizationId()
     if (!orgId) return { success: false, error: "No active organization" }
 
-    // TODO: Verify if current user has permissions (Owner/Admin)
+    // Verify Admin/Owner permissions
+    try {
+        await requireOrgRole('admin')
+    } catch (e) {
+        return { success: false, error: "No tienes permisos para invitar miembros" }
+    }
 
     const { getAdminUrlAsync } = await import('@/lib/utils')
     const origin = await getAdminUrlAsync('')
@@ -138,6 +155,13 @@ export async function removeMember(userId: string) {
     const orgId = await getCurrentOrganizationId()
     if (!orgId) return { success: false, error: "No active organization" }
 
+    // Verify Admin/Owner permissions
+    try {
+        await requireOrgRole('admin')
+    } catch (e) {
+        return { success: false, error: "No tienes permisos para eliminar miembros" }
+    }
+
     // Prevent removing yourself (optional but good practice)
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -158,5 +182,158 @@ export async function removeMember(userId: string) {
     } catch (error: any) {
         console.error("Remove Error:", error)
         return { success: false, error: error.message }
+    }
+}
+
+/**
+ * Update a member's role
+ */
+export async function updateMemberRole(userId: string, newRole: 'admin' | 'member') {
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) return { success: false, error: "No active organization" }
+
+    // Only owners can change roles
+    try {
+        await requireOrgRole('owner')
+    } catch (e) {
+        return { success: false, error: "Solo el dueño puede cambiar roles" }
+    }
+
+    // Prevent changing owner role
+    const { data: targetMember } = await supabaseAdmin
+        .from('organization_members')
+        .select('role')
+        .match({ organization_id: orgId, user_id: userId })
+        .single()
+
+    if (targetMember?.role === 'owner') {
+        return { success: false, error: "No se puede cambiar el rol del dueño" }
+    }
+
+    try {
+        const { error } = await supabaseAdmin
+            .from('organization_members')
+            .update({ role: newRole })
+            .match({ organization_id: orgId, user_id: userId })
+
+        if (error) throw error
+
+        revalidatePath('/platform/settings')
+        return { success: true }
+    } catch (error: any) {
+        console.error("Update Role Error:", error)
+        return { success: false, error: error.message }
+    }
+}
+
+/**
+ * Update a member's granular permissions
+ */
+export async function updateMemberPermissions(
+    userId: string,
+    permissions: {
+        modules?: Record<string, boolean>
+        features?: Record<string, boolean>
+    }
+) {
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) return { success: false, error: "No active organization" }
+
+    // Only owners and admins can edit permissions
+    try {
+        await requireOrgRole('admin')
+    } catch (e) {
+        return { success: false, error: "No tienes permisos para editar permisos" }
+    }
+
+    // Get current permissions to merge
+    const { data: member } = await supabaseAdmin
+        .from('organization_members')
+        .select('permissions, role')
+        .match({ organization_id: orgId, user_id: userId })
+        .single()
+
+    if (!member) {
+        return { success: false, error: "Miembro no encontrado" }
+    }
+
+    // Cannot edit owner permissions
+    if (member.role === 'owner') {
+        return { success: false, error: "No se pueden editar los permisos del dueño" }
+    }
+
+    // Merge permissions
+    const currentPermissions = member.permissions || {}
+    const newPermissions = {
+        modules: { ...currentPermissions.modules, ...permissions.modules },
+        features: { ...currentPermissions.features, ...permissions.features },
+    }
+
+    try {
+        const { error } = await supabaseAdmin
+            .from('organization_members')
+            .update({ permissions: newPermissions })
+            .match({ organization_id: orgId, user_id: userId })
+
+        if (error) throw error
+
+        revalidatePath('/platform/settings')
+        return { success: true, permissions: newPermissions }
+    } catch (error: any) {
+        console.error("Update Permissions Error:", error)
+        return { success: false, error: error.message }
+    }
+}
+
+/**
+ * Get a member's effective permissions (merged with role defaults)
+ */
+export async function getMemberPermissions(userId: string) {
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) return null
+
+    const { data: member } = await supabaseAdmin
+        .from('organization_members')
+        .select('role, permissions')
+        .match({ organization_id: orgId, user_id: userId })
+        .single()
+
+    if (!member) return null
+
+    // Import defaults dynamically to avoid circular deps
+    const { getEffectivePermissions } = await import('@/lib/permissions/defaults')
+
+    return {
+        role: member.role,
+        permissions: getEffectivePermissions(member.role, member.permissions)
+    }
+}
+
+/**
+ * Get current logged-in user's permissions for the active organization
+ * Used by client hooks to filter UI based on permissions
+ */
+export async function getCurrentUserPermissions() {
+    const supabase = await createClient()
+    const orgId = await getCurrentOrganizationId()
+
+    if (!orgId) return null
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return null
+
+    const { data: member } = await supabaseAdmin
+        .from('organization_members')
+        .select('role, permissions')
+        .match({ organization_id: orgId, user_id: user.id })
+        .single()
+
+    if (!member) return null
+
+    const { getEffectivePermissions } = await import('@/lib/permissions/defaults')
+
+    return {
+        role: member.role as string,
+        permissions: getEffectivePermissions(member.role, member.permissions)
     }
 }
