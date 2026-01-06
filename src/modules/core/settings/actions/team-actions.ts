@@ -10,6 +10,7 @@ import { headers } from "next/headers"
 /**
  * Get members of the current active organization
  * Uses supabaseAdmin to bypass RLS and ensure all members are visible
+ * SECURITY: Filters out platform super_admins from tenant views
  */
 export async function getOrganizationMembers() {
     const orgId = await getCurrentOrganizationId()
@@ -33,7 +34,7 @@ export async function getOrganizationMembers() {
     const userIds = members.map(m => m.user_id)
     const { data: profiles } = await supabaseAdmin
         .from('profiles')
-        .select('id, full_name, avatar_url')
+        .select('id, full_name, avatar_url, platform_role')
         .in('id', userIds)
 
     // Get emails from auth.users (admin only)
@@ -41,17 +42,25 @@ export async function getOrganizationMembers() {
     const userMap = new Map(authUsers?.users?.map(u => [u.id, u.email]) || [])
     const profileMap = new Map(profiles?.map(p => [p.id, p]) || [])
 
-    // Combine data
-    return members.map(member => ({
-        ...member,
-        user: {
-            id: member.user_id,
-            email: userMap.get(member.user_id) || 'Sin Email',
-            full_name: profileMap.get(member.user_id)?.full_name || null,
-            avatar_url: profileMap.get(member.user_id)?.avatar_url || null,
-        }
-    }))
+    // Filter out platform super_admins - they should not be visible in tenant team views
+    const platformAdminIds = new Set(
+        profiles?.filter(p => p.platform_role === 'super_admin').map(p => p.id) || []
+    )
+
+    // Combine data and filter out platform admins
+    return members
+        .filter(member => !platformAdminIds.has(member.user_id))
+        .map(member => ({
+            ...member,
+            user: {
+                id: member.user_id,
+                email: userMap.get(member.user_id) || 'Sin Email',
+                full_name: profileMap.get(member.user_id)?.full_name || null,
+                avatar_url: profileMap.get(member.user_id)?.avatar_url || null,
+            }
+        }))
 }
+
 
 /**
  * Invite a member to the current organization

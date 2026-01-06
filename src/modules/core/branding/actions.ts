@@ -144,7 +144,8 @@ export async function updatePlatformSettings(data: Partial<BrandingConfig>) {
 
 /**
  * Core Logic: Get Effective Branding for an Organization
- * Cascade: Tenant w/ Module > Tenant w/o Module > Queen Brand
+ * Cascade: Tenant w/ Paid Tier > Tenant w/o Paid Tier > Queen Brand
+ * Uses branding_tier_id and tier features instead of module_whitelabel
  */
 export async function getEffectiveBranding(orgId?: string | null): Promise<BrandingConfig> {
 
@@ -153,13 +154,17 @@ export async function getEffectiveBranding(orgId?: string | null): Promise<Brand
         return getPlatformSettings()
     }
 
-    const supabase = await createClient()
-
-    // 2. Parallel Fetch: Platform + Modules + Tenant Settings
-    // This reduces waterfall depth from 3 to 1
-    const [platformBranding, modules, tenantSettingsResult] = await Promise.all([
+    // 2. Parallel Fetch: Platform + Org with Tier + Tenant Settings
+    const [platformBranding, orgResult, tenantSettingsResult] = await Promise.all([
         getPlatformSettings(),
-        getActiveModules(orgId),
+        supabaseAdmin
+            .from("organizations")
+            .select(`
+                branding_tier_id,
+                branding_tier:branding_tiers(id, name, features)
+            `)
+            .eq("id", orgId)
+            .single(),
         supabaseAdmin
             .from("organization_settings")
             .select(`
@@ -188,53 +193,53 @@ export async function getEffectiveBranding(orgId?: string | null): Promise<Brand
             .single()
     ])
 
+    const { data: org } = orgResult
     const { data: tenantSettings } = tenantSettingsResult
-    const hasWhiteLabel = modules.includes("module_whitelabel")
 
-    // If no tenant settings found OR no white label module, return platform branding
-    // Note: We might want to allow some settings even without WL? For now keeping strict to previous logic:
-    // Actually, previous logic said: "If no White Label permission, force Platform Branding" 
-    // BUT proceeded to check tenantSettings. 
-    // Let's keep logic: if no tenantSettings, fallback regardless. 
-    // If tenantSettings exist but NO WhiteLabel, we force platform branding usually, 
-    // but the `pick` function handles the "fallback to platform" logic.
-    // However, if `hasWhiteLabel` is false, `pick` ALWAYS returns platformVal.
+    // Get tier features - default to basic (all false) if no tier
+    const tierFeatures = (org?.branding_tier as any)?.features || {}
+    const canCustomizeLogo = tierFeatures.custom_logo === true
+    const canCustomizeColors = tierFeatures.custom_colors === true
+    const canRemoveBranding = tierFeatures.remove_pixy_branding === true
 
     if (!tenantSettings) return platformBranding
 
-    // Helper to pick based on WL
-    const pick = (tenantVal: any, platformVal: any) => hasWhiteLabel ? (tenantVal || platformVal) : platformVal
+    // Helper to pick based on feature permission
+    const pickLogo = (tenantVal: any, platformVal: any) => canCustomizeLogo ? (tenantVal || platformVal) : platformVal
+    const pickColor = (tenantVal: any, platformVal: any) => canCustomizeColors ? (tenantVal || platformVal) : platformVal
+    const pickGeneral = (tenantVal: any, platformVal: any) => canRemoveBranding ? (tenantVal || platformVal) : platformVal
 
     return {
-        name: pick(tenantSettings.agency_name, platformBranding.name),
+        name: pickGeneral(tenantSettings.agency_name, platformBranding.name),
         logos: {
-            main: pick(tenantSettings.main_logo_url, platformBranding.logos.main),
-            main_light: pick(tenantSettings.main_logo_light_url, platformBranding.logos.main_light),
-            portal: pick(tenantSettings.portal_logo_url, platformBranding.logos.portal),
-            favicon: pick(tenantSettings.isotipo_url, platformBranding.logos.favicon),
-            login_bg: pick(tenantSettings.portal_login_background_url, platformBranding.logos.login_bg)
+            main: pickLogo(tenantSettings.main_logo_url, platformBranding.logos.main),
+            main_light: pickLogo(tenantSettings.main_logo_light_url, platformBranding.logos.main_light),
+            portal: pickLogo(tenantSettings.portal_logo_url, platformBranding.logos.portal),
+            favicon: pickLogo(tenantSettings.isotipo_url, platformBranding.logos.favicon),
+            login_bg: pickLogo(tenantSettings.portal_login_background_url, platformBranding.logos.login_bg)
         },
         colors: {
-            primary: pick(tenantSettings.portal_primary_color, platformBranding.colors.primary),
-            secondary: pick(tenantSettings.portal_secondary_color, platformBranding.colors.secondary)
+            primary: pickColor(tenantSettings.portal_primary_color, platformBranding.colors.primary),
+            secondary: pickColor(tenantSettings.portal_secondary_color, platformBranding.colors.secondary)
         },
-        website: pick(tenantSettings.agency_website, platformBranding.website),
-        font_family: pick(tenantSettings.brand_font_family, platformBranding.font_family),
-        login_bg_color: pick(tenantSettings.portal_login_background_color, platformBranding.login_bg_color),
+        website: pickGeneral(tenantSettings.agency_website, platformBranding.website),
+        font_family: pickGeneral(tenantSettings.brand_font_family, platformBranding.font_family),
+        login_bg_color: pickColor(tenantSettings.portal_login_background_color, platformBranding.login_bg_color),
         custom_domain: tenantSettings.custom_domain || null,
         invoice_footer: tenantSettings.invoice_footer || null,
         document_logo_size: tenantSettings.document_logo_size || 'medium',
         document_show_watermark: tenantSettings.document_show_watermark ?? true,
 
         socials: {
-            facebook: pick(tenantSettings.social_facebook, platformBranding.socials.facebook),
-            instagram: pick(tenantSettings.social_instagram, platformBranding.socials.instagram),
-            twitter: pick(tenantSettings.social_twitter, platformBranding.socials.twitter),
-            linkedin: pick(tenantSettings.social_linkedin, platformBranding.socials.linkedin),
-            youtube: pick(tenantSettings.social_youtube, platformBranding.socials.youtube),
+            facebook: pickGeneral(tenantSettings.social_facebook, platformBranding.socials.facebook),
+            instagram: pickGeneral(tenantSettings.social_instagram, platformBranding.socials.instagram),
+            twitter: pickGeneral(tenantSettings.social_twitter, platformBranding.socials.twitter),
+            linkedin: pickGeneral(tenantSettings.social_linkedin, platformBranding.socials.linkedin),
+            youtube: pickGeneral(tenantSettings.social_youtube, platformBranding.socials.youtube),
         }
     }
 }
+
 
 /**
  * Upload Branding Asset (Logo, Favicon, etc.)
