@@ -37,7 +37,7 @@ const ICON_MAP: Record<string, any> = {
     'x-circle': XCircle,
 }
 
-// Draggable Lead Card Component
+// Draggable Lead Card Component - Compact Design
 function LeadCard({ lead, onConvert, onMarkLost, onEdit, onView, onAssign, onMessage, isDragging }: {
     lead: Lead;
     onConvert: (id: string) => void;
@@ -68,102 +68,69 @@ function LeadCard({ lead, onConvert, onMarkLost, onEdit, onView, onAssign, onMes
             style={style}
             onClick={() => !isDragging && onView(lead)}
             className={cn(
-                "p-4 hover:shadow-md transition-all cursor-move group relative border-l-4",
+                "p-2.5 hover:shadow-sm transition-all cursor-pointer group relative border-l-2",
                 isDragging && "opacity-50 scale-95",
-                // Score-based border colors or status colors could be added here
                 lead.score && lead.score > 80 ? "border-l-purple-500" :
                     lead.score && lead.score > 60 ? "border-l-green-500" :
                         lead.score && lead.score > 30 ? "border-l-yellow-500" : "border-l-transparent"
             )}
         >
-            <div className="flex items-start justify-between mb-2">
-                <div className="flex items-start gap-2 flex-1 min-w-0">
-                    <div
-                        {...attributes}
-                        {...listeners}
-                        className="cursor-grab active:cursor-grabbing mt-1 p-1 hover:bg-slate-100 rounded"
-                        onClick={(e) => e.stopPropagation()} // Prevent card click
-                    >
-                        <GripVertical className="h-4 w-4 text-muted-foreground" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                        <h4 className="font-semibold truncate">{lead.name}</h4>
-                        {lead.company_name && (
-                            <p className="text-xs text-muted-foreground truncate">{lead.company_name}</p>
-                        )}
-                    </div>
+            <div className="flex items-center gap-2">
+                <div
+                    {...attributes}
+                    {...listeners}
+                    className="cursor-grab active:cursor-grabbing shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <GripVertical className="h-3 w-3 text-muted-foreground" />
                 </div>
-                <div onClick={(e) => e.stopPropagation()}>
+                <div className="flex-1 min-w-0">
+                    <h4 className="font-medium text-sm truncate leading-tight">{lead.name}</h4>
+                    {lead.company_name && (
+                        <p className="text-[11px] text-muted-foreground truncate">{lead.company_name}</p>
+                    )}
+                </div>
+                <div onClick={(e) => e.stopPropagation()} className="shrink-0">
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <MoreHorizontal className="h-4 w-4" />
+                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <MoreHorizontal className="h-3 w-3" />
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={() => onView(lead)}>
-                                <Eye className="mr-2 h-4 w-4" />
-                                Ver Detalle Completo
+                                <Eye className="mr-2 h-3.5 w-3.5" />
+                                Ver Detalle
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => onMessage(lead)}>
-                                <MessageSquare className="mr-2 h-4 w-4" />
-                                Enviar Mensaje
+                                <MessageSquare className="mr-2 h-3.5 w-3.5" />
+                                Mensaje
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => onAssign(lead)}>
-                                <UserPlus className="mr-2 h-4 w-4" />
-                                Asignar Lead
+                                <UserPlus className="mr-2 h-3.5 w-3.5" />
+                                Asignar
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => onEdit(lead)}>
-                                <Edit className="mr-2 h-4 w-4" />
-                                Editar Rápido
+                                <Edit className="mr-2 h-3.5 w-3.5" />
+                                Editar
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={() => onConvert(lead.id)}>
-                                <ArrowRight className="mr-2 h-4 w-4" />
-                                Convertir a Cliente
+                                <ArrowRight className="mr-2 h-3.5 w-3.5" />
+                                Convertir
                             </DropdownMenuItem>
                             <DropdownMenuItem className="text-red-600" onClick={() => onMarkLost(lead.id)}>
-                                <XCircle className="mr-2 h-4 w-4" />
-                                Marcar como Perdido
+                                <XCircle className="mr-2 h-3.5 w-3.5" />
+                                Perdido
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
                 </div>
             </div>
-
-            <div className="space-y-1 text-xs text-muted-foreground">
-                {lead.email && (
-                    <div className="flex items-center gap-1 truncate">
-                        <Mail className="h-3 w-3 shrink-0" />
-                        <span className="truncate">{lead.email}</span>
-                    </div>
-                )}
-                {lead.phone && (
-                    <div className="flex items-center gap-1">
-                        <Phone className="h-3 w-3 shrink-0" />
-                        <span>{lead.phone}</span>
-                    </div>
-                )}
-
-                {/* Score and Task info */}
-                {(lead.score || 0) > 0 && (
-                    <div className="flex items-center gap-2 pt-2">
-                        <Badge variant="outline" className={cn(
-                            "text-[10px] h-5 px-1 border",
-                            lead.score && lead.score > 80 ? "border-purple-200 bg-purple-50 text-purple-700" :
-                                lead.score && lead.score > 60 ? "border-green-200 bg-green-50 text-green-700" :
-                                    lead.score && lead.score > 30 ? "border-yellow-200 bg-yellow-50 text-yellow-700" : "border-slate-200 bg-slate-50"
-                        )}>
-                            Score: {lead.score}
-                        </Badge>
-                    </div>
-                )}
-            </div>
         </Card>
     )
 }
+
 
 // Droppable Stage Column
 function DroppableStage({ id, children }: { id: string; children: React.ReactNode }) {
@@ -438,45 +405,13 @@ export function CRMDashboard() {
                     />
                 </div>
 
-                {/* Zoom Controls */}
-                <div className="flex items-center justify-end gap-2 mb-2 px-1">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 w-7 p-0"
-                        onClick={() => setColumnZoom(prev => Math.max(50, prev - 25))}
-                        disabled={columnZoom <= 50}
-                    >
-                        <ZoomOut className="h-3.5 w-3.5" />
-                    </Button>
-                    <div className="flex items-center gap-1 px-2 py-1 bg-slate-100 dark:bg-zinc-800 rounded-lg">
-                        <span className="text-xs font-medium text-slate-600 dark:text-slate-400 w-8 text-center">{columnZoom}%</span>
-                    </div>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 w-7 p-0"
-                        onClick={() => setColumnZoom(prev => Math.min(150, prev + 25))}
-                        disabled={columnZoom >= 150}
-                    >
-                        <ZoomIn className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs"
-                        onClick={() => setColumnZoom(100)}
-                    >
-                        Reset
-                    </Button>
-                </div>
-
-                {/* Kanban Board - Full Height with Modern Scrollbar */}
-                <div className="flex-1 overflow-x-auto overflow-y-hidden scroll-smooth scrollbar-modern">
-                    <div className="flex gap-4 h-full pb-3 px-1" style={{ minWidth: 'max-content' }}>
+                {/* Kanban Board - Takes Full Height */}
+                <div className="flex-1 flex flex-col overflow-hidden">
+                    {/* Columns Container - Horizontal Scroll, Columns Fill Height */}
+                    <div className="flex-1 flex overflow-x-auto scrollbar-modern gap-3 px-1 pb-2">
                         {stages.map((stage) => {
                             const stageLeads = getLeadsByStage(stage.status_key)
-                            const columnWidth = Math.round(300 * (columnZoom / 100))
+                            const columnWidth = Math.round(280 * (columnZoom / 100))
 
                             return (
                                 <SortableContext
@@ -486,35 +421,31 @@ export function CRMDashboard() {
                                     strategy={verticalListSortingStrategy}
                                 >
                                     <div
-                                        className="flex flex-col h-full transition-all duration-300 ease-out"
+                                        className="flex flex-col shrink-0 transition-all duration-300 ease-out"
                                         style={{
                                             width: `${columnWidth}px`,
                                             minWidth: `${columnWidth}px`,
                                         }}
                                     >
-                                        {/* Stage Header - Compact */}
-                                        <div className="flex items-center gap-2 mb-2 px-1">
-                                            <div className={cn("w-2.5 h-2.5 rounded-full", stage.color)} />
-                                            <h3 className="font-medium text-sm text-muted-foreground truncate">
+                                        {/* Stage Header */}
+                                        <div className="flex items-center gap-2 mb-2 px-1 shrink-0">
+                                            <div className={cn("w-2 h-2 rounded-full", stage.color)} />
+                                            <h3 className="font-medium text-xs text-muted-foreground uppercase tracking-wide truncate">
                                                 {stage.name}
                                             </h3>
-                                            <Badge variant="secondary" className="ml-auto h-5 px-1.5 text-xs shrink-0">
+                                            <Badge variant="secondary" className="ml-auto h-4 px-1 text-[10px] shrink-0">
                                                 {stageLeads.length}
                                             </Badge>
                                         </div>
 
-                                        {/* Droppable Stage Area - Scrollable with Modern Scrollbar */}
+                                        {/* Droppable Column - Flex-1 to fill remaining height with internal scroll */}
                                         <DroppableStage id={stage.status_key}>
                                             <div
-                                                className="flex-1 flex flex-col gap-2 p-2 bg-slate-50/80 dark:bg-slate-900/50 rounded-xl border border-slate-200/50 dark:border-slate-800 overflow-y-auto"
-                                                style={{
-                                                    scrollbarWidth: 'thin',
-                                                    scrollbarColor: 'rgb(203 213 225) transparent',
-                                                }}
+                                                className="flex-1 flex flex-col gap-1.5 p-1.5 bg-slate-100/60 dark:bg-zinc-800/40 rounded-lg border border-slate-200/30 dark:border-zinc-700/50 overflow-y-auto scrollbar-modern"
                                             >
                                                 {stageLeads.length === 0 ? (
-                                                    <div className="rounded-lg p-8 text-center text-muted-foreground text-sm bg-gray-50/50">
-                                                        Arrastra leads aquí
+                                                    <div className="flex-1 flex items-center justify-center text-muted-foreground text-xs py-6">
+                                                        Arrastra aquí
                                                     </div>
                                                 ) : (
                                                     stageLeads.map((lead) => (
@@ -537,6 +468,26 @@ export function CRMDashboard() {
                                 </SortableContext>
                             )
                         })}
+                    </div>
+
+                    {/* Bottom Bar: Horizontal Scrollbar lives above, Zoom Controls fixed right */}
+                    <div className="flex items-center justify-end gap-1 pt-1 px-1 shrink-0">
+                        <button
+                            onClick={() => setColumnZoom(prev => Math.max(50, prev - 25))}
+                            disabled={columnZoom <= 50}
+                            className="p-1 rounded hover:bg-slate-100 dark:hover:bg-zinc-800 disabled:opacity-30 transition-colors"
+                            title="Reducir"
+                        >
+                            <ZoomOut className="h-3 w-3 text-slate-400" />
+                        </button>
+                        <button
+                            onClick={() => setColumnZoom(prev => Math.min(150, prev + 25))}
+                            disabled={columnZoom >= 150}
+                            className="p-1 rounded hover:bg-slate-100 dark:hover:bg-zinc-800 disabled:opacity-30 transition-colors"
+                            title="Ampliar"
+                        >
+                            <ZoomIn className="h-3 w-3 text-slate-400" />
+                        </button>
                     </div>
                 </div>
 

@@ -2,7 +2,7 @@ import { GrowthEcosystemShell } from "@/modules/core/layout/growth-ecosystem-she
 
 export default function CRMLayout({ children }: { children: React.ReactNode }) {
     return (
-        <GrowthEcosystemShell>
+        <GrowthEcosystemShell fullHeight>
             {children}
         </GrowthEcosystemShell>
     )

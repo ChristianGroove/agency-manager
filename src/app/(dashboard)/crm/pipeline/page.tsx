@@ -9,7 +9,9 @@ export const metadata = {
 export default function CRMPipelinePage() {
     return (
         <Suspense fallback={<div className="p-8 text-center text-gray-500">Cargando Pipeline...</div>}>
-            <CRMDashboard />
+            <div className="h-full flex flex-col">
+                <CRMDashboard />
+            </div>
         </Suspense>
     )
 }
