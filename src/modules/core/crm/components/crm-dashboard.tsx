@@ -1,13 +1,13 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback, useMemo } from "react"
 import { Lead } from "@/types"
 import { convertLeadToClient, getLeads, updateLeadStatus } from "../leads-actions"
 import { getPipelineStages, PipelineStage } from "../pipeline-actions"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Users, XCircle, MoreHorizontal, ArrowRight, Mail, Phone, GripVertical, Settings, Trophy, Edit, BarChart3, UserPlus, Eye, Upload, MessageSquare, TrendingUp, CheckCircle2, ZoomIn, ZoomOut, Minus } from "lucide-react"
+import { Plus, Users, XCircle, Settings, Trophy, BarChart3, Upload, TrendingUp, CheckCircle2, ZoomIn, ZoomOut, Mail } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { CreateLeadSheet } from "./create-lead-sheet"
@@ -19,12 +19,11 @@ import { PipelineSettingsSheet } from "./pipeline-settings-sheet"
 import { useLeadInspector } from "./lead-inspector-context"
 import { AssignLeadSheet } from "./assign-lead-sheet"
 import { ImportLeadsSheet } from "./import-leads-sheet"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { useRouter } from "next/navigation"
-import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, PointerSensor, useSensor, useSensors, closestCorners, useDroppable } from "@dnd-kit/core"
+import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, PointerSensor, useSensor, useSensors, closestCorners } from "@dnd-kit/core"
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable"
-import { useSortable } from "@dnd-kit/sortable"
-import { CSS } from "@dnd-kit/utilities"
+import { LeadCard } from "./lead-card"
+import { DroppableStage } from "./droppable-stage"
 
 // Icon mapping
 const ICON_MAP: Record<string, any> = {
@@ -35,114 +34,6 @@ const ICON_MAP: Record<string, any> = {
     users: Users,
     trophy: Trophy,
     'x-circle': XCircle,
-}
-
-// Draggable Lead Card Component - Compact Design
-function LeadCard({ lead, onConvert, onMarkLost, onEdit, onView, onAssign, onMessage, isDragging }: {
-    lead: Lead;
-    onConvert: (id: string) => void;
-    onMarkLost: (id: string) => void;
-    onEdit: (lead: Lead) => void;
-    onView: (lead: Lead) => void;
-    onAssign: (lead: Lead) => void;
-    onMessage: (lead: Lead) => void;
-    isDragging?: boolean
-}) {
-    const {
-        attributes,
-        listeners,
-        setNodeRef,
-        transform,
-        transition,
-    } = useSortable({ id: lead.id })
-
-    const style = {
-        transform: CSS.Transform.toString(transform),
-        transition,
-        opacity: isDragging ? 0.5 : 1,
-    }
-
-    return (
-        <Card
-            ref={setNodeRef}
-            style={style}
-            onClick={() => !isDragging && onView(lead)}
-            className={cn(
-                "p-2.5 hover:shadow-sm transition-all cursor-pointer group relative border-l-2",
-                isDragging && "opacity-50 scale-95",
-                lead.score && lead.score > 80 ? "border-l-purple-500" :
-                    lead.score && lead.score > 60 ? "border-l-green-500" :
-                        lead.score && lead.score > 30 ? "border-l-yellow-500" : "border-l-transparent"
-            )}
-        >
-            <div className="flex items-center gap-2">
-                <div
-                    {...attributes}
-                    {...listeners}
-                    className="cursor-grab active:cursor-grabbing shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={(e) => e.stopPropagation()}
-                >
-                    <GripVertical className="h-3 w-3 text-muted-foreground" />
-                </div>
-                <div className="flex-1 min-w-0">
-                    <h4 className="font-medium text-sm truncate leading-tight">{lead.name}</h4>
-                    {lead.company_name && (
-                        <p className="text-[11px] text-muted-foreground truncate">{lead.company_name}</p>
-                    )}
-                </div>
-                <div onClick={(e) => e.stopPropagation()} className="shrink-0">
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <MoreHorizontal className="h-3 w-3" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => onView(lead)}>
-                                <Eye className="mr-2 h-3.5 w-3.5" />
-                                Ver Detalle
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => onMessage(lead)}>
-                                <MessageSquare className="mr-2 h-3.5 w-3.5" />
-                                Mensaje
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => onAssign(lead)}>
-                                <UserPlus className="mr-2 h-3.5 w-3.5" />
-                                Asignar
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => onEdit(lead)}>
-                                <Edit className="mr-2 h-3.5 w-3.5" />
-                                Editar
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => onConvert(lead.id)}>
-                                <ArrowRight className="mr-2 h-3.5 w-3.5" />
-                                Convertir
-                            </DropdownMenuItem>
-                            <DropdownMenuItem className="text-red-600" onClick={() => onMarkLost(lead.id)}>
-                                <XCircle className="mr-2 h-3.5 w-3.5" />
-                                Perdido
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                </div>
-            </div>
-        </Card>
-    )
-}
-
-
-// Droppable Stage Column
-function DroppableStage({ id, children }: { id: string; children: React.ReactNode }) {
-    const { setNodeRef, isOver } = useDroppable({
-        id,
-    })
-
-    return (
-        <div ref={setNodeRef} className={cn("flex-1 flex flex-col min-h-0 max-h-full transition-colors", isOver && "bg-slate-50/50 dark:bg-slate-900/20")}>
-            {children}
-        </div>
-    )
 }
 
 export function CRMDashboard() {
@@ -156,8 +47,6 @@ export function CRMDashboard() {
     const [analyticsSheetOpen, setAnalyticsSheetOpen] = useState(false)
 
     // Advanced Features State
-    const [detailModalOpen, setDetailModalOpen] = useState(false)
-    const [viewingLeadId, setViewingLeadId] = useState<string | null>(null)
     const [assignSheetOpen, setAssignSheetOpen] = useState(false)
     const [assigningLeadId, setAssigningLeadId] = useState<string | null>(null)
     const [importSheetOpen, setImportSheetOpen] = useState(false)
@@ -175,11 +64,7 @@ export function CRMDashboard() {
         })
     )
 
-    useEffect(() => {
-        loadData()
-    }, [])
-
-    async function loadData() {
+    const loadData = useCallback(async () => {
         // Don't set loading to true to avoid full re-render on updates
         try {
             const [leadsData, stagesData] = await Promise.all([
@@ -194,7 +79,11 @@ export function CRMDashboard() {
         } finally {
             setIsLoading(false)
         }
-    }
+    }, [])
+
+    useEffect(() => {
+        loadData()
+    }, [loadData])
 
     // Use filters hook
     const {
@@ -205,7 +94,7 @@ export function CRMDashboard() {
         activeFilterCount,
     } = useLeadFilters(leads)
 
-    async function handleConvertToClient(leadId: string) {
+    const handleConvertToClient = useCallback(async (leadId: string) => {
         const confirmed = confirm("¿Convertir este lead a cliente activo?")
         if (!confirmed) return
 
@@ -217,9 +106,9 @@ export function CRMDashboard() {
         } else {
             toast.error(res.error || "Error al convertir lead")
         }
-    }
+    }, [loadData, router])
 
-    async function handleMarkLost(leadId: string) {
+    const handleMarkLost = useCallback(async (leadId: string) => {
         const confirmed = confirm("¿Marcar este lead como perdido?")
         if (!confirmed) return
 
@@ -230,23 +119,23 @@ export function CRMDashboard() {
         } else {
             toast.error(res.error || "Error al actualizar lead")
         }
-    }
+    }, [loadData])
 
-    function handleEditLead(lead: Lead) {
+    const handleEditLead = useCallback((lead: Lead) => {
         setEditingLead(lead)
         setEditSheetOpen(true)
-    }
+    }, [])
 
-    function handleViewLead(lead: Lead) {
+    const handleViewLead = useCallback((lead: Lead) => {
         openInspector(lead.id)
-    }
+    }, [openInspector])
 
-    function handleAssignLead(lead: Lead) {
+    const handleAssignLead = useCallback((lead: Lead) => {
         setAssigningLeadId(lead.id)
         setAssignSheetOpen(true)
-    }
+    }, [])
 
-    function handleMessageLead(lead: Lead) {
+    const handleMessageLead = useCallback((lead: Lead) => {
         // Navigate to inbox with lead's phone or email
         const contact = lead.phone || lead.email
         if (contact) {
@@ -254,13 +143,41 @@ export function CRMDashboard() {
         } else {
             toast.error('Este lead no tiene teléfono ni email')
         }
-    }
+    }, [router])
 
-    function handleDragStart(event: DragStartEvent) {
+    const handleDragStart = useCallback((event: DragStartEvent) => {
         setActiveId(event.active.id as string)
-    }
+    }, [])
 
-    async function handleDragEnd(event: DragEndEvent) {
+    const handleDragEnd = useCallback(async (event: DragEndEvent) => {
+        const { active, over } = event
+        setActiveId(null)
+
+        if (!over) return
+
+        const leadId = active.id as string
+        let newStatus = over.id as string
+
+        // If dropped over another lead, use that lead's status
+        // Note: leads depends on state closure. Logic is fine as long as leads is fresh.
+        // DndContext should trigger re-render if leads changes?
+        // Actually this handler closes over the 'leads' at the time of render.
+        // It should be fine as drag interaction is short.
+
+        // We need access to current leads state.
+        // To be perfectly safe, we'll traverse 'leads' in dependency.
+
+    }, [leads])
+
+    // Wait, if I put [leads] in dependency, handleDragEnd changes every render.
+    // DndContext might unmount/remount sensors if handlers change? 
+    // Usually DndKit handles this.
+    // Let's implement the logic inside.
+
+    // Actually, to avoid stale state in closure, using a ref for leads is sometimes better,
+    // but [leads] dependency is standard React.
+
+    const onDragEnd = useCallback(async (event: DragEndEvent) => {
         const { active, over } = event
         setActiveId(null)
 
@@ -289,25 +206,29 @@ export function CRMDashboard() {
         const res = await updateLeadStatus(leadId, newStatus)
         if (!res.success) {
             toast.error("Error al mover lead")
-            // Revert on error
+            // Revert on error by reloading
             loadData()
         } else {
             toast.success("Lead actualizado")
+            // Refresh guarantees consistency
+            loadData()
         }
-    }
+    }, [leads, loadData])
 
-    const getLeadsByStage = (statusKey: string) => {
+    const getLeadsByStage = useCallback((statusKey: string) => {
         return filteredLeads.filter(lead => lead.status === statusKey)
-    }
+    }, [filteredLeads])
 
-    const stats = {
+    const stats = useMemo(() => ({
         total: leads.length,
         open: leads.filter(l => l.status === 'open').length,
         won: leads.filter(l => l.status === 'won').length,
         lost: leads.filter(l => l.status === 'lost').length,
-    }
+    }), [leads])
 
-    const activeLead = activeId ? leads.find(l => l.id === activeId) : null
+    const activeLead = useMemo(() =>
+        activeId ? leads.find(l => l.id === activeId) : null
+        , [activeId, leads])
 
     if (isLoading) {
         return <div className="h-full flex items-center justify-center text-muted-foreground animate-pulse">Cargando pipeline...</div>
@@ -337,7 +258,7 @@ export function CRMDashboard() {
             sensors={sensors}
             collisionDetection={closestCorners}
             onDragStart={handleDragStart}
-            onDragEnd={handleDragEnd}
+            onDragEnd={onDragEnd}
         >
             <div className="h-full flex flex-col max-h-full">
                 {/* Compact Header */}
