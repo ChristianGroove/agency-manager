@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef } from "react"
-import { checkAndGenerateCycles } from "@/lib/billing-automation"
+import { runBillingCycleCheck } from "./actions"
 import { toast } from "sonner"
 
 export function BillingAutomator() {
@@ -18,10 +18,10 @@ export function BillingAutomator() {
             let loopCount = 0
 
             while (keepChecking && loopCount < 12) { // Cap at 12 loops (e.g. 1 year of months) to prevent infinite loops
-                const result = await checkAndGenerateCycles()
+                const result = await runBillingCycleCheck()
 
-                if (result.success && result.count && result.count > 0) {
-                    totalProcessed += result.count
+                if (result.success && 'count' in result && (result.count || 0) > 0) {
+                    totalProcessed += (result.count || 0)
                     loopCount++
                     // Continue loop to catch the next layer
                 } else {
