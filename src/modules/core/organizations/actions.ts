@@ -51,7 +51,8 @@ export async function getCurrentOrganizationId() {
 
     if (orgCookie?.value) {
         // SECURITY FIX: Validate that current user is actually a member of this org
-        const { data: membership } = await supabase
+        // Using supabaseAdmin to bypass RLS - this is a security check, not a data fetch
+        const { data: membership } = await supabaseAdmin
             .from('organization_members')
             .select('organization_id')
             .eq('organization_id', orgCookie.value)
@@ -75,6 +76,7 @@ export async function getCurrentOrganizationId() {
 
     return null
 }
+
 
 
 
