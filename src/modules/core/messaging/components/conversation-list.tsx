@@ -22,10 +22,7 @@ type Conversation = Database['public']['Tables']['conversations']['Row'] & {
         name: string | null
         phone: string | null
     } | null
-    integration_connections: {
-        connection_name: string | null
-        provider_key: string | null
-    } | null
+    // integration_connections FK doesn't exist yet - removed to fix PGRST200
     // Add missing fields locally until types are regenerated
     state?: 'active' | 'archived' | 'closed'
     tags?: string[]
@@ -65,7 +62,7 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
 
         let query = supabase
             .from('conversations')
-            .select('*, leads(name, phone), integration_connections(connection_name, provider_key)')
+            .select('*, leads(name, phone)')
             .order('last_message_at', { ascending: false })
 
         console.log('[ConversationList] Active filter:', activeFilter)
@@ -143,12 +140,10 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
             const leadName = conv.leads?.name?.toLowerCase() || ''
             const leadPhone = conv.leads?.phone?.toLowerCase() || ''
             const lastMessage = conv.last_message?.toLowerCase() || ''
-            const connectionName = conv.integration_connections?.connection_name?.toLowerCase() || ''
 
             return leadName.includes(query) ||
                 leadPhone.includes(query) ||
-                lastMessage.includes(query) ||
-                connectionName.includes(query)
+                lastMessage.includes(query)
         })
 
         console.log('[ConversationList] Filtered result:', filtered.length)
@@ -264,7 +259,6 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
                             const isSelected = conv.id === selectedId
                             const isUnread = conv.unread_count > 0
                             const priorityIcon = getPriorityIcon(conv.priority)
-                            const connectionName = conv.integration_connections?.connection_name
 
                             return (
                                 <div
@@ -345,12 +339,6 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
                                             <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
                                                 {((conv.channel as any) === 'whatsapp' || (conv.channel as any) === 'evolution') && (
                                                     <MessageSquare className="h-3 w-3" />
-                                                )}
-
-                                                {connectionName && (
-                                                    <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4 font-normal bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700">
-                                                        {connectionName}
-                                                    </Badge>
                                                 )}
 
                                                 <span>
