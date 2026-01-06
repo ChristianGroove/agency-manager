@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase"
+import { supabaseAdmin as supabase } from "@/lib/supabase-admin" // Alias as supabase to keep code compatible
 import * as BillingUtils from "@/lib/billing-utils"
 import { logDomainEvent } from "@/lib/event-logger"
 
