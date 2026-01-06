@@ -94,9 +94,31 @@ export function UpdatePasswordForm() {
 
         // Use Client SDK for Update (Works with the recovered session above)
         // Singleton 'supabase' already has the session from setSession above
-        const { error } = await supabase.auth.updateUser({
+        let { error } = await supabase.auth.updateUser({
             password: password
         })
+
+        // RETRY MECHANISM: If Singleton fails (e.g. Invalid API Key), try FRESH Client
+        if (error && error.message.includes("Invalid API Key")) {
+            console.warn("Singleton failed with Invalid API Key. Retrying with Fresh Client...")
+            const freshSupabase = createBrowserClient(
+                process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+            )
+            // Re-hydrate session on fresh client
+            const { data: { session } } = await supabase.auth.getSession()
+            if (session) {
+                await freshSupabase.auth.setSession({
+                    access_token: session.access_token,
+                    refresh_token: session.refresh_token
+                })
+            }
+
+            const retryResult = await freshSupabase.auth.updateUser({
+                password: password
+            })
+            error = retryResult.error
+        }
 
         if (error) {
             setError(error.message)
