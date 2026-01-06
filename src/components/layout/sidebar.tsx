@@ -292,7 +292,7 @@ export function Sidebar({ isCollapsed, toggleCollapse, currentOrgId, isSuperAdmi
         <TooltipProvider>
             <div
                 className={cn(
-                    "fixed left-4 top-4 bottom-4 h-auto bg-brand-dark/95 backdrop-blur-xl text-white rounded-2xl transition-all duration-300 ease-in-out z-50 flex flex-col shadow-2xl border border-white/10 select-none",
+                    "fixed left-4 top-4 bottom-4 h-auto bg-brand-dark/95 backdrop-blur-xl text-white rounded-2xl transition-all duration-300 ease-in-out z-50 flex flex-col shadow-2xl border border-white/10 select-none animate-float-sidebar",
                     isCollapsed ? "w-16" : "w-64"
                 )}
                 style={{

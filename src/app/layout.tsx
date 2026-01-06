@@ -34,22 +34,29 @@ export async function generateMetadata(): Promise<Metadata> {
 import { TrashBinModal } from "@/modules/core/trash/trash-bin-modal";
 import { Toaster } from "sonner";
 
+import { BrandingProvider } from "@/components/providers/branding-provider";
+
 export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   const settings = await getSettings();
+  const orgId = await getCurrentOrganizationId();
+  const branding = await getEffectiveBranding(orgId);
 
   return (
     <html lang="es" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
-        <TrashBinModal shortcut={settings?.trash_shortcut} />
-        <Toaster />
+        <BrandingProvider initialBranding={branding}>
+          {children}
+          <TrashBinModal shortcut={settings?.trash_shortcut} />
+          <Toaster />
+        </BrandingProvider>
       </body>
+
     </html>
   );
 }

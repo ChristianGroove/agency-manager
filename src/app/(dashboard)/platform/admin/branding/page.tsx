@@ -183,10 +183,18 @@ export default function GlobalBrandingPage() {
                                 <div className="space-y-2">
                                     <Label>Color Primario</Label>
                                     <div className="flex gap-2">
-                                        <div
-                                            className="w-10 h-10 rounded-lg border shadow-sm shrink-0"
-                                            style={{ backgroundColor: branding.colors.primary }}
-                                        />
+                                        <div className="relative w-10 h-10 rounded-lg border shadow-sm shrink-0 overflow-hidden">
+                                            <div
+                                                className="absolute inset-0"
+                                                style={{ backgroundColor: branding.colors.primary }}
+                                            />
+                                            <input
+                                                type="color"
+                                                value={branding.colors.primary}
+                                                onChange={(e) => updateColor('primary', e.target.value)}
+                                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                            />
+                                        </div>
                                         <Input
                                             value={branding.colors.primary}
                                             onChange={(e) => updateColor('primary', e.target.value)}
@@ -198,10 +206,18 @@ export default function GlobalBrandingPage() {
                                 <div className="space-y-2">
                                     <Label>Color Secundario (Acento)</Label>
                                     <div className="flex gap-2">
-                                        <div
-                                            className="w-10 h-10 rounded-lg border shadow-sm shrink-0"
-                                            style={{ backgroundColor: branding.colors.secondary }}
-                                        />
+                                        <div className="relative w-10 h-10 rounded-lg border shadow-sm shrink-0 overflow-hidden">
+                                            <div
+                                                className="absolute inset-0"
+                                                style={{ backgroundColor: branding.colors.secondary }}
+                                            />
+                                            <input
+                                                type="color"
+                                                value={branding.colors.secondary}
+                                                onChange={(e) => updateColor('secondary', e.target.value)}
+                                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                            />
+                                        </div>
                                         <Input
                                             value={branding.colors.secondary}
                                             onChange={(e) => updateColor('secondary', e.target.value)}
