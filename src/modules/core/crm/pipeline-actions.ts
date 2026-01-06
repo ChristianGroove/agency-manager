@@ -128,3 +128,30 @@ export async function deletePipelineStage(stageId: string): Promise<ActionRespon
         return { success: false, error: error.message }
     }
 }
+
+export async function reorderPipelineStages(
+    stageIds: string[]
+): Promise<ActionResponse<null>> {
+    const supabase = await createClient()
+    const orgId = await getCurrentOrganizationId()
+
+    if (!orgId) return { success: false, error: "No organization context" }
+
+    try {
+        // Update each stage with its new display_order
+        const updates = stageIds.map((stageId, index) =>
+            supabase
+                .from('pipeline_stages')
+                .update({ display_order: index + 1 })
+                .eq('id', stageId)
+                .eq('organization_id', orgId)
+        )
+
+        await Promise.all(updates)
+
+        return { success: true }
+    } catch (error: any) {
+        console.error("Error reordering pipeline stages:", error)
+        return { success: false, error: error.message }
+    }
+}

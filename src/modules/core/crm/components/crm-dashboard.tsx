@@ -7,14 +7,15 @@ import { getPipelineStages, PipelineStage } from "../pipeline-actions"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Users, TrendingUp, CheckCircle2, XCircle, MoreHorizontal, ArrowRight, Mail, Phone, GripVertical, Settings, Trophy, Edit, ChevronDown, ChevronUp, BarChart3, UserPlus, Eye, Upload, MessageSquare } from "lucide-react"
+import { Plus, Users, XCircle, MoreHorizontal, ArrowRight, Mail, Phone, GripVertical, Settings, Trophy, Edit, BarChart3, UserPlus, Eye, Upload, MessageSquare, TrendingUp, CheckCircle2, ZoomIn, ZoomOut, Minus } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { CreateLeadSheet } from "./create-lead-sheet"
 import { EditLeadSheet } from "./edit-lead-sheet"
 import { LeadFilters } from "./lead-filters"
 import { useLeadFilters } from "./hooks/use-lead-filters"
-import { PipelineAnalytics } from "./pipeline-analytics"
+import { PipelineAnalyticsSheet } from "./pipeline-analytics-sheet"
+import { PipelineSettingsSheet } from "./pipeline-settings-sheet"
 import { useLeadInspector } from "./lead-inspector-context"
 import { AssignLeadSheet } from "./assign-lead-sheet"
 import { ImportLeadsSheet } from "./import-leads-sheet"
@@ -191,7 +192,7 @@ export function CRMDashboard() {
     const [editSheetOpen, setEditSheetOpen] = useState(false)
     const [editingLead, setEditingLead] = useState<Lead | null>(null)
     const [activeId, setActiveId] = useState<string | null>(null)
-    const [showAnalytics, setShowAnalytics] = useState(false)
+    const [analyticsSheetOpen, setAnalyticsSheetOpen] = useState(false)
 
     // Advanced Features State
     const [detailModalOpen, setDetailModalOpen] = useState(false)
@@ -199,6 +200,8 @@ export function CRMDashboard() {
     const [assignSheetOpen, setAssignSheetOpen] = useState(false)
     const [assigningLeadId, setAssigningLeadId] = useState<string | null>(null)
     const [importSheetOpen, setImportSheetOpen] = useState(false)
+    const [settingsSheetOpen, setSettingsSheetOpen] = useState(false)
+    const [columnZoom, setColumnZoom] = useState(100) // 50-150 percent
 
     const router = useRouter()
     const { openInspector } = useLeadInspector()
@@ -344,13 +347,20 @@ export function CRMDashboard() {
 
     if (stages.length === 0) {
         return (
-            <div className="p-8 text-center">
-                <p className="text-muted-foreground mb-4">No hay etapas configuradas para tu pipeline.</p>
-                <Button onClick={() => router.push('/crm/settings')}>
-                    <Settings className="mr-2 h-4 w-4" />
-                    Configurar Etapas
-                </Button>
-            </div>
+            <>
+                <div className="p-8 text-center">
+                    <p className="text-muted-foreground mb-4">No hay etapas configuradas para tu pipeline.</p>
+                    <Button onClick={() => setSettingsSheetOpen(true)}>
+                        <Settings className="mr-2 h-4 w-4" />
+                        Configurar Etapas
+                    </Button>
+                </div>
+                <PipelineSettingsSheet
+                    open={settingsSheetOpen}
+                    onOpenChange={setSettingsSheetOpen}
+                    onStagesChange={loadData}
+                />
+            </>
         )
     }
 
@@ -362,31 +372,55 @@ export function CRMDashboard() {
             onDragEnd={handleDragEnd}
         >
             <div className="h-full flex flex-col">
-                {/* Header */}
-                <div className="shrink-0 space-y-4 mb-6">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h1 className="text-3xl font-bold tracking-tight">Pipeline</h1>
-                            <p className="text-muted-foreground">
-                                Arrastra leads entre etapas para actualizar su estado.
-                            </p>
+                {/* Compact Header */}
+                <div className="shrink-0 mb-4 space-y-3">
+                    {/* Top Row: Title + Mini Stats + Actions */}
+                    <div className="flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-4">
+                            <h1 className="text-2xl font-bold tracking-tight">Pipeline</h1>
+
+                            {/* Inline Mini Stats */}
+                            <div className="hidden sm:flex items-center gap-3 text-sm">
+                                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100">
+                                    <Users className="h-3.5 w-3.5 text-slate-500" />
+                                    <span className="font-semibold">{stats.total}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-100">
+                                    <Trophy className="h-3.5 w-3.5 text-green-600" />
+                                    <span className="font-semibold text-green-700">{stats.won}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-100">
+                                    <XCircle className="h-3.5 w-3.5 text-red-600" />
+                                    <span className="font-semibold text-red-700">{stats.lost}</span>
+                                </div>
+                            </div>
                         </div>
-                        <div className="flex gap-2">
-                            <Button variant="outline" size="icon" onClick={() => setImportSheetOpen(true)} title="Importar Leads">
+
+                        {/* Actions */}
+                        <div className="flex items-center gap-2">
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() => setAnalyticsSheetOpen(true)}
+                                title="Ver Analítica"
+                                className="h-9 w-9"
+                            >
+                                <BarChart3 className="h-4 w-4" />
+                            </Button>
+                            <Button variant="outline" size="icon" onClick={() => setImportSheetOpen(true)} title="Importar Leads" className="h-9 w-9">
                                 <Upload className="h-4 w-4" />
                             </Button>
-                            <Button variant="outline" onClick={() => router.push('/crm/settings')}>
-                                <Settings className="mr-2 h-4 w-4" />
-                                Configurar Pipeline
+                            <Button variant="outline" size="icon" onClick={() => setSettingsSheetOpen(true)} title="Configurar Pipeline" className="h-9 w-9">
+                                <Settings className="h-4 w-4" />
                             </Button>
-                            <Button onClick={() => setCreateSheetOpen(true)}>
-                                <Plus className="mr-2 h-4 w-4" />
+                            <Button onClick={() => setCreateSheetOpen(true)} size="sm" className="h-9">
+                                <Plus className="mr-1.5 h-4 w-4" />
                                 Nuevo Lead
                             </Button>
                         </div>
                     </div>
 
-                    {/* Filters */}
+                    {/* Filters Row */}
                     <LeadFilters
                         searchText={filters.searchText}
                         onSearchChange={(value) => updateFilter('searchText', value)}
@@ -402,70 +436,47 @@ export function CRMDashboard() {
                         totalLeads={leads.length}
                         filteredCount={filteredLeads.length}
                     />
-
-                    {/* Stats Cards */}
-
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <Card className="p-4">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm text-muted-foreground">Total Leads</p>
-                                    <p className="text-2xl font-bold">{stats.total}</p>
-                                </div>
-                                <Users className="h-8 w-8 text-blue-500 opacity-50" />
-                            </div>
-                        </Card>
-                        <Card className="p-4">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm text-muted-foreground">Activos</p>
-                                    <p className="text-2xl font-bold">{stats.open}</p>
-                                </div>
-                                <TrendingUp className="h-8 w-8 text-blue-500 opacity-50" />
-                            </div>
-                        </Card>
-                        <Card className="p-4">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm text-muted-foreground">Ganados</p>
-                                    <p className="text-2xl font-bold">{stats.won}</p>
-                                </div>
-                                <Trophy className="h-8 w-8 text-green-500 opacity-50" />
-                            </div>
-                        </Card>
-                        <Card className="p-4">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm text-muted-foreground">Perdidos</p>
-                                    <p className="text-2xl font-bold">{stats.lost}</p>
-                                </div>
-                                <XCircle className="h-8 w-8 text-red-500 opacity-50" />
-                            </div>
-                        </Card>
-                    </div>
-
-                    {/* Analytics Toggle */}
-                    <Button
-                        variant="outline"
-                        onClick={() => setShowAnalytics(!showAnalytics)}
-                        className="w-full"
-                    >
-                        <BarChart3 className="mr-2 h-4 w-4" />
-                        {showAnalytics ? 'Ocultar' : 'Ver'} Analítica del Pipeline
-                        {showAnalytics ? <ChevronUp className="ml-2 h-4 w-4" /> : <ChevronDown className="ml-2 h-4 w-4" />}
-                    </Button>
-
-                    {/* Analytics Section */}
-                    {showAnalytics && (
-                        <PipelineAnalytics leads={filteredLeads} stages={stages} />
-                    )}
                 </div>
 
-                {/* Kanban Board */}
-                <div className="flex-1 overflow-x-auto">
-                    <div className="inline-flex gap-4 h-full min-w-full pb-4">
+                {/* Zoom Controls */}
+                <div className="flex items-center justify-end gap-2 mb-2 px-1">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0"
+                        onClick={() => setColumnZoom(prev => Math.max(50, prev - 25))}
+                        disabled={columnZoom <= 50}
+                    >
+                        <ZoomOut className="h-3.5 w-3.5" />
+                    </Button>
+                    <div className="flex items-center gap-1 px-2 py-1 bg-slate-100 dark:bg-zinc-800 rounded-lg">
+                        <span className="text-xs font-medium text-slate-600 dark:text-slate-400 w-8 text-center">{columnZoom}%</span>
+                    </div>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0"
+                        onClick={() => setColumnZoom(prev => Math.min(150, prev + 25))}
+                        disabled={columnZoom >= 150}
+                    >
+                        <ZoomIn className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs"
+                        onClick={() => setColumnZoom(100)}
+                    >
+                        Reset
+                    </Button>
+                </div>
+
+                {/* Kanban Board - Full Height with Modern Scrollbar */}
+                <div className="flex-1 overflow-x-auto overflow-y-hidden scroll-smooth scrollbar-modern">
+                    <div className="flex gap-4 h-full pb-3 px-1" style={{ minWidth: 'max-content' }}>
                         {stages.map((stage) => {
                             const stageLeads = getLeadsByStage(stage.status_key)
+                            const columnWidth = Math.round(300 * (columnZoom / 100))
 
                             return (
                                 <SortableContext
@@ -474,22 +485,32 @@ export function CRMDashboard() {
                                     items={stageLeads.map(l => l.id)}
                                     strategy={verticalListSortingStrategy}
                                 >
-                                    <div className="flex-1 min-w-[280px] flex flex-col">
-                                        {/* Stage Header */}
-                                        <div className="flex items-center gap-2 mb-3">
-                                            <div className={cn("w-3 h-3 rounded-full", stage.color)} />
-                                            <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">
+                                    <div
+                                        className="flex flex-col h-full transition-all duration-300 ease-out"
+                                        style={{
+                                            width: `${columnWidth}px`,
+                                            minWidth: `${columnWidth}px`,
+                                        }}
+                                    >
+                                        {/* Stage Header - Compact */}
+                                        <div className="flex items-center gap-2 mb-2 px-1">
+                                            <div className={cn("w-2.5 h-2.5 rounded-full", stage.color)} />
+                                            <h3 className="font-medium text-sm text-muted-foreground truncate">
                                                 {stage.name}
                                             </h3>
-                                            <Badge variant="secondary" className="ml-auto">
+                                            <Badge variant="secondary" className="ml-auto h-5 px-1.5 text-xs shrink-0">
                                                 {stageLeads.length}
                                             </Badge>
                                         </div>
 
-                                        {/* Droppable Stage Area */}
+                                        {/* Droppable Stage Area - Scrollable with Modern Scrollbar */}
                                         <DroppableStage id={stage.status_key}>
                                             <div
-                                                className="flex-1 flex flex-col gap-2 p-2 bg-gray-50 rounded-lg min-h-[200px]"
+                                                className="flex-1 flex flex-col gap-2 p-2 bg-slate-50/80 dark:bg-slate-900/50 rounded-xl border border-slate-200/50 dark:border-slate-800 overflow-y-auto"
+                                                style={{
+                                                    scrollbarWidth: 'thin',
+                                                    scrollbarColor: 'rgb(203 213 225) transparent',
+                                                }}
                                             >
                                                 {stageLeads.length === 0 ? (
                                                     <div className="rounded-lg p-8 text-center text-muted-foreground text-sm bg-gray-50/50">
@@ -559,6 +580,21 @@ export function CRMDashboard() {
                     open={importSheetOpen}
                     onOpenChange={setImportSheetOpen}
                     onSuccess={loadData}
+                />
+
+                {/* Analytics Sheet */}
+                <PipelineAnalyticsSheet
+                    open={analyticsSheetOpen}
+                    onOpenChange={setAnalyticsSheetOpen}
+                    leads={filteredLeads}
+                    stages={stages}
+                />
+
+                {/* Settings Sheet */}
+                <PipelineSettingsSheet
+                    open={settingsSheetOpen}
+                    onOpenChange={setSettingsSheetOpen}
+                    onStagesChange={loadData}
                 />
             </div>
         </DndContext>
