@@ -3,6 +3,12 @@
 import { useState, useEffect } from "react"
 import { supabase } from "@/lib/supabase"
 import { updatePassword } from "@/modules/core/auth/actions"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Loader2 } from "lucide-react"
+import { ParticlesBackground } from "@/components/ui/particles-background"
 // ... imports ...
 
 export function UpdatePasswordForm() {
