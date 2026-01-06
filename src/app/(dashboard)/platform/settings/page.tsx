@@ -2,6 +2,7 @@ import { Suspense } from "react"
 import { SettingsForm } from "@/modules/core/settings/settings-form"
 import { getSettings } from "@/modules/core/settings/actions"
 import { getEffectiveBranding } from "@/modules/core/branding/actions"
+import { getCurrentBrandingTier } from "@/modules/core/branding/tier-actions"
 import { getOrganizationModules, getCurrentOrganizationId } from "@/modules/core/organizations/actions"
 import { getSubscriptionApp } from "@/modules/core/catalog/actions"
 import { getCurrentOrgRole } from "@/lib/auth/org-roles"
@@ -19,13 +20,16 @@ export default async function SettingsPage() {
         return <div>Error: Organización no encontrada</div>
     }
 
-    const [settings, activeModules, subscriptionApp, brandingSettings, userRole] = await Promise.all([
+    const [settings, activeModules, subscriptionApp, brandingSettings, userRole, tierData] = await Promise.all([
         getSettings(),
         getOrganizationModules(orgId),
         getSubscriptionApp(),
         getEffectiveBranding(orgId),
-        getCurrentOrgRole()
+        getCurrentOrgRole(),
+        getCurrentBrandingTier()
     ])
+
+    const tierFeatures = tierData?.tier?.features || {}
 
     return (
         <div className="space-y-6">
@@ -36,6 +40,7 @@ export default async function SettingsPage() {
                     activeModules={activeModules || []}
                     subscriptionApp={subscriptionApp}
                     userRole={userRole || 'member'}
+                    tierFeatures={tierFeatures}
                 />
             </Suspense>
         </div>
@@ -49,3 +54,4 @@ function SettingsLoading() {
         </div>
     )
 }
+

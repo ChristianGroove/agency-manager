@@ -8,10 +8,10 @@ interface BrandCenterSheetProps {
     open: boolean
     onOpenChange: (open: boolean) => void
     settings: BrandingConfig
-    activeModules: string[]
+    tierFeatures: Record<string, any>
 }
 
-export function BrandCenterSheet({ open, onOpenChange, settings, activeModules }: BrandCenterSheetProps) {
+export function BrandCenterSheet({ open, onOpenChange, settings, tierFeatures }: BrandCenterSheetProps) {
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
             <SheetContent
@@ -39,7 +39,7 @@ export function BrandCenterSheet({ open, onOpenChange, settings, activeModules }
                         <div className="pb-10">
                             <BrandCenter
                                 initialSettings={settings}
-                                activeModules={activeModules}
+                                tierFeatures={tierFeatures}
                                 variant="sheet"
                             />
                         </div>
@@ -49,3 +49,4 @@ export function BrandCenterSheet({ open, onOpenChange, settings, activeModules }
         </Sheet>
     )
 }
+

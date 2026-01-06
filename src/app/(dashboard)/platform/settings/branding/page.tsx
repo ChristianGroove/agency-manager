@@ -1,22 +1,25 @@
-import { BrandCenter } from "@/modules/core/branding/components/brand-center" // Ensure path is correct
+import { BrandCenter } from "@/modules/core/branding/components/brand-center"
 import { getEffectiveBranding } from "@/modules/core/branding/actions"
-import { getActiveModules } from "@/modules/core/saas/actions"
+import { getCurrentBrandingTier } from "@/modules/core/branding/tier-actions"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
 
 export default async function BrandingPage() {
     const orgId = await getCurrentOrganizationId()
 
-    // Parallel fetch for performance using Promise.all in the new approach would be better 
-    // but the actions already handle caching hopefully. 
-    // Actually getEffectiveBranding (from audit) does simple fetching.
+    // Parallel fetch for performance
+    const [settings, tierData] = await Promise.all([
+        getEffectiveBranding(orgId),
+        getCurrentBrandingTier()
+    ])
 
-    const settings = await getEffectiveBranding(orgId)
-    const activeModules = await getActiveModules(orgId ?? undefined)
+    // Extract tier features (default to empty object if no tier)
+    const tierFeatures = tierData?.tier?.features || {}
 
     return (
         <BrandCenter
             initialSettings={settings}
-            activeModules={activeModules || []}
+            tierFeatures={tierFeatures}
         />
     )
 }
+

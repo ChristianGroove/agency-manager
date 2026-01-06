@@ -38,10 +38,11 @@ interface SettingsFormProps {
     activeModules: string[]
     subscriptionApp?: SaasApp | null
     brandingSettings?: BrandingConfig
+    tierFeatures?: Record<string, any>
     userRole: OrganizationRole
 }
 
-export function SettingsForm({ initialSettings, activeModules, subscriptionApp, brandingSettings, userRole }: SettingsFormProps) {
+export function SettingsForm({ initialSettings, activeModules, subscriptionApp, brandingSettings, tierFeatures = {}, userRole }: SettingsFormProps) {
     // ... existing code ...
 
     // ADD LOCAL STATE FOR SUBSCRIPTION APP (Optional, mostly passed down)
@@ -266,7 +267,7 @@ export function SettingsForm({ initialSettings, activeModules, subscriptionApp, 
                     open={showBrandCenter}
                     onOpenChange={setShowBrandCenter}
                     settings={brandingSettings}
-                    activeModules={activeModules}
+                    tierFeatures={tierFeatures}
                 />
             )}
             <div className="flex items-center justify-between">

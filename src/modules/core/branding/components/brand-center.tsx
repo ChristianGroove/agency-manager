@@ -18,14 +18,18 @@ import { DomainsTab } from "./domains-tab"
 
 interface BrandCenterProps {
     initialSettings: BrandingConfig
-    activeModules: string[]
+    tierFeatures: Record<string, any>
     variant?: 'page' | 'sheet'
 }
 
-export function BrandCenter({ initialSettings, activeModules, variant = 'page' }: BrandCenterProps) {
+export function BrandCenter({ initialSettings, tierFeatures, variant = 'page' }: BrandCenterProps) {
     const [settings, setSettings] = useState<BrandingConfig>(initialSettings)
     const [saving, setSaving] = useState(false)
-    const hasWhiteLabel = activeModules.includes("module_whitelabel")
+
+    // Tier-based permissions
+    const canCustomizePortal = tierFeatures.custom_colors === true || tierFeatures.remove_pixy_branding === true
+    const canCustomizeDomain = tierFeatures.custom_domain === true
+
 
     const handleSave = async () => {
         setSaving(true)
@@ -74,7 +78,7 @@ export function BrandCenter({ initialSettings, activeModules, variant = 'page' }
                         <FileText className="mr-2 h-4 w-4" /> Documentos
                     </TabsTrigger>
                     <TabsTrigger value="domains">
-                        {hasWhiteLabel ? <Globe className="mr-2 h-4 w-4 text-primary" /> : <Lock className="mr-2 h-4 w-4" />}
+                        {canCustomizeDomain ? <Globe className="mr-2 h-4 w-4 text-primary" /> : <Lock className="mr-2 h-4 w-4" />}
                         Dominios
                     </TabsTrigger>
                 </TabsList>
@@ -84,7 +88,7 @@ export function BrandCenter({ initialSettings, activeModules, variant = 'page' }
                 </TabsContent>
 
                 <TabsContent value="portal" className="mt-6">
-                    {hasWhiteLabel ? (
+                    {canCustomizePortal ? (
                         <PortalTab settings={settings} onChange={setSettings} />
                     ) : (
                         <Card className="border-yellow-200 bg-yellow-50 dark:bg-yellow-900/10">
@@ -111,7 +115,7 @@ export function BrandCenter({ initialSettings, activeModules, variant = 'page' }
                 </TabsContent>
 
                 <TabsContent value="domains" className="mt-6">
-                    {!hasWhiteLabel ? (
+                    {!canCustomizeDomain ? (
                         <Card className="border-yellow-200 bg-yellow-50 dark:bg-yellow-900/10">
                             <CardHeader>
                                 <CardTitle className=" flex items-center gap-2 text-yellow-800 dark:text-yellow-500">
