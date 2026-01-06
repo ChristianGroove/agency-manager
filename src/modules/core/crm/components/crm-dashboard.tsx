@@ -135,17 +135,11 @@ function LeadCard({ lead, onConvert, onMarkLost, onEdit, onView, onAssign, onMes
 // Droppable Stage Column
 function DroppableStage({ id, children }: { id: string; children: React.ReactNode }) {
     const { setNodeRef, isOver } = useDroppable({
-        id: id,
+        id,
     })
 
     return (
-        <div
-            ref={setNodeRef}
-            className={cn(
-                "flex-1 min-h-[200px] rounded-lg transition-colors",
-                isOver && "bg-blue-50 ring-2 ring-blue-300"
-            )}
-        >
+        <div ref={setNodeRef} className={cn("flex-1 flex flex-col min-h-0 max-h-full transition-colors", isOver && "bg-slate-50/50 dark:bg-slate-900/20")}>
             {children}
         </div>
     )
@@ -428,7 +422,7 @@ export function CRMDashboard() {
                                     strategy={verticalListSortingStrategy}
                                 >
                                     <div
-                                        className="flex flex-col shrink-0 transition-all duration-300 ease-out"
+                                        className="flex flex-col shrink-0 h-full max-h-full transition-all duration-300 ease-out"
                                         style={{
                                             width: `${columnWidth}px`,
                                             minWidth: `${columnWidth}px`,
