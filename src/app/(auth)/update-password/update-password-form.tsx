@@ -105,12 +105,7 @@ export function UpdatePasswordForm() {
         }
 
         // Use Client SDK for Update (Works with the recovered session above)
-        // Direct instantiation ensures we use the latest env vars
-        const supabase = createBrowserClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-        )
-
+        // Singleton 'supabase' already has the session from setSession above
         const { error } = await supabase.auth.updateUser({
             password: password
         })
