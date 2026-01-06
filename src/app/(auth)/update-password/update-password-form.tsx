@@ -1,14 +1,9 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { supabase } from "@/lib/supabase"
 import { updatePassword } from "@/modules/core/auth/actions"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Loader2 } from "lucide-react"
-import { ParticlesBackground } from "@/components/ui/particles-background"
-import { createBrowserClient } from "@supabase/ssr" // Use direct import
+// ... imports ...
 
 export function UpdatePasswordForm() {
     const [isLoading, setIsLoading] = useState(false)
@@ -18,20 +13,7 @@ export function UpdatePasswordForm() {
     // Handle Hash Recovery on Mount
     useEffect(() => {
         const handleRecovery = async () => {
-            // DIAGNOSTIC: Check Environment Variables
-            if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-                console.error("Missing Env Vars:", {
-                    url: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
-                    key: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-                })
-                setError("Error de Configuración del Sitio: Faltan variables de conexión.")
-                return
-            }
-
-            const supabase = createBrowserClient(
-                process.env.NEXT_PUBLIC_SUPABASE_URL,
-                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-            )
+            // 1. Detect Explicit Errors in URL (e.g. otp_expired)
 
             // 1. Detect Explicit Errors in URL (e.g. otp_expired)
             const params = new URLSearchParams(window.location.hash.substring(1)) // Remove #
