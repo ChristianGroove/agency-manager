@@ -48,11 +48,11 @@ const CATEGORIES = [
 ];
 
 const categoryColors: Record<string, string> = {
-    sales: 'from-blue-500 to-indigo-600',
-    marketing: 'from-pink-500 to-rose-600',
-    support: 'from-green-500 to-emerald-600',
-    operations: 'from-orange-500 to-amber-600',
-    other: 'from-slate-500 to-slate-600',
+    sales: 'bg-blue-100 text-blue-600',
+    marketing: 'bg-purple-100 text-purple-600',
+    support: 'bg-green-100 text-green-600',
+    operations: 'bg-orange-100 text-orange-600',
+    other: 'bg-slate-100 text-slate-600',
 };
 
 const difficultyBadges: Record<string, { label: string; class: string }> = {
@@ -98,8 +98,8 @@ export function TemplatesSheet({ open, onOpenChange }: TemplatesSheetProps) {
                     {/* Header */}
                     <div className="sticky top-0 z-20 shrink-0 px-6 py-5 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md border-b border-gray-100 dark:border-slate-800">
                         <div className="flex items-center gap-3 mb-4">
-                            <div className="p-2.5 bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl shadow-lg shadow-orange-500/25">
-                                <Sparkles className="h-5 w-5 text-white" />
+                            <div className="p-2.5 bg-brand-pink/10 rounded-xl">
+                                <Sparkles className="h-5 w-5 text-brand-pink" />
                             </div>
                             <div>
                                 <h2 className="text-lg font-bold text-gray-900 dark:text-white tracking-tight leading-none">
@@ -161,20 +161,20 @@ export function TemplatesSheet({ open, onOpenChange }: TemplatesSheetProps) {
                                             <div className={`
                                                 flex items-center gap-4 p-4 rounded-xl cursor-pointer transition-all border group
                                                 bg-white dark:bg-slate-900 border-gray-100 dark:border-slate-800 
-                                                hover:border-amber-200 dark:hover:border-amber-800 hover:shadow-lg hover:shadow-amber-500/10
+                                                hover:border-gray-200 dark:hover:border-slate-700 hover:shadow-lg hover:shadow-gray-200/50
                                             `}>
                                                 {/* Icon */}
                                                 <div className={`
                                                     flex h-12 w-12 shrink-0 items-center justify-center rounded-xl 
-                                                    bg-gradient-to-br ${gradient} shadow-lg transition-transform group-hover:scale-105
+                                                    ${gradient} transition-transform group-hover:scale-105
                                                 `}>
-                                                    <Zap className="h-5 w-5 text-white" />
+                                                    <Zap className="h-5 w-5" />
                                                 </div>
 
                                                 {/* Content */}
                                                 <div className="flex-1 min-w-0">
                                                     <div className="flex items-center gap-2 mb-1">
-                                                        <h3 className="font-semibold text-sm text-gray-900 dark:text-white truncate group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
+                                                        <h3 className="font-semibold text-sm text-gray-900 dark:text-white truncate group-hover:text-brand-pink transition-colors">
                                                             {template.name}
                                                         </h3>
                                                         {difficulty && (
@@ -199,8 +199,8 @@ export function TemplatesSheet({ open, onOpenChange }: TemplatesSheetProps) {
                                                 </div>
 
                                                 {/* Arrow */}
-                                                <div className="h-8 w-8 flex items-center justify-center bg-gray-50 dark:bg-slate-800 rounded-full shrink-0 group-hover:bg-amber-100 dark:group-hover:bg-amber-900/30 transition-colors">
-                                                    <ArrowRight className="h-4 w-4 text-gray-400 group-hover:text-amber-600 group-hover:translate-x-0.5 transition-all" />
+                                                <div className="h-8 w-8 flex items-center justify-center bg-gray-50 dark:bg-slate-800 rounded-full shrink-0 group-hover:bg-brand-pink/10 transition-colors">
+                                                    <ArrowRight className="h-4 w-4 text-gray-400 group-hover:text-brand-pink group-hover:translate-x-0.5 transition-all" />
                                                 </div>
                                             </div>
                                         </Link>
@@ -224,7 +224,7 @@ export function TemplatesSheet({ open, onOpenChange }: TemplatesSheetProps) {
                                 Cerrar
                             </Button>
                             <Link href={`/automations/${crypto.randomUUID()}`} onClick={() => onOpenChange(false)}>
-                                <Button className="shadow-lg shadow-amber-500/20 bg-amber-500 hover:bg-amber-600 text-white">
+                                <Button className="shadow-lg shadow-gray-200 bg-brand-pink hover:bg-brand-pink/90 text-white">
                                     <Plus className="mr-2 h-4 w-4" />
                                     Desde Cero
                                 </Button>

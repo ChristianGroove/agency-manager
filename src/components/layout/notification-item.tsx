@@ -37,7 +37,7 @@ export function NotificationItem({ notification, onClick }: NotificationItemProp
             case 'quote_rejected':
                 return { icon: FileX, color: "text-red-600", bg: "bg-red-100" }
             case 'service_interest':
-                return { icon: Heart, color: "text-pink-600", bg: "bg-pink-100" }
+                return { icon: Heart, color: "text-brand-pink", bg: "bg-brand-pink/10" }
             case 'briefing_submitted':
                 return { icon: FileText, color: "text-purple-600", bg: "bg-purple-100" }
             default:

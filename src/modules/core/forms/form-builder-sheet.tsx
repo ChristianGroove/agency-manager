@@ -157,8 +157,8 @@ export function FormBuilderSheet({
                         {/* Header */}
                         <div className="sticky top-0 z-20 bg-white border-b border-gray-100 px-8 py-5">
                             <div className="flex items-center gap-3">
-                                <div className="p-2 bg-indigo-50 rounded-lg">
-                                    <FileText className="h-5 w-5 text-indigo-600" />
+                                <div className="p-2 bg-brand-pink/10 rounded-lg">
+                                    <FileText className="h-5 w-5 text-brand-pink" />
                                 </div>
                                 <div>
                                     <SheetTitle className="text-xl font-semibold text-gray-900">
@@ -241,7 +241,7 @@ export function FormBuilderSheet({
                             <Button
                                 onClick={handleSave}
                                 disabled={loading}
-                                className="bg-indigo-600 hover:bg-indigo-700 text-white px-8"
+                                className="bg-brand-pink hover:bg-brand-pink/90 text-white px-8"
                             >
                                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 {templateToEdit ? "Guardar Cambios" : "Crear Formulario"}
@@ -496,7 +496,7 @@ function LivePreview({ template }: { template: { name: string; description: stri
             </div>
 
             <div className="mt-8 pt-6 border-t">
-                <Button className="w-full bg-indigo-600 hover:bg-indigo-700 text-white" disabled>
+                <Button className="w-full bg-brand-pink hover:bg-brand-pink/90 text-white" disabled>
                     Enviar Formulario
                 </Button>
             </div>

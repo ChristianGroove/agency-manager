@@ -95,7 +95,7 @@ export default function GlobalBrandingPage() {
                         Define la identidad visual base de la plataforma (Queen Brand).
                     </p>
                 </div>
-                <Button onClick={handleSave} disabled={saving} size="lg" className="bg-indigo-600 hover:bg-indigo-700">
+                <Button onClick={handleSave} disabled={saving} size="lg" className="bg-brand-pink hover:bg-brand-pink/90">
                     {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                     Guardar Cambios
                 </Button>
@@ -171,7 +171,7 @@ export default function GlobalBrandingPage() {
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
-                                <Palette className="h-5 w-5 text-pink-500" />
+                                <Palette className="h-5 w-5 text-brand-pink" />
                                 Paleta de Colores
                             </CardTitle>
                             <CardDescription>

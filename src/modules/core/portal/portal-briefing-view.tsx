@@ -50,7 +50,7 @@ export function PortalBriefingView({ token, briefingId, onBack }: PortalBriefing
     if (loading) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[50vh]">
-                <Loader2 className="h-8 w-8 animate-spin text-pink-500 mb-4" />
+                <Loader2 className="h-8 w-8 animate-spin text-brand-pink mb-4" />
                 <p className="text-gray-500">Cargando formulario...</p>
             </div>
         )

@@ -32,8 +32,8 @@ export function SocialDashboard({ data }: SocialDashboardProps) {
                     title="Interacciones"
                     value={data.facebook.engagement.toLocaleString()}
                     icon={Heart}
-                    color="text-pink-600"
-                    bg="bg-pink-100"
+                    color="text-brand-pink"
+                    bg="bg-brand-pink/10"
                 />
                 <KPICard
                     title="Impresiones"
@@ -80,7 +80,7 @@ export function SocialDashboard({ data }: SocialDashboardProps) {
                                     </p>
                                     <div className="flex justify-between items-center text-xs font-medium text-gray-700">
                                         <span className="flex items-center gap-1">
-                                            <Heart className="w-3 h-3 text-pink-500" /> {post.engagement}
+                                            <Heart className="w-3 h-3 text-brand-pink" /> {post.engagement}
                                         </span>
                                         <span className="flex items-center gap-1">
                                             <BarChart2 className="w-3 h-3 text-blue-500" /> {post.reach}

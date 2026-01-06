@@ -930,7 +930,7 @@ export default function ClientDetailPage() {
                             )}
 
                             {client.website && (
-                                <Button variant="outline" size="sm" className="h-8 gap-2 hover:text-brand-pink hover:border-brand-pink/30 hover:bg-brand-pink/5" asChild>
+                                <Button variant="outline" size="sm" className="h-8 gap-2 hover:text-brand-pink hover:border-gray-300 hover:bg-gray-50" asChild>
                                     <a href={client.website.startsWith('http') ? client.website : `https://${client.website}`} target="_blank">
                                         <Globe className="h-3.5 w-3.5" /> Web
                                     </a>

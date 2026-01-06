@@ -115,7 +115,7 @@ export function CategoryManager() {
                         {/* Header */}
                         <div className="sticky top-0 z-20 flex items-center justify-between shrink-0 px-8 py-5 bg-white/40 backdrop-blur-md border-b border-black/5">
                             <div className="flex items-center gap-3">
-                                <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600">
+                                <div className="p-2 bg-brand-pink/10 rounded-lg text-brand-pink">
                                     <LucideIcons.FolderOpen className="h-5 w-5" />
                                 </div>
                                 <div>
@@ -217,7 +217,7 @@ export function CategoryManager() {
                             <Button
                                 onClick={handleCreateNew}
                                 size="sm"
-                                className="bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg shadow-indigo-200"
+                                className="bg-brand-pink text-white hover:bg-brand-pink/90 shadow-lg shadow-gray-200"
                             >
                                 <Plus className="h-4 w-4 mr-2" />
                                 Nueva Categoría

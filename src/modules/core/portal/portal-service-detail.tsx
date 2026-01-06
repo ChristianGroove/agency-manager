@@ -26,7 +26,7 @@ export function PortalServiceDetail({ service, invoices, briefings, onBack, onPa
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="space-y-1">
-                    <Button variant="ghost" onClick={onBack} className="pl-0 hover:bg-transparent hover:text-pink-600 -ml-2 mb-2">
+                    <Button variant="ghost" onClick={onBack} className="pl-0 hover:bg-transparent hover:text-brand-pink -ml-2 mb-2">
                         <ArrowLeft className="h-4 w-4 mr-2" />
                         Volver a Servicios
                     </Button>

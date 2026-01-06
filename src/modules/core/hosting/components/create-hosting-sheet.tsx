@@ -117,18 +117,36 @@ export function CreateHostingSheet({ open, onOpenChange, onSuccess, accountToEdi
                     bg-transparent
                 "
             >
-                <div className="flex flex-col h-full bg-white/95 backdrop-blur-xl">
-                    <SheetHeader className="px-6 py-4 bg-white/50 border-b border-gray-100 flex-shrink-0 backdrop-blur-md sticky top-0 z-10">
-                        <SheetTitle>{accountToEdit ? "Editar Hosting" : "Nuevo Hosting"}</SheetTitle>
-                    </SheetHeader>
-                    <div className="flex-1 overflow-y-auto p-6">
-                        <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="flex flex-col h-full bg-white/95 backdrop-blur-xl rounded-3xl overflow-hidden">
+                    {/* Header */}
+                    <div className="sticky top-0 z-20 flex items-center gap-3 shrink-0 px-8 py-5 bg-white/80 backdrop-blur-md border-b border-gray-100">
+                        <div className="p-2 bg-brand-pink/10 rounded-lg text-brand-pink">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <rect width="20" height="8" x="2" y="2" rx="2" ry="2" />
+                                <rect width="20" height="8" x="2" y="14" rx="2" ry="2" />
+                                <line x1="6" x2="6.01" y1="6" y2="6" />
+                                <line x1="6" x2="6.01" y1="18" y2="18" />
+                            </svg>
+                        </div>
+                        <div>
+                            <SheetTitle className="text-xl font-semibold text-gray-900">
+                                {accountToEdit ? "Editar Hosting" : "Nuevo Hosting"}
+                            </SheetTitle>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                                Configura los datos del servidor
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex-1 overflow-y-auto px-8 py-6">
+                        <form onSubmit={handleSubmit} className="space-y-5">
                             <div className="space-y-2">
                                 <Label>Cliente</Label>
                                 <Select
                                     value={formData.client_id}
                                     onValueChange={(v) => setFormData({ ...formData, client_id: v })}
-                                    disabled={!!clientId} // Disable if pre-filled by parent
+                                    disabled={!!clientId}
                                 >
                                     <SelectTrigger>
                                         <SelectValue placeholder="Seleccionar Cliente" />
@@ -142,11 +160,12 @@ export function CreateHostingSheet({ open, onOpenChange, onSuccess, accountToEdi
                             </div>
 
                             <div className="space-y-2">
-                                <Label>Dominio (URL)</Label>
+                                <Label>Dominio (URL) *</Label>
                                 <Input
                                     placeholder="ejemplo.com"
                                     value={formData.domain_url}
                                     onChange={(e) => setFormData({ ...formData, domain_url: e.target.value })}
+                                    className="h-11"
                                 />
                             </div>
 
@@ -216,13 +235,21 @@ export function CreateHostingSheet({ open, onOpenChange, onSuccess, accountToEdi
                         </form>
                     </div>
 
-                    <SheetFooter className="p-6 bg-white/50 border-t border-gray-100 flex-shrink-0 backdrop-blur-md">
-                        <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
-                        <Button type="submit" disabled={loading} className="bg-brand-pink text-white" onClick={handleSubmit}>
-                            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Guardar
+                    {/* Footer */}
+                    <div className="sticky bottom-0 px-8 py-4 bg-white/80 backdrop-blur-md border-t border-gray-100 flex items-center justify-between">
+                        <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
+                            Cancelar
                         </Button>
-                    </SheetFooter>
+                        <Button
+                            type="submit"
+                            disabled={loading}
+                            className="bg-brand-pink hover:bg-brand-pink/90 text-white px-6"
+                            onClick={handleSubmit}
+                        >
+                            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            {accountToEdit ? "Guardar Cambios" : "Crear Hosting"}
+                        </Button>
+                    </div>
                 </div>
             </SheetContent>
         </Sheet>

@@ -164,7 +164,7 @@ export default function PlatformOrganizationsPage() {
                     <p className="text-muted-foreground mt-1">Gestión global de organizaciones.</p>
                 </div>
                 <div className="flex items-center gap-3 w-full md:w-auto">
-                    <Button onClick={() => setIsCreateOpen(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+                    <Button onClick={() => setIsCreateOpen(true)} className="bg-brand-pink hover:bg-brand-pink/90 text-white">
                         <Plus className="mr-2 h-4 w-4" /> Nueva Organización
                     </Button>
                 </div>
@@ -358,7 +358,7 @@ export default function PlatformOrganizationsPage() {
                                             variant="ghost"
                                             size="sm"
                                             onClick={() => handleOpenLimits(org)}
-                                            className="text-gray-500 hover:text-indigo-600"
+                                            className="text-gray-500 hover:text-brand-pink"
                                         >
                                             <Settings2 className="h-4 w-4 mr-2" /> Límites
                                         </Button>

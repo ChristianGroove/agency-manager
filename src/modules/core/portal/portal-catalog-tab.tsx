@@ -123,7 +123,7 @@ export function PortalCatalogTab({ settings, client, token }: { settings: any, c
                                 </div>
 
                                 <div>
-                                    <h3 className="text-xl font-bold text-gray-900 group-hover:text-pink-600 transition-colors">
+                                    <h3 className="text-xl font-bold text-gray-900 group-hover:text-brand-pink transition-colors">
                                         {item.name}
                                     </h3>
                                     <p className="text-gray-500 text-sm mt-2 line-clamp-3">

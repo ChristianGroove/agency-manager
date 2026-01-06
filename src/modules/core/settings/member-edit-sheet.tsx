@@ -328,7 +328,7 @@ export function MemberEditSheet({
                             <Button
                                 onClick={handleSave}
                                 disabled={isSaving}
-                                className="bg-indigo-600 hover:bg-indigo-700"
+                                className="bg-brand-pink hover:bg-brand-pink/90"
                             >
                                 {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 <Save className="mr-2 h-4 w-4" />

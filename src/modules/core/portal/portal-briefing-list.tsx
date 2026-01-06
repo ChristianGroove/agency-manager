@@ -31,7 +31,7 @@ export function PortalBriefingList({ briefings, onView }: PortalBriefingListProp
         <Card className="border-none shadow-none bg-transparent">
             <CardHeader className="px-0 pt-0">
                 <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                    <FileText className="h-5 w-5 text-pink-500" />
+                    <FileText className="h-5 w-5 text-brand-pink" />
                     Briefings y Formularios
                 </CardTitle>
             </CardHeader>
@@ -44,8 +44,8 @@ export function PortalBriefingList({ briefings, onView }: PortalBriefingListProp
                     >
                         <div>
                             <div className="flex items-center justify-between mb-4">
-                                <div className="h-10 w-10 rounded-full bg-pink-50 flex items-center justify-center">
-                                    <FileText className="h-5 w-5 text-pink-500" />
+                                <div className="h-10 w-10 rounded-full bg-brand-pink/10 flex items-center justify-center">
+                                    <FileText className="h-5 w-5 text-brand-pink" />
                                 </div>
                                 {getStatusBadge(briefing.status)}
                             </div>
@@ -66,14 +66,14 @@ export function PortalBriefingList({ briefings, onView }: PortalBriefingListProp
                             ) : onView ? (
                                 <Button
                                     onClick={() => onView(briefing.id)}
-                                    className="w-full bg-pink-500 hover:bg-pink-600 text-white"
+                                    className="w-full bg-brand-pink hover:bg-brand-pink/90 text-white"
                                 >
                                     Continuar
                                     <ArrowRight className="ml-2 h-4 w-4" />
                                 </Button>
                             ) : (
                                 <Link href={`/briefing/${briefing.token}`} target="_blank">
-                                    <Button className="w-full bg-pink-500 hover:bg-pink-600 text-white">
+                                    <Button className="w-full bg-brand-pink hover:bg-brand-pink/90 text-white">
                                         Continuar
                                         <ArrowRight className="ml-2 h-4 w-4" />
                                     </Button>

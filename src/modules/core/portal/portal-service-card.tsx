@@ -22,9 +22,9 @@ export function PortalServiceCard({ service, pendingInvoicesCount, overdueInvoic
 
     return (
         <Card
-            className="group hover:shadow-md transition-all duration-300 border-gray-100 hover:border-pink-200 overflow-hidden relative bg-white"
+            className="group hover:shadow-md transition-all duration-300 border-gray-100 hover:border-gray-300 overflow-hidden relative bg-white"
         >
-            <div className="absolute top-0 left-0 w-1 h-full bg-pink-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="absolute top-0 left-0 w-1 h-full bg-brand-pink opacity-0 group-hover:opacity-100 transition-opacity" />
 
             <CardHeader className="p-5 pb-3">
                 <div className="flex justify-between items-start gap-4">

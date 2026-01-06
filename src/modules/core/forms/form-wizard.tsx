@@ -217,7 +217,7 @@ export function FormWizard({ submission, template, initialResponses }: FormWizar
                                 <div className="flex items-baseline justify-between">
                                     <Label className="text-lg font-medium text-gray-800 group-focus-within:text-indigo-600 transition-colors">
                                         {field.label}
-                                        {field.required && <span className="text-pink-500 ml-1">*</span>}
+                                        {field.required && <span className="text-brand-pink ml-1">*</span>}
                                     </Label>
                                 </div>
 

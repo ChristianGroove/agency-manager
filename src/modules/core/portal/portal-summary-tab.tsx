@@ -83,7 +83,7 @@ export function PortalSummaryTab({ client, invoices, quotes, briefings, events, 
                                         </Button>
                                     ))}
                                     {pendingBriefings.map(briefing => (
-                                        <Button key={briefing.id} onClick={() => onViewBriefing(briefing.id)} className="rounded-full bg-pink-100 text-pink-700 hover:bg-pink-200 border-0">
+                                        <Button key={briefing.id} onClick={() => onViewBriefing(briefing.id)} className="rounded-full bg-brand-pink/10 text-brand-pink hover:bg-brand-pink/20 border-0">
                                             <MessageSquare className="h-4 w-4 mr-2" /> Responder Briefing
                                         </Button>
                                     ))}

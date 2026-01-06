@@ -141,7 +141,7 @@ export function SavedRepliesSheet({ open, onOpenChange, onSelect }: SavedReplies
                                     <ArrowLeft className="h-5 w-5" />
                                 </Button>
                             ) : (
-                                <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600">
+                                <div className="p-2 bg-brand-pink/10 rounded-lg text-brand-pink">
                                     <Zap className="h-5 w-5" />
                                 </div>
                             )}
@@ -351,7 +351,7 @@ export function SavedRepliesSheet({ open, onOpenChange, onSelect }: SavedReplies
                             <Button variant="ghost" onClick={() => { setEditingReply(null); setIsCreating(false); }}>
                                 Cancelar
                             </Button>
-                            <Button onClick={handleSave} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-200">
+                            <Button onClick={handleSave} className="bg-brand-pink hover:bg-brand-pink/90 text-white shadow-lg shadow-gray-200">
                                 <Save className="mr-2 h-4 w-4" />
                                 Guardar Cambios
                             </Button>

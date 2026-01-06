@@ -172,7 +172,7 @@ export function CreateFormSheet({
                     {/* Header */}
                     <div className="sticky top-0 z-20 flex items-center justify-between shrink-0 px-8 py-5 bg-white/40 backdrop-blur-md border-b border-black/5">
                         <div className="flex items-center gap-3">
-                            <div className="p-2 bg-pink-50 rounded-lg text-pink-600">
+                            <div className="p-2 bg-brand-pink/10 rounded-lg text-brand-pink">
                                 <Sparkles className="h-5 w-5" />
                             </div>
                             <div>

@@ -153,7 +153,7 @@ export const MODULE_ROUTES: ModuleRoute[] = [
     // --- FINANZAS ---
     {
         key: 'module_invoicing',
-        label: 'Documentos de Cobro',
+        label: 'Centro de Facturación',
         href: '/invoices',
         icon: FileText,
         category: 'finance'

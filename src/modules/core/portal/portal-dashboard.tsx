@@ -201,7 +201,7 @@ export function PortalDashboard({ token, client, invoices, quotes, briefings, ev
                             {pendingBriefings.map(briefing => (
                                 <Button
                                     key={briefing.id}
-                                    className="rounded-full bg-pink-600 hover:bg-pink-700 text-white shadow-lg shadow-pink-500/30 px-6 h-11 text-sm font-bold transition-all hover:-translate-y-0.5"
+                                    className="rounded-full bg-brand-pink hover:bg-brand-pink/90 text-white shadow-lg shadow-gray-900/10 px-6 h-11 text-sm font-bold transition-all hover:-translate-y-0.5"
                                     onClick={() => handleViewBriefing(briefing.id)}
                                 >
                                     <MessageSquare className="h-4 w-4 mr-2" />
@@ -284,7 +284,7 @@ export function PortalDashboard({ token, client, invoices, quotes, briefings, ev
                             <Button
                                 key={briefing.id}
                                 size="sm"
-                                className="rounded-full bg-pink-600 hover:bg-pink-700 text-white shadow-lg shadow-pink-500/30 px-5 h-10 text-xs font-bold transition-all hover:-translate-y-0.5"
+                                className="rounded-full bg-brand-pink hover:bg-brand-pink/90 text-white shadow-lg shadow-gray-900/10 px-5 h-10 text-xs font-bold transition-all hover:-translate-y-0.5"
                                 onClick={() => handleViewBriefing(briefing.id)}
                             >
                                 <MessageSquare className="h-3.5 w-3.5 mr-2" />

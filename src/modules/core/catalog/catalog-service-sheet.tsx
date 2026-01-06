@@ -126,8 +126,8 @@ export function CatalogServiceSheet({
                         {/* Header */}
                         <div className="sticky top-0 z-20 bg-white border-b border-gray-100 px-8 py-5">
                             <div className="flex items-center gap-3">
-                                <div className="p-2 bg-indigo-50 rounded-lg">
-                                    <Server className="h-5 w-5 text-indigo-600" />
+                                <div className="p-2 bg-brand-pink/10 rounded-lg">
+                                    <Server className="h-5 w-5 text-brand-pink" />
                                 </div>
                                 <div>
                                     <SheetTitle className="text-xl font-semibold text-gray-900">
@@ -300,7 +300,7 @@ export function CatalogServiceSheet({
                             <Button
                                 onClick={handleSubmit}
                                 disabled={loading}
-                                className="bg-indigo-600 hover:bg-indigo-700 text-white px-8"
+                                className="bg-brand-pink hover:bg-brand-pink/90 text-white px-8"
                             >
                                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 {itemToEdit ? "Guardar Cambios" : "Crear Servicio"}

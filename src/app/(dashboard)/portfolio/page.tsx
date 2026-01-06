@@ -122,7 +122,7 @@ export default function PortfolioPage() {
                     <CategoryManager />
                     <Button
                         onClick={handleCreateService}
-                        className="bg-brand-pink hover:bg-brand-pink/90 text-white shadow-lg shadow-brand-pink/20"
+                        className="bg-brand-pink hover:bg-brand-pink/90 text-white shadow-lg shadow-gray-200"
                     >
                         <Plus className="mr-2 h-4 w-4" /> Nuevo Servicio
                     </Button>

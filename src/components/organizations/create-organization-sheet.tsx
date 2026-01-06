@@ -163,7 +163,7 @@ export function CreateOrganizationSheet({ open, onOpenChange, onSuccess, initial
                     {/* Header */}
                     <div className="sticky top-0 z-20 flex items-center justify-between shrink-0 px-8 py-5 bg-white/40 backdrop-blur-md border-b border-black/5">
                         <div className="flex items-center gap-3">
-                            <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600">
+                            <div className="p-2 bg-brand-pink/10 rounded-lg text-brand-pink">
                                 <Building2 className="h-5 w-5" />
                             </div>
                             <div>
@@ -202,7 +202,7 @@ export function CreateOrganizationSheet({ open, onOpenChange, onSuccess, initial
                                         <div className="space-y-3 pt-2">
                                             <Label className="flex items-center justify-between">
                                                 <span>Email del Administrador</span>
-                                                <span className="text-xs font-normal text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">Automático</span>
+                                                <span className="text-xs font-normal text-brand-pink bg-brand-pink/10 px-2 py-0.5 rounded-full">Automático</span>
                                             </Label>
                                             <Input
                                                 className="h-11"
@@ -282,16 +282,16 @@ export function CreateOrganizationSheet({ open, onOpenChange, onSuccess, initial
 
                                     {/* Selected Product Summary */}
                                     {selectedProductId && (
-                                        <div className="p-5 rounded-xl bg-indigo-50 border border-indigo-100 flex items-start gap-4">
-                                            <div className="p-2 bg-indigo-100 rounded-lg text-indigo-600">
+                                        <div className="p-5 rounded-xl bg-brand-pink/10 border border-gray-200 flex items-start gap-4">
+                                            <div className="p-2 bg-brand-pink/20 rounded-lg text-brand-pink">
                                                 <Package className="h-5 w-5" />
                                             </div>
                                             <div>
-                                                <h4 className="text-sm font-semibold text-indigo-900">App Seleccionada</h4>
-                                                <p className="text-lg font-bold text-indigo-700">
+                                                <h4 className="text-sm font-semibold text-gray-900">App Seleccionada</h4>
+                                                <p className="text-lg font-bold text-brand-pink">
                                                     {products.find(p => p.id === selectedProductId)?.name}
                                                 </p>
-                                                <p className="text-xs text-indigo-600/80 mt-1">
+                                                <p className="text-xs text-brand-pink/80 mt-1">
                                                     Listo para instalar en tu nuevo tenant.
                                                 </p>
                                             </div>
@@ -304,7 +304,7 @@ export function CreateOrganizationSheet({ open, onOpenChange, onSuccess, initial
                             <div className="bg-slate-50/50 p-8 flex flex-col h-full relative overflow-hidden">
                                 <div className="mb-4">
                                     <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-                                        <Package className="h-4 w-4 text-indigo-500" />
+                                        <Package className="h-4 w-4 text-brand-pink" />
                                         Selecciona App Base
                                     </h3>
                                     <p className="text-xs text-muted-foreground mt-1">
@@ -315,7 +315,7 @@ export function CreateOrganizationSheet({ open, onOpenChange, onSuccess, initial
                                 <ScrollArea className="flex-1 -mx-2 px-2">
                                     {loadingProducts ? (
                                         <div className="flex items-center justify-center h-40">
-                                            <Loader2 className="h-8 w-8 text-indigo-500 animate-spin" />
+                                            <Loader2 className="h-8 w-8 text-brand-pink animate-spin" />
                                         </div>
                                     ) : (
                                         <div className="grid grid-cols-1 gap-4 pb-20">
@@ -327,17 +327,17 @@ export function CreateOrganizationSheet({ open, onOpenChange, onSuccess, initial
                                                         className={`
                                                             group relative p-5 rounded-xl border transition-all duration-300 cursor-pointer text-left
                                                             ${isSelected
-                                                                ? 'bg-white border-indigo-500 ring-2 ring-indigo-500/20 shadow-lg shadow-indigo-500/10'
+                                                                ? 'bg-white border-gray-300 ring-2 ring-gray-200 shadow-lg shadow-gray-200/50'
                                                                 : 'bg-white border-gray-100 hover:border-gray-300 shadow-sm'}
                                                         `}
                                                         onClick={() => setSelectedProductId(product.id)}
                                                     >
                                                         <div className="flex justify-between items-start mb-2">
-                                                            <h3 className={`text-base font-bold ${isSelected ? 'text-indigo-700' : 'text-gray-900'}`}>
+                                                            <h3 className={`text-base font-bold ${isSelected ? 'text-brand-pink' : 'text-gray-900'}`}>
                                                                 {product.name}
                                                             </h3>
                                                             {isSelected && (
-                                                                <div className="h-5 w-5 bg-indigo-600 rounded-full flex items-center justify-center">
+                                                                <div className="h-5 w-5 bg-brand-pink rounded-full flex items-center justify-center">
                                                                     <Check className="h-3 w-3 text-white" />
                                                                 </div>
                                                             )}
@@ -374,7 +374,7 @@ export function CreateOrganizationSheet({ open, onOpenChange, onSuccess, initial
                         <Button
                             onClick={handleCreate}
                             disabled={isLoading}
-                            className="bg-indigo-600 text-white hover:bg-indigo-700 shadow-xl shadow-indigo-200 px-6 rounded-xl h-11"
+                            className="bg-brand-pink text-white hover:bg-brand-pink/90 shadow-xl shadow-gray-900/10 px-6 rounded-xl h-11"
                         >
                             {isLoading ? (
                                 <>

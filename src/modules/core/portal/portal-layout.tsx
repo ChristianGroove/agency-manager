@@ -349,8 +349,8 @@ function NotificationBell({ count, pendingInvoices, openQuotes, pendingBriefings
                             {pendingBriefings.map((b: Briefing) => (
                                 <div key={b.id} className="p-4 hover:bg-gray-50 cursor-pointer" onClick={() => onViewBriefing ? onViewBriefing(b.id) : onTabChange('services')}>
                                     <div className="flex gap-3">
-                                        <div className="h-8 w-8 rounded-full bg-pink-100 flex items-center justify-center shrink-0">
-                                            <Layers className="h-4 w-4 text-pink-600" />
+                                        <div className="h-8 w-8 rounded-full bg-brand-pink/10 flex items-center justify-center shrink-0">
+                                            <Layers className="h-4 w-4 text-brand-pink" />
                                         </div>
                                         <div>
                                             <p className="text-sm font-medium">Briefing Pendiente</p>

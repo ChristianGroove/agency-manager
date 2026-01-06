@@ -266,27 +266,26 @@ export function CRMDashboard() {
                 <div className="shrink-0 mb-8 space-y-8">
                     {/* Top Row: Title + Mini Stats + Actions */}
                     <div className="flex items-center justify-between gap-4">
-                        <div>
+                        <div className="flex items-center gap-4">
                             <h2 className="text-3xl font-bold tracking-tight text-gray-900">
                                 <SplitText>Pipeline</SplitText>
                             </h2>
 
                             {/* Inline Mini Stats */}
-                            <div className="hidden sm:flex items-center gap-3 text-sm mt-1 mb-1">
+                            <div className="hidden sm:flex items-center gap-2">
                                 <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-zinc-800">
                                     <Users className="h-3.5 w-3.5 text-slate-500" />
-                                    <span className="font-semibold">{stats.total}</span>
+                                    <span className="font-semibold text-sm">{stats.total}</span>
                                 </div>
                                 <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-100 dark:bg-green-900/30">
                                     <Trophy className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
-                                    <span className="font-semibold text-green-700 dark:text-green-400">{stats.won}</span>
+                                    <span className="font-semibold text-sm text-green-700 dark:text-green-400">{stats.won}</span>
                                 </div>
                                 <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-100 dark:bg-red-900/30">
                                     <XCircle className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
-                                    <span className="font-semibold text-red-700 dark:text-red-400">{stats.lost}</span>
+                                    <span className="font-semibold text-sm text-red-700 dark:text-red-400">{stats.lost}</span>
                                 </div>
                             </div>
-                            <p className="text-muted-foreground">Gestión de prospectos y pipeline de ventas</p>
                         </div>
 
                         {/* Actions */}

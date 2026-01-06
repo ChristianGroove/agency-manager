@@ -218,7 +218,7 @@ export function EcosystemHubModal({ client, services, open: controlledOpen, onOp
                                                 <CardContent className="p-6 space-y-6">
                                                     {controlMode === 'automatic' ? (
                                                         <div className="text-center py-4 space-y-2 animate-in fade-in">
-                                                            <div className="w-12 h-12 bg-indigo-50 rounded-full flex items-center justify-center mx-auto text-indigo-500">
+                                                            <div className="w-12 h-12 bg-brand-pink/10 rounded-full flex items-center justify-center mx-auto text-brand-pink">
                                                                 <Zap className="w-6 h-6" />
                                                             </div>
                                                             <p className="text-sm font-medium text-gray-900">Modo Inteligente Activo</p>
@@ -261,7 +261,7 @@ export function EcosystemHubModal({ client, services, open: controlledOpen, onOp
 
                                                                 <div className="flex items-center justify-between pr-4">
                                                                     <div className="flex items-center gap-3">
-                                                                        <div className="w-8 h-8 rounded-lg bg-pink-50 flex items-center justify-center text-pink-600">
+                                                                        <div className="w-8 h-8 rounded-lg bg-brand-pink/10 flex items-center justify-center text-brand-pink">
                                                                             <LayoutGrid className="w-4 h-4" />
                                                                         </div>
                                                                         <div>
@@ -281,7 +281,7 @@ export function EcosystemHubModal({ client, services, open: controlledOpen, onOp
                                                         </div>
                                                     )}
 
-                                                    <Button onClick={handleSavePortalPermissions} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-200">
+                                                    <Button onClick={handleSavePortalPermissions} className="w-full bg-brand-pink hover:bg-brand-pink/90 text-white shadow-lg shadow-gray-200">
                                                         Aplicar Cambios
                                                     </Button>
                                                 </CardContent>

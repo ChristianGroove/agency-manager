@@ -29,6 +29,7 @@ import { es } from 'date-fns/locale'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { SplitText } from "@/components/ui/split-text"
+import { CreateBroadcastSheet } from './create-broadcast-sheet'
 
 const STATUS_CONFIG = {
     draft: { label: 'Borrador', icon: Clock, color: 'bg-gray-100 text-gray-700' },
@@ -42,6 +43,7 @@ export function BroadcastsView() {
     const router = useRouter()
     const [broadcasts, setBroadcasts] = useState<Broadcast[]>([])
     const [loading, setLoading] = useState(true)
+    const [createSheetOpen, setCreateSheetOpen] = useState(false)
 
     useEffect(() => {
         loadBroadcasts()
@@ -88,11 +90,18 @@ export function BroadcastsView() {
                     </h2>
                     <p className="text-muted-foreground mt-1">Envía mensajes masivos a tus leads y contactos</p>
                 </div>
-                <Button onClick={() => router.push('/crm/broadcasts/new')}>
+                <Button onClick={() => setCreateSheetOpen(true)} className="bg-brand-pink hover:bg-brand-pink/90 text-white">
                     <Plus className="h-4 w-4 mr-2" />
                     Nueva Campaña
                 </Button>
             </div>
+
+            {/* Create Sheet */}
+            <CreateBroadcastSheet
+                open={createSheetOpen}
+                onOpenChange={setCreateSheetOpen}
+                onSuccess={loadBroadcasts}
+            />
 
             {/* Stats Cards */}
             <div className="grid grid-cols-4 gap-4">
@@ -165,7 +174,7 @@ export function BroadcastsView() {
                     <p className="text-muted-foreground mb-4">
                         Crea tu primera campaña de broadcast para enviar mensajes masivos
                     </p>
-                    <Button onClick={() => router.push('/crm/broadcasts/new')}>
+                    <Button onClick={() => setCreateSheetOpen(true)} className="bg-brand-pink hover:bg-brand-pink/90 text-white">
                         <Plus className="h-4 w-4 mr-2" />
                         Crear Campaña
                     </Button>

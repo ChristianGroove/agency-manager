@@ -19,9 +19,9 @@ export function AdminShortcuts({ t }: { t: any }) {
             description: "Identidad Visual",
             icon: Palette,
             href: "/platform/admin/branding",
-            color: "text-pink-500",
-            bg: "bg-pink-50",
-            hover: "hover:border-pink-200 hover:shadow-pink-100"
+            color: "text-brand-pink",
+            bg: "bg-brand-pink/10",
+            hover: "hover:border-gray-300 hover:shadow-gray-100"
         },
         {
             title: "Planes de Branding",

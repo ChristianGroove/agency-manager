@@ -7,6 +7,18 @@ interface SidebarParticlesProps {
     orgId: string | null
 }
 
+// Generate deterministic values based on index to avoid hydration mismatch
+const particles = Array.from({ length: 12 }, (_, i) => ({
+    id: i,
+    isBrandingColor: i % 3 === 0, // Every 3rd particle uses branding color
+    size: 1 + (i % 4), // 1-4px based on index
+    left: (i * 8.33) % 100, // Evenly distributed
+    duration: 5 + (i % 5), // 5-10s
+    delay: (i * 0.4) % 5, // Staggered delays
+    translateX40: (i % 5) * 4 - 10, // -10 to 10
+    translateX100: (i % 5) * 8 - 20, // -20 to 20
+}))
+
 export function SidebarParticles({ orgId }: SidebarParticlesProps) {
     const [brandingColor, setBrandingColor] = useState<string>("255, 255, 255") // Default RGB
 
@@ -15,8 +27,6 @@ export function SidebarParticles({ orgId }: SidebarParticlesProps) {
             try {
                 const data = await getEffectiveBranding(orgId)
                 if (data?.colors?.primary) {
-                    // Simple hex to rgb conversion for css var usage if needed, 
-                    // or just store the hex. Let's try to parse hex to match the white mix.
                     const hex = data.colors.primary.replace('#', '')
                     const r = parseInt(hex.substring(0, 2), 16)
                     const g = parseInt(hex.substring(2, 4), 16)
@@ -39,52 +49,26 @@ export function SidebarParticles({ orgId }: SidebarParticlesProps) {
             />
 
             {/* Particles */}
-            {[...Array(12)].map((_, i) => {
-                const isBrandingColor = Math.random() > 0.6 // 40% chance of branding color
-                const size = Math.random() * 3 + 1 // 1px to 4px
-                const duration = Math.random() * 5 + 5 // 5s to 10s
-                const delay = Math.random() * 5
-
-                return (
-                    <div
-                        key={i}
-                        className="absolute rounded-full"
-                        style={{
-                            left: `${Math.random() * 100}%`,
-                            bottom: `-${size + 10}px`, // Start just below view
-                            width: `${size}px`,
-                            height: `${size}px`,
-                            backgroundColor: isBrandingColor
-                                ? `rgb(${brandingColor})`
-                                : 'white',
-                            opacity: isBrandingColor ? 0.6 : 0.4,
-                            boxShadow: isBrandingColor ? `0 0 ${size * 2}px rgb(${brandingColor})` : 'none',
-                            animation: `sidebarFloatUp ${duration}s linear infinite`,
-                            animationDelay: `${delay}s`,
-                        }}
-                    />
-                )
-            })}
-
-            <style jsx>{`
-                @keyframes sidebarFloatUp {
-                    0% {
-                        transform: translateY(0) translateX(0);
-                        opacity: 0;
-                    }
-                    10% {
-                        opacity: 1;
-                    }
-                    40% {
-                         transform: translateY(-100px) translateX(${Math.random() * 20 - 10}px);
-                         opacity: 0.5;
-                    }
-                    100% {
-                        transform: translateY(-300px) translateX(${Math.random() * 40 - 20}px); // Move up ~300px (approx 30% of screen height)
-                        opacity: 0;
-                    }
-                }
-            `}</style>
+            {particles.map((p) => (
+                <div
+                    key={p.id}
+                    className="absolute rounded-full animate-sidebar-float-up"
+                    style={{
+                        left: `${p.left}%`,
+                        bottom: `-${p.size + 10}px`,
+                        width: `${p.size}px`,
+                        height: `${p.size}px`,
+                        backgroundColor: p.isBrandingColor
+                            ? `rgb(${brandingColor})`
+                            : 'white',
+                        opacity: p.isBrandingColor ? 0.6 : 0.4,
+                        boxShadow: p.isBrandingColor ? `0 0 ${p.size * 2}px rgb(${brandingColor})` : 'none',
+                        animationDuration: `${p.duration}s`,
+                        animationDelay: `${p.delay}s`,
+                    }}
+                />
+            ))}
         </div>
     )
 }
+
