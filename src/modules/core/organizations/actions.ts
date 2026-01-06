@@ -62,25 +62,20 @@ export async function getCurrentOrganizationId() {
             return orgCookie.value // Valid membership confirmed
         }
 
-        // Cookie points to an org user doesn't belong to - clear it and fall through
-        console.warn(`[getCurrentOrganizationId] User ${user.id} tried to access org ${orgCookie.value} without membership. Resetting.`)
+        // Cookie points to an org user doesn't belong to - log and fall through
+        console.warn(`[getCurrentOrganizationId] User ${user.id} tried to access org ${orgCookie.value} without membership. Falling back to first valid org.`)
     }
 
     // 2. Fallback: Fetch first organization from DB
+    // NOTE: Cookie will be updated on next switchOrganization call from client
     const orgs = await getUserOrganizations()
     if (orgs.length > 0) {
-        // Auto-set the cookie to valid org
-        cookieStore.set('pixy_org_id', orgs[0].organization_id, {
-            path: '/',
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-            maxAge: 60 * 60 * 24 * 30 // 30 days
-        })
         return orgs[0].organization_id
     }
 
     return null
 }
+
 
 
 
