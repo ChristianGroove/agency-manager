@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { supabase } from "@/lib/supabase"
+import { createBrowserClient } from "@supabase/ssr"
 import { updatePassword } from "@/modules/core/auth/actions"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
