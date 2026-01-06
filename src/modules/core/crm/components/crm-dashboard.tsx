@@ -273,10 +273,17 @@ export function CRMDashboard() {
         if (!over) return
 
         const leadId = active.id as string
-        const newStatus = over.id as string
+        let newStatus = over.id as string
+
+        // If dropped over another lead, use that lead's status
+        const overLead = leads.find(l => l.id === newStatus)
+        if (overLead) {
+            newStatus = overLead.status
+        }
 
         // Find the lead being moved
         const lead = leads.find(l => l.id === leadId)
+        // If no change in status, return
         if (!lead || lead.status === newStatus) return
 
         // Optimistic update
@@ -309,13 +316,13 @@ export function CRMDashboard() {
     const activeLead = activeId ? leads.find(l => l.id === activeId) : null
 
     if (isLoading) {
-        return <div className="p-8 text-center text-muted-foreground animate-pulse">Cargando pipeline...</div>
+        return <div className="h-full flex items-center justify-center text-muted-foreground animate-pulse">Cargando pipeline...</div>
     }
 
     if (stages.length === 0) {
         return (
             <>
-                <div className="p-8 text-center">
+                <div className="h-full flex flex-col items-center justify-center p-8 text-center">
                     <p className="text-muted-foreground mb-4">No hay etapas configuradas para tu pipeline.</p>
                     <Button onClick={() => setSettingsSheetOpen(true)}>
                         <Settings className="mr-2 h-4 w-4" />
@@ -338,7 +345,7 @@ export function CRMDashboard() {
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
         >
-            <div className="h-full flex flex-col">
+            <div className="h-full flex flex-col max-h-full">
                 {/* Compact Header */}
                 <div className="shrink-0 mb-4 space-y-3">
                     {/* Top Row: Title + Mini Stats + Actions */}
@@ -348,17 +355,17 @@ export function CRMDashboard() {
 
                             {/* Inline Mini Stats */}
                             <div className="hidden sm:flex items-center gap-3 text-sm">
-                                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100">
+                                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-zinc-800">
                                     <Users className="h-3.5 w-3.5 text-slate-500" />
                                     <span className="font-semibold">{stats.total}</span>
                                 </div>
-                                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-100">
-                                    <Trophy className="h-3.5 w-3.5 text-green-600" />
-                                    <span className="font-semibold text-green-700">{stats.won}</span>
+                                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-100 dark:bg-green-900/30">
+                                    <Trophy className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+                                    <span className="font-semibold text-green-700 dark:text-green-400">{stats.won}</span>
                                 </div>
-                                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-100">
-                                    <XCircle className="h-3.5 w-3.5 text-red-600" />
-                                    <span className="font-semibold text-red-700">{stats.lost}</span>
+                                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-100 dark:bg-red-900/30">
+                                    <XCircle className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
+                                    <span className="font-semibold text-red-700 dark:text-red-400">{stats.lost}</span>
                                 </div>
                             </div>
                         </div>
@@ -406,9 +413,9 @@ export function CRMDashboard() {
                 </div>
 
                 {/* Kanban Board - Takes Full Height */}
-                <div className="flex-1 flex flex-col overflow-hidden">
+                <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
                     {/* Columns Container - Horizontal Scroll, Columns Fill Height */}
-                    <div className="flex-1 flex overflow-x-auto scrollbar-modern gap-3 px-1 pb-2">
+                    <div className="flex-1 flex overflow-x-auto scrollbar-modern gap-3 px-1 pb-2 h-full">
                         {stages.map((stage) => {
                             const stageLeads = getLeadsByStage(stage.status_key)
                             const columnWidth = Math.round(280 * (columnZoom / 100))
