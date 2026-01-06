@@ -196,6 +196,14 @@ export function UpdatePasswordForm() {
                 <p className="text-sm text-gray-500/80 font-medium">
                     &copy; 2026 Pixy Agency
                 </p>
+
+                {/* VISUAL DEBUGGER - REMOVE AFTER FIX */}
+                <div className="mt-8 p-4 bg-black/50 rounded text-xs text-gray-500 font-mono w-full max-w-md break-all">
+                    <p>DEBUG INFO:</p>
+                    <p>URL: {process.env.NEXT_PUBLIC_SUPABASE_URL}</p>
+                    <p>KEY: {process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY.substring(0, 10) + "..." : "UNDEFINED"}</p>
+                    <p>More: {process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.length} chars</p>
+                </div>
             </div>
         </ParticlesBackground>
     )
