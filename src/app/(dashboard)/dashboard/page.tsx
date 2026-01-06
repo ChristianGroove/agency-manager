@@ -15,6 +15,7 @@ import { CreateQuoteSheet } from "@/modules/core/quotes/create-quote-sheet"
 import { CreateInvoiceSheet } from "@/modules/core/billing/create-invoice-sheet"
 import { CreateFormSheet } from "@/modules/core/forms/create-form-sheet"
 import { NewJobModal } from "@/modules/core/work-orders/components/new-job-modal"
+import { CreateOrganizationSheet } from "@/components/organizations/create-organization-sheet"
 
 // Utils
 import { resolveDocumentState, resolveServiceState } from "@/domain/state"
@@ -46,6 +47,7 @@ export default function DashboardPage() {
     const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false)
     const [isBriefingModalOpen, setIsBriefingModalOpen] = useState(false)
     const [isNewJobModalOpen, setIsNewJobModalOpen] = useState(false)
+    const [isNewOrgModalOpen, setIsNewOrgModalOpen] = useState(false)
 
     useEffect(() => {
         loadDashboard()
@@ -126,9 +128,14 @@ export default function DashboardPage() {
         const debtors = Array.from(clientsWithOverdueMap.entries()).map(([clientId, amount]) => {
             const client = clients.find(c => c.id === clientId)
             if (!client) return null
+
+            const firstName = client.first_name || ''
+            const lastName = client.last_name || ''
+            const fullName = `${firstName} ${lastName}`.trim()
+
             return {
                 id: clientId,
-                name: `${client.first_name} ${client.last_name}`.trim() || client.company_name || 'Cliente',
+                name: fullName || client.company_name || 'Cliente',
                 image: client.logo_url || client.avatar_url,
                 debt: amount
             }
@@ -175,7 +182,7 @@ export default function DashboardPage() {
                 igFollowers: settings?.social_instagram_followers
             },
             quickActions: [
-                { title: "Nuevo Tenant", icon: Building2, colorClass: "bg-purple-50 text-purple-600 group-hover:bg-purple-600 group-hover:text-white", onClick: () => window.location.href = '/platform/organizations' },
+                { title: "Nuevo Tenant", icon: Building2, colorClass: "bg-purple-50 text-purple-600 group-hover:bg-purple-600 group-hover:text-white", onClick: () => setIsNewOrgModalOpen(true) },
                 { title: "Nuevo Cliente", icon: UserPlus, colorClass: "bg-brand-cyan/10 text-brand-cyan group-hover:bg-brand-cyan group-hover:text-white", onClick: () => setIsClientModalOpen(true) },
                 { title: "Nueva Cotización", icon: FilePlus, colorClass: "bg-yellow-50 text-yellow-600 group-hover:bg-yellow-500 group-hover:text-white", onClick: () => setIsQuoteModalOpen(true) },
                 { title: "Nuevo Brief", icon: ClipboardCheck, colorClass: "bg-indigo-50 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white", onClick: () => setIsBriefingModalOpen(true) },
@@ -234,9 +241,14 @@ export default function DashboardPage() {
         const debtors = Array.from(clientsWithOverdueMap.entries()).map(([clientId, amount]) => {
             const client = clients.find(c => c.id === clientId)
             if (!client) return null
+
+            const firstName = client.first_name || ''
+            const lastName = client.last_name || ''
+            const fullName = `${firstName} ${lastName}`.trim()
+
             return {
                 id: clientId,
-                name: `${client.first_name} ${client.last_name}`.trim() || client.company_name || 'Cliente',
+                name: fullName || client.company_name || 'Cliente',
                 image: client.logo_url || client.avatar_url,
                 debt: amount
             }
@@ -452,6 +464,14 @@ export default function DashboardPage() {
             <NewJobModal
                 open={isNewJobModalOpen}
                 onOpenChange={setIsNewJobModalOpen}
+            />
+
+
+            {/* Platform Modals */}
+            <CreateOrganizationSheet
+                open={isNewOrgModalOpen}
+                onOpenChange={setIsNewOrgModalOpen}
+                onSuccess={() => { setIsNewOrgModalOpen(false); loadDashboard() }}
             />
         </>
     )

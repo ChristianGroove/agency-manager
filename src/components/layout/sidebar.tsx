@@ -10,6 +10,7 @@ import { useActiveModules } from "@/hooks/use-active-modules"
 import { MODULE_ROUTES, filterRoutesByModules, CATEGORY_LABELS, ModuleCategory } from "@/lib/module-config"
 import { logout } from "@/modules/core/auth/actions"
 import { SidebarFloatingActions } from "./sidebar-floating-actions"
+import { SidebarParticles } from "./sidebar-particles"
 import {
     Tooltip,
     TooltipContent,
@@ -176,16 +177,10 @@ export function SidebarContent({ isCollapsed = false, currentOrgId, isSuperAdmin
     const categoryOrder: ModuleCategory[] = ['core', 'crm', 'operations', 'finance', 'config']
 
     return (
-        <div className="px-4 py-6 flex-1 flex flex-col h-full overflow-hidden">
+        <div className="px-4 py-6 flex-1 flex flex-col h-full overflow-hidden relative z-10">
             {/* Branding Section - Compact */}
-            <div className={cn("flex items-center mb-6 transition-all duration-300 min-h-[40px]", isCollapsed ? "justify-center px-0" : "px-2")}>
-                {isCollapsed ? (
-                    <div className="w-9 h-9 flex items-center justify-center bg-indigo-600 rounded-lg text-white font-bold text-xs shadow-lg shadow-indigo-500/20">
-                        PX
-                    </div>
-                ) : (
-                    <OrgBranding orgId={currentOrgId} />
-                )}
+            <div className={cn("flex items-center mb-6 transition-all duration-300 min-h-[40px]", isCollapsed ? "justify-center px-0" : "px-3")}>
+                <OrgBranding orgId={currentOrgId} collapsed={isCollapsed} />
             </div>
 
             {/* Show loading skeleton while fetching modules */}
@@ -311,6 +306,8 @@ export function Sidebar({ isCollapsed, toggleCollapse, currentOrgId, isSuperAdmi
                 onTouchMove={(e) => handleDragMove(e.touches[0].clientX)}
                 onTouchEnd={handleDragEnd}
             >
+                <SidebarParticles orgId={currentOrgId} />
+
                 {/* Toggle Button */}
                 <button
                     onClick={toggleCollapse}

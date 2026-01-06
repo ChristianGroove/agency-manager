@@ -5,7 +5,7 @@ import { createBrowserClient } from "@supabase/ssr" // Keep if needed or remove 
 import { Building2 } from "lucide-react"
 import { getEffectiveBranding } from "@/modules/core/branding/actions"
 
-export function OrgBranding({ orgId }: { orgId: string | null }) {
+export function OrgBranding({ orgId, collapsed = false }: { orgId: string | null, collapsed?: boolean }) {
     const [branding, setBranding] = useState<any>(null)
     const [loading, setLoading] = useState(true)
 
@@ -27,27 +27,53 @@ export function OrgBranding({ orgId }: { orgId: string | null }) {
     }, [orgId])
 
     if (loading) {
+        if (collapsed) {
+            return <div className="h-9 w-9 bg-white/5 animate-pulse rounded-lg" />
+        }
         return <div className="h-10 w-32 bg-white/5 animate-pulse rounded-lg" />
     }
 
     if (!branding) return null
 
-    // Check for logo
+    // COLLAPSED STATE
+    if (collapsed) {
+        const isotypeUrl = branding.logos?.favicon // Mapped to isotipo_url in actions
+
+        if (isotypeUrl) {
+            return (
+                <div className="w-9 h-9 flex items-center justify-center overflow-hidden">
+                    <img src={isotypeUrl} alt={branding.name} className="w-full h-full object-contain p-1" />
+                </div>
+            )
+        }
+
+        // Fallback initials
+        const initials = branding.name.substring(0, 2).toUpperCase()
+        return (
+            <div className="w-9 h-9 flex items-center justify-center bg-indigo-600 rounded-lg text-white font-bold text-xs shadow-lg shadow-indigo-500/20 border border-white/10">
+                {initials}
+            </div>
+        )
+    }
+
+    // EXPANDED STATE (Existing Logic)
+
+    // Check for Main Logo
     const logoUrl = branding.logos?.main
 
     if (logoUrl) {
         return (
-            <img src={logoUrl} alt={branding.name} className="max-h-12 w-auto object-contain" />
+            <img src={logoUrl} alt={branding.name} className="h-8 w-auto object-contain object-left" />
         )
     }
 
     // Fallback: Name
     return (
         <div className="flex items-center gap-2 text-white overflow-hidden">
-            <div className="p-2 bg-indigo-600 rounded-lg">
-                <Building2 className="h-5 w-5 text-white" />
+            <div className="p-1.5 bg-indigo-600 rounded-lg">
+                <Building2 className="h-4 w-4 text-white" />
             </div>
-            <span className="font-bold text-lg truncate tracking-tight">{branding.name}</span>
+            <span className="font-bold text-sm truncate tracking-tight">{branding.name}</span>
         </div>
     )
 }

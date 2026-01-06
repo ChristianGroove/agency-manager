@@ -9,9 +9,10 @@ interface ViewToggleProps {
     view: ViewMode
     onViewChange: (view: ViewMode) => void
     className?: string
+    showCompact?: boolean
 }
 
-export function ViewToggle({ view, onViewChange, className }: ViewToggleProps) {
+export function ViewToggle({ view, onViewChange, className, showCompact = true }: ViewToggleProps) {
     return (
         <div className={cn(
             "bg-white rounded-2xl border border-gray-200 shadow-sm p-1.5 flex items-center transition-all hover:shadow-md h-[52px]",
@@ -38,16 +39,18 @@ export function ViewToggle({ view, onViewChange, className }: ViewToggleProps) {
                 >
                     <Rows className="h-4 w-4" />
                 </button>
-                <button
-                    onClick={() => onViewChange('compact')}
-                    className={cn(
-                        "p-2 rounded-lg transition-all",
-                        view === 'compact' ? "bg-white text-gray-900 shadow-sm ring-1 ring-black/5" : "text-gray-400 hover:text-gray-600 hover:bg-gray-100"
-                    )}
-                    title="Vista Compacta"
-                >
-                    <LayoutTemplate className="h-4 w-4" />
-                </button>
+                {showCompact && (
+                    <button
+                        onClick={() => onViewChange('compact')}
+                        className={cn(
+                            "p-2 rounded-lg transition-all",
+                            view === 'compact' ? "bg-white text-gray-900 shadow-sm ring-1 ring-black/5" : "text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+                        )}
+                        title="Vista Compacta"
+                    >
+                        <LayoutTemplate className="h-4 w-4" />
+                    </button>
+                )}
             </div>
         </div>
     )
