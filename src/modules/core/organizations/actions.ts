@@ -37,21 +37,52 @@ export async function getUserOrganizations() {
 
 /**
  * Get the current active organization ID from cookies or default to the first one available.
+ * SECURITY: Validates that the user is actually a member of the organization before returning.
  */
 export async function getCurrentOrganizationId() {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) return null
+
     // 1. Check cookie first (Context Switcher sets this)
     const cookieStore = await cookies()
     const orgCookie = cookieStore.get('pixy_org_id')
-    if (orgCookie?.value) return orgCookie.value
+
+    if (orgCookie?.value) {
+        // SECURITY FIX: Validate that current user is actually a member of this org
+        const { data: membership } = await supabase
+            .from('organization_members')
+            .select('organization_id')
+            .eq('organization_id', orgCookie.value)
+            .eq('user_id', user.id)
+            .single()
+
+        if (membership) {
+            return orgCookie.value // Valid membership confirmed
+        }
+
+        // Cookie points to an org user doesn't belong to - clear it and fall through
+        console.warn(`[getCurrentOrganizationId] User ${user.id} tried to access org ${orgCookie.value} without membership. Resetting.`)
+    }
 
     // 2. Fallback: Fetch first organization from DB
     const orgs = await getUserOrganizations()
     if (orgs.length > 0) {
+        // Auto-set the cookie to valid org
+        cookieStore.set('pixy_org_id', orgs[0].organization_id, {
+            path: '/',
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 60 * 60 * 24 * 30 // 30 days
+        })
         return orgs[0].organization_id
     }
 
     return null
 }
+
+
 
 /**
  * Get current organization name

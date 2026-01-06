@@ -14,6 +14,7 @@ import { InboxSettingsSheet } from "./inbox-settings-sheet"
 import { Settings as SettingsIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ConversationActionsMenu } from "./conversation-actions-menu"
+import { ConversationListItem } from "./conversation-list-item"
 
 // Extended type to include joined lead data
 // Extended type to include joined lead data and missing columns
@@ -253,117 +254,16 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
                         </p>
                     </div>
                 ) : (
-                    <div className="divide-y">
-                        {filteredConversations.map((conv) => {
-                            const contactName = conv.leads?.name || conv.leads?.phone || "Unknown"
-                            const isSelected = conv.id === selectedId
-                            const isUnread = conv.unread_count > 0
-                            const priorityIcon = getPriorityIcon(conv.priority)
-
-                            return (
-                                <div
-                                    key={conv.id}
-                                    onClick={() => onSelect(conv.id)}
-                                    role="button"
-                                    tabIndex={0}
-                                    onKeyDown={(e) => {
-                                        if (e.key === 'Enter' || e.key === ' ') {
-                                            e.preventDefault()
-                                            onSelect(conv.id)
-                                        }
-                                    }}
-                                    className={cn(
-                                        "w-full p-4 text-left hover:bg-muted/50 transition-colors relative cursor-pointer outline-none focus:bg-muted/50",
-                                        isSelected && "bg-muted",
-                                        isUnread && "bg-blue-50 dark:bg-blue-950/20"
-                                    )}
-                                >
-                                    {/* Priority Indicator */}
-                                    {conv.priority && conv.priority !== 'normal' && (
-                                        <div
-                                            className={cn(
-                                                "absolute left-0 top-0 bottom-0 w-1",
-                                                getPriorityColor(conv.priority)
-                                            )}
-                                        />
-                                    )}
-
-                                    <div className="flex items-start gap-3">
-                                        {/* Avatar */}
-                                        <div className="flex-shrink-0 mt-1">
-                                            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold">
-                                                {contactName.slice(0, 2).toUpperCase()}
-                                            </div>
-                                        </div>
-
-                                        {/* Content */}
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-center justify-between mb-1">
-                                                <span className={cn(
-                                                    "font-medium truncate",
-                                                    isUnread && "font-bold"
-                                                )}>
-                                                    {priorityIcon && <span className="mr-1">{priorityIcon}</span>}
-                                                    {contactName}
-                                                </span>
-
-                                                <div className="flex items-center gap-2 flex-shrink-0 ml-2">
-                                                    {conv.assigned_to && (
-                                                        <UserCheck className="h-3 w-3 text-green-600" />
-                                                    )}
-                                                    {conv.unread_count > 0 && (
-                                                        <Badge className="h-5 min-w-[20px] px-1 bg-blue-600">
-                                                            {conv.unread_count}
-                                                        </Badge>
-                                                    )}
-                                                    <div onClick={(e) => e.stopPropagation()}>
-                                                        <ConversationActionsMenu
-                                                            conversationId={conv.id}
-                                                            isArchived={conv.state === 'archived'}
-                                                            onActionComplete={() => {
-                                                                console.log('Action complete, refreshing list...')
-                                                                fetchConversations()
-                                                            }}
-                                                        />
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <p className={cn(
-                                                "text-sm text-muted-foreground line-clamp-2 mb-1",
-                                                isUnread && "text-foreground/80 font-medium"
-                                            )}>
-                                                {conv.last_message || "No messages yet"}
-                                            </p>
-
-                                            <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
-                                                {((conv.channel as any) === 'whatsapp' || (conv.channel as any) === 'evolution') && (
-                                                    <MessageSquare className="h-3 w-3" />
-                                                )}
-
-                                                <span>
-                                                    {conv.last_message_at
-                                                        ? formatDistanceToNow(new Date(conv.last_message_at), { addSuffix: true })
-                                                        : 'Recently'
-                                                    }
-                                                </span>
-
-                                                {/* Tags */}
-                                                {conv.tags && conv.tags.length > 0 && (
-                                                    <div className="flex gap-1">
-                                                        {conv.tags.slice(0, 2).map((tag: string, idx: number) => (
-                                                            <Badge key={idx} variant="outline" className="text-[10px] px-1 py-0">
-                                                                {tag}
-                                                            </Badge>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            )
-                        })}
+                    <div className="divide-y border-t border-border/50">
+                        {filteredConversations.map((conv) => (
+                            <ConversationListItem
+                                key={conv.id}
+                                conv={conv}
+                                isSelected={conv.id === selectedId}
+                                onSelect={onSelect}
+                                fetchConversations={fetchConversations}
+                            />
+                        ))}
                     </div>
                 )}
             </ScrollArea>
