@@ -28,6 +28,7 @@ import { formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { SplitText } from "@/components/ui/split-text"
 
 const STATUS_CONFIG = {
     draft: { label: 'Borrador', icon: Clock, color: 'bg-gray-100 text-gray-700' },
@@ -80,12 +81,12 @@ export function BroadcastsView() {
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                 <div>
-                    <h1 className="text-2xl font-bold tracking-tight">Broadcasts</h1>
-                    <p className="text-muted-foreground">
-                        Envía mensajes masivos a tus leads y contactos
-                    </p>
+                    <h2 className="text-3xl font-bold tracking-tight text-gray-900">
+                        <SplitText>Broadcasts</SplitText>
+                    </h2>
+                    <p className="text-muted-foreground mt-1">Envía mensajes masivos a tus leads y contactos</p>
                 </div>
                 <Button onClick={() => router.push('/crm/broadcasts/new')}>
                     <Plus className="h-4 w-4 mr-2" />

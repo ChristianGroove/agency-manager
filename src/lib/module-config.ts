@@ -20,7 +20,10 @@ import {
     Server,
     Sparkles,
     Megaphone,
-    MessageSquare
+    MessageSquare,
+    Kanban,
+    Inbox,
+    UserSquare
 } from 'lucide-react'
 
 export type ModuleCategory = 'core' | 'crm' | 'operations' | 'finance' | 'config';
@@ -50,24 +53,58 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         category: 'core'
     },
 
-    // --- CRM ECOSYSTEM ---
+    // --- CRM ECOSYSTEM (Individual Routes) ---
     {
-        key: 'crm_hub',
-        label: 'CRM',
-        href: '/crm',
-        icon: Target,
+        key: 'crm_clients',
+        label: 'Clientes',
+        href: '/crm/contacts',
+        icon: UserSquare,
         isCore: true,
-        category: 'crm',
-        description: 'Centro de Relaciones con Clientes'
+        category: 'crm'
+    },
+    {
+        key: 'crm_pipeline',
+        label: 'Pipeline',
+        href: '/crm/pipeline',
+        icon: Kanban,
+        isCore: true,
+        category: 'crm'
+    },
+    {
+        key: 'crm_inbox',
+        label: 'Inbox',
+        href: '/crm/inbox',
+        icon: Inbox,
+        isCore: true,
+        category: 'crm'
+    },
+    {
+        key: 'crm_broadcasts',
+        label: 'Broadcasts',
+        href: '/crm/broadcasts',
+        icon: Megaphone,
+        isCore: true,
+        category: 'crm'
+    },
+    {
+        key: 'crm_automations',
+        label: 'Automatizaciones',
+        href: '/crm/automations',
+        icon: Workflow,
+        isCore: true,
+        category: 'crm'
     },
 
+
     // --- OPERACIONES / PROYECTOS ---
+
     {
         key: 'module_quotes',
         label: 'Cotizaciones',
         href: '/quotes',
         icon: FileText,
-        category: 'operations'
+        category: 'operations',
+        isCore: true
     },
     {
         key: 'module_briefings',
@@ -132,7 +169,7 @@ export const MODULE_ROUTES: ModuleRoute[] = [
     // --- CONFIGURACIÓN ---
     {
         key: 'core_apps',
-        label: 'App Store',
+        label: 'Store',
         href: '/platform/apps',
         icon: Grid,
         isCore: true,
@@ -150,7 +187,7 @@ export const MODULE_ROUTES: ModuleRoute[] = [
     // Invisible for normal clients, visible for Resellers via sidebar logic
     {
         key: 'reseller_tenants',
-        label: 'Mis Clientes',
+        label: 'Organizaciones',
         href: '/platform/organizations',
         icon: Users, // Using Users icon
         category: 'core', // Put in core to appear at top

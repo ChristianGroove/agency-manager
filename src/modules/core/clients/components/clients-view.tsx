@@ -14,6 +14,14 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog"
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table"
 import { supabase } from "@/lib/supabase"
 import { cn, getPortalUrl } from "@/lib/utils"
 import { getWhatsAppLink } from "@/lib/communication-utils"
@@ -48,7 +56,20 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
     const [selectedClientForWhatsApp, setSelectedClientForWhatsApp] = useState<Client | null>(null)
 
     // View State
-    const [viewMode, setViewMode] = useState<ViewMode>('grid')
+    const [viewMode, setViewMode] = useState<ViewMode>('compact')
+
+    // Initial load from storage
+    useEffect(() => {
+        const savedView = localStorage.getItem('clients-view-mode') as ViewMode
+        if (savedView) {
+            setViewMode(savedView)
+        }
+    }, [])
+
+    const handleViewChange = (mode: ViewMode) => {
+        setViewMode(mode)
+        localStorage.setItem('clients-view-mode', mode)
+    }
 
 
     const handleOpenInvoices = (client: Client) => {
@@ -193,7 +214,7 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
         { id: 'inactive', label: 'Sin Servicio', count: counts.inactive, color: 'slate' },
     ]
 
-    const isCompactView = viewMode === 'list'
+    const isCompactView = viewMode === 'compact'
 
 
     return (
@@ -201,9 +222,9 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h2 className="text-3xl font-bold tracking-tight text-gray-900">
-                        <SplitText>Mis Clientes</SplitText>
+                        <SplitText>Clientes</SplitText>
                     </h2>
-                    <p className="text-muted-foreground mt-1">Gestión visual completa de tu cartera y estados de cuenta.</p>
+                    <p className="text-muted-foreground mt-1">Gestión simplificada de tu cartera.</p>
                 </div>
                 <div className="flex items-center gap-3 w-full md:w-auto">
                     <Link href="/debug/tokens">
@@ -231,14 +252,15 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
 
                 <ViewToggle
                     view={viewMode}
-                    onViewChange={setViewMode}
+                    onViewChange={handleViewChange}
                 />
             </div>
 
-            {/* Clients Grid */}
-            < div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-6" >
-                {
-                    loading ? (
+            {/* Clients Content */}
+            {viewMode !== 'list' ? (
+
+                <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-6">
+                    {loading ? (
                         [1, 2, 3, 4].map(i => (
                             <Card key={i} className="h-[300px] animate-pulse bg-gray-100 border-0" />
                         ))
@@ -310,101 +332,101 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
                                             </div>
                                         </CardHeader>
 
-                                        <CardContent className={cn("px-5 space-y-3 flex-1", isCompactView ? "pb-0 pt-0" : "pb-5")}>
+                                        <CardContent className={cn("px-5 space-y-3 flex-1", "pb-5")}>
+                                            {/* Status Block - Full Width & Single Line */}
                                             {!isCompactView && (
-                                                <>
-                                                    {/* Status Block - Full Width & Single Line */}
-                                                    <div className={cn(
-                                                        "w-full px-4 py-3 rounded-lg border transition-colors flex items-center shadow-sm",
-                                                        debt > 0
-                                                            ? "bg-red-50 border-red-100 justify-between"
-                                                            : futureDebt > 0
-                                                                ? "bg-amber-50 border-amber-100 justify-between"
-                                                                : "bg-gray-50 border-gray-100 justify-center"
-                                                    )}>
-                                                        <div className="flex items-center gap-2">
-                                                            {debt > 0 ? (
-                                                                <AlertTriangle className="h-4 w-4 text-red-600 shrink-0" />
-                                                            ) : futureDebt > 0 ? (
-                                                                <Clock className="h-4 w-4 text-amber-600 shrink-0" />
-                                                            ) : (
-                                                                <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
-                                                            )}
-                                                            <span className={cn(
-                                                                "font-medium uppercase tracking-wide text-sm",
-                                                                debt > 0 ? "text-red-700" : futureDebt > 0 ? "text-amber-700" : "text-gray-700"
-                                                            )}>
-                                                                {debt > 0 ? "Vencido" : futureDebt > 0 ? "Por Vencer" : "Al día"}
-                                                            </span>
-                                                        </div>
-
-                                                        {(debt > 0 || futureDebt > 0) && (
-                                                            <p className={cn(
-                                                                "text-lg font-bold leading-none",
-                                                                debt > 0 ? "text-red-900" : "text-amber-900"
-                                                            )}>
-                                                                {debt > 0
-                                                                    ? `$${debt.toLocaleString()}`
-                                                                    : `$${futureDebt.toLocaleString()}`
-                                                                }
-                                                            </p>
+                                                <div className={cn(
+                                                    "w-full px-4 py-3 rounded-lg border transition-colors flex items-center shadow-sm",
+                                                    debt > 0
+                                                        ? "bg-red-50 border-red-100 justify-between"
+                                                        : futureDebt > 0
+                                                            ? "bg-amber-50 border-amber-100 justify-between"
+                                                            : "bg-gray-50 border-gray-100 justify-center"
+                                                )}>
+                                                    <div className="flex items-center gap-2">
+                                                        {debt > 0 ? (
+                                                            <AlertTriangle className="h-4 w-4 text-red-600 shrink-0" />
+                                                        ) : futureDebt > 0 ? (
+                                                            <Clock className="h-4 w-4 text-amber-600 shrink-0" />
+                                                        ) : (
+                                                            <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
                                                         )}
+                                                        <span className={cn(
+                                                            "font-medium uppercase tracking-wide text-sm",
+                                                            debt > 0 ? "text-red-700" : futureDebt > 0 ? "text-amber-700" : "text-gray-700"
+                                                        )}>
+                                                            {debt > 0 ? "Vencido" : futureDebt > 0 ? "Por Vencer" : "Al día"}
+                                                        </span>
                                                     </div>
 
-                                                    {/* Next Payment Section */}
-                                                    {nextPayment ? (
-                                                        <div className={cn(
-                                                            "p-3 rounded-lg border transition-all h-[74px] flex flex-col justify-center",
-                                                            isOverdue
-                                                                ? "bg-red-50 border-red-100"
-                                                                : isUrgent
-                                                                    ? "bg-amber-50 border-amber-100"
-                                                                    : "bg-gray-50 border-gray-100"
+                                                    {(debt > 0 || futureDebt > 0) && (
+                                                        <p className={cn(
+                                                            "text-lg font-bold leading-none",
+                                                            debt > 0 ? "text-red-900" : "text-amber-900"
                                                         )}>
-                                                            <div className="flex items-center justify-between mb-1.5 pt-1">
-                                                                <div className="flex items-center gap-2">
-                                                                    <Clock className={cn(
-                                                                        "h-3.5 w-3.5",
-                                                                        isOverdue ? "text-red-600" : isUrgent ? "text-amber-600" : "text-gray-500"
-                                                                    )} />
-                                                                    <span className={cn(
-                                                                        "text-xs font-medium uppercase tracking-wide",
-                                                                        isOverdue ? "text-red-700" : isUrgent ? "text-amber-700" : "text-gray-600"
-                                                                    )}>
-                                                                        {isOverdue
-                                                                            ? "¡Vencido!"
-                                                                            : (daysToPay !== null && daysToPay < 0)
-                                                                                ? "Pendiente"
-                                                                                : "Próximo Pago"
-                                                                        }
-                                                                    </span>
-                                                                </div>
-                                                                <Badge variant="secondary" className={cn(
-                                                                    "text-[10px] font-semibold h-5 px-2",
-                                                                    isOverdue
-                                                                        ? "bg-red-100 text-red-700 hover:bg-red-200"
-                                                                        : isUrgent
-                                                                            ? "bg-amber-100 text-amber-700 hover:bg-amber-200"
-                                                                            : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                                                                )}>
-                                                                    {daysToPay !== null && daysToPay < 0
-                                                                        ? `Hace ${Math.abs(daysToPay!)}d`
-                                                                        : `${daysToPay}d`}
-                                                                </Badge>
-                                                            </div>
-                                                            <p className={cn(
-                                                                "text-sm font-medium truncate pb-1",
-                                                                isOverdue ? "text-red-900" : isUrgent ? "text-amber-900" : "text-gray-900"
-                                                            )}>
-                                                                {nextPayment.source}
-                                                            </p>
-                                                        </div>
-                                                    ) : (
-                                                        <div className="p-3 rounded-lg border border-dashed border-gray-200 bg-gray-50/50 text-center h-[74px] flex flex-col justify-center items-center">
-                                                            <p className="text-xs text-gray-400 font-medium">Sin cobros programados</p>
-                                                        </div>
+                                                            {debt > 0
+                                                                ? `$${debt.toLocaleString()}`
+                                                                : `$${futureDebt.toLocaleString()}`
+                                                            }
+                                                        </p>
                                                     )}
-                                                </>
+                                                </div>
+                                            )}
+
+                                            {/* Next Payment Section */}
+                                            {!isCompactView && (
+                                                nextPayment ? (
+                                                    <div className={cn(
+                                                        "p-3 rounded-lg border transition-all h-[74px] flex flex-col justify-center",
+                                                        isOverdue
+                                                            ? "bg-red-50 border-red-100"
+                                                            : isUrgent
+                                                                ? "bg-amber-50 border-amber-100"
+                                                                : "bg-gray-50 border-gray-100"
+                                                    )}>
+                                                        <div className="flex items-center justify-between mb-1.5 pt-1">
+                                                            <div className="flex items-center gap-2">
+                                                                <Clock className={cn(
+                                                                    "h-3.5 w-3.5",
+                                                                    isOverdue ? "text-red-600" : isUrgent ? "text-amber-600" : "text-gray-500"
+                                                                )} />
+                                                                <span className={cn(
+                                                                    "text-xs font-medium uppercase tracking-wide",
+                                                                    isOverdue ? "text-red-700" : isUrgent ? "text-amber-700" : "text-gray-600"
+                                                                )}>
+                                                                    {isOverdue
+                                                                        ? "¡Vencido!"
+                                                                        : (daysToPay !== null && daysToPay < 0)
+                                                                            ? "Pendiente"
+                                                                            : "Próximo Pago"
+                                                                    }
+                                                                </span>
+                                                            </div>
+                                                            <Badge variant="secondary" className={cn(
+                                                                "text-[10px] font-semibold h-5 px-2",
+                                                                isOverdue
+                                                                    ? "bg-red-100 text-red-700 hover:bg-red-200"
+                                                                    : isUrgent
+                                                                        ? "bg-amber-100 text-amber-700 hover:bg-amber-200"
+                                                                        : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                                                            )}>
+                                                                {daysToPay !== null && daysToPay < 0
+                                                                    ? `Hace ${Math.abs(daysToPay!)}d`
+                                                                    : `${daysToPay}d`}
+                                                            </Badge>
+                                                        </div>
+                                                        <p className={cn(
+                                                            "text-sm font-medium truncate pb-1",
+                                                            isOverdue ? "text-red-900" : isUrgent ? "text-amber-900" : "text-gray-900"
+                                                        )}>
+                                                            {nextPayment.source}
+                                                        </p>
+                                                    </div>
+                                                ) : (
+                                                    <div className="p-3 rounded-lg border border-dashed border-gray-200 bg-gray-50/50 text-center h-[74px] flex flex-col justify-center items-center">
+                                                        <p className="text-xs text-gray-400 font-medium">Sin cobros programados</p>
+                                                    </div>
+                                                )
                                             )}
                                         </CardContent>
 
@@ -484,9 +506,139 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
                                 </div>
                             )
                         })
-                    )
-                }
-            </div >
+                    )}
+                </div>
+            ) : (
+                <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                    <Table>
+                        <TableHeader className="bg-gray-50/50">
+                            <TableRow>
+                                <TableHead className="w-[300px]">Cliente</TableHead>
+                                <TableHead>Estado</TableHead>
+                                <TableHead>Servicios</TableHead>
+                                <TableHead>Próximo Cobro</TableHead>
+                                <TableHead className="text-right">Acciones</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {loading ? (
+                                <TableRow>
+                                    <TableCell colSpan={5} className="h-24 text-center text-gray-500">
+                                        Cargando...
+                                    </TableCell>
+                                </TableRow>
+                            ) : filteredClients.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={5} className="h-24 text-center text-gray-500">
+                                        No se encontraron clientes.
+                                    </TableCell>
+                                </TableRow>
+                            ) : (
+                                filteredClients.map((client: any) => {
+                                    const { debt, futureDebt, nextPayment, daysToPay, activeServicesCount } = client
+                                    const isOverdue = daysToPay !== null && daysToPay < 0 && debt > 0
+
+                                    return (
+                                        <TableRow key={client.id} className="group hover:bg-gray-50/50">
+                                            <TableCell>
+                                                <div className="flex items-center gap-3">
+                                                    <div className="relative">
+                                                        <Avatar className="h-10 w-10 border border-gray-100">
+                                                            <AvatarImage src={client.logo_url} />
+                                                            <AvatarFallback className="text-xs bg-gray-100">
+                                                                {client.name.substring(0, 2).toUpperCase()}
+                                                            </AvatarFallback>
+                                                        </Avatar>
+                                                        <div className={cn(
+                                                            "absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 border-2 border-white rounded-full",
+                                                            debt > 0 ? "bg-red-500" : futureDebt > 0 ? "bg-amber-500" : "bg-emerald-500"
+                                                        )} />
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-medium text-gray-900">{client.name}</p>
+                                                        {client.company_name && (
+                                                            <p className="text-xs text-gray-500">{client.company_name}</p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <Badge variant="outline" className={cn(
+                                                    "border-0 px-2 py-0.5 h-6",
+                                                    debt > 0 ? "bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20"
+                                                        : futureDebt > 0 ? "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/20"
+                                                            : "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20"
+                                                )}>
+                                                    {debt > 0 ? "Vencido" : futureDebt > 0 ? "Por Vencer" : "Al día"}
+                                                </Badge>
+                                                {(debt > 0 || futureDebt > 0) && (
+                                                    <span className={cn(
+                                                        "ml-2 text-xs font-semibold",
+                                                        debt > 0 ? "text-red-700" : "text-amber-700"
+                                                    )}>
+                                                        ${(debt || futureDebt).toLocaleString()}
+                                                    </span>
+                                                )}
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="flex items-center gap-1.5 text-sm text-gray-600">
+                                                    <CreditCard className="h-4 w-4 text-gray-400" />
+                                                    {activeServicesCount} Activos
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                {nextPayment ? (
+                                                    <div className="flex flex-col text-sm">
+                                                        <span className="text-gray-900 font-medium">
+                                                            {new Date(nextPayment.date).toLocaleDateString()}
+                                                        </span>
+                                                        <span className="text-xs text-gray-500">
+                                                            {nextPayment.source}
+                                                        </span>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-xs text-gray-400 italic">--</span>
+                                                )}
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                <div className="flex items-center justify-end gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                                                    {/* Quick Actions in List View */}
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-8 w-8 text-gray-400 hover:text-green-600"
+                                                        onClick={() => {
+                                                            setSelectedClientForWhatsApp(client)
+                                                            setIsWhatsAppModalOpen(true)
+                                                        }}
+                                                    >
+                                                        <Phone className="h-4 w-4" />
+                                                    </Button>
+
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-8 w-8 text-gray-400 hover:text-blue-600"
+                                                        onClick={() => handleOpenInvoices(client)}
+                                                    >
+                                                        <FileText className="h-4 w-4" />
+                                                    </Button>
+
+                                                    <Link href={`/clients/${client.id}`}>
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-gray-900">
+                                                            <ArrowRight className="h-4 w-4" />
+                                                        </Button>
+                                                    </Link>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    )
+                                })
+                            )}
+                        </TableBody>
+                    </Table>
+                </div>
+            )}
 
             {/* Quick Invoices Modal */}
             < Dialog open={isInvoicesModalOpen} onOpenChange={setIsInvoicesModalOpen} >

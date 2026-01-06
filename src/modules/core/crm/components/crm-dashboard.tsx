@@ -24,6 +24,7 @@ import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, PointerSensor, u
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable"
 import { LeadCard } from "./lead-card"
 import { DroppableStage } from "./droppable-stage"
+import { SplitText } from "@/components/ui/split-text"
 
 // Icon mapping
 const ICON_MAP: Record<string, any> = {
@@ -262,14 +263,16 @@ export function CRMDashboard() {
         >
             <div className="h-full flex flex-col max-h-full">
                 {/* Compact Header */}
-                <div className="shrink-0 mb-4 space-y-3">
+                <div className="shrink-0 mb-8 space-y-8">
                     {/* Top Row: Title + Mini Stats + Actions */}
                     <div className="flex items-center justify-between gap-4">
-                        <div className="flex items-center gap-4">
-                            <h1 className="text-2xl font-bold tracking-tight">Pipeline</h1>
+                        <div>
+                            <h2 className="text-3xl font-bold tracking-tight text-gray-900">
+                                <SplitText>Pipeline</SplitText>
+                            </h2>
 
                             {/* Inline Mini Stats */}
-                            <div className="hidden sm:flex items-center gap-3 text-sm">
+                            <div className="hidden sm:flex items-center gap-3 text-sm mt-1 mb-1">
                                 <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-zinc-800">
                                     <Users className="h-3.5 w-3.5 text-slate-500" />
                                     <span className="font-semibold">{stats.total}</span>
@@ -283,6 +286,7 @@ export function CRMDashboard() {
                                     <span className="font-semibold text-red-700 dark:text-red-400">{stats.lost}</span>
                                 </div>
                             </div>
+                            <p className="text-muted-foreground">Gestión de prospectos y pipeline de ventas</p>
                         </div>
 
                         {/* Actions */}
@@ -470,6 +474,6 @@ export function CRMDashboard() {
                     onStagesChange={loadData}
                 />
             </div>
-        </DndContext>
+        </DndContext >
     )
 }

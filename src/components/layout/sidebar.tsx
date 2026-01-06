@@ -118,20 +118,30 @@ export function SidebarContent({ isCollapsed = false, currentOrgId, isSuperAdmin
     const pathname = usePathname()
     const { modules, isLoading, organizationType } = useActiveModules()
 
-    // Track which categories are expanded - default all expanded
-    const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({
-        core: true,
-        crm: true,
-        operations: true,
-        finance: true,
-        config: true
-    })
+    // Track which categories are expanded - default to core and crm
+    const [activeCategories, setActiveCategories] = useState<string[]>(['core', 'crm'])
+
+    // Initial state might need to be derived from Module Config but strictly user requested 2 max.
+    // 'core' is always expanded usually but let's treat it as a category.
 
     const toggleCategory = (category: string) => {
-        setExpandedCategories(prev => ({
-            ...prev,
-            [category]: !prev[category]
-        }))
+        setActiveCategories(prev => {
+            const isCurrentlyActive = prev.includes(category)
+
+            if (isCurrentlyActive) {
+                // If closing, just remove it
+                return prev.filter(c => c !== category)
+            } else {
+                // If opening, check limit
+                if (prev.length >= 2) {
+                    // Remove the first one (oldest) and add new one
+                    const [, ...rest] = prev
+                    return [...rest, category]
+                }
+                // Otherwise just add
+                return [...prev, category]
+            }
+        })
     }
 
     // Filter routes based on active modules
@@ -141,7 +151,7 @@ export function SidebarContent({ isCollapsed = false, currentOrgId, isSuperAdmin
     if (organizationType === 'reseller' || organizationType === 'platform') {
         const resellerRoute = {
             key: 'reseller_tenants',
-            label: 'Mis Clientes',
+            label: 'Organizaciones',
             href: '/platform/organizations',
             icon: Users,
             category: 'core' as ModuleCategory,
@@ -219,7 +229,7 @@ export function SidebarContent({ isCollapsed = false, currentOrgId, isSuperAdmin
                                 key={category}
                                 title={CATEGORY_LABELS[category]}
                                 collapsed={isCollapsed}
-                                isExpanded={expandedCategories[category] ?? true}
+                                isExpanded={activeCategories.includes(category)}
                                 onToggle={() => toggleCategory(category)}
                             >
                                 {routes.map(route => (

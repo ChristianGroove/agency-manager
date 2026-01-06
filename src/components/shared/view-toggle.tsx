@@ -1,9 +1,9 @@
 "use client"
 
-import { LayoutGrid, Rows } from "lucide-react"
+import { LayoutGrid, Rows, LayoutTemplate } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-export type ViewMode = 'grid' | 'list'
+export type ViewMode = 'grid' | 'list' | 'compact'
 
 interface ViewToggleProps {
     view: ViewMode
@@ -24,7 +24,7 @@ export function ViewToggle({ view, onViewChange, className }: ViewToggleProps) {
                         "p-2 rounded-lg transition-all",
                         view === 'grid' ? "bg-white text-gray-900 shadow-sm ring-1 ring-black/5" : "text-gray-400 hover:text-gray-600 hover:bg-gray-100"
                     )}
-                    title="Vista Cuadrícula"
+                    title="Vista Detallada"
                 >
                     <LayoutGrid className="h-4 w-4" />
                 </button>
@@ -37,6 +37,16 @@ export function ViewToggle({ view, onViewChange, className }: ViewToggleProps) {
                     title="Vista Lista"
                 >
                     <Rows className="h-4 w-4" />
+                </button>
+                <button
+                    onClick={() => onViewChange('compact')}
+                    className={cn(
+                        "p-2 rounded-lg transition-all",
+                        view === 'compact' ? "bg-white text-gray-900 shadow-sm ring-1 ring-black/5" : "text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+                    )}
+                    title="Vista Compacta"
+                >
+                    <LayoutTemplate className="h-4 w-4" />
                 </button>
             </div>
         </div>
