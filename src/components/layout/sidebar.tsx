@@ -7,7 +7,7 @@ import { LogOut, ChevronDown, Users } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { OrgBranding } from "@/components/organizations/org-branding"
 import { useActiveModules } from "@/hooks/use-active-modules"
-import { MODULE_ROUTES, filterRoutesByModules, CATEGORY_LABELS, ModuleCategory } from "@/lib/module-config"
+import { MODULE_ROUTES, filterRoutesByModules, CATEGORY_LABELS, CATEGORY_ICONS, ModuleCategory } from "@/lib/module-config"
 import { logout } from "@/modules/core/auth/actions"
 import { SidebarFloatingActions } from "./sidebar-floating-actions"
 import { SidebarParticles } from "./sidebar-particles"
@@ -35,11 +35,11 @@ function SidebarItem({ icon: Icon, label, href, active, collapsed, isSuperAdminR
                     collapsed ? "justify-center px-2" : "px-3",
                     active
                         ? isSuperAdminRoute
-                            ? "bg-purple-500/10 text-purple-300 shadow-md shadow-purple-500/10 border border-purple-500/20"
-                            : "bg-white/10 text-white shadow-md shadow-black/20"
+                            ? "bg-purple-500/10 text-purple-600 dark:text-purple-300 shadow-md shadow-purple-500/10 border border-purple-200 dark:border-purple-500/20"
+                            : "bg-gray-100/80 text-gray-900 shadow-sm dark:bg-white/10 dark:text-white dark:shadow-black/20"
                         : isSuperAdminRoute
-                            ? "text-purple-400 hover:text-purple-300 hover:bg-purple-500/10"
-                            : "text-zinc-400 hover:text-white hover:bg-white/5"
+                            ? "text-purple-500 hover:text-purple-600 hover:bg-purple-50 dark:text-purple-400 dark:hover:text-purple-300 dark:hover:bg-purple-500/10"
+                            : "text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-zinc-400 dark:hover:text-white dark:hover:bg-white/5"
                 )}
             >
                 <Icon
@@ -80,12 +80,14 @@ function SidebarItem({ icon: Icon, label, href, active, collapsed, isSuperAdminR
 
 function SidebarSection({
     title,
+    icon: Icon,
     children,
     collapsed,
     isExpanded,
     onToggle
 }: {
     title: string,
+    icon: any,
     children: React.ReactNode,
     collapsed: boolean,
     isExpanded: boolean,
@@ -97,9 +99,12 @@ function SidebarSection({
         <div className="mb-2">
             <button
                 onClick={onToggle}
-                className="w-full flex items-center justify-between px-3 py-1.5 text-xs font-semibold text-zinc-500 uppercase tracking-wider hover:text-zinc-400 transition-colors"
+                className="w-full flex items-center justify-between px-3 py-1.5 text-xs font-semibold text-gray-500 dark:text-zinc-500 uppercase tracking-wider hover:text-gray-700 dark:hover:text-zinc-400 transition-colors group"
             >
-                <span>{title}</span>
+                <span className="flex items-center gap-2">
+                    <Icon className="h-3.5 w-3.5 text-zinc-600 group-hover:text-zinc-400" />
+                    {title}
+                </span>
                 <ChevronDown className={cn(
                     "h-3 w-3 transition-transform duration-200",
                     isExpanded ? "" : "-rotate-90"
@@ -188,9 +193,9 @@ export function SidebarContent({ isCollapsed = false, currentOrgId, isSuperAdmin
                 <div className="space-y-2">
                     {[...Array(3)].map((_, i) => (
                         <div key={i} className="space-y-1">
-                            <div className="h-3 w-16 bg-white/5 rounded mx-3" />
+                            <div className="h-3 w-16 bg-gray-200 dark:bg-white/5 rounded mx-3" />
                             {[...Array(2)].map((_, j) => (
-                                <div key={j} className="h-8 bg-white/5 rounded-xl animate-pulse" />
+                                <div key={j} className="h-8 bg-gray-100 dark:bg-white/5 rounded-xl animate-pulse" />
                             ))}
                         </div>
                     ))}
@@ -223,6 +228,7 @@ export function SidebarContent({ isCollapsed = false, currentOrgId, isSuperAdmin
                             <SidebarSection
                                 key={category}
                                 title={CATEGORY_LABELS[category]}
+                                icon={CATEGORY_ICONS[category]}
                                 collapsed={isCollapsed}
                                 isExpanded={activeCategories.includes(category)}
                                 onToggle={() => toggleCategory(category)}
@@ -244,11 +250,11 @@ export function SidebarContent({ isCollapsed = false, currentOrgId, isSuperAdmin
             )}
 
             {/* Logout Footer - Compact */}
-            <div className="mt-auto pt-2 border-t border-white/5">
+            <div className="mt-auto pt-2 border-t border-gray-200 dark:border-white/5">
                 <button
                     onClick={() => logout()}
                     className={cn(
-                        "w-full flex items-center gap-x-3 text-sm font-medium rounded-xl py-2 text-zinc-400 hover:text-white hover:bg-white/5 transition-all duration-200 group",
+                        "w-full flex items-center gap-x-3 text-sm font-medium rounded-xl py-2 text-gray-500 hover:text-gray-900 hover:bg-gray-100 dark:text-zinc-400 dark:hover:text-white dark:hover:bg-white/5 transition-all duration-200 group",
                         isCollapsed ? "justify-center px-0" : "px-3"
                     )}
                 >
@@ -260,7 +266,31 @@ export function SidebarContent({ isCollapsed = false, currentOrgId, isSuperAdmin
     )
 }
 
+import { getEffectiveBranding } from "@/modules/core/branding/actions"
+import { useTheme } from "next-themes"
+
 export function Sidebar({ isCollapsed, toggleCollapse, currentOrgId, isSuperAdmin = false, user }: SidebarProps) {
+    const { resolvedTheme } = useTheme()
+    const [brandingColor, setBrandingColor] = React.useState<string>("255, 255, 255")
+
+    React.useEffect(() => {
+        const fetchBranding = async () => {
+            try {
+                const data = await getEffectiveBranding(currentOrgId)
+                if (data?.colors?.primary) {
+                    const hex = data.colors.primary.replace('#', '')
+                    const r = parseInt(hex.substring(0, 2), 16)
+                    const g = parseInt(hex.substring(2, 4), 16)
+                    const b = parseInt(hex.substring(4, 6), 16)
+                    setBrandingColor(`${r}, ${g}, ${b}`)
+                }
+            } catch (e) {
+                console.error("Failed to load branding for sidebar glow", e)
+            }
+        }
+        fetchBranding()
+    }, [currentOrgId])
+
     const [isDragging, setIsDragging] = React.useState(false)
     const [dragStartX, setDragStartX] = React.useState(0)
     const dragThreshold = 50
@@ -288,15 +318,19 @@ export function Sidebar({ isCollapsed, toggleCollapse, currentOrgId, isSuperAdmi
         setIsDragging(false)
     }
 
+    const shadowStyle = resolvedTheme === 'dark'
+        ? `0 0 40px -5px rgba(${brandingColor}, 0.15), 0 0 15px -5px rgba(${brandingColor}, 0.1)`
+        : "0 20px 40px -12px rgba(0,0,0,0.1)"
+
     return (
         <TooltipProvider>
             <div
                 className={cn(
-                    "fixed left-4 top-4 bottom-4 h-auto bg-brand-dark/95 backdrop-blur-xl text-white rounded-2xl transition-all duration-300 ease-in-out z-50 flex flex-col shadow-2xl border border-white/10 select-none animate-float-sidebar",
+                    "fixed left-4 top-4 bottom-4 h-auto bg-white/95 dark:bg-brand-dark/95 backdrop-blur-xl text-gray-900 dark:text-white rounded-2xl transition-all duration-300 ease-in-out z-50 flex flex-col shadow-2xl border border-gray-200 dark:border-white/10 select-none animate-float-sidebar",
                     isCollapsed ? "w-16" : "w-64"
                 )}
                 style={{
-                    boxShadow: "0 20px 40px -12px rgba(0,0,0,0.5)"
+                    boxShadow: shadowStyle
                 }}
                 onMouseDown={(e) => handleDragStart(e.clientX)}
                 onMouseMove={(e) => handleDragMove(e.clientX)}

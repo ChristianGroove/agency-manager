@@ -271,7 +271,7 @@ export function SettingsForm({ initialSettings, activeModules, subscriptionApp, 
             )}
             <div className="flex items-center justify-between">
                 <div>
-                    <h2 className="text-3xl font-bold tracking-tight text-gray-900">
+                    <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
                         <SplitText>Configuración</SplitText>
                     </h2>
                     <p className="text-muted-foreground">Administra los datos de tu negocio y preferencias globales.</p>
@@ -286,7 +286,7 @@ export function SettingsForm({ initialSettings, activeModules, subscriptionApp, 
 
             <Tabs defaultValue={visibleTabs[0]?.id || 'general'} className="w-full" suppressHydrationWarning>
                 <TabsList
-                    className="grid w-full max-w-full"
+                    className="grid w-full max-w-full bg-gray-100/50 dark:bg-white/5 p-1 backdrop-blur-sm border border-gray-200/50 dark:border-white/10"
                     style={{ gridTemplateColumns: `repeat(${visibleTabs.length}, minmax(0, 1fr))` }}
                     suppressHydrationWarning
                 >
@@ -296,7 +296,7 @@ export function SettingsForm({ initialSettings, activeModules, subscriptionApp, 
                             <TabsTrigger
                                 key={tab.id}
                                 value={tab.id}
-                                className="flex items-center gap-2"
+                                className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-white/10 data-[state=active]:shadow-sm transition-all"
                                 suppressHydrationWarning
                             >
                                 <Icon className="h-4 w-4" />
@@ -315,7 +315,7 @@ export function SettingsForm({ initialSettings, activeModules, subscriptionApp, 
 
                 {/* GENERAL TAB */}
                 <TabsContent value="general" className="space-y-4 mt-4" suppressHydrationWarning>
-                    <Card>
+                    <Card className="bg-white dark:bg-white/5 border-gray-100 dark:border-white/10 shadow-sm backdrop-blur-md">
                         <CardHeader>
                             <CardTitle>Configuración Regional y Legal</CardTitle>
                             <CardDescription>
@@ -347,8 +347,8 @@ export function SettingsForm({ initialSettings, activeModules, subscriptionApp, 
                                         <Input value={formData.agency_website || ''} disabled className="bg-muted" />
                                     </div>
                                 </div>
-                                <p className="text-xs text-muted-foreground bg-blue-50/50 p-2 rounded border border-blue-100/50">
-                                    <Building2 className="inline h-3 w-3 mr-1" />
+                                <p className="text-xs text-muted-foreground bg-blue-50/50 dark:bg-blue-500/10 p-2 rounded border border-blue-100/50 dark:border-blue-500/20">
+                                    <Building2 className="inline h-3 w-3 mr-1 text-blue-600 dark:text-blue-400" />
                                     Estos datos se sincronizan automáticamente con el Centro de Marca.
                                 </p>
                             </div>
@@ -469,8 +469,8 @@ export function SettingsForm({ initialSettings, activeModules, subscriptionApp, 
                                 />
                             </div>
 
-                            <div className="space-y-2 pt-4 border-t">
-                                <h4 className="text-sm font-medium text-gray-900 mb-2">Accesibilidad</h4>
+                            <div className="space-y-2 pt-4 border-t dark:border-white/10">
+                                <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-2">Accesibilidad</h4>
                                 <div className="space-y-2">
                                     <Label htmlFor="trash_shortcut">Atajo de Papelera</Label>
                                     <div className="flex items-center gap-2">
@@ -494,7 +494,7 @@ export function SettingsForm({ initialSettings, activeModules, subscriptionApp, 
 
                 {/* NOTIFICATIONS TAB */}
                 <TabsContent value="notifications" className="space-y-4 mt-4" suppressHydrationWarning>
-                    <Card>
+                    <Card className="bg-white dark:bg-white/5 border-gray-100 dark:border-white/10 shadow-sm backdrop-blur-md">
                         <CardHeader>
                             <CardTitle>Configuración de Correo</CardTitle>
                             <CardDescription>
@@ -620,7 +620,7 @@ export function SettingsForm({ initialSettings, activeModules, subscriptionApp, 
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-6">
-                            <div className="flex flex-col gap-4 p-4 border rounded-lg bg-muted/20">
+                            <div className="flex flex-col gap-4 p-4 border dark:border-white/10 rounded-lg bg-muted/20 dark:bg-white/5">
                                 <div className="flex items-center justify-between">
                                     <div className="space-y-0.5">
                                         <Label className="text-base">Habilitar Pagos en el Portal</Label>
@@ -680,9 +680,9 @@ export function SettingsForm({ initialSettings, activeModules, subscriptionApp, 
                         </CardContent>
                     </Card>
 
-                    <Card className="border-indigo-100 bg-indigo-50/30">
+                    <Card className="border-indigo-100 dark:border-indigo-500/20 bg-indigo-50/30 dark:bg-indigo-500/5">
                         <CardHeader>
-                            <CardTitle className="flex items-center gap-2 text-indigo-700">
+                            <CardTitle className="flex items-center gap-2 text-indigo-700 dark:text-indigo-400">
                                 Integración Wompi (API)
                             </CardTitle>
                             <CardDescription>
@@ -740,7 +740,7 @@ export function SettingsForm({ initialSettings, activeModules, subscriptionApp, 
                                     <CardDescription>Configuración básica del portal de clientes.</CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-4">
-                                    <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/20">
+                                    <div className="flex items-center justify-between p-4 border dark:border-white/10 rounded-lg bg-muted/20 dark:bg-white/5">
                                         <div className="space-y-0.5">
                                             <Label className="text-base">Habilitar Portal</Label>
                                             <p className="text-sm text-muted-foreground">
@@ -762,12 +762,12 @@ export function SettingsForm({ initialSettings, activeModules, subscriptionApp, 
                                 </CardContent>
                             </Card>
 
-                            <div className="rounded-lg bg-blue-50 border border-blue-100 p-6 text-center">
-                                <div className="mx-auto bg-blue-100 rounded-full w-10 h-10 flex items-center justify-center mb-3">
-                                    <Palette className="h-5 w-5 text-blue-600" />
+                            <div className="rounded-lg bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 p-6 text-center">
+                                <div className="mx-auto bg-blue-100 dark:bg-blue-500/20 rounded-full w-10 h-10 flex items-center justify-center mb-3">
+                                    <Palette className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                                 </div>
-                                <h3 className="text-base font-semibold text-blue-900 mb-1">El Branding del Portal cambió de lugar</h3>
-                                <p className="text-sm text-blue-700 mb-4 max-w-sm mx-auto">
+                                <h3 className="text-base font-semibold text-blue-900 dark:text-blue-100 mb-1">El Branding del Portal cambió de lugar</h3>
+                                <p className="text-sm text-blue-700 dark:text-blue-300 mb-4 max-w-sm mx-auto">
                                     Personaliza colores, logos y vista previa en el Centro de Marca.
                                 </p>
                                 {userRole !== 'member' && (

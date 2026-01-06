@@ -21,7 +21,7 @@ export default async function NewBriefingPage() {
                 </p>
             </div>
 
-            <div className="bg-white p-6 rounded-lg border shadow-sm">
+            <div className="bg-white dark:bg-white/5 backdrop-blur-md p-6 rounded-lg border dark:border-white/10 shadow-sm">
                 <CreateFormSubmission
                     templates={templates || []}
                     clients={clients || []}

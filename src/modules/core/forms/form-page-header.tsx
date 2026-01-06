@@ -12,7 +12,7 @@ export function FormPageHeader() {
     return (
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-                <h2 className="text-3xl font-bold tracking-tight text-gray-900">
+                <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
                     <SplitText>Formularios / Briefings</SplitText>
                 </h2>
                 <p className="text-muted-foreground mt-1">Gestiona los formularios de requerimientos de tus clientes.</p>

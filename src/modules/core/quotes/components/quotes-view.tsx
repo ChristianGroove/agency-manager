@@ -203,7 +203,7 @@ export function QuotesView({ initialQuotes, initialEmitters }: QuotesViewProps) 
         <div className="space-y-8">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h2 className="text-3xl font-bold tracking-tight text-gray-900">
+                    <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
                         <SplitText>Cotizaciones</SplitText>
                     </h2>
                     <p className="text-muted-foreground mt-1">Gestiona el ciclo de vida de tus propuestas comerciales.</p>
@@ -215,13 +215,13 @@ export function QuotesView({ initialQuotes, initialEmitters }: QuotesViewProps) 
 
             {/* Unified Control Block */}
             <div className="flex flex-col md:flex-row gap-3 sticky top-4 z-30">
-                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-1.5 flex flex-col md:flex-row items-center gap-2 flex-1 transition-all hover:shadow-md">
+                <div className="bg-white dark:bg-white/5 backdrop-blur-md rounded-2xl border border-gray-200 dark:border-white/10 shadow-sm p-1.5 flex flex-col md:flex-row items-center gap-2 flex-1 transition-all hover:shadow-md">
                     {/* Integrated Search */}
                     <div className="relative flex-1 w-full md:w-auto min-w-[200px] flex items-center px-3 gap-2">
                         <Search className="h-4 w-4 text-gray-400 shrink-0" />
                         <Input
                             placeholder="Buscar por número, cliente o prospecto..."
-                            className="bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-sm w-full outline-none text-gray-700 placeholder:text-gray-400 h-9 p-0 shadow-none"
+                            className="bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-sm w-full outline-none text-gray-700 dark:text-white placeholder:text-gray-400 h-9 p-0 shadow-none"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
@@ -266,8 +266,8 @@ export function QuotesView({ initialQuotes, initialEmitters }: QuotesViewProps) 
                         className={cn(
                             "flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 border",
                             showFilters
-                                ? "bg-gray-100 text-gray-900 border-gray-200 shadow-inner"
-                                : "bg-white text-gray-500 border-transparent hover:bg-gray-50 hover:text-gray-900"
+                                ? "bg-gray-100 dark:bg-white/10 text-gray-900 dark:text-white border-gray-200 dark:border-white/10 shadow-inner"
+                                : "bg-white dark:bg-transparent text-gray-500 border-transparent hover:bg-gray-50 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-white"
                         )}
                         title="Filtrar Cotizaciones"
                     >
@@ -276,7 +276,7 @@ export function QuotesView({ initialQuotes, initialEmitters }: QuotesViewProps) 
                 </div>
             </div>
 
-            <div className="rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden relative">
+            <div className="rounded-xl border border-gray-100 dark:border-white/10 bg-white dark:bg-white/5 backdrop-blur-md shadow-sm overflow-hidden relative">
                 <BulkActionsFloatingBar
                     selectedCount={selectedIds.size}
                     onDelete={handleBulkDelete}
@@ -284,7 +284,7 @@ export function QuotesView({ initialQuotes, initialEmitters }: QuotesViewProps) 
                     isDeleting={isDeleting}
                 />
                 <Table>
-                    <TableHeader className="bg-gray-50/50">
+                    <TableHeader className="bg-gray-50/50 dark:bg-white/5">
                         <TableRow>
                             <TableHead className="w-[50px]">
                                 <Checkbox
@@ -324,17 +324,17 @@ export function QuotesView({ initialQuotes, initialEmitters }: QuotesViewProps) 
                                 const hasRecurring = quote.items?.some(i => i.is_recurring)
 
                                 return (
-                                    <TableRow key={quote.id} className="group hover:bg-gray-50/50 transition-colors">
+                                    <TableRow key={quote.id} className="group hover:bg-gray-50/50 dark:hover:bg-white/5 border-gray-100 dark:border-white/5 transition-colors">
                                         <TableCell>
                                             <Checkbox
                                                 checked={selectedIds.has(quote.id)}
                                                 onCheckedChange={() => toggleSelection(quote.id)}
                                             />
                                         </TableCell>
-                                        <TableCell className="font-medium text-gray-900">{quote.number}</TableCell>
+                                        <TableCell className="font-medium text-gray-900 dark:text-white">{quote.number}</TableCell>
                                         <TableCell>
                                             <div className="flex flex-col">
-                                                <span className="font-medium text-gray-700">{entityName}</span>
+                                                <span className="font-medium text-gray-700 dark:text-gray-300">{entityName}</span>
                                                 {entityCompany && <span className="text-xs text-gray-400">{entityCompany}</span>}
                                                 {quote.lead_id && <span className="text-[10px] text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full w-fit mt-1 font-medium">Prospecto</span>}
                                             </div>
@@ -342,7 +342,7 @@ export function QuotesView({ initialQuotes, initialEmitters }: QuotesViewProps) 
                                         <TableCell className="text-gray-500 text-sm">{new Date(quote.date).toLocaleDateString('es-MX')}</TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-2">
-                                                <span className="font-bold text-gray-900">${quote.total.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>
+                                                <span className="font-bold text-gray-900 dark:text-white">${quote.total.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>
                                                 {hasRecurring && (
                                                     <span className="bg-indigo-50 text-indigo-600 p-1 rounded-md" title="Incluye items recurrentes (Suscripción)">
                                                         <RefreshCcw className="h-3 w-3" />

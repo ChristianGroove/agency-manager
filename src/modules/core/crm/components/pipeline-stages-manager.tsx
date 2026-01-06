@@ -123,7 +123,7 @@ export function PipelineStagesManager() {
             {/* Page Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h2 className="text-3xl font-bold tracking-tight">Configuración de Pipeline</h2>
+                    <h2 className="text-3xl font-bold tracking-tight dark:text-white">Configuración de Pipeline</h2>
                     <p className="text-muted-foreground">
                         Personaliza las etapas de tu proceso de ventas
                     </p>
@@ -133,7 +133,7 @@ export function PipelineStagesManager() {
             {/* Section Header with New Button */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h3 className="text-lg font-semibold">Etapas del Pipeline</h3>
+                    <h3 className="text-lg font-semibold dark:text-white">Etapas del Pipeline</h3>
                     <p className="text-sm text-muted-foreground">
                         Configura las etapas de tu proceso de ventas
                     </p>
@@ -222,7 +222,7 @@ export function PipelineStagesManager() {
             {/* Stages List */}
             <div className="space-y-2">
                 {stages.map((stage, index) => (
-                    <Card key={stage.id} className="p-4">
+                    <Card key={stage.id} className="p-4 bg-white dark:bg-white/5 border-gray-100 dark:border-white/10 hover:shadow-md transition-shadow">
                         <div className="flex items-center gap-3">
                             <div className="cursor-grab">
                                 <GripVertical className="h-5 w-5 text-muted-foreground" />
@@ -270,7 +270,7 @@ export function PipelineStagesManager() {
             </div>
 
             {stages.length === 0 && (
-                <Card className="p-8 text-center">
+                <Card className="p-8 text-center bg-white dark:bg-white/5 border-gray-100 dark:border-white/10">
                     <p className="text-muted-foreground mb-4">No hay etapas configuradas</p>
                     <p className="text-sm text-muted-foreground">
                         Crea tu primera etapa para comenzar a gestionar tu pipeline

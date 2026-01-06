@@ -14,7 +14,7 @@ interface DashboardEngineProps {
 export function DashboardEngine({ layout, className = "" }: DashboardEngineProps) {
     if (!layout || !layout.rows) {
         return (
-            <div className="p-4 rounded-lg bg-red-50 border border-red-200 text-red-700 flex items-center gap-2">
+            <div className="p-4 rounded-lg bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/20 text-red-700 dark:text-red-400 flex items-center gap-2">
                 <AlertCircle className="h-4 w-4" />
                 <div>
                     <strong className="block font-medium">Error de Configuración</strong>
@@ -34,7 +34,7 @@ export function DashboardEngine({ layout, className = "" }: DashboardEngineProps
 
                         if (!WidgetComponent) {
                             return (
-                                <div key={`widget-error-${rowIndex}-${colIndex}`} className={`p-4 border border-dashed border-red-300 rounded bg-red-50 text-red-500 text-xs ${spanClass}`}>
+                                <div key={`widget-error-${rowIndex}-${colIndex}`} className={`p-4 border border-dashed border-red-300 dark:border-red-900/30 rounded bg-red-50 dark:bg-red-900/10 text-red-500 dark:text-red-400 text-xs ${spanClass}`}>
                                     Widget no encontrado: "{col.widget}"
                                 </div>
                             )

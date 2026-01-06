@@ -104,7 +104,7 @@ export default function HostingPage() {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h2 className="text-3xl font-bold tracking-tight text-gray-900">Hosting Web</h2>
+                    <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">Hosting Web</h2>
                     <p className="text-muted-foreground mt-1">Gestión técnica de servidores y dominios.</p>
                 </div>
                 <Button onClick={() => { setSelectedAccount(null); setIsCreateOpen(true); }} className="bg-brand-pink text-white hover:bg-brand-pink/90">
@@ -122,10 +122,10 @@ export default function HostingPage() {
                 filters={filterOptions}
             />
 
-            <div className="rounded-xl border bg-white shadow-sm overflow-hidden">
+            <div className="rounded-xl border border-gray-100 dark:border-white/10 bg-white dark:bg-white/5 backdrop-blur-md shadow-sm overflow-hidden">
                 <Table>
                     <TableHeader>
-                        <TableRow className="bg-gray-50/50">
+                        <TableRow className="bg-gray-50/50 dark:bg-white/5">
                             <TableHead>Dominio / Cliente</TableHead>
                             <TableHead>Proveedor / Plan</TableHead>
                             <TableHead>IP Servidor</TableHead>
@@ -145,7 +145,7 @@ export default function HostingPage() {
                             </TableRow>
                         ) : (
                             filtered.map((acc) => (
-                                <TableRow key={acc.id} className="hover:bg-gray-50/50">
+                                <TableRow key={acc.id} className="hover:bg-gray-50/50 dark:hover:bg-white/5 border-gray-100 dark:border-white/5">
                                     <TableCell>
                                         <div className="flex flex-col">
                                             <a href={`https://${acc.domain_url}`} target="_blank" rel="noreferrer" className="font-medium text-indigo-600 hover:underline flex items-center gap-1">
@@ -157,12 +157,12 @@ export default function HostingPage() {
                                     </TableCell>
                                     <TableCell>
                                         <div className="text-sm">
-                                            <div className="font-medium text-gray-900">{acc.provider_name || 'N/A'}</div>
+                                            <div className="font-medium text-gray-900 dark:text-white">{acc.provider_name || 'N/A'}</div>
                                             <div className="text-xs text-gray-500">{acc.plan_name}</div>
                                         </div>
                                     </TableCell>
                                     <TableCell>
-                                        <div className="flex items-center gap-1 text-sm text-gray-600 font-mono bg-gray-100 px-2 py-1 rounded w-fit">
+                                        <div className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300 font-mono bg-gray-100 dark:bg-white/10 px-2 py-1 rounded w-fit">
                                             <Server className="h-3 w-3" />
                                             {acc.server_ip || '---'}
                                         </div>

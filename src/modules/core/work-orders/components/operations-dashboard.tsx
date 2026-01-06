@@ -15,7 +15,7 @@ export function OperationsDashboard() {
         <div className="space-y-4 h-full flex flex-col">
             <div className="flex items-center justify-between">
                 <div>
-                    <h2 className="text-3xl font-bold tracking-tight">Operaciones</h2>
+                    <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">Operaciones</h2>
                     <p className="text-muted-foreground">
                         Gestiona órdenes de trabajo y calendario operativo.
                     </p>
@@ -32,12 +32,12 @@ export function OperationsDashboard() {
 
             <Tabs defaultValue="list" className="flex-1 flex flex-col space-y-4">
                 <div className="flex items-center justify-between">
-                    <TabsList>
-                        <TabsTrigger value="list">
+                    <TabsList className="bg-gray-100 dark:bg-white/10 p-1">
+                        <TabsTrigger value="list" className="data-[state=active]:bg-white dark:data-[state=active]:bg-white/10 dark:text-gray-300 dark:data-[state=active]:text-white">
                             <ListIcon className="mr-2 h-4 w-4" />
                             Lista
                         </TabsTrigger>
-                        <TabsTrigger value="calendar">
+                        <TabsTrigger value="calendar" className="data-[state=active]:bg-white dark:data-[state=active]:bg-white/10 dark:text-gray-300 dark:data-[state=active]:text-white">
                             <CalendarIcon className="mr-2 h-4 w-4" />
                             Calendario
                         </TabsTrigger>
@@ -45,9 +45,9 @@ export function OperationsDashboard() {
                 </div>
 
                 <TabsContent value="list" className="flex-1">
-                    <Card className="h-full flex flex-col">
+                    <Card className="h-full flex flex-col bg-white dark:bg-white/5 dark:border-white/10 backdrop-blur-md">
                         <CardHeader>
-                            <CardTitle>Trabajos Activos</CardTitle>
+                            <CardTitle className="text-gray-900 dark:text-white">Trabajos Activos</CardTitle>
                             <CardDescription>
                                 Lista de órdenes de trabajo en curso y pendientes.
                             </CardDescription>

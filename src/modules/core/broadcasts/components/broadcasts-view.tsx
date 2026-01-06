@@ -32,11 +32,11 @@ import { SplitText } from "@/components/ui/split-text"
 import { CreateBroadcastSheet } from './create-broadcast-sheet'
 
 const STATUS_CONFIG = {
-    draft: { label: 'Borrador', icon: Clock, color: 'bg-gray-100 text-gray-700' },
-    scheduled: { label: 'Programado', icon: Clock, color: 'bg-blue-100 text-blue-700' },
-    sending: { label: 'Enviando', icon: Send, color: 'bg-yellow-100 text-yellow-700' },
-    completed: { label: 'Completado', icon: CheckCircle2, color: 'bg-green-100 text-green-700' },
-    failed: { label: 'Fallido', icon: AlertCircle, color: 'bg-red-100 text-red-700' },
+    draft: { label: 'Borrador', icon: Clock, color: 'bg-gray-100 text-gray-700 dark:bg-white/10 dark:text-gray-300' },
+    scheduled: { label: 'Programado', icon: Clock, color: 'bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400' },
+    sending: { label: 'Enviando', icon: Send, color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-500/10 dark:text-yellow-400' },
+    completed: { label: 'Completado', icon: CheckCircle2, color: 'bg-green-100 text-green-700 dark:bg-green-500/10 dark:text-green-400' },
+    failed: { label: 'Fallido', icon: AlertCircle, color: 'bg-red-100 text-red-700 dark:bg-red-500/10 dark:text-red-400' },
 }
 
 export function BroadcastsView() {
@@ -85,7 +85,7 @@ export function BroadcastsView() {
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                 <div>
-                    <h2 className="text-3xl font-bold tracking-tight text-gray-900">
+                    <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
                         <SplitText>Broadcasts</SplitText>
                     </h2>
                     <p className="text-muted-foreground mt-1">Envía mensajes masivos a tus leads y contactos</p>
@@ -105,50 +105,50 @@ export function BroadcastsView() {
 
             {/* Stats Cards */}
             <div className="grid grid-cols-4 gap-4">
-                <Card className="p-4">
+                <Card className="p-4 bg-white dark:bg-white/5 dark:backdrop-blur-md border-gray-100 dark:border-white/10">
                     <div className="flex items-center gap-3">
-                        <div className="p-2 bg-blue-50 rounded-lg">
-                            <Radio className="h-5 w-5 text-blue-600" />
+                        <div className="p-2 bg-blue-50 dark:bg-blue-500/10 rounded-lg">
+                            <Radio className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                         </div>
                         <div>
-                            <p className="text-2xl font-bold">{broadcasts.length}</p>
+                            <p className="text-2xl font-bold dark:text-white">{broadcasts.length}</p>
                             <p className="text-xs text-muted-foreground">Total Campañas</p>
                         </div>
                     </div>
                 </Card>
-                <Card className="p-4">
+                <Card className="p-4 bg-white dark:bg-white/5 dark:backdrop-blur-md border-gray-100 dark:border-white/10">
                     <div className="flex items-center gap-3">
-                        <div className="p-2 bg-green-50 rounded-lg">
-                            <CheckCircle2 className="h-5 w-5 text-green-600" />
+                        <div className="p-2 bg-green-50 dark:bg-green-500/10 rounded-lg">
+                            <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
                         </div>
                         <div>
-                            <p className="text-2xl font-bold">
+                            <p className="text-2xl font-bold dark:text-white">
                                 {broadcasts.filter(b => b.status === 'completed').length}
                             </p>
                             <p className="text-xs text-muted-foreground">Completadas</p>
                         </div>
                     </div>
                 </Card>
-                <Card className="p-4">
+                <Card className="p-4 bg-white dark:bg-white/5 dark:backdrop-blur-md border-gray-100 dark:border-white/10">
                     <div className="flex items-center gap-3">
-                        <div className="p-2 bg-yellow-50 rounded-lg">
-                            <Send className="h-5 w-5 text-yellow-600" />
+                        <div className="p-2 bg-yellow-50 dark:bg-yellow-500/10 rounded-lg">
+                            <Send className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
                         </div>
                         <div>
-                            <p className="text-2xl font-bold">
+                            <p className="text-2xl font-bold dark:text-white">
                                 {broadcasts.reduce((sum, b) => sum + b.sent_count, 0)}
                             </p>
                             <p className="text-xs text-muted-foreground">Mensajes Enviados</p>
                         </div>
                     </div>
                 </Card>
-                <Card className="p-4">
+                <Card className="p-4 bg-white dark:bg-white/5 dark:backdrop-blur-md border-gray-100 dark:border-white/10">
                     <div className="flex items-center gap-3">
-                        <div className="p-2 bg-purple-50 rounded-lg">
-                            <Users className="h-5 w-5 text-purple-600" />
+                        <div className="p-2 bg-purple-50 dark:bg-purple-500/10 rounded-lg">
+                            <Users className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                         </div>
                         <div>
-                            <p className="text-2xl font-bold">
+                            <p className="text-2xl font-bold dark:text-white">
                                 {broadcasts.reduce((sum, b) => sum + b.delivered_count, 0)}
                             </p>
                             <p className="text-xs text-muted-foreground">Entregados</p>
@@ -168,7 +168,7 @@ export function BroadcastsView() {
                     ))}
                 </div>
             ) : broadcasts.length === 0 ? (
-                <Card className="p-12 text-center">
+                <Card className="p-12 text-center bg-white dark:bg-white/5 dark:backdrop-blur-md border-gray-100 dark:border-white/10">
                     <Radio className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
                     <h3 className="text-lg font-semibold mb-2">No hay campañas</h3>
                     <p className="text-muted-foreground mb-4">
@@ -186,14 +186,14 @@ export function BroadcastsView() {
                         const StatusIcon = statusConfig.icon
 
                         return (
-                            <Card key={broadcast.id} className="p-4 hover:shadow-md transition-shadow">
+                            <Card key={broadcast.id} className="p-4 hover:shadow-md transition-shadow bg-white dark:bg-white/5 dark:backdrop-blur-md border-gray-100 dark:border-white/10">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-4">
-                                        <div className="p-2 bg-indigo-50 rounded-lg">
-                                            <Radio className="h-5 w-5 text-indigo-600" />
+                                        <div className="p-2 bg-indigo-50 dark:bg-indigo-500/10 rounded-lg">
+                                            <Radio className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
                                         </div>
                                         <div>
-                                            <h3 className="font-semibold">{broadcast.name}</h3>
+                                            <h3 className="font-semibold text-gray-900 dark:text-white">{broadcast.name}</h3>
                                             <p className="text-sm text-muted-foreground line-clamp-1">
                                                 {broadcast.message.substring(0, 60)}...
                                             </p>
@@ -203,12 +203,12 @@ export function BroadcastsView() {
                                     <div className="flex items-center gap-4">
                                         {/* Recipients */}
                                         <div className="text-right">
-                                            <p className="text-sm font-medium">{broadcast.total_recipients}</p>
+                                            <p className="text-sm font-medium dark:text-white">{broadcast.total_recipients}</p>
                                             <p className="text-xs text-muted-foreground">destinatarios</p>
                                         </div>
 
                                         {/* Status Badge */}
-                                        <Badge variant="outline" className={cn("gap-1", statusConfig.color)}>
+                                        <Badge variant="outline" className={cn("gap-1 border-0", statusConfig.color)}>
                                             <StatusIcon className="h-3 w-3" />
                                             {statusConfig.label}
                                         </Badge>

@@ -60,7 +60,7 @@ export function SidebarFloatingActions({ isSuperAdmin, user, currentOrgId }: Sid
             {/* --- Super Admin Actions --- */}
             {isSuperAdmin && (
                 <>
-                    <div className="w-4 h-[1px] bg-white/10 my-1 mr-2" /> {/* Separator */}
+                    <div className="w-4 h-[1px] bg-gray-300 dark:bg-white/10 my-1 mr-2" /> {/* Separator */}
 
                     <ActionButton
                         href="/platform/admin"

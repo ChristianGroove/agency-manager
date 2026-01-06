@@ -111,7 +111,7 @@ export function FormList({ submissions }: FormListProps) {
             case 'submitted':
                 return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Completado</Badge>
             default:
-                return <Badge variant="outline">{status}</Badge>
+                return <Badge variant="outline" className="dark:text-gray-300 dark:border-white/20">{status}</Badge>
         }
     }
 
@@ -132,13 +132,13 @@ export function FormList({ submissions }: FormListProps) {
         <div className="space-y-8">
             {/* Unified Control Block */}
             <div className="flex flex-col md:flex-row gap-3 sticky top-4 z-30">
-                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-1.5 flex flex-col md:flex-row items-center gap-2 flex-1 transition-all hover:shadow-md">
+                <div className="bg-white dark:bg-white/5 backdrop-blur-md rounded-2xl border border-gray-200 dark:border-white/10 shadow-sm p-1.5 flex flex-col md:flex-row items-center gap-2 flex-1 transition-all hover:shadow-md">
                     {/* Integrated Search */}
                     <div className="relative flex-1 w-full md:w-auto min-w-[200px] flex items-center px-3 gap-2">
                         <Search className="h-4 w-4 text-gray-400 shrink-0" />
                         <Input
                             placeholder="Buscar por cliente o tipo..."
-                            className="bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-sm w-full outline-none text-gray-700 placeholder:text-gray-400 h-9 p-0 shadow-none"
+                            className="bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-sm w-full outline-none text-gray-700 dark:text-white placeholder:text-gray-400 h-9 p-0 shadow-none"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
@@ -170,9 +170,9 @@ export function FormList({ submissions }: FormListProps) {
                                             ? filter.id === 'draft' ? "bg-gray-100 text-gray-700 ring-1 ring-inset ring-gray-600/20 shadow-sm"
                                                 : filter.id === 'sent' ? "bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-600/20 shadow-sm"
                                                     : filter.id === 'in_progress' ? "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/20 shadow-sm"
-                                                        : filter.id === 'submitted' ? "bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20 shadow-sm"
-                                                            : "bg-gray-900 text-white shadow-sm"
-                                            : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
+                                                        : filter.id === 'submitted' ? "bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400 ring-1 ring-inset ring-green-600/20 dark:ring-green-500/20 shadow-sm"
+                                                            : "bg-gray-900 dark:bg-white text-white dark:text-black shadow-sm"
+                                            : "text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-white"
                                     )}
                                 >
                                     <span>{filter.label}</span>
@@ -190,8 +190,8 @@ export function FormList({ submissions }: FormListProps) {
                         className={cn(
                             "flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 border",
                             showFilters
-                                ? "bg-gray-100 text-gray-900 border-gray-200 shadow-inner"
-                                : "bg-white text-gray-500 border-transparent hover:bg-gray-50 hover:text-gray-900"
+                                ? "bg-gray-100 dark:bg-white/10 text-gray-900 dark:text-gray-100 border-gray-200 dark:border-white/10 shadow-inner"
+                                : "bg-white dark:bg-transparent text-gray-500 dark:text-gray-400 border-transparent hover:bg-gray-50 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-white"
                         )}
                         title="Filtrar"
                     >
@@ -200,7 +200,7 @@ export function FormList({ submissions }: FormListProps) {
                 </div>
             </div>
 
-            <div className="rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden relative">
+            <div className="rounded-xl border border-gray-100 dark:border-white/10 bg-white dark:bg-white/5 backdrop-blur-md shadow-sm overflow-hidden relative">
                 <BulkActionsFloatingBar
                     selectedCount={selectedIds.size}
                     onDelete={handleBulkDelete}
@@ -208,7 +208,7 @@ export function FormList({ submissions }: FormListProps) {
                     isDeleting={isDeleting}
                 />
                 <Table>
-                    <TableHeader className="bg-gray-50/50">
+                    <TableHeader className="bg-gray-50/50 dark:bg-white/5">
                         <TableRow>
                             <TableHead className="w-[50px]">
                                 <Checkbox
@@ -232,17 +232,17 @@ export function FormList({ submissions }: FormListProps) {
                             </TableRow>
                         ) : (
                             filteredSubmissions.map((sub) => (
-                                <TableRow key={sub.id} className="hover:bg-gray-50/50">
+                                <TableRow key={sub.id} className="hover:bg-gray-50/50 dark:hover:bg-white/5 border-gray-100 dark:border-white/10">
                                     <TableCell>
                                         <Checkbox
                                             checked={selectedIds.has(sub.id)}
                                             onCheckedChange={() => toggleSelection(sub.id)}
                                         />
                                     </TableCell>
-                                    <TableCell className="font-medium text-gray-900">
+                                    <TableCell className="font-medium text-gray-900 dark:text-white">
                                         {sub.client?.name || 'Sin Cliente (Lead)'}
                                     </TableCell>
-                                    <TableCell className="text-gray-700">{sub.template?.name}</TableCell>
+                                    <TableCell className="text-gray-700 dark:text-gray-300">{sub.template?.name}</TableCell>
                                     <TableCell>{getStatusBadge(sub.status)}</TableCell>
                                     <TableCell className="text-gray-500">
                                         {new Date(sub.created_at).toLocaleDateString()}

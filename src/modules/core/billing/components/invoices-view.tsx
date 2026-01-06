@@ -163,13 +163,13 @@ export function InvoicesView({ initialInvoices }: InvoicesViewProps) {
 
             {/* Unified Control Block */}
             <div className="flex flex-col md:flex-row gap-3 sticky top-4 z-30">
-                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-1.5 flex flex-col md:flex-row items-center gap-2 flex-1 transition-all hover:shadow-md">
+                <div className="bg-white dark:bg-white/5 backdrop-blur-md rounded-2xl border border-gray-200 dark:border-white/10 shadow-sm p-1.5 flex flex-col md:flex-row items-center gap-2 flex-1 transition-all hover:shadow-md">
                     {/* Integrated Search */}
                     <div className="relative flex-1 w-full md:w-auto min-w-[200px] flex items-center px-3 gap-2">
                         <Search className="h-4 w-4 text-gray-400 shrink-0" />
                         <Input
                             placeholder="Buscar por número o cliente..."
-                            className="bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-sm w-full outline-none text-gray-700 placeholder:text-gray-400 h-9 p-0 shadow-none"
+                            className="bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-sm w-full outline-none text-gray-700 dark:text-white placeholder:text-gray-400 h-9 p-0 shadow-none"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
@@ -197,11 +197,11 @@ export function InvoicesView({ initialInvoices }: InvoicesViewProps) {
                                     className={cn(
                                         "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all duration-200 whitespace-nowrap",
                                         statusFilter === filter.id
-                                            ? filter.id === 'paid' ? "bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20 shadow-sm"
-                                                : filter.id === 'pending' ? "bg-yellow-50 text-yellow-700 ring-1 ring-inset ring-yellow-600/20 shadow-sm"
-                                                    : filter.id === 'overdue' ? "bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20 shadow-sm"
-                                                        : "bg-gray-900 text-white shadow-sm"
-                                            : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
+                                            ? filter.id === 'paid' ? "bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400 ring-1 ring-inset ring-green-600/20 dark:ring-green-500/20 shadow-sm"
+                                                : filter.id === 'pending' ? "bg-yellow-50 dark:bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 ring-1 ring-inset ring-yellow-600/20 dark:ring-yellow-500/20 shadow-sm"
+                                                    : filter.id === 'overdue' ? "bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 ring-1 ring-inset ring-red-600/20 dark:ring-red-500/20 shadow-sm"
+                                                        : "bg-gray-900 dark:bg-white text-white dark:text-black shadow-sm"
+                                            : "text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-white"
                                     )}
                                 >
                                     <span>{filter.label}</span>
@@ -219,8 +219,8 @@ export function InvoicesView({ initialInvoices }: InvoicesViewProps) {
                         className={cn(
                             "flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 border",
                             showFilters
-                                ? "bg-gray-100 text-gray-900 border-gray-200 shadow-inner"
-                                : "bg-white text-gray-500 border-transparent hover:bg-gray-50 hover:text-gray-900"
+                                ? "bg-gray-100 dark:bg-white/10 text-gray-900 dark:text-white border-gray-200 dark:border-white/10 shadow-inner"
+                                : "bg-white dark:bg-transparent text-gray-500 dark:text-gray-400 border-transparent hover:bg-gray-50 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-white"
                         )}
                         title="Filtrar Documentos"
                     >
@@ -236,7 +236,7 @@ export function InvoicesView({ initialInvoices }: InvoicesViewProps) {
             </div>
 
             {/* Table */}
-            <div className="rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden relative">
+            <div className="rounded-xl border border-gray-100 dark:border-white/10 bg-white dark:bg-white/5 backdrop-blur-md shadow-sm overflow-hidden relative">
                 <BulkActionsFloatingBar
                     selectedCount={selectedIds.size}
                     onDelete={handleBulkDelete}
@@ -244,8 +244,8 @@ export function InvoicesView({ initialInvoices }: InvoicesViewProps) {
                     isDeleting={isDeleting}
                 />
                 <Table>
-                    <TableHeader className="bg-gray-50/50">
-                        <TableRow>
+                    <TableHeader className="bg-gray-50/50 dark:bg-white/5">
+                        <TableRow className="border-gray-200 dark:border-white/10">
                             <TableHead className="w-[50px]">
                                 <Checkbox
                                     checked={filteredInvoices.length > 0 && selectedIds.size === filteredInvoices.length}
@@ -279,26 +279,26 @@ export function InvoicesView({ initialInvoices }: InvoicesViewProps) {
                             </TableRow>
                         ) : (
                             filteredInvoices.map((invoice) => (
-                                <TableRow key={invoice.id} className="hover:bg-gray-50/50">
+                                <TableRow key={invoice.id} className="hover:bg-gray-50/50 dark:hover:bg-white/5 border-gray-100 dark:border-white/10">
                                     <TableCell>
                                         <Checkbox
                                             checked={selectedIds.has(invoice.id)}
                                             onCheckedChange={() => toggleSelection(invoice.id)}
                                         />
                                     </TableCell>
-                                    <TableCell className="font-medium text-gray-900">{invoice.number}</TableCell>
-                                    <TableCell className="font-medium text-gray-700">{invoice.client?.name}</TableCell>
-                                    <TableCell className="text-gray-500">
+                                    <TableCell className="font-medium text-gray-900 dark:text-white">{invoice.number}</TableCell>
+                                    <TableCell className="font-medium text-gray-700 dark:text-gray-300">{invoice.client?.name}</TableCell>
+                                    <TableCell className="text-gray-500 dark:text-gray-400">
                                         <span suppressHydrationWarning>
                                             {new Date(invoice.date).toLocaleDateString()}
                                         </span>
                                     </TableCell>
-                                    <TableCell className="text-gray-500">
+                                    <TableCell className="text-gray-500 dark:text-gray-400">
                                         <span suppressHydrationWarning>
                                             {invoice.due_date ? new Date(invoice.due_date).toLocaleDateString() : '-'}
                                         </span>
                                     </TableCell>
-                                    <TableCell className="font-medium text-gray-900">
+                                    <TableCell className="font-medium text-gray-900 dark:text-white">
                                         <span suppressHydrationWarning>
                                             ${invoice.total.toLocaleString()}
                                         </span>

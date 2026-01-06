@@ -11,6 +11,7 @@ export interface BrandingConfig {
     name: string
     logos: {
         main: string | null
+        main_light?: string | null // For light mode
         portal: string | null
         favicon: string | null
         dashboard_bg?: string | null
@@ -45,6 +46,7 @@ const DEFAULT_BRANDING: BrandingConfig = {
     name: "Pixy",
     logos: {
         main: "/branding/logo dark.svg",
+        main_light: null,
         portal: "/branding/iso.svg",
         favicon: "/pixy-isotipo.png",
         dashboard_bg: null,
@@ -83,6 +85,7 @@ export async function getPlatformSettings() {
         name: data.agency_name,
         logos: {
             main: data.main_logo_url,
+            main_light: data.main_logo_light_url,
             portal: data.portal_logo_url,
             favicon: data.favicon_url,
             login_bg: data.login_background_url
@@ -107,6 +110,7 @@ export async function updatePlatformSettings(data: Partial<BrandingConfig>) {
 
     if (data.name) updatePayload.agency_name = data.name
     if (data.logos?.main) updatePayload.main_logo_url = data.logos.main
+    if (data.logos?.main_light !== undefined) updatePayload.main_logo_light_url = data.logos.main_light
     if (data.logos?.portal) updatePayload.portal_logo_url = data.logos.portal
     if (data.logos?.favicon) updatePayload.favicon_url = data.logos.favicon
     if (data.logos?.login_bg) updatePayload.login_background_url = data.logos.login_bg
@@ -162,6 +166,7 @@ export async function getEffectiveBranding(orgId?: string | null): Promise<Brand
                 agency_name,
                 agency_website,
                 main_logo_url,
+                main_logo_light_url,
                 portal_logo_url,
                 isotipo_url,
                 portal_primary_color,
@@ -204,6 +209,7 @@ export async function getEffectiveBranding(orgId?: string | null): Promise<Brand
         name: pick(tenantSettings.agency_name, platformBranding.name),
         logos: {
             main: pick(tenantSettings.main_logo_url, platformBranding.logos.main),
+            main_light: pick(tenantSettings.main_logo_light_url, platformBranding.logos.main_light),
             portal: pick(tenantSettings.portal_logo_url, platformBranding.logos.portal),
             favicon: pick(tenantSettings.isotipo_url, platformBranding.logos.favicon),
             login_bg: pick(tenantSettings.portal_login_background_url, platformBranding.logos.login_bg)
@@ -322,6 +328,7 @@ export async function updateOrganizationBranding(settings: BrandingConfig) {
         agency_name: settings.name,
         agency_website: settings.website,
         main_logo_url: settings.logos.main,
+        main_logo_light_url: settings.logos.main_light,
         portal_logo_url: settings.logos.portal,
         isotipo_url: settings.logos.favicon,
 

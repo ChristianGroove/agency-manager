@@ -96,7 +96,7 @@ export default function PaymentsPage() {
         <div className="space-y-8">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h2 className="text-3xl font-bold tracking-tight text-gray-900">
+                    <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
                         <SplitText>Historial de Pagos</SplitText>
                     </h2>
                     <p className="text-muted-foreground mt-1">Gestiona y visualiza todas las transacciones recibidas.</p>
@@ -105,13 +105,13 @@ export default function PaymentsPage() {
 
             {/* Unified Control Block */}
             <div className="flex flex-col md:flex-row gap-3 sticky top-4 z-30">
-                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-1.5 flex flex-col md:flex-row items-center gap-2 flex-1 transition-all hover:shadow-md">
+                <div className="bg-white dark:bg-white/5 backdrop-blur-md rounded-2xl border border-gray-200 dark:border-white/10 shadow-sm p-1.5 flex flex-col md:flex-row items-center gap-2 flex-1 transition-all hover:shadow-md">
                     {/* Integrated Search */}
                     <div className="relative flex-1 w-full md:w-auto min-w-[200px] flex items-center px-3 gap-2">
                         <Search className="h-4 w-4 text-gray-400 shrink-0" />
                         <Input
                             placeholder="Buscar por referencia..."
-                            className="bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-sm w-full outline-none text-gray-700 placeholder:text-gray-400 h-9 p-0 shadow-none"
+                            className="bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-sm w-full outline-none text-gray-700 dark:text-gray-200 placeholder:text-gray-400 h-9 p-0 shadow-none"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
@@ -169,9 +169,9 @@ export default function PaymentsPage() {
                 </div>
             </div>
 
-            <div className="rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden">
+            <div className="rounded-xl border border-gray-100 dark:border-white/10 bg-white dark:bg-white/5 backdrop-blur-md shadow-sm overflow-hidden">
                 <Table>
-                    <TableHeader className="bg-gray-50/50">
+                    <TableHeader className="bg-gray-50/50 dark:bg-white/5">
                         <TableRow>
                             <TableHead>Fecha</TableHead>
                             <TableHead>Referencia</TableHead>
@@ -199,12 +199,12 @@ export default function PaymentsPage() {
                             </TableRow>
                         ) : (
                             filteredTransactions.map((tx) => (
-                                <TableRow key={tx.id} className="hover:bg-gray-50/50">
+                                <TableRow key={tx.id} className="hover:bg-gray-50/50 dark:hover:bg-white/5 border-gray-100 dark:border-white/5">
                                     <TableCell className="text-gray-500">
                                         {new Date(tx.created_at).toLocaleDateString()} {new Date(tx.created_at).toLocaleTimeString()}
                                     </TableCell>
                                     <TableCell className="font-mono text-xs text-gray-600">{tx.reference}</TableCell>
-                                    <TableCell className="font-medium text-gray-900">
+                                    <TableCell className="font-medium text-gray-900 dark:text-white">
                                         ${(tx.amount_in_cents / 100).toLocaleString()} {tx.currency}
                                     </TableCell>
                                     <TableCell>
@@ -238,20 +238,20 @@ export default function PaymentsPage() {
             {/* Transaction Detail Modal */}
             {selectedTransaction && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setSelectedTransaction(null)}>
-                    <div className="bg-white border border-gray-200 rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95" onClick={e => e.stopPropagation()}>
-                        <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-                            <h3 className="text-lg font-bold text-gray-900">Detalle de Transacción</h3>
-                            <Button variant="ghost" size="sm" onClick={() => setSelectedTransaction(null)} className="text-gray-400 hover:text-gray-900">✕</Button>
+                    <div className="bg-white dark:bg-zinc-950 border border-gray-200 dark:border-white/10 rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95" onClick={e => e.stopPropagation()}>
+                        <div className="p-6 border-b border-gray-100 dark:border-white/10 flex justify-between items-center bg-gray-50/50 dark:bg-white/5">
+                            <h3 className="text-lg font-bold text-gray-900 dark:text-white">Detalle de Transacción</h3>
+                            <Button variant="ghost" size="sm" onClick={() => setSelectedTransaction(null)} className="text-gray-400 hover:text-gray-900 dark:hover:text-white">✕</Button>
                         </div>
                         <div className="p-6 space-y-6">
                             <div className="grid grid-cols-2 gap-4 text-sm">
                                 <div>
                                     <p className="text-gray-500 mb-1">Referencia</p>
-                                    <p className="font-mono text-gray-900 text-xs">{selectedTransaction.reference}</p>
+                                    <p className="font-mono text-gray-900 dark:text-gray-100 text-xs">{selectedTransaction.reference}</p>
                                 </div>
                                 <div>
                                     <p className="text-gray-500 mb-1">Fecha</p>
-                                    <p className="font-medium text-gray-900">{new Date(selectedTransaction.created_at).toLocaleString()}</p>
+                                    <p className="font-medium text-gray-900 dark:text-white">{new Date(selectedTransaction.created_at).toLocaleString()}</p>
                                 </div>
                                 <div>
                                     <p className="text-gray-500 mb-1">Monto Total</p>
@@ -299,7 +299,7 @@ export default function PaymentsPage() {
                                 )}
                             </div>
                         </div>
-                        <div className="p-6 border-t border-gray-100 bg-gray-50/50 flex justify-end">
+                        <div className="p-6 border-t border-gray-100 dark:border-white/10 bg-gray-50/50 dark:bg-white/5 flex justify-end">
                             <Button onClick={() => setSelectedTransaction(null)} variant="outline">Cerrar</Button>
                         </div>
                     </div>

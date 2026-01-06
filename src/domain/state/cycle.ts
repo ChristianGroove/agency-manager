@@ -16,10 +16,10 @@ const STATUS_LABELS: Record<string, string> = {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-    future: 'bg-slate-100 text-slate-500 border-slate-200 dashed border',
-    running: 'bg-blue-50 text-blue-700 border-blue-200',
-    completed: 'bg-indigo-50 text-indigo-700 border-indigo-200',
-    skipped: 'bg-gray-100 text-gray-400 border-gray-200'
+    future: 'bg-slate-100 dark:bg-slate-500/10 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-500/20 dashed border',
+    running: 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-500/20',
+    completed: 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border-indigo-200 dark:border-indigo-500/20',
+    skipped: 'bg-gray-100 dark:bg-white/10 text-gray-400 dark:text-gray-500 border-gray-200 dark:border-white/10'
 }
 
 export type CycleState = {
@@ -48,7 +48,7 @@ export function resolveCycleState(cycle: any): CycleState {
 
     // 2. Derive UI
     const label = STATUS_LABELS[status] || STATUS_LABELS[rawStatus] || status
-    const color = STATUS_COLORS[status] || 'bg-gray-100 text-gray-700'
+    const color = STATUS_COLORS[status] || 'bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-white'
 
     // 3. Actionable Logic (e.g. Needs Invoice)
     // A cycle is actionable if it's 'running' (pending in legacy terms) and end_date < now?

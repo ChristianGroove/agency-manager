@@ -1,16 +1,17 @@
 .button {
     width: 25px;
-    /* 50% of 50px */
     height: 25px;
     border-radius: 50%;
-    background-color: rgb(20, 20, 20);
-    border: none;
+    background-color: white;
+    /* Light mode default */
+    border: 1px solid #e5e7eb;
+    /* gray-200 */
     font-weight: 600;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0px 0px 0px 2px rgba(180, 160, 255, 0.253);
-    /* Reduced shadow thickness */
+    box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.05);
+    /* Softer shadow */
     cursor: pointer;
     transition-duration: 0.3s;
     overflow: hidden;
@@ -18,11 +19,21 @@
     text-decoration: none;
 }
 
+:global(.dark) .button {
+    background-color: rgb(20, 20, 20);
+    border: none;
+    box-shadow: 0px 0px 0px 2px rgba(180, 160, 255, 0.253);
+}
+
 .svgIcon {
     width: 10px;
-    /* Reduced from 14px */
     height: 10px;
     transition-duration: 0.3s;
+    color: #374151;
+    /* gray-700 */
+}
+
+:global(.dark) .svgIcon {
     color: white;
 }
 
@@ -44,9 +55,13 @@
     position: absolute;
     bottom: -20px;
     content: attr(data-text);
-    color: white;
+    color: #374151;
     font-size: 0px;
     white-space: nowrap;
+}
+
+:global(.dark) .button::before {
+    color: white;
 }
 
 .button:hover::before {

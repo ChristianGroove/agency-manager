@@ -21,7 +21,7 @@ export function ModularDashboardLayout({ data }: { data: DashboardDataProps }) {
         <div className="space-y-8">
             {/* Header - Could be dynamic later */}
             <div>
-                <h1 className="text-3xl font-bold text-gray-900">
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
                     <SplitText>Dashboard</SplitText>
                 </h1>
                 <p className="text-muted-foreground mt-1">Resumen en tiempo real de tu negocio</p>

@@ -16,14 +16,14 @@ export function InboxLayout() {
         <div className="flex flex-col h-full">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                 <div>
-                    <h2 className="text-3xl font-bold tracking-tight text-gray-900">
+                    <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
                         <SplitText>Inbox</SplitText>
                     </h2>
                     <p className="text-muted-foreground mt-1">Centro de mensajería unificado</p>
                 </div>
             </div>
 
-            <div className="flex-1 grid w-full grid-cols-12 divide-x divide-border bg-background shadow-sm border rounded-lg overflow-hidden min-h-0">
+            <div className="flex-1 grid w-full grid-cols-12 divide-x divide-border bg-background dark:bg-white/5 dark:backdrop-blur-md shadow-sm border dark:border-white/10 rounded-lg overflow-hidden min-h-0">
                 {/* Left Pane: Conversation List (3 cols) */}
                 <div className="col-span-3 flex flex-col min-w-0 bg-muted/10 overflow-hidden">
                     <ConversationList

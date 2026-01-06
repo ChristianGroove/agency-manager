@@ -153,12 +153,12 @@ export default function PlatformOrganizationsPage() {
     const treeData = flattenTree(rootOrgs)
 
     return (
-        <div className="space-y-8 bg-gray-50/50 min-h-screen">
+        <div className="space-y-8 bg-gray-50/50 dark:bg-transparent min-h-screen">
             <SetPasswordModal />
 
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h2 className="text-3xl font-bold tracking-tight text-gray-900">
+                    <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
                         <SplitText>Organizaciones</SplitText>
                     </h2>
                     <p className="text-muted-foreground mt-1">Gestión global de organizaciones.</p>
@@ -188,7 +188,7 @@ export default function PlatformOrganizationsPage() {
             </div>
 
             {viewMode === 'list' ? (
-                <Card className="border-gray-200 shadow-sm">
+                <Card className="border-gray-200 dark:border-white/10 shadow-sm bg-white dark:bg-white/5 backdrop-blur-md">
                     <CardContent className="p-0">
                         <Table>
                             <TableHeader>
@@ -215,7 +215,7 @@ export default function PlatformOrganizationsPage() {
                                     </TableRow>
                                 ) : (
                                     treeData.map(({ org, depth, hasChildren }) => (
-                                        <TableRow key={org.id} className="group hover:bg-gray-50/50">
+                                        <TableRow key={org.id} className="group hover:bg-gray-50/50 dark:hover:bg-white/5 border-gray-100 dark:border-white/5">
                                             <TableCell className="pl-6">
                                                 <div
                                                     className="flex items-center gap-3"
@@ -251,7 +251,7 @@ export default function PlatformOrganizationsPage() {
                                                     <div className="flex flex-col">
                                                         <span className={cn(
                                                             "font-medium",
-                                                            depth === 0 ? "text-gray-900" : "text-gray-700"
+                                                            depth === 0 ? "text-gray-900 dark:text-gray-100" : "text-gray-700 dark:text-gray-300"
                                                         )}>{org.name}</span>
                                                         <span className="text-xs text-gray-400">{org.slug}</span>
                                                     </div>
@@ -309,7 +309,7 @@ export default function PlatformOrganizationsPage() {
                     ) : (
                         filteredOrgs.map((org: any) => (
                             <div key={org.id} className="group relative">
-                                <Card className="hover:shadow-lg transition-all duration-300 border-gray-200">
+                                <Card className="hover:shadow-lg transition-all duration-300 border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 backdrop-blur-md">
                                     <CardHeader className="pb-3 pt-5 px-5">
                                         <div className="flex items-start justify-between">
                                             <div className="flex gap-4">
@@ -318,7 +318,7 @@ export default function PlatformOrganizationsPage() {
                                                     <AvatarFallback className="bg-gray-50"><Building2 className="h-5 w-5 text-gray-400" /></AvatarFallback>
                                                 </Avatar>
                                                 <div>
-                                                    <h3 className="font-semibold text-lg leading-tight">{org.name}</h3>
+                                                    <h3 className="font-semibold text-lg leading-tight text-gray-900 dark:text-white">{org.name}</h3>
                                                     <p className="text-xs text-muted-foreground mt-1">{org.slug}</p>
                                                 </div>
                                             </div>
@@ -353,7 +353,7 @@ export default function PlatformOrganizationsPage() {
                                             <span className="text-gray-700">{format(new Date(org.created_at), "d MMM, yyyy", { locale: es })}</span>
                                         </div>
                                     </CardContent>
-                                    <CardFooter className="px-5 py-3 bg-gray-50/50 flex justify-between items-center">
+                                    <CardFooter className="px-5 py-3 bg-gray-50/50 dark:bg-white/5 flex justify-between items-center">
                                         <Button
                                             variant="ghost"
                                             size="sm"

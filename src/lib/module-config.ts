@@ -203,6 +203,14 @@ export const CATEGORY_LABELS: Record<ModuleCategory, string> = {
     config: 'Plataforma'
 };
 
+export const CATEGORY_ICONS: Record<ModuleCategory, any> = {
+    core: LayoutDashboard,
+    crm: Users,
+    operations: Briefcase,
+    finance: CreditCard,
+    config: Settings
+};
+
 /**
  * Filter routes based on active modules
  */

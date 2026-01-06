@@ -66,14 +66,14 @@ export function Header({ currentOrgId }: { currentOrgId: string | null }) {
         : user?.email?.slice(0, 2).toUpperCase() || "U"
 
     return (
-        <div className="flex items-center px-4 border-b h-full bg-white/80 backdrop-blur-sm relative z-50">
+        <div className="flex items-center px-4 border-b h-full bg-white/80 dark:bg-transparent dark:border-white/10 backdrop-blur-sm relative z-50 transition-colors duration-300">
             <MobileSidebar />
 
             <div className="flex-1 w-full mx-6 overflow-hidden h-16 relative">
                 {showMarquee && <ToolsMarquee />}
             </div>
 
-            <div className="flex items-center gap-x-4 shrink-0 z-20 bg-white/50 px-2 rounded-full backdrop-blur-sm">
+            <div className="flex items-center gap-x-4 shrink-0 z-20 bg-white/50 dark:bg-transparent px-2 rounded-full backdrop-blur-sm">
 
                 {/* Organization Switcher */}
                 {currentOrgId && (

@@ -47,20 +47,20 @@ export function StatusBadge({ status, type, className, entity }: StatusBadgeProp
         // Simple fallback for now
         if (status === 'draft') {
             label = 'Borrador'
-            colorClass = "bg-slate-100 text-slate-600 border-slate-200"
+            colorClass = "bg-slate-100 dark:bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-500/20"
         } else if (status === 'sent' || status === 'active') {
             label = 'Enviada'
-            colorClass = "bg-blue-50 text-blue-700 border-blue-200"
+            colorClass = "bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-500/20"
         } else if (status === 'accepted') {
             label = 'Aceptada'
-            colorClass = "bg-emerald-100 text-emerald-700 border-emerald-200"
+            colorClass = "bg-emerald-100 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20"
         }
     }
 
     return (
         <Badge
             variant="outline"
-            className={cn("px-2 py-0.5 text-xs font-medium border-0", colorClass, className)}
+            className={cn("px-2 py-0.5 text-xs font-medium border dark:border-opacity-50", colorClass.replace('border-0', ''), className)}
         >
             {label}
         </Badge>

@@ -218,13 +218,12 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
 
 
     return (
-        <div className="space-y-8 bg-gray-50/50 min-h-screen">
+        <div className="space-y-8 bg-gray-50/50 dark:bg-transparent min-h-screen">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h2 className="text-3xl font-bold tracking-tight text-gray-900">
+                    <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
                         <SplitText>Clientes</SplitText>
                     </h2>
-                    <p className="text-muted-foreground mt-1">Gestión simplificada de tu cartera.</p>
                 </div>
                 <div className="flex items-center gap-3 w-full md:w-auto">
                     <Link href="/debug/tokens">
@@ -241,14 +240,16 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
 
             {/* Unified Control Block & View Toggle */}
             <div className="flex flex-col md:flex-row gap-3 sticky top-4 z-30">
-                <SearchFilterBar
-                    searchTerm={searchTerm}
-                    onSearchChange={setSearchTerm}
-                    searchPlaceholder="Buscar cliente rapidísimo..."
-                    filters={filterOptions}
-                    activeFilter={activeFilter}
-                    onFilterChange={setActiveFilter}
-                />
+                <div className="bg-white dark:bg-white/5 backdrop-blur-md rounded-2xl border border-gray-200 dark:border-white/10 shadow-sm p-1.5 flex flex-col md:flex-row items-center gap-2 flex-1 transition-all hover:shadow-md">
+                    <SearchFilterBar
+                        searchTerm={searchTerm}
+                        onSearchChange={setSearchTerm}
+                        searchPlaceholder="Buscar cliente rapidísimo..."
+                        filters={filterOptions}
+                        activeFilter={activeFilter}
+                        onFilterChange={setActiveFilter}
+                    />
+                </div>
 
                 <ViewToggle
                     view={viewMode}
@@ -282,7 +283,7 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
                                 <div key={client.id} className="group relative">
                                     {/* Animated Border Effect */}
                                     <Card className={cn(
-                                        "relative h-full flex flex-col hover:shadow-lg transition-all duration-300 overflow-hidden bg-white border-gray-100",
+                                        "relative h-full flex flex-col hover:shadow-lg transition-all duration-300 overflow-hidden bg-white dark:bg-white/5 border-gray-100 dark:border-white/10 backdrop-blur-sm",
                                         debt > 0
                                             ? "animate-shadow-pulse-slow-red"
                                             : futureDebt > 0
@@ -292,7 +293,7 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
                                         <CardHeader className="pb-3 pt-5 px-5 relative">
                                             {/* Service Count Badge - Top Right */}
                                             <div className="absolute top-4 right-4 animate-in fade-in zoom-in duration-[250ms] delay-100 z-10">
-                                                <Badge variant="outline" className="bg-gray-50 text-gray-600 border-gray-200 text-[10px] px-2 h-5 gap-0 shadow-sm group/badge cursor-help transition-all duration-[250ms] hover:bg-gray-100 hover:pr-3">
+                                                <Badge variant="outline" className="bg-gray-50 dark:bg-white/10 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-white/10 text-[10px] px-2 h-5 gap-0 shadow-sm group/badge cursor-help transition-all duration-[250ms] hover:bg-gray-100 dark:hover:bg-white/20 hover:pr-3">
                                                     <div className="flex items-center overflow-hidden transition-all duration-[250ms] ease-in-out w-3 opacity-100 group-hover/badge:w-0 group-hover/badge:opacity-0">
                                                         <CreditCard className="h-3 w-3 text-gray-400 shrink-0" />
                                                     </div>
@@ -320,7 +321,7 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
                                                 </div>
 
                                                 <div className="flex-1 min-w-0 pr-16"> {/* Added padding-right to avoid overlap with badge */}
-                                                    <h3 className="font-semibold text-gray-900 text-lg leading-tight line-clamp-2 break-words">
+                                                    <h3 className="font-semibold text-gray-900 dark:text-white text-lg leading-tight line-clamp-2 break-words">
                                                         {client.name}
                                                     </h3>
                                                     {client.company_name && (
@@ -340,8 +341,8 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
                                                     debt > 0
                                                         ? "bg-red-50 border-red-100 justify-between"
                                                         : futureDebt > 0
-                                                            ? "bg-amber-50 border-amber-100 justify-between"
-                                                            : "bg-gray-50 border-gray-100 justify-center"
+                                                            ? "bg-amber-50 dark:bg-amber-500/10 border-amber-100 dark:border-amber-500/20 justify-between"
+                                                            : "bg-gray-50 dark:bg-white/5 border-gray-100 dark:border-white/10 justify-center"
                                                 )}>
                                                     <div className="flex items-center gap-2">
                                                         {debt > 0 ? (
@@ -353,7 +354,7 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
                                                         )}
                                                         <span className={cn(
                                                             "font-medium uppercase tracking-wide text-sm",
-                                                            debt > 0 ? "text-red-700" : futureDebt > 0 ? "text-amber-700" : "text-gray-700"
+                                                            debt > 0 ? "text-red-700 dark:text-red-400" : futureDebt > 0 ? "text-amber-700 dark:text-amber-400" : "text-gray-700 dark:text-gray-300"
                                                         )}>
                                                             {debt > 0 ? "Vencido" : futureDebt > 0 ? "Por Vencer" : "Al día"}
                                                         </span>
@@ -362,7 +363,7 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
                                                     {(debt > 0 || futureDebt > 0) && (
                                                         <p className={cn(
                                                             "text-lg font-bold leading-none",
-                                                            debt > 0 ? "text-red-900" : "text-amber-900"
+                                                            debt > 0 ? "text-red-900 dark:text-red-300" : "text-amber-900 dark:text-amber-300"
                                                         )}>
                                                             {debt > 0
                                                                 ? `$${debt.toLocaleString()}`
@@ -381,8 +382,8 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
                                                         isOverdue
                                                             ? "bg-red-50 border-red-100"
                                                             : isUrgent
-                                                                ? "bg-amber-50 border-amber-100"
-                                                                : "bg-gray-50 border-gray-100"
+                                                                ? "bg-amber-50 dark:bg-amber-500/10 border-amber-100 dark:border-amber-500/20"
+                                                                : "bg-gray-50 dark:bg-white/5 border-gray-100 dark:border-white/10"
                                                     )}>
                                                         <div className="flex items-center justify-between mb-1.5 pt-1">
                                                             <div className="flex items-center gap-2">
@@ -423,8 +424,8 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
                                                         </p>
                                                     </div>
                                                 ) : (
-                                                    <div className="p-3 rounded-lg border border-dashed border-gray-200 bg-gray-50/50 text-center h-[74px] flex flex-col justify-center items-center">
-                                                        <p className="text-xs text-gray-400 font-medium">Sin cobros programados</p>
+                                                    <div className="p-3 rounded-lg border border-dashed border-gray-200 dark:border-white/10 bg-gray-50/50 dark:bg-white/5 text-center h-[74px] flex flex-col justify-center items-center">
+                                                        <p className="text-xs text-gray-400 dark:text-gray-500 font-medium">Sin cobros programados</p>
                                                     </div>
                                                 )
                                             )}
@@ -509,10 +510,10 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
                     )}
                 </div>
             ) : (
-                <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                <div className="rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 backdrop-blur-md shadow-sm overflow-hidden">
                     <Table>
-                        <TableHeader className="bg-gray-50/50">
-                            <TableRow>
+                        <TableHeader className="bg-gray-50/50 dark:bg-white/5">
+                            <TableRow className="border-gray-200 dark:border-white/10">
                                 <TableHead className="w-[300px]">Cliente</TableHead>
                                 <TableHead>Estado</TableHead>
                                 <TableHead>Servicios</TableHead>
@@ -539,7 +540,7 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
                                     const isOverdue = daysToPay !== null && daysToPay < 0 && debt > 0
 
                                     return (
-                                        <TableRow key={client.id} className="group hover:bg-gray-50/50">
+                                        <TableRow key={client.id} className="group hover:bg-gray-50/50 dark:hover:bg-white/5 border-gray-100 dark:border-white/10">
                                             <TableCell>
                                                 <div className="flex items-center gap-3">
                                                     <div className="relative">
@@ -555,9 +556,9 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
                                                         )} />
                                                     </div>
                                                     <div>
-                                                        <p className="font-medium text-gray-900">{client.name}</p>
+                                                        <p className="font-medium text-gray-900 dark:text-white">{client.name}</p>
                                                         {client.company_name && (
-                                                            <p className="text-xs text-gray-500">{client.company_name}</p>
+                                                            <p className="text-xs text-gray-500 dark:text-gray-400">{client.company_name}</p>
                                                         )}
                                                     </div>
                                                 </div>
@@ -589,7 +590,7 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
                                             <TableCell>
                                                 {nextPayment ? (
                                                     <div className="flex flex-col text-sm">
-                                                        <span className="text-gray-900 font-medium">
+                                                        <span className="text-gray-900 dark:text-white font-medium">
                                                             {new Date(nextPayment.date).toLocaleDateString()}
                                                         </span>
                                                         <span className="text-xs text-gray-500">

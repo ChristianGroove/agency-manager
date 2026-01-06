@@ -4,13 +4,18 @@ import { useEffect, useState } from "react"
 import { createBrowserClient } from "@supabase/ssr" // Keep if needed or remove unused
 import { Building2 } from "lucide-react"
 import { getEffectiveBranding } from "@/modules/core/branding/actions"
+import { useTheme } from "next-themes"
 
 export function OrgBranding({ orgId, collapsed = false }: { orgId: string | null, collapsed?: boolean }) {
     const [branding, setBranding] = useState<any>(null)
     const [loading, setLoading] = useState(true)
+    const { resolvedTheme } = useTheme()
+    const [mounted, setMounted] = useState(false)
 
     useEffect(() => {
+        setMounted(true)
         const fetchBranding = async () => {
+
             setLoading(true)
             try {
                 // If orgId is null, it returns Platform branding automatically
@@ -59,11 +64,22 @@ export function OrgBranding({ orgId, collapsed = false }: { orgId: string | null
     // EXPANDED STATE (Existing Logic)
 
     // Check for Main Logo
-    const logoUrl = branding.logos?.main
+    const logoDark = branding.logos?.main
+    const logoLight = branding.logos?.main_light
+
+    // Choose logo based on theme
+    // Default to dark logo if not mounted or theme is dark
+    const showLightLogo = mounted && resolvedTheme === 'light'
+    const logoUrl = (showLightLogo && logoLight) ? logoLight : logoDark
 
     if (logoUrl) {
         return (
-            <img src={logoUrl} alt={branding.name} className="h-8 w-auto object-contain object-left" />
+            <img
+                key={logoUrl} // Force re-render on change
+                src={logoUrl}
+                alt={branding.name}
+                className="h-8 w-auto object-contain object-left"
+            />
         )
     }
 

@@ -108,7 +108,7 @@ export default function PortfolioPage() {
             {/* Title Row with Actions */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-gray-900">
+                    <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
                         <SplitText>Catálogo</SplitText>
                     </h1>
                     <p className="text-muted-foreground mt-1">
@@ -130,7 +130,7 @@ export default function PortfolioPage() {
             </div>
 
             {/* Filter & View Bar */}
-            <div className="space-y-4 sticky top-4 z-30 bg-gray-50/95 backdrop-blur-sm py-2">
+            <div className="space-y-4 sticky top-4 z-30 bg-gray-50/95 dark:bg-black/40 backdrop-blur-sm py-2">
                 <div className="flex flex-col md:flex-row gap-3">
                     <SearchFilterBar
                         searchTerm={searchTerm}

@@ -35,6 +35,8 @@ import { TrashBinModal } from "@/modules/core/trash/trash-bin-modal";
 import { Toaster } from "sonner";
 
 import { BrandingProvider } from "@/components/providers/branding-provider";
+import { ThemeProvider } from "@/components/providers/theme-provider";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 export default async function RootLayout({
   children,
@@ -51,9 +53,17 @@ export default async function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <BrandingProvider initialBranding={branding}>
-          {children}
-          <TrashBinModal shortcut={settings?.trash_shortcut} />
-          <Toaster />
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+            {children}
+            <ThemeToggle />
+            <TrashBinModal shortcut={settings?.trash_shortcut} />
+            <Toaster />
+          </ThemeProvider>
         </BrandingProvider>
       </body>
 

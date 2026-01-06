@@ -498,7 +498,7 @@ export default function ClientDetailPage() {
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100/50">
             {/* Sticky Header */}
-            <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-gray-200/50 shadow-sm mb-6">
+            <div className="sticky top-0 z-30 bg-white/80 dark:bg-black/40 backdrop-blur-md border-b border-gray-200/50 dark:border-white/10 shadow-sm mb-6">
                 <div className="max-w-[1600px] mx-auto px-6 py-3">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
@@ -512,8 +512,8 @@ export default function ClientDetailPage() {
                             </Button>
 
                             <div className="flex flex-col">
-                                <h1 className="text-lg font-bold text-gray-900 leading-none">{client.name}</h1>
-                                {client.company_name && <span className="text-xs text-gray-500 font-medium">{client.company_name}</span>}
+                                <h1 className="text-lg font-bold text-gray-900 dark:text-white leading-none">{client.name}</h1>
+                                {client.company_name && <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">{client.company_name}</span>}
                             </div>
                         </div>
 
@@ -523,7 +523,7 @@ export default function ClientDetailPage() {
                                 variant="outline"
                                 size="sm"
                                 onClick={() => setIsPortalSheetOpen(true)}
-                                className="h-8 text-xs bg-white/50 hover:bg-white border-gray-200 text-gray-600 gap-2"
+                                className="h-8 text-xs bg-white/50 dark:bg-white/5 hover:bg-white dark:hover:bg-white/10 border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-300 gap-2"
                             >
                                 <Layout className="h-3.5 w-3.5" />
                                 Gestión de Portal
@@ -534,7 +534,7 @@ export default function ClientDetailPage() {
                                 variant="outline"
                                 size="sm"
                                 onClick={() => setIsEcosystemSheetOpen(true)}
-                                className="h-8 text-xs bg-white/50 hover:bg-white border-gray-200 text-gray-600 gap-2"
+                                className="h-8 text-xs bg-white/50 dark:bg-white/5 hover:bg-white dark:hover:bg-white/10 border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-300 gap-2"
                             >
                                 <Globe className="h-3.5 w-3.5" />
                                 Conectividad
@@ -603,7 +603,7 @@ export default function ClientDetailPage() {
 
                                             {/* TAB 1: PERFIL */}
                                             <TabsContent value="profile" className="space-y-4 py-2">
-                                                <div className="flex items-center gap-4 border p-3 rounded-lg bg-gray-50/50">
+                                                <div className="flex items-center gap-4 border p-3 rounded-lg bg-gray-50/50 dark:bg-white/5 dark:border-white/10">
                                                     <div
                                                         className="relative group cursor-pointer shrink-0"
                                                         onClick={() => fileInputRef.current?.click()}
@@ -819,7 +819,7 @@ export default function ClientDetailPage() {
 
                 {/* Client Header Card */}
                 {/* Client Header - Split-Bar Modern Style */}
-                <div className="mb-8 rounded-2xl bg-white/90 backdrop-blur-sm border border-gray-200/50 shadow-lg overflow-hidden transition-all hover:shadow-xl sticky top-4 z-20">
+                <div className="mb-8 rounded-2xl bg-white/90 dark:bg-white/5 backdrop-blur-sm border border-gray-200/50 dark:border-white/10 shadow-lg overflow-hidden transition-all hover:shadow-xl sticky top-4 z-20">
 
                     {/* TOP ROW: Identity & Stats */}
                     <div className="p-6 flex flex-col xl:flex-row items-start xl:items-center justify-between gap-6">
@@ -833,7 +833,7 @@ export default function ClientDetailPage() {
                                 </AvatarFallback>
                             </Avatar>
                             <div>
-                                <h1 className="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight">{client.name}</h1>
+                                <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white tracking-tight">{client.name}</h1>
                                 <div className="flex items-center gap-3 mt-1 text-gray-500 font-medium">
                                     <span className="flex items-center gap-1.5"><Server className="h-3.5 w-3.5" /> {client.company_name}</span>
                                     {client.nit && (
@@ -864,7 +864,7 @@ export default function ClientDetailPage() {
                                 <span className="text-2xl font-bold leading-none text-indigo-600">{activeServices}</span>
                             </div>
 
-                            <div className="hidden md:flex flex-1 xl:flex-none px-5 py-3 rounded-xl border border-gray-100 bg-gray-50/50 flex-col min-w-[120px]">
+                            <div className="hidden md:flex flex-1 xl:flex-none px-5 py-3 rounded-xl border border-gray-100 dark:border-white/10 bg-gray-50/50 dark:bg-white/5 flex-col min-w-[120px]">
                                 <div className="flex items-center justify-between mb-1">
                                     <span className="text-[10px] uppercase font-bold tracking-wider text-gray-500">Pagado</span>
                                     <TrendingUp className="h-4 w-4 text-gray-400" />
@@ -877,7 +877,7 @@ export default function ClientDetailPage() {
                     <Separator />
 
                     {/* BOTTOM ROW: Connectivity Bar */}
-                    <div className="px-6 py-3 bg-gray-50/50 flex flex-col md:flex-row items-center justify-between gap-4 text-sm">
+                    <div className="px-6 py-3 bg-gray-50/50 dark:bg-white/5 flex flex-col md:flex-row items-center justify-between gap-4 text-sm">
 
                         {/* Contact Info */}
                         <div className="flex flex-wrap items-center gap-4 text-gray-600 w-full md:w-auto justify-center md:justify-start">
@@ -930,7 +930,7 @@ export default function ClientDetailPage() {
                             )}
 
                             {client.website && (
-                                <Button variant="outline" size="sm" className="h-8 gap-2 hover:text-brand-pink hover:border-gray-300 hover:bg-gray-50" asChild>
+                                <Button variant="outline" size="sm" className="h-8 gap-2 hover:text-brand-pink hover:border-gray-300 hover:bg-gray-50 dark:hover:bg-white/10 dark:text-gray-300 dark:border-white/20" asChild>
                                     <a href={client.website.startsWith('http') ? client.website : `https://${client.website}`} target="_blank">
                                         <Globe className="h-3.5 w-3.5" /> Web
                                     </a>
@@ -946,15 +946,15 @@ export default function ClientDetailPage() {
                 <div className="pb-20">
                     <Tabs defaultValue="overview" className="w-full">
                         <TabsList className="mb-6 w-full md:w-auto grid grid-cols-2 md:inline-flex bg-gray-100/50 p-1 rounded-xl">
-                            <TabsTrigger value="overview" className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-indigo-600 data-[state=active]:shadow-sm">
-                                <Server className="h-4 w-4 mr-2" />
-                                Servicios & Facturación
+                            <TabsTrigger value="overview" className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-white/10 data-[state=active]:text-indigo-600 dark:data-[state=active]:text-indigo-400 data-[state=active]:shadow-sm">
+                                <Layout className="h-4 w-4 mr-2" />
+                                Resumen
                             </TabsTrigger>
-                            <TabsTrigger value="history" className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-indigo-600 data-[state=active]:shadow-sm">
+                            <TabsTrigger value="history" className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-white/10 data-[state=active]:text-indigo-600 dark:data-[state=active]:text-indigo-400 data-[state=active]:shadow-sm">
                                 <CalendarClock className="h-4 w-4 mr-2" />
-                                Historial de Actividad
+                                Historial
                             </TabsTrigger>
-                            <TabsTrigger value="hosting" className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-indigo-600 data-[state=active]:shadow-sm">
+                            <TabsTrigger value="hosting" className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-white/10 data-[state=active]:text-indigo-600 dark:data-[state=active]:text-indigo-400 data-[state=active]:shadow-sm">
                                 <Server className="h-4 w-4 mr-2" />
                                 Hosting Web
                             </TabsTrigger>
@@ -965,7 +965,7 @@ export default function ClientDetailPage() {
                             {/* 1. SERVICES SECTION (Full Width) */}
                             <div className="flex flex-col gap-6">
                                 <div className="flex items-center justify-between">
-                                    <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                                    <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
                                         <Server className="h-5 w-5 text-indigo-600" />
                                         Servicios Activos & Facturación
                                     </h2>
@@ -975,7 +975,7 @@ export default function ClientDetailPage() {
                                             variant="ghost"
                                             size="sm"
                                             onClick={() => setServiceViewMode('list')}
-                                            className={cn("h-7 w-7 p-0 rounded-md", serviceViewMode === 'list' && "bg-white shadow-sm text-indigo-600")}
+                                            className={cn("h-7 w-7 p-0 rounded-md", serviceViewMode === 'list' && "bg-white dark:bg-white/10 shadow-sm text-indigo-600 dark:text-indigo-400")}
                                         >
                                             <div className="h-4 w-4 flex flex-col gap-0.5 justify-center transform scale-90">
                                                 <div className="w-full h-0.5 bg-current rounded-full" />
@@ -987,7 +987,7 @@ export default function ClientDetailPage() {
                                             variant="ghost"
                                             size="sm"
                                             onClick={() => setServiceViewMode('grid')}
-                                            className={cn("h-7 w-7 p-0 rounded-md", serviceViewMode === 'grid' && "bg-white shadow-sm text-indigo-600")}
+                                            className={cn("h-7 w-7 p-0 rounded-md", serviceViewMode === 'grid' && "bg-white dark:bg-white/10 shadow-sm text-indigo-600 dark:text-indigo-400")}
                                         >
                                             <Layout className="h-3.5 w-3.5" />
                                         </Button>
@@ -1007,7 +1007,7 @@ export default function ClientDetailPage() {
                                                 <div
                                                     key={service.id}
                                                     className={cn(
-                                                        "bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all flex h-full overflow-hidden group cursor-pointer hover:border-indigo-300",
+                                                        "bg-white dark:bg-white/5 rounded-xl border border-gray-200 dark:border-white/10 shadow-sm hover:shadow-md transition-all flex h-full overflow-hidden group cursor-pointer hover:border-indigo-300",
                                                         serviceViewMode === 'list' ? "flex-col md:flex-row items-stretch" : "flex-col"
                                                     )}
                                                     onClick={() => {
@@ -1028,7 +1028,7 @@ export default function ClientDetailPage() {
                                                                 </div>
                                                                 <div>
                                                                     <div className="flex items-center gap-2">
-                                                                        <h3 className="font-bold text-gray-900 truncate max-w-[180px]">{service.name}</h3>
+                                                                        <h3 className="font-bold text-gray-900 dark:text-white truncate max-w-[180px]">{service.name}</h3>
                                                                         <StatusBadge status={service.status} type="service" className="text-[10px]" entity={service} />
                                                                     </div>
                                                                     <div className="flex flex-col gap-1 mt-1">
@@ -1101,11 +1101,11 @@ export default function ClientDetailPage() {
                                                     </div>
 
                                                     {/* 2. Invoices List */}
-                                                    <div className="flex-1 bg-gray-50/50 p-2 md:p-3 overflow-hidden flex flex-col">
+                                                    <div className="flex-1 bg-gray-50/50 dark:bg-white/5 p-2 md:p-3 overflow-hidden flex flex-col">
                                                         {recentInvoices.length > 0 ? (
                                                             <div className="space-y-1">
                                                                 {recentInvoices.map((inv: any) => (
-                                                                    <div key={inv.id} className="bg-white p-2 rounded-lg border border-gray-100 flex items-center justify-between text-xs hover:border-indigo-100 transition-colors">
+                                                                    <div key={inv.id} className="bg-white dark:bg-white/5 p-2 rounded-lg border border-gray-100 dark:border-white/10 flex items-center justify-between text-xs hover:border-indigo-100 transition-colors">
                                                                         <span className="font-medium text-gray-600">#{inv.number}</span>
                                                                         <StatusBadge status={inv.status} type="invoice" entity={inv} className="scale-90 origin-right" />
                                                                     </div>
@@ -1121,11 +1121,11 @@ export default function ClientDetailPage() {
                                             )
                                         })
                                     ) : (
-                                        <div className="col-span-full text-center py-16 bg-white rounded-xl border border-dashed border-gray-300">
-                                            <div className="bg-gray-50 p-4 rounded-full w-fit mx-auto mb-4">
+                                        <div className="col-span-full text-center py-16 bg-white dark:bg-white/5 rounded-xl border border-dashed border-gray-300 dark:border-white/10">
+                                            <div className="bg-gray-50 dark:bg-white/10 p-4 rounded-full w-fit mx-auto mb-4">
                                                 <Server className="h-8 w-8 text-indigo-200" />
                                             </div>
-                                            <h3 className="text-lg font-medium text-gray-900 mb-1">Sin Servicios Activos</h3>
+                                            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-1">Sin Servicios Activos</h3>
                                             <p className="text-gray-500 mb-6 max-w-sm mx-auto">Este cliente no tiene ningún servicio registrado. Comienza añadiendo uno desde el botón superior.</p>
                                         </div>
                                     )}
@@ -1136,7 +1136,7 @@ export default function ClientDetailPage() {
                             {getUnlinkedInvoices().length > 0 && (
                                 <div className="pt-8 border-t border-gray-200">
                                     <div className="flex items-center justify-between mb-6">
-                                        <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                                        <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
                                             <FileText className="h-5 w-5 text-gray-500" />
                                             Facturas Manuales / Ocasionales
                                         </h2>
@@ -1144,18 +1144,18 @@ export default function ClientDetailPage() {
                                             {getUnlinkedInvoices().length} facturas
                                         </span>
                                     </div>
-                                    <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+                                    <div className="bg-white dark:bg-white/5 rounded-xl border border-gray-200 dark:border-white/10 shadow-sm">
                                         <div className="p-4 space-y-2">
                                             {getUnlinkedInvoices().map((inv: any) => (
-                                                <div key={inv.id} className="bg-white p-3 border-b border-gray-100 last:border-0 hover:bg-gray-50 transition-colors group">
+                                                <div key={inv.id} className="bg-white dark:bg-transparent p-3 border-b border-gray-100 dark:border-white/5 last:border-0 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors group">
                                                     <div className="grid grid-cols-12 items-center gap-4">
                                                         {/* Col 1-5: Info */}
                                                         <div className="col-span-5 flex items-center gap-2 overflow-hidden">
-                                                            <div className="h-8 w-8 rounded-full bg-gray-50 flex items-center justify-center shrink-0">
+                                                            <div className="h-8 w-8 rounded-full bg-gray-50 dark:bg-white/10 flex items-center justify-center shrink-0">
                                                                 <FileText className="h-4 w-4 text-gray-400" />
                                                             </div>
                                                             <div className="min-w-0">
-                                                                <p className="font-bold text-gray-900 text-sm truncate">{inv.number}</p>
+                                                                <p className="font-bold text-gray-900 dark:text-white text-sm truncate">{inv.number}</p>
                                                                 <p className="text-[10px] text-gray-400 truncate">{new Date(inv.created_at).toLocaleDateString()}</p>
                                                             </div>
                                                             {inv.description && (
@@ -1172,7 +1172,7 @@ export default function ClientDetailPage() {
 
                                                         {/* Col 8-9: Amount */}
                                                         <div className="col-span-2 text-right">
-                                                            <span className="font-bold text-gray-900 text-sm whitespace-nowrap">${inv.total.toLocaleString()}</span>
+                                                            <span className="font-bold text-gray-900 dark:text-white text-sm whitespace-nowrap">${inv.total.toLocaleString()}</span>
                                                         </div>
 
                                                         {/* Col 10-12: Actions */}
@@ -1227,7 +1227,7 @@ export default function ClientDetailPage() {
 
                         {/* NEW: Timeline Tab */}
                         <TabsContent value="history" className="animate-in fade-in-50 slide-in-from-bottom-2 duration-500">
-                            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+                            <div className="bg-white dark:bg-white/5 rounded-xl border border-gray-200 dark:border-white/10 shadow-sm p-6">
                                 <ClientTimeline clientId={client.id} />
                             </div>
                         </TabsContent>

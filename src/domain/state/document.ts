@@ -12,11 +12,11 @@ const STATUS_LABELS: Record<string, string> = {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-    paid: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-    pending: 'bg-slate-100 text-slate-700 border-slate-200',
-    overdue: 'bg-red-100 text-red-700 border-red-200',
-    void: 'bg-gray-100 text-gray-400 border-gray-200 line-through',
-    draft: 'bg-slate-100 text-slate-600 border-slate-200'
+    paid: 'bg-emerald-100 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20',
+    pending: 'bg-slate-100 dark:bg-slate-500/10 text-slate-700 dark:text-slate-400 border-slate-200 dark:border-slate-500/20',
+    overdue: 'bg-red-100 dark:bg-red-500/10 text-red-700 dark:text-red-400 border-red-200 dark:border-red-500/20',
+    void: 'bg-gray-100 dark:bg-white/10 text-gray-400 dark:text-gray-500 border-gray-200 dark:border-white/10 line-through',
+    draft: 'bg-slate-100 dark:bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-500/20'
 }
 
 export type DocumentState = {
@@ -60,7 +60,7 @@ export function resolveDocumentState(doc: any): DocumentState {
 
     // 3. Resolve UI
     const label = STATUS_LABELS[status] || status
-    const color = STATUS_COLORS[status] || 'bg-gray-100 text-gray-700'
+    const color = STATUS_COLORS[status] || 'bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-white'
 
     return {
         status,

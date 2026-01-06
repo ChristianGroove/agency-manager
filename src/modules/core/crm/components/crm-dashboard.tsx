@@ -267,21 +267,21 @@ export function CRMDashboard() {
                     {/* Top Row: Title + Mini Stats + Actions */}
                     <div className="flex items-center justify-between gap-4">
                         <div className="flex items-center gap-4">
-                            <h2 className="text-3xl font-bold tracking-tight text-gray-900">
+                            <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
                                 <SplitText>Pipeline</SplitText>
                             </h2>
 
                             {/* Inline Mini Stats */}
                             <div className="hidden sm:flex items-center gap-2">
-                                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-zinc-800">
-                                    <Users className="h-3.5 w-3.5 text-slate-500" />
-                                    <span className="font-semibold text-sm">{stats.total}</span>
+                                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-white/5 border border-transparent dark:border-white/10">
+                                    <Users className="h-3.5 w-3.5 text-slate-500 dark:text-slate-400" />
+                                    <span className="font-semibold text-sm text-slate-700 dark:text-slate-200">{stats.total}</span>
                                 </div>
-                                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-100 dark:bg-green-900/30">
+                                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-100 dark:bg-green-500/10 border border-transparent dark:border-green-500/20">
                                     <Trophy className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
                                     <span className="font-semibold text-sm text-green-700 dark:text-green-400">{stats.won}</span>
                                 </div>
-                                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-100 dark:bg-red-900/30">
+                                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-100 dark:bg-red-500/10 border border-transparent dark:border-red-500/20">
                                     <XCircle className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
                                     <span className="font-semibold text-sm text-red-700 dark:text-red-400">{stats.lost}</span>
                                 </div>
@@ -366,7 +366,7 @@ export function CRMDashboard() {
                                         {/* Droppable Column - Flex-1 to fill remaining height with internal scroll */}
                                         <DroppableStage id={stage.status_key}>
                                             <div
-                                                className="flex-1 flex flex-col gap-1.5 p-1.5 bg-slate-100/60 dark:bg-zinc-800/40 rounded-lg border border-slate-200/30 dark:border-zinc-700/50 overflow-y-auto scrollbar-modern"
+                                                className="flex-1 flex flex-col gap-1.5 p-1.5 bg-slate-100/60 dark:bg-white/5 rounded-lg border border-slate-200/30 dark:border-white/5 overflow-y-auto scrollbar-modern backdrop-blur-sm"
                                             >
                                                 {stageLeads.length === 0 ? (
                                                     <div className="flex-1 flex items-center justify-center text-muted-foreground text-xs py-6">

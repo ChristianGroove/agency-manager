@@ -129,7 +129,7 @@ export function AutomationsView({
                                         placeholder="Buscar workflow..."
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
-                                        className="pl-10 w-64 bg-slate-100/50 dark:bg-slate-800/50 border-transparent focus:bg-white dark:focus:bg-slate-900 transition-all rounded-xl focus:ring-2 focus:ring-indigo-500/20"
+                                        className="pl-10 w-64 bg-slate-100/50 dark:bg-white/5 border-transparent focus:bg-white dark:focus:bg-black/40 transition-all rounded-xl focus:ring-2 focus:ring-indigo-500/20"
                                     />
                                 </div>
 
@@ -246,9 +246,9 @@ export function AutomationsView({
                             )}>
                                 {filteredWorkflows.map(workflow => (
                                     <Link key={workflow.id} href={`/crm/automations/${workflow.id}`} className="block group h-full">
-                                        <Card className="h-full relative overflow-hidden transition-all duration-200 border-gray-100 hover:border-gray-200 hover:shadow-md bg-white dark:bg-slate-900 group-hover:-translate-y-0.5">
+                                        <Card className="h-full relative overflow-hidden transition-all duration-200 border-gray-100 dark:border-white/10 hover:border-gray-200 dark:hover:border-white/20 hover:shadow-md bg-white dark:bg-white/5 backdrop-blur-md group-hover:-translate-y-0.5">
                                             <div className="p-4 flex items-center gap-3">
-                                                <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-800 group-hover:bg-indigo-50 dark:group-hover:bg-indigo-900/20 transition-colors shrink-0">
+                                                <div className="p-2 rounded-xl bg-slate-50 dark:bg-white/10 group-hover:bg-indigo-50 dark:group-hover:bg-indigo-500/20 transition-colors shrink-0">
                                                     <Zap className={cn(
                                                         "h-5 w-5 transition-colors",
                                                         workflow.is_active ? "text-indigo-600 dark:text-indigo-400" : "text-slate-400"
@@ -297,9 +297,9 @@ function MetricCard({ label, value, trend, trendDirection, icon }: {
     icon: React.ReactNode
 }) {
     return (
-        <Card className="p-5 border-none shadow-sm bg-white dark:bg-slate-900 hover:shadow-md transition-shadow">
+        <Card className="p-5 border-none shadow-sm bg-white dark:bg-white/5 backdrop-blur-md hover:shadow-md transition-shadow">
             <div className="flex justify-between items-start">
-                <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                <div className="p-2 bg-slate-50 dark:bg-white/10 rounded-lg">
                     {icon}
                 </div>
                 <div className={cn(

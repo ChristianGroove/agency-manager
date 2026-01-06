@@ -11,10 +11,10 @@ const STATUS_LABELS: Record<string, string> = {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-    active: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-    paused: 'bg-amber-100 text-amber-700 border-amber-200',
-    cancelled: 'bg-gray-100 text-gray-500 border-gray-200',
-    draft: 'bg-slate-100 text-slate-600 border-slate-200'
+    active: 'bg-emerald-100 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20',
+    paused: 'bg-amber-100 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-500/20',
+    cancelled: 'bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-white/10',
+    draft: 'bg-slate-100 dark:bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-500/20'
 }
 
 export type ServiceHealth = 'healthy' | 'at_risk' | 'churned' | 'invariant'
@@ -55,7 +55,7 @@ export function resolveServiceState(service: Partial<Service>, relatedInvoices: 
 
     // 3. Derive UI
     const label = STATUS_LABELS[status] || status
-    const color = STATUS_COLORS[status] || 'bg-gray-100 text-gray-700'
+    const color = STATUS_COLORS[status] || 'bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-white'
     const isEditable = ['draft', 'active', 'paused'].includes(status)
 
     return {

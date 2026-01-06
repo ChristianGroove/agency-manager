@@ -129,14 +129,26 @@ export default function GlobalBrandingPage() {
                             <Separator />
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {/* Main Logo */}
+                                {/* Main Logo (Dark Mode) */}
                                 <div className="space-y-3">
-                                    <Label>Logo Principal (Dashboard)</Label>
+                                    <Label>Logo Principal (Modo Oscuro / Default)</Label>
                                     <ImageUpload
                                         value={branding.logos.main}
                                         onChange={(url) => updateLogo('main', url)}
-                                        label="Subir Logo Dashboard"
+                                        label="Subir Logo (Oscuro)"
                                     />
+                                    <p className="text-xs text-muted-foreground">Recomendado: Logo blanco o claro para fondos oscuros.</p>
+                                </div>
+
+                                {/* Main Logo (Light Mode) */}
+                                <div className="space-y-3">
+                                    <Label>Logo Principal (Modo Claro)</Label>
+                                    <ImageUpload
+                                        value={branding.logos.main_light || ''}
+                                        onChange={(url) => updateLogo('main_light', url)}
+                                        label="Subir Logo (Claro)"
+                                    />
+                                    <p className="text-xs text-muted-foreground">Recomendado: Logo oscuro para fondos blancos.</p>
                                 </div>
 
                                 {/* Portal Logo */}

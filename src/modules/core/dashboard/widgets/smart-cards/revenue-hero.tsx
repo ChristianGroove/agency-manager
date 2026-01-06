@@ -48,7 +48,7 @@ export function RevenueHero({
     }, [animationUrl, tips.length])
 
     return (
-        <Card className={`flex-1 min-h-[250px] bg-brand-dark border-0 shadow-lg text-white overflow-hidden relative rounded-[30px] flex flex-col ${className}`}>
+        <Card className={`flex-1 min-h-[250px] bg-white dark:bg-white/5 dark:backdrop-blur-xl border-0 dark:border dark:border-white/10 shadow-lg text-gray-900 dark:text-white overflow-hidden relative rounded-[30px] flex flex-col ${className}`}>
             {/* Animated particles background */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
                 {[...Array(15)].map((_, i) => (
@@ -73,14 +73,14 @@ export function RevenueHero({
             )}
 
             <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-gray-200">
+                <CardTitle className="flex items-center gap-2 text-gray-500 dark:text-gray-200">
                     <TrendingUp className="h-5 w-5 text-brand-cyan" />
                     {title}
                 </CardTitle>
             </CardHeader>
             <CardContent className="flex-1 flex flex-col z-20">
                 <div className="flex-1 flex items-center">
-                    <div className="text-4xl font-bold text-white flex items-baseline gap-2">
+                    <div className="text-4xl font-bold text-gray-900 dark:text-white flex items-baseline gap-2">
                         {value}
                         {unit && <span className="text-lg font-normal text-gray-400">{unit}</span>}
                     </div>
@@ -94,7 +94,7 @@ export function RevenueHero({
                                 animate={{ y: 0, opacity: 1 }}
                                 exit={{ y: -20, opacity: 0 }}
                                 transition={{ duration: 0.5, ease: "easeOut" }}
-                                className="text-sm text-gray-400 absolute w-full"
+                                className="text-sm text-gray-500 dark:text-gray-400 absolute w-full"
                             >
                                 <SplitText delay={0.3} duration={0.03}>
                                     {tips[currentTip]}

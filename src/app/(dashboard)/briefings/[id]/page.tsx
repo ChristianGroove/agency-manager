@@ -132,7 +132,7 @@ export default async function BriefingDetailPage({ params }: PageProps) {
                                 <div key={step.id} className="mb-10 last:mb-0">
                                     <div className="flex items-center gap-2 mb-6 border-b pb-2">
                                         <div className="h-6 w-1 bg-[#F205E2] rounded-full" />
-                                        <h3 className="font-semibold text-lg text-gray-900">{step.title}</h3>
+                                        <h3 className="font-semibold text-lg text-gray-900 dark:text-white">{step.title}</h3>
                                     </div>
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
@@ -148,7 +148,7 @@ export default async function BriefingDetailPage({ params }: PageProps) {
                                                     <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">
                                                         {field.label}
                                                     </p>
-                                                    <div className="text-base text-gray-900 font-medium leading-relaxed">
+                                                    <div className="text-base text-gray-900 dark:text-gray-100 font-medium leading-relaxed">
                                                         {renderValue(value, field.type)}
                                                     </div>
                                                 </div>

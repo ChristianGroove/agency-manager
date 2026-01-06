@@ -35,16 +35,16 @@ export default function GlassCard3D({
 
     return (
         <div className="w-[290px] h-[250px] [perspective:1000px] group">
-            <div className="h-full rounded-[30px] bg-brand-dark transition-all duration-500 ease-in-out [transform-style:preserve-3d] shadow-[rgba(0,0,0,0.5)_0px_25px_25px_-5px,rgba(255,255,255,0.1)_40px_50px_25px_-40px] group-hover:shadow-[rgba(0,0,0,0.7)_0px_25px_30px_0px,rgba(255,255,255,0.2)_30px_50px_25px_-40px] group-hover:[transform:rotate3d(1,1,0,30deg)] relative">
+            <div className="h-full rounded-[30px] bg-white dark:bg-brand-dark transition-all duration-500 ease-in-out [transform-style:preserve-3d] shadow-[rgba(0,0,0,0.1)_0px_25px_25px_-5px,rgba(0,0,0,0.05)_0px_40px_50px_-20px] dark:shadow-[rgba(0,0,0,0.5)_0px_25px_25px_-5px,rgba(255,255,255,0.1)_40px_50px_25px_-40px] group-hover:shadow-[rgba(0,0,0,0.2)_0px_25px_30px_0px,rgba(0,0,0,0.1)_0px_50px_25px_-40px] dark:group-hover:shadow-[rgba(0,0,0,0.7)_0px_25px_30px_0px,rgba(255,255,255,0.2)_30px_50px_25px_-40px] group-hover:[transform:rotate3d(1,1,0,30deg)] relative">
                 {/* Glass effect with pink/cyan gradient border */}
-                <div className="[transform-style:preserve-3d] absolute inset-2 rounded-[35px] rounded-tr-[100%] bg-gradient-to-b from-white/[0.15] to-white/[0.05] [transform:translate3d(0px,0px,25px)] border-l border-b border-white/30 transition-all duration-500 ease-in-out" />
+                <div className="[transform-style:preserve-3d] absolute inset-2 rounded-[35px] rounded-tr-[100%] bg-gradient-to-b from-gray-100/[0.15] to-gray-100/[0.05] dark:from-white/[0.15] dark:to-white/[0.05] [transform:translate3d(0px,0px,25px)] border-l border-b border-gray-200 dark:border-white/30 transition-all duration-500 ease-in-out" />
 
                 {/* Content */}
                 <div className="pt-[80px] pl-[30px] pr-[60px] [transform:translate3d(0,0,26px)] relative z-10">
-                    <span className="block text-white font-black text-lg leading-tight">
+                    <span className="block text-gray-900 dark:text-white font-black text-lg leading-tight">
                         PIXY / PDS
                     </span>
-                    <span className="block text-white/90 text-[14px] mt-5">
+                    <span className="block text-gray-600 dark:text-white/90 text-[14px] mt-5">
                         Diseño y desarrollo premium para marcas destacadas
                     </span>
                 </div>
@@ -58,9 +58,9 @@ export default function GlassCard3D({
                             href={socialFacebook}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="w-[30px] aspect-square p-1.5 bg-white rounded-full border-0 grid place-content-center shadow-[rgba(0,0,0,0.3)_0px_7px_5px_-5px] hover:bg-gray-200 transition-all duration-200 ease-in-out delay-[0.4s] group-hover:[transform:translate3d(0,0,50px)]"
+                            className="w-[30px] aspect-square p-1.5 bg-gray-50 dark:bg-white rounded-full border border-gray-200 dark:border-0 grid place-content-center shadow-[rgba(0,0,0,0.1)_0px_7px_5px_-5px] dark:shadow-[rgba(0,0,0,0.3)_0px_7px_5px_-5px] hover:bg-gray-200 transition-all duration-200 ease-in-out delay-[0.4s] group-hover:[transform:translate3d(0,0,50px)]"
                         >
-                            <Facebook className="w-[15px] h-[15px] text-gray-900 hover:text-white" strokeWidth={2} />
+                            <Facebook className="w-[15px] h-[15px] text-gray-700 dark:text-gray-900 hover:text-gray-900" strokeWidth={2} />
                         </a>
 
                         {/* Instagram */}
@@ -68,9 +68,9 @@ export default function GlassCard3D({
                             href={socialInstagram}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="w-[30px] aspect-square p-1.5 bg-white rounded-full border-0 grid place-content-center shadow-[rgba(0,0,0,0.3)_0px_7px_5px_-5px] hover:bg-gray-200 transition-all duration-200 ease-in-out delay-[0.6s] group-hover:[transform:translate3d(0,0,50px)]"
+                            className="w-[30px] aspect-square p-1.5 bg-gray-50 dark:bg-white rounded-full border border-gray-200 dark:border-0 grid place-content-center shadow-[rgba(0,0,0,0.1)_0px_7px_5px_-5px] dark:shadow-[rgba(0,0,0,0.3)_0px_7px_5px_-5px] hover:bg-gray-200 transition-all duration-200 ease-in-out delay-[0.6s] group-hover:[transform:translate3d(0,0,50px)]"
                         >
-                            <Instagram className="w-[15px] h-[15px] text-gray-900 hover:text-white" strokeWidth={2} />
+                            <Instagram className="w-[15px] h-[15px] text-gray-700 dark:text-gray-900 hover:text-gray-900" strokeWidth={2} />
                         </a>
 
                         {/* Twitter */}
@@ -78,19 +78,19 @@ export default function GlassCard3D({
                             href={socialTwitter}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="w-[30px] aspect-square p-1.5 bg-white rounded-full border-0 grid place-content-center shadow-[rgba(0,0,0,0.3)_0px_7px_5px_-5px] hover:bg-gray-200 transition-all duration-200 ease-in-out delay-[0.8s] group-hover:[transform:translate3d(0,0,50px)]"
+                            className="w-[30px] aspect-square p-1.5 bg-gray-50 dark:bg-white rounded-full border border-gray-200 dark:border-0 grid place-content-center shadow-[rgba(0,0,0,0.1)_0px_7px_5px_-5px] dark:shadow-[rgba(0,0,0,0.3)_0px_7px_5px_-5px] hover:bg-gray-200 transition-all duration-200 ease-in-out delay-[0.8s] group-hover:[transform:translate3d(0,0,50px)]"
                         >
-                            <Twitter className="w-[15px] h-[15px] text-gray-900 hover:text-white" strokeWidth={2} />
+                            <Twitter className="w-[15px] h-[15px] text-gray-700 dark:text-gray-900 hover:text-gray-900" strokeWidth={2} />
                         </a>
                     </div>
 
                     {/* Followers stats */}
                     <div className="flex items-center gap-1.5 transition-all duration-200 ease-in-out hover:[transform:translate3d(0,0,10px)]">
                         <div className="text-right">
-                            <div className="text-white text-xs font-bold leading-tight">
+                            <div className="text-gray-900 dark:text-white text-xs font-bold leading-tight">
                                 {formatFollowers(totalFollowers)}
                             </div>
-                            <div className="text-white/70 text-[10px] font-medium">
+                            <div className="text-gray-500 dark:text-white/70 text-[10px] font-medium">
                                 seguidores
                             </div>
                         </div>
@@ -99,11 +99,11 @@ export default function GlassCard3D({
 
                 {/* Logo circles with pink/cyan glow */}
                 <div className="absolute right-0 top-0 [transform-style:preserve-3d]">
-                    <span className="block absolute aspect-square rounded-full top-0 right-0 shadow-[rgba(255,255,255,0.1)_-10px_10px_20px_0px] backdrop-blur-[5px] bg-gradient-to-br from-white/10 to-gray-500/10 transition-all duration-500 ease-in-out w-[170px] [transform:translate3d(0,0,20px)] top-2 right-2" />
-                    <span className="block absolute aspect-square rounded-full top-0 right-0 shadow-[rgba(255,255,255,0.05)_-10px_10px_20px_0px] backdrop-blur-[1px] bg-gradient-to-br from-gray-500/10 to-white/5 transition-all duration-500 ease-in-out delay-[0.4s] w-[140px] [transform:translate3d(0,0,40px)] group-hover:[transform:translate3d(0,0,60px)] top-2.5 right-2.5" />
-                    <span className="block absolute aspect-square rounded-full top-0 right-0 shadow-[rgba(255,255,255,0.1)_-10px_10px_20px_0px] backdrop-blur-[5px] bg-gradient-to-br from-white/10 to-gray-500/10 transition-all duration-500 ease-in-out delay-[0.8s] w-[110px] [transform:translate3d(0,0,60px)] group-hover:[transform:translate3d(0,0,80px)] top-[17px] right-[17px]" />
-                    <span className="block absolute aspect-square rounded-full top-0 right-0 shadow-[rgba(255,255,255,0.05)_-10px_10px_20px_0px] backdrop-blur-[5px] bg-gradient-to-br from-gray-500/10 to-white/5 transition-all duration-500 ease-in-out delay-[1.2s] w-[80px] [transform:translate3d(0,0,80px)] group-hover:[transform:translate3d(0,0,100px)] top-[23px] right-[23px]" />
-                    <span className="block absolute aspect-square rounded-full top-0 right-0 shadow-[rgba(255,255,255,0.1)_-10px_10px_20px_0px] backdrop-blur-[5px] bg-gradient-to-br from-white/15 to-gray-500/10 transition-all duration-500 ease-in-out delay-[1.6s] w-[50px] [transform:translate3d(0,0,100px)] group-hover:[transform:translate3d(0,0,120px)] top-[30px] right-[30px] grid place-content-center">
+                    <span className="block absolute aspect-square rounded-full shadow-[rgba(0,0,0,0.05)_-10px_10px_20px_0px] dark:shadow-[rgba(255,255,255,0.1)_-10px_10px_20px_0px] backdrop-blur-[5px] bg-gradient-to-br from-gray-900/5 to-gray-500/5 dark:from-white/10 dark:to-gray-500/10 transition-all duration-500 ease-in-out w-[170px] [transform:translate3d(0,0,20px)] top-2 right-2" />
+                    <span className="block absolute aspect-square rounded-full shadow-[rgba(0,0,0,0.05)_-10px_10px_20px_0px] dark:shadow-[rgba(255,255,255,0.05)_-10px_10px_20px_0px] backdrop-blur-[1px] bg-gradient-to-br from-gray-900/5 to-white/0 dark:from-gray-500/10 dark:to-white/5 transition-all duration-500 ease-in-out delay-[0.4s] w-[140px] [transform:translate3d(0,0,40px)] group-hover:[transform:translate3d(0,0,60px)] top-2.5 right-2.5" />
+                    <span className="block absolute aspect-square rounded-full shadow-[rgba(0,0,0,0.05)_-10px_10px_20px_0px] dark:shadow-[rgba(255,255,255,0.1)_-10px_10px_20px_0px] backdrop-blur-[5px] bg-gradient-to-br from-gray-900/5 to-gray-500/5 dark:from-white/10 dark:to-gray-500/10 transition-all duration-500 ease-in-out delay-[0.8s] w-[110px] [transform:translate3d(0,0,60px)] group-hover:[transform:translate3d(0,0,80px)] top-[17px] right-[17px]" />
+                    <span className="block absolute aspect-square rounded-full shadow-[rgba(0,0,0,0.05)_-10px_10px_20px_0px] dark:shadow-[rgba(255,255,255,0.05)_-10px_10px_20px_0px] backdrop-blur-[5px] bg-gradient-to-br from-gray-900/5 to-white/0 dark:from-gray-500/10 dark:to-white/5 transition-all duration-500 ease-in-out delay-[1.2s] w-[80px] [transform:translate3d(0,0,80px)] group-hover:[transform:translate3d(0,0,100px)] top-[23px] right-[23px]" />
+                    <span className="block absolute aspect-square rounded-full shadow-[rgba(0,0,0,0.05)_-10px_10px_20px_0px] dark:shadow-[rgba(255,255,255,0.1)_-10px_10px_20px_0px] backdrop-blur-[5px] bg-gradient-to-br from-gray-900/5 to-gray-500/5 dark:from-white/15 dark:to-gray-500/10 transition-all duration-500 ease-in-out delay-[1.6s] w-[50px] [transform:translate3d(0,0,100px)] group-hover:[transform:translate3d(0,0,120px)] top-[30px] right-[30px] grid place-content-center">
                         {pixyIsotipo}
                     </span>
                 </div>

@@ -20,7 +20,7 @@ export function DashboardShell({ children, user, currentOrgId, isSuperAdmin = fa
     const [isCollapsed, setIsCollapsed] = useState(false)
 
     return (
-        <div className="h-full relative bg-gray-50/50 min-h-screen">
+        <div className="h-full relative bg-gray-50/50 dark:bg-transparent min-h-screen">
             <BillingAutomator />
             {/* Floating Sidebar */}
             <div className="hidden md:block print:hidden">

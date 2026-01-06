@@ -41,10 +41,10 @@ export function SidebarParticles({ orgId }: SidebarParticlesProps) {
     }, [orgId])
 
     return (
-        <div className="absolute bottom-0 left-0 w-full h-[40%] overflow-hidden pointer-events-none z-0">
+        <div className="absolute bottom-0 left-0 w-full h-[40%] overflow-hidden pointer-events-none z-0 text-gray-300 dark:text-white">
             {/* Light Gradient at bottom */}
             <div
-                className="absolute bottom-0 left-1/2 -translate-x-1/2 w-3/4 h-24 bg-gradient-to-t from-white/10 to-transparent blur-2xl"
+                className="absolute bottom-0 left-1/2 -translate-x-1/2 w-3/4 h-24 bg-gradient-to-t from-gray-900/5 dark:from-white/10 to-transparent blur-2xl"
                 style={{ opacity: 0.3 }}
             />
 
@@ -60,7 +60,7 @@ export function SidebarParticles({ orgId }: SidebarParticlesProps) {
                         height: `${p.size}px`,
                         backgroundColor: p.isBrandingColor
                             ? `rgb(${brandingColor})`
-                            : 'white',
+                            : 'currentColor',
                         opacity: p.isBrandingColor ? 0.6 : 0.4,
                         boxShadow: p.isBrandingColor ? `0 0 ${p.size * 2}px rgb(${brandingColor})` : 'none',
                         animationDuration: `${p.duration}s`,

@@ -146,15 +146,18 @@ export function IdentityTab({ settings, onChange }: IdentityTabProps) {
                     </CardHeader>
                     <CardContent className="space-y-6">
 
-                        {/* Main Logo */}
+                        {/* Main Logo (Dark Mode) */}
                         <div className="space-y-2">
                             <Label>Logo Principal (Fondo Oscuro)</Label>
                             <ImageUpload
                                 value={settings.logos.main}
                                 onChange={handleLogoChange}
-                                label="Subir Logo Principal"
+                                label="Subir Logo (Oscuro)"
                                 bucket="branding"
                             />
+                            <p className="text-[10px] text-muted-foreground">
+                                Se mostrará sobre fondos oscuros (Sidebar, Modo Oscuro).
+                            </p>
 
                             {/* Magic Palette Trigger */}
                             {settings.logos.main && (
@@ -165,6 +168,23 @@ export function IdentityTab({ settings, onChange }: IdentityTabProps) {
                                     />
                                 </div>
                             )}
+                        </div>
+
+                        {/* Main Logo (Light Mode) */}
+                        <div className="space-y-2">
+                            <Label>Logo Principal (Fondo Claro)</Label>
+                            <ImageUpload
+                                value={settings.logos.main_light || ''}
+                                onChange={(url) => onChange({
+                                    ...settings,
+                                    logos: { ...settings.logos, main_light: url }
+                                })}
+                                label="Subir Logo (Claro)"
+                                bucket="branding"
+                            />
+                            <p className="text-[10px] text-muted-foreground">
+                                Se mostrará sobre fondos blancos (Sidebar Light Mode, Documentos).
+                            </p>
                         </div>
 
                         <Separator />
