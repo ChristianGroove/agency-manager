@@ -1213,3 +1213,308 @@
 [2026-01-07T06:10:38.099Z] [ROUTE] Channel: whatsapp
 [2026-01-07T06:10:38.101Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"statuses":[{"id":"wamid.HBgMNTczNTA0MDc2ODAwFQIAERgSN0EyQzZDOEVEOTk3MDFFNDAxAA==","status":"read","timestamp":"1767766237","recipient_id":"573504076800","pricing":{"billable":false,"pricing_model":"PMP","category":"service","type":"free_customer_service"}}]},"field":"messages"}]}]}
 [2026-01-07T06:10:38.108Z] [ROUTE] Result: {"success":true,"message":"No messages to process"}
+[2026-01-07T14:59:24.608Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T14:59:24.609Z] [ROUTE] Channel: whatsapp
+[2026-01-07T14:59:24.611Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"contacts":[{"profile":{"name":"Pixy"},"wa_id":"573504076800"}],"messages":[{"from":"573504076800","id":"wamid.HBgMNTczNTA0MDc2ODAwFQIAEhggQTUzNzI4MDI3MEQxRjRGOTBDRjRBMTg0RDI5NkY5MzgA","timestamp":"1767797962","text":{"body":"Hola"},"type":"text"}]},"field":"messages"}]}]}
+[2026-01-07T14:59:27.223Z] [ROUTE] Result: {"success":true}
+[2026-01-07T14:59:49.226Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T14:59:49.226Z] [ROUTE] Channel: whatsapp
+[2026-01-07T14:59:49.228Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"contacts":[{"profile":{"name":"Pixy"},"wa_id":"573504076800"}],"messages":[{"from":"573504076800","id":"wamid.HBgMNTczNTA0MDc2ODAwFQIAEhggQTVENjMwOTkxREVCMzA1NDE4QUVFREIyOTYzOEFENjcA","timestamp":"1767797988","text":{"body":"Hola"},"type":"text"}]},"field":"messages"}]}]}
+[2026-01-07T14:59:51.646Z] [ROUTE] Result: {"success":true}
+[2026-01-07T14:59:53.963Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T14:59:53.964Z] [ROUTE] Channel: whatsapp
+[2026-01-07T14:59:53.965Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"statuses":[{"id":"wamid.HBgMNTczNTA0MDc2ODAwFQIAERgSM0ZGQzQ1OEZENjk3RjY1MTNEAA==","status":"sent","timestamp":"1767797993","recipient_id":"573504076800","pricing":{"billable":false,"pricing_model":"PMP","category":"service","type":"free_customer_service"}}]},"field":"messages"}]}]}
+[2026-01-07T14:59:53.968Z] [ROUTE] Result: {"success":true,"message":"No messages to process"}
+[2026-01-07T14:59:54.363Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T14:59:54.364Z] [ROUTE] Channel: whatsapp
+[2026-01-07T14:59:54.366Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"statuses":[{"id":"wamid.HBgMNTczNTA0MDc2ODAwFQIAERgSM0ZGQzQ1OEZENjk3RjY1MTNEAA==","status":"read","timestamp":"1767797993","recipient_id":"573504076800","pricing":{"billable":false,"pricing_model":"PMP","category":"service","type":"free_customer_service"}}]},"field":"messages"}]}]}
+[2026-01-07T14:59:54.373Z] [ROUTE] Result: {"success":true,"message":"No messages to process"}
+[2026-01-07T14:59:54.494Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T14:59:54.495Z] [ROUTE] Channel: whatsapp
+[2026-01-07T14:59:54.498Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"statuses":[{"id":"wamid.HBgMNTczNTA0MDc2ODAwFQIAERgSM0ZGQzQ1OEZENjk3RjY1MTNEAA==","status":"delivered","timestamp":"1767797993","recipient_id":"573504076800","pricing":{"billable":false,"pricing_model":"PMP","category":"service","type":"free_customer_service"}}]},"field":"messages"}]}]}
+[2026-01-07T14:59:54.504Z] [ROUTE] Result: {"success":true,"message":"No messages to process"}
+[2026-01-07T14:59:54.613Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T14:59:54.614Z] [ROUTE] Channel: whatsapp
+[2026-01-07T14:59:54.616Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"statuses":[{"id":"wamid.HBgMNTczNTA0MDc2ODAwFQIAERgSM0ZGQzQ1OEZENjk3RjY1MTNEAA==","status":"delivered","timestamp":"1767797993","recipient_id":"573504076800","pricing":{"billable":false,"pricing_model":"PMP","category":"service","type":"free_customer_service"}}]},"field":"messages"}]}]}
+[2026-01-07T14:59:54.621Z] [ROUTE] Result: {"success":true,"message":"No messages to process"}
+[2026-01-07T15:01:18.452Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T15:01:18.453Z] [ROUTE] Channel: whatsapp
+[2026-01-07T15:01:18.455Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"contacts":[{"profile":{"name":"Pixy"},"wa_id":"573504076800"}],"messages":[{"from":"573504076800","id":"wamid.HBgMNTczNTA0MDc2ODAwFQIAEhggQTVGM0QyRDIyRUMxMEI0Q0FCODVDQkIyRkYyN0U4NDMA","timestamp":"1767798077","text":{"body":"Hj"},"type":"text"}]},"field":"messages"}]}]}
+[2026-01-07T15:01:21.764Z] [ROUTE] Result: {"success":true}
+[2026-01-07T15:01:33.133Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T15:01:33.134Z] [ROUTE] Channel: whatsapp
+[2026-01-07T15:01:33.136Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"contacts":[{"profile":{"name":"Pixy"},"wa_id":"573504076800"}],"messages":[{"from":"573504076800","id":"wamid.HBgMNTczNTA0MDc2ODAwFQIAEhggQTU4QjE2MzUyOEVBNzI2QTc5RUZFQkUxNUEyMTY0M0IA","timestamp":"1767798092","text":{"body":"Gk"},"type":"text"}]},"field":"messages"}]}]}
+[2026-01-07T15:01:35.605Z] [ROUTE] Result: {"success":true}
+[2026-01-07T15:01:37.508Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T15:01:37.509Z] [ROUTE] Channel: whatsapp
+[2026-01-07T15:01:37.511Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"statuses":[{"id":"wamid.HBgMNTczNTA0MDc2ODAwFQIAERgSM0Y1MTRENzA5NDYxRjBBNDA5AA==","status":"sent","timestamp":"1767798097","recipient_id":"573504076800","pricing":{"billable":false,"pricing_model":"PMP","category":"service","type":"free_customer_service"}}]},"field":"messages"}]}]}
+[2026-01-07T15:01:37.516Z] [ROUTE] Result: {"success":true,"message":"No messages to process"}
+[2026-01-07T15:01:37.709Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T15:01:37.710Z] [ROUTE] Channel: whatsapp
+[2026-01-07T15:01:37.712Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"statuses":[{"id":"wamid.HBgMNTczNTA0MDc2ODAwFQIAERgSM0Y1MTRENzA5NDYxRjBBNDA5AA==","status":"delivered","timestamp":"1767798097","recipient_id":"573504076800","pricing":{"billable":false,"pricing_model":"PMP","category":"service","type":"free_customer_service"}}]},"field":"messages"}]}]}
+[2026-01-07T15:01:37.717Z] [ROUTE] Result: {"success":true,"message":"No messages to process"}
+[2026-01-07T15:01:37.805Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T15:01:37.806Z] [ROUTE] Channel: whatsapp
+[2026-01-07T15:01:37.808Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"statuses":[{"id":"wamid.HBgMNTczNTA0MDc2ODAwFQIAERgSM0Y1MTRENzA5NDYxRjBBNDA5AA==","status":"read","timestamp":"1767798097","recipient_id":"573504076800","pricing":{"billable":false,"pricing_model":"PMP","category":"service","type":"free_customer_service"}}]},"field":"messages"}]}]}
+[2026-01-07T15:01:37.813Z] [ROUTE] Result: {"success":true,"message":"No messages to process"}
+[2026-01-07T15:01:37.911Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T15:01:37.912Z] [ROUTE] Channel: whatsapp
+[2026-01-07T15:01:37.914Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"statuses":[{"id":"wamid.HBgMNTczNTA0MDc2ODAwFQIAERgSM0Y1MTRENzA5NDYxRjBBNDA5AA==","status":"delivered","timestamp":"1767798097","recipient_id":"573504076800","pricing":{"billable":false,"pricing_model":"PMP","category":"service","type":"free_customer_service"}}]},"field":"messages"}]}]}
+[2026-01-07T15:01:37.920Z] [ROUTE] Result: {"success":true,"message":"No messages to process"}
+[2026-01-07T15:01:42.019Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T15:01:42.020Z] [ROUTE] Channel: whatsapp
+[2026-01-07T15:01:42.023Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"contacts":[{"profile":{"name":"Pixy"},"wa_id":"573504076800"}],"messages":[{"context":{"from":"573248322720","id":"wamid.HBgMNTczNTA0MDc2ODAwFQIAERgSM0Y1MTRENzA5NDYxRjBBNDA5AA=="},"from":"573504076800","id":"wamid.HBgMNTczNTA0MDc2ODAwFQIAEhggQTUxMUMyQkJDRDFBMEZCNDc2NDhDNTdCNkI5RjA2REQA","timestamp":"1767798101","type":"interactive","interactive":{"type":"button_reply","button_reply":{"id":"btn_ik48m","title":"tgrtgtrgt"}}}]},"field":"messages"}]}]}
+[2026-01-07T15:01:45.975Z] [ROUTE] Result: {"success":true}
+[2026-01-07T15:01:46.416Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T15:01:46.417Z] [ROUTE] Channel: whatsapp
+[2026-01-07T15:01:46.419Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"statuses":[{"id":"wamid.HBgMNTczNTA0MDc2ODAwFQIAERgSMkQyODhCMkQ4QjdBMDIxRURDAA==","status":"sent","timestamp":"1767798106","recipient_id":"573504076800","pricing":{"billable":false,"pricing_model":"PMP","category":"service","type":"free_customer_service"}}]},"field":"messages"}]}]}
+[2026-01-07T15:01:46.424Z] [ROUTE] Result: {"success":true,"message":"No messages to process"}
+[2026-01-07T15:01:46.508Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T15:01:46.509Z] [ROUTE] Channel: whatsapp
+[2026-01-07T15:01:46.511Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"statuses":[{"id":"wamid.HBgMNTczNTA0MDc2ODAwFQIAERgSMkQyODhCMkQ4QjdBMDIxRURDAA==","status":"delivered","timestamp":"1767798106","recipient_id":"573504076800","pricing":{"billable":false,"pricing_model":"PMP","category":"service","type":"free_customer_service"}}]},"field":"messages"}]}]}
+[2026-01-07T15:01:46.517Z] [ROUTE] Result: {"success":true,"message":"No messages to process"}
+[2026-01-07T15:01:46.570Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T15:01:46.571Z] [ROUTE] Channel: whatsapp
+[2026-01-07T15:01:46.573Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"statuses":[{"id":"wamid.HBgMNTczNTA0MDc2ODAwFQIAERgSMkQyODhCMkQ4QjdBMDIxRURDAA==","status":"read","timestamp":"1767798106","recipient_id":"573504076800","pricing":{"billable":false,"pricing_model":"PMP","category":"service","type":"free_customer_service"}}]},"field":"messages"}]}]}
+[2026-01-07T15:01:46.579Z] [ROUTE] Result: {"success":true,"message":"No messages to process"}
+[2026-01-07T15:01:46.619Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T15:01:46.620Z] [ROUTE] Channel: whatsapp
+[2026-01-07T15:01:46.622Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"statuses":[{"id":"wamid.HBgMNTczNTA0MDc2ODAwFQIAERgSMkQyODhCMkQ4QjdBMDIxRURDAA==","status":"delivered","timestamp":"1767798106","recipient_id":"573504076800","pricing":{"billable":false,"pricing_model":"PMP","category":"service","type":"free_customer_service"}}]},"field":"messages"}]}]}
+[2026-01-07T15:01:46.628Z] [ROUTE] Result: {"success":true,"message":"No messages to process"}
+[2026-01-07T15:07:06.031Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T15:07:06.032Z] [ROUTE] Channel: whatsapp
+[2026-01-07T15:07:06.034Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"statuses":[{"id":"wamid.HBgMNTczNTA0MDc2ODAwFQIAERgSNkFGODk4QkQ2NzgwMTAzNkNFAA==","status":"sent","timestamp":"1767798425","recipient_id":"573504076800","pricing":{"billable":false,"pricing_model":"PMP","category":"service","type":"free_customer_service"}}]},"field":"messages"}]}]}
+[2026-01-07T15:07:06.040Z] [ROUTE] Result: {"success":true,"message":"No messages to process"}
+[2026-01-07T15:07:06.406Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T15:07:06.406Z] [ROUTE] Channel: whatsapp
+[2026-01-07T15:07:06.408Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"statuses":[{"id":"wamid.HBgMNTczNTA0MDc2ODAwFQIAERgSNkFGODk4QkQ2NzgwMTAzNkNFAA==","status":"delivered","timestamp":"1767798425","recipient_id":"573504076800","pricing":{"billable":false,"pricing_model":"PMP","category":"service","type":"free_customer_service"}}]},"field":"messages"}]}]}
+[2026-01-07T15:07:06.415Z] [ROUTE] Result: {"success":true,"message":"No messages to process"}
+[2026-01-07T15:07:06.525Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T15:07:06.526Z] [ROUTE] Channel: whatsapp
+[2026-01-07T15:07:06.529Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"statuses":[{"id":"wamid.HBgMNTczNTA0MDc2ODAwFQIAERgSNkFGODk4QkQ2NzgwMTAzNkNFAA==","status":"delivered","timestamp":"1767798425","recipient_id":"573504076800","pricing":{"billable":false,"pricing_model":"PMP","category":"service","type":"free_customer_service"}}]},"field":"messages"}]}]}
+[2026-01-07T15:07:06.536Z] [ROUTE] Result: {"success":true,"message":"No messages to process"}
+[2026-01-07T15:07:06.823Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T15:07:06.824Z] [ROUTE] Channel: whatsapp
+[2026-01-07T15:07:06.826Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"statuses":[{"id":"wamid.HBgMNTczNTA0MDc2ODAwFQIAERgSNkFGODk4QkQ2NzgwMTAzNkNFAA==","status":"delivered","timestamp":"1767798425","recipient_id":"573504076800","pricing":{"billable":false,"pricing_model":"PMP","category":"service","type":"free_customer_service"}}]},"field":"messages"}]}]}
+[2026-01-07T15:07:06.832Z] [ROUTE] Result: {"success":true,"message":"No messages to process"}
+[2026-01-07T15:07:09.181Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T15:07:09.182Z] [ROUTE] Channel: whatsapp
+[2026-01-07T15:07:09.184Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"statuses":[{"id":"wamid.HBgMNTczNTA0MDc2ODAwFQIAERgSRjRBRjUxNDYwRTcxRTM5Qzg3AA==","status":"sent","timestamp":"1767798428","recipient_id":"573504076800","pricing":{"billable":false,"pricing_model":"PMP","category":"service","type":"free_customer_service"}}]},"field":"messages"}]}]}
+[2026-01-07T15:07:09.191Z] [ROUTE] Result: {"success":true,"message":"No messages to process"}
+[2026-01-07T15:07:09.383Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T15:07:09.383Z] [ROUTE] Channel: whatsapp
+[2026-01-07T15:07:09.385Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"statuses":[{"id":"wamid.HBgMNTczNTA0MDc2ODAwFQIAERgSRjRBRjUxNDYwRTcxRTM5Qzg3AA==","status":"delivered","timestamp":"1767798429","recipient_id":"573504076800","pricing":{"billable":false,"pricing_model":"PMP","category":"service","type":"free_customer_service"}}]},"field":"messages"}]}]}
+[2026-01-07T15:07:09.391Z] [ROUTE] Result: {"success":true,"message":"No messages to process"}
+[2026-01-07T15:07:09.442Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T15:07:09.443Z] [ROUTE] Channel: whatsapp
+[2026-01-07T15:07:09.445Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"statuses":[{"id":"wamid.HBgMNTczNTA0MDc2ODAwFQIAERgSRjRBRjUxNDYwRTcxRTM5Qzg3AA==","status":"delivered","timestamp":"1767798429","recipient_id":"573504076800","pricing":{"billable":false,"pricing_model":"PMP","category":"service","type":"free_customer_service"}}]},"field":"messages"}]}]}
+[2026-01-07T15:07:09.451Z] [ROUTE] Result: {"success":true,"message":"No messages to process"}
+[2026-01-07T15:07:09.533Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T15:07:09.534Z] [ROUTE] Channel: whatsapp
+[2026-01-07T15:07:09.536Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"statuses":[{"id":"wamid.HBgMNTczNTA0MDc2ODAwFQIAERgSRjRBRjUxNDYwRTcxRTM5Qzg3AA==","status":"delivered","timestamp":"1767798429","recipient_id":"573504076800","pricing":{"billable":false,"pricing_model":"PMP","category":"service","type":"free_customer_service"}}]},"field":"messages"}]}]}
+[2026-01-07T15:07:09.542Z] [ROUTE] Result: {"success":true,"message":"No messages to process"}
+[2026-01-07T15:27:08.067Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T15:27:08.068Z] [ROUTE] Channel: whatsapp
+[2026-01-07T15:27:08.070Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"statuses":[{"id":"wamid.HBgMNTczNTA0MDc2ODAwFQIAERgSNkFGODk4QkQ2NzgwMTAzNkNFAA==","status":"read","timestamp":"1767799627","recipient_id":"573504076800","pricing":{"billable":false,"pricing_model":"PMP","category":"service","type":"free_customer_service"}}]},"field":"messages"}]}]}
+[2026-01-07T15:27:08.077Z] [ROUTE] Result: {"success":true,"message":"No messages to process"}
+[2026-01-07T15:27:08.144Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T15:27:08.145Z] [ROUTE] Channel: whatsapp
+[2026-01-07T15:27:08.146Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"statuses":[{"id":"wamid.HBgMNTczNTA0MDc2ODAwFQIAERgSRjRBRjUxNDYwRTcxRTM5Qzg3AA==","status":"read","timestamp":"1767799627","recipient_id":"573504076800","pricing":{"billable":false,"pricing_model":"PMP","category":"service","type":"free_customer_service"}}]},"field":"messages"}]}]}
+[2026-01-07T15:27:08.152Z] [ROUTE] Result: {"success":true,"message":"No messages to process"}
+[2026-01-07T15:41:38.090Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T15:41:38.091Z] [ROUTE] Channel: whatsapp
+[2026-01-07T15:41:38.093Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"contacts":[{"profile":{"name":"Christian Groove"},"wa_id":"573006705958"}],"messages":[{"from":"573006705958","id":"wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUNDRkM5NzQyMTJFOTRCQzk2RkIxRThBQzUxMEMwRjgA","timestamp":"1767800497","text":{"body":"Dni"},"type":"text"}]},"field":"messages"}]}]}
+[2026-01-07T15:41:41.019Z] [ROUTE] Result: {"success":true}
+[2026-01-07T15:41:41.062Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T15:41:41.062Z] [ROUTE] Channel: whatsapp
+[2026-01-07T15:41:41.065Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"contacts":[{"profile":{"name":"Pixy"},"wa_id":"573504076800"}],"messages":[{"from":"573504076800","id":"wamid.HBgMNTczNTA0MDc2ODAwFQIAEhggQTU2OEMzNUI1MDc1OEIzNkM0QzE0RjU3NEEzN0UxQUMA","timestamp":"1767800500","text":{"body":"Jd"},"type":"text"}]},"field":"messages"}]}]}
+[2026-01-07T15:41:43.226Z] [ROUTE] Result: {"success":true}
+[2026-01-07T15:41:43.259Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T15:41:43.260Z] [ROUTE] Channel: whatsapp
+[2026-01-07T15:41:43.262Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"statuses":[{"id":"wamid.HBgMNTczMDA2NzA1OTU4FQIAERgSMkI3NDU2OTZGQkQ4REZEMDIyAA==","status":"sent","timestamp":"1767800502","recipient_id":"573006705958","pricing":{"billable":false,"pricing_model":"PMP","category":"service","type":"free_customer_service"}}]},"field":"messages"}]}]}
+[2026-01-07T15:41:43.268Z] [ROUTE] Result: {"success":true,"message":"No messages to process"}
+[2026-01-07T15:41:43.548Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T15:41:43.549Z] [ROUTE] Channel: whatsapp
+[2026-01-07T15:41:43.551Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"statuses":[{"id":"wamid.HBgMNTczMDA2NzA1OTU4FQIAERgSMkI3NDU2OTZGQkQ4REZEMDIyAA==","status":"delivered","timestamp":"1767800503","recipient_id":"573006705958","pricing":{"billable":false,"pricing_model":"PMP","category":"service","type":"free_customer_service"}}]},"field":"messages"}]}]}
+[2026-01-07T15:41:43.557Z] [ROUTE] Result: {"success":true,"message":"No messages to process"}
+[2026-01-07T15:41:43.593Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T15:41:43.594Z] [ROUTE] Channel: whatsapp
+[2026-01-07T15:41:43.596Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"statuses":[{"id":"wamid.HBgMNTczMDA2NzA1OTU4FQIAERgSMkI3NDU2OTZGQkQ4REZEMDIyAA==","status":"delivered","timestamp":"1767800503","recipient_id":"573006705958","pricing":{"billable":false,"pricing_model":"PMP","category":"service","type":"free_customer_service"}}]},"field":"messages"}]}]}
+[2026-01-07T15:41:43.601Z] [ROUTE] Result: {"success":true,"message":"No messages to process"}
+[2026-01-07T15:41:43.907Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T15:41:43.908Z] [ROUTE] Channel: whatsapp
+[2026-01-07T15:41:43.910Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"statuses":[{"id":"wamid.HBgMNTczMDA2NzA1OTU4FQIAERgSMkI3NDU2OTZGQkQ4REZEMDIyAA==","status":"delivered","timestamp":"1767800503","recipient_id":"573006705958","pricing":{"billable":false,"pricing_model":"PMP","category":"service","type":"free_customer_service"}}]},"field":"messages"}]}]}
+[2026-01-07T15:41:43.916Z] [ROUTE] Result: {"success":true,"message":"No messages to process"}
+[2026-01-07T15:50:23.607Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T15:50:23.608Z] [ROUTE] Channel: whatsapp
+[2026-01-07T15:50:23.610Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"contacts":[{"profile":{"name":"Pixy"},"wa_id":"573504076800"}],"messages":[{"from":"573504076800","id":"wamid.HBgMNTczNTA0MDc2ODAwFQIAEhggQTVBNkMzRkMwMzhBNjZBMUFGMzkyREQ3RjRGOUZFOEYA","timestamp":"1767801022","text":{"body":"Bxi"},"type":"text"}]},"field":"messages"}]}]}
+[2026-01-07T15:50:24.306Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T15:50:24.307Z] [ROUTE] Channel: whatsapp
+[2026-01-07T15:50:24.309Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"contacts":[{"profile":{"name":"Pixy"},"wa_id":"573504076800"}],"messages":[{"from":"573504076800","id":"wamid.HBgMNTczNTA0MDc2ODAwFQIAEhggQTUwRjNGRDdDNzBDMDRGRjkwODgzNTQyNzlFQzcxRUEA","timestamp":"1767801023","text":{"body":"Nq"},"type":"text"}]},"field":"messages"}]}]}
+[2026-01-07T15:50:26.117Z] [ROUTE] Result: {"success":true}
+[2026-01-07T15:50:26.528Z] [ROUTE] Result: {"success":true}
+[2026-01-07T15:50:28.302Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T15:50:28.303Z] [ROUTE] Channel: whatsapp
+[2026-01-07T15:50:28.304Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"statuses":[{"id":"wamid.HBgMNTczNTA0MDc2ODAwFQIAERgSQ0VFNTk0MDI1ODY0RDAxMDc5AA==","status":"sent","timestamp":"1767801027","recipient_id":"573504076800","pricing":{"billable":false,"pricing_model":"PMP","category":"service","type":"free_customer_service"}}]},"field":"messages"}]}]}
+[2026-01-07T15:50:28.307Z] [ROUTE] Result: {"success":true,"message":"No messages to process"}
+[2026-01-07T15:50:28.440Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T15:50:28.440Z] [ROUTE] Channel: whatsapp
+[2026-01-07T15:50:28.442Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"statuses":[{"id":"wamid.HBgMNTczNTA0MDc2ODAwFQIAERgSQ0VFNTk0MDI1ODY0RDAxMDc5AA==","status":"delivered","timestamp":"1767801027","recipient_id":"573504076800","pricing":{"billable":false,"pricing_model":"PMP","category":"service","type":"free_customer_service"}}]},"field":"messages"}]}]}
+[2026-01-07T15:50:28.448Z] [ROUTE] Result: {"success":true,"message":"No messages to process"}
+[2026-01-07T15:50:28.502Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T15:50:28.503Z] [ROUTE] Channel: whatsapp
+[2026-01-07T15:50:28.505Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"statuses":[{"id":"wamid.HBgMNTczNTA0MDc2ODAwFQIAERgSQ0VFNTk0MDI1ODY0RDAxMDc5AA==","status":"delivered","timestamp":"1767801027","recipient_id":"573504076800","pricing":{"billable":false,"pricing_model":"PMP","category":"service","type":"free_customer_service"}}]},"field":"messages"}]}]}
+[2026-01-07T15:50:28.510Z] [ROUTE] Result: {"success":true,"message":"No messages to process"}
+[2026-01-07T15:50:28.613Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T15:50:28.614Z] [ROUTE] Channel: whatsapp
+[2026-01-07T15:50:28.615Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"statuses":[{"id":"wamid.HBgMNTczNTA0MDc2ODAwFQIAERgSQ0VFNTk0MDI1ODY0RDAxMDc5AA==","status":"delivered","timestamp":"1767801027","recipient_id":"573504076800","pricing":{"billable":false,"pricing_model":"PMP","category":"service","type":"free_customer_service"}}]},"field":"messages"}]}]}
+[2026-01-07T15:50:28.621Z] [ROUTE] Result: {"success":true,"message":"No messages to process"}
+[2026-01-07T15:50:29.209Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T15:50:29.210Z] [ROUTE] Channel: whatsapp
+[2026-01-07T15:50:29.212Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"contacts":[{"profile":{"name":"Christian Groove"},"wa_id":"573006705958"}],"messages":[{"from":"573006705958","id":"wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUNCRTRBOTc0N0YzNkE5MTZBMTA4MTQ0NzhGNDQzMkQA","timestamp":"1767801028","text":{"body":"Jdif"},"type":"text"}]},"field":"messages"}]}]}
+[2026-01-07T15:50:29.896Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T15:50:29.897Z] [ROUTE] Channel: whatsapp
+[2026-01-07T15:50:29.899Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"contacts":[{"profile":{"name":"Christian Groove"},"wa_id":"573006705958"}],"messages":[{"from":"573006705958","id":"wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUM4RDZBQjRERDRENEYxNkZGMzUyOTVEMTQzOUYxNjYA","timestamp":"1767801029","text":{"body":"Jg"},"type":"text"}]},"field":"messages"}]}]}
+[2026-01-07T15:50:31.633Z] [ROUTE] Result: {"success":true}
+[2026-01-07T15:50:32.189Z] [ROUTE] Result: {"success":true}
+[2026-01-07T15:52:27.139Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T15:52:27.140Z] [ROUTE] Channel: whatsapp
+[2026-01-07T15:52:27.141Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"statuses":[{"id":"wamid.HBgMNTczNTA0MDc2ODAwFQIAERgSM0U2N0NDRTczMDk2QTk1M0Q5AA==","status":"sent","timestamp":"1767801146","recipient_id":"573504076800","pricing":{"billable":false,"pricing_model":"PMP","category":"service","type":"free_customer_service"}}]},"field":"messages"}]}]}
+[2026-01-07T15:52:27.144Z] [ROUTE] Result: {"success":true,"message":"No messages to process"}
+[2026-01-07T15:52:27.441Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T15:52:27.441Z] [ROUTE] Channel: whatsapp
+[2026-01-07T15:52:27.443Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"statuses":[{"id":"wamid.HBgMNTczNTA0MDc2ODAwFQIAERgSM0U2N0NDRTczMDk2QTk1M0Q5AA==","status":"delivered","timestamp":"1767801146","recipient_id":"573504076800","pricing":{"billable":false,"pricing_model":"PMP","category":"service","type":"free_customer_service"}}]},"field":"messages"}]}]}
+[2026-01-07T15:52:27.449Z] [ROUTE] Result: {"success":true,"message":"No messages to process"}
+[2026-01-07T15:52:27.491Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T15:52:27.492Z] [ROUTE] Channel: whatsapp
+[2026-01-07T15:52:27.494Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"statuses":[{"id":"wamid.HBgMNTczNTA0MDc2ODAwFQIAERgSM0U2N0NDRTczMDk2QTk1M0Q5AA==","status":"delivered","timestamp":"1767801146","recipient_id":"573504076800","pricing":{"billable":false,"pricing_model":"PMP","category":"service","type":"free_customer_service"}}]},"field":"messages"}]}]}
+[2026-01-07T15:52:27.499Z] [ROUTE] Result: {"success":true,"message":"No messages to process"}
+[2026-01-07T15:52:41.992Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T15:52:41.992Z] [ROUTE] Channel: whatsapp
+[2026-01-07T15:52:41.994Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"statuses":[{"id":"wamid.HBgMNTczMDA2NzA1OTU4FQIAERgSQTJDQzNBMEU3ODUwRUZDMjhCAA==","status":"sent","timestamp":"1767801161","recipient_id":"573006705958","pricing":{"billable":false,"pricing_model":"PMP","category":"service","type":"free_customer_service"}}]},"field":"messages"}]}]}
+[2026-01-07T15:52:42.001Z] [ROUTE] Result: {"success":true,"message":"No messages to process"}
+[2026-01-07T15:52:42.238Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T15:52:42.239Z] [ROUTE] Channel: whatsapp
+[2026-01-07T15:52:42.241Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"statuses":[{"id":"wamid.HBgMNTczMDA2NzA1OTU4FQIAERgSQTJDQzNBMEU3ODUwRUZDMjhCAA==","status":"delivered","timestamp":"1767801161","recipient_id":"573006705958","pricing":{"billable":false,"pricing_model":"PMP","category":"service","type":"free_customer_service"}}]},"field":"messages"}]}]}
+[2026-01-07T15:52:42.247Z] [ROUTE] Result: {"success":true,"message":"No messages to process"}
+[2026-01-07T15:52:42.391Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T15:52:42.392Z] [ROUTE] Channel: whatsapp
+[2026-01-07T15:52:42.394Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"statuses":[{"id":"wamid.HBgMNTczMDA2NzA1OTU4FQIAERgSQTJDQzNBMEU3ODUwRUZDMjhCAA==","status":"delivered","timestamp":"1767801161","recipient_id":"573006705958","pricing":{"billable":false,"pricing_model":"PMP","category":"service","type":"free_customer_service"}}]},"field":"messages"}]}]}
+[2026-01-07T15:52:42.400Z] [ROUTE] Result: {"success":true,"message":"No messages to process"}
+[2026-01-07T15:52:42.437Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T15:52:42.438Z] [ROUTE] Channel: whatsapp
+[2026-01-07T15:52:42.440Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"statuses":[{"id":"wamid.HBgMNTczMDA2NzA1OTU4FQIAERgSQTJDQzNBMEU3ODUwRUZDMjhCAA==","status":"delivered","timestamp":"1767801161","recipient_id":"573006705958","pricing":{"billable":false,"pricing_model":"PMP","category":"service","type":"free_customer_service"}}]},"field":"messages"}]}]}
+[2026-01-07T15:52:42.447Z] [ROUTE] Result: {"success":true,"message":"No messages to process"}
+[2026-01-07T16:37:48.562Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T16:37:48.563Z] [ROUTE] Channel: whatsapp
+[2026-01-07T16:37:48.567Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"contacts":[{"profile":{"name":"Christian Groove"},"wa_id":"573006705958"}],"messages":[{"from":"573006705958","id":"wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUM1OTA4NTU5NkFDNkIxNjFFOTdFRDgxM0RBQ0JDMzQA","timestamp":"1767803867","text":{"body":"Jdid"},"type":"text"}]},"field":"messages"}]}]}
+[2026-01-07T16:37:51.414Z] [ROUTE] Result: {"success":true}
+[2026-01-07T16:43:44.590Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T16:43:44.591Z] [ROUTE] Channel: whatsapp
+[2026-01-07T16:43:44.593Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"contacts":[{"profile":{"name":"Christian Groove"},"wa_id":"573006705958"}],"messages":[{"from":"573006705958","id":"wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUM2N0VDQjExODIxQjVCQjRGRkY0OUIxQkEzM0Q5MjMA","timestamp":"1767804223","text":{"body":"Jfi"},"type":"text"}]},"field":"messages"}]}]}
+[2026-01-07T16:43:45.128Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T16:43:45.129Z] [ROUTE] Channel: whatsapp
+[2026-01-07T16:43:45.131Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"contacts":[{"profile":{"name":"Christian Groove"},"wa_id":"573006705958"}],"messages":[{"from":"573006705958","id":"wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUNCQTY2M0FFMTA1NEU0Mzc4MTRCRjgwNzVCMjNENjgA","timestamp":"1767804223","text":{"body":"Wj"},"type":"text"}]},"field":"messages"}]}]}
+[2026-01-07T16:43:45.346Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T16:43:45.347Z] [ROUTE] Channel: whatsapp
+[2026-01-07T16:43:45.349Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"contacts":[{"profile":{"name":"Christian Groove"},"wa_id":"573006705958"}],"messages":[{"from":"573006705958","id":"wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUNBNDgyRTFCQkQ1NzE4OUJFNjYwOTlBNDc2NjYxRTEA","timestamp":"1767804224","text":{"body":"Fjg"},"type":"text"}]},"field":"messages"}]}]}
+[2026-01-07T16:43:45.939Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T16:43:45.940Z] [ROUTE] Channel: whatsapp
+[2026-01-07T16:43:45.942Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"contacts":[{"profile":{"name":"Christian Groove"},"wa_id":"573006705958"}],"messages":[{"from":"573006705958","id":"wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUNDQTlDRDY4NjI3NzIwNTBEMTFBMERDNTU2OTc4MjkA","timestamp":"1767804225","text":{"body":"Jd"},"type":"text"}]},"field":"messages"}]}]}
+[2026-01-07T16:43:47.036Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T16:43:47.037Z] [ROUTE] Channel: whatsapp
+[2026-01-07T16:43:47.039Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"contacts":[{"profile":{"name":"Christian Groove"},"wa_id":"573006705958"}],"messages":[{"from":"573006705958","id":"wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUNEQTJFNUY5MTE5REZDODk3MjMyMzEyQjc5QkE3NTUA","timestamp":"1767804226","text":{"body":"Jw"},"type":"text"}]},"field":"messages"}]}]}
+[2026-01-07T16:43:48.490Z] [ROUTE] Result: {"success":true}
+[2026-01-07T16:43:48.999Z] [ROUTE] Result: {"success":true}
+[2026-01-07T16:43:49.007Z] [ROUTE] Result: {"success":true}
+[2026-01-07T16:43:49.119Z] [ROUTE] Result: {"success":true}
+[2026-01-07T16:43:50.638Z] [ROUTE] Result: {"success":true}
+[2026-01-07T16:46:04.394Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T16:46:04.397Z] [ROUTE] Channel: whatsapp
+[2026-01-07T16:46:04.405Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"statuses":[{"id":"wamid.HBgMNTczNTA0MDc2ODAwFQIAERgSM0U2N0NDRTczMDk2QTk1M0Q5AA==","status":"read","timestamp":"1767804362","recipient_id":"573504076800","pricing":{"billable":false,"pricing_model":"PMP","category":"service","type":"free_customer_service"}}]},"field":"messages"}]}]}
+[2026-01-07T16:46:04.472Z] [ROUTE] Result: {"success":true,"message":"No messages to process"}
+[2026-01-07T16:46:04.525Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T16:46:04.526Z] [ROUTE] Channel: whatsapp
+[2026-01-07T16:46:04.529Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"statuses":[{"id":"wamid.HBgMNTczNTA0MDc2ODAwFQIAERgSQ0VFNTk0MDI1ODY0RDAxMDc5AA==","status":"read","timestamp":"1767804362","recipient_id":"573504076800","pricing":{"billable":false,"pricing_model":"PMP","category":"service","type":"free_customer_service"}}]},"field":"messages"}]}]}
+[2026-01-07T16:46:04.537Z] [ROUTE] Result: {"success":true,"message":"No messages to process"}
+[2026-01-07T17:09:07.094Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T17:09:07.096Z] [ROUTE] Channel: whatsapp
+[2026-01-07T17:09:07.099Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"contacts":[{"profile":{"name":"Christian Groove"},"wa_id":"573006705958"}],"messages":[{"from":"573006705958","id":"wamid.HBgMNTczMDA2NzA1OTU4FQIAEhgWM0VCMDAyRjE3NUQ0REU0MTIyMTUzNwA=","timestamp":"1767805746","text":{"body":"fgh"},"type":"text"}]},"field":"messages"}]}]}
+[2026-01-07T17:09:07.594Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T17:09:07.595Z] [ROUTE] Channel: whatsapp
+[2026-01-07T17:09:07.597Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"contacts":[{"profile":{"name":"Christian Groove"},"wa_id":"573006705958"}],"messages":[{"from":"573006705958","id":"wamid.HBgMNTczMDA2NzA1OTU4FQIAEhgWM0VCMDI3QjQ1OTE2NjBFNEU1MENDOQA=","timestamp":"1767805746","text":{"body":"fghd"},"type":"text"}]},"field":"messages"}]}]}
+[2026-01-07T17:09:08.292Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T17:09:08.293Z] [ROUTE] Channel: whatsapp
+[2026-01-07T17:09:08.295Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"contacts":[{"profile":{"name":"Christian Groove"},"wa_id":"573006705958"}],"messages":[{"from":"573006705958","id":"wamid.HBgMNTczMDA2NzA1OTU4FQIAEhgWM0VCMDkzRThDMTU5MTQ1NTQwOEU2NgA=","timestamp":"1767805747","text":{"body":"dsf"},"type":"text"}]},"field":"messages"}]}]}
+[2026-01-07T17:09:11.279Z] [ROUTE] Result: {"success":true}
+[2026-01-07T17:09:11.549Z] [ROUTE] Result: {"success":true}
+[2026-01-07T17:09:11.832Z] [ROUTE] Result: {"success":true}
+[2026-01-07T17:09:32.240Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T17:09:32.241Z] [ROUTE] Channel: whatsapp
+[2026-01-07T17:09:32.243Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"contacts":[{"profile":{"name":"Christian Groove"},"wa_id":"573006705958"}],"messages":[{"from":"573006705958","id":"wamid.HBgMNTczMDA2NzA1OTU4FQIAEhgWM0VCMDU3QUM1OTlFN0Q3QzZDMUU3RQA=","timestamp":"1767805771","text":{"body":",m.m,."},"type":"text"}]},"field":"messages"}]}]}
+[2026-01-07T17:09:32.673Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T17:09:32.674Z] [ROUTE] Channel: whatsapp
+[2026-01-07T17:09:32.676Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"contacts":[{"profile":{"name":"Christian Groove"},"wa_id":"573006705958"}],"messages":[{"from":"573006705958","id":"wamid.HBgMNTczMDA2NzA1OTU4FQIAEhgWM0VCMEQ2RjA0Q0VEMEU2NTYwNzQ2QwA=","timestamp":"1767805771","text":{"body":"ui"},"type":"text"}]},"field":"messages"}]}]}
+[2026-01-07T17:09:35.692Z] [ROUTE] Result: {"success":true}
+[2026-01-07T17:09:35.883Z] [ROUTE] Result: {"success":true}

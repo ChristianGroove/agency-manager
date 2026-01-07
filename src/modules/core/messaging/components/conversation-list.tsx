@@ -219,28 +219,45 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
                     />
                 </div>
 
-                {/* Filter Tabs */}
-                <Tabs value={activeFilter} onValueChange={(v) => setActiveFilter(v as FilterTab)}>
-                    <TabsList className="grid w-full grid-cols-5">
-                        <TabsTrigger value="all" className="text-xs">
+                <Tabs value={activeFilter} onValueChange={(v) => setActiveFilter(v as FilterTab)} className="w-full">
+                    <TabsList className="w-full justify-start gap-2 bg-transparent p-0 h-auto border-b rounded-none px-4">
+                        <TabsTrigger
+                            value="all"
+                            className="text-xs rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none px-2 py-3 transition-all"
+                        >
                             All
                         </TabsTrigger>
-                        <TabsTrigger value="unread" className="text-xs">
+                        <TabsTrigger
+                            value="unread"
+                            className="text-xs rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none px-2 py-3 transition-all"
+                        >
                             Unread
                             {counts.unread > 0 && (
-                                <Badge variant="default" className="ml-1 px-1 min-w-[20px] h-5 bg-blue-600">
+                                <Badge className="ml-1.5 h-5 min-w-[1.25rem] px-1 bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 border-none shadow-sm transition-transform data-[state=active]:scale-110">
                                     {counts.unread}
                                 </Badge>
                             )}
                         </TabsTrigger>
-                        <TabsTrigger value="assigned" className="text-xs">
-                            <UserCheck className="h-3 w-3" />
+                        <TabsTrigger
+                            value="assigned"
+                            className="text-xs rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none px-2 py-3 transition-all"
+                            title="Assigned to me"
+                        >
+                            <UserCheck className="h-4 w-4" />
                         </TabsTrigger>
-                        <TabsTrigger value="snoozed" className="text-xs">
-                            <Clock className="h-3 w-3" />
+                        <TabsTrigger
+                            value="snoozed"
+                            className="text-xs rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none px-2 py-3 transition-all"
+                            title="Snoozed"
+                        >
+                            <Clock className="h-4 w-4" />
                         </TabsTrigger>
-                        <TabsTrigger value="archived" className="text-xs">
-                            <Archive className="h-3 w-3" />
+                        <TabsTrigger
+                            value="archived"
+                            className="text-xs rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none px-2 py-3 transition-all"
+                            title="Archived"
+                        >
+                            <Archive className="h-4 w-4" />
                         </TabsTrigger>
                     </TabsList>
                 </Tabs>

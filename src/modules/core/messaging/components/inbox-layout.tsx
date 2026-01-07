@@ -58,7 +58,7 @@ export function InboxLayout() {
             updates = { state: 'active', status: 'open' }
             actionLabel = 'reabierta'
         } else if (targetZone === 'snoozed') {
-            updates = { state: 'snoozed', status: 'snoozed' }
+            updates = { state: 'active', status: 'snoozed' }
             actionLabel = 'pospuesta'
         }
 
@@ -134,22 +134,26 @@ export function InboxLayout() {
                     </div>
                 )}
 
-                {/* Drag Overlay - Mini card 60% scale, centered */}
+                {/* Drag Overlay - Mini card centered on cursor */}
                 <DragOverlay dropAnimation={null}>
                     {activeDragId ? (
                         <div
-                            className="w-[220px] p-3 bg-white dark:bg-zinc-800 shadow-2xl rounded-lg border-2 border-brand-pink pointer-events-none"
-                            style={{ transform: 'translate(-50%, -50%) scale(0.6)', transformOrigin: 'center center' }}
+                            className="w-[280px] p-3 bg-white/90 dark:bg-zinc-900/90 shadow-xl rounded-xl border border-zinc-200 dark:border-zinc-800 backdrop-blur-sm pointer-events-none cursor-grabbing flex items-center gap-3"
+                            style={{
+                                // Reset transform origin to ensure scaling happens from center
+                                transformOrigin: 'center center',
+                                // Center the element on the pointer
+                                transform: 'translate(-50%, -50%) scale(0.8)'
+                            }}
                         >
-                            <div className="flex items-center gap-2">
-                                <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold">
-                                    💬
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-xs font-semibold truncate">Arrastrando chat...</p>
-                                    <p className="text-[10px] text-muted-foreground">Suelta en una acción</p>
-                                </div>
+                            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-zinc-100 to-zinc-200 dark:from-zinc-800 dark:to-zinc-900 flex items-center justify-center text-zinc-900 dark:text-zinc-100 font-bold shadow-sm border border-black/5 dark:border-white/10 flex-shrink-0">
+                                💬
                             </div>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-sm font-bold text-foreground truncate">Moviendo conversación...</p>
+                                <p className="text-xs text-muted-foreground">Suelta para cambiar estado</p>
+                            </div>
+                            <div className="h-2 w-2 rounded-full bg-zinc-900 dark:bg-zinc-100 animate-pulse" />
                         </div>
                     ) : null}
                 </DragOverlay>

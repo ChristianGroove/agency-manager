@@ -51,17 +51,17 @@ export function ConversationListItem({ conv, isSelected, onSelect, fetchConversa
             {...attributes}
             onClick={() => onSelect(conv.id)}
             className={cn(
-                "w-full p-4 text-left hover:bg-muted/50 transition-colors relative cursor-grab active:cursor-grabbing outline-none group touch-none", // touch-none for dnd-kit pointer sensors
-                isSelected && "bg-muted",
-                isUnread && "bg-blue-50 dark:bg-blue-950/20",
+                "w-full p-4 text-left hover:bg-zinc-100 dark:hover:bg-zinc-800/50 transition-all relative cursor-grab active:cursor-grabbing outline-none group touch-none border-l-4",
+                isSelected ? "bg-muted border-l-foreground" : "border-transparent",
+                isUnread && !isSelected && "bg-zinc-50/50 dark:bg-zinc-900/20 border-l-zinc-900 dark:border-l-zinc-100",
                 isDragging && "opacity-50 grayscale"
             )}
         >
-            {/* Priority Indicator */}
+            {/* Priority Indicator - Move to right or subtle dot */}
             {conv.priority && conv.priority !== 'normal' && (
                 <div
                     className={cn(
-                        "absolute left-0 top-0 bottom-0 w-1",
+                        "absolute right-2 top-2 h-2 w-2 rounded-full",
                         getPriorityColor(conv.priority)
                     )}
                 />
@@ -69,7 +69,7 @@ export function ConversationListItem({ conv, isSelected, onSelect, fetchConversa
 
             <div className="flex items-start gap-3">
                 <div className="flex-shrink-0 mt-1 pointer-events-none">
-                    <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold shadow-sm">
+                    <div className="h-10 w-10 rounded-full bg-gradient-to-br from-zinc-100 to-zinc-200 dark:from-zinc-800 dark:to-zinc-900 flex items-center justify-center text-zinc-900 dark:text-zinc-100 font-bold shadow-sm border border-black/5 dark:border-white/10">
                         {contactName.slice(0, 2).toUpperCase()}
                     </div>
                 </div>
@@ -77,19 +77,18 @@ export function ConversationListItem({ conv, isSelected, onSelect, fetchConversa
                 <div className="flex-1 min-w-0 pointer-events-none">
                     <div className="flex items-center justify-between mb-1">
                         <span className={cn(
-                            "font-medium truncate",
-                            isUnread && "font-bold"
+                            "font-medium truncate text-sm",
+                            isUnread && "font-bold text-foreground"
                         )}>
-                            {priorityIcon && <span className="mr-1">{priorityIcon}</span>}
                             {contactName}
                         </span>
 
                         <div className="flex items-center gap-2 flex-shrink-0 ml-2 pointer-events-auto">
                             {conv.assigned_to && (
-                                <UserCheck className="h-3 w-3 text-green-600" />
+                                <UserCheck className="h-3 w-3 text-muted-foreground" />
                             )}
                             {conv.unread_count > 0 && (
-                                <Badge className="h-5 min-w-[20px] px-1 bg-blue-600">
+                                <Badge className="h-5 min-w-[1.25rem] px-1.5 bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 border-none shadow-sm flex items-center justify-center">
                                     {conv.unread_count}
                                 </Badge>
                             )}
@@ -104,12 +103,20 @@ export function ConversationListItem({ conv, isSelected, onSelect, fetchConversa
                         </div>
                     </div>
 
-                    <p className={cn(
-                        "text-sm text-muted-foreground line-clamp-2 mb-1",
-                        isUnread && "text-foreground/80 font-medium"
-                    )}>
-                        {conv.last_message || "No messages yet"}
-                    </p>
+                    <div
+                        className="mb-1 overflow-hidden"
+                        style={{
+                            maskImage: 'linear-gradient(to right, black 0%, black 50%, transparent 75%)',
+                            WebkitMaskImage: 'linear-gradient(to right, black 0%, black 50%, transparent 75%)'
+                        }}
+                    >
+                        <p className={cn(
+                            "text-sm text-muted-foreground whitespace-nowrap",
+                            isUnread && "text-foreground/80 font-medium"
+                        )}>
+                            {conv.last_message || "No messages yet"}
+                        </p>
+                    </div>
 
                     <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
                         {((conv.channel as any) === 'whatsapp' || (conv.channel as any) === 'evolution') && (

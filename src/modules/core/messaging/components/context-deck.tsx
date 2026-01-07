@@ -112,81 +112,77 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
     }
 
     return (
-        <div className="flex flex-col h-full bg-background dark:bg-zinc-900/50 backdrop-blur-xl">
-            {/* Header: Profile & Status */}
-            <div className="p-6 pb-2 text-center relative z-10">
-                <div className="relative inline-block">
-                    <Avatar className="h-24 w-24 mx-auto mb-3 shadow-xl ring-4 ring-background dark:ring-zinc-900">
-                        <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${lead.title || 'Unknown'}`} />
-                        <AvatarFallback className="text-2xl bg-gradient-to-br from-brand-pink to-purple-600 text-white border-0">
-                            {(lead.title || 'UN').slice(0, 2).toUpperCase()}
-                        </AvatarFallback>
-                    </Avatar>
-                    <span className="absolute bottom-0 right-1 h-5 w-5 rounded-full bg-green-500 border-4 border-background dark:border-zinc-900" title="Online" />
+        <div className="flex flex-col h-full bg-background/50 dark:bg-zinc-950/50 backdrop-blur-xl border-l border-border/50">
+            {/* 1. Compact Header */}
+            <div className="p-4 border-b border-border/40 bg-background/50 backdrop-blur-md sticky top-0 z-20">
+                <div className="flex items-center gap-3">
+                    <div className="relative">
+                        <Avatar className="h-12 w-12 shadow-sm ring-2 ring-background dark:ring-zinc-900">
+                            <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${lead.title || 'Unknown'}`} />
+                            <AvatarFallback className="bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-bold">
+                                {(lead.title || 'UN').slice(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                        </Avatar>
+                        <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-green-500 border-2 border-background" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <h2 className="text-base font-bold truncate leading-tight">{lead.title || 'Unknown Contact'}</h2>
+                        <div className="flex items-center gap-2 mt-1">
+                            <Badge variant="secondary" className="text-[10px] h-4 px-1.5 font-normal bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-0">
+                                {lead.company || "Particular"}
+                            </Badge>
+                            <Badge variant="outline" className="text-[10px] h-4 px-1.5 font-normal border-zinc-200 dark:border-zinc-800 text-zinc-500">
+                                {lead.status}
+                            </Badge>
+                        </div>
+                    </div>
                 </div>
 
-                <h2 className="text-xl font-bold truncate mt-2 px-4">{lead.title || 'Unknown Contact'}</h2>
-                <div className="flex justify-center gap-2 mt-2">
-                    <Badge variant="outline" className="text-[10px] px-2 py-0.5 rounded-full bg-muted/50 border-muted-foreground/20">
-                        {lead.company || "Particular"}
-                    </Badge>
-                    <Badge variant="secondary" className="text-[10px] px-2 py-0.5 rounded-full">
-                        {lead.status}
-                    </Badge>
+                {/* 2. Sleek Action Bar */}
+                <div className="mt-4 grid grid-cols-4 gap-2">
+                    <ActionBtn icon={CheckCircle2} label="Done" onClick={() => { }} color="text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20" />
+                    <ActionBtn icon={CalendarClock} label="Snooze" onClick={() => { }} color="text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20" />
+                    <ActionBtn icon={Archive} label="Archive" onClick={() => { }} color="text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800" />
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-9 w-full rounded-lg border border-transparent hover:border-border hover:bg-muted/50">
+                                    <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>More Options</TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
                 </div>
             </div>
 
             <ScrollArea className="flex-1">
-                <div className="p-5 space-y-6">
+                <div className="p-4 space-y-6">
 
-                    {/* Quick Actions Grid */}
-                    <div className="grid grid-cols-4 gap-2">
-                        <ActionBtn icon={CheckCircle2} label="Resolver" color="text-green-500 bg-green-500/10 hover:bg-green-500/20" />
-                        <ActionBtn icon={CalendarClock} label="Snooze" color="text-amber-500 bg-amber-500/10 hover:bg-amber-500/20" />
-                        <ActionBtn icon={Archive} label="Archivar" color="text-slate-500 bg-slate-500/10 hover:bg-slate-500/20" />
-                        <TooltipProvider>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-[4.5rem] w-full rounded-2xl flex flex-col items-center justify-center gap-1 hover:bg-muted/50 border border-transparent hover:border-border transition-all">
-                                        <MoreHorizontal className="h-5 w-5 text-muted-foreground" />
-                                        <span className="text-[10px] text-muted-foreground font-medium">Más</span>
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>Más Opciones</TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
-                    </div>
-
-                    {/* CRM Context Card */}
-                    <Card className="rounded-2xl border-none shadow-lg bg-gradient-to-br from-white to-gray-50 dark:from-zinc-900 dark:to-zinc-900/50 dark:border dark:border-white/5 overflow-hidden relative group">
-                        <div className="absolute top-0 right-0 p-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Button variant="ghost" size="icon" className="h-6 w-6" asChild>
-                                <Link href={`/crm?lead=${lead.id}`}><ExternalLink className="h-3 w-3" /></Link>
-                            </Button>
-                        </div>
-                        <CardHeader className="pb-2 pt-4 px-4">
-                            <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-                                <Briefcase className="h-3 w-3 text-brand-pink" />
-                                Deal Info
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="px-4 pb-4">
-                            <div className="flex items-center justify-between mb-4">
+                    {/* 3. Unified Deal & Assignment Card */}
+                    <Card className="shadow-none border border-border/60 bg-gradient-to-b from-white to-zinc-50/50 dark:from-zinc-900 dark:to-zinc-900/50">
+                        <CardContent className="p-0 divide-y divide-border/40">
+                            {/* Deal Value */}
+                            <div className="p-4 flex items-center justify-between">
                                 <div>
-                                    <div className="text-2xl font-bold font-mono tracking-tight text-foreground">
-                                        {new Intl.NumberFormat('en-US', { style: 'currency', currency: lead.currency || 'USD', maximumFractionDigits: 0 }).format(lead.value || 0)}
+                                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-0.5">Deal Value</div>
+                                    <div className="text-xl font-bold font-mono tracking-tight flex items-baseline gap-1">
+                                        <span className="text-muted-foreground text-sm">$</span>
+                                        {lead.value?.toLocaleString() || '0'}
                                     </div>
-                                    <div className="text-[10px] text-muted-foreground font-medium mt-0.5 ml-1">Valor Estimado</div>
                                 </div>
-                                <div className="text-right">
-                                    <Badge variant={(lead.priority === 'high' || lead.priority === 'urgent') ? 'destructive' : 'default'} className="uppercase text-[10px]">
-                                        {lead.priority}
-                                    </Badge>
-                                </div>
+                                <Badge variant="outline" className={cn(
+                                    "uppercase text-[10px] font-bold tracking-wide border-0 px-2 py-1",
+                                    lead.priority === 'urgent' ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" :
+                                        lead.priority === 'high' ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400" :
+                                            "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
+                                )}>
+                                    {lead.priority || 'Normal'}
+                                </Badge>
                             </div>
 
-                            {/* Assignee */}
-                            <div className="pt-3 border-t border-dashed border-gray-200 dark:border-white/10">
+                            {/* Assignment Row */}
+                            <div className="p-3 bg-zinc-50/50 dark:bg-zinc-900/30">
                                 <QuickAssignPanel
                                     conversationId={conversationId}
                                     currentAssignee={conversation?.assigned_to}
@@ -201,53 +197,34 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
                         </CardContent>
                     </Card>
 
-                    {/* Contact Details */}
-                    <div className="space-y-3 bg-muted/20 rounded-2xl p-4">
-                        <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">Contacto</h4>
-
-                        <div className="flex items-center gap-3 p-2 hover:bg-white/50 dark:hover:bg-white/5 rounded-lg transition-colors group cursor-copy">
-                            <div className="h-8 w-8 rounded-full bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-500">
-                                <Phone className="h-4 w-4" />
-                            </div>
-                            <div className="flex-1 overflow-hidden">
-                                <p className="text-sm font-medium truncate">{lead.phone || "Sin teléfono"}</p>
-                                <p className="text-[10px] text-muted-foreground">Móvil</p>
-                            </div>
+                    {/* 4. Compact Contact Info */}
+                    <div className="space-y-3">
+                        <div className="flex items-center justify-between px-1">
+                            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Contact Details</h4>
+                            <Button variant="ghost" size="icon" className="h-5 w-5 rounded-full hover:bg-muted" asChild>
+                                <Link href={`/crm?lead=${lead.id}`}><ExternalLink className="h-3 w-3 text-muted-foreground" /></Link>
+                            </Button>
                         </div>
 
-                        <div className="flex items-center gap-3 p-2 hover:bg-white/50 dark:hover:bg-white/5 rounded-lg transition-colors group cursor-copy">
-                            <div className="h-8 w-8 rounded-full bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center text-purple-500">
-                                <Mail className="h-4 w-4" />
-                            </div>
-                            <div className="flex-1 overflow-hidden">
-                                <p className="text-sm font-medium truncate">{lead.email || "Sin email"}</p>
-                                <p className="text-[10px] text-muted-foreground">Correo</p>
-                            </div>
-                        </div>
-
-                        <div className="flex items-center gap-3 p-2 hover:bg-white/50 dark:hover:bg-white/5 rounded-lg transition-colors group">
-                            <div className="h-8 w-8 rounded-full bg-orange-50 dark:bg-orange-900/20 flex items-center justify-center text-orange-500">
-                                <MapPin className="h-4 w-4" />
-                            </div>
-                            <div className="flex-1 overflow-hidden">
-                                <p className="text-sm font-medium truncate">Unknown Location</p>
-                                <p className="text-[10px] text-muted-foreground">Ubicación</p>
-                            </div>
+                        <div className="space-y-1">
+                            <ContactItem icon={Phone} label="Mobile" value={lead.phone} />
+                            <ContactItem icon={Mail} label="Email" value={lead.email} />
+                            <ContactItem icon={MapPin} label="Location" value="Unknown Location" />
                         </div>
                     </div>
 
                     {/* Tags */}
-                    <div className="space-y-2">
-                        <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-widest px-1">Etiquetas</h4>
-                        <div className="flex flex-wrap gap-2">
-                            {(lead.tags as string[] || ['prospecto', 'nuevo']).map(tag => (
-                                <Badge key={tag} variant="secondary" className="bg-white dark:bg-white/10 border hover:bg-gray-100 dark:hover:bg-white/20 pl-1 pr-2 py-1 gap-1 text-[11px] font-normal">
-                                    <Tag className="h-3 w-3 opacity-50" />
+                    <div>
+                        <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1 mb-2">Tags</h4>
+                        <div className="flex flex-wrap gap-1.5">
+                            {(lead.tags as string[] || ['lead']).map(tag => (
+                                <Badge key={tag} variant="secondary" className="bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 border border-transparent hover:border-border transition-colors px-2 py-0.5 text-[11px] font-normal">
+                                    <Tag className="h-3 w-3 mr-1 opacity-50" />
                                     {tag}
                                 </Badge>
                             ))}
-                            <Button variant="ghost" size="sm" className="h-6 w-6 rounded-full p-0 border border-dashed">
-                                <span className="text-xs">+</span>
+                            <Button variant="outline" size="sm" className="h-5 rounded-full px-2 text-[10px] border-dashed text-muted-foreground hover:text-foreground">
+                                + Add
                             </Button>
                         </div>
                     </div>
@@ -258,15 +235,40 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
     )
 }
 
-function ActionBtn({ icon: Icon, label, color }: { icon: any, label: string, color: string }) {
+function ActionBtn({ icon: Icon, label, color, onClick }: { icon: any, label: string, color: string, onClick: () => void }) {
     return (
-        <Button
-            variant="ghost"
-            className={cn("h-[4.5rem] w-full rounded-2xl flex flex-col items-center justify-center gap-2 border border-transparent transition-all group", color)}
-        >
-            <Icon className="h-5 w-5 opacity-90 group-hover:scale-110 transition-transform" />
-            <span className="text-[10px] font-medium opacity-90">{label}</span>
-        </Button>
+        <TooltipProvider>
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <Button
+                        variant="ghost"
+                        onClick={onClick}
+                        className={cn("h-9 w-full rounded-lg border border-transparent hover:border-zinc-200 dark:hover:border-zinc-800 transition-all flex items-center justify-center", color)}
+                    >
+                        <Icon className="h-4 w-4" />
+                    </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs">{label}</TooltipContent>
+            </Tooltip>
+        </TooltipProvider>
+    )
+}
+
+function ContactItem({ icon: Icon, label, value }: { icon: any, label: string, value?: string }) {
+    if (!value) return null
+    return (
+        <div className="group flex items-center gap-3 p-2 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800/50 transition-colors cursor-pointer" onClick={() => {
+            navigator.clipboard.writeText(value)
+            // toast.success("Copied") - Ideally add toast here
+        }}>
+            <Icon className="h-4 w-4 text-muted-foreground opacity-70 group-hover:opacity-100 group-hover:text-foreground transition-all" />
+            <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium truncate text-foreground/90 group-hover:text-foreground">{value}</p>
+            </div>
+            <span className="opacity-0 group-hover:opacity-100 text-[10px] text-muted-foreground transition-opacity bg-background/80 px-1.5 py-0.5 rounded shadow-sm">
+                Copy
+            </span>
+        </div>
     )
 }
 
