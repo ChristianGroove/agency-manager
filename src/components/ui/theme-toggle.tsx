@@ -30,13 +30,13 @@ export function ThemeToggle() {
             size="icon"
             onClick={toggleTheme}
             className={cn(
-                "fixed top-4 right-4 z-[9999] rounded-full w-10 h-10 shadow-xl backdrop-blur-md bg-background/50 border-input transition-all duration-300 hover:scale-105",
+                "fixed bottom-4 right-4 z-[9999] rounded-full w-6 h-6 shadow-xl backdrop-blur-md bg-background/50 border-input transition-all duration-300 hover:scale-105",
                 "dark:bg-zinc-900/50 dark:border-zinc-800"
             )}
             title="Cambiar tema"
         >
-            <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-            <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+            <Sun className="h-3 w-3 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+            <Moon className="absolute h-3 w-3 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
             <span className="sr-only">Toggle theme</span>
         </Button>
     )

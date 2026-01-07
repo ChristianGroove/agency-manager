@@ -1518,3 +1518,18 @@
 [2026-01-07T17:09:32.676Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"contacts":[{"profile":{"name":"Christian Groove"},"wa_id":"573006705958"}],"messages":[{"from":"573006705958","id":"wamid.HBgMNTczMDA2NzA1OTU4FQIAEhgWM0VCMEQ2RjA0Q0VEMEU2NTYwNzQ2QwA=","timestamp":"1767805771","text":{"body":"ui"},"type":"text"}]},"field":"messages"}]}]}
 [2026-01-07T17:09:35.692Z] [ROUTE] Result: {"success":true}
 [2026-01-07T17:09:35.883Z] [ROUTE] Result: {"success":true}
+[2026-01-07T17:16:11.655Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T17:16:11.656Z] [ROUTE] Channel: whatsapp
+[2026-01-07T17:16:11.658Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"contacts":[{"profile":{"name":"Christian Groove"},"wa_id":"573006705958"}],"messages":[{"from":"573006705958","id":"wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUNBRDRCMkJEM0QwRDE5RDQ4M0JCNUQ3MUMzQjM3QTIA","timestamp":"1767806170","text":{"body":"Jfkf"},"type":"text"}]},"field":"messages"}]}]}
+[2026-01-07T17:16:12.121Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T17:16:12.122Z] [ROUTE] Channel: whatsapp
+[2026-01-07T17:16:12.124Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"contacts":[{"profile":{"name":"Christian Groove"},"wa_id":"573006705958"}],"messages":[{"from":"573006705958","id":"wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUNDQzAwNjM2NjhBNDgwQkUxNzcyMzQ5MEQ0N0MwQTEA","timestamp":"1767806171","text":{"body":"Jqjf"},"type":"text"}]},"field":"messages"}]}]}
+[2026-01-07T17:16:13.672Z] [ROUTE] 
+========== WEBHOOK POST RECEIVED ==========
+[2026-01-07T17:16:13.673Z] [ROUTE] Channel: whatsapp
+[2026-01-07T17:16:13.674Z] [ROUTE] Body: {"object":"whatsapp_business_account","entry":[{"id":"2387223785072271","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"573248322720","phone_number_id":"990154037504132"},"contacts":[{"profile":{"name":"Christian Groove"},"wa_id":"573006705958"}],"messages":[{"from":"573006705958","id":"wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUMxMTYyNzBCMDgxRDJBMzQyQkU1RjBDNTNBRjkwRUQA","timestamp":"1767806172","text":{"body":"Bgnfkfkdke"},"type":"text"}]},"field":"messages"}]}]}
+[2026-01-07T17:16:15.573Z] [ROUTE] Result: {"success":true}
+[2026-01-07T17:16:15.582Z] [ROUTE] Result: {"success":true}
+[2026-01-07T17:16:16.846Z] [ROUTE] Result: {"success":true}

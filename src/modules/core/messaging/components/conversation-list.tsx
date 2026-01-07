@@ -233,7 +233,7 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
                         >
                             Unread
                             {counts.unread > 0 && (
-                                <Badge className="ml-1.5 h-5 min-w-[1.25rem] px-1 bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 border-none shadow-sm transition-transform data-[state=active]:scale-110">
+                                <Badge className="ml-1.5 h-5 min-w-[1.25rem] px-1 bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 border-none shadow-sm transition-transform data-[state=active]:scale-110 flex items-center justify-center">
                                     {counts.unread}
                                 </Badge>
                             )}

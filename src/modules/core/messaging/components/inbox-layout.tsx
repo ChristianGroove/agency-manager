@@ -89,7 +89,7 @@ export function InboxLayout() {
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
         >
-            <div className="flex h-full w-full bg-background dark:bg-zinc-950/50 backdrop-blur-sm overflow-hidden relative rounded-2xl border border-border shadow-sm">
+            <div className="flex h-full w-full bg-background/95 dark:bg-zinc-950/90 backdrop-blur-xl overflow-hidden relative rounded-2xl border border-border/50 shadow-2xl shadow-black/5 dark:shadow-black/20">
 
                 {/* Left Pane */}
                 <div className="w-full md:w-[320px] lg:w-[380px] flex-none border-r border-border flex flex-col bg-white dark:bg-zinc-900/50 relative">
@@ -109,13 +109,13 @@ export function InboxLayout() {
                             isContextOpen={isContextOpen}
                         />
                     ) : (
-                        <div className="flex h-full flex-col items-center justify-center text-muted-foreground gap-4 p-8 text-center bg-dot-pattern">
+                        <div className="flex h-full flex-col items-center justify-center text-muted-foreground gap-4 text-center bg-dot-pattern">
                             <div className="h-20 w-20 rounded-2xl bg-muted/20 flex items-center justify-center">
                                 <span className="text-4xl">📬</span>
                             </div>
                             <div>
                                 <h3 className="font-semibold text-lg text-foreground">Tu Inbox está listo</h3>
-                                <p className="text-sm max-w-xs mx-auto mt-2">Selecciona una conversación de la izquierda para comenzar a chatear.</p>
+                                <p className="text-sm max-w-xs">Selecciona una conversación de la izquierda para comenzar a chatear.</p>
                             </div>
                         </div>
                     )}
@@ -127,7 +127,7 @@ export function InboxLayout() {
                         {selectedConversationId ? (
                             <ContextDeck conversationId={selectedConversationId} />
                         ) : (
-                            <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground p-6 text-center">
+                            <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground text-center">
                                 <p>Selecciona un chat para ver detalles</p>
                             </div>
                         )}

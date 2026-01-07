@@ -1167,3 +1167,30 @@
 [2026-01-07T17:09:34.669Z] [AutomationTrigger] Found 1 active message workflows. Checking conditions... 
 [2026-01-07T17:09:34.834Z] [AutomationTrigger] Lead undefined has null prior conversations, skipping first_contact trigger 
 [2026-01-07T17:09:34.917Z] [AutomationTrigger] Lead undefined has null prior conversations, skipping first_contact trigger 
+[2026-01-07T17:16:11.665Z] [InboxService] Processing message from: "573006705958"
+[2026-01-07T17:16:11.666Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T17:16:12.130Z] [InboxService] Processing message from: "573006705958"
+[2026-01-07T17:16:12.132Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T17:16:12.210Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T17:16:12.534Z] [InboxService] Found existing lead: "ba80a936-866b-43be-87e1-c4196129651e"
+[2026-01-07T17:16:12.604Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T17:16:12.911Z] [InboxService] Found existing lead: "ba80a936-866b-43be-87e1-c4196129651e"
+[2026-01-07T17:16:13.319Z] [InboxService] Using conversation: a2a5e764-0d10-49c0-84eb-2a244252da4b 
+[2026-01-07T17:16:13.450Z] [InboxService] Using conversation: a2a5e764-0d10-49c0-84eb-2a244252da4b 
+[2026-01-07T17:16:13.626Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUNBRDRCMkJEM0QwRDE5RDQ4M0JCNUQ3MUMzQjM3QTIA 
+[2026-01-07T17:16:13.628Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Jfkf"}" for conv: a2a5e764-0d10-49c0-84eb-2a244252da4b 
+[2026-01-07T17:16:13.680Z] [InboxService] Processing message from: "573006705958"
+[2026-01-07T17:16:13.682Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T17:16:13.729Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUNDQzAwNjM2NjhBNDgwQkUxNzcyMzQ5MEQ0N0MwQTEA 
+[2026-01-07T17:16:13.730Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Jqjf"}" for conv: a2a5e764-0d10-49c0-84eb-2a244252da4b 
+[2026-01-07T17:16:13.948Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T17:16:14.208Z] [InboxService] Found existing lead: "ba80a936-866b-43be-87e1-c4196129651e"
+[2026-01-07T17:16:14.453Z] [AutomationTrigger] Found 1 active message workflows. Checking conditions... 
+[2026-01-07T17:16:14.464Z] [AutomationTrigger] Found 1 active message workflows. Checking conditions... 
+[2026-01-07T17:16:14.752Z] [InboxService] Using conversation: a2a5e764-0d10-49c0-84eb-2a244252da4b 
+[2026-01-07T17:16:14.756Z] [AutomationTrigger] Lead undefined has null prior conversations, skipping first_contact trigger 
+[2026-01-07T17:16:14.758Z] [AutomationTrigger] Lead undefined has null prior conversations, skipping first_contact trigger 
+[2026-01-07T17:16:15.002Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUMxMTYyNzBCMDgxRDJBMzQyQkU1RjBDNTNBRjkwRUQA 
+[2026-01-07T17:16:15.004Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Bgnfkfkdke"}" for conv: a2a5e764-0d10-49c0-84eb-2a244252da4b 
+[2026-01-07T17:16:15.690Z] [AutomationTrigger] Found 1 active message workflows. Checking conditions... 
+[2026-01-07T17:16:15.981Z] [AutomationTrigger] Lead undefined has null prior conversations, skipping first_contact trigger 
