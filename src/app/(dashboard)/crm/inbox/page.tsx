@@ -7,8 +7,10 @@ export const metadata = {
 
 export default function CRMInboxPage() {
     return (
-        <div className="h-[calc(100vh-3rem)] w-[calc(100%-3rem)] mx-auto flex flex-col overflow-hidden">
-            <InboxLayout />
+        <div className="-m-8 h-screen overflow-hidden">
+            <div className="p-8 h-full">
+                <InboxLayout />
+            </div>
         </div>
     )
 }

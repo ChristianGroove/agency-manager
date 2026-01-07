@@ -48,12 +48,16 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
     const [isRepliesSheetOpen, setIsRepliesSheetOpen] = useState(false)
 
     const scrollRef = useRef<HTMLDivElement>(null)
+    const scrollContainerRef = useRef<HTMLDivElement>(null)
     const fileInputRef = useRef<HTMLInputElement>(null)
 
     const scrollToBottom = () => {
         setTimeout(() => {
-            if (scrollRef.current) {
-                scrollRef.current.scrollIntoView({ behavior: 'smooth' })
+            if (scrollContainerRef.current) {
+                const scrollElement = scrollContainerRef.current.querySelector('[data-radix-scroll-area-viewport]')
+                if (scrollElement) {
+                    scrollElement.scrollTop = scrollElement.scrollHeight
+                }
             }
         }, 100)
     }
@@ -94,7 +98,7 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
             if (data) {
                 setMessages(data)
                 // Scroll to bottom
-                setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
+                scrollToBottom()
             }
         }
 
@@ -314,7 +318,7 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
             </div>
 
             {/* Messages Area */}
-            <ScrollArea className="flex-1 p-2 md:p-4 min-h-0">
+            <ScrollArea ref={scrollContainerRef} className="flex-1 p-2 md:p-4 min-h-0">
                 <div className="flex flex-col gap-2 max-w-4xl mx-auto py-2">
                     {messages.map((msg, index) => {
                         const currentDate = new Date(msg.created_at).toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })

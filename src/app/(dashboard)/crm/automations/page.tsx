@@ -20,20 +20,22 @@ export default async function CRMAutomationsPage() {
     ])
 
     return (
-        <AutomationsView
-            workflows={workflowsResult.data || []}
-            stats={stats ? {
-                totalExecutions: stats.total,
-                successRate: stats.total > 0 ? Math.round((stats.success / stats.total) * 100) : 0,
-                avgExecutionTime: Math.round(stats.avgDuration / 1000),
-                todayExecutions: stats.total,
-                failedToday: stats.failed,
-                activeWorkflows: workflowsResult.data?.filter(w => w.is_active).length || 0
-            } : undefined}
-            recentExecutions={executions?.map((e: any) => ({
-                ...e,
-                workflow: Array.isArray(e.workflows) ? e.workflows[0] : e.workflows
-            })) || []}
-        />
+        <div className="-m-8">
+            <AutomationsView
+                workflows={workflowsResult.data || []}
+                stats={stats ? {
+                    totalExecutions: stats.total,
+                    successRate: stats.total > 0 ? Math.round((stats.success / stats.total) * 100) : 0,
+                    avgExecutionTime: Math.round(stats.avgDuration / 1000),
+                    todayExecutions: stats.total,
+                    failedToday: stats.failed,
+                    activeWorkflows: workflowsResult.data?.filter(w => w.is_active).length || 0
+                } : undefined}
+                recentExecutions={executions?.map((e: any) => ({
+                    ...e,
+                    workflow: Array.isArray(e.workflows) ? e.workflows[0] : e.workflows
+                })) || []}
+            />
+        </div>
     )
 }

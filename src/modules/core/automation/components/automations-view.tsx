@@ -111,7 +111,7 @@ export function AutomationsView({
 
             <div className="flex-1 flex flex-col min-w-0">
                 <ScrollArea className="flex-1">
-                    <div className="p-6 space-y-8">
+                    <div className="p-8 space-y-8">
                         {/* Header */}
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                             <div>
@@ -155,7 +155,7 @@ export function AutomationsView({
                                 </Button>
 
                                 <Link href="/crm/automations/new">
-                                    <Button className="rounded-xl shadow-lg shadow-gray-200 bg-brand-pink hover:bg-brand-pink/90 transition-all hover:scale-105 active:scale-95">
+                                    <Button className="rounded-xl shadow-lg bg-brand-pink hover:bg-brand-pink/90 transition-all hover:scale-105 active:scale-95">
                                         <Plus className="h-4 w-4 mr-2" />
                                         Crear
                                     </Button>

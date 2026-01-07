@@ -326,12 +326,10 @@ export function Sidebar({ isCollapsed, toggleCollapse, currentOrgId, isSuperAdmi
         <TooltipProvider>
             <div
                 className={cn(
-                    "fixed left-4 top-4 bottom-4 h-auto bg-white/95 dark:bg-brand-dark/95 backdrop-blur-xl text-gray-900 dark:text-white rounded-2xl transition-all duration-300 ease-in-out z-50 flex flex-col shadow-2xl border border-gray-200 dark:border-white/10 select-none animate-float-sidebar",
+                    "fixed left-4 top-4 bottom-4 h-auto bg-white/95 dark:bg-brand-dark/95 backdrop-blur-xl text-gray-900 dark:text-white rounded-2xl transition-all duration-300 ease-in-out z-50 flex flex-col border border-gray-200 dark:border-white/10 select-none animate-float-sidebar",
+                    "shadow-[0_20px_40px_-12px_rgba(0,0,0,0.1)] dark:shadow-[0_0_40px_-5px_rgba(255,255,255,0.15)]",
                     isCollapsed ? "w-16" : "w-64"
                 )}
-                style={{
-                    boxShadow: shadowStyle
-                }}
                 onMouseDown={(e) => handleDragStart(e.clientX)}
                 onMouseMove={(e) => handleDragMove(e.clientX)}
                 onMouseUp={handleDragEnd}

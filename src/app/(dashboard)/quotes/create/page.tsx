@@ -2,8 +2,10 @@ import { QuoteBuilder } from "@/modules/core/quotes/quote-builder"
 
 export default function CreateQuotePage() {
     return (
-        <div className="p-8 bg-white min-h-screen">
-            <QuoteBuilder />
+        <div className="-m-8">
+            <div className="p-8 bg-white min-h-screen">
+                <QuoteBuilder />
+            </div>
         </div>
     )
 }

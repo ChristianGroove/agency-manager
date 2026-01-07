@@ -20,14 +20,14 @@ export function GrowthEcosystemShell({
 }: GrowthEcosystemShellProps) {
     return (
         <LeadInspectorProvider>
-            <div className="flex flex-col w-full h-full min-h-[calc(100vh-4rem)] -m-6">
+            <div className="flex flex-col w-full h-full min-h-[calc(100vh-4rem)]">
                 {/* CRM Navigation Removed - Now in Sidebar */}
                 {/* <div className="px-6 pt-6 pb-4 bg-gradient-to-b from-background to-background/80 backdrop-blur-sm border-b border-border/30">
                     <GrowthEcosystemNav />
                 </div> */}
 
                 {/* Main Workspace */}
-                <main className={`${fullHeight ? 'flex-1 overflow-hidden' : ''} ${noPadding ? 'p-0' : 'p-6'}`}>
+                <main className={`${fullHeight ? 'flex-1 overflow-hidden' : ''} ${noPadding ? 'p-6' : 'p-0'}`}>
                     {children}
                 </main>
             </div>
