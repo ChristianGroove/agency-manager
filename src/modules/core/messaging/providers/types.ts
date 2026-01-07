@@ -129,8 +129,9 @@ export interface IncomingMessage {
     channel: ChannelType;
     from: string;
     senderName?: string;
+    buttonId?: string; // ID for interactive responses (buttons/lists)
     content: {
-        type: 'text' | 'image' | 'unknown';
+        type: 'text' | 'image' | 'interactive' | 'unknown';
         text?: string;
         mediaUrl?: string;
         raw?: unknown;

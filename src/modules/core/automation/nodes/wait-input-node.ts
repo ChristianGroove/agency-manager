@@ -26,6 +26,9 @@ export interface WaitInputNodeData {
 
     // For button responses - map button IDs to branches
     buttonBranches?: Record<string, string>  // { "btn_yes": "branch_yes", "btn_no": "branch_no" }
+
+    // For text matching fallback
+    buttonOptions?: Array<{ id: string, title: string }>
 }
 
 export interface WaitInputResult {
@@ -101,8 +104,7 @@ export class WaitInputNode {
     }
 
     /**
-     * Process incoming input to check if it matches what we're waiting for.
-     * Called by the message handler when a new message arrives.
+     * Process incoming input to check if we can resume.
      */
     async processInput(
         pendingInput: any,
@@ -110,11 +112,29 @@ export class WaitInputNode {
     ): Promise<WaitInputResult> {
         try {
             const config = pendingInput.config as WaitInputNodeData
+            let processedMessage = { ...incomingMessage }
+
+            // Special Handling: Text-to-Button matching
+            // If we are waiting for a button click, but received text, check if it matches a button title
+            if (config.inputType === 'button_click' && processedMessage.type === 'text' && !processedMessage.buttonId) {
+                if (config.buttonOptions && config.buttonOptions.length > 0) {
+                    const cleanText = processedMessage.content.trim().toLowerCase()
+                    const matchedButton = config.buttonOptions.find(opt =>
+                        opt.title.trim().toLowerCase() === cleanText
+                    )
+
+                    if (matchedButton) {
+                        console.log(`[WaitInputNode] Matched text "${processedMessage.content}" to button ${matchedButton.id}`)
+                        processedMessage.type = 'interactive' // Treat as interactive now
+                        processedMessage.buttonId = matchedButton.id
+                    }
+                }
+            }
 
             // Check if input type matches
             if (config.inputType !== 'any') {
                 const typeMap: Record<string, string[]> = {
-                    'button_click': ['interactive'],
+                    'button_click': ['interactive', 'button_reply'],
                     'text': ['text'],
                     'image': ['image'],
                     'location': ['location'],
@@ -122,15 +142,16 @@ export class WaitInputNode {
                 }
 
                 const expectedTypes = typeMap[config.inputType] || [config.inputType]
-                if (!expectedTypes.includes(incomingMessage.type)) {
+                // Note: We check against processedMessage.type which might have been updated to 'interactive'
+                if (!expectedTypes.includes(processedMessage.type)) {
                     // Wrong type, still waiting
                     return { success: false, suspended: true, error: 'Waiting for different input type' }
                 }
             }
 
-            // Validate text input if needed
-            if (config.validation && incomingMessage.type === 'text') {
-                const isValid = this.validateInput(incomingMessage.content, config.validation)
+            // Validate text input if needed (only if it remains text)
+            if (config.validation && processedMessage.type === 'text') {
+                const isValid = this.validateInput(processedMessage.content, config.validation)
                 if (!isValid) {
                     return {
                         success: false,
@@ -142,8 +163,8 @@ export class WaitInputNode {
 
             // Determine which branch to follow for button clicks
             let nextBranchId: string | undefined
-            if (incomingMessage.buttonId && config.buttonBranches) {
-                nextBranchId = config.buttonBranches[incomingMessage.buttonId]
+            if (processedMessage.buttonId && config.buttonBranches) {
+                nextBranchId = config.buttonBranches[processedMessage.buttonId]
             }
 
             // Mark as completed
@@ -159,8 +180,8 @@ export class WaitInputNode {
             return {
                 success: true,
                 suspended: false,
-                userInput: incomingMessage.content,
-                buttonId: incomingMessage.buttonId,
+                userInput: processedMessage.content,
+                buttonId: processedMessage.buttonId,
                 nextBranchId
             }
 

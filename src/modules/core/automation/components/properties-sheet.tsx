@@ -37,7 +37,12 @@ export function PropertiesSheet({ node, isOpen, onClose, onUpdate, onDelete, onD
 
     useEffect(() => {
         if (node) {
-            setFormData(node.data || {});
+            const data = node.data || {};
+            // Set defaults for trigger node
+            if (node.type === 'trigger' && !data.triggerType) {
+                data.triggerType = 'webhook';
+            }
+            setFormData(data);
         }
     }, [node]);
 
@@ -359,14 +364,32 @@ export function PropertiesSheet({ node, isOpen, onClose, onUpdate, onDelete, onD
                                         <SelectValue placeholder="Seleccionar tipo" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="webhook">Mensaje Entrante (Webhook)</SelectItem>
-                                        <SelectItem value="manual" disabled>Manual / API (Próximamente)</SelectItem>
-                                        <SelectItem value="schedule" disabled>Programado (Próximamente)</SelectItem>
+                                        <SelectItem value="webhook">📨 Cualquier Mensaje</SelectItem>
+                                        <SelectItem value="first_contact">🆕 Solo Primer Contacto (Lead Nuevo)</SelectItem>
+                                        <SelectItem value="keyword">🔑 Palabra Clave Específica</SelectItem>
+                                        <SelectItem value="business_hours">🏢 Solo en Horario de Oficina</SelectItem>
+                                        <SelectItem value="outside_hours">🌙 Solo Fuera de Horario (Auto-Respuesta)</SelectItem>
+                                        <SelectItem value="media_received">📸 Media Recibida (Imagen/Video/Audio)</SelectItem>
+                                        <SelectItem value="schedule" disabled>⏰ Programado (Próximamente)</SelectItem>
                                     </SelectContent>
                                 </Select>
+                                <p className="text-xs text-muted-foreground">
+                                    {formData.triggerType === 'first_contact'
+                                        ? '🎯 Solo se dispara cuando un lead nuevo escribe por primera vez.'
+                                        : formData.triggerType === 'keyword'
+                                            ? '🔍 Solo se dispara cuando el mensaje contiene la palabra clave.'
+                                            : formData.triggerType === 'business_hours'
+                                                ? '🏢 Solo se dispara durante el horario laboral configurado.'
+                                                : formData.triggerType === 'outside_hours'
+                                                    ? '🌙 Se dispara cuando el mensaje llega fuera del horario de oficina.'
+                                                    : formData.triggerType === 'media_received'
+                                                        ? '📸 Se dispara cuando el usuario envía una imagen, video, audio o documento.'
+                                                        : '📬 Se dispara con cualquier mensaje entrante.'
+                                    }
+                                </p>
                             </div>
 
-                            {formData.triggerType === 'webhook' && (
+                            {(formData.triggerType === 'webhook' || formData.triggerType === 'first_contact' || formData.triggerType === 'keyword') && (
                                 <div className="space-y-4 p-4 bg-amber-50/50 dark:bg-amber-950/20 rounded-lg border border-amber-100 dark:border-amber-900/50">
                                     <div className="space-y-2">
                                         <Label>Canal</Label>
@@ -384,21 +407,109 @@ export function PropertiesSheet({ node, isOpen, onClose, onUpdate, onDelete, onD
                                                 <SelectItem value="instagram">Instagram</SelectItem>
                                             </SelectContent>
                                         </Select>
-                                        <p className="text-xs text-muted-foreground">El workflow se ejecutará cuando llegue un mensaje por este canal.</p>
                                     </div>
 
-                                    <div className="space-y-2">
-                                        <Label>Palabra Clave (Opcional)</Label>
-                                        <Input
-                                            value={(formData.keyword as string) || ''}
-                                            onChange={(e) => handleChange('keyword', e.target.value)}
-                                            placeholder="ej. info, precios, hola"
-                                            className="bg-white dark:bg-slate-900"
-                                        />
+                                    {formData.triggerType === 'keyword' && (
+                                        <div className="space-y-2">
+                                            <Label>Palabra Clave</Label>
+                                            <Input
+                                                value={(formData.keyword as string) || ''}
+                                                onChange={(e) => handleChange('keyword', e.target.value)}
+                                                placeholder="ej. info, precios, hola"
+                                                className="bg-white dark:bg-slate-900"
+                                            />
+                                            <p className="text-xs text-muted-foreground">
+                                                El workflow se dispara cuando el mensaje <strong>contiene</strong> esta palabra.
+                                            </p>
+                                        </div>
+                                    )}
+
+                                    {/* Cooldown Setting */}
+                                    <div className="space-y-2 pt-2 border-t border-amber-200 dark:border-amber-900/50">
+                                        <Label className="flex items-center gap-2">
+                                            <Clock className="h-3.5 w-3.5" />
+                                            Cooldown (Anti-Spam)
+                                        </Label>
+                                        <div className="flex gap-2 items-center">
+                                            <Input
+                                                type="number"
+                                                min="0"
+                                                value={(formData.cooldown_minutes as number) || 0}
+                                                onChange={(e) => handleChange('cooldown_minutes', parseInt(e.target.value) || 0)}
+                                                placeholder="0"
+                                                className="w-24 bg-white dark:bg-slate-900"
+                                            />
+                                            <span className="text-sm text-muted-foreground">minutos</span>
+                                        </div>
                                         <p className="text-xs text-muted-foreground">
-                                            Si se deja vacío, se ejecutará para <strong>cualquier mensaje</strong> en este canal.
+                                            Evita disparar el mismo workflow para el mismo lead dentro de este tiempo. Déjalo en 0 para desactivar.
                                         </p>
                                     </div>
+                                </div>
+                            )}
+
+                            {/* Business Hours Configuration */}
+                            {(formData.triggerType === 'business_hours' || formData.triggerType === 'outside_hours') && (
+                                <div className="space-y-4 p-4 bg-blue-50/50 dark:bg-blue-950/20 rounded-lg border border-blue-100 dark:border-blue-900/50">
+                                    <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
+                                        <Clock className="h-4 w-4" />
+                                        <Label className="text-sm font-semibold">Configuración de Horario</Label>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label>Hora Inicio</Label>
+                                            <Select
+                                                value={String((formData.start_hour as number) ?? 9)}
+                                                onValueChange={(v) => handleChange('start_hour', parseInt(v))}
+                                            >
+                                                <SelectTrigger className="bg-white dark:bg-slate-900">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {Array.from({ length: 24 }, (_, i) => (
+                                                        <SelectItem key={i} value={String(i)}>{String(i).padStart(2, '0')}:00</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>Hora Fin</Label>
+                                            <Select
+                                                value={String((formData.end_hour as number) ?? 18)}
+                                                onValueChange={(v) => handleChange('end_hour', parseInt(v))}
+                                            >
+                                                <SelectTrigger className="bg-white dark:bg-slate-900">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {Array.from({ length: 24 }, (_, i) => (
+                                                        <SelectItem key={i} value={String(i)}>{String(i).padStart(2, '0')}:00</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
+
+                                    <p className="text-xs text-muted-foreground">
+                                        {formData.triggerType === 'business_hours'
+                                            ? 'El workflow solo se dispara durante este horario (Lunes a Viernes por defecto).'
+                                            : 'El workflow se dispara FUERA de este horario (ideal para mensajes automáticos de "fuera de oficina").'
+                                        }
+                                    </p>
+                                </div>
+                            )}
+
+                            {/* Media Received Configuration */}
+                            {formData.triggerType === 'media_received' && (
+                                <div className="space-y-4 p-4 bg-purple-50/50 dark:bg-purple-950/20 rounded-lg border border-purple-100 dark:border-purple-900/50">
+                                    <div className="flex items-center gap-2 text-purple-600 dark:text-purple-400">
+                                        <Box className="h-4 w-4" />
+                                        <Label className="text-sm font-semibold">Tipos de Media</Label>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">
+                                        Este trigger se dispara cuando el usuario envía: imágenes, videos, audios, documentos, stickers o ubicaciones.
+                                    </p>
                                 </div>
                             )}
                         </div>
@@ -1104,62 +1215,191 @@ export function PropertiesSheet({ node, isOpen, onClose, onUpdate, onDelete, onD
                             </div>
 
                             <div className="space-y-3 pt-2">
-                                <div className="flex items-center justify-between">
-                                    <Label>Opciones (Botones)</Label>
-                                    <span className="text-xs text-muted-foreground">
-                                        {((formData.buttons as any[]) || []).length} / {formData.messageType === 'list' ? 10 : 3}
-                                    </span>
-                                </div>
-
-                                {((formData.buttons as Array<{ id: string, title: string }>) || []).map((btn, index) => (
-                                    <div key={index} className="flex gap-2 items-center">
-                                        <div className="grid grid-cols-[1fr,auto] gap-2 flex-1">
-                                            <Input
-                                                value={btn.title}
-                                                onChange={(e) => {
-                                                    const buttons = (formData.buttons as any[]) || [];
-                                                    buttons[index] = { ...buttons[index], title: e.target.value };
-                                                    handleChange('buttons', buttons);
-                                                }}
-                                                placeholder={`Opción ${index + 1}`}
-                                                className="h-9 bg-white dark:bg-slate-950"
-                                            />
-                                            <div className="h-9 px-3 flex items-center justify-center bg-slate-100 rounded text-xs font-mono text-slate-500">
-                                                {btn.id}
-                                            </div>
+                                {/* Buttons Configuration */}
+                                {formData.messageType === 'buttons' && (
+                                    <>
+                                        <div className="flex items-center justify-between">
+                                            <Label>Opciones (Botones)</Label>
+                                            <span className="text-xs text-muted-foreground">
+                                                {((formData.buttons as any[]) || []).length} / 3
+                                            </span>
                                         </div>
+
+                                        {((formData.buttons as Array<{ id: string, title: string }>) || []).map((btn, index) => (
+                                            <div key={index} className="flex gap-2 items-center">
+                                                <div className="grid grid-cols-[1fr,auto] gap-2 flex-1">
+                                                    <Input
+                                                        value={btn.title}
+                                                        onChange={(e) => {
+                                                            const buttons = (formData.buttons as any[]) || [];
+                                                            buttons[index] = { ...buttons[index], title: e.target.value };
+                                                            handleChange('buttons', buttons);
+                                                        }}
+                                                        placeholder={`Opción ${index + 1}`}
+                                                        className="h-9 bg-white dark:bg-slate-950"
+                                                    />
+                                                    <div className="h-9 px-3 flex items-center justify-center bg-slate-100 rounded text-xs font-mono text-slate-500">
+                                                        {btn.id}
+                                                    </div>
+                                                </div>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    onClick={() => {
+                                                        const buttons = (formData.buttons as any[]) || [];
+                                                        handleChange('buttons', buttons.filter((_, i) => i !== index));
+                                                    }}
+                                                    className="h-9 w-9 text-slate-400 hover:text-red-500"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </Button>
+                                            </div>
+                                        ))}
+
                                         <Button
-                                            variant="ghost"
-                                            size="icon"
+                                            variant="outline"
+                                            size="sm"
                                             onClick={() => {
                                                 const buttons = (formData.buttons as any[]) || [];
-                                                handleChange('buttons', buttons.filter((_, i) => i !== index));
+                                                if (buttons.length >= 3) {
+                                                    toast.error(`Máximo 3 opciones permitidas`);
+                                                    return;
+                                                }
+                                                const newId = `btn_${Math.random().toString(36).substr(2, 5)}`;
+                                                handleChange('buttons', [...buttons, { id: newId, title: '' }]);
                                             }}
-                                            className="h-9 w-9 text-slate-400 hover:text-red-500"
+                                            className="w-full border-dashed"
                                         >
-                                            <Trash2 size={16} />
+                                            <Plus size={14} className="mr-2" />
+                                            Agregar Botón
                                         </Button>
-                                    </div>
-                                ))}
+                                    </>
+                                )}
 
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => {
-                                        const buttons = (formData.buttons as any[]) || [];
-                                        const max = formData.messageType === 'list' ? 10 : 3;
-                                        if (buttons.length >= max) {
-                                            toast.error(`Máximo ${max} opciones permitidas`);
-                                            return;
-                                        }
-                                        const newId = `btn_${Math.random().toString(36).substr(2, 5)}`;
-                                        handleChange('buttons', [...buttons, { id: newId, title: '' }]);
-                                    }}
-                                    className="w-full border-dashed"
-                                >
-                                    <Plus size={14} className="mr-2" />
-                                    Agregar Opción
-                                </Button>
+                                {/* List Configuration */}
+                                {formData.messageType === 'list' && (
+                                    <>
+                                        <div className="space-y-2">
+                                            <Label>Texto del Botón de Menú</Label>
+                                            <Input
+                                                value={(formData.listButtonText as string) || ''}
+                                                onChange={(e) => handleChange('listButtonText', e.target.value)}
+                                                placeholder="Ej: Ver Opciones"
+                                                className="bg-slate-50 dark:bg-slate-900"
+                                            />
+                                        </div>
+
+                                        <div className="flex items-center justify-between mt-4">
+                                            <Label>Secciones de la Lista</Label>
+                                        </div>
+
+                                        {((formData.sections as Array<{ title?: string, rows: Array<{ id: string, title: string, description?: string }> }>) || []).map((section, sIdx) => (
+                                            <div key={sIdx} className="border rounded-lg p-3 space-y-3 bg-slate-50/50">
+                                                <div className="flex items-center gap-2">
+                                                    <Input
+                                                        value={section.title || ''}
+                                                        onChange={(e) => {
+                                                            const sections = (formData.sections as any[]) || [];
+                                                            sections[sIdx] = { ...sections[sIdx], title: e.target.value };
+                                                            handleChange('sections', sections);
+                                                        }}
+                                                        placeholder="Título de Sección (Opcional)"
+                                                        className="h-8 font-semibold"
+                                                    />
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        onClick={() => {
+                                                            const sections = (formData.sections as any[]) || [];
+                                                            handleChange('sections', sections.filter((_, i) => i !== sIdx));
+                                                        }}
+                                                        className="h-8 w-8 text-slate-400 hover:text-red-500"
+                                                    >
+                                                        <Trash2 size={14} />
+                                                    </Button>
+                                                </div>
+
+                                                <div className="space-y-2 pl-2 border-l-2 border-slate-200">
+                                                    {section.rows.map((row, rIdx) => (
+                                                        <div key={rIdx} className="grid grid-cols-[1fr,auto] gap-2 items-start">
+                                                            <div className="space-y-1">
+                                                                <Input
+                                                                    value={row.title}
+                                                                    onChange={(e) => {
+                                                                        const sections = (formData.sections as any[]) || [];
+                                                                        sections[sIdx].rows[rIdx].title = e.target.value;
+                                                                        handleChange('sections', sections);
+                                                                    }}
+                                                                    placeholder="Título de opción"
+                                                                    className="h-8 text-sm"
+                                                                />
+                                                                <Input
+                                                                    value={row.description || ''}
+                                                                    onChange={(e) => {
+                                                                        const sections = (formData.sections as any[]) || [];
+                                                                        sections[sIdx].rows[rIdx].description = e.target.value;
+                                                                        handleChange('sections', sections);
+                                                                    }}
+                                                                    placeholder="Descripción (opcional)"
+                                                                    className="h-7 text-xs text-muted-foreground"
+                                                                />
+                                                            </div>
+                                                            <div className="flex flex-col gap-1 items-end">
+                                                                <div className="h-7 px-2 flex items-center justify-center bg-slate-100 rounded text-[10px] font-mono text-slate-500">
+                                                                    {row.id}
+                                                                </div>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    onClick={() => {
+                                                                        const sections = (formData.sections as any[]) || [];
+                                                                        sections[sIdx].rows = section.rows.filter((_, i) => i !== rIdx);
+                                                                        handleChange('sections', sections);
+                                                                    }}
+                                                                    className="h-7 w-7 text-slate-400 hover:text-red-500"
+                                                                >
+                                                                    <Trash2 size={14} />
+                                                                </Button>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => {
+                                                            const sections = (formData.sections as any[]) || [];
+                                                            const newId = `row_${Math.random().toString(36).substr(2, 5)}`;
+                                                            sections[sIdx].rows.push({ id: newId, title: '', description: '' });
+                                                            handleChange('sections', sections);
+                                                        }}
+                                                        className="w-full h-8 text-xs border-dashed border"
+                                                    >
+                                                        <Plus size={12} className="mr-2" />
+                                                        Agregar Opción a Sección
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        ))}
+
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => {
+                                                const sections = (formData.sections as any[]) || [];
+                                                if (sections.length >= 10) {
+                                                    toast.error(`Máximo 10 secciones permitidas`);
+                                                    return;
+                                                }
+                                                handleChange('sections', [...sections, { title: '', rows: [] }]);
+                                            }}
+                                            className="w-full border-dashed"
+                                        >
+                                            <Plus size={14} className="mr-2" />
+                                            Agregar Nueva Sección
+                                        </Button>
+                                    </>
+                                )}
                             </div>
                         </div>
                     )}

@@ -97,20 +97,51 @@ export async function createConnection(params: CreateConnectionParams) {
         console.warn(`No adapter found for provider: ${params.provider_key}. Skipping verification.`)
     }
 
-    const { error } = await supabase.from('integration_connections').insert({
-        organization_id: orgMember.organization_id,
-        provider_key: params.provider_key,
-        connection_name: params.connection_name,
-        credentials: mockEncrypt(params.credentials),
-        config: params.config || {},
-        metadata: params.metadata || {},
-        status: 'active',
-        last_synced_at: new Date().toISOString()
-    })
+    // Check if connection with same provider_key already exists for this org
+    const { data: existingConn } = await supabase
+        .from('integration_connections')
+        .select('id')
+        .eq('organization_id', orgMember.organization_id)
+        .eq('provider_key', params.provider_key)
+        .limit(1)
+        .single()
+
+    let error: any = null
+
+    if (existingConn) {
+        // UPDATE existing connection (e.g. refreshing token)
+        const result = await supabase.from('integration_connections').update({
+            connection_name: params.connection_name,
+            credentials: mockEncrypt(params.credentials),
+            config: params.config || {},
+            metadata: params.metadata || {},
+            status: 'active',
+            last_synced_at: new Date().toISOString()
+        }).eq('id', existingConn.id)
+
+        error = result.error
+        if (!error) {
+            console.log(`[Integrations] Updated existing connection: ${existingConn.id}`)
+        }
+    } else {
+        // INSERT new connection
+        const result = await supabase.from('integration_connections').insert({
+            organization_id: orgMember.organization_id,
+            provider_key: params.provider_key,
+            connection_name: params.connection_name,
+            credentials: mockEncrypt(params.credentials),
+            config: params.config || {},
+            metadata: params.metadata || {},
+            status: 'active',
+            last_synced_at: new Date().toISOString()
+        })
+
+        error = result.error
+    }
 
     if (error) {
-        console.error("Error creating connection:", error)
-        return { error: "Failed to create connection" }
+        console.error("Error creating/updating connection:", error)
+        return { error: "Failed to create/update connection" }
     }
 
     revalidatePath('/platform/integrations')

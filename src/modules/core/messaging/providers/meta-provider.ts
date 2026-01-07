@@ -101,6 +101,16 @@ export class MetaProvider implements MessagingProvider {
                                 const contact = change.value.contacts?.find((c: any) => c.wa_id === msg.from);
                                 const content = await this.parseMessageContent(msg);
 
+                                // Extract button ID if interactive
+                                let buttonId = undefined;
+                                if (msg.type === 'interactive') {
+                                    if (msg.interactive.type === 'button_reply') {
+                                        buttonId = msg.interactive.button_reply.id;
+                                    } else if (msg.interactive.type === 'list_reply') {
+                                        buttonId = msg.interactive.list_reply.id;
+                                    }
+                                }
+
                                 messages.push({
                                     id: msg.id,
                                     externalId: msg.id,
@@ -109,6 +119,7 @@ export class MetaProvider implements MessagingProvider {
                                     senderName: contact?.profile?.name || 'Unknown',
                                     timestamp: new Date(parseInt(msg.timestamp) * 1000),
                                     content: content,
+                                    buttonId: buttonId, // Populate buttonId
                                     metadata: {
                                         phoneNumberId: change.value.metadata?.phone_number_id,
                                         displayPhoneNumber: change.value.metadata?.display_phone_number
@@ -130,78 +141,48 @@ export class MetaProvider implements MessagingProvider {
      * Helper to download media from Meta and upload to Supabase
      */
     private async processMedia(mediaId: string, mimeType?: string): Promise<string> {
-        console.log(`[MetaProvider] 🎬 Starting media processing for ID: ${mediaId}, mimeType: ${mimeType}`);
-
         try {
             // 1. Get Media URL from Meta
-            console.log(`[MetaProvider] 📡 Step 1: Fetching media URL from Meta API`);
             const urlRes = await fetch(`https://graph.facebook.com/v18.0/${mediaId}`, {
                 headers: { 'Authorization': `Bearer ${this.apiToken}` }
             });
 
-            if (!urlRes.ok) {
-                const errorText = await urlRes.text();
-                console.error(`[MetaProvider] ❌ Failed to get media URL. Status: ${urlRes.status}, Response: ${errorText}`);
-                throw new Error(`Failed to get media URL: ${urlRes.statusText}`);
-            }
-
+            if (!urlRes.ok) throw new Error(`Failed to get media URL: ${urlRes.statusText}`);
             const urlData = await urlRes.json();
             const mediaUrl = urlData.url;
-            console.log(`[MetaProvider] ✅ Step 1 Complete: Got media URL: ${mediaUrl?.substring(0, 50)}...`);
 
             // 2. Download Media Binary
-            console.log(`[MetaProvider] 📥 Step 2: Downloading media binary`);
             const mediaRes = await fetch(mediaUrl, {
                 headers: { 'Authorization': `Bearer ${this.apiToken}` }
             });
 
-            if (!mediaRes.ok) {
-                const errorText = await mediaRes.text();
-                console.error(`[MetaProvider] ❌ Failed to download media. Status: ${mediaRes.status}, Response: ${errorText}`);
-                throw new Error(`Failed to download media binary: ${mediaRes.statusText}`);
-            }
-
+            if (!mediaRes.ok) throw new Error(`Failed to download media binary: ${mediaRes.statusText}`);
             const arrayBuffer = await mediaRes.arrayBuffer();
             const buffer = Buffer.from(arrayBuffer);
-            const sizeKB = (buffer.length / 1024).toFixed(2);
-            console.log(`[MetaProvider] ✅ Step 2 Complete: Downloaded ${sizeKB} KB`);
 
             // 3. Upload to Supabase Storage
-            console.log(`[MetaProvider] ☁️ Step 3: Uploading to Supabase Storage`);
             const ext = mimeType ? mimeType.split('/')[1]?.split(';')[0] : 'bin';
             const fileName = `whatsapp/${new Date().getFullYear()}/${Date.now()}_${mediaId}.${ext}`;
-            console.log(`[MetaProvider] 📝 Upload path: ${fileName}`);
 
-            const { data, error } = await supabaseAdmin.storage
+            const { error } = await supabaseAdmin.storage
                 .from('chat-attachments')
                 .upload(fileName, buffer, {
                     contentType: mimeType || 'application/octet-stream',
                     upsert: true
                 });
 
-            if (error) {
-                console.error(`[MetaProvider] ❌ Supabase upload failed:`, error);
-                throw error;
-            }
-
-            console.log(`[MetaProvider] ✅ Step 3 Complete: Uploaded successfully`);
+            if (error) throw error;
 
             // 4. Get Public URL
-            console.log(`[MetaProvider] 🔗 Step 4: Generating public URL`);
             const { data: { publicUrl } } = supabaseAdmin.storage
                 .from('chat-attachments')
                 .getPublicUrl(fileName);
 
-            console.log(`[MetaProvider] 🎉 Media processing complete! Public URL: ${publicUrl}`);
             return publicUrl;
 
         } catch (error) {
-            console.error(`[MetaProvider] 💥 FATAL: Media Processing Failed for ID ${mediaId}:`, error);
-            console.error(`[MetaProvider] Error details:`, {
-                message: error instanceof Error ? error.message : 'Unknown',
-                stack: error instanceof Error ? error.stack : undefined
-            });
-            return ""; // Fallback to empty string
+            console.error(`[MetaProvider] Media Processing Failed for ID ${mediaId}:`, error);
+            return "";
         }
     }
 
@@ -264,6 +245,34 @@ export class MetaProvider implements MessagingProvider {
                 mediaUrl: publicUrl,
                 text: caption || filename,
                 raw: msg.document
+            } as any;
+        }
+
+        if (msg.type === 'interactive') {
+            const interactive = msg.interactive;
+            let buttonId = '';
+            let title = '';
+
+            if (interactive.type === 'button_reply') {
+                buttonId = interactive.button_reply.id;
+                title = interactive.button_reply.title;
+            } else if (interactive.type === 'list_reply') {
+                buttonId = interactive.list_reply.id;
+                title = interactive.list_reply.title;
+                // description is also available: interactive.list_reply.description
+            }
+
+            return {
+                type: 'interactive',
+                text: title, // Use title as text for fallback/display
+                raw: interactive,
+                // We will extract buttonId in parseWebhook loop, or return it here as part of extended content
+                // But IncomingMessage expects buttonId at root. 
+                // Let's attach it to content for now and extract it up in loop, OR return it here if we change return type.
+                // Since types.ts defines content as fixed type, we can put it there if we cast or change types.
+                // BEST APPROACH: Return it as part of 'raw' or handling it in the loop. 
+                // Wait, parseWebhook calls this.
+                // Let's change parseWebhook loop to use this return.
             } as any;
         }
 

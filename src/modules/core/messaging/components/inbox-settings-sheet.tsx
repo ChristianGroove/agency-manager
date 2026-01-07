@@ -7,6 +7,9 @@ import { Settings, User, Zap, Sparkles } from "lucide-react"
 import { AgentWorkloadDashboard } from "./agent-workload-dashboard"
 import { AssignmentRulesManager } from "./assignment-rules-manager"
 import { Separator } from "@/components/ui/separator"
+import { NotificationsCard } from "@/modules/core/preferences/components/notifications-card"
+import { ProductivityCard } from "@/modules/core/preferences/components/productivity-card"
+import { DisplayCard } from "@/modules/core/preferences/components/display-card"
 
 interface InboxSettingsSheetProps {
     open: boolean
@@ -56,7 +59,14 @@ export function InboxSettingsSheet({ open, onOpenChange }: InboxSettingsSheetPro
                                         className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm px-4"
                                     >
                                         <Zap className="h-4 w-4 mr-2" />
-                                        Reglas de Asignación
+                                        Reglas
+                                    </TabsTrigger>
+                                    <TabsTrigger
+                                        value="preferences"
+                                        className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm px-4"
+                                    >
+                                        <Sparkles className="h-4 w-4 mr-2" />
+                                        Preferencias
                                     </TabsTrigger>
                                 </TabsList>
                             </div>
@@ -82,6 +92,18 @@ export function InboxSettingsSheet({ open, onOpenChange }: InboxSettingsSheetPro
                                         </p>
                                     </div>
                                     <AssignmentRulesManager />
+                                </TabsContent>
+
+                                <TabsContent value="preferences" className="mt-0 space-y-6 max-w-3xl">
+                                    <div className="space-y-1 mb-6">
+                                        <h3 className="text-lg font-semibold">Personalización & Zen</h3>
+                                        <p className="text-sm text-muted-foreground">
+                                            Ajusta notificaciones, sonidos y atajos para tu flujo ideal.
+                                        </p>
+                                    </div>
+                                    <NotificationsCard />
+                                    <ProductivityCard />
+                                    <DisplayCard />
                                 </TabsContent>
                             </div>
                         </Tabs>

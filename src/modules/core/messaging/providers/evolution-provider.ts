@@ -85,15 +85,33 @@ export class EvolutionProvider implements MessagingProvider {
             const text = msg.conversation || msg.extendedTextMessage?.text || msg.imageMessage?.caption || ""
 
             // Basic parsing
+            let type: IncomingMessage['content']['type'] = 'text';
+            let contentText = text;
+            let buttonId: string | undefined = undefined;
+
+            if (msg.imageMessage) type = 'image';
+
+            // Check for Interactive Responses (Buttons/Lists)
+            if (msg.buttonsResponseMessage) {
+                type = 'interactive';
+                buttonId = msg.buttonsResponseMessage.selectedButtonId;
+                contentText = msg.buttonsResponseMessage.selectedDisplayText;
+            } else if (msg.listResponseMessage) {
+                type = 'interactive';
+                buttonId = msg.listResponseMessage.singleSelectReply.selectedRowId;
+                contentText = msg.listResponseMessage.title || msg.listResponseMessage.description;
+            }
+
             const incoming: IncomingMessage = {
                 id: data.key?.id || Date.now().toString(),
                 externalId: data.key?.id,
                 channel: 'evolution',
                 from: from,
                 senderName: data.pushName,
+                buttonId: buttonId, // Populate buttonId
                 content: {
-                    type: msg.imageMessage ? 'image' : 'text',
-                    text: text,
+                    type: type,
+                    text: contentText,
                     // mediaUrl: ... (extracting media from Evolution requires fetching media Url separately usually)
                 },
                 timestamp: new Date(data.messageTimestamp ? data.messageTimestamp * 1000 : Date.now()),

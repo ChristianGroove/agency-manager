@@ -1,9 +1,10 @@
+
 "use client"
 
-import { useEffect, useState, useMemo } from "react"
+import { useEffect, useState, useMemo, useRef } from "react"
 import { supabase } from "@/lib/supabase"
 import { formatDistanceToNow } from "date-fns"
-import { Search, MessageSquare, Phone, User, Check, CheckCheck, Filter, Archive, UserCheck, Clock } from "lucide-react"
+import { Search, MessageSquare, Phone, User, Check, CheckCheck, Filter, Archive, UserCheck, Clock, Bell, BellOff, Settings as SettingsIcon } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -11,20 +12,19 @@ import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { Database } from "@/types/supabase"
 import { InboxSettingsSheet } from "./inbox-settings-sheet"
-import { Settings as SettingsIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ConversationActionsMenu } from "./conversation-actions-menu"
 import { ConversationListItem } from "./conversation-list-item"
+import { useMessageNotifications } from "@/modules/core/preferences/use-message-notifications"
+import { useInboxPreferences } from "@/modules/core/preferences/use-inbox-preferences"
+import { useInboxShortcuts } from "@/modules/core/preferences/use-inbox-shortcuts"
 
 // Extended type to include joined lead data
-// Extended type to include joined lead data and missing columns
 type Conversation = Database['public']['Tables']['conversations']['Row'] & {
     leads: {
         name: string | null
         phone: string | null
     } | null
-    // integration_connections FK doesn't exist yet - removed to fix PGRST200
-    // Add missing fields locally until types are regenerated
     state?: 'active' | 'archived' | 'closed'
     tags?: string[]
     priority?: string
@@ -44,6 +44,18 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
     const [loading, setLoading] = useState(true)
     const [currentUserId, setCurrentUserId] = useState<string | null>(null)
     const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+    const searchInputRef = useRef<HTMLInputElement>(null)
+    const { preferences, updatePreferences } = useInboxPreferences()
+
+    // Enable Global Notifications (Sound/Push)
+    useMessageNotifications();
+
+    // Enable Shortcuts
+    useInboxShortcuts({
+        onSearch: () => {
+            searchInputRef.current?.focus()
+        }
+    });
 
     // Get current user
     useEffect(() => {
@@ -162,23 +174,6 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
         }
     }, [conversations, currentUserId])
 
-    const getPriorityColor = (priority?: string | null) => {
-        switch (priority) {
-            case 'urgent': return 'bg-red-500'
-            case 'high': return 'bg-orange-500'
-            case 'normal': return 'bg-blue-500'
-            case 'low': return 'bg-gray-400'
-            default: return 'bg-gray-400'
-        }
-    }
-
-    const getPriorityIcon = (priority?: string | null) => {
-        if (priority === 'urgent' || priority === 'high') {
-            return '🔴'
-        }
-        return null
-    }
-
     return (
         <div className="flex flex-col h-full border-r bg-white dark:bg-zinc-950">
             <InboxSettingsSheet open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
@@ -190,21 +185,33 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
                         <MessageSquare className="h-5 w-5" />
                         Conversations
                     </h2>
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                        onClick={() => setIsSettingsOpen(true)}
-                        title="Inbox Settings"
-                    >
-                        <SettingsIcon className="h-4 w-4" />
-                    </Button>
+                    <div className="flex items-center gap-1">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className={cn("h-8 w-8 transition-colors", !preferences.notifications.sound_enabled && "text-amber-500 hover:text-amber-600")}
+                            onClick={() => updatePreferences('notifications', { sound_enabled: !preferences.notifications.sound_enabled })}
+                            title={preferences.notifications.sound_enabled ? "Mute Sounds (Focus Mode)" : "Unmute Sounds"}
+                        >
+                            {preferences.notifications.sound_enabled ? <Bell className="h-4 w-4" /> : <BellOff className="h-4 w-4" />}
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                            onClick={() => setIsSettingsOpen(true)}
+                            title="Inbox Settings"
+                        >
+                            <SettingsIcon className="h-4 w-4" />
+                        </Button>
+                    </div>
                 </div>
 
                 {/* Search */}
                 <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
+                        ref={searchInputRef}
                         placeholder="Search conversations..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}

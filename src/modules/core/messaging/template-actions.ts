@@ -1,111 +1,87 @@
 "use server"
 
 import { createClient } from "@/lib/supabase-server"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
 import { revalidatePath } from "next/cache"
 
-export type SavedReply = {
+export interface MessageTemplate {
     id: string
-    title: string
+    organization_id: string
+    channel_id: string | null
+    name: string
     content: string
-    category: string
-    tags: string[]
-    usage_count: number
+    category: 'text' | 'hsm'
+    status: 'active' | 'rejected'
     created_at: string
-    icon?: string
-    is_favorite?: boolean
 }
 
-export async function getSavedReplies() {
-    const supabase = await createClient()
+export async function getTemplates() {
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) return []
 
+    const supabase = await createClient()
+    const { data } = await supabase
+        .from("messaging_templates")
+        .select("*")
+        .eq("organization_id", orgId)
+        .order("created_at", { ascending: false })
+
+    return (data || []) as MessageTemplate[]
+}
+
+export async function createTemplate(input: {
+    name: string
+    content: string
+    category: 'text' | 'hsm'
+    channel_id?: string
+}) {
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) throw new Error("Organization context required")
+
+    const supabase = await createClient()
     const { data, error } = await supabase
-        .from('saved_replies')
-        .select('*')
-        .order('is_favorite', { ascending: false }) // Favorites first
-        .order('usage_count', { ascending: false }) // Most used first
-        .order('title', { ascending: true })
-
-    if (error) {
-        console.error('[TemplateActions] Failed to fetch:', error)
-        return []
-    }
-
-    return data as SavedReply[]
-}
-
-export async function createSavedReply(reply: Partial<SavedReply>) {
-    const supabase = await createClient()
-
-    const { error } = await supabase
-        .from('saved_replies')
+        .from("messaging_templates")
         .insert({
-            title: reply.title,
-            content: reply.content,
-            category: reply.category || 'General',
-            tags: reply.tags || [],
-            icon: reply.icon,
-            is_favorite: reply.is_favorite || false,
-            organization_id: 'db9d1288-80ab-48df-b130-a0739881c6f2' // Hardcoded for simplified dev
+            organization_id: orgId,
+            name: input.name,
+            content: input.content,
+            category: input.category,
+            channel_id: input.channel_id || null
         })
+        .select()
+        .single()
 
-    if (error) {
-        return { success: false, error: error.message }
-    }
-
-    revalidatePath('/inbox')
-    return { success: true }
+    if (error) throw new Error(error.message)
+    revalidatePath("/crm/settings/templates")
+    return data
 }
 
-export async function updateSavedReply(id: string, updates: Partial<SavedReply>) {
+export async function updateTemplate(id: string, input: Partial<MessageTemplate>) {
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) throw new Error("Organization context required")
+
     const supabase = await createClient()
-
     const { error } = await supabase
-        .from('saved_replies')
-        .update({
-            ...updates,
-            updated_at: new Date().toISOString()
-        })
-        .eq('id', id)
+        .from("messaging_templates")
+        .update(input)
+        .eq("id", id)
+        .eq("organization_id", orgId)
 
-    if (error) {
-        return { success: false, error: error.message }
-    }
-
-    revalidatePath('/inbox')
-    return { success: true }
+    if (error) throw new Error(error.message)
+    revalidatePath("/crm/settings/templates")
 }
 
-export async function deleteSavedReply(id: string) {
-    const supabase = await createClient()
+export async function deleteTemplate(id: string) {
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) throw new Error("Organization context required")
 
+    const supabase = await createClient()
     const { error } = await supabase
-        .from('saved_replies')
+        .from("messaging_templates")
         .delete()
-        .eq('id', id)
+        .eq("id", id)
+        .eq("organization_id", orgId)
 
-    if (error) {
-        return { success: false, error: error.message }
-    }
-
-    revalidatePath('/inbox')
-    return { success: true }
-}
-
-export async function incrementUsageCount(id: string) {
-    const supabase = await createClient()
-
-    // Using rpc or simple increment logic if strict atomic not needed for this scale
-    // For now, simple fetch + update (or raw sql if we had rpc)
-    // Let's rely on simple update for now
-
-    // Actually best way without RPC for increment is:
-    // This is race-condition prone but fine for MVP "usage stats"
-    const { data } = await supabase.from('saved_replies').select('usage_count').eq('id', id).single()
-
-    if (data) {
-        await supabase
-            .from('saved_replies')
-            .update({ usage_count: (data.usage_count || 0) + 1 })
-            .eq('id', id)
-    }
+    if (error) throw new Error(error.message)
+    revalidatePath("/crm/settings/templates")
 }

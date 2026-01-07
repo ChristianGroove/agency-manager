@@ -27,5 +27,25 @@ export interface IntegrationAdapter {
      * Called before removing the connection from DB.
      * Use this to deregister webhooks.
      */
+    /**
+     * Called before removing the connection from DB.
+     * Use this to deregister webhooks.
+     */
     onDisconnect?(connectionId: string, credentials: ConnectionCredentials): Promise<void>
+
+    /**
+     * Get QR Code for validation (optional)
+     * Returns base64 string or URL
+     */
+    getQrCode?(credentials: ConnectionCredentials): Promise<{ qr: string, type: 'base64' | 'url' } | null>
+
+    /**
+     * Check current connection health/status
+     */
+    checkConnectionStatus?(credentials: ConnectionCredentials): Promise<{ status: 'active' | 'inactive' | 'error', message?: string }>
+
+    /**
+     * Send a message via this provider
+     */
+    sendMessage?(credentials: ConnectionCredentials, recipient: string, content: any): Promise<{ messageId: string, metadata?: any }>
 }

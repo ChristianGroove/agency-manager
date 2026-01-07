@@ -58,25 +58,36 @@ export class ButtonsNode {
         selectedButtonId?: string
     }> {
         try {
-            console.log('[ButtonsNode] Executing with type:', data.messageType)
+            // Default to 'buttons' type if not specified
+            const messageType = data.messageType || 'buttons'
+            console.log('[ButtonsNode] Executing with type:', messageType)
 
             // Resolve variables in message content
-            const body = this.contextManager.resolve(data.body)
+            const body = this.contextManager.resolve(data.body || '')
             const footer = data.footer ? this.contextManager.resolve(data.footer) : undefined
 
-            // Get conversation info from context
-            const conversationId = (data.conversationId || this.contextManager.get('conversation.id')) as string
+            // Get conversation info from context - try multiple paths
+            const conversationId = (
+                data.conversationId ||
+                this.contextManager.get('conversation.id') ||
+                this.contextManager.get('conversationId')
+            ) as string
+
             const recipientPhone = this.contextManager.get('message.sender') ||
                 this.contextManager.get('lead.phone')
 
+            console.log('[ButtonsNode] Resolved conversationId:', conversationId)
+            console.log('[ButtonsNode] Body text:', body?.substring(0, 50))
+
             if (!conversationId) {
+                console.error('[ButtonsNode] Context:', JSON.stringify(this.contextManager.getAll(), null, 2).substring(0, 500))
                 return { success: false, error: 'No conversation ID available' }
             }
 
             // Build message content based on type
             let messageContent: any
 
-            switch (data.messageType) {
+            switch (messageType) {
                 case 'buttons':
                     const buttons: InteractiveButton[] = (data.buttons || []).map(btn => ({
                         id: btn.id,

@@ -1,21 +1,21 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { SavedReply, getSavedReplies, createSavedReply, updateSavedReply, deleteSavedReply } from "../template-actions"
+import { MessageTemplate, getTemplates, createTemplate, updateTemplate, deleteTemplate } from "../template-actions"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { Search, Plus, Star, Trash2, Edit2, Save, X, Smile, Reply, ArrowLeft, Zap, MessageSquare } from "lucide-react"
+import { Search, Plus, Star, Trash2, Edit2, Save, X, Smile, Reply, ArrowLeft, Zap, MessageSquare, FileText } from "lucide-react"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
-import dynamic from "next/dynamic"
+// import dynamic from "next/dynamic" // Emoji picker removed for now as icon is not in schema
 import { Label } from "@/components/ui/label"
 import { refineDraftContent } from "../ai/smart-replies"
 
-const EmojiPicker = dynamic(() => import('emoji-picker-react'), { ssr: false })
+// const EmojiPicker = dynamic(() => import('emoji-picker-react'), { ssr: false })
 
 interface SavedRepliesSheetProps {
     open: boolean
@@ -24,10 +24,9 @@ interface SavedRepliesSheetProps {
 }
 
 export function SavedRepliesSheet({ open, onOpenChange, onSelect }: SavedRepliesSheetProps) {
-    const [replies, setReplies] = useState<SavedReply[]>([])
+    const [replies, setReplies] = useState<MessageTemplate[]>([])
     const [searchQuery, setSearchQuery] = useState("")
-    const [editingReply, setEditingReply] = useState<Partial<SavedReply> | null>(null)
-    const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+    const [editingReply, setEditingReply] = useState<Partial<MessageTemplate> | null>(null)
     const [isCreating, setIsCreating] = useState(false)
     const [isLoading, setIsLoading] = useState(false)
     const [isRefining, setIsRefining] = useState(false)
@@ -40,7 +39,7 @@ export function SavedRepliesSheet({ open, onOpenChange, onSelect }: SavedReplies
 
     const refreshReplies = () => {
         setIsLoading(true)
-        getSavedReplies().then(data => {
+        getTemplates().then(data => {
             setReplies(data)
             setIsLoading(false)
         })
@@ -69,30 +68,38 @@ export function SavedRepliesSheet({ open, onOpenChange, onSelect }: SavedReplies
     }
 
     const handleSave = async () => {
-        if (!editingReply?.title || !editingReply?.content) {
-            toast.error("Please fill in title and content")
+        if (!editingReply?.name || !editingReply?.content) {
+            toast.error("Please fill in name and content")
             return
         }
 
-        const promise = editingReply.id
-            ? updateSavedReply(editingReply.id, editingReply)
-            : createSavedReply(editingReply)
+        try {
+            if (editingReply.id) {
+                await updateTemplate(editingReply.id, {
+                    name: editingReply.name,
+                    content: editingReply.content,
+                    category: editingReply.category || 'text'
+                })
+            } else {
+                await createTemplate({
+                    name: editingReply.name!,
+                    content: editingReply.content!,
+                    category: editingReply.category || 'text'
+                })
+            }
 
-        toast.promise(promise, {
-            loading: 'Saving...',
-            success: () => {
-                refreshReplies()
-                setEditingReply(null)
-                setIsCreating(false)
-                return 'Saved successfully!'
-            },
-            error: 'Failed to save'
-        })
+            toast.success("Saved successfully!")
+            refreshReplies()
+            setEditingReply(null)
+            setIsCreating(false)
+        } catch (error) {
+            toast.error("Failed to save")
+        }
     }
 
     const handleDelete = async (id: string) => {
         if (confirm("Are you sure you want to delete this template?")) {
-            await deleteSavedReply(id)
+            await deleteTemplate(id)
             refreshReplies()
             toast.success("Deleted")
             if (editingReply?.id === id) {
@@ -103,7 +110,7 @@ export function SavedRepliesSheet({ open, onOpenChange, onSelect }: SavedReplies
     }
 
     const filteredReplies = replies.filter(r =>
-        r.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         r.content.toLowerCase().includes(searchQuery.toLowerCase())
     )
 
@@ -122,7 +129,7 @@ export function SavedRepliesSheet({ open, onOpenChange, onSelect }: SavedReplies
                 "
             >
                 <SheetHeader className="hidden">
-                    <SheetTitle>Smart Responses</SheetTitle>
+                    <SheetTitle>Message Templates</SheetTitle>
                     <SheetDescription>Manage saved replies</SheetDescription>
                 </SheetHeader>
 
@@ -142,16 +149,16 @@ export function SavedRepliesSheet({ open, onOpenChange, onSelect }: SavedReplies
                                 </Button>
                             ) : (
                                 <div className="p-2 bg-brand-pink/10 rounded-lg text-brand-pink">
-                                    <Zap className="h-5 w-5" />
+                                    <FileText className="h-5 w-5" />
                                 </div>
                             )}
 
                             <div>
                                 <h2 className="text-lg font-bold text-gray-900 tracking-tight leading-none">
-                                    {isEditorOpen ? (editingReply?.id ? 'Editar Respuesta' : 'Nueva Respuesta') : 'Smart Responses'}
+                                    {isEditorOpen ? (editingReply?.id ? 'Edit Template' : 'New Template') : 'Message Templates'}
                                 </h2>
                                 <p className="text-xs text-muted-foreground mt-1">
-                                    {isEditorOpen ? 'Configura el contenido y atajos.' : 'Gestiona tus plantillas de respuesta.'}
+                                    {isEditorOpen ? 'Configure content and category.' : 'Manage your quick replies.'}
                                 </p>
                             </div>
                         </div>
@@ -163,50 +170,23 @@ export function SavedRepliesSheet({ open, onOpenChange, onSelect }: SavedReplies
                             // EDITOR VIEW
                             <ScrollArea className="h-full p-6">
                                 <div className="space-y-6 max-w-lg mx-auto">
-                                    {/* Icon & Title */}
-                                    <div className="flex gap-4">
-                                        <div className="space-y-2">
-                                            <Label>Icono</Label>
-                                            <div className="relative">
-                                                <Button
-                                                    variant="outline"
-                                                    className="h-12 w-12 text-2xl bg-gray-50/50"
-                                                    onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                                                >
-                                                    {editingReply?.icon || "📝"}
-                                                </Button>
-                                                {showEmojiPicker && (
-                                                    <div className="absolute top-14 left-0 z-50 shadow-xl rounded-xl overflow-hidden border">
-                                                        <div className="flex justify-end bg-white p-1 border-b">
-                                                            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setShowEmojiPicker(false)}>
-                                                                <X className="h-3 w-3" />
-                                                            </Button>
-                                                        </div>
-                                                        <EmojiPicker onEmojiClick={(e) => {
-                                                            setEditingReply(prev => ({ ...prev, icon: e.emoji }));
-                                                            setShowEmojiPicker(false)
-                                                        }} height={350} />
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                        <div className="space-y-2 flex-1">
-                                            <Label>Título (Atajo)</Label>
-                                            <Input
-                                                placeholder="Ej: Bienvenida Cliente"
-                                                className="h-12 text-lg font-medium"
-                                                value={editingReply?.title || ""}
-                                                onChange={e => setEditingReply(prev => ({ ...prev, title: e.target.value }))}
-                                            />
-                                        </div>
+                                    {/* Name Input */}
+                                    <div className="space-y-2">
+                                        <Label>Name (Title)</Label>
+                                        <Input
+                                            placeholder="e.g. Welcome Message"
+                                            className="h-12 text-lg font-medium"
+                                            value={editingReply?.name || ""}
+                                            onChange={e => setEditingReply(prev => ({ ...prev, name: e.target.value }))}
+                                        />
                                     </div>
 
                                     {/* Content */}
                                     <div className="space-y-2">
-                                        <Label>Contenido del Mensaje</Label>
+                                        <Label>Message Content</Label>
                                         <div className="relative">
                                             <Textarea
-                                                placeholder="Escribe el mensaje aquí..."
+                                                placeholder="Type your message here..."
                                                 className="min-h-[200px] resize-none text-base leading-relaxed p-4 bg-gray-50/30 focus:bg-white transition-colors"
                                                 value={editingReply?.content || ""}
                                                 onChange={e => setEditingReply(prev => ({ ...prev, content: e.target.value }))}
@@ -226,29 +206,6 @@ export function SavedRepliesSheet({ open, onOpenChange, onSelect }: SavedReplies
                                         </div>
                                     </div>
 
-                                    {/* Options Card */}
-                                    <div className="p-4 rounded-xl border border-gray-100 bg-gray-50/50 space-y-4">
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-3">
-                                                <div className={cn("p-2 rounded-lg transition-colors", editingReply?.is_favorite ? "bg-yellow-100 text-yellow-600" : "bg-gray-100 text-gray-500")}>
-                                                    <Star className={cn("h-5 w-5", editingReply?.is_favorite && "fill-current")} />
-                                                </div>
-                                                <div>
-                                                    <h4 className="font-medium text-sm text-gray-900">Acceso Rápido</h4>
-                                                    <p className="text-xs text-muted-foreground">Mostrar en el menú ⚡</p>
-                                                </div>
-                                            </div>
-                                            <Button
-                                                variant={editingReply?.is_favorite ? "default" : "outline"}
-                                                size="sm"
-                                                onClick={() => setEditingReply(prev => ({ ...prev, is_favorite: !prev?.is_favorite }))}
-                                                className={cn(editingReply?.is_favorite && "bg-yellow-500 hover:bg-yellow-600 border-transparent text-white")}
-                                            >
-                                                {editingReply?.is_favorite ? "Activado" : "Activar"}
-                                            </Button>
-                                        </div>
-                                    </div>
-
                                     {/* Delete Zone */}
                                     {editingReply?.id && (
                                         <div className="pt-8 border-t flex justify-center">
@@ -258,7 +215,7 @@ export function SavedRepliesSheet({ open, onOpenChange, onSelect }: SavedReplies
                                                 onClick={() => handleDelete(editingReply.id!)}
                                             >
                                                 <Trash2 className="h-4 w-4 mr-2" />
-                                                Eliminar Plantilla
+                                                Delete Template
                                             </Button>
                                         </div>
                                     )}
@@ -272,7 +229,7 @@ export function SavedRepliesSheet({ open, onOpenChange, onSelect }: SavedReplies
                                     <div className="relative">
                                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                         <Input
-                                            placeholder="Buscar respuestas..."
+                                            placeholder="Search templates..."
                                             value={searchQuery}
                                             onChange={(e) => setSearchQuery(e.target.value)}
                                             className="pl-10 h-11 bg-gray-50/50 border-gray-200 focus:bg-white transition-all rounded-xl"
@@ -291,8 +248,8 @@ export function SavedRepliesSheet({ open, onOpenChange, onSelect }: SavedReplies
                                                 <Plus className="h-5 w-5" />
                                             </div>
                                             <div>
-                                                <h4 className="font-semibold text-sm text-gray-900 group-hover:text-indigo-700">Crear Nueva Respuesta</h4>
-                                                <p className="text-xs text-muted-foreground">Añade una nueva plantilla a tu colección.</p>
+                                                <h4 className="font-semibold text-sm text-gray-900 group-hover:text-indigo-700">Create New Template</h4>
+                                                <p className="text-xs text-muted-foreground">Add to your library.</p>
                                             </div>
                                         </button>
 
@@ -305,20 +262,15 @@ export function SavedRepliesSheet({ open, onOpenChange, onSelect }: SavedReplies
                                                 <div className="flex items-start justify-between">
                                                     <div className="flex items-center gap-3">
                                                         <span className="text-2xl bg-gray-50 p-2 rounded-lg h-10 w-10 flex items-center justify-center border border-gray-100">
-                                                            {reply.icon || "📄"}
+                                                            📄
                                                         </span>
                                                         <div>
                                                             <div className="flex items-center gap-2">
-                                                                <h4 className="font-semibold text-sm text-gray-900">{reply.title}</h4>
-                                                                {reply.is_favorite && <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />}
+                                                                <h4 className="font-semibold text-sm text-gray-900">{reply.name}</h4>
                                                             </div>
                                                             <div className="flex gap-2 mt-0.5">
                                                                 <span className="text-[10px] font-medium text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded-md">
-                                                                    {reply.category || 'General'}
-                                                                </span>
-                                                                <span className="text-[10px] text-gray-400 flex items-center">
-                                                                    <MessageSquare className="h-2.5 w-2.5 mr-1" />
-                                                                    {reply.usage_count} usos
+                                                                    {reply.category || 'text'}
                                                                 </span>
                                                             </div>
                                                         </div>

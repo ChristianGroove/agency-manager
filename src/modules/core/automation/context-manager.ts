@@ -38,10 +38,22 @@ export class ContextManager {
     }
 
     /**
-     * Get a value from context
+     * Get a value from context (supports dot-notation like 'conversation.id')
      */
-    get(key: string): unknown {
-        return this.context[key]
+    get(path: string): unknown {
+        // Support dot-notation for nested values
+        const keys = path.split('.')
+        let value: unknown = this.context
+
+        for (const key of keys) {
+            if (value && typeof value === 'object') {
+                value = (value as Record<string, unknown>)[key]
+            } else {
+                return undefined
+            }
+        }
+
+        return value
     }
 
     /**

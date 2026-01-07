@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase-server"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { assignConversation as autoAssignConversation } from "./assignment-engine"
 import { revalidatePath } from "next/cache"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
 
 /**
  * Update agent's online status and availability
@@ -344,4 +345,32 @@ export async function updateAgentSkills(skills: Array<{ skill: string; proficien
     }
 
     return { success: true }
+}
+
+/**
+ * Get assignment rule specifically for a channel connection
+ */
+export async function getChannelAssignmentRule(connectionId: string) {
+    const supabase = await createClient()
+    const orgId = await getCurrentOrganizationId()
+
+    if (!orgId) return null
+
+    // We search for a rule where conditions->'connection_id' contains the ID
+    // Note: this assumes one specific rule per channel
+    const { data, error } = await supabase
+        .from('assignment_rules')
+        .select('*')
+        .eq('organization_id', orgId)
+        .contains('conditions', { connection_id: [connectionId] })
+        .single()
+
+    if (error) {
+        if (error.code !== 'PGRST116') { // Not found code
+            console.error('Error fetching channel rule:', error)
+        }
+        return null
+    }
+
+    return data
 }

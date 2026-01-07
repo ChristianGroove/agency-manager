@@ -52,11 +52,17 @@ export class WorkflowEngine {
      * Starts execution from the Trigger node.
      */
     async start(): Promise<void> {
+        console.log(`[Engine] Starting workflow execution...`)
+
         // Find Trigger Node (Assuming single trigger for MVP)
         const triggerNode = this.definition.nodes.find(n => n.type === 'trigger')
         if (!triggerNode) {
+            console.error('[Engine] No trigger node found in workflow')
             throw new Error("No trigger node found in workflow")
         }
+
+        console.log(`[Engine] Found trigger node: ${triggerNode.id}`)
+        console.log(`[Engine] Total nodes: ${this.definition.nodes.length}, edges: ${this.definition.edges.length}`)
 
         // Track Usage: automation.execute
         // We assume context has organization_id. If not, we might need to pass it or extract safe.
@@ -76,6 +82,7 @@ export class WorkflowEngine {
 
         this.currentStepId = triggerNode.id
         await this.runStep(triggerNode)
+        console.log(`[Engine] Workflow execution completed`)
     }
 
     /**
@@ -129,6 +136,10 @@ export class WorkflowEngine {
 
     public getNextNodes(node: WorkflowNode): WorkflowNode[] {
         const outEdges = this.definition.edges.filter(e => e.source === node.id)
+        console.log(`[Engine] getNextNodes for ${node.id}: found ${outEdges.length} outgoing edges`)
+        if (outEdges.length > 0) {
+            console.log(`[Engine] Edges: ${outEdges.map(e => `${e.source} -> ${e.target}`).join(', ')}`)
+        }
         let filteredEdges = outEdges
 
         // Logic Nodes: Filter edges based on result
@@ -208,9 +219,41 @@ export class WorkflowEngine {
                 // E.g. Send Message
                 if (node.data.actionType === 'send_message') {
                     const messageContent = this.resolveContext((node.data.message as string) || '')
-                    console.log(`[Action] Sending Message: ${messageContent}`)
-                    // Replace variables in message
-                    // Call messaging service
+                    const { fileLogger } = await import('@/lib/file-logger')
+                    fileLogger.log(`[Engine] send_message action started. Message: "${messageContent}"`)
+
+                    // REAL SENDING LOGIC
+                    try {
+                        // Dynamic import to avoid cycles if Engine is used elsewhere
+                        const { outboundService } = await import('../messaging/outbound-service')
+
+                        // Extract context
+                        const connectionId = this.context.connection_id as string
+                        const recipient = (this.context.message as any)?.sender || (this.context.lead as any)?.phone || this.context.userPhone
+                        const orgId = this.context.organization_id as string
+
+                        fileLogger.log(`[Engine] Context: connectionId=${connectionId}, recipient=${recipient}, orgId=${orgId}`)
+
+                        if (!connectionId || !recipient || !orgId) {
+                            const errMsg = `Missing required context for sending: conn=${connectionId}, recipient=${recipient}, org=${orgId}`
+                            fileLogger.log(`[Engine] ERROR: ${errMsg}`)
+                            throw new Error(errMsg)
+                        }
+
+                        // Send via OutboundService
+                        await outboundService.sendMessage(
+                            connectionId,
+                            recipient,
+                            messageContent,
+                            orgId
+                        )
+                        fileLogger.log(`[Engine] Message sent successfully via connection ${connectionId}`)
+
+                    } catch (err: any) {
+                        const { fileLogger } = await import('@/lib/file-logger')
+                        fileLogger.log(`[Engine] EXCEPTION in send_message:`, err.message || err)
+                        throw new Error(`Send Message Failed: ${err.message}`)
+                    }
                 }
                 break
 
@@ -425,13 +468,23 @@ export class WorkflowEngine {
                     if (shouldWait) {
                         const waitNode = new WaitInputNode(this.contextManager)
                         const executionId = this.context.executionId as string
+                        const buttonsData = node.data as unknown as ButtonsNodeData
+
+                        // Prepare button options for text matching fallback
+                        let buttonOptions: Array<{ id: string, title: string }> = []
+                        if (buttonsData.messageType === 'buttons' && buttonsData.buttons) {
+                            buttonOptions = buttonsData.buttons.map(b => ({ id: b.id, title: b.title }))
+                        } else if (buttonsData.messageType === 'list' && buttonsData.sections) {
+                            buttonOptions = buttonsData.sections.flatMap(s => s.rows.map(r => ({ id: r.id, title: r.title })))
+                        }
 
                         // Create implicit configuration for waiting
                         // We map button IDs to valid branches implies we accept 'button_click' or text matching title
                         const waitConfig: WaitInputNodeData = {
                             timeout: '24h', // Default for buttons
                             inputType: 'button_click',
-                            timeoutAction: 'continue'
+                            timeoutAction: 'continue',
+                            buttonOptions // Pass options for text matching
                             // storeAs is optional
                         }
 

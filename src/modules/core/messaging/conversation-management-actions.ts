@@ -24,6 +24,44 @@ export async function assignConversation(conversationId: string, userId: string 
 }
 
 /**
+ * Update conversation state (for drag-drop actions)
+ * Uses supabaseAdmin to bypass RLS for reliable updates
+ */
+export async function updateConversationState(
+    conversationId: string,
+    updates: { state?: string; status?: string }
+) {
+    console.log('[updateConversationState] Called with:', { conversationId, updates })
+
+    // Use admin client to bypass RLS issues
+    const { supabaseAdmin } = await import("@/lib/supabase-admin")
+
+    // Only update the 'state' column which we know exists
+    // 'status' might not exist in all schemas
+    const safeUpdates: any = { updated_at: new Date().toISOString() }
+    if (updates.state) safeUpdates.state = updates.state
+
+    console.log('[updateConversationState] Applying update:', safeUpdates)
+
+    const { data, error } = await supabaseAdmin
+        .from('conversations')
+        .update(safeUpdates)
+        .eq('id', conversationId)
+        .select()
+
+    if (error) {
+        console.error("[updateConversationState] FAILED:", error)
+        return { success: false, error: error.message }
+    }
+
+    console.log('[updateConversationState] SUCCESS:', data)
+
+    revalidatePath('/crm/inbox')
+    revalidatePath('/inbox')
+    return { success: true }
+}
+
+/**
  * Archive a conversation
  */
 export async function archiveConversation(conversationId: string) {

@@ -120,14 +120,48 @@ export function ButtonsNode({ data, selected }: ButtonsNodeProps) {
 
                 {/* List Preview */}
                 {messageType === 'list' && (
-                    <div className="text-center">
-                        <div className="text-xs bg-indigo-100 border border-indigo-200 rounded px-3 py-1.5 inline-flex items-center gap-1 font-medium text-indigo-700">
-                            <ListOrdered className="h-3 w-3" />
-                            {data.listButtonText || 'Ver opciones'}
+                    <div className="space-y-2">
+                        <div className="text-center mb-2">
+                            <div className="text-xs bg-indigo-100 border border-indigo-200 rounded px-3 py-1.5 inline-flex items-center gap-1 font-medium text-indigo-700">
+                                <ListOrdered className="h-3 w-3" />
+                                {data.listButtonText || 'Ver opciones'}
+                            </div>
                         </div>
-                        <p className="text-[10px] text-gray-500 mt-1">
-                            {rowCount} {rowCount === 1 ? 'opción' : 'opciones'}
-                        </p>
+
+                        {/* Render Sections and Rows with Handles */}
+                        {data.sections?.map((section, sIdx) => (
+                            <div key={sIdx} className="space-y-1">
+                                {section.title && (
+                                    <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider pl-1">
+                                        {section.title}
+                                    </p>
+                                )}
+                                {section.rows.map((row, rIdx) => (
+                                    <div
+                                        key={row.id || `${sIdx}-${rIdx}`}
+                                        className="relative text-xs bg-white border border-indigo-100 rounded px-2 py-1.5 text-left font-medium text-indigo-900 group flex items-center justify-between"
+                                    >
+                                        <div className="truncate pr-2">
+                                            {row.title}
+                                            {row.description && (
+                                                <p className="text-[9px] text-gray-400 font-normal truncate">
+                                                    {row.description}
+                                                </p>
+                                            )}
+                                        </div>
+
+                                        <Handle
+                                            type="source"
+                                            position={Position.Right}
+                                            id={row.id}
+                                            className="!w-2.5 !h-2.5 !bg-indigo-500 !border-2 !border-white transition-all hover:scale-125 hover:!bg-indigo-600"
+                                            style={{ right: '-7px', top: '50%', transform: 'translateY(-50%)' }}
+                                            title={`Opción: ${row.title}`}
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                        ))}
                     </div>
                 )}
 

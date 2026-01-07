@@ -66,7 +66,7 @@ export function TestPanel({ open, onOpenChange, workflowDefinition, onTestComple
                 }
             });
 
-            const response = await fetch(`/api/workflows/test/test`, {
+            const response = await fetch(`/api/workflows/test`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

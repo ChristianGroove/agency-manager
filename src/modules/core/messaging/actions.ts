@@ -120,7 +120,7 @@ export async function sendMessage(conversationId: string, payload: string, id?: 
             // Meta from DB (Manual or Mock)
             const { MetaProvider } = await import("./providers/meta-provider");
             if (creds.mock_auth) {
-                // Fallback to Env if mock_auth (Auto Flow from earlier) OR just use env if DB entry is just a marker
+                // Fallback to Env if mock_auth
                 provider = new MetaProvider(
                     process.env.META_API_TOKEN!,
                     process.env.META_PHONE_NUMBER_ID!,
@@ -128,9 +128,20 @@ export async function sendMessage(conversationId: string, payload: string, id?: 
                 )
             } else {
                 // Real Credentials (Manual Flow)
+                // Robust parsing if double-serialized
+                const { decryptCredentials } = await import('@/modules/core/integrations/encryption');
+                let finalCreds = creds;
+                if (typeof creds === 'string') {
+                    try { finalCreds = JSON.parse(creds) } catch (e) { }
+                }
+                finalCreds = decryptCredentials(finalCreds);
+
+                const pId = finalCreds.phoneNumberId || finalCreds.phone_number_id;
+                const token = finalCreds.accessToken || finalCreds.access_token;
+
                 provider = new MetaProvider(
-                    creds.accessToken,
-                    creds.phoneNumberId,
+                    token,
+                    pId,
                     process.env.META_VERIFY_TOKEN!
                 )
             }
@@ -185,6 +196,7 @@ export async function sendMessage(conversationId: string, payload: string, id?: 
 
         try {
             const result = await provider.sendMessage(providerOptions)
+
             if (!result.success) {
                 // Determine if it's a critical auth error
                 const errStr = String(result.error);
@@ -378,7 +390,16 @@ export async function sendOutboundMessage(conversationId: string, content: any, 
             if (creds.mock_auth) {
                 provider = new MetaProvider(process.env.META_API_TOKEN!, process.env.META_PHONE_NUMBER_ID!, process.env.META_VERIFY_TOKEN!)
             } else {
-                provider = new MetaProvider(creds.accessToken, creds.phoneNumberId, process.env.META_VERIFY_TOKEN!)
+                const { decryptCredentials } = await import('@/modules/core/integrations/encryption');
+                let finalCreds = creds;
+                if (typeof creds === 'string') {
+                    try { finalCreds = JSON.parse(creds) } catch (e) { }
+                }
+                finalCreds = decryptCredentials(finalCreds);
+
+                const pId = finalCreds.phoneNumberId || finalCreds.phone_number_id;
+                const token = finalCreds.accessToken || finalCreds.access_token;
+                provider = new MetaProvider(token, pId, process.env.META_VERIFY_TOKEN!)
             }
         }
     } else {

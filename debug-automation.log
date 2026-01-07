@@ -1,0 +1,960 @@
+[2026-01-07T03:26:25.379Z] [InboxService] Processing message from: "573504076800"
+[2026-01-07T03:28:49.551Z] [InboxService] Processing message from: "573006705958"
+[2026-01-07T03:28:52.541Z] [InboxService] Using conversation: c7a7b9ce-2351-4f0f-b3a0-7deb82cfd866 
+[2026-01-07T03:28:53.073Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUM1NTAzOUVBMkE0NzMzMDBFQjlERjgwRkVDRTNEQkEA 
+[2026-01-07T03:30:31.232Z] [InboxService] Processing message from: "573006705958"
+[2026-01-07T03:30:32.953Z] [InboxService] Using conversation: c7a7b9ce-2351-4f0f-b3a0-7deb82cfd866 
+[2026-01-07T03:30:33.197Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUM4NkM4QUY1MzQwMEJFQTRFNDk3QzE5OUUzNzhBQjEA 
+[2026-01-07T03:30:33.210Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Hola"}" for conv: c7a7b9ce-2351-4f0f-b3a0-7deb82cfd866 
+[2026-01-07T03:30:33.871Z] [AutomationTrigger] No active message triggers found. 
+[2026-01-07T03:30:39.000Z] [InboxService] Processing message from: "573504076800"
+[2026-01-07T03:30:40.950Z] [InboxService] Using conversation: d04cd935-16f9-4115-b4c6-f5d102ff2e7c 
+[2026-01-07T03:30:41.194Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczNTA0MDc2ODAwFQIAEhggQTU4MUM4NUVGOTI5NDc3RjJFNkJDMUU3MzczMjhEN0MA 
+[2026-01-07T03:30:41.196Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Hola"}" for conv: d04cd935-16f9-4115-b4c6-f5d102ff2e7c 
+[2026-01-07T03:30:41.862Z] [AutomationTrigger] No active message triggers found. 
+[2026-01-07T03:38:05.105Z] [InboxService] Processing message from: "573504076800"
+[2026-01-07T03:38:05.108Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T03:38:05.585Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"fb9581e9-3fe9-46b9-ab4e-c6a51ca5fda8","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T03:38:05.859Z] [InboxService] Found existing lead: "2d4500e3-767e-4064-b0dd-d776915fd482"
+[2026-01-07T03:38:06.861Z] [InboxService] Using conversation: fb1fee5f-6ade-48b9-b599-69e9fc9602f6 
+[2026-01-07T03:38:07.099Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczNTA0MDc2ODAwFQIAEhggQTU4NkQ4OUMzOUFGQjJFOTQ2RjZGMTI1RDk2Q0Q0NUQA 
+[2026-01-07T03:38:07.115Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Hola"}" for conv: fb1fee5f-6ade-48b9-b599-69e9fc9602f6 
+[2026-01-07T03:38:07.831Z] [AutomationTrigger] Found 2 active message workflows. Checking conditions... 
+[2026-01-07T03:38:07.833Z] [AutomationTrigger] 🚀 Triggering Workflow: Bot de Bienvenida aaa (bf40286c-6b5d-4401-9c16-ac1c708d9619) 
+[2026-01-07T03:38:09.211Z] [AutomationTrigger] Workflow bf40286c-6b5d-4401-9c16-ac1c708d9619 completed. 
+[2026-01-07T03:40:45.845Z] [InboxService] Processing message from: "573006705958"
+[2026-01-07T03:40:45.846Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T03:40:46.451Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"fb9581e9-3fe9-46b9-ab4e-c6a51ca5fda8","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T03:40:46.714Z] [InboxService] Found existing lead: "ba80a936-866b-43be-87e1-c4196129651e"
+[2026-01-07T03:40:47.682Z] [InboxService] Using conversation: f8d5a847-bf70-4642-a70a-e6a79d1a5721 
+[2026-01-07T03:40:47.917Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUNCNjkxNTUyQTg1Nzg4QkM5NTIyQjQ3QzA1RTFDRjQA 
+[2026-01-07T03:40:47.920Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Hola"}" for conv: f8d5a847-bf70-4642-a70a-e6a79d1a5721 
+[2026-01-07T03:40:48.556Z] [AutomationTrigger] Found 2 active message workflows. Checking conditions... 
+[2026-01-07T03:40:48.558Z] [AutomationTrigger] 🚀 Triggering Workflow: Bot de Bienvenida aaa (bf40286c-6b5d-4401-9c16-ac1c708d9619) 
+[2026-01-07T03:40:49.572Z] [AutomationTrigger] Workflow bf40286c-6b5d-4401-9c16-ac1c708d9619 completed. 
+[2026-01-07T03:41:48.958Z] [InboxService] Processing message from: "573006705958"
+[2026-01-07T03:41:48.961Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T03:41:49.383Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"fb9581e9-3fe9-46b9-ab4e-c6a51ca5fda8","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T03:41:49.626Z] [InboxService] Found existing lead: "ba80a936-866b-43be-87e1-c4196129651e"
+[2026-01-07T03:41:50.724Z] [InboxService] Using conversation: b253172d-6cb1-42ea-9249-4678db6f7c7c 
+[2026-01-07T03:41:51.000Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUNFRTRBNjg1NzJCQUUzQUU0NTlDMTdCQTc1MTVFNjEA 
+[2026-01-07T03:41:51.031Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Hola"}" for conv: b253172d-6cb1-42ea-9249-4678db6f7c7c 
+[2026-01-07T03:41:51.696Z] [AutomationTrigger] Found 2 active message workflows. Checking conditions... 
+[2026-01-07T03:41:51.698Z] [AutomationTrigger] 🚀 Triggering Workflow: Bot de Bienvenida aaa (bf40286c-6b5d-4401-9c16-ac1c708d9619) 
+[2026-01-07T03:41:51.970Z] [Engine] send_message action started. Message: "👋 ¡Hola! Gracias por contactarnos. ¿En qué podemos ayudarte?" 
+[2026-01-07T03:41:51.976Z] [Engine] Context: connectionId=fb9581e9-3fe9-46b9-ab4e-c6a51ca5fda8, recipient=573006705958, orgId=db9d1288-80ab-48df-b130-a0739881c6f2 
+[2026-01-07T03:41:52.633Z] [Engine] EXCEPTION in send_message: "Meta Send Failed: Error validating access token: Session has expired on Tuesday, 06-Jan-26 19:00:00 PST. The current time is Tuesday, 06-Jan-26 19:41:52 PST."
+[2026-01-07T03:41:52.649Z] [AutomationTrigger] Workflow bf40286c-6b5d-4401-9c16-ac1c708d9619 completed. 
+[2026-01-07T03:45:55.212Z] [InboxService] Processing message from: "573504076800"
+[2026-01-07T03:45:55.214Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T03:45:55.665Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"fb9581e9-3fe9-46b9-ab4e-c6a51ca5fda8","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T03:45:55.915Z] [InboxService] Found existing lead: "2d4500e3-767e-4064-b0dd-d776915fd482"
+[2026-01-07T03:45:56.834Z] [InboxService] Using conversation: 4f1923ee-8f9a-41a1-9932-786a8a3acfc2 
+[2026-01-07T03:45:57.077Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczNTA0MDc2ODAwFQIAEhggQTVCMTc3N0UyRjM2RUMzMjJGRkRGRDUzNTRGRjBBMDAA 
+[2026-01-07T03:45:57.079Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Hola"}" for conv: 4f1923ee-8f9a-41a1-9932-786a8a3acfc2 
+[2026-01-07T03:45:57.758Z] [AutomationTrigger] Found 2 active message workflows. Checking conditions... 
+[2026-01-07T03:45:57.760Z] [AutomationTrigger] 🚀 Triggering Workflow: Bot de Bienvenida aaa (bf40286c-6b5d-4401-9c16-ac1c708d9619) 
+[2026-01-07T03:45:58.012Z] [Engine] send_message action started. Message: "👋 ¡Hola! Gracias por contactarnos. ¿En qué podemos ayudarte?" 
+[2026-01-07T03:45:58.014Z] [Engine] Context: connectionId=fb9581e9-3fe9-46b9-ab4e-c6a51ca5fda8, recipient=573504076800, orgId=db9d1288-80ab-48df-b130-a0739881c6f2 
+[2026-01-07T03:45:58.666Z] [Engine] EXCEPTION in send_message: "Meta Send Failed: Error validating access token: Session has expired on Tuesday, 06-Jan-26 19:00:00 PST. The current time is Tuesday, 06-Jan-26 19:45:58 PST."
+[2026-01-07T03:45:58.680Z] [AutomationTrigger] Workflow bf40286c-6b5d-4401-9c16-ac1c708d9619 completed. 
+[2026-01-07T03:49:11.823Z] [InboxService] Processing message from: "573504076800"
+[2026-01-07T03:49:11.824Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T03:49:12.646Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"fb9581e9-3fe9-46b9-ab4e-c6a51ca5fda8","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T03:49:12.899Z] [InboxService] Found existing lead: "2d4500e3-767e-4064-b0dd-d776915fd482"
+[2026-01-07T03:49:13.941Z] [InboxService] Using conversation: 4f1923ee-8f9a-41a1-9932-786a8a3acfc2 
+[2026-01-07T03:49:14.672Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczNTA0MDc2ODAwFQIAEhggQTUwOUY1MzE1NEI1MzkzMzE3QUQxQzgxRDRFNDNEMDAA 
+[2026-01-07T03:49:14.682Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Hola"}" for conv: 4f1923ee-8f9a-41a1-9932-786a8a3acfc2 
+[2026-01-07T03:49:15.169Z] [AutomationTrigger] Found 2 active message workflows. Checking conditions... 
+[2026-01-07T03:49:15.172Z] [AutomationTrigger] 🚀 Triggering Workflow: Bot de Bienvenida aaa (bf40286c-6b5d-4401-9c16-ac1c708d9619) 
+[2026-01-07T03:49:15.876Z] [Engine] send_message action started. Message: "👋 ¡Hola! Gracias por contactarnos. ¿En qué podemos ayudarte?" 
+[2026-01-07T03:49:15.880Z] [Engine] Context: connectionId=fb9581e9-3fe9-46b9-ab4e-c6a51ca5fda8, recipient=573504076800, orgId=db9d1288-80ab-48df-b130-a0739881c6f2 
+[2026-01-07T03:49:17.564Z] [Engine] EXCEPTION in send_message: "Meta Send Failed: Error validating access token: Session has expired on Tuesday, 06-Jan-26 19:00:00 PST. The current time is Tuesday, 06-Jan-26 19:49:17 PST."
+[2026-01-07T03:49:17.883Z] [AutomationTrigger] Workflow bf40286c-6b5d-4401-9c16-ac1c708d9619 completed. 
+[2026-01-07T03:49:19.234Z] [InboxService] Processing message from: "573006705958"
+[2026-01-07T03:49:19.236Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T03:49:23.495Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"fb9581e9-3fe9-46b9-ab4e-c6a51ca5fda8","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T03:49:23.739Z] [InboxService] Found existing lead: "ba80a936-866b-43be-87e1-c4196129651e"
+[2026-01-07T03:49:25.670Z] [InboxService] Using conversation: dcb22ef5-baae-4a3d-8956-adbe4a7feca9 
+[2026-01-07T03:49:26.424Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUMwMEI2MjgyRjY5QThFQ0Y0QzM4Njk2MTA0NkFFNzIA 
+[2026-01-07T03:49:26.426Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Hola"}" for conv: dcb22ef5-baae-4a3d-8956-adbe4a7feca9 
+[2026-01-07T03:49:26.938Z] [AutomationTrigger] Found 2 active message workflows. Checking conditions... 
+[2026-01-07T03:49:26.940Z] [AutomationTrigger] 🚀 Triggering Workflow: Bot de Bienvenida aaa (bf40286c-6b5d-4401-9c16-ac1c708d9619) 
+[2026-01-07T03:49:27.558Z] [Engine] send_message action started. Message: "👋 ¡Hola! Gracias por contactarnos. ¿En qué podemos ayudarte?" 
+[2026-01-07T03:49:27.560Z] [Engine] Context: connectionId=fb9581e9-3fe9-46b9-ab4e-c6a51ca5fda8, recipient=573006705958, orgId=db9d1288-80ab-48df-b130-a0739881c6f2 
+[2026-01-07T03:49:28.839Z] [Engine] EXCEPTION in send_message: "Meta Send Failed: Error validating access token: Session has expired on Tuesday, 06-Jan-26 19:00:00 PST. The current time is Tuesday, 06-Jan-26 19:49:28 PST."
+[2026-01-07T03:49:28.852Z] [AutomationTrigger] Workflow bf40286c-6b5d-4401-9c16-ac1c708d9619 completed. 
+[2026-01-07T03:54:46.843Z] [InboxService] Processing message from: "573006705958"
+[2026-01-07T03:54:46.844Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T03:54:47.787Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T03:54:48.077Z] [InboxService] Found existing lead: "ba80a936-866b-43be-87e1-c4196129651e"
+[2026-01-07T03:54:49.099Z] [InboxService] Using conversation: b590c242-0b8a-431a-b9e3-b7ddb5f00472 
+[2026-01-07T03:54:49.350Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUM1OTlDODY5NTBBOUYzNUU2NTdENkVBMjBCQ0FERUYA 
+[2026-01-07T03:54:49.353Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Hola"}" for conv: b590c242-0b8a-431a-b9e3-b7ddb5f00472 
+[2026-01-07T03:54:50.082Z] [AutomationTrigger] Found 2 active message workflows. Checking conditions... 
+[2026-01-07T03:54:50.084Z] [AutomationTrigger] 🚀 Triggering Workflow: Bot de Bienvenida aaa (bf40286c-6b5d-4401-9c16-ac1c708d9619) 
+[2026-01-07T03:54:50.334Z] [Engine] send_message action started. Message: "👋 ¡Hola! Gracias por contactarnos. ¿En qué podemos ayudarte?" 
+[2026-01-07T03:54:50.336Z] [Engine] Context: connectionId=ce74136f-5700-4fb6-a50a-07c62d092030, recipient=573006705958, orgId=db9d1288-80ab-48df-b130-a0739881c6f2 
+[2026-01-07T03:54:52.147Z] [Engine] Message sent successfully via connection ce74136f-5700-4fb6-a50a-07c62d092030 
+[2026-01-07T03:54:52.150Z] [AutomationTrigger] Workflow bf40286c-6b5d-4401-9c16-ac1c708d9619 completed. 
+[2026-01-07T03:56:01.693Z] [InboxService] Processing message from: "573504076800"
+[2026-01-07T03:56:01.695Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T03:56:02.122Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T03:56:02.381Z] [InboxService] Found existing lead: "2d4500e3-767e-4064-b0dd-d776915fd482"
+[2026-01-07T03:56:03.366Z] [InboxService] Using conversation: b5b1d863-d31c-4b03-8d7b-60e2509bd924 
+[2026-01-07T03:56:03.608Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczNTA0MDc2ODAwFQIAEhggQTU0MDg2MDIzNTgzRjAyMDY4QzZDMDcxQkYzMEQxMDQA 
+[2026-01-07T03:56:03.610Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Hola"}" for conv: b5b1d863-d31c-4b03-8d7b-60e2509bd924 
+[2026-01-07T03:56:04.265Z] [AutomationTrigger] Found 2 active message workflows. Checking conditions... 
+[2026-01-07T03:56:04.266Z] [AutomationTrigger] 🚀 Triggering Workflow: Bot de Bienvenida aaa (bf40286c-6b5d-4401-9c16-ac1c708d9619) 
+[2026-01-07T03:56:04.520Z] [Engine] send_message action started. Message: "👋 ¡Hola! Gracias por contactarnos. ¿En qué podemos ayudarte?" 
+[2026-01-07T03:56:04.522Z] [Engine] Context: connectionId=ce74136f-5700-4fb6-a50a-07c62d092030, recipient=573504076800, orgId=db9d1288-80ab-48df-b130-a0739881c6f2 
+[2026-01-07T03:56:06.253Z] [Engine] Message sent successfully via connection ce74136f-5700-4fb6-a50a-07c62d092030 
+[2026-01-07T03:56:06.257Z] [AutomationTrigger] Workflow bf40286c-6b5d-4401-9c16-ac1c708d9619 completed. 
+[2026-01-07T03:56:37.620Z] [InboxService] Processing message from: "573504076800"
+[2026-01-07T03:56:37.622Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T03:56:38.039Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T03:56:38.301Z] [InboxService] Found existing lead: "2d4500e3-767e-4064-b0dd-d776915fd482"
+[2026-01-07T03:56:39.268Z] [InboxService] Using conversation: c2815ce1-7e95-4178-8ebc-3a94ff85261f 
+[2026-01-07T03:56:39.524Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczNTA0MDc2ODAwFQIAEhggQTVCMzkyQzYzQTQ3RkM5REU1QTYzNkY0MENFM0ZDOTgA 
+[2026-01-07T03:56:39.526Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Hola"}" for conv: c2815ce1-7e95-4178-8ebc-3a94ff85261f 
+[2026-01-07T03:56:40.192Z] [AutomationTrigger] Found 2 active message workflows. Checking conditions... 
+[2026-01-07T03:56:40.193Z] [AutomationTrigger] 🚀 Triggering Workflow: Bot de Bienvenida aaa (bf40286c-6b5d-4401-9c16-ac1c708d9619) 
+[2026-01-07T03:56:40.467Z] [AutomationTrigger] Workflow bf40286c-6b5d-4401-9c16-ac1c708d9619 completed. 
+[2026-01-07T03:56:56.585Z] [InboxService] Processing message from: "573504076800"
+[2026-01-07T03:56:56.586Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T03:56:56.992Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T03:56:57.240Z] [InboxService] Found existing lead: "2d4500e3-767e-4064-b0dd-d776915fd482"
+[2026-01-07T03:56:57.889Z] [InboxService] Using conversation: c2815ce1-7e95-4178-8ebc-3a94ff85261f 
+[2026-01-07T03:56:58.132Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczNTA0MDc2ODAwFQIAEhggQTUzOEZEOUY1NEFCOEMxQTFGOTFFMTRGNEMwNzEyQUQA 
+[2026-01-07T03:56:58.135Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"K"}" for conv: c2815ce1-7e95-4178-8ebc-3a94ff85261f 
+[2026-01-07T03:56:58.790Z] [AutomationTrigger] Found 2 active message workflows. Checking conditions... 
+[2026-01-07T03:56:58.792Z] [AutomationTrigger] 🚀 Triggering Workflow: Bot de Bienvenida aaa (bf40286c-6b5d-4401-9c16-ac1c708d9619) 
+[2026-01-07T03:56:59.130Z] [AutomationTrigger] Workflow bf40286c-6b5d-4401-9c16-ac1c708d9619 completed. 
+[2026-01-07T03:57:01.604Z] [InboxService] Processing message from: "573006705958"
+[2026-01-07T03:57:01.605Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T03:57:01.888Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T03:57:02.121Z] [InboxService] Found existing lead: "ba80a936-866b-43be-87e1-c4196129651e"
+[2026-01-07T03:57:02.876Z] [InboxService] Using conversation: c740d9f6-a19a-423c-a2e2-e39627c58c93 
+[2026-01-07T03:57:03.130Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUMyMkEzQzk5RTA2Qjk2MjNGMzA0MzU0RTg5QjRCQjYA 
+[2026-01-07T03:57:03.132Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Hola"}" for conv: c740d9f6-a19a-423c-a2e2-e39627c58c93 
+[2026-01-07T03:57:03.623Z] [AutomationTrigger] Found 2 active message workflows. Checking conditions... 
+[2026-01-07T03:57:03.624Z] [AutomationTrigger] 🚀 Triggering Workflow: Bot de Bienvenida aaa (bf40286c-6b5d-4401-9c16-ac1c708d9619) 
+[2026-01-07T03:57:04.007Z] [AutomationTrigger] Workflow bf40286c-6b5d-4401-9c16-ac1c708d9619 completed. 
+[2026-01-07T03:57:47.780Z] [InboxService] Processing message from: "573006705958"
+[2026-01-07T03:57:47.782Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T03:57:48.283Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T03:57:48.609Z] [InboxService] Found existing lead: "ba80a936-866b-43be-87e1-c4196129651e"
+[2026-01-07T03:57:49.324Z] [InboxService] Using conversation: c740d9f6-a19a-423c-a2e2-e39627c58c93 
+[2026-01-07T03:57:49.565Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUMzM0NEMjBFQkM5NjVFNTU3RDQ3MDUxOEUwMTU5NUIA 
+[2026-01-07T03:57:49.567Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Hola"}" for conv: c740d9f6-a19a-423c-a2e2-e39627c58c93 
+[2026-01-07T03:57:50.236Z] [AutomationTrigger] Found 2 active message workflows. Checking conditions... 
+[2026-01-07T03:57:50.238Z] [AutomationTrigger] 🚀 Triggering Workflow: Bot de Bienvenida aaa (bf40286c-6b5d-4401-9c16-ac1c708d9619) 
+[2026-01-07T03:57:50.504Z] [AutomationTrigger] Workflow bf40286c-6b5d-4401-9c16-ac1c708d9619 completed. 
+[2026-01-07T03:57:53.141Z] [InboxService] Processing message from: "573504076800"
+[2026-01-07T03:57:53.143Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T03:57:53.400Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T03:57:53.729Z] [InboxService] Found existing lead: "2d4500e3-767e-4064-b0dd-d776915fd482"
+[2026-01-07T03:57:54.240Z] [InboxService] Using conversation: c2815ce1-7e95-4178-8ebc-3a94ff85261f 
+[2026-01-07T03:57:54.486Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczNTA0MDc2ODAwFQIAEhggQTU1RkVFRjgzMjg2NjM2NzE0RkI3QkE4ODVCRUE5QUYA 
+[2026-01-07T03:57:54.488Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Hola"}" for conv: c2815ce1-7e95-4178-8ebc-3a94ff85261f 
+[2026-01-07T03:57:55.004Z] [AutomationTrigger] Found 2 active message workflows. Checking conditions... 
+[2026-01-07T03:57:55.006Z] [AutomationTrigger] 🚀 Triggering Workflow: Bot de Bienvenida aaa (bf40286c-6b5d-4401-9c16-ac1c708d9619) 
+[2026-01-07T03:57:55.305Z] [AutomationTrigger] Workflow bf40286c-6b5d-4401-9c16-ac1c708d9619 completed. 
+[2026-01-07T04:08:06.430Z] [InboxService] Processing message from: "573504076800"
+[2026-01-07T04:08:06.433Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T04:08:06.886Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T04:08:07.126Z] [InboxService] Found existing lead: "2d4500e3-767e-4064-b0dd-d776915fd482"
+[2026-01-07T04:08:08.080Z] [InboxService] Using conversation: e9dcfa57-8192-43d3-a99e-2e82555868fe 
+[2026-01-07T04:08:08.337Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczNTA0MDc2ODAwFQIAEhggQTVBM0VCOTlGNkZFODEyNDk5MTY4MEZDRUIxQkZEOEUA 
+[2026-01-07T04:08:08.350Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Hola"}" for conv: e9dcfa57-8192-43d3-a99e-2e82555868fe 
+[2026-01-07T04:08:09.100Z] [AutomationTrigger] Found 2 active message workflows. Checking conditions... 
+[2026-01-07T04:08:09.102Z] [AutomationTrigger] 🚀 Triggering Workflow: Bot de Bienvenida aaa (bf40286c-6b5d-4401-9c16-ac1c708d9619) 
+[2026-01-07T04:08:09.415Z] [AutomationTrigger] Workflow bf40286c-6b5d-4401-9c16-ac1c708d9619 completed. 
+[2026-01-07T04:12:47.890Z] [InboxService] Processing message from: "573504076800"
+[2026-01-07T04:12:47.892Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T04:12:48.456Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T04:12:48.813Z] [InboxService] Found existing lead: "2d4500e3-767e-4064-b0dd-d776915fd482"
+[2026-01-07T04:12:49.882Z] [InboxService] Using conversation: 1d94862a-7eaa-4827-924f-bd663972026d 
+[2026-01-07T04:12:50.128Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczNTA0MDc2ODAwFQIAEhggQTU2NzAwOTJGOUEwREFBQjk2MzQ0RTkzMDBDQkJBRUQA 
+[2026-01-07T04:12:50.151Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Hila"}" for conv: 1d94862a-7eaa-4827-924f-bd663972026d 
+[2026-01-07T04:12:50.836Z] [AutomationTrigger] Found 2 active message workflows. Checking conditions... 
+[2026-01-07T04:12:50.838Z] [AutomationTrigger] 🚀 Triggering Workflow: Bot de Bienvenida aaa (bf40286c-6b5d-4401-9c16-ac1c708d9619) 
+[2026-01-07T04:12:51.146Z] [AutomationTrigger] Workflow bf40286c-6b5d-4401-9c16-ac1c708d9619 completed. 
+[2026-01-07T04:13:21.668Z] [InboxService] Processing message from: "573006705958"
+[2026-01-07T04:13:21.671Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T04:13:22.079Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T04:13:22.323Z] [InboxService] Found existing lead: "ba80a936-866b-43be-87e1-c4196129651e"
+[2026-01-07T04:13:23.245Z] [InboxService] Using conversation: cbbe7a5b-a369-4444-99e2-5cedc3734e35 
+[2026-01-07T04:13:23.482Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUNENzMwNzBFNjg0NUYzRjkxNDlDMDIxMjFDNjI3ODcA 
+[2026-01-07T04:13:23.485Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Hola"}" for conv: cbbe7a5b-a369-4444-99e2-5cedc3734e35 
+[2026-01-07T04:13:24.151Z] [AutomationTrigger] Found 2 active message workflows. Checking conditions... 
+[2026-01-07T04:13:24.153Z] [AutomationTrigger] 🚀 Triggering Workflow: Bot de Bienvenida aaa (bf40286c-6b5d-4401-9c16-ac1c708d9619) 
+[2026-01-07T04:13:24.415Z] [AutomationTrigger] Workflow bf40286c-6b5d-4401-9c16-ac1c708d9619 completed. 
+[2026-01-07T04:16:59.582Z] [InboxService] Processing message from: "573006705958"
+[2026-01-07T04:16:59.584Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T04:16:59.839Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T04:17:00.103Z] [InboxService] Found existing lead: "ba80a936-866b-43be-87e1-c4196129651e"
+[2026-01-07T04:17:00.923Z] [InboxService] Using conversation: b9c77b93-28fb-49e2-86a7-3efc7e44ad28 
+[2026-01-07T04:17:01.180Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUNEMjU1NkNCQzAyRjdFREYwNzNGNUIzRjE2MEI5NzUA 
+[2026-01-07T04:17:01.182Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Hola"}" for conv: b9c77b93-28fb-49e2-86a7-3efc7e44ad28 
+[2026-01-07T04:17:01.845Z] [AutomationTrigger] Found 2 active message workflows. Checking conditions... 
+[2026-01-07T04:17:01.847Z] [AutomationTrigger] 🚀 Triggering Workflow: Bot de Bienvenida aaa (bf40286c-6b5d-4401-9c16-ac1c708d9619) 
+[2026-01-07T04:17:02.110Z] [AutomationTrigger] Workflow bf40286c-6b5d-4401-9c16-ac1c708d9619 completed. 
+[2026-01-07T04:18:26.730Z] [InboxService] Processing message from: "573006705958"
+[2026-01-07T04:18:26.732Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T04:18:27.439Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T04:18:27.637Z] [InboxService] Processing message from: "573006705958"
+[2026-01-07T04:18:27.638Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T04:18:27.721Z] [InboxService] Found existing lead: "ba80a936-866b-43be-87e1-c4196129651e"
+[2026-01-07T04:18:28.044Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T04:18:28.308Z] [InboxService] Found existing lead: "ba80a936-866b-43be-87e1-c4196129651e"
+[2026-01-07T04:18:28.424Z] [InboxService] Using conversation: b9c77b93-28fb-49e2-86a7-3efc7e44ad28 
+[2026-01-07T04:18:28.677Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUNEMUM1RkNDRUEwNDg3OUE0RTFFQTIwRTRDOUJEMzQA 
+[2026-01-07T04:18:28.679Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Kdj"}" for conv: b9c77b93-28fb-49e2-86a7-3efc7e44ad28 
+[2026-01-07T04:18:28.884Z] [InboxService] Using conversation: b9c77b93-28fb-49e2-86a7-3efc7e44ad28 
+[2026-01-07T04:18:29.130Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUM1NkQ5Njc1ODYxM0U1QkFGRkE4OThEREUyQjZEMEIA 
+[2026-01-07T04:18:29.132Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Je"}" for conv: b9c77b93-28fb-49e2-86a7-3efc7e44ad28 
+[2026-01-07T04:18:29.403Z] [AutomationTrigger] Found 2 active message workflows. Checking conditions... 
+[2026-01-07T04:18:29.405Z] [AutomationTrigger] 🚀 Triggering Workflow: Bot de Bienvenida aaa (bf40286c-6b5d-4401-9c16-ac1c708d9619) 
+[2026-01-07T04:18:29.655Z] [AutomationTrigger] Workflow bf40286c-6b5d-4401-9c16-ac1c708d9619 completed. 
+[2026-01-07T04:18:29.781Z] [AutomationTrigger] Found 2 active message workflows. Checking conditions... 
+[2026-01-07T04:18:29.782Z] [AutomationTrigger] 🚀 Triggering Workflow: Bot de Bienvenida aaa (bf40286c-6b5d-4401-9c16-ac1c708d9619) 
+[2026-01-07T04:18:30.060Z] [AutomationTrigger] Workflow bf40286c-6b5d-4401-9c16-ac1c708d9619 completed. 
+[2026-01-07T04:18:35.381Z] [InboxService] Processing message from: "573504076800"
+[2026-01-07T04:18:35.383Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T04:18:35.824Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T04:18:36.074Z] [InboxService] Found existing lead: "2d4500e3-767e-4064-b0dd-d776915fd482"
+[2026-01-07T04:18:36.953Z] [InboxService] Using conversation: 5dadf076-7488-491b-8246-0417f59e512b 
+[2026-01-07T04:18:37.185Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczNTA0MDc2ODAwFQIAEhggQTUyNTFDOTE0MThEODZEMzg2NTk0RTE2RUY4ODM5NzEA 
+[2026-01-07T04:18:37.188Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Sk"}" for conv: 5dadf076-7488-491b-8246-0417f59e512b 
+[2026-01-07T04:18:37.886Z] [AutomationTrigger] Found 2 active message workflows. Checking conditions... 
+[2026-01-07T04:18:37.888Z] [AutomationTrigger] 🚀 Triggering Workflow: Bot de Bienvenida aaa (bf40286c-6b5d-4401-9c16-ac1c708d9619) 
+[2026-01-07T04:18:38.151Z] [AutomationTrigger] Workflow bf40286c-6b5d-4401-9c16-ac1c708d9619 completed. 
+[2026-01-07T04:42:04.300Z] [InboxService] Processing message from: "573504076800"
+[2026-01-07T04:42:04.301Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T04:42:04.598Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T04:42:04.847Z] [InboxService] Found existing lead: "2d4500e3-767e-4064-b0dd-d776915fd482"
+[2026-01-07T04:42:05.493Z] [InboxService] Using conversation: 5dadf076-7488-491b-8246-0417f59e512b 
+[2026-01-07T04:42:05.758Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczNTA0MDc2ODAwFQIAEhggQTVGOENGODRCOUNEMzI1RDlGQjYyQTFCMzMxNEVGNUYA 
+[2026-01-07T04:42:05.760Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Fjo"}" for conv: 5dadf076-7488-491b-8246-0417f59e512b 
+[2026-01-07T04:42:06.488Z] [AutomationTrigger] Found 2 active message workflows. Checking conditions... 
+[2026-01-07T04:42:06.489Z] [AutomationTrigger] 🚀 Triggering Workflow: Bot de Bienvenida aaa (bf40286c-6b5d-4401-9c16-ac1c708d9619) 
+[2026-01-07T04:42:06.819Z] [AutomationTrigger] Workflow bf40286c-6b5d-4401-9c16-ac1c708d9619 completed. 
+[2026-01-07T04:42:07.772Z] [InboxService] Processing message from: "573006705958"
+[2026-01-07T04:42:07.773Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T04:42:08.032Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T04:42:08.288Z] [InboxService] Found existing lead: "ba80a936-866b-43be-87e1-c4196129651e"
+[2026-01-07T04:42:09.061Z] [InboxService] Using conversation: b9c77b93-28fb-49e2-86a7-3efc7e44ad28 
+[2026-01-07T04:42:09.299Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUNGNkY3NjlCRDkxN0RDQkYwQkZDNTFCRjhEMDBDOTAA 
+[2026-01-07T04:42:09.301Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Jd"}" for conv: b9c77b93-28fb-49e2-86a7-3efc7e44ad28 
+[2026-01-07T04:42:09.816Z] [AutomationTrigger] Found 2 active message workflows. Checking conditions... 
+[2026-01-07T04:42:09.817Z] [AutomationTrigger] 🚀 Triggering Workflow: Bot de Bienvenida aaa (bf40286c-6b5d-4401-9c16-ac1c708d9619) 
+[2026-01-07T04:42:10.102Z] [AutomationTrigger] Workflow bf40286c-6b5d-4401-9c16-ac1c708d9619 completed. 
+[2026-01-07T04:42:50.426Z] [InboxService] Processing message from: "555936676"
+[2026-01-07T04:42:50.429Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"123456","channel":"whatsapp"}
+[2026-01-07T04:42:50.763Z] [InboxService] REJECTED: No matching integration connection for this webhook 
+[2026-01-07T04:42:50.765Z] [InboxService] FAILED to upsert conversation: {}
+[2026-01-07T04:43:23.170Z] [InboxService] Processing message from: "573006705958"
+[2026-01-07T04:43:23.172Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T04:43:23.630Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T04:43:23.866Z] [InboxService] Found existing lead: "ba80a936-866b-43be-87e1-c4196129651e"
+[2026-01-07T04:43:24.796Z] [InboxService] Using conversation: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T04:43:25.029Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUNCREU1QTYwNkY2QzY2NkI5RkQ1NTFFQ0M3RjQ5QzAA 
+[2026-01-07T04:43:25.031Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Hola"}" for conv: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T04:43:25.724Z] [AutomationTrigger] Found 2 active message workflows. Checking conditions... 
+[2026-01-07T04:43:25.727Z] [AutomationTrigger] 🚀 Triggering Workflow: Bot de Bienvenida aaa (bf40286c-6b5d-4401-9c16-ac1c708d9619) 
+[2026-01-07T04:43:26.033Z] [AutomationTrigger] Workflow bf40286c-6b5d-4401-9c16-ac1c708d9619 completed. 
+[2026-01-07T04:44:12.920Z] [InboxService] Processing message from: "573006705958"
+[2026-01-07T04:44:12.921Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T04:44:13.432Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T04:44:13.688Z] [InboxService] Found existing lead: "ba80a936-866b-43be-87e1-c4196129651e"
+[2026-01-07T04:44:14.323Z] [InboxService] Using conversation: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T04:44:14.571Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUNBQUM3NkE1MzgwOUNCNzk2QUE1RDE2NjI5MUY3RkEA 
+[2026-01-07T04:44:14.573Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Hola"}" for conv: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T04:44:15.273Z] [AutomationTrigger] Found 2 active message workflows. Checking conditions... 
+[2026-01-07T04:44:15.275Z] [AutomationTrigger] 🚀 Triggering Workflow: Bot de Bienvenida aaa (bf40286c-6b5d-4401-9c16-ac1c708d9619) 
+[2026-01-07T04:44:15.568Z] [AutomationTrigger] Workflow bf40286c-6b5d-4401-9c16-ac1c708d9619 completed. 
+[2026-01-07T04:44:17.830Z] [InboxService] Processing message from: "573504076800"
+[2026-01-07T04:44:17.832Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T04:44:18.079Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T04:44:18.410Z] [InboxService] Found existing lead: "2d4500e3-767e-4064-b0dd-d776915fd482"
+[2026-01-07T04:44:19.162Z] [InboxService] Using conversation: 4dd6d1eb-cbb8-4a6a-911f-c962eae4c87d 
+[2026-01-07T04:44:19.405Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczNTA0MDc2ODAwFQIAEhggQTVDQjY3OUI4RkZDQjJDNDhGRjFCNTE4OUVEMEY0NTYA 
+[2026-01-07T04:44:19.407Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Hola"}" for conv: 4dd6d1eb-cbb8-4a6a-911f-c962eae4c87d 
+[2026-01-07T04:44:19.933Z] [AutomationTrigger] Found 2 active message workflows. Checking conditions... 
+[2026-01-07T04:44:19.935Z] [AutomationTrigger] 🚀 Triggering Workflow: Bot de Bienvenida aaa (bf40286c-6b5d-4401-9c16-ac1c708d9619) 
+[2026-01-07T04:44:20.227Z] [AutomationTrigger] Workflow bf40286c-6b5d-4401-9c16-ac1c708d9619 completed. 
+[2026-01-07T04:49:40.407Z] [InboxService] Processing message from: "573006705958"
+[2026-01-07T04:49:40.410Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T04:49:40.978Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T04:49:41.251Z] [InboxService] Found existing lead: "ba80a936-866b-43be-87e1-c4196129651e"
+[2026-01-07T04:49:41.962Z] [InboxService] Using conversation: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T04:49:42.225Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUNBM0M4RUE2QkY3MTFCOEVGRjQ1NEUwMUM1NEJCODkA 
+[2026-01-07T04:49:42.243Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Jdk"}" for conv: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T04:49:42.971Z] [AutomationTrigger] Found 2 active message workflows. Checking conditions... 
+[2026-01-07T04:49:47.989Z] [InboxService] Processing message from: "573504076800"
+[2026-01-07T04:49:47.991Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T04:49:48.421Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T04:49:48.665Z] [InboxService] Found existing lead: "2d4500e3-767e-4064-b0dd-d776915fd482"
+[2026-01-07T04:49:49.368Z] [InboxService] Using conversation: 4dd6d1eb-cbb8-4a6a-911f-c962eae4c87d 
+[2026-01-07T04:49:49.612Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczNTA0MDc2ODAwFQIAEhggQTU2ODZCQjg5NEMyNUI3QjMxRjlBNjU5OTMzNzlBMzYA 
+[2026-01-07T04:49:49.614Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Dji"}" for conv: 4dd6d1eb-cbb8-4a6a-911f-c962eae4c87d 
+[2026-01-07T04:49:50.290Z] [AutomationTrigger] Found 2 active message workflows. Checking conditions... 
+[2026-01-07T04:50:21.239Z] [InboxService] Processing message from: "573504076800"
+[2026-01-07T04:50:21.241Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T04:50:21.490Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T04:50:21.728Z] [InboxService] Found existing lead: "2d4500e3-767e-4064-b0dd-d776915fd482"
+[2026-01-07T04:50:22.513Z] [InboxService] Using conversation: 695314dd-e926-48ac-b562-565ef2e35f97 
+[2026-01-07T04:50:22.750Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczNTA0MDc2ODAwFQIAEhggQTU2MTI0QjY3QzcwOENBMUVCQzA4NDg0QkQ4NDcwRDMA 
+[2026-01-07T04:50:22.753Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Bsjf"}" for conv: 695314dd-e926-48ac-b562-565ef2e35f97 
+[2026-01-07T04:50:23.238Z] [AutomationTrigger] Found 2 active message workflows. Checking conditions... 
+[2026-01-07T04:57:51.894Z] [InboxService] Processing message from: "573504076800"
+[2026-01-07T04:57:51.897Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T04:57:52.153Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T04:57:52.494Z] [InboxService] Found existing lead: "2d4500e3-767e-4064-b0dd-d776915fd482"
+[2026-01-07T04:57:53.565Z] [InboxService] Using conversation: 30cda9e6-60b9-4434-9f79-8ecfb96554f2 
+[2026-01-07T04:57:53.797Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczNTA0MDc2ODAwFQIAEhggQTVEQkM3MzhGRERGQzQ1NzVENUNDNDUyRjY4RjM1QkIA 
+[2026-01-07T04:57:53.813Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Hola"}" for conv: 30cda9e6-60b9-4434-9f79-8ecfb96554f2 
+[2026-01-07T04:57:54.466Z] [AutomationTrigger] Found 2 active message workflows. Checking conditions... 
+[2026-01-07T04:57:54.467Z] [AutomationTrigger] 🚀 Triggering Workflow: Bot de Bienvenida aaa (bf40286c-6b5d-4401-9c16-ac1c708d9619) 
+[2026-01-07T04:57:54.803Z] [AutomationTrigger] Workflow bf40286c-6b5d-4401-9c16-ac1c708d9619 completed. 
+[2026-01-07T05:00:45.636Z] [InboxService] Processing message from: "573504076800"
+[2026-01-07T05:00:45.638Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T05:00:45.904Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T05:00:46.140Z] [InboxService] Found existing lead: "2d4500e3-767e-4064-b0dd-d776915fd482"
+[2026-01-07T05:00:46.650Z] [InboxService] Using conversation: 30cda9e6-60b9-4434-9f79-8ecfb96554f2 
+[2026-01-07T05:00:46.893Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczNTA0MDc2ODAwFQIAEhggQTVFMTEwQTU3NTIzMUE3NkIxMkQ5MDc3NkE4QzkxOTQA 
+[2026-01-07T05:00:46.907Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Hola"}" for conv: 30cda9e6-60b9-4434-9f79-8ecfb96554f2 
+[2026-01-07T05:00:47.422Z] [AutomationTrigger] Found 2 active message workflows. Checking conditions... 
+[2026-01-07T05:00:47.424Z] [AutomationTrigger] 🚀 Triggering Workflow: Bot de Bienvenida aaa (bf40286c-6b5d-4401-9c16-ac1c708d9619) 
+[2026-01-07T05:00:48.703Z] [AutomationTrigger] Workflow bf40286c-6b5d-4401-9c16-ac1c708d9619 completed. 
+[2026-01-07T05:01:11.008Z] [InboxService] Processing message from: "573504076800"
+[2026-01-07T05:01:11.009Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T05:01:11.445Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T05:01:11.681Z] [InboxService] Found existing lead: "2d4500e3-767e-4064-b0dd-d776915fd482"
+[2026-01-07T05:01:12.352Z] [InboxService] Using conversation: 30cda9e6-60b9-4434-9f79-8ecfb96554f2 
+[2026-01-07T05:01:12.595Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczNTA0MDc2ODAwFQIAEhggQTUxNEIzMTAyRDQ0REREMDE4MkE4MkNENkQ5RUJCM0IA 
+[2026-01-07T05:01:12.598Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Hola"}" for conv: 30cda9e6-60b9-4434-9f79-8ecfb96554f2 
+[2026-01-07T05:01:13.284Z] [AutomationTrigger] Found 2 active message workflows. Checking conditions... 
+[2026-01-07T05:01:13.286Z] [AutomationTrigger] 🚀 Triggering Workflow: Bot de Bienvenida aaa (bf40286c-6b5d-4401-9c16-ac1c708d9619) 
+[2026-01-07T05:01:14.659Z] [AutomationTrigger] Workflow bf40286c-6b5d-4401-9c16-ac1c708d9619 completed. 
+[2026-01-07T05:04:36.539Z] [InboxService] Processing message from: "573504076800"
+[2026-01-07T05:04:36.541Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T05:04:36.790Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T05:04:37.030Z] [InboxService] Found existing lead: "2d4500e3-767e-4064-b0dd-d776915fd482"
+[2026-01-07T05:04:37.691Z] [InboxService] Using conversation: 30cda9e6-60b9-4434-9f79-8ecfb96554f2 
+[2026-01-07T05:04:37.931Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczNTA0MDc2ODAwFQIAEhggQTVGMDhBRTA1N0RGQzIxRTM1MEVBOTIwNzEzNjJERDcA 
+[2026-01-07T05:04:37.933Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Tf"}" for conv: 30cda9e6-60b9-4434-9f79-8ecfb96554f2 
+[2026-01-07T05:04:38.580Z] [AutomationTrigger] Found 2 active message workflows. Checking conditions... 
+[2026-01-07T05:04:48.940Z] [InboxService] Processing message from: "573006705958"
+[2026-01-07T05:04:48.942Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T05:04:49.476Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T05:04:49.792Z] [InboxService] Found existing lead: "ba80a936-866b-43be-87e1-c4196129651e"
+[2026-01-07T05:04:50.902Z] [InboxService] Using conversation: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:04:51.193Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUNGMTdCREFDNzczMUVDQjlCQTgwRjVDNzZGNzhGMkYA 
+[2026-01-07T05:04:51.195Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Gkso"}" for conv: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:04:52.179Z] [AutomationTrigger] Found 2 active message workflows. Checking conditions... 
+[2026-01-07T05:04:54.132Z] [InboxService] Processing message from: "573006705958"
+[2026-01-07T05:04:54.134Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T05:04:54.469Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T05:04:54.795Z] [InboxService] Found existing lead: "ba80a936-866b-43be-87e1-c4196129651e"
+[2026-01-07T05:04:55.521Z] [InboxService] Using conversation: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:04:55.783Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUMxQTQ2MEU3MkJBNUVCQTAyQzY4OEJBMDVENjRCOUYA 
+[2026-01-07T05:04:55.785Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Hola"}" for conv: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:04:56.323Z] [AutomationTrigger] Found 2 active message workflows. Checking conditions... 
+[2026-01-07T05:04:56.327Z] [AutomationTrigger] 🚀 Triggering Workflow: Bot de Bienvenida aaa (bf40286c-6b5d-4401-9c16-ac1c708d9619) 
+[2026-01-07T05:04:59.037Z] [AutomationTrigger] Workflow bf40286c-6b5d-4401-9c16-ac1c708d9619 completed. 
+[2026-01-07T05:05:11.644Z] [InboxService] Processing message from: "573006705958"
+[2026-01-07T05:05:11.647Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T05:05:12.077Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T05:05:12.330Z] [InboxService] Found existing lead: "ba80a936-866b-43be-87e1-c4196129651e"
+[2026-01-07T05:05:13.050Z] [InboxService] Using conversation: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:05:13.331Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUM1NTYxRjk3NEI2RDNEMDAwNTc2QzQ4NzI4RDI4NTAA 
+[2026-01-07T05:05:13.332Z] [AutomationTrigger] Evaluating input: "{"type":"unknown","raw":{"context":{"from":"573248322720","id":"wamid.HBgMNTczMDA2NzA1OTU4FQIAERgSNTcyNEIzQUMyQzc2RDdFOTBBAA=="},"from":"573006705958","id":"wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUM1NTYxRjk3NEI2RDNEMDAwNTc2QzQ4NzI4RDI4NTAA","timestamp":"1767762310","type":"interactive","interactive":{"type":"button_reply","button_reply":{"id":"btn_y3fji","title":"utyutyuty"}}}}" for conv: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:05:14.122Z] [AutomationTrigger] Found 2 active message workflows. Checking conditions... 
+[2026-01-07T05:05:29.264Z] [InboxService] Processing message from: "573006705958"
+[2026-01-07T05:05:29.266Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T05:05:29.692Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T05:05:29.957Z] [InboxService] Found existing lead: "ba80a936-866b-43be-87e1-c4196129651e"
+[2026-01-07T05:05:30.737Z] [InboxService] Using conversation: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:05:30.980Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUNCMUEzOTZENTJBNTkxMDA3OUQ2REJCN0FERUI4QjAA 
+[2026-01-07T05:05:30.982Z] [AutomationTrigger] Evaluating input: "{"type":"unknown","raw":{"context":{"from":"573248322720","id":"wamid.HBgMNTczMDA2NzA1OTU4FQIAERgSNTcyNEIzQUMyQzc2RDdFOTBBAA=="},"from":"573006705958","id":"wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUNCMUEzOTZENTJBNTkxMDA3OUQ2REJCN0FERUI4QjAA","timestamp":"1767762328","type":"interactive","interactive":{"type":"button_reply","button_reply":{"id":"btn_itbv8","title":"ereryery"}}}}" for conv: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:05:31.697Z] [AutomationTrigger] Found 2 active message workflows. Checking conditions... 
+[2026-01-07T05:06:06.893Z] [InboxService] Processing message from: "573504076800"
+[2026-01-07T05:06:06.894Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T05:06:07.300Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T05:06:07.544Z] [InboxService] Found existing lead: "2d4500e3-767e-4064-b0dd-d776915fd482"
+[2026-01-07T05:06:08.184Z] [InboxService] Using conversation: 30cda9e6-60b9-4434-9f79-8ecfb96554f2 
+[2026-01-07T05:06:08.425Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczNTA0MDc2ODAwFQIAEhggQTU2NUUxMkRERUQzOEU0RDY3ODJCRDAzQjBDRjNDQjIA 
+[2026-01-07T05:06:08.427Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Hola"}" for conv: 30cda9e6-60b9-4434-9f79-8ecfb96554f2 
+[2026-01-07T05:06:09.100Z] [AutomationTrigger] Found 2 active message workflows. Checking conditions... 
+[2026-01-07T05:06:09.102Z] [AutomationTrigger] 🚀 Triggering Workflow: Bot de Bienvenida aaa (bf40286c-6b5d-4401-9c16-ac1c708d9619) 
+[2026-01-07T05:06:11.444Z] [AutomationTrigger] Workflow bf40286c-6b5d-4401-9c16-ac1c708d9619 completed. 
+[2026-01-07T05:06:19.014Z] [InboxService] Processing message from: "573504076800"
+[2026-01-07T05:06:19.015Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T05:06:19.425Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T05:06:19.660Z] [InboxService] Found existing lead: "2d4500e3-767e-4064-b0dd-d776915fd482"
+[2026-01-07T05:06:20.311Z] [InboxService] Using conversation: 30cda9e6-60b9-4434-9f79-8ecfb96554f2 
+[2026-01-07T05:06:20.561Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczNTA0MDc2ODAwFQIAEhggQTU2Q0Y5NjcwQTAyREIzQTY4NDRDODc5QzE4RkNGNDYA 
+[2026-01-07T05:06:20.563Z] [AutomationTrigger] Evaluating input: "{"type":"unknown","raw":{"context":{"from":"573248322720","id":"wamid.HBgMNTczNTA0MDc2ODAwFQIAERgSNThEODI1NTExMkQwQkJDNDFCAA=="},"from":"573504076800","id":"wamid.HBgMNTczNTA0MDc2ODAwFQIAEhggQTU2Q0Y5NjcwQTAyREIzQTY4NDRDODc5QzE4RkNGNDYA","timestamp":"1767762378","type":"interactive","interactive":{"type":"button_reply","button_reply":{"id":"btn_piebe","title":"twerret"}}}}" for conv: 30cda9e6-60b9-4434-9f79-8ecfb96554f2 
+[2026-01-07T05:06:21.261Z] [AutomationTrigger] Found 2 active message workflows. Checking conditions... 
+[2026-01-07T05:07:29.181Z] [InboxService] Processing message from: "573504076800"
+[2026-01-07T05:07:29.182Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T05:07:29.831Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T05:07:30.157Z] [InboxService] Found existing lead: "2d4500e3-767e-4064-b0dd-d776915fd482"
+[2026-01-07T05:07:30.953Z] [InboxService] Using conversation: 30cda9e6-60b9-4434-9f79-8ecfb96554f2 
+[2026-01-07T05:07:31.197Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczNTA0MDc2ODAwFQIAEhggQTU2MzBCMDI2NzAwM0IzNjA3NEZEN0M0M0M3RTgwMTIA 
+[2026-01-07T05:07:31.199Z] [AutomationTrigger] Evaluating input: "{"type":"unknown","raw":{"context":{"from":"573248322720","id":"wamid.HBgMNTczNTA0MDc2ODAwFQIAERgSNThEODI1NTExMkQwQkJDNDFCAA=="},"from":"573504076800","id":"wamid.HBgMNTczNTA0MDc2ODAwFQIAEhggQTU2MzBCMDI2NzAwM0IzNjA3NEZEN0M0M0M3RTgwMTIA","timestamp":"1767762447","type":"interactive","interactive":{"type":"button_reply","button_reply":{"id":"btn_itbv8","title":"ereryery"}}}}" for conv: 30cda9e6-60b9-4434-9f79-8ecfb96554f2 
+[2026-01-07T05:07:31.324Z] [InboxService] Processing message from: "573504076800"
+[2026-01-07T05:07:31.326Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T05:07:31.581Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T05:07:31.911Z] [InboxService] Found existing lead: "2d4500e3-767e-4064-b0dd-d776915fd482"
+[2026-01-07T05:07:31.926Z] [AutomationTrigger] Found 2 active message workflows. Checking conditions... 
+[2026-01-07T05:07:32.576Z] [InboxService] Using conversation: 30cda9e6-60b9-4434-9f79-8ecfb96554f2 
+[2026-01-07T05:07:32.809Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczNTA0MDc2ODAwFQIAEhggQTVDQTJFRDQzNDMzMEMzRjk2MjE2MDc2MjdCOTA3RjUA 
+[2026-01-07T05:07:32.811Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"G"}" for conv: 30cda9e6-60b9-4434-9f79-8ecfb96554f2 
+[2026-01-07T05:07:33.446Z] [AutomationTrigger] Found 2 active message workflows. Checking conditions... 
+[2026-01-07T05:07:33.870Z] [InboxService] Processing message from: "573504076800"
+[2026-01-07T05:07:33.872Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T05:07:34.133Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T05:07:34.374Z] [InboxService] Found existing lead: "2d4500e3-767e-4064-b0dd-d776915fd482"
+[2026-01-07T05:07:34.948Z] [InboxService] Using conversation: 30cda9e6-60b9-4434-9f79-8ecfb96554f2 
+[2026-01-07T05:07:35.192Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczNTA0MDc2ODAwFQIAEhggQTUxOTk3QjQyQTJFRDY2ODU5RTYwN0RCNDVDNzg2NTgA 
+[2026-01-07T05:07:35.194Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Hola"}" for conv: 30cda9e6-60b9-4434-9f79-8ecfb96554f2 
+[2026-01-07T05:07:35.678Z] [AutomationTrigger] Found 2 active message workflows. Checking conditions... 
+[2026-01-07T05:07:35.680Z] [AutomationTrigger] 🚀 Triggering Workflow: Bot de Bienvenida aaa (bf40286c-6b5d-4401-9c16-ac1c708d9619) 
+[2026-01-07T05:07:37.971Z] [AutomationTrigger] Workflow bf40286c-6b5d-4401-9c16-ac1c708d9619 completed. 
+[2026-01-07T05:07:42.165Z] [InboxService] Processing message from: "573504076800"
+[2026-01-07T05:07:42.167Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T05:07:42.412Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T05:07:42.666Z] [InboxService] Found existing lead: "2d4500e3-767e-4064-b0dd-d776915fd482"
+[2026-01-07T05:07:43.382Z] [InboxService] Using conversation: 30cda9e6-60b9-4434-9f79-8ecfb96554f2 
+[2026-01-07T05:07:43.651Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczNTA0MDc2ODAwFQIAEhggQTU2RTEwRTQ3QTlFMTc1MjQyMjU1MEExNEU0NzRDM0EA 
+[2026-01-07T05:07:43.652Z] [AutomationTrigger] Evaluating input: "{"type":"unknown","raw":{"context":{"from":"573248322720","id":"wamid.HBgMNTczNTA0MDc2ODAwFQIAERgSQUU0QzMyNUU1RkU3NEY3OTZEAA=="},"from":"573504076800","id":"wamid.HBgMNTczNTA0MDc2ODAwFQIAEhggQTU2RTEwRTQ3QTlFMTc1MjQyMjU1MEExNEU0NzRDM0EA","timestamp":"1767762461","type":"interactive","interactive":{"type":"button_reply","button_reply":{"id":"btn_itbv8","title":"ereryery"}}}}" for conv: 30cda9e6-60b9-4434-9f79-8ecfb96554f2 
+[2026-01-07T05:07:44.372Z] [AutomationTrigger] Found 2 active message workflows. Checking conditions... 
+[2026-01-07T05:07:46.672Z] [InboxService] Processing message from: "573504076800"
+[2026-01-07T05:07:46.674Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T05:07:46.922Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T05:07:47.156Z] [InboxService] Found existing lead: "2d4500e3-767e-4064-b0dd-d776915fd482"
+[2026-01-07T05:07:47.748Z] [InboxService] Using conversation: 30cda9e6-60b9-4434-9f79-8ecfb96554f2 
+[2026-01-07T05:07:47.989Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczNTA0MDc2ODAwFQIAEhggQTU0NTM4MjlBQ0Y0MEFFMUU3NzNDMEQwQ0JDODZDQzgA 
+[2026-01-07T05:07:47.990Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Hila"}" for conv: 30cda9e6-60b9-4434-9f79-8ecfb96554f2 
+[2026-01-07T05:07:48.597Z] [AutomationTrigger] Found 2 active message workflows. Checking conditions... 
+[2026-01-07T05:07:53.863Z] [InboxService] Processing message from: "573504076800"
+[2026-01-07T05:07:53.865Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T05:07:54.262Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T05:07:54.608Z] [InboxService] Found existing lead: "2d4500e3-767e-4064-b0dd-d776915fd482"
+[2026-01-07T05:07:55.395Z] [InboxService] Using conversation: 30cda9e6-60b9-4434-9f79-8ecfb96554f2 
+[2026-01-07T05:07:55.638Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczNTA0MDc2ODAwFQIAEhggQTUxQTc0RENEMzBGN0FEQUVERjMyN0MyNjM3QjU3ODgA 
+[2026-01-07T05:07:55.640Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Hula"}" for conv: 30cda9e6-60b9-4434-9f79-8ecfb96554f2 
+[2026-01-07T05:07:56.275Z] [AutomationTrigger] Found 2 active message workflows. Checking conditions... 
+[2026-01-07T05:07:59.301Z] [InboxService] Processing message from: "573504076800"
+[2026-01-07T05:07:59.304Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T05:07:59.540Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T05:07:59.832Z] [InboxService] Found existing lead: "2d4500e3-767e-4064-b0dd-d776915fd482"
+[2026-01-07T05:08:00.343Z] [InboxService] Using conversation: 30cda9e6-60b9-4434-9f79-8ecfb96554f2 
+[2026-01-07T05:08:00.588Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczNTA0MDc2ODAwFQIAEhggQTU2RThGMzM3NjlEODdEMzk2MkIwMTE5OUI4MTU5RUMA 
+[2026-01-07T05:08:00.590Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Hola"}" for conv: 30cda9e6-60b9-4434-9f79-8ecfb96554f2 
+[2026-01-07T05:08:01.270Z] [AutomationTrigger] Found 2 active message workflows. Checking conditions... 
+[2026-01-07T05:08:01.272Z] [AutomationTrigger] 🚀 Triggering Workflow: Bot de Bienvenida aaa (bf40286c-6b5d-4401-9c16-ac1c708d9619) 
+[2026-01-07T05:08:03.465Z] [AutomationTrigger] Workflow bf40286c-6b5d-4401-9c16-ac1c708d9619 completed. 
+[2026-01-07T05:23:17.239Z] [InboxService] Processing message from: "573006705958"
+[2026-01-07T05:23:17.242Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T05:23:18.064Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T05:23:18.309Z] [InboxService] Found existing lead: "ba80a936-866b-43be-87e1-c4196129651e"
+[2026-01-07T05:23:19.182Z] [InboxService] Using conversation: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:23:19.417Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUM3NzdDMUVGRTM2QzIwNUQ2OTVFQzdFQzA1RDFCOUEA 
+[2026-01-07T05:23:19.437Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"B"}" for conv: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:23:20.407Z] [AutomationTrigger] Found 2 active message workflows. Checking conditions... 
+[2026-01-07T05:23:45.320Z] [InboxService] Processing message from: "573006705958"
+[2026-01-07T05:23:45.322Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T05:23:45.735Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T05:23:45.982Z] [InboxService] Found existing lead: "ba80a936-866b-43be-87e1-c4196129651e"
+[2026-01-07T05:23:46.683Z] [InboxService] Using conversation: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:23:46.925Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUM0NUYwMzE5ODkxRUU0QUJFNEQxNkMwMENCNEVDN0YA 
+[2026-01-07T05:23:46.927Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Hola"}" for conv: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:23:47.563Z] [AutomationTrigger] Found 2 active message workflows. Checking conditions... 
+[2026-01-07T05:23:47.564Z] [AutomationTrigger] 🚀 Triggering Workflow: Bot de Bienvenida aaa (bf40286c-6b5d-4401-9c16-ac1c708d9619) 
+[2026-01-07T05:23:49.812Z] [AutomationTrigger] Workflow bf40286c-6b5d-4401-9c16-ac1c708d9619 completed. 
+[2026-01-07T05:23:53.322Z] [InboxService] Processing message from: "573006705958"
+[2026-01-07T05:23:53.324Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T05:23:53.566Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T05:23:53.818Z] [InboxService] Found existing lead: "ba80a936-866b-43be-87e1-c4196129651e"
+[2026-01-07T05:23:54.346Z] [InboxService] Using conversation: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:23:54.609Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUNBRTY3MThCNEFGMzEzMTgxNUNDMzdGNUU4QUUzNkEA 
+[2026-01-07T05:23:54.611Z] [AutomationTrigger] Evaluating input: "{"type":"unknown","raw":{"context":{"from":"573248322720","id":"wamid.HBgMNTczMDA2NzA1OTU4FQIAERgSQTEzNzc5ODkyREE0MUY2MzJCAA=="},"from":"573006705958","id":"wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUNBRTY3MThCNEFGMzEzMTgxNUNDMzdGNUU4QUUzNkEA","timestamp":"1767763432","type":"interactive","interactive":{"type":"button_reply","button_reply":{"id":"btn_itbv8","title":"ereryery"}}}}" for conv: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:23:55.267Z] [AutomationTrigger] Found 2 active message workflows. Checking conditions... 
+[2026-01-07T05:25:34.015Z] [InboxService] Processing message from: "573006705958"
+[2026-01-07T05:25:34.016Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T05:25:34.736Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T05:25:35.018Z] [InboxService] Found existing lead: "ba80a936-866b-43be-87e1-c4196129651e"
+[2026-01-07T05:25:35.738Z] [InboxService] Using conversation: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:25:36.000Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUM1ODc3QTY1MTAwRTUxMDc2M0FCM0ZFQkQ0NjI5RTQA 
+[2026-01-07T05:25:36.004Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Hola"}" for conv: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:25:36.740Z] [AutomationTrigger] Found 1 active message workflows. Checking conditions... 
+[2026-01-07T05:25:36.742Z] [AutomationTrigger] 🚀 Triggering Workflow: Bot de Bienvenida aaa (bf40286c-6b5d-4401-9c16-ac1c708d9619) 
+[2026-01-07T05:25:39.281Z] [AutomationTrigger] Workflow bf40286c-6b5d-4401-9c16-ac1c708d9619 completed. 
+[2026-01-07T05:25:43.873Z] [InboxService] Processing message from: "573006705958"
+[2026-01-07T05:25:43.876Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T05:25:44.289Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T05:25:44.592Z] [InboxService] Found existing lead: "ba80a936-866b-43be-87e1-c4196129651e"
+[2026-01-07T05:25:45.245Z] [InboxService] Using conversation: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:25:45.498Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUM2MTlGMjU5MkIxMDAxRDNFRUI5RDlGOUJBOEEwNjkA 
+[2026-01-07T05:25:45.501Z] [AutomationTrigger] Evaluating input: "{"type":"unknown","raw":{"context":{"from":"573248322720","id":"wamid.HBgMNTczMDA2NzA1OTU4FQIAERgSNzY5MjE1MEFEM0NFRTIyRTFBAA=="},"from":"573006705958","id":"wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUM2MTlGMjU5MkIxMDAxRDNFRUI5RDlGOUJBOEEwNjkA","timestamp":"1767763542","type":"interactive","interactive":{"type":"button_reply","button_reply":{"id":"btn_y3fji","title":"utyutyuty"}}}}" for conv: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:25:46.128Z] [AutomationTrigger] Found 1 active message workflows. Checking conditions... 
+[2026-01-07T05:28:32.493Z] [InboxService] Processing message from: "573006705958"
+[2026-01-07T05:28:32.495Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T05:28:32.742Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T05:28:32.985Z] [InboxService] Found existing lead: "ba80a936-866b-43be-87e1-c4196129651e"
+[2026-01-07T05:28:33.552Z] [InboxService] Using conversation: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:28:33.798Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUNDQjRENjBDMjRDOENGMTZCMUUyN0ZDM0E3QkYzRjQA 
+[2026-01-07T05:28:33.802Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Hi"}" for conv: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:28:34.519Z] [AutomationTrigger] Found 1 active message workflows. Checking conditions... 
+[2026-01-07T05:28:34.521Z] [AutomationTrigger] 🚀 Triggering Workflow: New Workflow (9863b9c9-d828-4dc8-8f91-68c4b8acf242) 
+[2026-01-07T05:28:36.821Z] [AutomationTrigger] Workflow 9863b9c9-d828-4dc8-8f91-68c4b8acf242 completed. 
+[2026-01-07T05:29:25.407Z] [InboxService] Processing message from: "573006705958"
+[2026-01-07T05:29:25.409Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T05:29:25.831Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T05:29:26.094Z] [InboxService] Found existing lead: "ba80a936-866b-43be-87e1-c4196129651e"
+[2026-01-07T05:29:26.785Z] [InboxService] Using conversation: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:29:27.041Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUNENzhCMzhGNUVGN0UzMThGRjMyODIxREJDRDQ3MjUA 
+[2026-01-07T05:29:27.043Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Bk"}" for conv: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:29:27.753Z] [AutomationTrigger] Found 1 active message workflows. Checking conditions... 
+[2026-01-07T05:29:27.756Z] [AutomationTrigger] 🚀 Triggering Workflow: New Workflow (9863b9c9-d828-4dc8-8f91-68c4b8acf242) 
+[2026-01-07T05:29:30.134Z] [AutomationTrigger] Workflow 9863b9c9-d828-4dc8-8f91-68c4b8acf242 completed. 
+[2026-01-07T05:29:34.186Z] [InboxService] Processing message from: "573006705958"
+[2026-01-07T05:29:34.188Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T05:29:34.438Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T05:29:34.676Z] [InboxService] Found existing lead: "ba80a936-866b-43be-87e1-c4196129651e"
+[2026-01-07T05:29:35.328Z] [InboxService] Using conversation: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:29:35.566Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUNCOEQwNzA0N0ZGNkE3NUZFN0I3NkQyOTkwREQ0QjEA 
+[2026-01-07T05:29:35.568Z] [AutomationTrigger] Evaluating input: "{"type":"unknown","raw":{"context":{"from":"573248322720","id":"wamid.HBgMNTczMDA2NzA1OTU4FQIAERgSQUI5QUEzNEVEMjRGMTk3OTkwAA=="},"from":"573006705958","id":"wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUNCOEQwNzA0N0ZGNkE3NUZFN0I3NkQyOTkwREQ0QjEA","timestamp":"1767763773","type":"interactive","interactive":{"type":"button_reply","button_reply":{"id":"btn_ecswr","title":"gfgf"}}}}" for conv: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:29:36.233Z] [AutomationTrigger] Found 1 active message workflows. Checking conditions... 
+[2026-01-07T05:29:36.235Z] [AutomationTrigger] 🚀 Triggering Workflow: New Workflow (9863b9c9-d828-4dc8-8f91-68c4b8acf242) 
+[2026-01-07T05:29:38.466Z] [AutomationTrigger] Workflow 9863b9c9-d828-4dc8-8f91-68c4b8acf242 completed. 
+[2026-01-07T05:30:00.704Z] [InboxService] Processing message from: "573006705958"
+[2026-01-07T05:30:00.706Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T05:30:01.200Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T05:30:01.516Z] [InboxService] Found existing lead: "ba80a936-866b-43be-87e1-c4196129651e"
+[2026-01-07T05:30:02.231Z] [InboxService] Using conversation: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:30:02.476Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUM0OEE2QUY1RUUwMzY0NENCQjM1NUZGOUMyRDc1NEMA 
+[2026-01-07T05:30:02.477Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Hola"}" for conv: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:30:03.124Z] [AutomationTrigger] Found 1 active message workflows. Checking conditions... 
+[2026-01-07T05:30:03.126Z] [AutomationTrigger] 🚀 Triggering Workflow: New Workflow (9863b9c9-d828-4dc8-8f91-68c4b8acf242) 
+[2026-01-07T05:30:05.279Z] [AutomationTrigger] Workflow 9863b9c9-d828-4dc8-8f91-68c4b8acf242 completed. 
+[2026-01-07T05:30:09.016Z] [InboxService] Processing message from: "573006705958"
+[2026-01-07T05:30:09.018Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T05:30:09.265Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T05:30:09.511Z] [InboxService] Found existing lead: "ba80a936-866b-43be-87e1-c4196129651e"
+[2026-01-07T05:30:10.335Z] [InboxService] Using conversation: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:30:10.579Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUM2QTNCMzEwRDEyNDZBMDY1ODZEMDc0QTlFNjQ0QTkA 
+[2026-01-07T05:30:10.581Z] [AutomationTrigger] Evaluating input: "{"type":"unknown","raw":{"context":{"from":"573248322720","id":"wamid.HBgMNTczMDA2NzA1OTU4FQIAERgSRjhBNjkwQzEzNDZEODdGRkNGAA=="},"from":"573006705958","id":"wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUM2QTNCMzEwRDEyNDZBMDY1ODZEMDc0QTlFNjQ0QTkA","timestamp":"1767763808","type":"interactive","interactive":{"type":"button_reply","button_reply":{"id":"btn_ecswr","title":"gfgf"}}}}" for conv: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:30:11.212Z] [AutomationTrigger] Found 1 active message workflows. Checking conditions... 
+[2026-01-07T05:30:11.214Z] [AutomationTrigger] 🚀 Triggering Workflow: New Workflow (9863b9c9-d828-4dc8-8f91-68c4b8acf242) 
+[2026-01-07T05:30:13.267Z] [AutomationTrigger] Workflow 9863b9c9-d828-4dc8-8f91-68c4b8acf242 completed. 
+[2026-01-07T05:30:20.003Z] [InboxService] Processing message from: "573006705958"
+[2026-01-07T05:30:20.005Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T05:30:20.416Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T05:30:20.660Z] [InboxService] Found existing lead: "ba80a936-866b-43be-87e1-c4196129651e"
+[2026-01-07T05:30:21.319Z] [InboxService] Using conversation: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:30:21.551Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUNBOUYzQzgwMzE0MDVBNzJCRjhDMTk4RjJGNjVFQkEA 
+[2026-01-07T05:30:21.554Z] [AutomationTrigger] Evaluating input: "{"type":"unknown","raw":{"context":{"from":"573248322720","id":"wamid.HBgMNTczMDA2NzA1OTU4FQIAERgSRUE0MEExM0ZBQTgxM0Y1QjI1AA=="},"from":"573006705958","id":"wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUNBOUYzQzgwMzE0MDVBNzJCRjhDMTk4RjJGNjVFQkEA","timestamp":"1767763819","type":"interactive","interactive":{"type":"button_reply","button_reply":{"id":"btn_yof77","title":"trrgrgg"}}}}" for conv: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:30:22.296Z] [AutomationTrigger] Found 1 active message workflows. Checking conditions... 
+[2026-01-07T05:30:22.298Z] [AutomationTrigger] 🚀 Triggering Workflow: New Workflow (9863b9c9-d828-4dc8-8f91-68c4b8acf242) 
+[2026-01-07T05:30:25.369Z] [AutomationTrigger] Workflow 9863b9c9-d828-4dc8-8f91-68c4b8acf242 completed. 
+[2026-01-07T05:30:51.143Z] [InboxService] Processing message from: "573006705958"
+[2026-01-07T05:30:51.144Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T05:30:51.566Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T05:30:51.804Z] [InboxService] Found existing lead: "ba80a936-866b-43be-87e1-c4196129651e"
+[2026-01-07T05:30:52.464Z] [InboxService] Using conversation: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:30:52.710Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUM1Njc5OEFFMDE0QTNDOTdDQjE0NUExRjRGNDRDM0QA 
+[2026-01-07T05:30:52.713Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Hola"}" for conv: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:30:53.405Z] [AutomationTrigger] Found 1 active message workflows. Checking conditions... 
+[2026-01-07T05:30:53.407Z] [AutomationTrigger] 🚀 Triggering Workflow: New Workflow (9863b9c9-d828-4dc8-8f91-68c4b8acf242) 
+[2026-01-07T05:30:55.496Z] [AutomationTrigger] Workflow 9863b9c9-d828-4dc8-8f91-68c4b8acf242 completed. 
+[2026-01-07T05:31:15.194Z] [InboxService] Processing message from: "573006705958"
+[2026-01-07T05:31:15.196Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T05:31:15.602Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T05:31:15.842Z] [InboxService] Found existing lead: "ba80a936-866b-43be-87e1-c4196129651e"
+[2026-01-07T05:31:16.474Z] [InboxService] Using conversation: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:31:16.725Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUM5Mjc3OTc3MzVBM0UxOTY5NDk0QTI0M0M1QTU3QzYA 
+[2026-01-07T05:31:16.728Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Hola"}" for conv: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:31:17.364Z] [AutomationTrigger] Found 1 active message workflows. Checking conditions... 
+[2026-01-07T05:31:17.366Z] [AutomationTrigger] 🚀 Triggering Workflow: New Workflow (9863b9c9-d828-4dc8-8f91-68c4b8acf242) 
+[2026-01-07T05:31:19.454Z] [AutomationTrigger] Workflow 9863b9c9-d828-4dc8-8f91-68c4b8acf242 completed. 
+[2026-01-07T05:31:36.022Z] [InboxService] Processing message from: "573006705958"
+[2026-01-07T05:31:36.024Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T05:31:36.271Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T05:31:36.509Z] [InboxService] Found existing lead: "ba80a936-866b-43be-87e1-c4196129651e"
+[2026-01-07T05:31:36.991Z] [InboxService] Using conversation: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:31:37.235Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUNDOEFBNzU5ODIzRDIyQjk4MTE2MkVGRTgyRTFDRDcA 
+[2026-01-07T05:31:37.237Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Hola"}" for conv: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:31:37.777Z] [AutomationTrigger] Found 1 active message workflows. Checking conditions... 
+[2026-01-07T05:31:37.779Z] [AutomationTrigger] 🚀 Triggering Workflow: New Workflow (9863b9c9-d828-4dc8-8f91-68c4b8acf242) 
+[2026-01-07T05:31:38.086Z] [Engine] send_message action started. Message: "mioouhojo" 
+[2026-01-07T05:31:38.095Z] [Engine] Context: connectionId=ce74136f-5700-4fb6-a50a-07c62d092030, recipient=573006705958, orgId=db9d1288-80ab-48df-b130-a0739881c6f2 
+[2026-01-07T05:31:39.717Z] [Engine] Message sent successfully via connection ce74136f-5700-4fb6-a50a-07c62d092030 
+[2026-01-07T05:31:41.392Z] [AutomationTrigger] Workflow 9863b9c9-d828-4dc8-8f91-68c4b8acf242 completed. 
+[2026-01-07T05:31:54.287Z] [InboxService] Processing message from: "573006705958"
+[2026-01-07T05:31:54.289Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T05:31:54.566Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T05:31:54.809Z] [InboxService] Found existing lead: "ba80a936-866b-43be-87e1-c4196129651e"
+[2026-01-07T05:31:55.384Z] [InboxService] Using conversation: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:31:55.638Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUM1ODM4NzA0QzlBNjc2QjQ0QkE1Njc4RDY3QjAzMzcA 
+[2026-01-07T05:31:55.640Z] [AutomationTrigger] Evaluating input: "{"type":"unknown","raw":{"context":{"from":"573248322720","id":"wamid.HBgMNTczMDA2NzA1OTU4FQIAERgSM0FCMjkyQTVGNzM1M0ZFRjZCAA=="},"from":"573006705958","id":"wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUM1ODM4NzA0QzlBNjc2QjQ0QkE1Njc4RDY3QjAzMzcA","timestamp":"1767763913","type":"interactive","interactive":{"type":"button_reply","button_reply":{"id":"btn_ecswr","title":"gfgf"}}}}" for conv: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:31:56.259Z] [AutomationTrigger] Found 1 active message workflows. Checking conditions... 
+[2026-01-07T05:37:47.989Z] [InboxService] Processing message from: "573006705958"
+[2026-01-07T05:37:47.992Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T05:37:49.078Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T05:37:49.404Z] [InboxService] Found existing lead: "ba80a936-866b-43be-87e1-c4196129651e"
+[2026-01-07T05:37:50.351Z] [InboxService] Using conversation: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:37:50.638Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUM5NzE2OTA0MTNCMDE0NzZEMzk5NDFEMDJBRjhBRUYA 
+[2026-01-07T05:37:50.640Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"J"}" for conv: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:37:50.913Z] [InboxService] Processing message from: "573006705958"
+[2026-01-07T05:37:50.915Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T05:37:51.163Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T05:37:51.374Z] [AutomationTrigger] Found 1 active message workflows. Checking conditions... 
+[2026-01-07T05:37:51.446Z] [InboxService] Found existing lead: "ba80a936-866b-43be-87e1-c4196129651e"
+[2026-01-07T05:37:51.940Z] [InboxService] Using conversation: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:37:52.176Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUMzNUZBMEU4OTAyRjE3NjA4MTk1REJENUMwNTVFRkMA 
+[2026-01-07T05:37:52.178Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Hola"}" for conv: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:37:52.856Z] [AutomationTrigger] Found 1 active message workflows. Checking conditions... 
+[2026-01-07T05:37:52.858Z] [AutomationTrigger] 🚀 Triggering Workflow: New Workflow (9863b9c9-d828-4dc8-8f91-68c4b8acf242) 
+[2026-01-07T05:37:53.146Z] [Engine] send_message action started. Message: "mioouhojo" 
+[2026-01-07T05:37:53.148Z] [Engine] Context: connectionId=ce74136f-5700-4fb6-a50a-07c62d092030, recipient=573006705958, orgId=db9d1288-80ab-48df-b130-a0739881c6f2 
+[2026-01-07T05:37:54.793Z] [Engine] Message sent successfully via connection ce74136f-5700-4fb6-a50a-07c62d092030 
+[2026-01-07T05:37:56.399Z] [AutomationTrigger] Workflow 9863b9c9-d828-4dc8-8f91-68c4b8acf242 completed. 
+[2026-01-07T05:38:23.298Z] [InboxService] Processing message from: "573006705958"
+[2026-01-07T05:38:23.300Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T05:38:23.545Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T05:38:23.795Z] [InboxService] Found existing lead: "ba80a936-866b-43be-87e1-c4196129651e"
+[2026-01-07T05:38:24.294Z] [InboxService] Using conversation: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:38:24.522Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUMyODE1RDcwRjQwRTlDNjBDNDc3QjA5NEVBNzNFOTMA 
+[2026-01-07T05:38:24.525Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Hola"}" for conv: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:38:25.340Z] [AutomationTrigger] Found 1 active message workflows. Checking conditions... 
+[2026-01-07T05:38:25.342Z] [AutomationTrigger] 🚀 Triggering Workflow: New Workflow (9863b9c9-d828-4dc8-8f91-68c4b8acf242) 
+[2026-01-07T05:38:25.587Z] [Engine] send_message action started. Message: "mioouhojo" 
+[2026-01-07T05:38:25.592Z] [Engine] Context: connectionId=ce74136f-5700-4fb6-a50a-07c62d092030, recipient=573006705958, orgId=db9d1288-80ab-48df-b130-a0739881c6f2 
+[2026-01-07T05:38:27.139Z] [Engine] Message sent successfully via connection ce74136f-5700-4fb6-a50a-07c62d092030 
+[2026-01-07T05:38:29.485Z] [AutomationTrigger] Workflow 9863b9c9-d828-4dc8-8f91-68c4b8acf242 completed. 
+[2026-01-07T05:38:41.460Z] [InboxService] Processing message from: "573006705958"
+[2026-01-07T05:38:41.462Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T05:38:41.864Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T05:38:42.104Z] [InboxService] Found existing lead: "ba80a936-866b-43be-87e1-c4196129651e"
+[2026-01-07T05:38:42.760Z] [InboxService] Using conversation: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:38:42.996Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUM1ODU2NkQ4MDkwQkEzQkZCRjZFNEJDQTZDNzlDNTcA 
+[2026-01-07T05:38:42.998Z] [AutomationTrigger] Evaluating input: "{"type":"unknown","raw":{"context":{"from":"573248322720","id":"wamid.HBgMNTczMDA2NzA1OTU4FQIAERgSRTk1MjhGNjMxRDZCQjkzN0E5AA=="},"from":"573006705958","id":"wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUM1ODU2NkQ4MDkwQkEzQkZCRjZFNEJDQTZDNzlDNTcA","timestamp":"1767764320","type":"interactive","interactive":{"type":"button_reply","button_reply":{"id":"btn_ik48m","title":"tgrt"}}}}" for conv: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:38:43.636Z] [AutomationTrigger] Found 1 active message workflows. Checking conditions... 
+[2026-01-07T05:41:21.045Z] [InboxService] Processing message from: "573006705958"
+[2026-01-07T05:41:21.046Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T05:41:21.289Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T05:41:21.531Z] [InboxService] Found existing lead: "ba80a936-866b-43be-87e1-c4196129651e"
+[2026-01-07T05:41:22.116Z] [InboxService] Using conversation: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:41:22.360Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUM2NDM5N0EwNzZCQ0Y2REJDNzczNzQwQjQ3NjZFNTMA 
+[2026-01-07T05:41:22.365Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Hola"}" for conv: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:41:23.091Z] [AutomationTrigger] Found 1 active message workflows. Checking conditions... 
+[2026-01-07T05:41:23.093Z] [AutomationTrigger] 🚀 Triggering Workflow: New Workflow (9863b9c9-d828-4dc8-8f91-68c4b8acf242) 
+[2026-01-07T05:41:23.356Z] [Engine] send_message action started. Message: "mioouhojo" 
+[2026-01-07T05:41:23.358Z] [Engine] Context: connectionId=ce74136f-5700-4fb6-a50a-07c62d092030, recipient=573006705958, orgId=db9d1288-80ab-48df-b130-a0739881c6f2 
+[2026-01-07T05:41:25.102Z] [Engine] Message sent successfully via connection ce74136f-5700-4fb6-a50a-07c62d092030 
+[2026-01-07T05:41:25.988Z] [AutomationTrigger] Workflow 9863b9c9-d828-4dc8-8f91-68c4b8acf242 completed. 
+[2026-01-07T05:47:39.071Z] [InboxService] Processing message from: "573006705958"
+[2026-01-07T05:47:39.072Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T05:47:39.587Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T05:47:39.866Z] [InboxService] Found existing lead: "ba80a936-866b-43be-87e1-c4196129651e"
+[2026-01-07T05:47:40.643Z] [InboxService] Using conversation: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:47:40.919Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUMxNzhCNjYxNENDODFDNENBRDk1MEZCRTU1RkVGQkUA 
+[2026-01-07T05:47:40.921Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Hola"}" for conv: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:47:41.623Z] [AutomationTrigger] Found 1 active message workflows. Checking conditions... 
+[2026-01-07T05:47:41.625Z] [AutomationTrigger] 🚀 Triggering Workflow: New Workflow (9863b9c9-d828-4dc8-8f91-68c4b8acf242) 
+[2026-01-07T05:47:41.881Z] [Engine] send_message action started. Message: "mioouhojo" 
+[2026-01-07T05:47:41.883Z] [Engine] Context: connectionId=ce74136f-5700-4fb6-a50a-07c62d092030, recipient=573006705958, orgId=db9d1288-80ab-48df-b130-a0739881c6f2 
+[2026-01-07T05:47:43.773Z] [Engine] Message sent successfully via connection ce74136f-5700-4fb6-a50a-07c62d092030 
+[2026-01-07T05:47:44.574Z] [AutomationTrigger] Workflow 9863b9c9-d828-4dc8-8f91-68c4b8acf242 completed. 
+[2026-01-07T05:48:22.756Z] [InboxService] Processing message from: "573006705958"
+[2026-01-07T05:48:22.758Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T05:48:23.019Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T05:48:23.264Z] [InboxService] Found existing lead: "ba80a936-866b-43be-87e1-c4196129651e"
+[2026-01-07T05:48:23.754Z] [InboxService] Using conversation: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:48:23.999Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUMwMTUxREM1NTVGQTJCNjVFMEZFRjREMkY0NUI3NkQA 
+[2026-01-07T05:48:24.001Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Hola"}" for conv: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:48:24.640Z] [AutomationTrigger] Found 1 active message workflows. Checking conditions... 
+[2026-01-07T05:48:24.641Z] [AutomationTrigger] 🚀 Triggering Workflow: New Workflow (9863b9c9-d828-4dc8-8f91-68c4b8acf242) 
+[2026-01-07T05:48:26.838Z] [AutomationTrigger] Workflow 9863b9c9-d828-4dc8-8f91-68c4b8acf242 completed. 
+[2026-01-07T05:48:57.683Z] [InboxService] Processing message from: "573006705958"
+[2026-01-07T05:48:57.685Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T05:48:58.136Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T05:48:58.391Z] [InboxService] Found existing lead: "ba80a936-866b-43be-87e1-c4196129651e"
+[2026-01-07T05:48:59.076Z] [InboxService] Using conversation: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:48:59.325Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUNCQUJCMUQzNjk1QzVCNkE4RUY0NEM0NkI0NjlBOUEA 
+[2026-01-07T05:48:59.327Z] [AutomationTrigger] Evaluating input: "{"type":"unknown","raw":{"context":{"from":"573248322720","id":"wamid.HBgMNTczMDA2NzA1OTU4FQIAERgSQkQxQjUwMzBDNTVERUU0NkQ1AA=="},"from":"573006705958","id":"wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUNCQUJCMUQzNjk1QzVCNkE4RUY0NEM0NkI0NjlBOUEA","timestamp":"1767764936","type":"interactive","interactive":{"type":"list_reply","list_reply":{"id":"row_hzri6","title":"gfdfgdfgdfg","description":"gdfgdfgdfg"}}}}" for conv: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:48:59.974Z] [AutomationTrigger] Found 1 active message workflows. Checking conditions... 
+[2026-01-07T05:50:08.378Z] [InboxService] Processing message from: "573006705958"
+[2026-01-07T05:50:08.380Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T05:50:09.023Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T05:50:09.293Z] [InboxService] Found existing lead: "ba80a936-866b-43be-87e1-c4196129651e"
+[2026-01-07T05:50:09.992Z] [InboxService] Using conversation: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:50:10.243Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUMwRDI0QTU4NTg0QjBCMEY4N0M5QUVCNTI3N0NCQjcA 
+[2026-01-07T05:50:10.245Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Hola"}" for conv: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:50:10.884Z] [AutomationTrigger] Found 1 active message workflows. Checking conditions... 
+[2026-01-07T05:50:10.886Z] [AutomationTrigger] 🚀 Triggering Workflow: New Workflow (9863b9c9-d828-4dc8-8f91-68c4b8acf242) 
+[2026-01-07T05:50:13.095Z] [AutomationTrigger] Workflow 9863b9c9-d828-4dc8-8f91-68c4b8acf242 completed. 
+[2026-01-07T05:50:21.364Z] [InboxService] Processing message from: "573006705958"
+[2026-01-07T05:50:21.365Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T05:50:21.803Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T05:50:22.043Z] [InboxService] Found existing lead: "ba80a936-866b-43be-87e1-c4196129651e"
+[2026-01-07T05:50:22.695Z] [InboxService] Using conversation: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:50:22.948Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUNBNUNCRDA5NEY5QTMzREZBQ0Y0QUU5RkREOTM2NTQA 
+[2026-01-07T05:50:22.950Z] [AutomationTrigger] Evaluating input: "{"type":"unknown","raw":{"context":{"from":"573248322720","id":"wamid.HBgMNTczMDA2NzA1OTU4FQIAERgSQzU2ODNCNDMzNERCRDU0MDREAA=="},"from":"573006705958","id":"wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUNBNUNCRDA5NEY5QTMzREZBQ0Y0QUU5RkREOTM2NTQA","timestamp":"1767765020","type":"interactive","interactive":{"type":"list_reply","list_reply":{"id":"row_hzri6","title":"gfdfgdfgdfg","description":"gdfgdfgdfg"}}}}" for conv: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:50:23.589Z] [AutomationTrigger] Found 1 active message workflows. Checking conditions... 
+[2026-01-07T05:50:52.516Z] [InboxService] Processing message from: "573006705958"
+[2026-01-07T05:50:52.518Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T05:50:52.762Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T05:50:53.004Z] [InboxService] Found existing lead: "ba80a936-866b-43be-87e1-c4196129651e"
+[2026-01-07T05:50:53.476Z] [InboxService] Using conversation: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:50:53.701Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUNBMTkyMTQxNTdGMjFERDY4NzFCREFGMDc2MzQwOEMA 
+[2026-01-07T05:50:53.703Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Abd"}" for conv: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:50:54.183Z] [InboxService] Processing message from: "573006705958"
+[2026-01-07T05:50:54.184Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T05:50:54.195Z] [AutomationTrigger] Found 1 active message workflows. Checking conditions... 
+[2026-01-07T05:50:54.423Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T05:50:54.659Z] [InboxService] Found existing lead: "ba80a936-866b-43be-87e1-c4196129651e"
+[2026-01-07T05:50:55.134Z] [InboxService] Using conversation: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:50:55.366Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUM5RUM5NUI4MDg1NjBEN0RDRjYzN0Y5N0M0RTNFOEMA 
+[2026-01-07T05:50:55.368Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Hola"}" for conv: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:50:55.842Z] [AutomationTrigger] Found 1 active message workflows. Checking conditions... 
+[2026-01-07T05:50:55.844Z] [AutomationTrigger] 🚀 Triggering Workflow: New Workflow (9863b9c9-d828-4dc8-8f91-68c4b8acf242) 
+[2026-01-07T05:50:58.425Z] [AutomationTrigger] Workflow 9863b9c9-d828-4dc8-8f91-68c4b8acf242 completed. 
+[2026-01-07T05:51:04.057Z] [InboxService] Processing message from: "573006705958"
+[2026-01-07T05:51:04.058Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T05:51:04.470Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T05:51:04.711Z] [InboxService] Found existing lead: "ba80a936-866b-43be-87e1-c4196129651e"
+[2026-01-07T05:51:05.345Z] [InboxService] Using conversation: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:51:05.584Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUM5RDE1QTg2OTkzMUZERUIyMjZFOEFFODQ2MTkzNjUA 
+[2026-01-07T05:51:05.586Z] [AutomationTrigger] Evaluating input: "{"type":"unknown","raw":{"context":{"from":"573248322720","id":"wamid.HBgMNTczMDA2NzA1OTU4FQIAERgSQjcyNjhCM0NDMzgwQjZEMDk0AA=="},"from":"573006705958","id":"wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUM5RDE1QTg2OTkzMUZERUIyMjZFOEFFODQ2MTkzNjUA","timestamp":"1767765063","type":"interactive","interactive":{"type":"button_reply","button_reply":{"id":"btn_ik48m","title":"tgrtgtrgt"}}}}" for conv: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:51:06.228Z] [AutomationTrigger] Found 1 active message workflows. Checking conditions... 
+[2026-01-07T05:57:23.707Z] [InboxService] Processing message from: "573006705958"
+[2026-01-07T05:57:23.711Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T05:57:24.770Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T05:57:25.073Z] [InboxService] Found existing lead: "ba80a936-866b-43be-87e1-c4196129651e"
+[2026-01-07T05:57:25.910Z] [InboxService] Using conversation: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:57:26.181Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUNCOUZFNERENzhGNTRBNUE1OUU1RkQ0QkRFQzJEMDYA 
+[2026-01-07T05:57:26.198Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Hola"}" for conv: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:57:26.961Z] [AutomationTrigger] Found 1 active message workflows. Checking conditions... 
+[2026-01-07T05:57:26.962Z] [AutomationTrigger] 🚀 Triggering Workflow: New Workflow (9863b9c9-d828-4dc8-8f91-68c4b8acf242) 
+[2026-01-07T05:57:29.121Z] [AutomationTrigger] Workflow 9863b9c9-d828-4dc8-8f91-68c4b8acf242 completed. 
+[2026-01-07T05:57:34.464Z] [InboxService] Processing message from: "573006705958"
+[2026-01-07T05:57:34.465Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T05:57:34.873Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T05:57:35.193Z] [InboxService] Found existing lead: "ba80a936-866b-43be-87e1-c4196129651e"
+[2026-01-07T05:57:35.908Z] [InboxService] Using conversation: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:57:36.152Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUM5Q0I0QTlFMDRDMjU2MDJGRTFBNkYyMkY2RjFGMjAA 
+[2026-01-07T05:57:36.154Z] [AutomationTrigger] Evaluating input: "{"type":"interactive","text":"tgrtgtrgt","raw":{"type":"button_reply","button_reply":{"id":"btn_ik48m","title":"tgrtgtrgt"}}}" for conv: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:57:36.789Z] [AutomationTrigger] Found 1 active message workflows. Checking conditions... 
+[2026-01-07T05:57:57.097Z] [InboxService] Processing message from: "573006705958"
+[2026-01-07T05:57:57.099Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T05:57:57.345Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T05:57:57.592Z] [InboxService] Found existing lead: "ba80a936-866b-43be-87e1-c4196129651e"
+[2026-01-07T05:57:58.234Z] [InboxService] Using conversation: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:57:58.464Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUNFNDQwQTAxRjcxNjU1M0NCMUI1ODkxMTVGRTNDMjEA 
+[2026-01-07T05:57:58.466Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Hola"}" for conv: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:57:58.976Z] [AutomationTrigger] Found 1 active message workflows. Checking conditions... 
+[2026-01-07T05:57:58.978Z] [AutomationTrigger] 🚀 Triggering Workflow: New Workflow (9863b9c9-d828-4dc8-8f91-68c4b8acf242) 
+[2026-01-07T05:58:01.092Z] [AutomationTrigger] Workflow 9863b9c9-d828-4dc8-8f91-68c4b8acf242 completed. 
+[2026-01-07T05:58:07.285Z] [InboxService] Processing message from: "573006705958"
+[2026-01-07T05:58:07.287Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T05:58:07.701Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T05:58:07.934Z] [InboxService] Found existing lead: "ba80a936-866b-43be-87e1-c4196129651e"
+[2026-01-07T05:58:08.679Z] [InboxService] Using conversation: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:58:08.920Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczMDA2NzA1OTU4FQIAEhggQUM1OUZDRjZFN0IxRkJDODQzMjU5MjRBOTEzNzdCNEIA 
+[2026-01-07T05:58:08.922Z] [AutomationTrigger] Evaluating input: "{"type":"interactive","text":"gfdfgdfgdfg","raw":{"type":"list_reply","list_reply":{"id":"row_hzri6","title":"gfdfgdfgdfg","description":"gdfgdfgdfg"}}}" for conv: cc21262d-23bd-4baa-9b27-65d6a5b43803 
+[2026-01-07T05:58:09.627Z] [AutomationTrigger] Found 1 active message workflows. Checking conditions... 
+[2026-01-07T05:58:45.083Z] [InboxService] Processing message from: "573504076800"
+[2026-01-07T05:58:45.084Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T05:58:45.324Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T05:58:45.560Z] [InboxService] Found existing lead: "2d4500e3-767e-4064-b0dd-d776915fd482"
+[2026-01-07T05:58:46.233Z] [InboxService] Using conversation: 30cda9e6-60b9-4434-9f79-8ecfb96554f2 
+[2026-01-07T05:58:46.471Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczNTA0MDc2ODAwFQIAEhggQTU3RTMxODJBNUI0QTdEOUQ1QTREMDQwMjAyQzE5RDgA 
+[2026-01-07T05:58:46.473Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Hola"}" for conv: 30cda9e6-60b9-4434-9f79-8ecfb96554f2 
+[2026-01-07T05:58:47.148Z] [AutomationTrigger] Found 1 active message workflows. Checking conditions... 
+[2026-01-07T05:58:47.150Z] [AutomationTrigger] 🚀 Triggering Workflow: New Workflow (9863b9c9-d828-4dc8-8f91-68c4b8acf242) 
+[2026-01-07T05:58:49.452Z] [AutomationTrigger] Workflow 9863b9c9-d828-4dc8-8f91-68c4b8acf242 completed. 
+[2026-01-07T05:59:02.693Z] [InboxService] Processing message from: "573504076800"
+[2026-01-07T05:59:02.694Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T05:59:03.093Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T05:59:03.332Z] [InboxService] Found existing lead: "2d4500e3-767e-4064-b0dd-d776915fd482"
+[2026-01-07T05:59:03.964Z] [InboxService] Using conversation: 30cda9e6-60b9-4434-9f79-8ecfb96554f2 
+[2026-01-07T05:59:04.198Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczNTA0MDc2ODAwFQIAEhggQTU5RjcwQUFBOTEzMkI0NzE2Qzk3ODNCNDM5MTU2MTQA 
+[2026-01-07T05:59:04.200Z] [AutomationTrigger] Evaluating input: "{"type":"interactive","text":"dgdgfdgd","raw":{"type":"list_reply","list_reply":{"id":"row_lfh3p","title":"dgdgfdgd","description":"dgdfgdg"}}}" for conv: 30cda9e6-60b9-4434-9f79-8ecfb96554f2 
+[2026-01-07T05:59:04.834Z] [AutomationTrigger] Found 1 active message workflows. Checking conditions... 
+[2026-01-07T06:00:15.921Z] [InboxService] Processing message from: "573504076800"
+[2026-01-07T06:00:15.922Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T06:00:16.165Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T06:00:16.410Z] [InboxService] Found existing lead: "2d4500e3-767e-4064-b0dd-d776915fd482"
+[2026-01-07T06:00:16.924Z] [InboxService] Using conversation: 30cda9e6-60b9-4434-9f79-8ecfb96554f2 
+[2026-01-07T06:00:17.196Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczNTA0MDc2ODAwFQIAEhggQTU1MkQxN0Y1RjAzRDRBMkU1M0ZFNzhFMzQwOTg4ODMA 
+[2026-01-07T06:00:17.198Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Hola"}" for conv: 30cda9e6-60b9-4434-9f79-8ecfb96554f2 
+[2026-01-07T06:00:17.836Z] [AutomationTrigger] Found 1 active message workflows. Checking conditions... 
+[2026-01-07T06:00:17.838Z] [AutomationTrigger] 🚀 Triggering Workflow: New Workflow (9863b9c9-d828-4dc8-8f91-68c4b8acf242) 
+[2026-01-07T06:00:20.156Z] [AutomationTrigger] Workflow 9863b9c9-d828-4dc8-8f91-68c4b8acf242 completed. 
+[2026-01-07T06:00:24.206Z] [InboxService] Processing message from: "573504076800"
+[2026-01-07T06:00:24.207Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T06:00:24.453Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T06:00:24.686Z] [InboxService] Found existing lead: "2d4500e3-767e-4064-b0dd-d776915fd482"
+[2026-01-07T06:00:25.388Z] [InboxService] Using conversation: 30cda9e6-60b9-4434-9f79-8ecfb96554f2 
+[2026-01-07T06:00:25.621Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczNTA0MDc2ODAwFQIAEhggQTU2RUY1QjQ3RTREMTE4OTI4QzBFRDY3QUM4QjBFMzgA 
+[2026-01-07T06:00:25.623Z] [AutomationTrigger] Evaluating input: "{"type":"interactive","text":"tgrtgtrgt","raw":{"type":"button_reply","button_reply":{"id":"btn_ik48m","title":"tgrtgtrgt"}}}" for conv: 30cda9e6-60b9-4434-9f79-8ecfb96554f2 
+[2026-01-07T06:00:26.349Z] [AutomationTrigger] Found 1 active message workflows. Checking conditions... 
+[2026-01-07T06:01:14.787Z] [InboxService] Processing message from: "573504076800"
+[2026-01-07T06:01:14.789Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T06:01:15.064Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T06:01:15.324Z] [InboxService] Found existing lead: "2d4500e3-767e-4064-b0dd-d776915fd482"
+[2026-01-07T06:01:16.193Z] [InboxService] Using conversation: 30cda9e6-60b9-4434-9f79-8ecfb96554f2 
+[2026-01-07T06:01:16.455Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczNTA0MDc2ODAwFQIAEhggQTVFNzIwNkZEOUM0M0VFRjEyRjk4MkI4NjVDRDNCNTcA 
+[2026-01-07T06:01:16.474Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Hola"}" for conv: 30cda9e6-60b9-4434-9f79-8ecfb96554f2 
+[2026-01-07T06:01:17.335Z] [AutomationTrigger] Found 1 active message workflows. Checking conditions... 
+[2026-01-07T06:01:17.336Z] [AutomationTrigger] 🚀 Triggering Workflow: New Workflow (9863b9c9-d828-4dc8-8f91-68c4b8acf242) 
+[2026-01-07T06:01:19.695Z] [AutomationTrigger] Workflow 9863b9c9-d828-4dc8-8f91-68c4b8acf242 completed. 
+[2026-01-07T06:01:22.894Z] [InboxService] Processing message from: "573504076800"
+[2026-01-07T06:01:22.896Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T06:01:23.143Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T06:01:23.386Z] [InboxService] Found existing lead: "2d4500e3-767e-4064-b0dd-d776915fd482"
+[2026-01-07T06:01:23.899Z] [InboxService] Using conversation: 30cda9e6-60b9-4434-9f79-8ecfb96554f2 
+[2026-01-07T06:01:24.167Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczNTA0MDc2ODAwFQIAEhggQTVFNzc5MEY0OTY5OTIzM0ZEQjkyRThERTNDNjMwODUA 
+[2026-01-07T06:01:24.169Z] [AutomationTrigger] Evaluating input: "{"type":"interactive","text":"tgrtgtrgt","raw":{"type":"button_reply","button_reply":{"id":"btn_ik48m","title":"tgrtgtrgt"}}}" for conv: 30cda9e6-60b9-4434-9f79-8ecfb96554f2 
+[2026-01-07T06:01:24.829Z] [AutomationTrigger] Found 1 active message workflows. Checking conditions... 
+[2026-01-07T06:01:42.768Z] [InboxService] Processing message from: "573504076800"
+[2026-01-07T06:01:42.769Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T06:01:43.010Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T06:01:43.253Z] [InboxService] Found existing lead: "2d4500e3-767e-4064-b0dd-d776915fd482"
+[2026-01-07T06:01:43.828Z] [InboxService] Using conversation: 30cda9e6-60b9-4434-9f79-8ecfb96554f2 
+[2026-01-07T06:01:44.066Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczNTA0MDc2ODAwFQIAEhggQTU2MUY2NjFBQkRGRjlFNjJEODgxRjk2RUNFMUZGREYA 
+[2026-01-07T06:01:44.068Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Holq"}" for conv: 30cda9e6-60b9-4434-9f79-8ecfb96554f2 
+[2026-01-07T06:01:44.581Z] [AutomationTrigger] Found 1 active message workflows. Checking conditions... 
+[2026-01-07T06:01:45.922Z] [InboxService] Processing message from: "573504076800"
+[2026-01-07T06:01:45.924Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T06:01:46.166Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T06:01:46.402Z] [InboxService] Found existing lead: "2d4500e3-767e-4064-b0dd-d776915fd482"
+[2026-01-07T06:01:47.004Z] [InboxService] Using conversation: 30cda9e6-60b9-4434-9f79-8ecfb96554f2 
+[2026-01-07T06:01:47.244Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczNTA0MDc2ODAwFQIAEhggQTVFQUI1NDY2MUQzQjc2OTdFMzI0NTRERUI5RTlDODIA 
+[2026-01-07T06:01:47.246Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Hola"}" for conv: 30cda9e6-60b9-4434-9f79-8ecfb96554f2 
+[2026-01-07T06:01:47.847Z] [AutomationTrigger] Found 1 active message workflows. Checking conditions... 
+[2026-01-07T06:01:47.849Z] [AutomationTrigger] 🚀 Triggering Workflow: New Workflow (9863b9c9-d828-4dc8-8f91-68c4b8acf242) 
+[2026-01-07T06:01:50.175Z] [AutomationTrigger] Workflow 9863b9c9-d828-4dc8-8f91-68c4b8acf242 completed. 
+[2026-01-07T06:01:57.921Z] [InboxService] Processing message from: "573504076800"
+[2026-01-07T06:01:57.923Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T06:01:58.391Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T06:01:58.623Z] [InboxService] Found existing lead: "2d4500e3-767e-4064-b0dd-d776915fd482"
+[2026-01-07T06:01:59.294Z] [InboxService] Using conversation: 30cda9e6-60b9-4434-9f79-8ecfb96554f2 
+[2026-01-07T06:01:59.527Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczNTA0MDc2ODAwFQIAEhggQTVFOENCMjM2RkU1RkM2MEU1NUMyOTUzOTkwMDVERDAA 
+[2026-01-07T06:01:59.529Z] [AutomationTrigger] Evaluating input: "{"type":"interactive","text":"gfdfgdfgdfg","raw":{"type":"list_reply","list_reply":{"id":"row_hzri6","title":"gfdfgdfgdfg","description":"gdfgdfgdfg"}}}" for conv: 30cda9e6-60b9-4434-9f79-8ecfb96554f2 
+[2026-01-07T06:02:00.172Z] [AutomationTrigger] Found 1 active message workflows. Checking conditions... 
+[2026-01-07T06:03:00.927Z] [InboxService] Processing message from: "573504076800"
+[2026-01-07T06:03:00.928Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T06:03:01.661Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T06:03:01.973Z] [InboxService] Found existing lead: "2d4500e3-767e-4064-b0dd-d776915fd482"
+[2026-01-07T06:03:02.787Z] [InboxService] Using conversation: 30cda9e6-60b9-4434-9f79-8ecfb96554f2 
+[2026-01-07T06:03:03.093Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczNTA0MDc2ODAwFQIAEhggQTU4QkYzQjY4RjYwMjVBQTM1QkU0MzcxRkNCRDU5QzMA 
+[2026-01-07T06:03:03.094Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Hola"}" for conv: 30cda9e6-60b9-4434-9f79-8ecfb96554f2 
+[2026-01-07T06:03:03.751Z] [AutomationTrigger] Found 1 active message workflows. Checking conditions... 
+[2026-01-07T06:03:03.753Z] [AutomationTrigger] 🚀 Triggering Workflow: New Workflow (9863b9c9-d828-4dc8-8f91-68c4b8acf242) 
+[2026-01-07T06:03:06.063Z] [AutomationTrigger] Workflow 9863b9c9-d828-4dc8-8f91-68c4b8acf242 completed. 
+[2026-01-07T06:03:13.093Z] [InboxService] Processing message from: "573504076800"
+[2026-01-07T06:03:13.094Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T06:03:13.333Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T06:03:13.569Z] [InboxService] Found existing lead: "2d4500e3-767e-4064-b0dd-d776915fd482"
+[2026-01-07T06:03:14.200Z] [InboxService] Using conversation: 30cda9e6-60b9-4434-9f79-8ecfb96554f2 
+[2026-01-07T06:03:14.449Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczNTA0MDc2ODAwFQIAEhggQTVCRjVGOTg4MTA5Rjk4Mzg3RjZDRjk0QjIwNjc0NjcA 
+[2026-01-07T06:03:14.451Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Hola"}" for conv: 30cda9e6-60b9-4434-9f79-8ecfb96554f2 
+[2026-01-07T06:03:15.126Z] [AutomationTrigger] Found 1 active message workflows. Checking conditions... 
+[2026-01-07T06:03:15.128Z] [AutomationTrigger] 🚀 Triggering Workflow: New Workflow (9863b9c9-d828-4dc8-8f91-68c4b8acf242) 
+[2026-01-07T06:03:17.936Z] [AutomationTrigger] Workflow 9863b9c9-d828-4dc8-8f91-68c4b8acf242 completed. 
+[2026-01-07T06:03:24.049Z] [InboxService] Processing message from: "573504076800"
+[2026-01-07T06:03:24.051Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T06:03:24.650Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T06:03:24.903Z] [InboxService] Found existing lead: "2d4500e3-767e-4064-b0dd-d776915fd482"
+[2026-01-07T06:03:25.620Z] [InboxService] Using conversation: 30cda9e6-60b9-4434-9f79-8ecfb96554f2 
+[2026-01-07T06:03:25.859Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczNTA0MDc2ODAwFQIAEhggQTUwNTAxNDk0RkJDMDc3RjZBODk5MUU5NzNBMTI0MzMA 
+[2026-01-07T06:03:25.861Z] [AutomationTrigger] Evaluating input: "{"type":"interactive","text":"fgdfgdfgdfg","raw":{"type":"list_reply","list_reply":{"id":"row_t6tg3","title":"fgdfgdfgdfg","description":"dgdfgdfgd"}}}" for conv: 30cda9e6-60b9-4434-9f79-8ecfb96554f2 
+[2026-01-07T06:03:26.503Z] [AutomationTrigger] Found 1 active message workflows. Checking conditions... 
+[2026-01-07T06:07:54.021Z] [InboxService] Processing message from: "573504076800"
+[2026-01-07T06:07:54.024Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T06:07:54.266Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T06:07:54.503Z] [InboxService] Found existing lead: "2d4500e3-767e-4064-b0dd-d776915fd482"
+[2026-01-07T06:07:55.008Z] [InboxService] Using conversation: 30cda9e6-60b9-4434-9f79-8ecfb96554f2 
+[2026-01-07T06:07:55.244Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczNTA0MDc2ODAwFQIAEhggQTVDMkNFOEYyMjdBMTJDNEQ4QTExNkQyNkM0QTZCOUMA 
+[2026-01-07T06:07:55.260Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Hola"}" for conv: 30cda9e6-60b9-4434-9f79-8ecfb96554f2 
+[2026-01-07T06:07:55.903Z] [AutomationTrigger] Found 1 active message workflows. Checking conditions... 
+[2026-01-07T06:07:55.905Z] [AutomationTrigger] 🚀 Triggering Workflow: New Workflow (9863b9c9-d828-4dc8-8f91-68c4b8acf242) 
+[2026-01-07T06:07:58.328Z] [AutomationTrigger] Workflow 9863b9c9-d828-4dc8-8f91-68c4b8acf242 completed. 
+[2026-01-07T06:08:05.087Z] [InboxService] Processing message from: "573504076800"
+[2026-01-07T06:08:05.089Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T06:08:05.489Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T06:08:05.727Z] [InboxService] Found existing lead: "2d4500e3-767e-4064-b0dd-d776915fd482"
+[2026-01-07T06:08:06.407Z] [InboxService] Using conversation: 30cda9e6-60b9-4434-9f79-8ecfb96554f2 
+[2026-01-07T06:08:06.648Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczNTA0MDc2ODAwFQIAEhggQTUwREE2NDc5NzVFOEEyRUM1QzE0Q0I1QjgzNDAwNDgA 
+[2026-01-07T06:08:06.650Z] [AutomationTrigger] Evaluating input: "{"type":"interactive","text":"fgdfgdfgdfg","raw":{"type":"list_reply","list_reply":{"id":"row_t6tg3","title":"fgdfgdfgdfg","description":"dgdfgdfgd"}}}" for conv: 30cda9e6-60b9-4434-9f79-8ecfb96554f2 
+[2026-01-07T06:08:07.285Z] [AutomationTrigger] Found 1 active message workflows. Checking conditions... 
+[2026-01-07T06:08:07.885Z] [Engine] send_message action started. Message: "nbhjlbh" 
+[2026-01-07T06:08:07.894Z] [Engine] Context: connectionId=ce74136f-5700-4fb6-a50a-07c62d092030, recipient=573504076800, orgId=db9d1288-80ab-48df-b130-a0739881c6f2 
+[2026-01-07T06:08:09.674Z] [Engine] Message sent successfully via connection ce74136f-5700-4fb6-a50a-07c62d092030 
+[2026-01-07T06:08:48.111Z] [InboxService] Processing message from: "573504076800"
+[2026-01-07T06:08:48.116Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T06:08:48.348Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T06:08:48.590Z] [InboxService] Found existing lead: "2d4500e3-767e-4064-b0dd-d776915fd482"
+[2026-01-07T06:08:49.076Z] [InboxService] Using conversation: 30cda9e6-60b9-4434-9f79-8ecfb96554f2 
+[2026-01-07T06:08:49.310Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczNTA0MDc2ODAwFQIAEhggQTVEODQ5RTg4RkI3NzA3OTYxMjQ5NjcxOTA1OTE4NDIA 
+[2026-01-07T06:08:49.313Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Hola"}" for conv: 30cda9e6-60b9-4434-9f79-8ecfb96554f2 
+[2026-01-07T06:08:49.785Z] [AutomationTrigger] Found 1 active message workflows. Checking conditions... 
+[2026-01-07T06:08:49.787Z] [AutomationTrigger] 🚀 Triggering Workflow: New Workflow (9863b9c9-d828-4dc8-8f91-68c4b8acf242) 
+[2026-01-07T06:08:51.993Z] [AutomationTrigger] Workflow 9863b9c9-d828-4dc8-8f91-68c4b8acf242 completed. 
+[2026-01-07T06:08:56.032Z] [InboxService] Processing message from: "573504076800"
+[2026-01-07T06:08:56.033Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T06:08:56.272Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T06:08:56.511Z] [InboxService] Found existing lead: "2d4500e3-767e-4064-b0dd-d776915fd482"
+[2026-01-07T06:08:57.206Z] [InboxService] Using conversation: 30cda9e6-60b9-4434-9f79-8ecfb96554f2 
+[2026-01-07T06:08:57.455Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczNTA0MDc2ODAwFQIAEhggQTUzRjlDMzdGODA5Mjg2RjU1RDkyRDBCN0I2NjgwRjUA 
+[2026-01-07T06:08:57.457Z] [AutomationTrigger] Evaluating input: "{"type":"interactive","text":"tgrtgtrgt","raw":{"type":"button_reply","button_reply":{"id":"btn_ik48m","title":"tgrtgtrgt"}}}" for conv: 30cda9e6-60b9-4434-9f79-8ecfb96554f2 
+[2026-01-07T06:08:58.130Z] [AutomationTrigger] Found 1 active message workflows. Checking conditions... 
+[2026-01-07T06:08:58.697Z] [Engine] send_message action started. Message: "tytyty" 
+[2026-01-07T06:08:58.699Z] [Engine] Context: connectionId=ce74136f-5700-4fb6-a50a-07c62d092030, recipient=573504076800, orgId=db9d1288-80ab-48df-b130-a0739881c6f2 
+[2026-01-07T06:09:00.349Z] [Engine] Message sent successfully via connection ce74136f-5700-4fb6-a50a-07c62d092030 
+[2026-01-07T06:09:22.141Z] [InboxService] Processing message from: "573504076800"
+[2026-01-07T06:09:22.142Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T06:09:22.388Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T06:09:22.625Z] [InboxService] Found existing lead: "2d4500e3-767e-4064-b0dd-d776915fd482"
+[2026-01-07T06:09:23.128Z] [InboxService] Using conversation: 30cda9e6-60b9-4434-9f79-8ecfb96554f2 
+[2026-01-07T06:09:23.360Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczNTA0MDc2ODAwFQIAEhggQTVCMUQzMkVBRjIzNDNGNzZBODdDOTg3OTk4N0I0N0EA 
+[2026-01-07T06:09:23.362Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Fi"}" for conv: 30cda9e6-60b9-4434-9f79-8ecfb96554f2 
+[2026-01-07T06:09:23.841Z] [AutomationTrigger] Found 1 active message workflows. Checking conditions... 
+[2026-01-07T06:09:34.230Z] [InboxService] Processing message from: "573504076800"
+[2026-01-07T06:09:34.231Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T06:09:34.619Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T06:09:34.855Z] [InboxService] Found existing lead: "2d4500e3-767e-4064-b0dd-d776915fd482"
+[2026-01-07T06:09:35.561Z] [InboxService] Using conversation: 30cda9e6-60b9-4434-9f79-8ecfb96554f2 
+[2026-01-07T06:09:35.801Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczNTA0MDc2ODAwFQIAEhggQTVBRDgzNEE1MDZEQkIwRjI0MDU5N0IxODNCNjBEMzkA 
+[2026-01-07T06:09:35.803Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Ao"}" for conv: 30cda9e6-60b9-4434-9f79-8ecfb96554f2 
+[2026-01-07T06:09:36.460Z] [AutomationTrigger] Found 1 active message workflows. Checking conditions... 
+[2026-01-07T06:10:22.253Z] [InboxService] Processing message from: "573504076800"
+[2026-01-07T06:10:22.255Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T06:10:22.654Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T06:10:22.897Z] [InboxService] Found existing lead: "2d4500e3-767e-4064-b0dd-d776915fd482"
+[2026-01-07T06:10:23.797Z] [InboxService] Using conversation: e07f2f22-ec2c-46f2-9496-8c4736d3e9e6 
+[2026-01-07T06:10:24.034Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczNTA0MDc2ODAwFQIAEhggQTU2NDM2QUJDRTczNkY0OUY5NzY0M0ExNkNGREIzMjIA 
+[2026-01-07T06:10:24.036Z] [AutomationTrigger] Evaluating input: "{"type":"text","text":"Hey"}" for conv: e07f2f22-ec2c-46f2-9496-8c4736d3e9e6 
+[2026-01-07T06:10:24.662Z] [AutomationTrigger] Found 1 active message workflows. Checking conditions... 
+[2026-01-07T06:10:24.898Z] [AutomationTrigger] First contact detected for lead: 2d4500e3-767e-4064-b0dd-d776915fd482 
+[2026-01-07T06:10:24.900Z] [AutomationTrigger] 🚀 Triggering Workflow: New Workflow (9863b9c9-d828-4dc8-8f91-68c4b8acf242) 
+[2026-01-07T06:10:27.189Z] [AutomationTrigger] Workflow 9863b9c9-d828-4dc8-8f91-68c4b8acf242 completed. 
+[2026-01-07T06:10:32.378Z] [InboxService] Processing message from: "573504076800"
+[2026-01-07T06:10:32.379Z] [InboxService] Resolving connection from metadata: {"phoneNumberId":"990154037504132","channel":"whatsapp"}
+[2026-01-07T06:10:32.852Z] [InboxService] Matched Meta WhatsApp connection: {"connectionId":"ce74136f-5700-4fb6-a50a-07c62d092030","orgId":"db9d1288-80ab-48df-b130-a0739881c6f2"}
+[2026-01-07T06:10:33.101Z] [InboxService] Found existing lead: "2d4500e3-767e-4064-b0dd-d776915fd482"
+[2026-01-07T06:10:33.757Z] [InboxService] Using conversation: e07f2f22-ec2c-46f2-9496-8c4736d3e9e6 
+[2026-01-07T06:10:33.994Z] [InboxService] Skipping DUPLICATE message: wamid.HBgMNTczNTA0MDc2ODAwFQIAEhggQTU2NjI5QUFCQjQ3QjkyMzk3RjIzOTQzN0U1QjlGODEA 
+[2026-01-07T06:10:33.997Z] [AutomationTrigger] Evaluating input: "{"type":"interactive","text":"tgrtgtrgt","raw":{"type":"button_reply","button_reply":{"id":"btn_ik48m","title":"tgrtgtrgt"}}}" for conv: e07f2f22-ec2c-46f2-9496-8c4736d3e9e6 
+[2026-01-07T06:10:34.656Z] [AutomationTrigger] Found 1 active message workflows. Checking conditions... 
+[2026-01-07T06:10:34.899Z] [AutomationTrigger] Lead undefined has null prior conversations, skipping first_contact trigger 
+[2026-01-07T06:10:35.189Z] [Engine] send_message action started. Message: "tytyty" 
+[2026-01-07T06:10:35.191Z] [Engine] Context: connectionId=ce74136f-5700-4fb6-a50a-07c62d092030, recipient=573504076800, orgId=db9d1288-80ab-48df-b130-a0739881c6f2 
+[2026-01-07T06:10:36.962Z] [Engine] Message sent successfully via connection ce74136f-5700-4fb6-a50a-07c62d092030 

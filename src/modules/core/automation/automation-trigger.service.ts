@@ -1,5 +1,6 @@
 
 import { supabaseAdmin } from "@/lib/supabase-admin"
+import { fileLogger } from "@/lib/file-logger"
 import { WorkflowEngine } from "./engine"
 import { WorkflowDefinition } from "./engine"
 
@@ -16,8 +17,8 @@ export class AutomationTriggerService {
      * @param channel The channel (whatsapp, etc)
      * @param sender The phone number or sender ID
      */
-    async evaluateInput(messageContent: string, conversationId: string, channel: string, sender: string, leadId: string) {
-        console.log(`[AutomationTrigger] Evaluating input: "${messageContent}" for conv: ${conversationId}`)
+    async evaluateInput(messageContent: string, conversationId: string, channel: string, sender: string, leadId: string, connectionId?: string) {
+        fileLogger.log(`[AutomationTrigger] Evaluating input: "${messageContent}" for conv: ${conversationId}`)
 
         // 1. Fetch Active Workflows with 'keyword' or 'message_received' triggers
         // We filter in memory for now if trigger_config is JSONB, or use simple query if optimized
@@ -29,7 +30,7 @@ export class AutomationTriggerService {
         // Let's first get the conversation to know the Org
         const { data: conversation } = await supabaseAdmin
             .from('conversations')
-            .select('organization_id')
+            .select('organization_id, connection_id') // Fetch connection_id if not passed
             .eq('id', conversationId)
             .single()
 
@@ -39,20 +40,22 @@ export class AutomationTriggerService {
         }
 
         const orgId = conversation.organization_id
+        // Prefer passed connectionId (from message), fallback to conversation's
+        const finalConnectionId = connectionId || conversation.connection_id
 
         const { data: workflows } = await supabaseAdmin
             .from('workflows')
             .select('*')
             .eq('organization_id', orgId)
             .eq('is_active', true)
-            .in('trigger_type', ['keyword', 'message_received'])
+            .in('trigger_type', ['keyword', 'message_received', 'webhook', 'first_contact', 'business_hours', 'outside_hours', 'media_received'])
 
         if (!workflows || workflows.length === 0) {
-            console.log('[AutomationTrigger] No active message triggers found.')
+            fileLogger.log('[AutomationTrigger] No active message triggers found.')
             return
         }
 
-        console.log(`[AutomationTrigger] Found ${workflows.length} active message workflows. Checking conditions...`)
+        fileLogger.log(`[AutomationTrigger] Found ${workflows.length} active message workflows. Checking conditions...`)
 
         for (const wf of workflows) {
             const config = wf.trigger_config as any
@@ -78,13 +81,127 @@ export class AutomationTriggerService {
                 match = true // Triggers on ANY message
             }
 
+            // Check "First Contact" - Only NEW leads
+            if (wf.trigger_type === 'first_contact') {
+                // Check if this lead has any PRIOR conversations (before this one)
+                const { count: priorConvCount } = await supabaseAdmin
+                    .from('conversations')
+                    .select('id', { count: 'exact', head: true })
+                    .eq('lead_id', leadId)
+                    .neq('id', conversationId) // Exclude current conversation
+
+                if (priorConvCount === 0) {
+                    fileLogger.log(`[AutomationTrigger] First contact detected for lead: ${leadId}`)
+                    match = true
+                } else {
+                    fileLogger.log(`[AutomationTrigger] Lead ${leadId} has ${priorConvCount} prior conversations, skipping first_contact trigger`)
+                }
+            }
+
+            // Check "Business Hours" - Only during open hours
+            if (wf.trigger_type === 'business_hours') {
+                const now = new Date()
+                const currentHour = now.getHours()
+                const currentDay = now.getDay() // 0=Sunday, 6=Saturday
+
+                // Default: Mon-Fri 9AM-6PM (can be customized via config)
+                const startHour = config.start_hour ?? 9
+                const endHour = config.end_hour ?? 18
+                const workDays = config.work_days ?? [1, 2, 3, 4, 5] // Mon-Fri
+
+                const isWorkDay = workDays.includes(currentDay)
+                const isWorkHour = currentHour >= startHour && currentHour < endHour
+
+                if (isWorkDay && isWorkHour) {
+                    fileLogger.log(`[AutomationTrigger] Within business hours (${startHour}:00 - ${endHour}:00)`)
+                    match = true
+                } else {
+                    fileLogger.log(`[AutomationTrigger] Outside business hours, skipping trigger`)
+                }
+            }
+
+            // Check "Outside Hours" - Only outside business hours (for auto-replies)
+            if (wf.trigger_type === 'outside_hours') {
+                const now = new Date()
+                const currentHour = now.getHours()
+                const currentDay = now.getDay()
+
+                const startHour = config.start_hour ?? 9
+                const endHour = config.end_hour ?? 18
+                const workDays = config.work_days ?? [1, 2, 3, 4, 5]
+
+                const isWorkDay = workDays.includes(currentDay)
+                const isWorkHour = currentHour >= startHour && currentHour < endHour
+
+                if (!isWorkDay || !isWorkHour) {
+                    fileLogger.log(`[AutomationTrigger] Outside business hours - triggering auto-reply`)
+                    match = true
+                }
+            }
+
+            // Check "Media Received" - Triggers on images, videos, audio, documents
+            if (wf.trigger_type === 'media_received') {
+                // Parse message content to detect media type
+                let msgData: any = {}
+                try {
+                    msgData = typeof messageContent === 'string' ? JSON.parse(messageContent) : messageContent
+                } catch (e) {
+                    // Not JSON, treat as plain text
+                }
+
+                const mediaTypes = ['image', 'video', 'audio', 'document', 'sticker', 'location']
+                const detectedType = msgData.type || 'text'
+
+                if (mediaTypes.includes(detectedType)) {
+                    fileLogger.log(`[AutomationTrigger] Media detected: ${detectedType}`)
+
+                    // If config specifies allowed types, check
+                    const allowedTypes = config.media_types || mediaTypes
+                    if (allowedTypes.includes(detectedType)) {
+                        match = true
+                    }
+                }
+            }
+
+            // Check "Webhook" (Legacy/Fallback)
+            if (wf.trigger_type === 'webhook') {
+                // If config has keyword, treat as keyword trigger
+                if (config.keyword && config.keyword.trim() !== '') {
+                    const keyword = config.keyword.toLowerCase()
+                    const text = messageContent.toLowerCase()
+                    match = text.includes(keyword)
+                } else {
+                    // Otherwise, treat as "Any Message"
+                    match = true;
+                }
+            }
+
+            // COOLDOWN CHECK - Prevent spam triggers
+            if (match && config.cooldown_minutes && config.cooldown_minutes > 0) {
+                const cooldownMs = config.cooldown_minutes * 60 * 1000
+                const cutoffTime = new Date(Date.now() - cooldownMs).toISOString()
+
+                const { count: recentExecCount } = await supabaseAdmin
+                    .from('workflow_executions')
+                    .select('id', { count: 'exact', head: true })
+                    .eq('workflow_id', wf.id)
+                    .gte('started_at', cutoffTime)
+                    .contains('context', { lead: { id: leadId } })
+
+                if (recentExecCount && recentExecCount > 0) {
+                    fileLogger.log(`[AutomationTrigger] Cooldown active for workflow ${wf.id}, lead ${leadId}. Skipping.`)
+                    match = false
+                }
+            }
+
             if (match) {
-                console.log(`[AutomationTrigger] 🚀 Triggering Workflow: ${wf.name} (${wf.id})`)
+                fileLogger.log(`[AutomationTrigger] 🚀 Triggering Workflow: ${wf.name} (${wf.id})`)
                 this.executeWorkflow(wf, {
                     organization_id: orgId,
                     conversation: { id: conversationId, channel },
                     message: { content: messageContent, sender },
-                    lead: { id: leadId }
+                    lead: { id: leadId },
+                    connection_id: finalConnectionId // PASS CONNECTION ID
                 })
             }
         }
@@ -126,7 +243,7 @@ export class AutomationTriggerService {
             // Note: start() is async. In a real system, we might offload this to a queue (Redis/Bull).
             // For MVP, we run it in the background of the request (fire and forget promise).
             engine.start().then(async () => {
-                console.log(`[AutomationTrigger] Workflow ${workflow.id} completed.`)
+                fileLogger.log(`[AutomationTrigger] Workflow ${workflow.id} completed.`)
                 await supabaseAdmin
                     .from('workflow_executions')
                     .update({ status: 'completed', completed_at: new Date().toISOString() })

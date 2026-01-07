@@ -30,13 +30,16 @@ export async function resumeSuspendedWorkflow(
         }
 
         // 2. Process & Validate Input using the Node Logic
-        const waitNode = new WaitInputNode({} as any) // Context not needed for static/helper methods usually, but processInput is instance method?
-        // Let's check wait-input-node.ts structure. 
-        // Typically processInput would be static or not require full context context.
-        // If it requires context, we might need to mock it or update the class.
-        // Assuming processInput depends on config (which is in pendingInput record).
+        const waitNode = new WaitInputNode({} as any)
 
-        const processResult = await waitNode.processInput(message, pendingInput.config)
+        // Map IncomingMessage to WaitInputNode expected format (flat)
+        const inputForProcessing = {
+            type: message.content.type,
+            content: message.content.text || '', // Extract text string
+            buttonId: message.buttonId
+        }
+
+        const processResult = await waitNode.processInput(pendingInput, inputForProcessing)
 
         if (!processResult.success) {
             console.log(`[Runner] Input validation failed: ${processResult.error}`)

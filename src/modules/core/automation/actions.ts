@@ -20,11 +20,35 @@ export async function saveWorkflow(id: string, name: string, description: string
         let triggerConfig: Record<string, unknown> = { channel: 'whatsapp' }; // Default
 
         if (triggerNode && triggerNode.data) {
-            triggerType = (triggerNode.data.triggerType as string) || 'webhook';
+            const rawType = (triggerNode.data.triggerType as string) || 'webhook';
+            const keyword = (triggerNode.data.keyword as string) || '';
+            const hasKeyword = keyword.trim() !== '';
+
+            // Build trigger config - only include keyword if it has a value
             triggerConfig = {
                 channel: (triggerNode.data.channel as string) || 'whatsapp',
-                keyword: (triggerNode.data.keyword as string) || undefined
+                ...(hasKeyword ? { keyword: keyword.trim() } : {}),
+                // Include other config options based on trigger type
+                ...(rawType === 'business_hours' || rawType === 'outside_hours' ? {
+                    start_hour: (triggerNode.data.start_hour as number) ?? 9,
+                    end_hour: (triggerNode.data.end_hour as number) ?? 18
+                } : {}),
+                ...(triggerNode.data.cooldown_minutes ? { cooldown_minutes: triggerNode.data.cooldown_minutes } : {})
             };
+
+            // Map UI types to Backend types
+            // 'webhook' in UI -> 'keyword' (if keyword exists) OR 'message_received' (catch-all)
+            if (rawType === 'webhook') {
+                if (hasKeyword) {
+                    triggerType = 'keyword';
+                } else {
+                    triggerType = 'message_received';
+                }
+            } else {
+                triggerType = rawType;
+            }
+
+            console.log('[saveWorkflow] Mapped trigger:', { rawType, triggerType, hasKeyword, triggerConfig });
         }
 
         // Check if exists

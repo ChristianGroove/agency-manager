@@ -85,6 +85,7 @@ export function IntegrationsGrid({ initialConnections }: IntegrationsGridProps) 
     const [activeTab, setActiveTab] = useState("all")
     const [selectedProvider, setSelectedProvider] = useState<IntegrationProvider | null>(null)
     const [isWizardOpen, setIsWizardOpen] = useState(false)
+    const [isManageOpen, setIsManageOpen] = useState(false)
 
     // Merge active connections with providers
     const providersWithStatus = PROVIDERS.map(p => {
@@ -112,10 +113,19 @@ export function IntegrationsGrid({ initialConnections }: IntegrationsGridProps) 
     }
 
     const handleManage = (provider: IntegrationProvider) => {
-        // For now, just re-open wizard to add another or ideally go to details
-        // In this MVP, we treat "Manage" as "Connect Another" or "View Details"
-        console.log(`Manage ${provider.key}`)
+        // Open management sheet to view/edit/delete existing connections
+        setSelectedProvider(provider)
+        setIsManageOpen(true)
     }
+
+    const handleEditConnection = (connection: Connection) => {
+        // Close management, open wizard for editing
+        setIsManageOpen(false)
+        setIsWizardOpen(true)
+    }
+
+    // Dynamic import to avoid circular deps
+    const { ConnectionManagementSheet } = require('./connection-management-sheet')
 
     return (
         <div className="space-y-6">
@@ -123,6 +133,14 @@ export function IntegrationsGrid({ initialConnections }: IntegrationsGridProps) 
                 open={isWizardOpen}
                 onOpenChange={setIsWizardOpen}
                 provider={selectedProvider}
+            />
+
+            <ConnectionManagementSheet
+                open={isManageOpen}
+                onOpenChange={setIsManageOpen}
+                provider={selectedProvider}
+                connections={initialConnections}
+                onEdit={handleEditConnection}
             />
 
             {/* Toolbar */}
