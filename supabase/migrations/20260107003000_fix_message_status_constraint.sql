@@ -6,4 +6,5 @@ ALTER TABLE messages DROP CONSTRAINT IF EXISTS messages_status_check;
 
 -- 2. Add new check constraint with 'received'
 ALTER TABLE messages ADD CONSTRAINT messages_status_check 
-CHECK (status IN ('sending', 'sent', 'delivered', 'read', 'failed', 'received'));
+CHECK (status IN ('sending', 'sent', 'delivered', 'read', 'failed', 'received'))
+NOT VALID;
