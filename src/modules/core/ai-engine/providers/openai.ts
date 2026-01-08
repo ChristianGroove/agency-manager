@@ -4,7 +4,7 @@ import { AIMessage, AIResponse } from '../types';
 
 export class OpenAIProvider extends BaseAIProvider {
     id = 'openai';
-    models = ['gpt-4-turbo-preview', 'gpt-3.5-turbo'];
+    models = ['gpt-4o-mini', 'gpt-4o', 'gpt-3.5-turbo'];
 
     async generateResponse(
         messages: AIMessage[],
@@ -19,7 +19,7 @@ export class OpenAIProvider extends BaseAIProvider {
             const toolChoice = tools ? (options.tool_choice || 'auto') : undefined;
 
             const completion = await client.chat.completions.create({
-                model: model || 'gpt-3.5-turbo',
+                model: model || 'gpt-4o-mini',
                 messages: messages as any[],
                 temperature: options?.temperature || 0.7,
                 max_tokens: options?.maxTokens,

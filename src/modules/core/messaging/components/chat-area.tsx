@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { supabase } from "@/lib/supabase"
-import { Send, Phone, MoreVertical, Sidebar, Paperclip, Smile, Check, CheckCheck, User, X, Target } from "lucide-react"
+import { Send, Phone, MoreVertical, Sidebar, Paperclip, Smile, Check, CheckCheck, User, X, Target, Wand2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { Database } from "@/types/supabase"
 import { sendMessage, markConversationAsRead } from "../actions"
+import { refineDraftContent } from "../ai/smart-replies"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { MessageBubble } from "./message-bubble"
 import { ConversationActionsMenu } from "./conversation-actions-menu"
@@ -61,6 +62,28 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
             }
         }, 100)
     }
+
+    // Listen for Smart Reply insertions
+    useEffect(() => {
+        const handleInsertSmartReply = (event: CustomEvent<string>) => {
+            setInputValue(event.detail)
+
+            // Focus textarea after a small delay to ensure render
+            setTimeout(() => {
+                const textarea = document.querySelector('textarea') as HTMLTextAreaElement
+                if (textarea) {
+                    textarea.focus()
+                    // Set cursor to end
+                    textarea.setSelectionRange(textarea.value.length, textarea.value.length)
+                }
+            }, 50)
+        }
+
+        window.addEventListener('insert-smart-reply' as any, handleInsertSmartReply as any)
+        return () => {
+            window.removeEventListener('insert-smart-reply' as any, handleInsertSmartReply as any)
+        }
+    }, [])
 
     useEffect(() => {
         if (!conversationId) return
@@ -231,6 +254,30 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
         setInputValue(prev => prev + emojiObject.emoji)
     }
 
+    const [isRefining, setIsRefining] = useState(false)
+
+    // ... existing handlers ...
+
+    const handleRefine = async () => {
+        if (!inputValue || inputValue.length < 5) return
+
+        setIsRefining(true)
+        try {
+            const result = await refineDraftContent(inputValue)
+            if (result.success && result.refined) {
+                setInputValue(result.refined)
+                toast.success("Draft processed by AI", { icon: "✨" })
+            } else {
+                toast.error("Could not refine draft")
+            }
+        } catch (error) {
+            toast.error("AI Error")
+        } finally {
+            setIsRefining(false)
+        }
+    }
+
+    // ... file selection ...
     const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
         if (!file) return
@@ -350,6 +397,7 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
                                     direction={msg.direction as 'inbound' | 'outbound'}
                                     timestamp={msg.created_at}
                                     status={msg.status as any}
+                                    messageId={msg.id}
                                 />
                             </div>
                         )
@@ -448,6 +496,20 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
                         rows={1}
                         style={{ height: inputValue ? 'auto' : '24px' }}
                     />
+
+                    {/* Magic Wand for Refining */}
+                    {inputValue.length > 5 && (
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={handleRefine}
+                            disabled={isRefining}
+                            className="h-6 w-6 ml-2 text-purple-600 hover:text-purple-700 hover:bg-purple-100 rounded-full shrink-0 animate-in fade-in zoom-in duration-200"
+                            title="Refine with AI"
+                        >
+                            <Wand2 className={cn("h-4 w-4", isRefining && "animate-spin")} />
+                        </Button>
+                    )}
                 </div>
 
                 <Button

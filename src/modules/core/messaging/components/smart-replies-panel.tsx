@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
-import { Sparkles, Copy, Check, Loader2 } from "lucide-react"
+import { Sparkles, Copy, Check, Loader2, Zap } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { toast } from "sonner"
 
 interface SmartReply {
     type: 'short' | 'medium' | 'detailed'
@@ -19,18 +19,49 @@ interface SmartRepliesPanelProps {
     isGenerating?: boolean
 }
 
+// Simple in-memory cache to persist replies during navigation
+// Key: conversationId, Value: { text: lastIncomingMessage, data: replies }
+const replyCache: Record<string, { lastMessage: string, replies: SmartReply[] }> = {}
+
 export function SmartRepliesPanel({
     conversationId,
     lastIncomingMessage,
     onSelectReply,
     isGenerating = false
 }: SmartRepliesPanelProps) {
+
+    const handleSelectReply = (text: string) => {
+        // Dispatch custom event for ChatArea to catch
+        const event = new CustomEvent('insert-smart-reply', { detail: text })
+        window.dispatchEvent(event)
+
+        // Optional: Still copy to clipboard as backup? Or just notify
+        onSelectReply(text, 'auto') // Keep original prop call for metrics/logging if needed
+    }
     const [replies, setReplies] = useState<SmartReply[]>([])
     const [loading, setLoading] = useState(false)
     const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
 
-    const generateReplies = async () => {
+    // Load from cache on mount or when conversation loops
+    useEffect(() => {
         if (!conversationId || !lastIncomingMessage) return
+
+        const cached = replyCache[conversationId]
+        if (cached && cached.lastMessage === lastIncomingMessage) {
+            setReplies(cached.replies)
+        } else {
+            // New context or no cache involved -> Start fresh if not already populated
+            if (!cached || cached.lastMessage !== lastIncomingMessage) {
+                setReplies([])
+            }
+        }
+    }, [conversationId, lastIncomingMessage])
+
+    const generateReplies = async () => {
+        if (!conversationId || !lastIncomingMessage) {
+            toast.error("Se necesita un mensaje del cliente para generar respuestas.")
+            return
+        }
 
         setLoading(true)
         try {
@@ -44,20 +75,23 @@ export function SmartRepliesPanel({
 
             if (data.success && data.replies) {
                 setReplies(data.replies)
+                // Save to cache
+                if (lastIncomingMessage) {
+                    replyCache[conversationId] = {
+                        lastMessage: lastIncomingMessage,
+                        replies: data.replies
+                    }
+                }
+            } else {
+                toast.error("No se pudieron generar respuestas.")
             }
         } catch (error) {
             console.error('Failed to generate replies:', error)
+            toast.error("Error de conexión con IA.")
         } finally {
             setLoading(false)
         }
     }
-
-    // Auto-generate switched to MANUAL to prevent Quota Exhaustion (429)
-    // useEffect(() => {
-    //     if (lastIncomingMessage) {
-    //         generateReplies()
-    //     }
-    // }, [lastIncomingMessage])
 
     const handleCopy = async (text: string, index: number) => {
         await navigator.clipboard.writeText(text)
@@ -65,111 +99,111 @@ export function SmartRepliesPanel({
         setTimeout(() => setCopiedIndex(null), 2000)
     }
 
-    const getTypeLabel = (type: string) => {
-        switch (type) {
-            case 'short': return '⚡ Quick'
-            case 'medium': return '📝 Standard'
-            case 'detailed': return '📋 Detailed'
-            default: return type
-        }
-    }
-
-    const getTypeDescription = (type: string) => {
-        switch (type) {
-            case 'short': return 'Fast response, under 50 chars'
-            case 'medium': return 'Balanced reply, 2-3 sentences'
-            case 'detailed': return 'Comprehensive answer'
-            default: return ''
-        }
-    }
-
+    // --- CASE 1: No Message (Hidden/Disabled) ---
     if (!lastIncomingMessage) {
+        return null // Don't show anything unless there's something to reply to
+    }
+
+    // --- CASE 2: Empty State (Call to Action) ---
+    if (replies.length === 0 && !loading) {
         return (
-            <Card className="p-4 bg-muted/30">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <div className="mx-4 my-2">
+                <Button
+                    variant="outline"
+                    className="w-full gap-2 border-dashed border-purple-200 dark:border-purple-800 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 bg-white/50 dark:bg-zinc-900/50 h-9"
+                    onClick={generateReplies}
+                >
                     <Sparkles className="h-4 w-4" />
-                    <span>Smart replies will appear after customer messages</span>
-                </div>
-            </Card>
+                    <span className="text-sm font-medium">Generar Respuestas Rápidas</span>
+                </Button>
+            </div>
         )
     }
 
+    // --- CASE 3: Loading ---
+    if (loading) {
+        return (
+            <div className="mx-4 my-2 p-3 border rounded-lg bg-background flex items-center justify-center gap-2 text-sm text-purple-600">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Analizando contexto...</span>
+            </div>
+        )
+    }
+
+    // --- CASE 4: Results (Compact List) ---
     return (
-        <Card className="p-4 space-y-3">
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                    <Sparkles className="h-4 w-4 text-purple-500" />
-                    <span className="font-medium text-sm">AI Smart Replies</span>
+        <div className="mx-4 my-2 space-y-2">
+            <div className="flex items-center justify-between px-1">
+                <div className="flex items-center gap-1.5 text-purple-600 dark:text-purple-400">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    <span className="text-xs font-semibold uppercase tracking-wider">Sugerencias IA</span>
                 </div>
-                {!loading && replies.length > 0 && (
-                    <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={generateReplies}
-                        className="h-7 text-xs"
-                    >
-                        Regenerate
-                    </Button>
-                )}
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-5 w-5 rounded-full hover:bg-muted"
+                    onClick={() => setReplies([])}
+                >
+                    <span className="sr-only">Cerrar</span>
+                    <span className="text-xs text-muted-foreground">×</span>
+                </Button>
             </div>
 
-            {loading || isGenerating ? (
-                <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin text-purple-500" />
-                    <span className="ml-2 text-sm text-muted-foreground">
-                        Generating suggestions...
-                    </span>
-                </div>
-            ) : replies.length > 0 ? (
-                <div className="space-y-2">
-                    {replies.map((reply, index) => (
-                        <div
-                            key={index}
-                            className={cn(
-                                "group relative border rounded-lg p-3 hover:bg-muted/50 transition-colors cursor-pointer",
-                                reply.type === 'short' && "border-green-200 dark:border-green-900",
-                                reply.type === 'medium' && "border-blue-200 dark:border-blue-900",
-                                reply.type === 'detailed' && "border-purple-200 dark:border-purple-900"
-                            )}
-                            onClick={() => onSelectReply(reply.text, reply.type)}
-                        >
-                            <div className="flex items-start justify-between mb-2">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-xs font-semibold">
-                                        {getTypeLabel(reply.type)}
-                                    </span>
-                                    <span className="text-[10px] text-muted-foreground">
-                                        {getTypeDescription(reply.type)}
-                                    </span>
-                                </div>
-                                <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                                    onClick={(e) => {
-                                        e.stopPropagation()
-                                        handleCopy(reply.text, index)
-                                    }}
-                                >
-                                    {copiedIndex === index ? (
-                                        <Check className="h-3 w-3 text-green-500" />
-                                    ) : (
-                                        <Copy className="h-3 w-3" />
-                                    )}
-                                </Button>
-                            </div>
-                            <p className="text-sm leading-relaxed">{reply.text}</p>
-                            <div className="mt-2 text-[10px] text-muted-foreground">
-                                ~{reply.tokens} tokens • Click to use
-                            </div>
+            <div className="space-y-1.5">
+                {replies.map((reply, index) => (
+                    <div
+                        key={index}
+                        className={cn(
+                            "group relative flex flex-col gap-1 p-2.5 rounded-md border bg-white dark:bg-zinc-900 shadow-sm hover:shadow-md transition-all cursor-pointer",
+                            "hover:border-purple-300 dark:hover:border-purple-700",
+                            reply.type === 'short' && "border-l-4 border-l-green-400",
+                            reply.type === 'medium' && "border-l-4 border-l-blue-400",
+                            reply.type === 'detailed' && "border-l-4 border-l-purple-400"
+                        )}
+                        onClick={() => handleSelectReply(reply.text)}
+                    >
+                        <div className="flex items-start justify-between">
+                            <p className="text-xs text-foreground/90 leading-relaxed line-clamp-3">
+                                {reply.text}
+                            </p>
+                            <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 ml-2"
+                                onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleCopy(reply.text, index)
+                                }}
+                            >
+                                {copiedIndex === index ? (
+                                    <Check className="h-3 w-3 text-green-500" />
+                                ) : (
+                                    <Copy className="h-3 w-3 text-muted-foreground" />
+                                )}
+                            </Button>
                         </div>
-                    ))}
-                </div>
-            ) : (
-                <div className="text-center py-4 text-sm text-muted-foreground">
-                    Click generate to get AI-powered suggestions
-                </div>
-            )}
-        </Card>
+                        <div className="flex items-center gap-2 mt-1">
+                            <span className={cn(
+                                "text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-muted",
+                                reply.type === 'short' && "text-green-600 bg-green-50 dark:bg-green-900/20",
+                                reply.type === 'medium' && "text-blue-600 bg-blue-50 dark:bg-blue-900/20",
+                                reply.type === 'detailed' && "text-purple-600 bg-purple-50 dark:bg-purple-900/20",
+                            )}>
+                                {reply.type === 'short' ? 'Rápida' : reply.type === 'medium' ? 'Normal' : 'Detallada'}
+                            </span>
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            <Button
+                variant="ghost"
+                size="sm"
+                className="w-full h-6 text-[10px] text-muted-foreground hover:text-purple-600"
+                onClick={generateReplies}
+            >
+                Regenerar opciones
+            </Button>
+        </div>
     )
 }

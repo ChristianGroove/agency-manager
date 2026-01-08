@@ -15,11 +15,24 @@ export interface TranscriptionResult {
     debug?: any
 }
 
-export async function transcribeAudio(audioUrl: string): Promise<TranscriptionResult> {
+export async function transcribeAudio(audioUrl: string, messageId?: string): Promise<TranscriptionResult> {
     const orgId = await getCurrentOrganizationId()
     if (!orgId) return { success: false, error: "Unauthorized: No Org ID" }
 
     try {
+        // 0. Cache Check (Optimized Cost)
+        if (messageId) {
+            const { data: msg } = await supabaseAdmin
+                .from('messages')
+                .select('metadata')
+                .eq('id', messageId)
+                .single()
+
+            if (msg?.metadata && (msg.metadata as any).transcription) {
+                return { success: true, text: (msg.metadata as any).transcription, debug: 'cache-hit' }
+            }
+        }
+
         const { data: credentials, error: dbError } = await supabaseAdmin
             .from('ai_credentials')
             .select('*, provider:ai_providers(name)')
@@ -31,29 +44,60 @@ export async function transcribeAudio(audioUrl: string): Promise<TranscriptionRe
         }
 
         let lastProviderError: string | undefined;
+        let finalResult: TranscriptionResult | null = null;
 
         // 1. Try Google Gemini first (Prioritized)
         const googleCred = credentials.find(c => c.provider_id === 'google' && c.status === 'active')
         if (googleCred) {
             const result = await transcribeWithGemini(audioUrl, googleCred, orgId)
-            if (result.success) return result;
-
-            lastProviderError = `GeminiError: ${result.error}`;
-            console.warn('[Transcription] Gemini failed:', result.error);
+            if (result.success) {
+                finalResult = result;
+            } else {
+                lastProviderError = `GeminiError: ${result.error}`;
+                console.warn('[Transcription] Gemini failed:', result.error);
+            }
         }
 
         // 2. Fallback to OpenAI
-        const openaiCred = credentials.find(c => c.provider_id === 'openai' && c.status === 'active')
-        if (openaiCred) {
-            try {
-                // OpenAI often fails if key is from 'check_openai.sql' aka corrupted/masked
-                // But we try anyway
-                return await transcribeWithOpenAI(audioUrl, openaiCred, orgId)
-            } catch (e: any) {
-                const errMsg = e?.message || "Unknown OpenAI Error";
-                lastProviderError = `OpenAIError: ${errMsg}. (Prev: ${lastProviderError})`;
+        if (!finalResult) {
+            const openaiCred = credentials.find(c => c.provider_id === 'openai' && c.status === 'active')
+
+            // Check DB Credential OR Env Var
+            if (openaiCred || process.env.OPENAI_API_KEY) {
+                try {
+                    // Create virtual credential if missing but env var exists
+                    const effectiveCred = openaiCred || {
+                        id: 'env-var-fallback',
+                        // Mock encrypted key - logic below handles plain text if not encrypted
+                        api_key_encrypted: process.env.OPENAI_API_KEY
+                    }
+
+                    finalResult = await transcribeWithOpenAI(audioUrl, effectiveCred, orgId)
+                } catch (e: any) {
+                    const errMsg = e?.message || "Unknown OpenAI Error";
+                    lastProviderError = `OpenAIError: ${errMsg}. (Prev: ${lastProviderError})`;
+                }
             }
         }
+
+        // 3. Save to DB (Persistent Cache)
+        if (finalResult?.success && finalResult.text && messageId) {
+            // Fetch current metadata again to be safe
+            const { data: currentMsg } = await supabaseAdmin
+                .from('messages')
+                .select('metadata')
+                .eq('id', messageId)
+                .single()
+
+            const currentMetadata = (currentMsg?.metadata || {}) as Record<string, any>
+            const newMetadata = { ...currentMetadata, transcription: finalResult.text }
+
+            await supabaseAdmin.from('messages')
+                .update({ metadata: newMetadata })
+                .eq('id', messageId)
+        }
+
+        if (finalResult) return finalResult;
 
         if (lastProviderError) {
             return { success: false, error: `${lastProviderError}` }
@@ -146,8 +190,22 @@ async function transcribeWithGemini(audioUrl: string, credential: any, orgId: st
 
 async function transcribeWithOpenAI(audioUrl: string, credential: any, orgId: string): Promise<TranscriptionResult> {
     try {
-        let apiKey = decrypt(credential.api_key_encrypted)
-        if (!apiKey || apiKey.includes('●') || apiKey.length < 20) {
+        let apiKey = ""
+
+        // CRITICAL: Prioritize Env Var (Manual Override)
+        // If the user put a key in .env, we use it over the DB credential
+        if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY.startsWith('sk-')) {
+            apiKey = process.env.OPENAI_API_KEY
+        } else {
+            // Fallback to DB Credential
+            apiKey = credential.api_key_encrypted
+            if (!apiKey.startsWith('sk-')) {
+                const decrypted = decrypt(apiKey)
+                if (decrypted) apiKey = decrypted
+            }
+        }
+
+        if (!apiKey || (!apiKey.startsWith('sk-') && apiKey.length < 20)) {
             return { success: false, error: "OpenAI API Key is invalid or missing" }
         }
 

@@ -18,9 +18,10 @@ interface MessageBubbleProps {
     direction: 'inbound' | 'outbound';
     timestamp: string;
     status?: 'sent' | 'delivered' | 'read' | 'failed';
+    messageId?: string;
 }
 
-export function MessageBubble({ content, direction, timestamp, status }: MessageBubbleProps) {
+export function MessageBubble({ content, direction, timestamp, status, messageId }: MessageBubbleProps) {
     const isOutbound = direction === 'outbound'
 
     return (
@@ -38,7 +39,7 @@ export function MessageBubble({ content, direction, timestamp, status }: Message
             )}>
                 {/* Content Renderer */}
                 <div className="mb-1">
-                    {renderContent(content, isOutbound)}
+                    {renderContent(content, isOutbound, messageId)}
                 </div>
 
                 {/* Footer: Timestamp & Status */}
@@ -61,7 +62,7 @@ export function MessageBubble({ content, direction, timestamp, status }: Message
     )
 }
 
-function renderContent(content: any, isOutbound: boolean) {
+function renderContent(content: any, isOutbound: boolean, messageId?: string) {
     // Normalize content properties
     const url = content.url || content.mediaUrl || content.link;
     const text = content.text || content.caption || content.body;
@@ -104,7 +105,7 @@ function renderContent(content: any, isOutbound: boolean) {
                         <audio controls src={url} className="h-8 w-[200px]" />
                     </div>
                     {/* AI Transcription */}
-                    <AudioTranscriber audioUrl={url} />
+                    <AudioTranscriber audioUrl={url} messageId={messageId} />
                 </div>
             )
 

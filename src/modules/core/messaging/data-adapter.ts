@@ -41,11 +41,18 @@ export const messagingDataAdapter: DataModule = {
             .eq('organization_id', organizationId)
             .order('created_at', { ascending: true })
 
+        // 5. Knowledge Base (FAQs)
+        const { data: knowledge } = await supabaseAdmin
+            .from('knowledge_base')
+            .select('*')
+            .eq('organization_id', organizationId)
+
         return {
             templates: templates || [],
             channels: channels || [],
             conversations: conversations || [],
-            messages: messages || []
+            messages: messages || [],
+            knowledge: knowledge || []
         }
     },
 
@@ -83,10 +90,17 @@ export const messagingDataAdapter: DataModule = {
                 if (error) console.error("Error importing messages chunk:", error)
             }
         }
+
+        // 5. Import Knowledge Base
+        if (data.knowledge?.length > 0) {
+            const kb = data.knowledge.map((k: any) => ({ ...k, organization_id: organizationId }))
+            await supabaseAdmin.from('knowledge_base').upsert(kb)
+        }
     },
 
     clearData: async (organizationId: string) => {
         // Reverse order of dependencies
+        await supabaseAdmin.from('knowledge_base').delete().eq('organization_id', organizationId)
         await supabaseAdmin.from('messages').delete().eq('organization_id', organizationId)
         await supabaseAdmin.from('conversations').delete().eq('organization_id', organizationId)
         await supabaseAdmin.from('messaging_templates').delete().eq('organization_id', organizationId)

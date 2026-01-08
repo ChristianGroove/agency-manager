@@ -1,3 +1,5 @@
+"use server"
+
 import { AIEngine } from "@/modules/core/ai-engine/service"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
 
@@ -138,7 +140,12 @@ export async function refineDraftContent(content: string): Promise<{ success: bo
         })
 
         // Engine returns strict string for this task (jsonMode: false)
-        const refined = typeof response.data === 'string' ? response.data : JSON.stringify(response.data)
+        let refined = typeof response.data === 'string' ? response.data : JSON.stringify(response.data)
+
+        // Cleanup: Remove surrounding quotes if present
+        if (refined.startsWith('"') && refined.endsWith('"')) {
+            refined = refined.slice(1, -1);
+        }
 
         return { success: true, refined: refined || content }
 

@@ -28,6 +28,7 @@ Task: Generate 3 response suggestions (short, medium, detailed) for the last cus
 - Recent Order/Info: ${ctx.recentOrder || 'N/A'}
 
 # Guidelines
+- **LANGUAGE: Detect the language of the conversation and reply in the SAME language.** (e.g. if Spanish, reply in Spanish).
 - Address customer by name when possible
 - Reference recent orders or context if available
 - Tone: Professional, warm, solution-oriented
@@ -88,10 +89,16 @@ Return JSON:
     temperature: 0.7,
     maxTokens: 500,
     jsonMode: false,
-    systemPrompt: () => `You are an expert copywriter.
-Task: Rewrite the draft to be professional, clear, and friendly.
-Rules: Fix grammar, improve flow. Keep variables like {{name}} intact. NO explanations.`,
-    userPrompt: (input: any) => input.content
+    systemPrompt: () => `You are a text refinement tool. 
+Your ONLY task is to rewrite the user's draft to be more professional, polite, and clear.
+    
+CRITICAL RULES:
+1. Do NOT reply to the message. (e.g. if input is "help", do NOT say "sure", instead rewrite it to "I need help").
+2. Do NOT add conversational updates.
+3. Keep the original meaning and intent.
+4. Output ONLY the rewritten text.
+5. Do NOT wrap the output in quotes.`,
+    userPrompt: (input: any) => `Draft to Rewrite: "${input.content}"`
   },
 
   'automation.generate_template_v1': {

@@ -15,7 +15,9 @@ import { Badge } from "@/components/ui/badge"
 import { Database } from "@/types/supabase"
 import Link from "next/link"
 import { QuickAssignPanel } from "./quick-assign-panel"
+import { SmartRepliesPanel } from "./smart-replies-panel"
 import { getAgentsWorkload } from "../assignment-actions"
+import { toast } from "sonner"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import {
@@ -35,6 +37,7 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
     const [lead, setLead] = useState<Lead | null>(null)
     const [conversation, setConversation] = useState<any>(null)
     const [agents, setAgents] = useState<any[]>([])
+    const [lastMessage, setLastMessage] = useState<string | undefined>(undefined)
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
@@ -59,6 +62,27 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
             } else {
                 setLead(null)
                 setConversation(null)
+            }
+
+            // Fetch Last Incoming Message for AI
+            const { data: lastMsg } = await supabase
+                .from('messages')
+                .select('content')
+                .eq('conversation_id', conversationId)
+                .eq('direction', 'inbound')
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .single()
+
+            if (lastMsg) {
+                // Handle both text and json content
+                let text = ''
+                if (typeof lastMsg.content === 'string') text = lastMsg.content
+                else if (typeof lastMsg.content === 'object' && lastMsg.content?.text) text = lastMsg.content.text
+
+                setLastMessage(text)
+            } else {
+                setLastMessage(undefined)
             }
 
             const agentsResult = await getAgentsWorkload()
@@ -196,6 +220,16 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
                             </div>
                         </CardContent>
                     </Card>
+
+                    {/* AI Smart Replies */}
+                    <SmartRepliesPanel
+                        conversationId={conversationId}
+                        lastIncomingMessage={lastMessage}
+                        onSelectReply={(text) => {
+                            // Interaction is handled via window event for auto-insert
+                            toast.success("Texto aplicado")
+                        }}
+                    />
 
                     {/* 4. Compact Contact Info */}
                     <div className="space-y-3">

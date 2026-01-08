@@ -3,7 +3,7 @@ import { transcribeAudio } from '@/modules/core/messaging/ai/transcription'
 
 export async function POST(req: NextRequest) {
     try {
-        const { audioUrl } = await req.json()
+        const { audioUrl, messageId } = await req.json()
 
         if (!audioUrl) {
             return NextResponse.json(
@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
             )
         }
 
-        const result = await transcribeAudio(audioUrl)
+        const result = await transcribeAudio(audioUrl, messageId)
 
         return NextResponse.json(result)
 

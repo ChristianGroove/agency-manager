@@ -7,11 +7,12 @@ import { cn } from "@/lib/utils"
 
 interface AudioTranscriberProps {
     audioUrl: string
+    messageId?: string
     cachedTranscription?: string
     onTranscriptionComplete?: (text: string) => void
 }
 
-export function AudioTranscriber({ audioUrl, cachedTranscription, onTranscriptionComplete }: AudioTranscriberProps) {
+export function AudioTranscriber({ audioUrl, messageId, cachedTranscription, onTranscriptionComplete }: AudioTranscriberProps) {
     const [isLoading, setIsLoading] = useState(false)
     const [transcription, setTranscription] = useState(cachedTranscription || "")
     const [isExpanded, setIsExpanded] = useState(Boolean(cachedTranscription))
@@ -25,7 +26,7 @@ export function AudioTranscriber({ audioUrl, cachedTranscription, onTranscriptio
             const response = await fetch('/api/ai/transcribe', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ audioUrl })
+                body: JSON.stringify({ audioUrl, messageId })
             })
 
             const data = await response.json()

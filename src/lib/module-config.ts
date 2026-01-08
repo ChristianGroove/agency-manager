@@ -23,7 +23,8 @@ import {
     MessageSquare,
     Kanban,
     Inbox,
-    UserSquare
+    UserSquare,
+    BrainCircuit
 } from 'lucide-react'
 
 export type ModuleCategory = 'core' | 'crm' | 'operations' | 'finance' | 'config';
@@ -140,6 +141,14 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         href: '/cleaning',
         icon: Sparkles,
         category: 'operations'
+    },
+    {
+        key: 'core_knowledge',
+        label: 'Base de Conocimiento',
+        href: '/platform/knowledge',
+        icon: BrainCircuit,
+        isCore: true,
+        category: 'config'
     },
     {
         key: 'core_integrations',
