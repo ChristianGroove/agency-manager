@@ -32,6 +32,8 @@ import { BiometricButton } from "@/components/auth/biometric-button"
 
 import { SubscriptionSettingsTab } from "./subscription-settings-tab"
 import { SaasApp } from "@/modules/core/saas/app-management-actions"
+import { VaultSettingsTab } from "@/modules/core/data-vault/components/vault-settings-tab"
+import { DataSnapshot } from "@/modules/core/data-vault/types"
 
 interface SettingsFormProps {
     initialSettings: any
@@ -40,9 +42,11 @@ interface SettingsFormProps {
     brandingSettings?: BrandingConfig
     tierFeatures?: Record<string, any>
     userRole: OrganizationRole
+    snapshots: DataSnapshot[]
+    vaultConfig: { enabled: boolean, frequency: 'daily' | 'weekly' | 'monthly' }
 }
 
-export function SettingsForm({ initialSettings, activeModules, subscriptionApp, brandingSettings, tierFeatures = {}, userRole }: SettingsFormProps) {
+export function SettingsForm({ initialSettings, activeModules, subscriptionApp, brandingSettings, tierFeatures = {}, userRole, snapshots, vaultConfig }: SettingsFormProps) {
     // ... existing code ...
 
     // ADD LOCAL STATE FOR SUBSCRIPTION APP (Optional, mostly passed down)
@@ -158,6 +162,13 @@ export function SettingsForm({ initialSettings, activeModules, subscriptionApp, 
             label: 'Suscripción',
             icon: CreditCard,
             requiredModule: null,
+            isCore: true
+        },
+        {
+            id: 'vault',
+            label: 'Seguridad',
+            icon: Shield,
+            minRole: 'owner',
             isCore: true
         },
         {
@@ -310,6 +321,11 @@ export function SettingsForm({ initialSettings, activeModules, subscriptionApp, 
                 {/* TEAM TAB */}
                 <TabsContent value="team" className="space-y-4 mt-4" suppressHydrationWarning>
                     <TeamSettingsTab />
+                </TabsContent>
+
+                {/* VAULT TAB */}
+                <TabsContent value="vault" className="space-y-4 mt-4" suppressHydrationWarning>
+                    <VaultSettingsTab snapshots={snapshots || []} initialConfig={vaultConfig} />
                 </TabsContent>
 
 

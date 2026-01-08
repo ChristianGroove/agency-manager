@@ -9,10 +9,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, UserPlus, Trash2, Mail, Shield, User, Pencil } from "lucide-react"
+import { Loader2, UserPlus, Trash2, Mail, Shield, User, Settings } from "lucide-react"
 import { toast } from "sonner"
 import { getOrganizationMembers, inviteMember, removeMember } from "./actions/team-actions"
 import { MemberEditSheet } from "./member-edit-sheet"
+import { RolePicker } from "@/modules/core/iam/components/role-picker"
 
 export function TeamSettingsTab() {
     const [members, setMembers] = useState<any[]>([])
@@ -93,53 +94,49 @@ export function TeamSettingsTab() {
                     <h3 className="text-lg font-medium">Equipo y Permisos</h3>
                     <p className="text-sm text-gray-500">Administra quién tiene acceso a esta organización.</p>
                 </div>
-                <Dialog open={isInviteOpen} onOpenChange={setIsInviteOpen}>
-                    <DialogTrigger asChild>
-                        <Button>
-                            <UserPlus className="h-4 w-4 mr-2" />
-                            Invitar Miembro
-                        </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                        <DialogHeader>
-                            <DialogTitle>Invitar Nuevo Miembro</DialogTitle>
-                            <DialogDescription>
-                                El usuario recibirá acceso inmediato a la organización.
-                            </DialogDescription>
-                        </DialogHeader>
-                        <div className="space-y-4 py-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="email">Correo Electrónico</Label>
-                                <Input
-                                    id="email"
-                                    placeholder="usuario@ejemplo.com"
-                                    value={inviteEmail}
-                                    onChange={(e) => setInviteEmail(e.target.value)}
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="role">Rol</Label>
-                                <Select value={inviteRole} onValueChange={setInviteRole}>
-                                    <SelectTrigger>
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="member">Miembro (Operativo)</SelectItem>
-                                        <SelectItem value="admin">Administrador (Total)</SelectItem>
-                                        {/* Owner cannot be assigned here typically */}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        </div>
-                        <DialogFooter>
-                            <Button variant="outline" onClick={() => setIsInviteOpen(false)}>Cancelar</Button>
-                            <Button onClick={handleInvite} disabled={isInviting || !inviteEmail}>
-                                {isInviting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Invitar
+                <div className="flex gap-2">
+                    <Dialog open={isInviteOpen} onOpenChange={setIsInviteOpen}>
+                        <DialogTrigger asChild>
+                            <Button>
+                                <UserPlus className="h-4 w-4 mr-2" />
+                                Invitar Miembro
                             </Button>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
+                        </DialogTrigger>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Invitar Nuevo Miembro</DialogTitle>
+                                <DialogDescription>
+                                    El usuario recibirá acceso inmediato a la organización.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4 py-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="email">Correo Electrónico</Label>
+                                    <Input
+                                        id="email"
+                                        placeholder="usuario@ejemplo.com"
+                                        value={inviteEmail}
+                                        onChange={(e) => setInviteEmail(e.target.value)}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="role">Rol</Label>
+                                    <RolePicker
+                                        value={inviteRole}
+                                        onValueChange={setInviteRole}
+                                    />
+                                </div>
+                            </div>
+                            <DialogFooter>
+                                <Button variant="outline" onClick={() => setIsInviteOpen(false)}>Cancelar</Button>
+                                <Button onClick={handleInvite} disabled={isInviting || !inviteEmail}>
+                                    {isInviting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Invitar
+                                </Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+                </div>
             </div>
 
             <Card>
@@ -182,7 +179,7 @@ export function TeamSettingsTab() {
                                         </TableCell>
                                         <TableCell>
                                             <Badge variant={member.role === 'owner' ? 'default' : member.role === 'admin' ? 'secondary' : 'outline'}>
-                                                {member.role === 'owner' ? 'Dueño' : member.role === 'admin' ? 'Admin' : 'Miembro'}
+                                                {member.role_name || (member.role === 'owner' ? 'Dueño' : member.role === 'admin' ? 'Admin' : member.role)}
                                             </Badge>
                                         </TableCell>
                                         <TableCell>
@@ -202,7 +199,7 @@ export function TeamSettingsTab() {
                                                         setIsEditOpen(true)
                                                     }}
                                                 >
-                                                    <Pencil className="h-4 w-4" />
+                                                    <Settings className="h-4 w-4" />
                                                 </Button>
                                                 {member.role !== 'owner' && (
                                                     <Button
@@ -227,10 +224,9 @@ export function TeamSettingsTab() {
             <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 flex items-start gap-3">
                 <Shield className="h-5 w-5 text-blue-600 mt-0.5" />
                 <div>
-                    <h4 className="font-medium text-blue-900 text-sm">Control de Acceso</h4>
+                    <h4 className="font-medium text-blue-900 text-sm">Gestión de Roles Integrada</h4>
                     <p className="text-sm text-blue-700 mt-1">
-                        Los usuarios agregados aquí podrán acceder a este espacio de trabajo.
-                        Los roles definen qué módulos pueden administrar.
+                        Para administrar roles avanzados o crear nuevos, haz clic en el icono de <Settings className="h-3 w-3 inline mx-1" /> configuración de cualquier usuario.
                     </p>
                 </div>
             </div>

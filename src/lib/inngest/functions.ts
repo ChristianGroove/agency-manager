@@ -144,4 +144,6 @@ export const runWorkflow = inngest.createFunction(
     }
 );
 
-export const functions = [runWorkflow];
+import { vaultSnapshotScheduler } from "@/modules/core/data-vault/scheduler"
+
+export const functions = [runWorkflow, vaultSnapshotScheduler];

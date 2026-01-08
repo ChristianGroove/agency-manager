@@ -59,11 +59,7 @@ export const getUserPlatformRole = cache(async (userId?: string): Promise<Platfo
 export async function isSuperAdmin(userId?: string): Promise<boolean> {
     try {
         const role = await getUserPlatformRole(userId)
-        if (role === 'super_admin') return true
-
-        // Fallback: Check if user is the owner of the "Tenant Zero" (First Organization)
-        // This ensures the product owner always has access even if profile is not set
-        return await isTenantZeroOwner(userId)
+        return role === 'super_admin'
     } catch (error) {
         console.error('[isSuperAdmin] Error:', error)
         return false
@@ -71,42 +67,12 @@ export async function isSuperAdmin(userId?: string): Promise<boolean> {
 }
 
 /**
- * Check if user is the owner of the first created organization
- */
-const isTenantZeroOwner = cache(async (userId?: string): Promise<boolean> => {
-    const supabase = await createClient()
-    const targetUserId = userId || (await supabase.auth.getUser()).data.user?.id
-    if (!targetUserId) return false
-
-    // Find the oldest organization
-    const { data: oldestOrg } = await supabase
-        .from('organizations')
-        .select('id')
-        .order('created_at', { ascending: true })
-        .limit(1)
-        .single()
-
-    if (!oldestOrg) return false
-
-    // Check if user is owner of that org
-    const { data: member } = await supabase
-        .from('organization_members')
-        .select('role')
-        .match({ organization_id: oldestOrg.id, user_id: targetUserId, role: 'owner' })
-        .maybeSingle()
-
-    return !!member
-})
-
-/**
  * Check if user has support role
  */
 export async function isSupport(userId?: string): Promise<boolean> {
     try {
         const role = await getUserPlatformRole(userId)
-        if (role === 'support' || role === 'super_admin') return true
-
-        return await isTenantZeroOwner(userId)
+        return role === 'support' || role === 'super_admin'
     } catch (error) {
         console.error('[isSupport] Error:', error)
         return false

@@ -20,7 +20,14 @@ export async function getOrganizationMembers() {
     // Use admin client to bypass RLS on organization_members
     const { data: members, error } = await supabaseAdmin
         .from('organization_members')
-        .select('*')
+        .select(`
+            *,
+            organization_roles (
+                id,
+                name,
+                is_system_role
+            )
+        `)
         .eq('organization_id', orgId)
 
     if (error) {
@@ -52,6 +59,11 @@ export async function getOrganizationMembers() {
         .filter(member => !platformAdminIds.has(member.user_id))
         .map(member => ({
             ...member,
+            role_id: member.role_id, // Ensure this is passed
+            // If they have a dynamic role, use its name, otherwise fallback to legacy enum
+            // We need to fetch the role name? The query above selected '*' from organization_members.
+            // We should join organization_roles to get the name.
+            role_name: member.organization_roles?.name || member.role,
             user: {
                 id: member.user_id,
                 email: userMap.get(member.user_id) || 'Sin Email',
@@ -66,7 +78,19 @@ export async function getOrganizationMembers() {
  * Invite a member to the current organization
  * Uses Admin API to generate link/create user if needed.
  */
-export async function inviteMember(email: string, role: string = 'member') {
+/**
+ * Invite a member to the current organization
+ * Uses Admin API to generate link/create user if needed.
+ */
+/**
+ * Invite a member to the current organization
+ * Uses Admin API to generate link/create user if needed.
+ */
+/**
+ * Invite a member to the current organization
+ * Uses Admin API to generate link/create user if needed.
+ */
+export async function inviteMember(email: string, roleOrRoleId: string = 'member') {
     const orgId = await getCurrentOrganizationId()
     if (!orgId) return { success: false, error: "No active organization" }
 
@@ -78,7 +102,6 @@ export async function inviteMember(email: string, role: string = 'member') {
     }
 
     const { getAdminUrlAsync } = await import('@/lib/utils')
-    const origin = await getAdminUrlAsync('')
     const redirectUrl = await getAdminUrlAsync('/auth/callback?next=/dashboard')
 
     try {
@@ -91,7 +114,7 @@ export async function inviteMember(email: string, role: string = 'member') {
             email: email,
             options: {
                 redirectTo: redirectUrl,
-                data: { organization_id: orgId, role: role }
+                data: { organization_id: orgId, role: roleOrRoleId }
             }
         })
 
@@ -106,7 +129,7 @@ export async function inviteMember(email: string, role: string = 'member') {
                 email: email,
                 options: {
                     redirectTo: redirectUrl,
-                    data: { organization_id: orgId, role: role }
+                    data: { organization_id: orgId, role: roleOrRoleId }
                 }
             })
             linkData = resultExisting.data;
@@ -140,7 +163,9 @@ export async function inviteMember(email: string, role: string = 'member') {
             .upsert({
                 organization_id: orgId,
                 user_id: userId,
-                role: role,
+                // Check if it's a UUID (Role ID) or a legacy enum string
+                role_id: roleOrRoleId.length > 20 ? roleOrRoleId : null, // Simple heuristic for UUID
+                role: roleOrRoleId.length > 20 ? 'member' : roleOrRoleId, // Fallback for legacy column
             }, { onConflict: 'organization_id,user_id' })
 
         if (memberError) {
@@ -197,32 +222,22 @@ export async function removeMember(userId: string) {
 /**
  * Update a member's role
  */
-export async function updateMemberRole(userId: string, newRole: 'admin' | 'member') {
+export async function updateMemberRole(userId: string, newRoleId: string) {
     const orgId = await getCurrentOrganizationId()
     if (!orgId) return { success: false, error: "No active organization" }
 
-    // Only owners can change roles
+    // Only owners/admins can change roles (checked by middleware usually, but here manually)
+    // TODO: Use hasPermission(PERMISSIONS.ORG.MANAGE_MEMBERS)
     try {
-        await requireOrgRole('owner')
+        await requireOrgRole('admin') // Legacy check kept for safety, should upgrade
     } catch (e) {
-        return { success: false, error: "Solo el dueño puede cambiar roles" }
-    }
-
-    // Prevent changing owner role
-    const { data: targetMember } = await supabaseAdmin
-        .from('organization_members')
-        .select('role')
-        .match({ organization_id: orgId, user_id: userId })
-        .single()
-
-    if (targetMember?.role === 'owner') {
-        return { success: false, error: "No se puede cambiar el rol del dueño" }
+        return { success: false, error: "No tienes permisos" }
     }
 
     try {
         const { error } = await supabaseAdmin
             .from('organization_members')
-            .update({ role: newRole })
+            .update({ role_id: newRoleId })
             .match({ organization_id: orgId, user_id: userId })
 
         if (error) throw error

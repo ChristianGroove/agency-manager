@@ -13,6 +13,9 @@ export const metadata = {
     description: "Gestiona la configuración de tu organización",
 }
 
+
+import { getSnapshots, getVaultConfig } from "@/modules/core/data-vault/actions"
+
 export default async function SettingsPage() {
     const orgId = await getCurrentOrganizationId()
 
@@ -20,13 +23,15 @@ export default async function SettingsPage() {
         return <div>Error: Organización no encontrada</div>
     }
 
-    const [settings, activeModules, subscriptionApp, brandingSettings, userRole, tierData] = await Promise.all([
+    const [settings, activeModules, subscriptionApp, brandingSettings, userRole, tierData, snapshots, vaultConfig] = await Promise.all([
         getSettings(),
         getOrganizationModules(orgId),
         getSubscriptionApp(),
         getEffectiveBranding(orgId),
         getCurrentOrgRole(),
-        getCurrentBrandingTier()
+        getCurrentBrandingTier(),
+        getSnapshots(),
+        getVaultConfig()
     ])
 
     const tierFeatures = tierData?.tier?.features || {}
@@ -41,11 +46,14 @@ export default async function SettingsPage() {
                     subscriptionApp={subscriptionApp}
                     userRole={userRole || 'member'}
                     tierFeatures={tierFeatures}
+                    snapshots={snapshots}
+                    vaultConfig={vaultConfig || { enabled: false, frequency: 'weekly' }}
                 />
             </Suspense>
         </div>
     )
 }
+
 
 function SettingsLoading() {
     return (
