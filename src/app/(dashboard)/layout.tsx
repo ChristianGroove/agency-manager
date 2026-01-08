@@ -4,6 +4,8 @@ import { redirect } from "next/navigation"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
 import { isSuperAdmin } from "@/lib/auth/platform-roles"
 import { SystemAlertBanner } from "@/components/layout/system-alert-banner"
+import { Suspense } from "react"
+import { GlobalLoader } from "@/components/ui/global-loader"
 
 export default async function DashboardLayout({
     children,
@@ -36,7 +38,9 @@ export default async function DashboardLayout({
     return (
         <DashboardShell key={currentOrgId} user={user} currentOrgId={currentOrgId} isSuperAdmin={isAdmin}>
             <SystemAlertBanner />
-            {children}
+            <Suspense fallback={<GlobalLoader />}>
+                {children}
+            </Suspense>
         </DashboardShell>
     )
 }
