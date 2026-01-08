@@ -1,9 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AIWorkflowAnalyzer, WorkflowContext } from '@/modules/core/automation/ai-analyzer';
 import { WorkflowNode, WorkflowEdge } from '@/modules/core/automation/engine';
+import { getCurrentOrganizationId } from '@/modules/core/organizations/actions';
 
 export async function POST(request: NextRequest) {
     try {
+        // Governance: Ensure Org Context
+        const orgId = await getCurrentOrganizationId();
+        if (!orgId) {
+            return NextResponse.json(
+                { error: 'Unauthorized: No Organization Context' },
+                { status: 401 }
+            );
+        }
+
         const body = await request.json();
         const { nodes, edges } = body as {
             nodes: WorkflowNode[];
@@ -31,8 +41,8 @@ export async function POST(request: NextRequest) {
             variables
         };
 
-        // Get AI suggestions
-        const analyzer = new AIWorkflowAnalyzer();
+        // Get AI suggestions via Engine
+        const analyzer = new AIWorkflowAnalyzer(orgId);
         const suggestions = await analyzer.getSuggestions(context);
 
         return NextResponse.json({

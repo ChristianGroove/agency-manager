@@ -16,145 +16,45 @@ export interface AISuggestion {
 }
 
 export class AIWorkflowAnalyzer {
-    private apiKey: string;
-    private model: string = 'gpt-4o-mini';
+    private organizationId: string;
 
-    constructor(apiKey?: string) {
-        this.apiKey = apiKey || process.env.OPENAI_API_KEY || '';
+    constructor(organizationId: string) {
+        if (!organizationId) throw new Error("Organization ID required for AI Analysis");
+        this.organizationId = organizationId;
     }
 
     async getSuggestions(context: WorkflowContext): Promise<AISuggestion[]> {
-        if (!this.apiKey) {
-            console.warn('[AIAnalyzer] No API key, returning fallback suggestions');
-            return this.getFallbackSuggestions(context);
-        }
-
         try {
-            const prompt = this.buildPrompt(context);
-            const response = await this.callOpenAI(prompt);
-            return this.parseSuggestions(response);
-        } catch (error) {
-            console.error('[AIAnalyzer] Error getting suggestions:', error);
-            return this.getFallbackSuggestions(context);
-        }
-    }
+            // Use Central AI Engine
+            const { AIEngine } = await import("@/modules/core/ai-engine/service");
 
-    private buildPrompt(context: WorkflowContext): string {
-        const { nodes, lastNode, variables } = context;
+            const response = await AIEngine.executeTask({
+                organizationId: this.organizationId,
+                taskType: 'automation.suggest_node_v1',
+                payload: {
+                    nodeCount: context.nodes.length,
+                    lastNodeType: context.lastNode?.type || 'start',
+                    lastNodeLabel: context.lastNode?.data?.label || '',
+                    variables: context.variables
+                }
+            });
 
-        // Describir el workflow actual
-        const workflowDescription = nodes.map((node, i) => {
-            return `${i + 1}. ${node.type} (${node.data.label || 'Sin nombre'})`;
-        }).join('\n');
-
-        const variablesDesc = variables.length > 0
-            ? `Variables disponibles: ${variables.join(', ')}`
-            : 'No hay variables en contexto aún';
-
-        const lastNodeDesc = lastNode
-            ? `Último nodo añadido: ${lastNode.type} (${lastNode.data.label || 'Sin nombre'})`
-            : 'Workflow vacío';
-
-        return `
-Eres un experto en automatización de workflows para un CRM y plataforma de marketing.
-
-Workflow actual:
-${workflowDescription || 'Vacío (sin nodos)'}
-
-${lastNodeDesc}
-
-${variablesDesc}
-
-Tipos de nodos disponibles:
-- trigger: Punto de inicio del workflow
-- http: Llamadas a APIs REST externas
-- crm: Crear o actualizar leads/clientes en el CRM
-- email: Enviar correos electrónicos (Resend)
-- sms: Enviar mensajes SMS (Twilio)
-- condition: Lógica condicional (if/else)
-- action: Acciones genéricas
-
-Contexto de negocio:
-- Sistema CRM integrado
-- Marketing automation
-- Sales pipeline management
-- Customer communication
-
-Tarea: Sugiere los 3 próximos nodos más lógicos para continuar este workflow.
-Para cada sugerencia, proporciona:
-1. El tipo de nodo
-2. Confianza (0-100)
-3. Razón clara y concisa
-4. Configuración sugerida (opcional)
-
-Formato JSON:
-{
-  "suggestions": [
-    {
-      "nodeType": "email",
-      "confidence": 92,
-      "reasoning": "Enviar email de bienvenida al nuevo lead",
-      "suggestedConfig": {
-        "to": "{{lead.email}}",
-        "subject": "¡Bienvenido!"
-      }
-    }
-  ]
-}
-
-Responde SOLO con JSON válido.
-        `.trim();
-    }
-
-    private async callOpenAI(prompt: string): Promise<string> {
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${this.apiKey}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                model: this.model,
-                messages: [
-                    {
-                        role: 'system',
-                        content: 'Eres un experto en automatización de workflows. Siempre respondes con JSON válido.'
-                    },
-                    {
-                        role: 'user',
-                        content: prompt
-                    }
-                ],
-                temperature: 0.7,
-                max_tokens: 800,
-                response_format: { type: 'json_object' }
-            })
-        });
-
-        if (!response.ok) {
-            throw new Error(`OpenAI API error: ${response.statusText}`);
-        }
-
-        const data = await response.json();
-        return data.choices[0].message.content;
-    }
-
-    private parseSuggestions(response: string): AISuggestion[] {
-        try {
-            const parsed = JSON.parse(response);
-            const suggestions = parsed.suggestions || [];
-
-            return suggestions.map((s: any) => ({
+            // Parse response (Engine ensures JSONMode but we validate structure)
+            const data = response.data as any;
+            return (data.suggestions || []).map((s: any) => ({
                 nodeType: s.nodeType,
-                confidence: s.confidence / 100, // Convert to 0-1
+                confidence: s.confidence / 100, // Normalize to 0-1
                 reasoning: s.reasoning,
-                suggestedConfig: s.suggestedConfig || {}
-            })).slice(0, 3); // Max 3 suggestions
+                suggestedConfig: s.suggestedConfig
+            })).slice(0, 3);
+
         } catch (error) {
-            console.error('[AIAnalyzer] Error parsing suggestions:', error);
-            return [];
+            console.error('[AIAnalyzer] Engine failed, using fallback:', error);
+            return this.getFallbackSuggestions(context);
         }
     }
+
+    // ... fallbacks kept for safety ...
 
     private getFallbackSuggestions(context: WorkflowContext): AISuggestion[] {
         const { nodes, lastNode } = context;

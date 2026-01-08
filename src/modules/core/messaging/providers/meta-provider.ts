@@ -99,7 +99,8 @@ export class MetaProvider implements MessagingProvider {
                             for (const msg of change.value.messages) {
                                 // Extract sender info
                                 const contact = change.value.contacts?.find((c: any) => c.wa_id === msg.from);
-                                const content = await this.parseMessageContent(msg);
+                                const phoneNumberId = change.value.metadata?.phone_number_id;
+                                const content = await this.parseMessageContent(msg, phoneNumberId);
 
                                 // Extract button ID if interactive
                                 let buttonId = undefined;
@@ -138,29 +139,114 @@ export class MetaProvider implements MessagingProvider {
     }
 
     /**
+     * Helper to get API token from integration_connections if not provided in constructor
+     */
+    private async getTokenByPhoneNumberId(phoneNumberId: string): Promise<string> {
+        console.log(`[MetaProvider] getTokenByPhoneNumberId called with: "${phoneNumberId}"`);
+
+        try {
+            const { data: connections, error } = await supabaseAdmin
+                .from('integration_connections')
+                .select('credentials')
+                .eq('provider_key', 'meta_whatsapp')
+                .eq('status', 'active');
+
+            if (error) {
+                console.error('[MetaProvider] DB query error:', error);
+                return '';
+            }
+
+            console.log(`[MetaProvider] Found ${connections?.length || 0} active meta_whatsapp connections`);
+
+            if (!connections || connections.length === 0) return '';
+
+            const { decryptCredentials } = await import('@/modules/core/integrations/encryption');
+
+            for (const conn of connections) {
+                let creds = conn.credentials || {};
+                console.log(`[MetaProvider] Raw credentials type: ${typeof creds}`);
+
+                if (typeof creds === 'string') {
+                    try { creds = JSON.parse(creds); } catch (e) { }
+                }
+                creds = decryptCredentials(creds);
+
+                const storedId = creds.phoneNumberId || creds.phone_number_id;
+                console.log(`[MetaProvider] Checking connection - storedId: "${storedId}" vs requested: "${phoneNumberId}"`);
+
+                if (storedId === phoneNumberId) {
+                    const token = creds.accessToken || creds.apiToken || creds.access_token || '';
+                    console.log(`[MetaProvider] MATCH! Token found (length: ${token.length})`);
+                    return token;
+                }
+            }
+            console.log('[MetaProvider] No matching connection found');
+            return '';
+        } catch (error) {
+            console.error('[MetaProvider] getTokenByPhoneNumberId failed:', error);
+            return '';
+        }
+    }
+
+    /**
      * Helper to download media from Meta and upload to Supabase
      */
-    private async processMedia(mediaId: string, mimeType?: string): Promise<string> {
+    private async processMedia(mediaId: string, mimeType?: string, phoneNumberId?: string): Promise<string> {
+        console.log(`[MetaProvider] processMedia called for mediaId: ${mediaId}, mimeType: ${mimeType}`);
+
+        // Get token - either from constructor or from database
+        let token = this.apiToken;
+        if (!token && phoneNumberId) {
+            console.log(`[MetaProvider] No apiToken in constructor, fetching from database for phoneNumberId: ${phoneNumberId}`);
+            token = await this.getTokenByPhoneNumberId(phoneNumberId);
+        }
+
+        if (!token) {
+            console.error(`[MetaProvider] No token available for media download!`);
+            return "";
+        }
+        console.log(`[MetaProvider] Using token (length: ${token.length})`);
+
         try {
             // 1. Get Media URL from Meta
+            console.log(`[MetaProvider] Step 1: Fetching media URL from Meta...`);
             const urlRes = await fetch(`https://graph.facebook.com/v18.0/${mediaId}`, {
-                headers: { 'Authorization': `Bearer ${this.apiToken}` }
+                headers: { 'Authorization': `Bearer ${token}` }
             });
 
-            if (!urlRes.ok) throw new Error(`Failed to get media URL: ${urlRes.statusText}`);
+            if (!urlRes.ok) {
+                console.error(`[MetaProvider] Step 1 FAILED: ${urlRes.status} ${urlRes.statusText}`);
+                const errBody = await urlRes.text();
+                console.error(`[MetaProvider] Meta API Error Body:`, errBody);
+                return "";
+            }
+
             const urlData = await urlRes.json();
             const mediaUrl = urlData.url;
+            console.log(`[MetaProvider] Step 1 SUCCESS: Got media URL (length: ${mediaUrl?.length || 0})`);
+
+            if (!mediaUrl) {
+                console.error(`[MetaProvider] No URL in Meta response:`, urlData);
+                return "";
+            }
 
             // 2. Download Media Binary
+            console.log(`[MetaProvider] Step 2: Downloading media binary...`);
             const mediaRes = await fetch(mediaUrl, {
-                headers: { 'Authorization': `Bearer ${this.apiToken}` }
+                headers: { 'Authorization': `Bearer ${token}` }
             });
 
-            if (!mediaRes.ok) throw new Error(`Failed to download media binary: ${mediaRes.statusText}`);
+            if (!mediaRes.ok) {
+                console.error(`[MetaProvider] Step 2 FAILED: ${mediaRes.status} ${mediaRes.statusText}`);
+                return "";
+            }
+
             const arrayBuffer = await mediaRes.arrayBuffer();
             const buffer = Buffer.from(arrayBuffer);
+            console.log(`[MetaProvider] Step 2 SUCCESS: Downloaded ${buffer.length} bytes`);
 
             // 3. Upload to Supabase Storage
+            console.log(`[MetaProvider] Step 3: Uploading to Supabase Storage...`);
             const ext = mimeType ? mimeType.split('/')[1]?.split(';')[0] : 'bin';
             const fileName = `whatsapp/${new Date().getFullYear()}/${Date.now()}_${mediaId}.${ext}`;
 
@@ -171,17 +257,22 @@ export class MetaProvider implements MessagingProvider {
                     upsert: true
                 });
 
-            if (error) throw error;
+            if (error) {
+                console.error(`[MetaProvider] Step 3 FAILED - Storage Error:`, error);
+                return "";
+            }
+            console.log(`[MetaProvider] Step 3 SUCCESS: Uploaded to ${fileName}`);
 
             // 4. Get Public URL
             const { data: { publicUrl } } = supabaseAdmin.storage
                 .from('chat-attachments')
                 .getPublicUrl(fileName);
 
+            console.log(`[MetaProvider] Step 4 SUCCESS: Public URL = ${publicUrl}`);
             return publicUrl;
 
         } catch (error) {
-            console.error(`[MetaProvider] Media Processing Failed for ID ${mediaId}:`, error);
+            console.error(`[MetaProvider] Media Processing Exception for ID ${mediaId}:`, error);
             return "";
         }
     }
@@ -189,7 +280,7 @@ export class MetaProvider implements MessagingProvider {
     /**
      * Helper to parse message content type
      */
-    private async parseMessageContent(msg: any): Promise<IncomingMessage['content']> {
+    private async parseMessageContent(msg: any, phoneNumberId?: string): Promise<IncomingMessage['content']> {
         if (msg.type === 'text') {
             return {
                 type: 'text',
@@ -200,7 +291,7 @@ export class MetaProvider implements MessagingProvider {
         if (msg.type === 'image') {
             const mediaId = msg.image.id;
             const caption = msg.image.caption;
-            const publicUrl = await this.processMedia(mediaId, msg.image.mime_type);
+            const publicUrl = await this.processMedia(mediaId, msg.image.mime_type, phoneNumberId);
 
             return {
                 type: 'image',
@@ -213,7 +304,7 @@ export class MetaProvider implements MessagingProvider {
         if (msg.type === 'video') {
             const mediaId = msg.video.id;
             const caption = msg.video.caption;
-            const publicUrl = await this.processMedia(mediaId, msg.video.mime_type);
+            const publicUrl = await this.processMedia(mediaId, msg.video.mime_type, phoneNumberId);
 
             return {
                 type: 'video', // Map to video type if exists in types, else unknown or extend types
@@ -225,7 +316,7 @@ export class MetaProvider implements MessagingProvider {
 
         if (msg.type === 'audio' || msg.type === 'voice') {
             const payload = msg.audio || msg.voice;
-            const publicUrl = await this.processMedia(payload.id, payload.mime_type);
+            const publicUrl = await this.processMedia(payload.id, payload.mime_type, phoneNumberId);
 
             return {
                 type: 'audio', // Treat voice as audio
@@ -238,7 +329,7 @@ export class MetaProvider implements MessagingProvider {
             const mediaId = msg.document.id;
             const caption = msg.document.caption;
             const filename = msg.document.filename;
-            const publicUrl = await this.processMedia(mediaId, msg.document.mime_type);
+            const publicUrl = await this.processMedia(mediaId, msg.document.mime_type, phoneNumberId);
 
             return {
                 type: 'document', // Ensure types.ts supports this or map to generic

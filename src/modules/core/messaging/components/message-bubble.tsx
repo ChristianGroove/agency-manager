@@ -2,6 +2,7 @@
 
 import { cn } from "@/lib/utils"
 import { Check, CheckCheck, FileIcon, Volume2, Play } from "lucide-react"
+import { AudioTranscriber } from "./audio-transcriber"
 
 interface MessageContent {
     type: 'text' | 'image' | 'audio' | 'video' | 'document' | 'location' | 'note'
@@ -94,12 +95,16 @@ function renderContent(content: any, isOutbound: boolean) {
 
         case 'audio':
             return (
-                <div className="flex items-center gap-2 min-w-[200px] py-1">
-                    <div className="h-8 w-8 rounded-full bg-blue-500/10 flex items-center justify-center shrink-0">
-                        <Volume2 className="h-4 w-4 text-blue-500" />
+                <div className="min-w-[200px] py-1">
+                    <div className="flex items-center gap-2">
+                        <div className="h-8 w-8 rounded-full bg-blue-500/10 flex items-center justify-center shrink-0">
+                            <Volume2 className="h-4 w-4 text-blue-500" />
+                        </div>
+                        {/* Basic Audio Player */}
+                        <audio controls src={url} className="h-8 w-[200px]" />
                     </div>
-                    {/* Basic Audio Player */}
-                    <audio controls src={url} className="h-8 w-[200px]" />
+                    {/* AI Transcription */}
+                    <AudioTranscriber audioUrl={url} />
                 </div>
             )
 

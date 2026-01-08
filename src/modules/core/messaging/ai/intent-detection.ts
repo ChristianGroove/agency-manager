@@ -60,61 +60,28 @@ const INTENT_DEFINITIONS = {
     }
 }
 
+import { AIEngine } from "@/modules/core/ai-engine/service"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+
 /**
- * Detect customer intent using AI
+ * Detect customer intent using Central Engine
  */
 export async function detectIntent(messageContent: string): Promise<{
     success: boolean
     result?: IntentResult
     error?: string
 }> {
-    "use server"
-    const startTime = Date.now()
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) return { success: false, error: "Unauthorized" }
 
     try {
-        const completion = await openai.chat.completions.create({
-            model: 'gpt-3.5-turbo',
-            messages: [
-                {
-                    role: 'system',
-                    content: `You are an intent classification expert for customer service.
-
-Classify messages into these intents:
-${Object.entries(INTENT_DEFINITIONS).map(([intent, def]) =>
-                        `- ${intent}: ${def.description}`
-                    ).join('\n')}
-
-Extract relevant entities:
-- product: Product or service name
-- amount: Any monetary value
-- order_id: Order/ticket/reference number
-- date: Any mentioned date
-- email: Email address
-- phone: Phone number
-
-Return JSON:
-{
-  "intent": "one of the intents above",
-  "confidence": 0.0 to 1.0,
-  "extractedEntities": {entity: value}
-}`
-                },
-                {
-                    role: 'user',
-                    content: `Classify this message:\n\n"${messageContent}"`
-                }
-            ],
-            temperature: 0.3,
-            max_tokens: 300,
-            response_format: { type: 'json_object' }
+        const response = await AIEngine.executeTask({
+            organizationId: orgId,
+            taskType: 'inbox.intent_v1',
+            payload: { message: messageContent }
         })
 
-        const responseText = completion.choices[0]?.message?.content
-        if (!responseText) {
-            return { success: false, error: 'No response from AI' }
-        }
-
-        const parsed = JSON.parse(responseText)
+        const parsed = response.data
         const intentDef = INTENT_DEFINITIONS[parsed.intent as keyof typeof INTENT_DEFINITIONS]
 
         const result: IntentResult = {
@@ -126,6 +93,7 @@ Return JSON:
         }
 
         return { success: true, result }
+
     } catch (error: any) {
         console.error('[IntentDetection] Failed:', error)
         return { success: false, error: error.message }

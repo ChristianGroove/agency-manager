@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { MoreVertical, Archive, Trash2, CheckCircle, ArchiveRestore, Clock } from "lucide-react"
+import { MoreVertical, Archive, Trash2, CheckCircle, ArchiveRestore, Clock, Lightbulb } from "lucide-react"
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button"
 import { archiveConversation, deleteConversation, markAsRead, unarchiveConversation, snoozeConversation } from "../conversation-actions"
 import { toast } from "sonner"
 import { addHours, addDays, nextMonday, setHours, setMinutes, startOfHour } from "date-fns"
+import { SaveAsFAQModal } from "./save-as-faq-modal"
 
 interface ConversationActionsMenuProps {
     conversationId: string
@@ -29,6 +30,7 @@ export function ConversationActionsMenu({
     onActionComplete
 }: ConversationActionsMenuProps) {
     const [isLoading, setIsLoading] = useState(false)
+    const [isFAQModalOpen, setIsFAQModalOpen] = useState(false)
 
     const handleAction = async (action: () => Promise<any>, successMessage: string) => {
         setIsLoading(true)
@@ -61,87 +63,102 @@ export function ConversationActionsMenu({
     }
 
     return (
-        <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    disabled={isLoading}
-                >
-                    <MoreVertical className="h-4 w-4" />
-                </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                    onClick={() => handleAction(
-                        () => markAsRead(conversationId),
-                        "Marked as read"
+        <>
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        disabled={isLoading}
+                    >
+                        <MoreVertical className="h-4 w-4" />
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                        onClick={() => handleAction(
+                            () => markAsRead(conversationId),
+                            "Marked as read"
+                        )}
+                    >
+                        <CheckCircle className="mr-2 h-4 w-4" />
+                        Mark as read
+                    </DropdownMenuItem>
+
+                    <DropdownMenuSub>
+                        <DropdownMenuSubTrigger>
+                            <Clock className="mr-2 h-4 w-4" />
+                            Snooze
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuSubContent>
+                            <DropdownMenuItem onClick={() => handleSnooze(addHours(new Date(), 4))}>
+                                Later Today (4 hours)
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleSnooze(setMinutes(setHours(addDays(new Date(), 1), 9), 0))}>
+                                Tomorrow (9:00 AM)
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleSnooze(setMinutes(setHours(nextMonday(new Date()), 9), 0))}>
+                                Next Week (Mon 9:00 AM)
+                            </DropdownMenuItem>
+                        </DropdownMenuSubContent>
+                    </DropdownMenuSub>
+
+                    <DropdownMenuSeparator />
+
+                    {isArchived ? (
+                        <DropdownMenuItem
+                            onClick={() => handleAction(
+                                () => unarchiveConversation(conversationId),
+                                "Conversation unarchived"
+                            )}
+                        >
+                            <ArchiveRestore className="mr-2 h-4 w-4" />
+                            Unarchive
+                        </DropdownMenuItem>
+                    ) : (
+                        <DropdownMenuItem
+                            onClick={() => handleAction(
+                                () => archiveConversation(conversationId),
+                                "Conversation archived"
+                            )}
+                        >
+                            <Archive className="mr-2 h-4 w-4" />
+                            Archive
+                        </DropdownMenuItem>
                     )}
-                >
-                    <CheckCircle className="mr-2 h-4 w-4" />
-                    Mark as read
-                </DropdownMenuItem>
 
-                <DropdownMenuSub>
-                    <DropdownMenuSubTrigger>
-                        <Clock className="mr-2 h-4 w-4" />
-                        Snooze
-                    </DropdownMenuSubTrigger>
-                    <DropdownMenuSubContent>
-                        <DropdownMenuItem onClick={() => handleSnooze(addHours(new Date(), 4))}>
-                            Later Today (4 hours)
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleSnooze(setMinutes(setHours(addDays(new Date(), 1), 9), 0))}>
-                            Tomorrow (9:00 AM)
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleSnooze(setMinutes(setHours(nextMonday(new Date()), 9), 0))}>
-                            Next Week (Mon 9:00 AM)
-                        </DropdownMenuItem>
-                    </DropdownMenuSubContent>
-                </DropdownMenuSub>
-
-                <DropdownMenuSeparator />
-
-                {isArchived ? (
-                    <DropdownMenuItem
-                        onClick={() => handleAction(
-                            () => unarchiveConversation(conversationId),
-                            "Conversation unarchived"
-                        )}
-                    >
-                        <ArchiveRestore className="mr-2 h-4 w-4" />
-                        Unarchive
+                    {/* AI: Save as FAQ */}
+                    <DropdownMenuItem onClick={() => setIsFAQModalOpen(true)}>
+                        <Lightbulb className="mr-2 h-4 w-4 text-yellow-500" />
+                        Guardar como FAQ
                     </DropdownMenuItem>
-                ) : (
+
+                    <DropdownMenuSeparator />
+
                     <DropdownMenuItem
-                        onClick={() => handleAction(
-                            () => archiveConversation(conversationId),
-                            "Conversation archived"
-                        )}
+                        onClick={() => {
+                            if (confirm("Are you sure? This will permanently delete the conversation and all messages.")) {
+                                handleAction(
+                                    () => deleteConversation(conversationId),
+                                    "Conversation deleted"
+                                )
+                            }
+                        }}
+                        className="text-destructive focus:text-destructive"
                     >
-                        <Archive className="mr-2 h-4 w-4" />
-                        Archive
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete
                     </DropdownMenuItem>
-                )}
+                </DropdownMenuContent>
+            </DropdownMenu>
 
-                <DropdownMenuSeparator />
-
-                <DropdownMenuItem
-                    onClick={() => {
-                        if (confirm("Are you sure? This will permanently delete the conversation and all messages.")) {
-                            handleAction(
-                                () => deleteConversation(conversationId),
-                                "Conversation deleted"
-                            )
-                        }
-                    }}
-                    className="text-destructive focus:text-destructive"
-                >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete
-                </DropdownMenuItem>
-            </DropdownMenuContent>
-        </DropdownMenu>
+            {/* FAQ Modal */}
+            <SaveAsFAQModal
+                open={isFAQModalOpen}
+                onOpenChange={setIsFAQModalOpen}
+                conversationId={conversationId}
+            />
+        </>
     )
 }

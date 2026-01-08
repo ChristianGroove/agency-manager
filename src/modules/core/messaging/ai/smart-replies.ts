@@ -1,27 +1,13 @@
-"use server"
+import { AIEngine } from "@/modules/core/ai-engine/service"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
 
-import OpenAI from "openai"
-
-const getOpenAI = () => {
-    const apiKey = process.env.OPENAI_API_KEY
-    if (!apiKey) {
-        throw new Error("Missing credentials. Please set OPENAI_API_KEY environment variable.")
-    }
-    return new OpenAI({ apiKey })
-}
-
-interface Message {
-    role: 'system' | 'user' | 'assistant'
-    content: string
-}
-
-interface SmartReply {
+export interface SmartReply {
     type: 'short' | 'medium' | 'detailed'
     text: string
     tokens: number
 }
 
-interface GenerateRepliesOptions {
+export interface GenerateRepliesOptions {
     conversationHistory: Array<{
         content: string
         direction: 'incoming' | 'outgoing'
@@ -36,89 +22,47 @@ interface GenerateRepliesOptions {
 }
 
 /**
- * Generate 3 AI-powered reply suggestions
+ * Generate 3 AI-powered reply suggestions via Central Engine
  */
 export async function generateSmartReplies(
     options: GenerateRepliesOptions
 ): Promise<{ success: boolean; replies?: SmartReply[]; error?: string; generationTimeMs?: number }> {
     const startTime = Date.now()
+    const orgId = await getCurrentOrganizationId()
+
+    if (!orgId) return { success: false, error: "Organization Context Missing" }
 
     try {
-        // Build context from conversation history
-        const messages: Message[] = [
-            {
-                role: 'system',
-                content: buildSystemPrompt(options.businessContext, options.customerContext)
-            },
-            ...buildConversationContext(options.conversationHistory)
-        ]
-
-        // Generate responses with OpenAI
-        const completion = await getOpenAI().chat.completions.create({
-            model: 'gpt-4-turbo-preview',
-            messages,
-            temperature: 0.7,
-            max_tokens: 500,
-            response_format: { type: 'json_object' }
+        const result = await AIEngine.executeTask({
+            organizationId: orgId,
+            taskType: 'inbox.smart_replies_v1',
+            payload: {
+                history: options.conversationHistory,
+                businessContext: options.businessContext,
+                customerName: options.customerContext?.name,
+                customerTags: options.customerContext?.tags,
+                priority: options.customerContext?.priority
+            }
         })
 
         const generationTimeMs = Date.now() - startTime
-        const responseText = completion.choices[0]?.message?.content
+        const data = result.data // Already parsed JSON from Engine
 
-        if (!responseText) {
-            return { success: false, error: 'No response from AI' }
-        }
-
-        const parsed = JSON.parse(responseText)
         const replies: SmartReply[] = [
-            { type: 'short', text: parsed.short, tokens: estimateTokens(parsed.short) },
-            { type: 'medium', text: parsed.medium, tokens: estimateTokens(parsed.medium) },
-            { type: 'detailed', text: parsed.detailed, tokens: estimateTokens(parsed.detailed) }
+            { type: 'short', text: data.short, tokens: estimateTokens(data.short) },
+            { type: 'medium', text: data.medium, tokens: estimateTokens(data.medium) },
+            { type: 'detailed', text: data.detailed, tokens: estimateTokens(data.detailed) }
         ]
 
         return { success: true, replies, generationTimeMs }
+
     } catch (error: any) {
         console.error('[SmartReplies] Generation failed:', error)
         return { success: false, error: error.message }
     }
 }
 
-function buildSystemPrompt(businessContext?: string, customerContext?: any): string {
-    const basePrompt = `You are an AI assistant helping a customer service agent respond to messages.
 
-Your task: Generate 3 response suggestions (short, medium, detailed) based on the conversation.
-
-Guidelines:
-- Be professional, friendly, and helpful
-- Match the tone of previous agent messages
-- Address the customer's question/concern directly
-- Use the customer's name if available
-- Be concise but complete
-
-${businessContext ? `Business Context: ${businessContext}` : ''}
-${customerContext?.name ? `Customer Name: ${customerContext.name}` : ''}
-${customerContext?.tags?.length ? `Customer Tags: ${customerContext.tags.join(', ')}` : ''}
-${customerContext?.priority === 'urgent' ? 'IMPORTANT: This is an URGENT inquiry - prioritize speed and empathy' : ''}
-
-Return JSON format:
-{
-  "short": "Brief 1-sentence response (under 50 chars)",
-  "medium": "Standard response (2-3 sentences, 100-150 chars)",
-  "detailed": "Comprehensive response (multiple paragraphs if needed)"
-}`
-
-    return basePrompt
-}
-
-function buildConversationContext(
-    history: Array<{ content: string; direction: 'incoming' | 'outgoing'; created_at: string }>
-): Message[] {
-    // Take last 5 messages for context
-    return history.slice(-5).map(msg => ({
-        role: msg.direction === 'incoming' ? 'user' : 'assistant',
-        content: msg.content
-    }))
-}
 
 function estimateTokens(text: string): number {
     // Rough estimation: ~4 chars per token
@@ -178,35 +122,24 @@ export async function markSuggestionUsed(
 }
 
 /**
- * Refine a draft message to be more professional and clear
+ * Refine a draft message to be more professional and clear (Governance Enforced)
  */
 export async function refineDraftContent(content: string): Promise<{ success: boolean; refined?: string; error?: string }> {
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) return { success: false, error: "Unauthorized" }
+
     try {
         if (!content || content.length < 5) return { success: false, error: 'Content too short' }
 
-        const completion = await getOpenAI().chat.completions.create({
-            model: 'gpt-4o-mini',
-            messages: [
-                {
-                    role: 'system',
-                    content: `You are an expert copywriter. 
-                    Task: Rewrite the user's draft to be more professional, clear, and friendly.
-                    Rules:
-                    - Fix grammar/spelling.
-                    - Improve flow and tone.
-                    - Keep any variables like {{name}} intact.
-                    - Do not add explanations or quotes. Just return the rewriten text.`
-                },
-                {
-                    role: 'user',
-                    content
-                }
-            ],
-            temperature: 0.7,
-            max_tokens: 500,
+        const response = await AIEngine.executeTask({
+            organizationId: orgId,
+            taskType: 'messaging.refine_draft_v1',
+            payload: { content }
         })
 
-        const refined = completion.choices[0]?.message?.content
+        // Engine returns strict string for this task (jsonMode: false)
+        const refined = typeof response.data === 'string' ? response.data : JSON.stringify(response.data)
+
         return { success: true, refined: refined || content }
 
     } catch (error: any) {

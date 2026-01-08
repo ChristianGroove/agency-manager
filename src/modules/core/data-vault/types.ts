@@ -38,3 +38,8 @@ export interface DataModule {
      */
     clearData: (organizationId: string) => Promise<void>
 }
+
+export interface VaultConfig {
+    enabled: boolean
+    frequency: 'daily' | 'weekly' | 'monthly'
+}

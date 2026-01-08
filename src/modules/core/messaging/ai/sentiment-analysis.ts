@@ -14,59 +14,30 @@ interface SentimentResult {
     needsEscalation: boolean
 }
 
+import { AIEngine } from "@/modules/core/ai-engine/service"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+
 /**
- * Analyze sentiment of a message using OpenAI
+ * Analyze sentiment of a message using Central Engine
  */
 export async function analyzeSentiment(messageContent: string): Promise<{
     success: boolean
     result?: SentimentResult
     error?: string
 }> {
-    "use server"
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) return { success: false, error: "Unauthorized" }
+
     try {
-        const completion = await openai.chat.completions.create({
-            model: 'gpt-3.5-turbo',
-            messages: [
-                {
-                    role: 'system',
-                    content: `You are a sentiment analysis expert. Analyze customer service messages and return sentiment analysis.
-
-Sentiment levels:
-- positive: Happy, satisfied, grateful
-- neutral: Informational, question
-- negative: Frustrated, disappointed, unhappy
-- urgent: Angry, threatening, emergency, legal threat
-
-Emotions to detect: happy, satisfied, grateful, neutral, curious, confused, frustrated, disappointed, angry, threatening, urgent
-
-Urgent keywords: URGENT, ASAP, IMMEDIATELY, LAWYER, REFUND, CANCEL, UNACCEPTABLE, TERRIBLE, WORST
-
-Return JSON:
-{
-  "sentiment": "positive|neutral|negative|urgent",
-  "score": -1.0 to 1.0,
-  "emotions": ["emotion1", "emotion2"],
-  "urgentKeywords": ["KEYWORD"] (if any),
-  "needsEscalation": boolean
-}`
-                },
-                {
-                    role: 'user',
-                    content: `Analyze this message:\n\n"${messageContent}"`
-                }
-            ],
-            temperature: 0.3,
-            max_tokens: 200,
-            response_format: { type: 'json_object' }
+        const response = await AIEngine.executeTask({
+            organizationId: orgId,
+            taskType: 'inbox.sentiment_v1',
+            payload: { message: messageContent }
         })
 
-        const responseText = completion.choices[0]?.message?.content
-        if (!responseText) {
-            return { success: false, error: 'No response from AI' }
-        }
-
-        const result: SentimentResult = JSON.parse(responseText)
+        const result: SentimentResult = response.data
         return { success: true, result }
+
     } catch (error: any) {
         console.error('[SentimentAnalysis] Failed:', error)
         return { success: false, error: error.message }

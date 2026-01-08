@@ -13,7 +13,7 @@ import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 // import dynamic from "next/dynamic" // Emoji picker removed for now as icon is not in schema
 import { Label } from "@/components/ui/label"
-import { refineDraftContent } from "../ai/smart-replies"
+import { refineDraftContent } from "../ai/actions"
 
 // const EmojiPicker = dynamic(() => import('emoji-picker-react'), { ssr: false })
 

@@ -27,13 +27,18 @@ import { OrganizationRole } from "@/lib/auth/org-roles"
 
 import { TeamSettingsTab } from "./team-settings-tab"
 import { EmailLogsTable } from "@/modules/core/notifications/components/email-logs-table"
-import { Bell } from "lucide-react"
+import { Bell, Bot } from "lucide-react"
 import { BiometricButton } from "@/components/auth/biometric-button"
 
 import { SubscriptionSettingsTab } from "./subscription-settings-tab"
 import { SaasApp } from "@/modules/core/saas/app-management-actions"
 import { VaultSettingsTab } from "@/modules/core/data-vault/components/vault-settings-tab"
 import { DataSnapshot } from "@/modules/core/data-vault/types"
+import { AISettingsTab } from "./ai-settings-tab"
+import { getAICredentials, getAIProviders } from "../ai-engine/actions"
+
+
+import { VaultConfig } from "@/modules/core/data-vault/types"
 
 interface SettingsFormProps {
     initialSettings: any
@@ -43,10 +48,23 @@ interface SettingsFormProps {
     tierFeatures?: Record<string, any>
     userRole: OrganizationRole
     snapshots: DataSnapshot[]
-    vaultConfig: { enabled: boolean, frequency: 'daily' | 'weekly' | 'monthly' }
+    vaultConfig: VaultConfig
+    aiCredentials?: any[]
+    aiProviders?: any[]
 }
 
-export function SettingsForm({ initialSettings, activeModules, subscriptionApp, brandingSettings, tierFeatures = {}, userRole, snapshots, vaultConfig }: SettingsFormProps) {
+export function SettingsForm({
+    initialSettings,
+    activeModules,
+    subscriptionApp,
+    brandingSettings,
+    tierFeatures = {},
+    userRole,
+    snapshots,
+    vaultConfig,
+    aiCredentials,
+    aiProviders
+}: SettingsFormProps) {
     // ... existing code ...
 
     // ADD LOCAL STATE FOR SUBSCRIPTION APP (Optional, mostly passed down)
@@ -57,10 +75,7 @@ export function SettingsForm({ initialSettings, activeModules, subscriptionApp, 
     // ...
 
     // ... inside TabsContent render
-    {/* SUBSCRIPTION TAB */ }
-    <TabsContent value="subscription" className="space-y-4 mt-4">
-        <SubscriptionSettingsTab app={subscriptionApp || null} />
-    </TabsContent>
+
 
     const router = useRouter()
     const [isLoading, setIsLoading] = useState(false)
@@ -168,6 +183,13 @@ export function SettingsForm({ initialSettings, activeModules, subscriptionApp, 
             id: 'vault',
             label: 'Seguridad',
             icon: Shield,
+            minRole: 'owner',
+            isCore: true
+        },
+        {
+            id: 'ai',
+            label: 'IA Engine',
+            icon: Bot,
             minRole: 'owner',
             isCore: true
         },
@@ -325,11 +347,13 @@ export function SettingsForm({ initialSettings, activeModules, subscriptionApp, 
 
                 {/* VAULT TAB */}
                 <TabsContent value="vault" className="space-y-4 mt-4" suppressHydrationWarning>
-                    <VaultSettingsTab snapshots={snapshots || []} initialConfig={vaultConfig} />
+                    <VaultSettingsTab snapshots={snapshots || []} initialConfig={vaultConfig!} />
                 </TabsContent>
 
-
-
+                {/* AI ENGINE TAB */}
+                <TabsContent value="ai" className="space-y-4 mt-4" suppressHydrationWarning>
+                    <AISettingsTab credentials={aiCredentials || []} providers={aiProviders || []} />
+                </TabsContent>
                 {/* GENERAL TAB */}
                 <TabsContent value="general" className="space-y-4 mt-4" suppressHydrationWarning>
                     <Card className="bg-white dark:bg-white/5 border-gray-100 dark:border-white/10 shadow-sm backdrop-blur-md">

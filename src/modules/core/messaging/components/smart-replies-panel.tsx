@@ -52,12 +52,12 @@ export function SmartRepliesPanel({
         }
     }
 
-    // Auto-generate when new message arrives
-    useEffect(() => {
-        if (lastIncomingMessage) {
-            generateReplies()
-        }
-    }, [lastIncomingMessage])
+    // Auto-generate switched to MANUAL to prevent Quota Exhaustion (429)
+    // useEffect(() => {
+    //     if (lastIncomingMessage) {
+    //         generateReplies()
+    //     }
+    // }, [lastIncomingMessage])
 
     const handleCopy = async (text: string, index: number) => {
         await navigator.clipboard.writeText(text)

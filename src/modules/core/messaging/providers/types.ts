@@ -131,7 +131,7 @@ export interface IncomingMessage {
     senderName?: string;
     buttonId?: string; // ID for interactive responses (buttons/lists)
     content: {
-        type: 'text' | 'image' | 'interactive' | 'unknown';
+        type: 'text' | 'image' | 'audio' | 'video' | 'document' | 'interactive' | 'unknown';
         text?: string;
         mediaUrl?: string;
         raw?: unknown;

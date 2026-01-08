@@ -19,6 +19,7 @@ export async function getChannels(): Promise<Channel[]> {
         .from('integration_connections')
         .select('*')
         .eq('organization_id', orgId)
+        .neq('status', 'deleted')
         .order('created_at', { ascending: false })
 
     if (error) {
@@ -205,14 +206,30 @@ export async function deleteChannel(channelId: string) {
 
     await requireOrgRole('admin')
 
-    const supabase = await createClient()
-    const { error } = await supabase
+    // First try hard delete
+    const { error } = await supabaseAdmin
         .from('integration_connections')
         .delete()
         .eq('id', channelId)
         .eq('organization_id', orgId)
 
-    if (error) throw new Error(error.message)
+    if (error) {
+        console.log('[deleteChannel] Hard delete failed, trying soft delete:', error.message)
+
+        // If FK constraint, do soft delete (set status to 'deleted')
+        const { error: softError } = await supabaseAdmin
+            .from('integration_connections')
+            .update({ status: 'deleted' })
+            .eq('id', channelId)
+            .eq('organization_id', orgId)
+
+        if (softError) {
+            console.error('[deleteChannel] Soft delete also failed:', softError)
+            throw new Error("Failed to delete: " + softError.message)
+        }
+
+        console.log('[deleteChannel] Soft deleted successfully')
+    }
 
     revalidatePath('/crm/settings/channels')
     return true
