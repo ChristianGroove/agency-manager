@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase-server';
-import { getAICredentials } from './actions';
+// import { getAICredentials } from './actions';
 import { AIRegistry } from './registry';
 import { AIEngineResponse } from './types';
 import { getTaskDefinition } from './tasks/registry';
@@ -32,7 +32,9 @@ export const AIEngine = {
         }
 
         // 4. Resolve Credentials (Active & Priority)
-        const credentials = await getAICredentials(organizationId);
+        // CRITICAL: Use internal fetch to avoid masking (getAICredentials returns masked keys for UI)
+        const credentials = await fetchInternalCredentials(organizationId);
+
 
         // Filter active and sort by priority (1 is highest)
         const activeCredentials = credentials
@@ -60,6 +62,27 @@ export const AIEngine = {
 
         if (activeCredentials.length === 0) {
             throw new Error('No active AI credentials found for this organization.');
+        }
+
+        // 3.5 RAG Context Injection (Knowledge Base)
+        if (taskDef.useKnowledgeBase && taskDef.getKBQuery) {
+            try {
+                const query = taskDef.getKBQuery(payload)
+                if (query && query.trim().length > 3) {
+                    // Dynamic import to break potential circular deps (Service -> Task -> Service)
+                    const { EmbeddingService } = await import('./embedding') // Local import
+
+                    console.log(`[AIEngine] Searching Knowledge Base for: "${query.substring(0, 50)}..."`)
+                    const knowledge = await EmbeddingService.searchKnowledgeBase(query, organizationId)
+
+                    if (knowledge && knowledge.length > 0) {
+                        console.log(`[AIEngine] Found ${knowledge.length} relevant context items`)
+                        payload.knowledgeContext = knowledge
+                    }
+                }
+            } catch (err: any) {
+                console.warn(`[AIEngine] RAG Search failed:`, err.message)
+            }
         }
 
         // 4. Construct Sealed Prompt
@@ -121,7 +144,8 @@ export const AIEngine = {
                     success: true,
                     data: parsedData,
                     usage: response.usage,
-                    provider: cred.provider_id
+                    provider: cred.provider_id,
+                    context: payload.knowledgeContext
                 };
 
             } catch (error: any) {
@@ -162,4 +186,29 @@ async function logUsage(orgId: string, credId: string, providerId: string, respo
     } catch (e) {
         console.error('[AI-Engine] Failed to log usage:', e);
     }
+}
+
+/**
+ * Internal helper to fetch credentials without masking (System Use Only)
+ */
+async function fetchInternalCredentials(organizationId: string) {
+    const supabase = await createClient()
+    const { data, error } = await supabase
+        .from('ai_credentials')
+        .select('*')
+        .eq('organization_id', organizationId)
+        .eq('status', 'active')
+        .order('priority', { ascending: true })
+
+    if (error) {
+        console.error('[AIEngine] Error fetching internal credentials:', error)
+        return []
+    }
+
+    return data.map((cred: any) => ({
+        ...cred,
+        // Ensure provider_id is mapped correctly if joined, but here we select * from ai_credentials
+        // ai_credentials has provider_id column usually.
+        // We don't join provider details here as Engine just needs the ID and Key.
+    }))
 }

@@ -51,6 +51,7 @@ export interface AIEngineResponse {
     };
     model?: string;
     provider?: string;
+    context?: any;
 }
 
 // Alias for backwards compatibility with providers

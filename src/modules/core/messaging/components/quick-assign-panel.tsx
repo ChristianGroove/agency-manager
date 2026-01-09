@@ -83,9 +83,9 @@ export function QuickAssignPanel({ conversationId, currentAssignee, agents, onAs
                             )}
                         </div>
                         <div className="text-left">
-                            <div className="text-[10px] uppercase font-semibold text-muted-foreground">Assigned to</div>
+                            <div className="text-[10px] uppercase font-semibold text-muted-foreground">ASIGNADO A</div>
                             <div className="text-sm font-medium leading-none mt-0.5 group-hover:underline decoration-muted-foreground/50 underline-offset-2">
-                                {currentAssignee ? currentName : "No one (Click to assign)"}
+                                {currentAssignee ? currentName : "Nadie (Clic para asignar)"}
                             </div>
                         </div>
                     </div>
@@ -94,20 +94,20 @@ export function QuickAssignPanel({ conversationId, currentAssignee, agents, onAs
             </PopoverTrigger>
             <PopoverContent className="w-[280px] p-0" align="start">
                 <Command>
-                    <CommandInput placeholder="Search agent..." disabled={assigning} />
+                    <CommandInput placeholder="Buscar agente..." disabled={assigning} />
                     <CommandList>
-                        <CommandEmpty>No agent found.</CommandEmpty>
-                        <CommandGroup heading="Agents">
+                        <CommandEmpty>No se encontraron agentes.</CommandEmpty>
+                        <CommandGroup heading="Agentes">
                             {currentAssignee && (
                                 <CommandItem onSelect={() => handleAssign(null)} className="text-red-500">
                                     <User className="mr-2 h-4 w-4" />
-                                    Unassign
+                                    Desasignar
                                     <Check className={cn("ml-auto h-4 w-4", !currentAssignee ? "opacity-100" : "opacity-0")} />
                                 </CommandItem>
                             )}
                             {agents
                                 .map(agent => {
-                                    const name = agent.users?.raw_user_meta_data?.name || agent.users?.email || 'Unknown'
+                                    const name = agent.users?.raw_user_meta_data?.name || agent.users?.email || 'Desconocido'
                                     const loadPercentage = (agent.current_load / agent.max_capacity) * 100
                                     return (
                                         <CommandItem

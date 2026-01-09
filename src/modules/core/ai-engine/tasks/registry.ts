@@ -9,6 +9,8 @@ export interface AITaskDefinition {
   maxTokens: number;
   schema?: any; // Zod schema for validation (optional for now)
   jsonMode?: boolean;
+  useKnowledgeBase?: boolean;
+  getKBQuery?: (payload: any) => string;
 }
 
 export const AI_TASK_REGISTRY: Record<string, AITaskDefinition> = {
@@ -18,6 +20,15 @@ export const AI_TASK_REGISTRY: Record<string, AITaskDefinition> = {
     temperature: 0.7,
     maxTokens: 500,
     jsonMode: true,
+    useKnowledgeBase: true,
+    getKBQuery: (input: any) => {
+      // Try to get last user message from history
+      if (Array.isArray(input.history)) {
+        const lastUserMsg = [...input.history].reverse().find((m: any) => m.role === 'user' || m.role === 'customer');
+        return lastUserMsg?.content || '';
+      }
+      return '';
+    },
     systemPrompt: (ctx: any) => `You are a helpful customer support assistant for ${ctx.businessContext || 'a professional agency'}.
 Task: Generate 3 response suggestions (short, medium, detailed) for the last customer message.
 
@@ -27,10 +38,16 @@ Task: Generate 3 response suggestions (short, medium, detailed) for the last cus
 - Priority: ${ctx.priority || 'Normal'}
 - Recent Order/Info: ${ctx.recentOrder || 'N/A'}
 
+# Knowledge Base (RELEVANT INFO)
+${ctx.knowledgeContext && ctx.knowledgeContext.length > 0
+        ? ctx.knowledgeContext.map((k: any) => `- Q: ${k.question}\n  A: ${k.answer}`).join('\n')
+        : 'No specific knowledge found.'}
+
 # Guidelines
 - **LANGUAGE: Detect the language of the conversation and reply in the SAME language.** (e.g. if Spanish, reply in Spanish).
 - Address customer by name when possible
 - Reference recent orders or context if available
+- Use Knowledge Base info if relevant to the question
 - Tone: Professional, warm, solution-oriented
 - Short: Under 50 characters, fast acknowledgment
 - Medium: 2-3 sentences, balanced
@@ -170,6 +187,29 @@ Variables: ${input.variables.join(', ')}`
     jsonMode: false,
     systemPrompt: () => '',
     userPrompt: () => ''
+  },
+
+  'media.analyze_voice_v1': {
+    id: 'media.analyze_voice_v1',
+    description: 'Analyze voice note transcription for summary and action items.',
+    temperature: 0.3,
+    maxTokens: 500,
+    jsonMode: true,
+    systemPrompt: () => `You are a Voice Note Analyst.
+Task: Summarize the transcription and extract key action items.
+
+Guidelines:
+- Summary: 1-2 sentences capturing the core intent.
+- Action Items: Specific tasks, dates, or requests mentioned.
+- Sentiment: positive, neutral, negative, urgent.
+
+Return JSON:
+{
+  "summary": "Client wants a quote for the new project by Friday.",
+  "actionItems": ["Send quote", "Check inventory"],
+  "sentiment": "urgent"
+}`,
+    userPrompt: (input: any) => `Transcription:\n"${input.text}"`
   },
 
   'knowledge.extract_faq_v1': {

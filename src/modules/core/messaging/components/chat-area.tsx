@@ -398,6 +398,7 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
                                     timestamp={msg.created_at}
                                     status={msg.status as any}
                                     messageId={msg.id}
+                                    metadata={msg.metadata}
                                 />
                             </div>
                         )

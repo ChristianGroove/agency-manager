@@ -28,7 +28,7 @@ export interface GenerateRepliesOptions {
  */
 export async function generateSmartReplies(
     options: GenerateRepliesOptions
-): Promise<{ success: boolean; replies?: SmartReply[]; error?: string; generationTimeMs?: number }> {
+): Promise<{ success: boolean; replies?: SmartReply[]; error?: string; generationTimeMs?: number; usedKnowledge?: number }> {
     const startTime = Date.now()
     const orgId = await getCurrentOrganizationId()
 
@@ -56,7 +56,12 @@ export async function generateSmartReplies(
             { type: 'detailed', text: data.detailed, tokens: estimateTokens(data.detailed) }
         ]
 
-        return { success: true, replies, generationTimeMs }
+        return {
+            success: true,
+            replies,
+            generationTimeMs,
+            usedKnowledge: Array.isArray(result.context) ? result.context.length : 0
+        }
 
     } catch (error: any) {
         console.error('[SmartReplies] Generation failed:', error)

@@ -20,10 +20,10 @@ export default function KnowledgePage() {
         setIsLoading(true)
         try {
             const res = await getKnowledgeBase()
-            if (res.data) {
-                setData(res.data)
+            if (res.error) {
+                toast.error(res.error)
             } else {
-                toast.error("Error cargando conocimiento")
+                setData(res.data || [])
             }
         } catch (error) {
             console.error(error)
@@ -77,7 +77,7 @@ export default function KnowledgePage() {
     }
 
     return (
-        <div className="flex flex-col h-full space-y-6 pt-6 px-10">
+        <div className="flex flex-col h-full space-y-6">
             <div className="flex items-center justify-between">
                 <div>
                     <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white flex items-center gap-3">

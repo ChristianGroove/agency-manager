@@ -46,4 +46,18 @@ export class OpenAIProvider extends BaseAIProvider {
             this.handleError(error);
         }
     }
+
+    async createEmbedding(text: string, apiKey: string): Promise<number[]> {
+        try {
+            const client = new OpenAI({ apiKey, dangerouslyAllowBrowser: false });
+            const response = await client.embeddings.create({
+                model: "text-embedding-3-small",
+                input: text.replace(/\n/g, ' '),
+                encoding_format: "float",
+            });
+            return response.data[0].embedding;
+        } catch (error) {
+            this.handleError(error);
+        }
+    }
 }

@@ -75,7 +75,8 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({
             success: true,
             replies: result.replies,
-            generationTimeMs: result.generationTimeMs
+            generationTimeMs: result.generationTimeMs,
+            usedKnowledge: result.usedKnowledge
         })
     } catch (error: any) {
         console.error('[SmartReplies API] Error:', error)

@@ -1,18 +1,25 @@
-"use client"
-
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Loader2, FileText, ChevronDown, ChevronUp } from "lucide-react"
 import { cn } from "@/lib/utils"
+// Import VoiceAnalysisCard locally or dynamically to avoid circular deps if any
+import { VoiceAnalysisCard } from "./voice-analysis-card"
 
 interface AudioTranscriberProps {
     audioUrl: string
     messageId?: string
     cachedTranscription?: string
+    cachedAnalysis?: any // JSON object
     onTranscriptionComplete?: (text: string) => void
 }
 
-export function AudioTranscriber({ audioUrl, messageId, cachedTranscription, onTranscriptionComplete }: AudioTranscriberProps) {
+export function AudioTranscriber({
+    audioUrl,
+    messageId,
+    cachedTranscription,
+    cachedAnalysis,
+    onTranscriptionComplete
+}: AudioTranscriberProps) {
     const [isLoading, setIsLoading] = useState(false)
     const [transcription, setTranscription] = useState(cachedTranscription || "")
     const [isExpanded, setIsExpanded] = useState(Boolean(cachedTranscription))
@@ -83,9 +90,18 @@ export function AudioTranscriber({ audioUrl, messageId, cachedTranscription, onT
                         {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                     </button>
                     {isExpanded && (
-                        <p className="px-2 pb-2 text-xs leading-relaxed whitespace-pre-wrap">
-                            {transcription}
-                        </p>
+                        <div className="px-2 pb-2">
+                            <p className="text-xs leading-relaxed whitespace-pre-wrap mb-2">
+                                {transcription}
+                            </p>
+
+                            {/* Voice Intelligence */}
+                            <VoiceAnalysisCard
+                                transcription={transcription}
+                                messageId={messageId}
+                                existingAnalysis={cachedAnalysis}
+                            />
+                        </div>
                     )}
                 </div>
             )}

@@ -19,9 +19,10 @@ interface MessageBubbleProps {
     timestamp: string;
     status?: 'sent' | 'delivered' | 'read' | 'failed';
     messageId?: string;
+    metadata?: any;
 }
 
-export function MessageBubble({ content, direction, timestamp, status, messageId }: MessageBubbleProps) {
+export function MessageBubble({ content, direction, timestamp, status, messageId, metadata }: MessageBubbleProps) {
     const isOutbound = direction === 'outbound'
 
     return (
@@ -39,7 +40,7 @@ export function MessageBubble({ content, direction, timestamp, status, messageId
             )}>
                 {/* Content Renderer */}
                 <div className="mb-1">
-                    {renderContent(content, isOutbound, messageId)}
+                    {renderContent(content, isOutbound, messageId, metadata)}
                 </div>
 
                 {/* Footer: Timestamp & Status */}
@@ -62,7 +63,7 @@ export function MessageBubble({ content, direction, timestamp, status, messageId
     )
 }
 
-function renderContent(content: any, isOutbound: boolean, messageId?: string) {
+function renderContent(content: any, isOutbound: boolean, messageId?: string, metadata?: any) {
     // Normalize content properties
     const url = content.url || content.mediaUrl || content.link;
     const text = content.text || content.caption || content.body;
@@ -105,7 +106,12 @@ function renderContent(content: any, isOutbound: boolean, messageId?: string) {
                         <audio controls src={url} className="h-8 w-[200px]" />
                     </div>
                     {/* AI Transcription */}
-                    <AudioTranscriber audioUrl={url} messageId={messageId} />
+                    <AudioTranscriber
+                        audioUrl={url}
+                        messageId={messageId}
+                        cachedTranscription={metadata?.transcription}
+                        cachedAnalysis={metadata?.voice_analysis}
+                    />
                 </div>
             )
 

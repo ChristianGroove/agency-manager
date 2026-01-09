@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase-server"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
 import { revalidatePath } from "next/cache"
+import { EmbeddingService } from "@/modules/core/ai-engine/embedding"
 
 export interface KnowledgeEntry {
     id: string
@@ -34,7 +35,7 @@ export async function getKnowledgeBase(query?: string) {
 
     if (error) {
         console.error("Error fetching knowledge base:", error)
-        return { error: "Failed to fetch knowledge base" }
+        return { error: "Error al obtener la base de conocimiento" }
     }
 
     return { data: data as KnowledgeEntry[] }
@@ -42,7 +43,7 @@ export async function getKnowledgeBase(query?: string) {
 
 export async function deleteKnowledgeEntry(id: string) {
     const orgId = await getCurrentOrganizationId()
-    if (!orgId) return { error: "Unauthorized" }
+    if (!orgId) return { error: "No autorizado" }
 
     const supabase = await createClient()
 
@@ -54,7 +55,7 @@ export async function deleteKnowledgeEntry(id: string) {
 
     if (error) {
         console.error("Error deleting knowledge entry:", error)
-        return { error: "Failed to delete entry" }
+        return { error: "Error al eliminar la entrada" }
     }
 
     revalidatePath('/platform/knowledge')
@@ -63,9 +64,16 @@ export async function deleteKnowledgeEntry(id: string) {
 
 export async function upsertKnowledgeEntry(entry: Partial<KnowledgeEntry>) {
     const orgId = await getCurrentOrganizationId()
-    if (!orgId) return { error: "Unauthorized" }
+    if (!orgId) return { error: "No autorizado" }
 
     const supabase = await createClient()
+
+    // Generate Embedding for RAG
+    let embedding = null
+    if (entry.question && entry.answer) {
+        const textToEmbed = `${entry.question}\n${entry.answer}`
+        embedding = await EmbeddingService.generateEmbedding(textToEmbed, orgId)
+    }
 
     // Clean payload
     const payload: any = {
@@ -75,6 +83,10 @@ export async function upsertKnowledgeEntry(entry: Partial<KnowledgeEntry>) {
         category: entry.category || 'General',
         source: entry.source || 'manual',
         tags: entry.tags || []
+    }
+
+    if (embedding) {
+        payload.embedding = embedding
     }
 
     if (entry.id) {
@@ -89,7 +101,7 @@ export async function upsertKnowledgeEntry(entry: Partial<KnowledgeEntry>) {
 
     if (error) {
         console.error("Error saving knowledge entry:", error)
-        return { error: "Failed to save entry" + error.message }
+        return { error: "Error al guardar la entrada: " + error.message }
     }
 
     revalidatePath('/platform/knowledge')

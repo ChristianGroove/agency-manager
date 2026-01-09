@@ -106,7 +106,7 @@ export class WebhookManager {
     }
 
     private async processMessage(msg: IncomingMessage) {
-        console.log(`[WebhookManager] Processing Inbound Message from ${msg.from} on ${msg.channel}`)
+
 
         // 1. SAVE TO INBOX
         const result = await inboxService.handleIncomingMessage(msg)
@@ -117,6 +117,84 @@ export class WebhookManager {
         }
 
         const conversationId = result.conversationId
+
+        // 1.5 CHECK FOR INTERACTIVE QUOTE RESPONSES
+        // MetaProvider extracts buttonId directly from interactive messages
+        const buttonId = msg.buttonId || ''
+
+        if (buttonId) {
+
+
+            // Handle Quote Approval
+            if (buttonId.startsWith('approve_cart_')) {
+                const cartId = buttonId.replace('approve_cart_', '')
+
+
+                try {
+                    const { handleQuoteApproval } = await import('@/modules/core/crm/quote-response-handler')
+                    const { data: conv } = await (await import('@/lib/supabase-admin')).supabaseAdmin
+                        .from('conversations')
+                        .select('connection_id, phone')
+                        .eq('id', conversationId)
+                        .single()
+
+                    await handleQuoteApproval({
+                        conversationId,
+                        cartId,
+                        connectionId: conv?.connection_id || '',
+                        recipientPhone: msg.from
+                    })
+                } catch (e: any) {
+                    console.error('[WebhookManager] Quote approval error:', e.message)
+                }
+                return // Stop further processing
+            }
+
+            // Handle Quote Rejection - Show reason list
+            if (buttonId.startsWith('reject_cart_')) {
+                const cartId = buttonId.replace('reject_cart_', '')
+
+
+                try {
+                    const { handleQuoteRejection } = await import('@/modules/core/crm/quote-response-handler')
+                    const { supabaseAdmin } = await import('@/lib/supabase-admin')
+                    const { data: conv } = await supabaseAdmin
+                        .from('conversations')
+                        .select('connection_id, phone')
+                        .eq('id', conversationId)
+                        .single()
+
+                    await handleQuoteRejection({
+                        conversationId,
+                        cartId,
+                        connectionId: conv?.connection_id || '',
+                        recipientPhone: msg.from
+                    })
+                } catch (e: any) {
+                    console.error('[WebhookManager] Quote rejection error:', e.message)
+                }
+                return // Stop further processing
+            }
+
+            // Handle Rejection Reason Selection (from list response)
+            // buttonId also catches list_reply.id from MetaProvider
+            if (buttonId.startsWith('rejection_reason_')) {
+                // Format: rejection_reason_{cartId}_{index}
+                const parts = buttonId.replace('rejection_reason_', '').split('_')
+                const cartId = parts.slice(0, -1).join('_') // Handle UUIDs with dashes
+                const reason = msg.content.text || 'Unknown'
+
+
+
+                try {
+                    const { handleRejectionReasonSelected } = await import('@/modules/core/crm/quote-response-handler')
+                    await handleRejectionReasonSelected(cartId, reason, conversationId)
+                } catch (e: any) {
+                    console.error('[WebhookManager] Rejection reason error:', e.message)
+                }
+                return // Stop further processing
+            }
+        }
 
         // 2. CHECK SUSPENDED WORKFLOWS (Pending Inputs)
         // Use Admin client because Webhooks are unauthenticated system events

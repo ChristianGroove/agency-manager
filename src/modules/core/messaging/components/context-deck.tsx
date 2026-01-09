@@ -1,12 +1,13 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { supabase } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 import {
     User, Phone, Mail, MapPin, ExternalLink,
     CalendarClock, Archive, CheckCircle2,
-    MoreHorizontal, Tag, DollarSign, AlertCircle, Briefcase
+    MoreHorizontal, Tag, DollarSign, AlertCircle, Briefcase,
+    ChevronRight, ChevronDown
 } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -16,6 +17,7 @@ import { Database } from "@/types/supabase"
 import Link from "next/link"
 import { QuickAssignPanel } from "./quick-assign-panel"
 import { SmartRepliesPanel } from "./smart-replies-panel"
+import { DealBuilder } from "../../crm/components/deal-builder"
 import { getAgentsWorkload } from "../assignment-actions"
 import { toast } from "sonner"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -39,61 +41,65 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
     const [agents, setAgents] = useState<any[]>([])
     const [lastMessage, setLastMessage] = useState<string | undefined>(undefined)
     const [loading, setLoading] = useState(true)
+    const [isDealExpanded, setIsDealExpanded] = useState(false)
 
-    useEffect(() => {
-        const fetchContext = async () => {
-            setLoading(true)
-            const { data: conv } = await supabase
-                .from('conversations')
-                .select('*')
-                .eq('id', conversationId)
-                .single()
+    const fetchContext = useCallback(async () => {
+        setLoading(true)
+        const { data: conv } = await supabase
+            .from('conversations')
+            .select('*')
+            .eq('id', conversationId)
+            .single()
 
-            if (conv) {
-                setConversation(conv)
-                if (conv.lead_id) {
-                    const { data: leadData } = await supabase
-                        .from('leads')
-                        .select('*')
-                        .eq('id', conv.lead_id)
-                        .single()
-                    if (leadData) setLead(leadData)
-                }
+        if (conv) {
+            setConversation(conv)
+            if (conv.lead_id) {
+                const { data: leadData } = await supabase
+                    .from('leads')
+                    .select('*')
+                    .eq('id', conv.lead_id)
+                    .single()
+                if (leadData) setLead(leadData)
             } else {
                 setLead(null)
-                setConversation(null)
-            }
-
-            // Fetch Last Incoming Message for AI
-            const { data: lastMsg } = await supabase
-                .from('messages')
-                .select('content')
-                .eq('conversation_id', conversationId)
-                .eq('direction', 'inbound')
-                .order('created_at', { ascending: false })
-                .limit(1)
-                .single()
-
-            if (lastMsg) {
-                // Handle both text and json content
-                let text = ''
-                if (typeof lastMsg.content === 'string') text = lastMsg.content
-                else if (typeof lastMsg.content === 'object' && lastMsg.content?.text) text = lastMsg.content.text
-
-                setLastMessage(text)
-            } else {
-                setLastMessage(undefined)
             }
 
             const agentsResult = await getAgentsWorkload()
             if (agentsResult.success) {
                 setAgents(agentsResult.data)
             }
-            setLoading(false)
         }
 
-        fetchContext()
+        // Fetch Last Incoming Message for AI context
+        const { data: messages } = await supabase
+            .from('messages')
+            .select('content')
+            .eq('conversation_id', conversationId)
+            .eq('direction', 'inbound')
+            .order('created_at', { ascending: false })
+            .limit(1)
 
+        if (messages && messages.length > 0) {
+            // Handle both text and json content
+            const lastMsg = messages[0]
+            let text = ''
+            if (typeof lastMsg.content === 'string') text = lastMsg.content
+            else if (typeof lastMsg.content === 'object' && (lastMsg.content as any)?.text) text = (lastMsg.content as any).text
+            setLastMessage(text)
+        } else {
+            setLastMessage(undefined)
+        }
+
+        setLoading(false)
+    }, [conversationId])
+
+    // Initial Fetch
+    useEffect(() => {
+        fetchContext()
+    }, [fetchContext])
+
+    // Real-time Subscription
+    useEffect(() => {
         const channel = supabase
             .channel(`conversation-${conversationId}`)
             .on('postgres_changes', {
@@ -137,7 +143,7 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
 
     return (
         <div className="flex flex-col h-full bg-background/50 dark:bg-zinc-950/50 backdrop-blur-xl border-l border-border/50">
-            {/* 1. Compact Header */}
+            {/* 1. Compact Header (Always Visible) */}
             <div className="p-4 border-b border-border/40 bg-background/50 backdrop-blur-md sticky top-0 z-20">
                 <div className="flex items-center gap-3">
                     <div className="relative">
@@ -150,13 +156,13 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
                         <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-green-500 border-2 border-background" />
                     </div>
                     <div className="flex-1 min-w-0">
-                        <h2 className="text-base font-bold truncate leading-tight">{lead.title || 'Unknown Contact'}</h2>
+                        <h2 className="text-base font-bold truncate leading-tight">{lead.title || 'Contacto Desconocido'}</h2>
                         <div className="flex items-center gap-2 mt-1">
                             <Badge variant="secondary" className="text-[10px] h-4 px-1.5 font-normal bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-0">
                                 {lead.company || "Particular"}
                             </Badge>
                             <Badge variant="outline" className="text-[10px] h-4 px-1.5 font-normal border-zinc-200 dark:border-zinc-800 text-zinc-500">
-                                {lead.status}
+                                {lead.status === 'new' ? 'Nuevo' : lead.status}
                             </Badge>
                         </div>
                     </div>
@@ -164,9 +170,9 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
 
                 {/* 2. Sleek Action Bar */}
                 <div className="mt-4 grid grid-cols-4 gap-2">
-                    <ActionBtn icon={CheckCircle2} label="Done" onClick={() => { }} color="text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20" />
-                    <ActionBtn icon={CalendarClock} label="Snooze" onClick={() => { }} color="text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20" />
-                    <ActionBtn icon={Archive} label="Archive" onClick={() => { }} color="text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800" />
+                    <ActionBtn icon={CheckCircle2} label="Completar" onClick={() => { }} color="text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20" />
+                    <ActionBtn icon={CalendarClock} label="Posponer" onClick={() => { }} color="text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20" />
+                    <ActionBtn icon={Archive} label="Archivar" onClick={() => { }} color="text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800" />
                     <TooltipProvider>
                         <Tooltip>
                             <TooltipTrigger asChild>
@@ -174,98 +180,152 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
                                     <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
                                 </Button>
                             </TooltipTrigger>
-                            <TooltipContent>More Options</TooltipContent>
+                            <TooltipContent>Más Opciones</TooltipContent>
                         </Tooltip>
                     </TooltipProvider>
                 </div>
             </div>
 
-            <ScrollArea className="flex-1">
-                <div className="p-4 space-y-6">
+            {/* Tabs Interface */}
+            <div className="flex-1 overflow-hidden flex flex-col">
+                <div className="px-4 pt-2">
+                    <div className="flex bg-muted/40 p-1 rounded-lg">
+                        <TabButton active={!isDealExpanded} onClick={() => setIsDealExpanded(false)} label="Gestión" />
+                        <TabButton active={isDealExpanded} onClick={() => setIsDealExpanded(true)} label="Ventas" />
+                    </div>
+                </div>
 
-                    {/* 3. Unified Deal & Assignment Card */}
-                    <Card className="shadow-none border border-border/60 bg-gradient-to-b from-white to-zinc-50/50 dark:from-zinc-900 dark:to-zinc-900/50">
-                        <CardContent className="p-0 divide-y divide-border/40">
-                            {/* Deal Value */}
-                            <div className="p-4 flex items-center justify-between">
+                <ScrollArea className="flex-1">
+                    <div className="p-4 space-y-6">
+                        {!isDealExpanded ? (
+                            // TAB 1: GESTIÓN (CRM Info)
+                            <div className="space-y-6 animate-in fade-in duration-300">
+                                {/* Assignment Panel */}
                                 <div>
-                                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-0.5">Deal Value</div>
-                                    <div className="text-xl font-bold font-mono tracking-tight flex items-baseline gap-1">
-                                        <span className="text-muted-foreground text-sm">$</span>
-                                        {lead.value?.toLocaleString() || '0'}
+                                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-1">Asignación</h4>
+                                    <QuickAssignPanel
+                                        conversationId={conversationId}
+                                        currentAssignee={conversation?.assigned_to}
+                                        agents={agents}
+                                        onAssigned={() => {
+                                            supabase.from('conversations').select('*').eq('id', conversationId).single().then(({ data }) => {
+                                                if (data) setConversation(data)
+                                            })
+                                        }}
+                                    />
+                                </div>
+
+                                <Separator />
+
+                                {/* Contact Info */}
+                                <div className="space-y-3">
+                                    <div className="flex items-center justify-between px-1">
+                                        <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Detalles de Contacto</h4>
+                                        <Button variant="ghost" size="icon" className="h-5 w-5 rounded-full hover:bg-muted" asChild>
+                                            <Link href={`/crm?lead=${lead.id}`}><ExternalLink className="h-3 w-3 text-muted-foreground" /></Link>
+                                        </Button>
+                                    </div>
+
+                                    <div className="space-y-1">
+                                        <ContactItem icon={Phone} label="Móvil" value={lead.phone} />
+                                        <ContactItem icon={Mail} label="Email" value={lead.email} />
+                                        <ContactItem icon={MapPin} label="Ubicación" value="Ubicación Desconocida" />
                                     </div>
                                 </div>
-                                <Badge variant="outline" className={cn(
-                                    "uppercase text-[10px] font-bold tracking-wide border-0 px-2 py-1",
-                                    lead.priority === 'urgent' ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" :
-                                        lead.priority === 'high' ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400" :
-                                            "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
-                                )}>
-                                    {lead.priority || 'Normal'}
-                                </Badge>
-                            </div>
 
-                            {/* Assignment Row */}
-                            <div className="p-3 bg-zinc-50/50 dark:bg-zinc-900/30">
-                                <QuickAssignPanel
+                                <Separator />
+
+                                {/* Tags */}
+                                <div>
+                                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1 mb-2">Etiquetas</h4>
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {(lead.tags as string[] || ['lead']).map(tag => (
+                                            <Badge key={tag} variant="secondary" className="bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 border border-transparent hover:border-border transition-colors px-2 py-0.5 text-[11px] font-normal">
+                                                <Tag className="h-3 w-3 mr-1 opacity-50" />
+                                                {tag}
+                                            </Badge>
+                                        ))}
+                                        <Button variant="outline" size="sm" className="h-5 rounded-full px-2 text-[10px] border-dashed text-muted-foreground hover:text-foreground">
+                                            + Agregar
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            // TAB 2: VENTAS (Deal Builder)
+                            <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
+                                {/* Deal Value Hero */}
+                                <div className="p-4 rounded-xl bg-gradient-to-br from-indigo-50 to-indigo-100/50 dark:from-indigo-900/20 dark:to-indigo-900/10 border border-indigo-100 dark:border-indigo-900/30">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+                                            <DollarSign className="h-5 w-5" />
+                                        </div>
+                                        <div>
+                                            <div className="text-[10px] uppercase tracking-wider text-indigo-600/70 dark:text-indigo-400/70 font-bold">Valor Potencial</div>
+                                            <div className="text-2xl font-bold text-indigo-950 dark:text-indigo-100 font-mono tracking-tight">
+                                                ${lead.value?.toLocaleString() || '0'}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="mt-3 flex items-center gap-2">
+                                        <Badge variant="outline" className={cn(
+                                            "uppercase text-[10px] font-bold tracking-wide border-0 px-2 py-0.5",
+                                            lead.priority === 'urgent' ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" :
+                                                lead.priority === 'high' ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400" :
+                                                    "bg-white/50 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
+                                        )}>
+                                            {lead.priority === 'urgent' ? 'Urgente' : lead.priority === 'high' ? 'Alta' : 'Normal'}
+                                        </Badge>
+                                    </div>
+                                </div>
+
+                                <Separator />
+
+                                {/* Deal Builder */}
+                                <DealBuilder
+                                    leadId={lead.id}
                                     conversationId={conversationId}
-                                    currentAssignee={conversation?.assigned_to}
-                                    agents={agents}
-                                    onAssigned={() => {
-                                        supabase.from('conversations').select('*').eq('id', conversationId).single().then(({ data }) => {
-                                            if (data) setConversation(data)
-                                        })
+                                    onCartChange={() => {
+                                        fetchContext()
                                     }}
                                 />
                             </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* AI Smart Replies */}
-                    <SmartRepliesPanel
-                        conversationId={conversationId}
-                        lastIncomingMessage={lastMessage}
-                        onSelectReply={(text) => {
-                            // Interaction is handled via window event for auto-insert
-                            toast.success("Texto aplicado")
-                        }}
-                    />
-
-                    {/* 4. Compact Contact Info */}
-                    <div className="space-y-3">
-                        <div className="flex items-center justify-between px-1">
-                            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Contact Details</h4>
-                            <Button variant="ghost" size="icon" className="h-5 w-5 rounded-full hover:bg-muted" asChild>
-                                <Link href={`/crm?lead=${lead.id}`}><ExternalLink className="h-3 w-3 text-muted-foreground" /></Link>
-                            </Button>
-                        </div>
-
-                        <div className="space-y-1">
-                            <ContactItem icon={Phone} label="Mobile" value={lead.phone} />
-                            <ContactItem icon={Mail} label="Email" value={lead.email} />
-                            <ContactItem icon={MapPin} label="Location" value="Unknown Location" />
-                        </div>
+                        )}
                     </div>
+                </ScrollArea>
+            </div>
 
-                    {/* Tags */}
-                    <div>
-                        <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1 mb-2">Tags</h4>
-                        <div className="flex flex-wrap gap-1.5">
-                            {(lead.tags as string[] || ['lead']).map(tag => (
-                                <Badge key={tag} variant="secondary" className="bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 border border-transparent hover:border-border transition-colors px-2 py-0.5 text-[11px] font-normal">
-                                    <Tag className="h-3 w-3 mr-1 opacity-50" />
-                                    {tag}
-                                </Badge>
-                            ))}
-                            <Button variant="outline" size="sm" className="h-5 rounded-full px-2 text-[10px] border-dashed text-muted-foreground hover:text-foreground">
-                                + Add
-                            </Button>
-                        </div>
-                    </div>
-
-                </div>
-            </ScrollArea>
+            {/* AI Smart Replies - Bottom Docked (Only in Gestion Tab or Always? Let's keep distinct) */}
+            {/* Actually user might want smart replies always visible. Let's keep it. */}
+            <div className={cn(
+                "border-t border-border/40 bg-background/50 backdrop-blur-sm p-1 transition-all",
+                isDealExpanded ? "opacity-30 pointer-events-none grayscale" : "opacity-100"
+            )}>
+                <SmartRepliesPanel
+                    conversationId={conversationId}
+                    lastIncomingMessage={lastMessage}
+                    onSelectReply={(text) => {
+                        toast.success("Texto aplicado")
+                    }}
+                />
+            </div>
         </div>
+    )
+}
+
+function TabButton({ active, onClick, label }: { active: boolean, onClick: () => void, label: string }) {
+    return (
+        <button
+            onClick={onClick}
+            className={cn(
+                "flex-1 text-xs font-medium py-1.5 rounded-md transition-all",
+                active
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+            )}
+        >
+            {label}
+        </button>
     )
 }
 
@@ -300,11 +360,10 @@ function ContactItem({ icon: Icon, label, value }: { icon: any, label: string, v
                 <p className="text-xs font-medium truncate text-foreground/90 group-hover:text-foreground">{value}</p>
             </div>
             <span className="opacity-0 group-hover:opacity-100 text-[10px] text-muted-foreground transition-opacity bg-background/80 px-1.5 py-0.5 rounded shadow-sm">
-                Copy
+                Copiar
             </span>
         </div>
     )
 }
-
 
 
