@@ -14,6 +14,14 @@ export type Client = {
     phone?: string
     address?: string
     logo_url?: string
+    facebook?: string
+    instagram?: string
+    tiktok?: string
+    website?: string
+    linkedin?: string
+    notes?: string
+    status?: string
+    metadata?: any
     portal_token?: string
     portal_short_token?: string
     invoices?: Invoice[]

@@ -1,0 +1,6 @@
+﻿src/modules/core/clients/components/detail/client-detail-view.tsx(346,38): error TS2339: Property 'notes' does not exist on type 'Client'.
+src/modules/core/clients/components/detail/client-detail-view.tsx(350,44): error TS2353: Object literal may only specify known properties, and 'notes' does not exist in type 'Client | ((prevState: Client | null) => Client | null)'.
+src/modules/core/clients/components/detail/client-header.tsx(68,37): error TS2339: Property 'status' does not exist on type 'Client'.
+src/modules/core/clients/components/detail/edit-client-sheet.tsx(53,35): error TS2339: Property 'metadata' does not exist on type 'Client'.
+src/modules/core/clients/components/detail/edit-client-sheet.tsx(54,34): error TS2339: Property 'metadata' does not exist on type 'Client'.
+src/modules/core/clients/components/detail/edit-client-sheet.tsx(55,32): error TS2339: Property 'metadata' does not exist on type 'Client'.

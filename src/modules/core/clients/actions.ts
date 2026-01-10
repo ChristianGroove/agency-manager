@@ -121,3 +121,26 @@ export async function getClients() {
 
     return data as unknown as Client[]
 }
+
+export async function deleteClients(ids: string[]) {
+    const supabase = await createClient()
+    const orgId = await getCurrentOrganizationId()
+
+    if (!orgId) return { success: false, error: "No organization context" }
+
+    try {
+        const { error } = await supabase
+            .from('clients')
+            .update({ deleted_at: new Date().toISOString() })
+            .in('id', ids)
+            .eq('organization_id', orgId)
+
+        if (error) throw error
+
+        revalidatePath('/clients')
+        return { success: true }
+    } catch (error: any) {
+        console.error("Error deleting clients:", error)
+        return { success: false, error: error.message }
+    }
+}
