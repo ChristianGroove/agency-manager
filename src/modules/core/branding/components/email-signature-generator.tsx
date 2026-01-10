@@ -11,9 +11,10 @@ import { Copy, Check } from "lucide-react"
 
 interface EmailSignatureGeneratorProps {
     settings: BrandingConfig
+    trigger?: React.ReactNode
 }
 
-export function EmailSignatureGenerator({ settings }: EmailSignatureGeneratorProps) {
+export function EmailSignatureGenerator({ settings, trigger }: EmailSignatureGeneratorProps) {
     const [name, setName] = useState("Jane Doe")
     const [title, setTitle] = useState("Account Manager")
     const [email, setEmail] = useState("jane@agency.com")
@@ -79,7 +80,7 @@ export function EmailSignatureGenerator({ settings }: EmailSignatureGeneratorPro
     return (
         <Dialog>
             <DialogTrigger asChild>
-                <Button variant="outline">Generate Email Signature</Button>
+                {trigger || <Button variant="outline">Generate Email Signature</Button>}
             </DialogTrigger>
             <DialogContent className="sm:max-w-[700px]">
                 <DialogHeader>

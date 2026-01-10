@@ -11,17 +11,19 @@ export function DocumentPreview({ settings }: DocumentPreviewProps) {
 
     // Derived styles
     const brandColor = settings.colors?.primary || '#0F172A'
-    const logoUrl = settings.logos?.main || '/branding/logo dark.svg' // Fallback to main
+    // Prefer Document Logo (Light) > Main Logo > Default
+    const logoUrl = settings.logos?.main_light || settings.logos?.main || '/branding/logo dark.svg'
     const agencyName = settings.name || "YOUR AGENCY"
 
     // Note: We don't have 'invoice_footer' in BrandingConfig yet, 
     // will need to add it or ignore for now.
 
     return (
-        <div className="w-full bg-gray-100 rounded-lg p-8 overflow-hidden flex flex-col items-center">
+        <div className="w-full flex justify-center">
 
             {/* A4 Paper Simulation (Scaled down) */}
             <div className="bg-white shadow-xl w-full max-w-[400px] aspect-[1/1.414] p-6 text-[10px] leading-tight flex flex-col relative transition-all">
+
 
                 {/* Header */}
                 <div className="flex justify-between items-start mb-8">
@@ -104,7 +106,6 @@ export function DocumentPreview({ settings }: DocumentPreviewProps) {
 
             </div>
 
-            <p className="mt-4 text-xs text-gray-400">Preview del PDF generado</p>
         </div>
     )
 }

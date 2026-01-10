@@ -42,194 +42,138 @@ export function IdentityTab({ settings, onChange }: IdentityTabProps) {
     }
 
     return (
-        <div className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="space-y-8">
+            {/* Identity Group */}
+            <div className="space-y-4">
+                <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-gray-500">Identidad Digital</h3>
+                </div>
 
-                {/* Agency Identity */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Identidad de la Agencia</CardTitle>
-                        <CardDescription>
-                            Información básica de tu agencia mostrada en correos y pies de página.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="grid gap-2">
-                            <Label>Nombre de la Agencia</Label>
-                            <Input
-                                value={settings.name}
-                                onChange={(e) => onChange({ ...settings, name: e.target.value })}
-                                placeholder="ej. Agencia Acme"
-                            />
-                        </div>
-                        <div className="grid gap-2">
-                            <Label>Sitio Web</Label>
-                            <Input
-                                value={settings.website}
-                                onChange={(e) => onChange({ ...settings, website: e.target.value })}
-                                placeholder="https://acme.com"
-                            />
-                        </div>
+                <div className="grid grid-cols-2 gap-5">
+                    <div className="space-y-2">
+                        <Label className="text-xs font-semibold text-gray-700">Nombre de la Agencia</Label>
+                        <Input
+                            value={settings.name}
+                            onChange={(e) => onChange({ ...settings, name: e.target.value })}
+                            placeholder="Agency Name"
+                            className="bg-white h-9"
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label className="text-xs font-semibold text-gray-700">Sitio Web</Label>
+                        <Input
+                            value={settings.website}
+                            onChange={(e) => onChange({ ...settings, website: e.target.value })}
+                            placeholder="https://agency.com"
+                            className="bg-white h-9"
+                        />
+                    </div>
+                </div>
 
-                        <Separator className="my-2" />
-
-                        <div className="space-y-4">
-                            <Label>Perfiles Sociales</Label>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1">
-                                    <Label className="text-xs text-muted-foreground">Facebook</Label>
-                                    <Input
-                                        value={settings.socials?.facebook || ''}
-                                        onChange={(e) => onChange({ ...settings, socials: { ...settings.socials, facebook: e.target.value } })}
-                                        placeholder="facebook.com/page"
-                                    />
-                                </div>
-                                <div className="space-y-1">
-                                    <Label className="text-xs text-muted-foreground">Instagram</Label>
-                                    <Input
-                                        value={settings.socials?.instagram || ''}
-                                        onChange={(e) => onChange({ ...settings, socials: { ...settings.socials, instagram: e.target.value } })}
-                                        placeholder="@usuario"
-                                    />
-                                </div>
-                                <div className="space-y-1">
-                                    <Label className="text-xs text-muted-foreground">Twitter / X</Label>
-                                    <Input
-                                        value={settings.socials?.twitter || ''}
-                                        onChange={(e) => onChange({ ...settings, socials: { ...settings.socials, twitter: e.target.value } })}
-                                        placeholder="@usuario"
-                                    />
-                                </div>
-                                <div className="space-y-1">
-                                    <Label className="text-xs text-muted-foreground">LinkedIn</Label>
-                                    <Input
-                                        value={settings.socials?.linkedin || ''}
-                                        onChange={(e) => onChange({ ...settings, socials: { ...settings.socials, linkedin: e.target.value } })}
-                                        placeholder="linkedin.com/company/..."
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        <Separator className="my-2" />
-
-                        <div className="grid gap-2">
-                            <Label className="flex items-center gap-2">
-                                <Globe className="h-4 w-4" />
-                                Slug del Portal
-                            </Label>
-                            <div className="flex items-center gap-2">
-                                <div className="bg-muted px-3 py-2 rounded-l-md border border-r-0 text-muted-foreground text-sm">
-                                    portal.pixy.com.co/
-                                </div>
+                <div className="space-y-3 pt-2">
+                    <Label className="text-xs font-semibold text-gray-700">Redes Sociales</Label>
+                    <div className="grid grid-cols-2 gap-3">
+                        {[
+                            { key: 'instagram', icon: '📸', placeholder: '@usuario' },
+                            { key: 'facebook', icon: 'fb', placeholder: 'facebook.com/...' },
+                            { key: 'linkedin', icon: 'in', placeholder: 'linkedin.com/...' },
+                            { key: 'twitter', icon: 'x', placeholder: '@usuario' }
+                        ].map(s => (
+                            <div key={s.key} className="relative">
                                 <Input
-                                    className="rounded-l-none"
-                                    placeholder="mi-agencia"
-                                    disabled={true}
-                                    value="mi-agencia (Próximamente)"
+                                    className="pl-8 h-8 text-xs bg-white"
+                                    placeholder={s.placeholder}
+                                    value={settings.socials?.[s.key as keyof typeof settings.socials] || ''}
+                                    onChange={(e) => onChange({ ...settings, socials: { ...settings.socials, [s.key]: e.target.value } })}
                                 />
+                                <span className="absolute left-2.5 top-2 text-[10px] text-gray-400 font-mono">{s.icon}</span>
                             </div>
-                            <p className="text-[10px] text-muted-foreground">
-                                Cambiar esto invalidará los enlaces antiguos del portal.
-                            </p>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* Brand Assets */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Activos Visuales</CardTitle>
-                        <CardDescription>
-                            Sube tus logotipos. Los optimizaremos para todos los dispositivos.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-
-                        {/* Main Logo (Dark Mode) */}
-                        <div className="space-y-2">
-                            <Label>Logo Principal (Fondo Oscuro)</Label>
-                            <ImageUpload
-                                value={settings.logos.main}
-                                onChange={handleLogoChange}
-                                label="Subir Logo (Oscuro)"
-                                bucket="branding"
-                            />
-                            <p className="text-[10px] text-muted-foreground">
-                                Se mostrará sobre fondos oscuros (Sidebar, Modo Oscuro).
-                            </p>
-
-                            {/* Magic Palette Trigger */}
-                            {settings.logos.main && (
-                                <div className="mt-2">
-                                    <MagicPalette
-                                        imageUrl={settings.logos.main}
-                                        onColorsFound={handleColorsFound}
-                                    />
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Main Logo (Light Mode) */}
-                        <div className="space-y-2">
-                            <Label>Logo Principal (Fondo Claro)</Label>
-                            <ImageUpload
-                                value={settings.logos.main_light || ''}
-                                onChange={(url) => onChange({
-                                    ...settings,
-                                    logos: { ...settings.logos, main_light: url }
-                                })}
-                                label="Subir Logo (Claro)"
-                                bucket="branding"
-                            />
-                            <p className="text-[10px] text-muted-foreground">
-                                Se mostrará sobre fondos blancos (Sidebar Light Mode, Documentos).
-                            </p>
-                        </div>
-
-                        <Separator />
-
-                        {/* Favicon */}
-                        <div className="space-y-3">
-                            <Label>Favicon (Cuadrado)</Label>
-                            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-                                <div className="w-32 h-32 shrink-0">
-                                    <ImageUpload
-                                        value={settings.logos.favicon}
-                                        onChange={handleFaviconChange}
-                                        label="Icono"
-                                        bucket="branding"
-                                        className="h-full w-full object-contain"
-                                        compact={true}
-                                    />
-                                </div>
-                                <div className="text-sm text-muted-foreground">
-                                    <p>Recomendado: 512x512px PNG.</p>
-                                    <p>Usado para pestañas del navegador e iconos móviles.</p>
-                                </div>
-                            </div>
-                        </div>
-
-                    </CardContent>
-                </Card>
+                        ))}
+                    </div>
+                </div>
             </div>
 
-            {/* Tools Section */}
-            <Card>
-                <CardHeader>
-                    <CardTitle>Herramientas</CardTitle>
-                    <CardDescription>Utilidades generadas para tu equipo.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="flex flex-col gap-4 max-w-xl">
-                        <Label>Firma de Correo</Label>
-                        <p className="text-sm text-gray-500 mb-2">
-                            Genera una firma HTML estandarizada para los miembros de tu equipo usando tus activos de marca.
-                        </p>
-                        <EmailSignatureGenerator settings={settings} />
+            {/* Assets Group */}
+            <div className="space-y-4">
+                <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-gray-500">Logos & Activos</h3>
+                </div>
+
+                <div className="grid grid-cols-2 gap-6">
+                    <div className="space-y-3">
+                        <div className="space-y-1">
+                            <Label className="text-xs font-medium">Logo Principal (Oscuro)</Label>
+                            <p className="text-[10px] text-muted-foreground">Para fondos oscuros.</p>
+                        </div>
+                        <ImageUpload
+                            value={settings.logos.main}
+                            onChange={handleLogoChange}
+                            label="Subir"
+                            bucket="branding"
+                            className="h-24 bg-gray-900/5 hover:bg-gray-900/10 transition-colors border-dashed"
+                            compact={true}
+                        />
                     </div>
-                </CardContent>
-            </Card>
+
+                    <div className="space-y-3">
+                        <div className="space-y-1">
+                            <Label className="text-xs font-medium">Logo Secundario (Claro)</Label>
+                            <p className="text-[10px] text-muted-foreground">Para documentacion.</p>
+                        </div>
+                        <ImageUpload
+                            value={settings.logos.main_light || ''}
+                            onChange={(url) => onChange({ ...settings, logos: { ...settings.logos, main_light: url } })}
+                            label="Subir"
+                            bucket="branding"
+                            className="h-24 bg-gray-50 hover:bg-gray-100 transition-colors border-dashed"
+                            compact={true}
+                        />
+                    </div>
+                </div>
+
+                {/* Magic Palette - Full Width */}
+                {settings.logos.main && (
+                    <div className="pt-2">
+                        <MagicPalette
+                            imageUrl={settings.logos.main}
+                            onColorsFound={handleColorsFound}
+                        />
+                    </div>
+                )}
+
+                {/* Favicon - Compact */}
+                <div className="flex items-start gap-4 p-4 border border-gray-100 rounded-xl bg-gray-50/50">
+                    <div className="w-16 h-16 shrink-0 aspect-square">
+
+                        <ImageUpload
+                            value={settings.logos.favicon}
+                            onChange={handleFaviconChange}
+                            label=""
+                            bucket="branding"
+                            className="h-full w-full object-contain bg-white"
+                            compact={true}
+                        />
+                    </div>
+                    <div className="space-y-1">
+                        <Label className="text-xs font-semibold">Favicon</Label>
+                        <p className="text-[10px] text-muted-foreground leading-tight">
+                            Icono pequeño (512px) para pestañas del navegador y app móvil.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            {/* Portal Info */}
+            <div className="bg-brand-pink/5 border border-brand-pink/10 rounded-xl p-4 flex items-center justify-between">
+                <div className="space-y-1">
+                    <Label className="text-brand-pink font-bold text-xs">DIRECCIÓN DEL PORTAL</Label>
+                    <div className="flex items-center gap-1 text-sm text-brand-pink/80">
+                        portal.pixy.com.co/<span className="font-bold underline">mi-agencia</span>
+                    </div>
+                </div>
+                {/* Could add 'Copy' button here */}
+            </div>
         </div>
     )
 }
+
