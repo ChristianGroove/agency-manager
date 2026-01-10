@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase-server"
 import { Lead, Client } from "@/types"
 import { revalidatePath } from "next/cache"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { SecurityLogger } from "@/lib/security/logger"
 
 export type CreateLeadInput = {
     name: string
@@ -43,6 +44,16 @@ export async function createLead(input: CreateLeadInput): Promise<ActionResponse
         if (error) throw error
 
         revalidatePath('/crm')
+
+        // Metric: Log Security Event
+        await SecurityLogger.log({
+            action: 'lead.create',
+            resource_entity: 'leads',
+            resource_id: data.id,
+            organization_id: organizationId,
+            metadata: { name: input.name }
+        })
+
         return { success: true, data: data as Lead }
     } catch (error: any) {
         console.error("Error creating lead:", error)
@@ -231,6 +242,19 @@ export async function updateLead(
         if (error) throw error
 
         revalidatePath('/crm')
+
+        // Metric: Log Security Event
+        const organizationId = await getCurrentOrganizationId()
+        if (organizationId) {
+            await SecurityLogger.log({
+                action: 'lead.update',
+                resource_entity: 'leads',
+                resource_id: leadId,
+                organization_id: organizationId,
+                metadata: { updates: Object.keys(updates) }
+            })
+        }
+
         return { success: true, data: data as Lead }
     } catch (error: any) {
         console.error("Error updating lead:", error)

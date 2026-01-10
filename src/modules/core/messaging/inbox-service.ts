@@ -116,14 +116,14 @@ export class InboxService {
                 .eq('status', 'active');
 
             if (connections) {
-                const { decryptCredentials } = await import('@/modules/core/integrations/encryption');
+                const { decryptObject } = await import('@/modules/core/integrations/encryption');
 
                 const found: any = connections.find((c: any) => {
                     let creds = c.credentials || {};
                     if (typeof creds === 'string') {
                         try { creds = JSON.parse(creds); } catch (e) { }
                     }
-                    creds = decryptCredentials(creds);
+                    creds = decryptObject(creds);
                     const storedId = creds.phoneNumberId || creds.phone_number_id;
                     return storedId === metadata?.phoneNumberId || storedId === metadata?.phone_number_id;
                 });

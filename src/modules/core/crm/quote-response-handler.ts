@@ -207,12 +207,12 @@ export async function handleQuoteRejection(context: QuoteResponseContext) {
 
 
         // Decrypt credentials
-        const { decryptCredentials } = await import('@/modules/core/integrations/encryption')
+        const { decryptObject } = await import('@/modules/core/integrations/encryption')
         let creds = connection.credentials || {}
         if (typeof creds === 'string') {
             try { creds = JSON.parse(creds) } catch (e) { }
         }
-        creds = decryptCredentials(creds)
+        creds = decryptObject(creds)
 
         const accessToken = creds.accessToken || creds.apiToken || creds.access_token || ''
         const phoneNumberId = creds.phoneNumberId || creds.phone_number_id || ''
@@ -333,12 +333,12 @@ export async function handleRejectionReasonSelected(
 
         const connection = connections?.[0]
         if (connection) {
-            const { decryptCredentials } = await import('@/modules/core/integrations/encryption')
+            const { decryptObject } = await import('@/modules/core/integrations/encryption')
             let creds = connection.credentials || {}
             if (typeof creds === 'string') {
                 try { creds = JSON.parse(creds) } catch (e) { }
             }
-            creds = decryptCredentials(creds)
+            creds = decryptObject(creds)
 
             const accessToken = creds.accessToken || creds.apiToken || ''
             const phoneNumberId = creds.phoneNumberId || creds.phone_number_id || ''

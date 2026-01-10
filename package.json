@@ -73,7 +73,9 @@
     "tailwindcss-animate": "^1.0.7",
     "use-debounce": "^10.0.6",
     "vaul": "^1.1.2",
-    "zod": "^4.2.1"
+    "zod": "^4.2.1",
+    "@aws-sdk/client-s3": "^3.485.0",
+    "googleapis": "^129.0.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

@@ -129,12 +129,12 @@ export async function sendMessage(conversationId: string, payload: string, id?: 
             } else {
                 // Real Credentials (Manual Flow)
                 // Robust parsing if double-serialized
-                const { decryptCredentials } = await import('@/modules/core/integrations/encryption');
+                const { decryptObject } = await import('@/modules/core/integrations/encryption');
                 let finalCreds = creds;
                 if (typeof creds === 'string') {
                     try { finalCreds = JSON.parse(creds) } catch (e) { }
                 }
-                finalCreds = decryptCredentials(finalCreds);
+                finalCreds = decryptObject(finalCreds);
 
                 const pId = finalCreds.phoneNumberId || finalCreds.phone_number_id;
                 const token = finalCreds.accessToken || finalCreds.access_token;
@@ -390,12 +390,12 @@ export async function sendOutboundMessage(conversationId: string, content: any, 
             if (creds.mock_auth) {
                 provider = new MetaProvider(process.env.META_API_TOKEN!, process.env.META_PHONE_NUMBER_ID!, process.env.META_VERIFY_TOKEN!)
             } else {
-                const { decryptCredentials } = await import('@/modules/core/integrations/encryption');
+                const { decryptObject } = await import('@/modules/core/integrations/encryption');
                 let finalCreds = creds;
                 if (typeof creds === 'string') {
                     try { finalCreds = JSON.parse(creds) } catch (e) { }
                 }
-                finalCreds = decryptCredentials(finalCreds);
+                finalCreds = decryptObject(finalCreds);
 
                 const pId = finalCreds.phoneNumberId || finalCreds.phone_number_id;
                 const token = finalCreds.accessToken || finalCreds.access_token;

@@ -172,15 +172,35 @@ export function IntegrationSetupSheet({
                                                 <span className="text-xs font-normal text-muted-foreground">{field.description}</span>
                                             )}
                                         </Label>
-                                        <Input
-                                            id={key}
-                                            type={key.toLowerCase().includes('secret') || key.toLowerCase().includes('token') || key.toLowerCase().includes('key') ? 'password' : 'text'}
-                                            value={credentials[key] || ''}
-                                            onChange={(e) => setCredentials({ ...credentials, [key]: e.target.value })}
-                                            placeholder={`Ingresa ${field.title}`}
-                                            required={requiredFields.includes(key)}
-                                            className="h-12 bg-gray-50/50 border-gray-200 focus:bg-white transition-all rounded-xl font-mono text-sm"
-                                        />
+
+                                        {(field as any).enum ? (
+                                            <select
+                                                id={key}
+                                                value={credentials[key] || field.default || ''}
+                                                onChange={(e) => setCredentials({ ...credentials, [key]: e.target.value })}
+                                                className="h-12 w-full bg-gray-50/50 border border-gray-200 focus:bg-white transition-all rounded-xl px-3 text-sm"
+                                            >
+                                                <option value="" disabled>Selecciona una opción</option>
+                                                {(field as any).enum.map((option: string) => (
+                                                    <option key={option} value={option}>
+                                                        {option === 'daily' ? 'Diario (00:00 UTC)' :
+                                                            option === 'weekly' ? 'Semanal (Lunes)' :
+                                                                option === 'manual_only' ? 'Solo Manual' :
+                                                                    option}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        ) : (
+                                            <Input
+                                                id={key}
+                                                type={key.toLowerCase().includes('secret') || key.toLowerCase().includes('token') || key.toLowerCase().includes('key') ? 'password' : 'text'}
+                                                value={credentials[key] || ''}
+                                                onChange={(e) => setCredentials({ ...credentials, [key]: e.target.value })}
+                                                placeholder={`Ingresa ${field.title}`}
+                                                required={requiredFields.includes(key)}
+                                                className="h-12 bg-gray-50/50 border-gray-200 focus:bg-white transition-all rounded-xl font-mono text-sm"
+                                            />
+                                        )}
                                     </div>
                                 ))}
 

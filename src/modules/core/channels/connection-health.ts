@@ -2,7 +2,7 @@
 
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { integrationRegistry } from "@/modules/core/integrations/registry"
-import { decryptCredentials } from "@/modules/core/integrations/encryption"
+import { decryptObject } from "@/modules/core/integrations/encryption"
 
 /**
  * Check health of a single connection
@@ -27,7 +27,7 @@ export async function checkConnectionHealth(connectionId: string): Promise<{
     }
 
     try {
-        const credentials = decryptCredentials(connection.credentials)
+        const credentials = decryptObject(connection.credentials)
         const result = await adapter.checkConnectionStatus(credentials)
 
         const newStatus = result.status === 'active' ? 'active' : 'disconnected'

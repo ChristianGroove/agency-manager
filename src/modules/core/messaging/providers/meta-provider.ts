@@ -1,5 +1,6 @@
 import { IncomingMessage, MessagingProvider, SendMessageOptions, WebhookValidationResult } from './types';
 import { supabaseAdmin } from "@/lib/supabase-admin"
+import { decryptObject } from "@/modules/core/integrations/encryption"
 
 export class MetaProvider implements MessagingProvider {
     name = 'meta';
@@ -160,7 +161,7 @@ export class MetaProvider implements MessagingProvider {
 
             if (!connections || connections.length === 0) return '';
 
-            const { decryptCredentials } = await import('@/modules/core/integrations/encryption');
+            // const { decryptObject } = await import('@/modules/core/integrations/encryption');
 
             for (const conn of connections) {
                 let creds = conn.credentials || {};
@@ -169,7 +170,7 @@ export class MetaProvider implements MessagingProvider {
                 if (typeof creds === 'string') {
                     try { creds = JSON.parse(creds); } catch (e) { }
                 }
-                creds = decryptCredentials(creds);
+                creds = decryptObject(creds);
 
                 const storedId = creds.phoneNumberId || creds.phone_number_id;
                 console.log(`[MetaProvider] Checking connection - storedId: "${storedId}" vs requested: "${phoneNumberId}"`);

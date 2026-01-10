@@ -50,13 +50,13 @@ export class MetaAdapter implements IntegrationAdapter {
     }
 
     async sendMessage(credentials: ConnectionCredentials | string, recipient: string, content: any): Promise<{ messageId: string, metadata?: any }> {
-        const { decryptCredentials } = await import('@/modules/core/integrations/encryption');
+        const { decryptObject } = await import('@/modules/core/integrations/encryption');
 
         let creds: any = credentials;
         if (typeof creds === 'string') {
             try { creds = JSON.parse(creds); } catch (e) { throw new Error("Invalid credentials format"); }
         }
-        creds = decryptCredentials(creds);
+        creds = decryptObject(creds);
 
         const phoneNumberId = creds.phoneNumberId || creds.phone_number_id;
         const accessToken = creds.accessToken || creds.access_token;

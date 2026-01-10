@@ -3,6 +3,8 @@ import { OpenAIAdapter } from "./adapters/openai-adapter"
 import { MockAdapter } from "./adapters/mock-adapter"
 import { EvolutionAdapter } from "./adapters/evolution-adapter"
 import { MetaAdapter } from "./adapters/meta-adapter"
+import { S3StorageAdapter } from "./adapters/s3-adapter"
+import { GoogleDriveAdapter } from "./adapters/google-drive-adapter"
 
 class IntegrationRegistry {
     private adapters: Map<string, IntegrationAdapter> = new Map()
@@ -19,6 +21,8 @@ class IntegrationRegistry {
         this.register(new MockAdapter('google_calendar'))
         this.register(new MockAdapter('anthropic'))
         this.register(new EvolutionAdapter())
+        this.register(new S3StorageAdapter())
+        this.register(new GoogleDriveAdapter())
     }
 
     register(adapter: IntegrationAdapter) {

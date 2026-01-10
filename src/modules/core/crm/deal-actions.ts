@@ -263,12 +263,12 @@ export async function sendInteractiveQuote(cartId: string, conversationId: strin
             if (connError) await logDebug("Connection lookup error", connError)
 
             if (conn?.credentials) {
-                const { decryptCredentials } = await import('../integrations/encryption')
+                const { decryptObject } = await import('../integrations/encryption')
                 let creds = conn.credentials
                 if (typeof creds === 'string') {
                     try { creds = JSON.parse(creds) } catch (e) { }
                 }
-                creds = decryptCredentials(creds)
+                creds = decryptObject(creds)
 
                 const token = creds.accessToken || creds.apiToken || creds.access_token
                 const phoneId = creds.phoneNumberId || creds.phone_number_id
@@ -290,12 +290,12 @@ export async function sendInteractiveQuote(cartId: string, conversationId: strin
             await logDebug("Fallback: Searching for any active meta_whatsapp connection")
             const { data: conn } = await supabaseAdmin.from('integration_connections').select('*').eq('provider_key', 'meta_whatsapp').eq('status', 'active').limit(1).single()
             if (conn?.credentials) {
-                const { decryptCredentials } = await import('../integrations/encryption')
+                const { decryptObject } = await import('../integrations/encryption')
                 let creds = conn.credentials
                 if (typeof creds === 'string') {
                     try { creds = JSON.parse(creds) } catch (e) { }
                 }
-                creds = decryptCredentials(creds)
+                creds = decryptObject(creds)
 
                 const token = creds.accessToken || creds.apiToken || creds.access_token
                 const phoneId = creds.phoneNumberId || creds.phone_number_id

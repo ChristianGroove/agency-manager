@@ -1,38 +1,50 @@
+import { randomBytes, createCipheriv, createDecipheriv } from 'crypto'
 
-/**
- * Simple encryption/decryption helper for credentials
- * Currently uses Base64 for MVP/Simulation as per existing conventions.
- * In production this should use AES-256 (e.g. crypto module or Supabase Vault).
- */
+const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || 'default-dev-key-must-be-32-bytes' // 32 chars
+const IV_LENGTH = 16
 
-export function encryptCredentials(data: any): any {
-    if (!data) return {}
-    try {
-        const str = JSON.stringify(data)
-        return { _encrypted: Buffer.from(str).toString('base64') }
-    } catch (e) {
-        console.error("[Encryption] Failed to encrypt:", e)
-        return data // Fallback to raw if fail
-    }
+// Helper to ensure key is 32 bytes
+function getKey() {
+    return Buffer.from(ENCRYPTION_KEY.padEnd(32, '0').slice(0, 32))
 }
 
-export function decryptCredentials(data: any): any {
-    if (!data || typeof data !== 'object') return data
+export function encrypt(text: string): string {
+    const iv = randomBytes(IV_LENGTH)
+    const cipher = createCipheriv('aes-256-gcm', getKey(), iv)
+    let encrypted = cipher.update(text, 'utf8', 'hex')
+    encrypted += cipher.final('hex')
+    const authTag = cipher.getAuthTag().toString('hex')
+    return iv.toString('hex') + ':' + authTag + ':' + encrypted
+}
 
-    // Check for our known encryption keys
-    // We support both '_encrypted' (from integrations/actions) and 'encrypted' (legacy/other)
-    const encryptedStr = data._encrypted || data.encrypted
+export function decrypt(text: string): string {
+    const parts = text.split(':')
+    if (parts.length !== 3) throw new Error('Invalid encrypted string format')
 
-    if (encryptedStr && typeof encryptedStr === 'string') {
+    const iv = Buffer.from(parts[0], 'hex')
+    const authTag = Buffer.from(parts[1], 'hex')
+    const encryptedText = parts[2]
+
+    const decipher = createDecipheriv('aes-256-gcm', getKey(), iv)
+    decipher.setAuthTag(authTag)
+
+    let decrypted = decipher.update(encryptedText, 'hex', 'utf8')
+    decrypted += decipher.final('utf8')
+    return decrypted
+}
+
+export function encryptObject(obj: any): any {
+    return { _encrypted: encrypt(JSON.stringify(obj)) }
+}
+
+export function decryptObject(obj: any): any {
+    if (obj && obj._encrypted) {
         try {
-            const decoded = Buffer.from(encryptedStr, 'base64').toString('utf-8')
-            return JSON.parse(decoded)
+            return JSON.parse(decrypt(obj._encrypted))
         } catch (e) {
-            console.error("[Encryption] Failed to decrypt:", e)
-            return data // Return as-is if decryption fails (might be raw)
+            console.error("Decryption failed", e)
+            return null
         }
     }
-
-    // Return raw if not encrypted
-    return data
+    return obj
 }

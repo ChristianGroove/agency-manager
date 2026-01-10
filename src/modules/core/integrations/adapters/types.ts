@@ -47,5 +47,28 @@ export interface IntegrationAdapter {
     /**
      * Send a message via this provider
      */
+    /**
+     * Send a message via this provider
+     */
     sendMessage?(credentials: ConnectionCredentials, recipient: string, content: any): Promise<{ messageId: string, metadata?: any }>
+
+    /**
+     * Storage Capability (Optional)
+     */
+    storage?: StorageProvider
+}
+
+export interface StorageProvider {
+    /**
+     * Upload a file to the provider
+     * @param path Remote path (e.g. "backups/2026-01-01.zip")
+     * @param content File content (Buffer or string)
+     * @param contentType MIME type
+     */
+    uploadFile(credentials: ConnectionCredentials, path: string, content: Buffer | string, contentType?: string): Promise<{ url: string, fileId?: string }>
+
+    /**
+     * Delete a file
+     */
+    deleteFile?(credentials: ConnectionCredentials, path: string): Promise<boolean>
 }

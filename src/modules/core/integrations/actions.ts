@@ -25,13 +25,10 @@ export interface Connection {
     // We purposefully exclude credentials from the return type for security
 }
 
+// --- ACTIONS ---
+import { encryptObject } from "./encryption"
+
 // --- HELPERS ---
-// Mock encryption (In production, use AES-256 via a dedicated library)
-function mockEncrypt(data: any): any {
-    // Simple Base64 encoding for MVP demonstration purposes
-    const str = JSON.stringify(data)
-    return { _encrypted: Buffer.from(str).toString('base64') }
-}
 
 // --- ACTIONS ---
 
@@ -112,7 +109,7 @@ export async function createConnection(params: CreateConnectionParams) {
         // UPDATE existing connection (e.g. refreshing token)
         const result = await supabase.from('integration_connections').update({
             connection_name: params.connection_name,
-            credentials: mockEncrypt(params.credentials),
+            credentials: encryptObject(params.credentials),
             config: params.config || {},
             metadata: params.metadata || {},
             status: 'active',
@@ -129,7 +126,7 @@ export async function createConnection(params: CreateConnectionParams) {
             organization_id: orgMember.organization_id,
             provider_key: params.provider_key,
             connection_name: params.connection_name,
-            credentials: mockEncrypt(params.credentials),
+            credentials: encryptObject(params.credentials),
             config: params.config || {},
             metadata: params.metadata || {},
             status: 'active',
