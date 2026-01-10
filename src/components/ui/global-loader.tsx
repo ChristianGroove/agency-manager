@@ -23,10 +23,10 @@ export function GlobalLoader() {
     }, [])
 
     return (
-        <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-zinc-950 backdrop-blur-3xl">
+        <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-white/80 dark:bg-zinc-950/80 backdrop-blur-xl transition-colors duration-500">
             {/* Background Ambient Glow */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-primary/10 rounded-full blur-[100px] animate-pulse" />
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-brand-pink/10 dark:bg-primary/10 rounded-full blur-[100px] animate-pulse" />
             </div>
 
             {/* Logo Animation */}
@@ -35,7 +35,7 @@ export function GlobalLoader() {
                 animate={{
                     scale: [1, 1.05, 1],
                     opacity: 1,
-                    filter: ["drop-shadow(0 0 0px var(--primary))", "drop-shadow(0 0 20px var(--primary))", "drop-shadow(0 0 0px var(--primary))"]
+                    filter: ["drop-shadow(0 0 0px rgba(236,72,153,0))", "drop-shadow(0 0 20px rgba(236,72,153,0.3))", "drop-shadow(0 0 0px rgba(236,72,153,0))"]
                 }}
                 transition={{
                     duration: 2,
@@ -54,9 +54,9 @@ export function GlobalLoader() {
             </motion.div>
 
             {/* Loading Bar */}
-            <div className="w-48 h-1 bg-muted rounded-full overflow-hidden mb-4 relative">
+            <div className="w-48 h-1.5 bg-zinc-200 dark:bg-muted rounded-full overflow-hidden mb-4 relative shadow-sm">
                 <motion.div
-                    className="absolute inset-0 bg-primary"
+                    className="absolute inset-0 bg-brand-pink"
                     initial={{ x: "-100%" }}
                     animate={{ x: "100%" }}
                     transition={{
@@ -77,7 +77,7 @@ export function GlobalLoader() {
                         animate={{ y: 0, opacity: 1 }}
                         exit={{ y: -20, opacity: 0 }}
                         transition={{ duration: 0.3 }}
-                        className="text-sm font-medium text-muted-foreground tracking-widest uppercase"
+                        className="text-sm font-semibold text-zinc-600 dark:text-muted-foreground tracking-widest uppercase"
                     >
                         {LOADING_TEXTS[textIndex]}
                     </motion.p>
