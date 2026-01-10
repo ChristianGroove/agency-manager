@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Globe, ArrowRight, CheckCircle2 } from "lucide-react"
-import { EcosystemHubModal } from "./ecosystem-hub-modal"
+import { ConnectivitySheet } from "@/components/sheets/connectivity-sheet"
 import { getMetaConfig } from "@/modules/core/admin/actions"
 import { cn } from "@/lib/utils"
 
@@ -76,12 +76,11 @@ export function EcosystemWidget({ client, services }: EcosystemWidgetProps) {
                 </CardContent>
             </Card>
 
-            <EcosystemHubModal
+            <ConnectivitySheet
                 client={client}
                 services={services}
                 open={open}
                 onOpenChange={setOpen}
-                onUpdate={checkConnections}
             />
         </>
     )
