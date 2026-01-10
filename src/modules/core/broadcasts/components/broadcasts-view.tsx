@@ -28,7 +28,6 @@ import { formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
-import { SplitText } from "@/components/ui/split-text"
 import { CreateBroadcastSheet } from './create-broadcast-sheet'
 
 const STATUS_CONFIG = {
@@ -83,18 +82,7 @@ export function BroadcastsView() {
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-                <div>
-                    <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
-                        <SplitText>Broadcasts</SplitText>
-                    </h2>
-                    <p className="text-muted-foreground mt-1">Envía mensajes masivos a tus leads y contactos</p>
-                </div>
-                <Button onClick={() => setCreateSheetOpen(true)} className="bg-brand-pink hover:bg-brand-pink/90 text-white">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Nueva Campaña
-                </Button>
-            </div>
+            {/* Header Removed (Managed by Dashboard) */}
 
             {/* Create Sheet */}
             <CreateBroadcastSheet
@@ -104,58 +92,7 @@ export function BroadcastsView() {
             />
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-4 gap-4">
-                <Card className="p-4 bg-white dark:bg-white/5 dark:backdrop-blur-md border-gray-100 dark:border-white/10">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-blue-50 dark:bg-blue-500/10 rounded-lg">
-                            <Radio className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                        </div>
-                        <div>
-                            <p className="text-2xl font-bold dark:text-white">{broadcasts.length}</p>
-                            <p className="text-xs text-muted-foreground">Total Campañas</p>
-                        </div>
-                    </div>
-                </Card>
-                <Card className="p-4 bg-white dark:bg-white/5 dark:backdrop-blur-md border-gray-100 dark:border-white/10">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-green-50 dark:bg-green-500/10 rounded-lg">
-                            <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
-                        </div>
-                        <div>
-                            <p className="text-2xl font-bold dark:text-white">
-                                {broadcasts.filter(b => b.status === 'completed').length}
-                            </p>
-                            <p className="text-xs text-muted-foreground">Completadas</p>
-                        </div>
-                    </div>
-                </Card>
-                <Card className="p-4 bg-white dark:bg-white/5 dark:backdrop-blur-md border-gray-100 dark:border-white/10">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-yellow-50 dark:bg-yellow-500/10 rounded-lg">
-                            <Send className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
-                        </div>
-                        <div>
-                            <p className="text-2xl font-bold dark:text-white">
-                                {broadcasts.reduce((sum, b) => sum + b.sent_count, 0)}
-                            </p>
-                            <p className="text-xs text-muted-foreground">Mensajes Enviados</p>
-                        </div>
-                    </div>
-                </Card>
-                <Card className="p-4 bg-white dark:bg-white/5 dark:backdrop-blur-md border-gray-100 dark:border-white/10">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-purple-50 dark:bg-purple-500/10 rounded-lg">
-                            <Users className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                        </div>
-                        <div>
-                            <p className="text-2xl font-bold dark:text-white">
-                                {broadcasts.reduce((sum, b) => sum + b.delivered_count, 0)}
-                            </p>
-                            <p className="text-xs text-muted-foreground">Entregados</p>
-                        </div>
-                    </div>
-                </Card>
-            </div>
+            {/* Stats Removed (Managed by Dashboard) */}
 
             {/* Broadcasts List */}
             {loading ? (

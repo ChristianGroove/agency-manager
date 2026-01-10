@@ -31,6 +31,7 @@ import { toast } from "sonner"
 import { duplicateQuote, updateQuote } from "@/modules/core/quotes/actions"
 import { convertQuote } from '@/modules/core/quotes/conversion-actions'
 import { getQuotes } from "@/modules/core/quotes/actions"
+import { QuoteShareSheet } from "@/modules/core/quotes/quote-share-sheet"
 
 interface QuotesViewProps {
     initialQuotes: Quote[]
@@ -49,6 +50,7 @@ export function QuotesView({ initialQuotes, initialEmitters }: QuotesViewProps) 
     const [emitters, setEmitters] = useState<any[]>(initialEmitters || [])
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
     const [isDeleting, setIsDeleting] = useState(false)
+    const [shareQuote, setShareQuote] = useState<Quote | null>(null)
 
     const fetchQuotes = async () => {
         try {
@@ -390,9 +392,16 @@ export function QuotesView({ initialQuotes, initialEmitters }: QuotesViewProps) 
                                                         <DropdownMenuSeparator />
 
                                                         {quote.status === 'draft' && (
-                                                            <DropdownMenuItem onClick={() => handleSend(quote)} className="text-blue-600 focus:text-blue-700 focus:bg-blue-50">
+                                                            <DropdownMenuItem onClick={() => setShareQuote(quote)} className="text-green-600 focus:text-green-700 focus:bg-green-50">
                                                                 <Send className="mr-2 h-4 w-4" />
-                                                                <span>Marcar Enviada</span>
+                                                                <span>Compartir WhatsApp</span>
+                                                            </DropdownMenuItem>
+                                                        )}
+
+                                                        {quote.status === 'draft' && (
+                                                            <DropdownMenuItem onClick={() => handleSend(quote)} className="text-blue-600 focus:text-blue-700 focus:bg-blue-50">
+                                                                <FileCheck className="mr-2 h-4 w-4" />
+                                                                <span>Marcar Enviada (Manual)</span>
                                                             </DropdownMenuItem>
                                                         )}
 
@@ -426,6 +435,11 @@ export function QuotesView({ initialQuotes, initialEmitters }: QuotesViewProps) 
                     </TableBody>
                 </Table>
             </div>
+            <QuoteShareSheet
+                quote={shareQuote}
+                open={!!shareQuote}
+                onOpenChange={(open) => !open && setShareQuote(null)}
+            />
         </div>
     )
 }

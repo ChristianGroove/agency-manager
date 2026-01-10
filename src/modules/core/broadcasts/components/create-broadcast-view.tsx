@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import {
     ArrowLeft,
@@ -26,7 +25,7 @@ import {
     SelectTrigger,
     SelectValue
 } from '@/components/ui/select'
-import { createBroadcast, getRecipientCount } from '../actions'
+import { createQuickCampaign, getRecipientCount } from '../marketing-actions'
 import { toast } from 'sonner'
 
 export function CreateBroadcastView() {
@@ -52,7 +51,7 @@ export function CreateBroadcastView() {
         setCountLoading(true)
         const result = await getRecipientCount(newFilters)
         if (result.success) {
-            setRecipientCount(result.count)
+            setRecipientCount(result.count ?? 0)
         }
         setCountLoading(false)
     }
@@ -66,13 +65,10 @@ export function CreateBroadcastView() {
             toast.error('Ingresa el mensaje a enviar')
             return
         }
-        if (recipientCount === 0) {
-            toast.error('No hay destinatarios para esta campaña')
-            return
-        }
 
         setLoading(true)
-        const result = await createBroadcast({
+        // Use the new Unified Action
+        const result = await createQuickCampaign({
             name: form.name,
             message: form.message,
             channel: form.channel,
@@ -81,7 +77,7 @@ export function CreateBroadcastView() {
 
         if (result.success) {
             toast.success('Campaña creada exitosamente')
-            router.push('/crm/broadcasts')
+            router.push('/crm/marketing')
         } else {
             toast.error(result.error || 'Error al crear campaña')
         }
@@ -109,7 +105,7 @@ export function CreateBroadcastView() {
                     {/* Basic Info */}
                     <Card className="p-6 space-y-4">
                         <h2 className="font-semibold flex items-center gap-2">
-                            <Sparkles className="h-4 w-4 text-indigo-500" />
+                            <Sparkles className="h-4 w-4 text-brand-pink" />
                             Información Básica
                         </h2>
 
@@ -173,7 +169,7 @@ export function CreateBroadcastView() {
                     {/* Filters */}
                     <Card className="p-6 space-y-4">
                         <h2 className="font-semibold flex items-center gap-2">
-                            <Users className="h-4 w-4 text-indigo-500" />
+                            <Users className="h-4 w-4 text-brand-pink" />
                             Segmentación
                         </h2>
 
@@ -220,7 +216,7 @@ export function CreateBroadcastView() {
                 <div className="space-y-6">
                     {/* Recipients Count */}
                     <Card className="p-6 text-center">
-                        <Users className="h-8 w-8 mx-auto text-indigo-500 mb-2" />
+                        <Users className="h-8 w-8 mx-auto text-brand-pink mb-2" />
                         {countLoading ? (
                             <Loader2 className="h-6 w-6 animate-spin mx-auto" />
                         ) : (
@@ -240,7 +236,7 @@ export function CreateBroadcastView() {
                     {/* Actions */}
                     <div className="space-y-2">
                         <Button
-                            className="w-full"
+                            className="w-full bg-brand-pink hover:bg-brand-pink/90 text-white"
                             onClick={handleSubmit}
                             disabled={loading}
                         >

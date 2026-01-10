@@ -103,15 +103,9 @@ export function ConversationListItem({ conv, isSelected, onSelect, fetchConversa
                         </div>
                     </div>
 
-                    <div
-                        className="mb-1 overflow-hidden"
-                        style={{
-                            maskImage: 'linear-gradient(to right, black 0%, black 50%, transparent 75%)',
-                            WebkitMaskImage: 'linear-gradient(to right, black 0%, black 50%, transparent 75%)'
-                        }}
-                    >
+                    <div className="mb-1">
                         <p className={cn(
-                            "text-sm text-muted-foreground whitespace-nowrap",
+                            "text-sm text-muted-foreground line-clamp-2 break-all",
                             isUnread && "text-foreground/80 font-medium"
                         )}>
                             {conv.last_message || "No messages yet"}

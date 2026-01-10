@@ -58,6 +58,46 @@ export async function createTag(name: string, color: string = '#808080'): Promis
     }
 }
 
+export async function updateTag(id: string, updates: { name?: string; color?: string }): Promise<ActionResponse<Tag>> {
+    const supabase = await createClient()
+    try {
+        const orgId = await getCurrentOrganizationId()
+        if (!orgId) throw new Error("Unauthorized")
+
+        const { data, error } = await supabase
+            .from('crm_tags')
+            .update(updates)
+            .eq('id', id)
+            .eq('organization_id', orgId)
+            .select()
+            .single()
+
+        if (error) throw error
+        return { success: true, data: data as Tag }
+    } catch (e: any) {
+        return { success: false, error: e.message }
+    }
+}
+
+export async function deleteTag(id: string): Promise<ActionResponse<void>> {
+    const supabase = await createClient()
+    try {
+        const orgId = await getCurrentOrganizationId()
+        if (!orgId) throw new Error("Unauthorized")
+
+        const { error } = await supabase
+            .from('crm_tags')
+            .delete()
+            .eq('id', id)
+            .eq('organization_id', orgId)
+
+        if (error) throw error
+        return { success: true }
+    } catch (e: any) {
+        return { success: false, error: e.message }
+    }
+}
+
 // --- SYSTEM ACTIONS (For Automation) ---
 
 /**

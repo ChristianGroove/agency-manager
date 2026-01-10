@@ -24,7 +24,8 @@ import {
     SelectTrigger,
     SelectValue
 } from '@/components/ui/select'
-import { createBroadcast, getRecipientCount } from '../actions'
+import { createQuickCampaign } from '../marketing-actions'
+import { getRecipientCount } from '../actions'
 import { toast } from 'sonner'
 
 interface CreateBroadcastSheetProps {
@@ -89,7 +90,7 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
         }
 
         setLoading(true)
-        const result = await createBroadcast({
+        const result = await createQuickCampaign({
             name: form.name,
             message: form.message,
             channel: form.channel,

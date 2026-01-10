@@ -76,6 +76,7 @@ export type Lead = {
     estimated_value?: number
     next_follow_up_at?: string
     metadata?: any
+    quotes?: Quote[]
 }
 
 export type QuoteItem = {

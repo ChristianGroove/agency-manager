@@ -5,7 +5,7 @@ import { Lead } from "@/types"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge" // Kept if we revert to badge usage, but currently unused in compact mode? Wait, imports needed.
-import { GripVertical, MoreHorizontal, Eye, MessageSquare, UserPlus, Edit, ArrowRight, XCircle } from "lucide-react"
+import { GripVertical, MoreHorizontal, Eye, MessageSquare, UserPlus, Edit, ArrowRight, XCircle, FileText } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { useSortable } from "@dnd-kit/sortable"
@@ -19,10 +19,12 @@ interface LeadCardProps {
     onView: (lead: Lead) => void
     onAssign: (lead: Lead) => void
     onMessage: (lead: Lead) => void
+    onQuote?: (lead: Lead) => void
+    onShareQuote?: (lead: Lead) => void
     isDragging?: boolean
 }
 
-function LeadCardComponent({ lead, onConvert, onMarkLost, onEdit, onView, onAssign, onMessage, isDragging }: LeadCardProps) {
+function LeadCardComponent({ lead, onConvert, onMarkLost, onEdit, onView, onAssign, onMessage, onQuote, onShareQuote, isDragging }: LeadCardProps) {
     const {
         attributes,
         listeners,
@@ -89,6 +91,18 @@ function LeadCardComponent({ lead, onConvert, onMarkLost, onEdit, onView, onAssi
                                 <Edit className="mr-2 h-3.5 w-3.5" />
                                 Editar
                             </DropdownMenuItem>
+                            {onQuote && (
+                                <DropdownMenuItem onClick={() => onQuote(lead)}>
+                                    <FileText className="mr-2 h-3.5 w-3.5" />
+                                    Crear Cotización
+                                </DropdownMenuItem>
+                            )}
+                            {onShareQuote && lead.quotes && lead.quotes.length > 0 && (
+                                <DropdownMenuItem onClick={() => onShareQuote(lead)} className="text-green-600 focus:text-green-700 focus:bg-green-50">
+                                    <MessageSquare className="mr-2 h-3.5 w-3.5" />
+                                    Compartir Cotización
+                                </DropdownMenuItem>
+                            )}
                             <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={() => onConvert(lead.id)}>
                                 <ArrowRight className="mr-2 h-3.5 w-3.5" />

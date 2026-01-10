@@ -47,9 +47,13 @@ interface QuoteBuilderProps {
     onSuccess?: () => void
     mode?: 'page' | 'sheet'
     emitters?: Emitter[]
+    prefillLeadId?: string // Pre-link quote to a lead
+    prefillLeadName?: string
+    prefillLeadEmail?: string
+    prefillLeadPhone?: string
 }
 
-export function QuoteBuilder({ onSuccess, mode = 'page', emitters = [] }: QuoteBuilderProps) {
+export function QuoteBuilder({ onSuccess, mode = 'page', emitters = [], prefillLeadId, prefillLeadName, prefillLeadEmail, prefillLeadPhone }: QuoteBuilderProps) {
     const router = useRouter()
     const [loading, setLoading] = useState(false)
     const [date, setDate] = useState(new Date().toISOString().split('T')[0])
@@ -63,6 +67,7 @@ export function QuoteBuilder({ onSuccess, mode = 'page', emitters = [] }: QuoteB
     // Quick Prospect State
     const [prospectData, setProspectData] = useState({ name: "", email: "", phone: "" })
     const [isProspectDialogOpen, setIsProspectDialogOpen] = useState(false)
+    const [duplicateWarning, setDuplicateWarning] = useState<(Client & { isLead?: boolean }) | null>(null)
 
     // --- Emitter State ---
     // Use props.emitters
@@ -125,15 +130,128 @@ export function QuoteBuilder({ onSuccess, mode = 'page', emitters = [] }: QuoteB
         fetchData()
     }, [])
 
+    // Mode: If prefillLeadId is provided, we're in lead-only mode (no client required)
+    const isLeadOnlyMode = Boolean(prefillLeadId)
+
     // --- Client Logic ---
+    const checkDuplicatePhone = async (phone: string): Promise<any | null> => {
+        if (!phone || phone.length < 7) {
+            setDuplicateWarning(null)
+            return null
+        }
+
+        // Clean phone for fuzzy search
+        const clean = phone.replace(/\D/g, '')
+        const orgId = (await import('@/modules/core/organizations/actions').then(m => m.getCurrentOrganizationId()))!
+
+        // Check local clients first
+        const localMatch = clients.find(c => c.phone?.includes(clean) || (c.phone && clean.includes(c.phone.replace(/\D/g, ''))))
+        if (localMatch) {
+            setDuplicateWarning(localMatch)
+            return localMatch
+        }
+
+        // Check DB Clients
+        // Use maybeSingle() to avoid error on multiple duplicates
+        const { data: clientData } = await supabase
+            .from('clients')
+            .select('*')
+            .eq('organization_id', orgId)
+            .ilike('phone', `%${clean}%`)
+            .limit(1)
+            .maybeSingle()
+
+        if (clientData) {
+            const dbClean = clientData.phone?.replace(/\D/g, '') || ''
+            if (dbClean.endsWith(clean) || clean.endsWith(dbClean)) {
+                setDuplicateWarning(clientData)
+                return clientData
+            }
+        }
+
+        // Check DB Leads (If not found in clients)
+        const { data: leadData } = await supabase
+            .from('leads')
+            .select('*')
+            .eq('organization_id', orgId)
+            .ilike('phone', `%${clean}%`)
+            .limit(1)
+            .maybeSingle()
+
+        if (leadData) {
+            const dbClean = leadData.phone?.replace(/\D/g, '') || ''
+            if (dbClean.endsWith(clean) || clean.endsWith(dbClean)) {
+                // Map lead to client-like structure for warning
+                const found = { id: leadData.id, name: leadData.name, phone: leadData.phone, isLead: true } as any
+                setDuplicateWarning(found)
+                return found
+            }
+        }
+
+        setDuplicateWarning(null)
+        return null
+    }
+
     const openCreateProspect = () => {
         setProspectData(prev => ({ ...prev, name: clientSearchTerm }))
         setIsProspectDialogOpen(true)
         setClientSearchOpen(false)
+        setDuplicateWarning(null)
+    }
+
+    const handleUseDuplicate = async () => {
+        if (!duplicateWarning) return
+
+        if ((duplicateWarning as any).isLead) {
+            const toastId = toast.loading("Convirtiendo lead a cliente...")
+            try {
+                const { data: { user } } = await supabase.auth.getUser()
+
+                // Convert Lead to Client (Create Client from Lead data)
+                const res = await quickCreateProspect({
+                    name: duplicateWarning.name,
+                    phone: duplicateWarning.phone || "",
+                    email: (duplicateWarning as any).email || "",
+                    userId: user?.id || ""
+                })
+
+                if (res.success && res.client) {
+                    setClients(prev => [...prev, res.client])
+                    setSelectedClientId(res.client.id)
+                    toast.success(`Lead ${duplicateWarning.name} convertido a Cliente`, { id: toastId })
+                } else {
+                    toast.error("Error al convertir lead: " + res.error, { id: toastId })
+                    return
+                }
+            } catch (e: any) {
+                console.error(e)
+                toast.error("Error en conversión", { id: toastId })
+                return
+            }
+        } else {
+            // Existing Client
+            if (!clients.find(c => c.id === duplicateWarning.id)) {
+                setClients(prev => [...prev, duplicateWarning])
+            }
+            setSelectedClientId(duplicateWarning.id)
+            toast.info(`Cliente existente seleccionado: ${duplicateWarning.name}`)
+        }
+
+        setIsProspectDialogOpen(false)
+        setClientSearchOpen(false)
+        setDuplicateWarning(null)
     }
 
     const handleCreateProspect = async () => {
         if (!prospectData.name) return
+
+        // Blocking Check
+        const dup = await checkDuplicatePhone(prospectData.phone)
+        if (dup) {
+            toast.warning(`El número ya existe (${dup.name}). Usa el botón 'Usar Existente'.`)
+            return
+        }
+
         setLoading(true)
         try {
             const { data: { user } } = await supabase.auth.getUser()
@@ -200,18 +318,20 @@ export function QuoteBuilder({ onSuccess, mode = 'page', emitters = [] }: QuoteB
 
     // --- Save ---
     const handleSave = async (status: 'draft' | 'sent' = 'draft') => {
-        if (!selectedClientId) return toast.error("Selecciona un cliente")
+        // If in lead mode, don't require client. Otherwise require client.
+        if (!isLeadOnlyMode && !selectedClientId) return toast.error("Selecciona un cliente")
         if (items.length === 0) return toast.error("Agrega al menos un ítem")
         // if (!selectedEmitterId) return toast.error("Selecciona una identidad de facturación") // Optional check
 
         setLoading(true)
         try {
             const response = await createQuote({
-                client_id: selectedClientId,
+                client_id: selectedClientId || undefined, // Optional when in lead mode
                 emitter_id: selectedEmitterId || undefined,
                 items: items,
                 total: total,
                 date: new Date(date).toISOString(),
+                lead_id: prefillLeadId || undefined, // Link to lead if provided
                 // number is generated by backend
             })
 
@@ -329,7 +449,22 @@ export function QuoteBuilder({ onSuccess, mode = 'page', emitters = [] }: QuoteB
                         <section className="space-y-4">
                             <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest pl-1">Cliente</Label>
 
-                            {selectedClientId ? (
+                            {isLeadOnlyMode ? (
+                                <div className="bg-blue-50/50 rounded-xl border border-blue-100 p-4 flex items-center space-x-3">
+                                    <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-lg">
+                                        {prefillLeadName?.charAt(0).toUpperCase()}
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <span className="font-bold text-gray-900">{prefillLeadName}</span>
+                                        <span className="text-xs text-blue-600 font-medium bg-blue-100/50 px-2 py-0.5 rounded-full w-fit mt-1">
+                                            Lead en Pipeline
+                                        </span>
+                                        <span className="text-xs text-gray-400 mt-1">
+                                            Se vinculará directamente al lead sin crear contacto.
+                                        </span>
+                                    </div>
+                                </div>
+                            ) : selectedClientId ? (
                                 // Active Client Card
                                 <div className="group relative flex items-start justify-between p-4 rounded-2xl border border-indigo-100/50 bg-indigo-50/20 hover:bg-indigo-50/40 hover:border-indigo-200/60 transition-all shadow-sm">
                                     <div className="flex items-center gap-4">
@@ -351,7 +486,7 @@ export function QuoteBuilder({ onSuccess, mode = 'page', emitters = [] }: QuoteB
                                     </Button>
                                 </div>
                             ) : (
-                                // Search Input
+                                // Client Search Input
                                 <Popover open={clientSearchOpen} onOpenChange={setClientSearchOpen}>
                                     <PopoverTrigger asChild>
                                         <Button
@@ -696,8 +831,30 @@ export function QuoteBuilder({ onSuccess, mode = 'page', emitters = [] }: QuoteB
                             <Input
                                 placeholder="+57 300..."
                                 value={prospectData.phone}
-                                onChange={(e) => setProspectData({ ...prospectData, phone: e.target.value })}
+                                onChange={(e) => {
+                                    const val = e.target.value
+                                    setProspectData({ ...prospectData, phone: val })
+                                    if (duplicateWarning) setDuplicateWarning(null) // Clear warning on edit
+                                }}
+                                onBlur={(e) => checkDuplicatePhone(e.target.value)}
                             />
+                            {duplicateWarning && (
+                                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm flex flex-col gap-2 animate-in fade-in">
+                                    <div className="flex items-center gap-2 text-amber-800 font-medium">
+                                        <div className="h-2 w-2 rounded-full bg-amber-500" />
+                                        Este número ya pertenece a:
+                                    </div>
+                                    <div className="pl-4 text-gray-600 font-bold">{duplicateWarning.name} {duplicateWarning.isLead ? '(Lead)' : ''}</div>
+                                    <Button
+                                        size="sm"
+                                        variant="secondary"
+                                        className="w-full bg-amber-100/50 hover:bg-amber-100 text-amber-900 border-amber-200"
+                                        onClick={handleUseDuplicate}
+                                    >
+                                        {duplicateWarning.isLead ? 'Convertir & Usar Lead' : 'Usar Cliente Existente'}
+                                    </Button>
+                                </div>
+                            )}
                         </div>
                     </div>
                     <DialogFooter>

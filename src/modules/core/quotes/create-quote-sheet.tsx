@@ -21,9 +21,13 @@ interface CreateQuoteSheetProps {
     onOpenChange?: (open: boolean) => void
     trigger?: React.ReactNode
     onSuccess?: () => void
+    leadId?: string // Pre-link to lead
+    leadName?: string
+    leadEmail?: string
+    leadPhone?: string
 }
 
-export function CreateQuoteSheet({ emitters = [], open: controlledOpen, onOpenChange: setControlledOpen, trigger, onSuccess }: CreateQuoteSheetProps) {
+export function CreateQuoteSheet({ emitters = [], open: controlledOpen, onOpenChange: setControlledOpen, trigger, onSuccess, leadId, leadName, leadEmail, leadPhone }: CreateQuoteSheetProps) {
     const [internalOpen, setInternalOpen] = useState(false)
     const isControlled = controlledOpen !== undefined
     const open = isControlled ? controlledOpen : internalOpen
@@ -65,10 +69,18 @@ export function CreateQuoteSheet({ emitters = [], open: controlledOpen, onOpenCh
                 "
             >
                 <SheetHeader className="hidden">
-                    <SheetTitle>Nueva Cotización</SheetTitle>
+                    <SheetTitle>{leadName ? `Cotización para ${leadName}` : 'Nueva Cotización'}</SheetTitle>
                     <SheetDescription>Formulario para crear una nueva cotización.</SheetDescription>
                 </SheetHeader>
-                <QuoteBuilder mode="sheet" onSuccess={handleSuccess} emitters={emitters} />
+                <QuoteBuilder
+                    mode="sheet"
+                    onSuccess={handleSuccess}
+                    emitters={emitters}
+                    prefillLeadId={leadId}
+                    prefillLeadName={leadName}
+                    prefillLeadEmail={leadEmail}
+                    prefillLeadPhone={leadPhone}
+                />
             </SheetContent>
         </Sheet>
     )

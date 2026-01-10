@@ -1,0 +1,24 @@
+--- STARTING SURGICAL AUDIT ---
+
+1. ORGANIZATIONS (5):
+   - [77b09a39-d50f-4b9a-81d4-e7b8b0d05a29] "Dannicel Comunicaciones" (Slug: dannicel-comunicaciones)
+   - [db9d1288-80ab-48df-b130-a0739881c6f2] "Pixy Agency" (Slug: pixy-agency)
+   - [36512b28-0238-4a37-9033-a6e58652d857] "My Agency" (Slug: agency-c3b2058f)
+   - [73214db7-eb17-41e0-96a8-1f8773207e6c] "Test nuevo reseller" (Slug: test-nuevo-reseller)
+   - [4bdbdb3a-2b80-41de-af31-681fe1357cea] "test hijo de reseller" (Slug: test-hijo-de-reseller)
+
+2. MEMBERSHIPS (7):
+   - User [c3b2058f-487c-442f-a9a0-c1c7d3fb0883] -> Org [4bdbdb3a-2b80-41de-af31-681fe1357cea] (Role: owner)
+   - User [c3b2058f-487c-442f-a9a0-c1c7d3fb0883] -> Org [77b09a39-d50f-4b9a-81d4-e7b8b0d05a29] (Role: owner)
+   - User [f59a54c9-069c-4bfe-ab3e-f3e69135fea9] -> Org [77b09a39-d50f-4b9a-81d4-e7b8b0d05a29] (Role: admin)
+   - User [c3b2058f-487c-442f-a9a0-c1c7d3fb0883] -> Org [73214db7-eb17-41e0-96a8-1f8773207e6c] (Role: owner)
+   - User [c3b2058f-487c-442f-a9a0-c1c7d3fb0883] -> Org [db9d1288-80ab-48df-b130-a0739881c6f2] (Role: owner)
+   - User [2ab9a170-f05a-4d11-a007-7803119222a7] -> Org [db9d1288-80ab-48df-b130-a0739881c6f2] (Role: member)
+   - User [c3b2058f-487c-442f-a9a0-c1c7d3fb0883] -> Org [36512b28-0238-4a37-9033-a6e58652d857] (Role: owner)
+
+3. LEADS DISTRIBUTION (Total: 30):
+   - Org [db9d1288-80ab-48df-b130-a0739881c6f2] (Pixy Agency): 26 leads
+   - Org [77b09a39-d50f-4b9a-81d4-e7b8b0d05a29] (Dannicel Comunicaciones): 2 leads
+   - Org [4bdbdb3a-2b80-41de-af31-681fe1357cea] (test hijo de reseller): 2 leads
+
+--- AUDIT COMPLETE ---

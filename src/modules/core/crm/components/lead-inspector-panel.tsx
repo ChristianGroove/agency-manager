@@ -26,7 +26,13 @@ import {
     ChevronRight,
     ExternalLink,
     Zap,
-    Loader2
+    Loader2,
+    CheckCircle2,
+    Clock,
+    Plus,
+    Calendar,
+    Trash2,
+    AlertCircle
 } from 'lucide-react'
 import { useLeadInspector } from './lead-inspector-context'
 import { getLeadWithRelations } from '../crm-advanced-actions'
@@ -39,6 +45,10 @@ import Link from 'next/link'
 import { toast } from 'sonner'
 import { getActiveWorkflows, triggerWorkflowForLead } from '@/modules/core/automation/actions'
 import { CreateOrganizationSheet } from '@/components/organizations/create-organization-sheet'
+import { createTask, completeTask, deleteTask, getTasksForLead, type Task } from '../task-actions'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 
 // Trigger Automation Button with Workflow Selector
 function TriggerAutomationButton({ leadId }: { leadId: string }) {
@@ -359,6 +369,186 @@ function ActivityTab({ lead }: { lead: LeadWithRelations }) {
     )
 }
 
+// Tasks Tab - Task management for lead
+function TasksTab({ lead, onUpdate }: { lead: LeadWithRelations, onUpdate?: () => void }) {
+    const [tasks, setTasks] = useState<Task[]>([])
+    const [loading, setLoading] = useState(true)
+    const [showCreate, setShowCreate] = useState(false)
+    const [newTask, setNewTask] = useState({ title: '', due_date: '' })
+    const [submitting, setSubmitting] = useState(false)
+
+    useEffect(() => {
+        loadTasks()
+    }, [lead.id])
+
+    async function loadTasks() {
+        setLoading(true)
+        const result = await getTasksForLead(lead.id)
+        if (result.success) {
+            setTasks(result.tasks || [])
+        }
+        setLoading(false)
+    }
+
+    async function handleCreate() {
+        if (!newTask.title || !newTask.due_date) {
+            toast.error('Título y fecha requeridos')
+            return
+        }
+        setSubmitting(true)
+        const result = await createTask({
+            lead_id: lead.id,
+            title: newTask.title,
+            due_date: new Date(newTask.due_date).toISOString()
+        })
+        if (result.success) {
+            toast.success('Tarea creada')
+            setNewTask({ title: '', due_date: '' })
+            setShowCreate(false)
+            loadTasks()
+            onUpdate?.()
+        } else {
+            toast.error(result.error)
+        }
+        setSubmitting(false)
+    }
+
+    async function handleComplete(taskId: string) {
+        const result = await completeTask(taskId)
+        if (result.success) {
+            toast.success('Tarea completada')
+            loadTasks()
+            onUpdate?.()
+        } else {
+            toast.error(result.error)
+        }
+    }
+
+    async function handleDelete(taskId: string) {
+        if (!confirm('¿Eliminar esta tarea?')) return
+        const result = await deleteTask(taskId)
+        if (result.success) {
+            toast.success('Tarea eliminada')
+            loadTasks()
+            onUpdate?.()
+        } else {
+            toast.error(result.error)
+        }
+    }
+
+    const priorityColors: Record<string, string> = {
+        low: 'text-gray-500',
+        medium: 'text-blue-500',
+        high: 'text-orange-500',
+        urgent: 'text-red-500'
+    }
+
+    if (loading) {
+        return (
+            <div className="space-y-3">
+                {[1, 2].map((i) => (
+                    <Skeleton key={i} className="h-16 w-full rounded-lg" />
+                ))}
+            </div>
+        )
+    }
+
+    return (
+        <div className="space-y-4">
+            {/* Create Task Button */}
+            {!showCreate ? (
+                <Button variant="outline" className="w-full" onClick={() => setShowCreate(true)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Nueva Tarea
+                </Button>
+            ) : (
+                <div className="p-4 bg-muted/50 rounded-lg space-y-3">
+                    <div>
+                        <Label>Título</Label>
+                        <Input
+                            placeholder="Ej: Llamar para seguimiento"
+                            value={newTask.title}
+                            onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
+                        />
+                    </div>
+                    <div>
+                        <Label>Fecha límite</Label>
+                        <Input
+                            type="datetime-local"
+                            value={newTask.due_date}
+                            onChange={(e) => setNewTask({ ...newTask, due_date: e.target.value })}
+                        />
+                    </div>
+                    <div className="flex gap-2">
+                        <Button size="sm" onClick={handleCreate} disabled={submitting}>
+                            {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Crear'}
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => setShowCreate(false)}>Cancelar</Button>
+                    </div>
+                </div>
+            )}
+
+            {/* Task List */}
+            <ScrollArea className="h-[250px]">
+                <div className="space-y-2 pr-4">
+                    {tasks.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-8 text-center">
+                            <CheckCircle2 className="h-10 w-10 text-muted-foreground/50 mb-3" />
+                            <p className="text-sm text-muted-foreground">Sin tareas pendientes</p>
+                            <p className="text-xs text-muted-foreground mt-1">Crea una tarea para dar seguimiento</p>
+                        </div>
+                    ) : (
+                        tasks.map((task) => {
+                            const isOverdue = new Date(task.due_date) < new Date() && task.status !== 'completed'
+                            return (
+                                <div
+                                    key={task.id}
+                                    className={cn(
+                                        "flex items-center gap-3 p-3 rounded-lg border transition-colors",
+                                        task.status === 'completed' ? "bg-green-50 border-green-200" :
+                                            isOverdue ? "bg-red-50 border-red-200" : "bg-white border-gray-200"
+                                    )}
+                                >
+                                    <button
+                                        onClick={() => task.status !== 'completed' && handleComplete(task.id)}
+                                        className={cn(
+                                            "p-1 rounded-full transition-colors",
+                                            task.status === 'completed' ? "bg-green-500 text-white" : "border-2 border-gray-300 hover:border-green-500"
+                                        )}
+                                    >
+                                        <CheckCircle2 className="h-4 w-4" />
+                                    </button>
+                                    <div className="flex-1 min-w-0">
+                                        <p className={cn(
+                                            "text-sm font-medium truncate",
+                                            task.status === 'completed' && "line-through text-muted-foreground"
+                                        )}>
+                                            {task.title}
+                                        </p>
+                                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                            <Clock className="h-3 w-3" />
+                                            <span className={isOverdue ? "text-red-600 font-medium" : ""}>
+                                                {formatDistanceToNow(new Date(task.due_date), { addSuffix: true, locale: es })}
+                                            </span>
+                                            {isOverdue && <AlertCircle className="h-3 w-3 text-red-500" />}
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => handleDelete(task.id)}
+                                        className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                                    >
+                                        <Trash2 className="h-4 w-4" />
+                                    </button>
+                                </div>
+                            )
+                        })
+                    )}
+                </div>
+            </ScrollArea>
+        </div>
+    )
+}
+
 // Main Panel Component
 export function LeadInspectorPanel() {
     const { isOpen, leadId, defaultTab, closeInspector } = useLeadInspector()
@@ -436,6 +626,10 @@ export function LeadInspectorPanel() {
                                     <User className="h-4 w-4" />
                                     Info
                                 </TabsTrigger>
+                                <TabsTrigger value="tasks" className="flex-1 gap-1.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                                    <CheckCircle2 className="h-4 w-4" />
+                                    Tareas
+                                </TabsTrigger>
                                 <TabsTrigger value="chat" className="flex-1 gap-1.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
                                     <MessageSquare className="h-4 w-4" />
                                     Chat
@@ -449,6 +643,9 @@ export function LeadInspectorPanel() {
                             <ScrollArea className="flex-1 px-6 py-4">
                                 <TabsContent value="info" className="mt-0">
                                     <InfoTab lead={lead} />
+                                </TabsContent>
+                                <TabsContent value="tasks" className="mt-0">
+                                    <TasksTab lead={lead} onUpdate={loadLead} />
                                 </TabsContent>
                                 <TabsContent value="chat" className="mt-0">
                                     <ChatTab lead={lead} />

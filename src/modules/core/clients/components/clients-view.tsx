@@ -222,7 +222,7 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
-                        <SplitText>Clientes</SplitText>
+                        <SplitText>Contactos</SplitText>
                     </h2>
                 </div>
                 <div className="flex items-center gap-3 w-full md:w-auto">
@@ -244,7 +244,7 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
                     <SearchFilterBar
                         searchTerm={searchTerm}
                         onSearchChange={setSearchTerm}
-                        searchPlaceholder="Buscar cliente rapidísimo..."
+                        searchPlaceholder="Buscar contacto rapidísimo..."
                         filters={filterOptions}
                         activeFilter={activeFilter}
                         onFilterChange={setActiveFilter}
@@ -267,7 +267,7 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
                         ))
                     ) : filteredClients.length === 0 ? (
                         <div className="col-span-full text-center py-12 text-muted-foreground">
-                            No se encontraron clientes.
+                            No se encontraron contactos.
                         </div>
                     ) : (
                         filteredClients.map((client: any) => {
@@ -514,7 +514,7 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
                     <Table>
                         <TableHeader className="bg-gray-50/50 dark:bg-white/5">
                             <TableRow className="border-gray-200 dark:border-white/10">
-                                <TableHead className="w-[300px]">Cliente</TableHead>
+                                <TableHead className="w-[300px]">Contacto</TableHead>
                                 <TableHead>Estado</TableHead>
                                 <TableHead>Servicios</TableHead>
                                 <TableHead>Próximo Cobro</TableHead>
@@ -531,7 +531,7 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
                             ) : filteredClients.length === 0 ? (
                                 <TableRow>
                                     <TableCell colSpan={5} className="h-24 text-center text-gray-500">
-                                        No se encontraron clientes.
+                                        No se encontraron contactos.
                                     </TableCell>
                                 </TableRow>
                             ) : (

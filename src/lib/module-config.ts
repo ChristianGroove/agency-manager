@@ -24,7 +24,8 @@ import {
     Kanban,
     Inbox,
     UserSquare,
-    BrainCircuit
+    BrainCircuit,
+    BarChart3
 } from 'lucide-react'
 
 export type ModuleCategory = 'core' | 'crm' | 'operations' | 'finance' | 'config';
@@ -56,8 +57,16 @@ export const MODULE_ROUTES: ModuleRoute[] = [
 
     // --- CRM ECOSYSTEM (Individual Routes) ---
     {
+        key: 'crm_inbox',
+        label: 'Inbox',
+        href: '/crm/inbox',
+        icon: Inbox,
+        isCore: true,
+        category: 'crm'
+    },
+    {
         key: 'crm_clients',
-        label: 'Clientes',
+        label: 'Contactos',
         href: '/crm/contacts',
         icon: UserSquare,
         isCore: true,
@@ -72,17 +81,9 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         category: 'crm'
     },
     {
-        key: 'crm_inbox',
-        label: 'Inbox',
-        href: '/crm/inbox',
-        icon: Inbox,
-        isCore: true,
-        category: 'crm'
-    },
-    {
         key: 'crm_broadcasts',
-        label: 'Broadcasts',
-        href: '/crm/broadcasts',
+        label: 'Marketing',
+        href: '/crm/marketing',
         icon: Megaphone,
         isCore: true,
         category: 'crm'
@@ -92,6 +93,14 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         label: 'Automatizaciones',
         href: '/crm/automations',
         icon: Workflow,
+        isCore: true,
+        category: 'crm'
+    },
+    {
+        key: 'crm_reports',
+        label: 'Reportes',
+        href: '/crm/reports',
+        icon: BarChart3,
         isCore: true,
         category: 'crm'
     },

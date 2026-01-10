@@ -10,7 +10,7 @@ import { Quote, Client, Lead } from "@/types"
 import { convertLeadToClient } from "@/modules/core/crm/leads-actions"
 
 import { QuoteTemplate } from "@/modules/core/quotes/quote-template"
-import { QuoteWhatsAppModal } from "@/modules/core/quotes/quote-whatsapp-modal"
+import { QuoteShareSheet } from "@/modules/core/quotes/quote-share-sheet"
 import { ShareButton } from "@/components/animate-ui/components/community/share-button"
 
 export default function QuoteDetailPage() {
@@ -305,7 +305,7 @@ export default function QuoteDetailPage() {
                 />
             </div>
 
-            <QuoteWhatsAppModal
+            <QuoteShareSheet
                 quote={quote}
                 open={isWhatsAppOpen}
                 onOpenChange={setIsWhatsAppOpen}

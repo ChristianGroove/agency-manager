@@ -1,13 +1,17 @@
 "use client"
 
 import { useEffect, useState, useCallback, useMemo } from "react"
-import { Lead } from "@/types"
+import { Lead, Emitter } from "@/types"
 import { convertLeadToClient, getLeads, updateLeadStatus } from "../leads-actions"
 import { getPipelineStages, PipelineStage } from "../pipeline-actions"
+import { getEmitters } from "@/modules/core/settings/emitters-actions"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Users, XCircle, Settings, Trophy, BarChart3, Upload, TrendingUp, CheckCircle2, ZoomIn, ZoomOut, Mail } from "lucide-react"
+import { TagsManagerSheet } from "./tags/tags-manager-sheet"
+import { Plus, Users, XCircle, Settings, Trophy, BarChart3, Upload, TrendingUp, CheckCircle2, ZoomIn, ZoomOut, Mail, Tag, Wrench, Database } from "lucide-react"
+
+// ... imports ...
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { CreateLeadSheet } from "./create-lead-sheet"
@@ -16,15 +20,19 @@ import { LeadFilters } from "./lead-filters"
 import { useLeadFilters } from "./hooks/use-lead-filters"
 import { PipelineAnalyticsSheet } from "./pipeline-analytics-sheet"
 import { PipelineSettingsSheet } from "./pipeline-settings-sheet"
+import { LeadManagementSheet } from "./lead-management-sheet"
 import { useLeadInspector } from "./lead-inspector-context"
 import { AssignLeadSheet } from "./assign-lead-sheet"
 import { ImportLeadsSheet } from "./import-leads-sheet"
+import { getLeadsCount } from "../lead-management-actions"
 import { useRouter } from "next/navigation"
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, PointerSensor, useSensor, useSensors, closestCorners } from "@dnd-kit/core"
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable"
 import { LeadCard } from "./lead-card"
 import { DroppableStage } from "./droppable-stage"
 import { SplitText } from "@/components/ui/split-text"
+import { CreateQuoteSheet } from "@/modules/core/quotes/create-quote-sheet"
+import { QuoteShareSheet } from "@/modules/core/quotes/quote-share-sheet"
 
 // Icon mapping
 const ICON_MAP: Record<string, any> = {
@@ -38,6 +46,7 @@ const ICON_MAP: Record<string, any> = {
 }
 
 export function CRMDashboard() {
+    const [tagsSheetOpen, setTagsSheetOpen] = useState(false)
     const [leads, setLeads] = useState<Lead[]>([])
     const [stages, setStages] = useState<PipelineStage[]>([])
     const [isLoading, setIsLoading] = useState(true)
@@ -53,6 +62,19 @@ export function CRMDashboard() {
     const [importSheetOpen, setImportSheetOpen] = useState(false)
     const [settingsSheetOpen, setSettingsSheetOpen] = useState(false)
     const [columnZoom, setColumnZoom] = useState(100) // 50-150 percent
+    const [emitters, setEmitters] = useState<Emitter[]>([])
+    const [manageSheetOpen, setManageSheetOpen] = useState(false)
+    const [totalLeadsCount, setTotalLeadsCount] = useState(0)
+
+    // Quote creation from lead
+    const [quoteSheetOpen, setQuoteSheetOpen] = useState(false)
+    const [quoteLeadId, setQuoteLeadId] = useState<string | undefined>()
+    const [quoteLeadName, setQuoteLeadName] = useState<string | undefined>()
+    const [quoteLeadEmail, setQuoteLeadEmail] = useState<string | undefined>()
+    const [quoteLeadPhone, setQuoteLeadPhone] = useState<string | undefined>()
+
+    // Quote Sharing
+    const [shareQuoteId, setShareQuoteId] = useState<string | null>(null)
 
     const router = useRouter()
     const { openInspector } = useLeadInspector()
@@ -68,17 +90,32 @@ export function CRMDashboard() {
     const loadData = useCallback(async () => {
         // Don't set loading to true to avoid full re-render on updates
         try {
-            const [leadsData, stagesData] = await Promise.all([
+            const [leadsData, stagesData, emittersData, countData] = await Promise.all([
                 getLeads(),
-                getPipelineStages()
+                getPipelineStages(),
+                getEmitters(),
+                getLeadsCount()
             ])
             setLeads(leadsData)
             setStages(stagesData)
+            setEmitters(emittersData || [])
+            setTotalLeadsCount(countData)
         } catch (error) {
             console.error(error)
             toast.error("Error cargando CRM")
         } finally {
             setIsLoading(false)
+        }
+    }, [])
+
+    const handleShareQuote = useCallback((lead: Lead) => {
+        // Find the most recent active quote
+        const latestQuote = lead.quotes?.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
+
+        if (latestQuote) {
+            setShareQuoteId(latestQuote.id)
+        } else {
+            toast.error("Este lead no tiene una cotización vinculada")
         }
     }, [])
 
@@ -145,6 +182,15 @@ export function CRMDashboard() {
             toast.error('Este lead no tiene teléfono ni email')
         }
     }, [router])
+
+    const handleQuoteLead = useCallback((lead: Lead) => {
+        // Open quote builder sheet pre-filled with lead info
+        setQuoteLeadId(lead.id)
+        setQuoteLeadName(lead.name)
+        setQuoteLeadEmail(lead.email)
+        setQuoteLeadPhone(lead.phone)
+        setQuoteSheetOpen(true)
+    }, [])
 
     const handleDragStart = useCallback((event: DragStartEvent) => {
         setActiveId(event.active.id as string)
@@ -274,8 +320,12 @@ export function CRMDashboard() {
                             {/* Inline Mini Stats */}
                             <div className="hidden sm:flex items-center gap-2">
                                 <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-white/5 border border-transparent dark:border-white/10">
+                                    <Database className="h-3.5 w-3.5 text-blue-500 dark:text-blue-400" />
+                                    <span className="font-semibold text-sm text-slate-700 dark:text-slate-200">{totalLeadsCount} Total</span>
+                                </div>
+                                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-white/5 border border-transparent dark:border-white/10">
                                     <Users className="h-3.5 w-3.5 text-slate-500 dark:text-slate-400" />
-                                    <span className="font-semibold text-sm text-slate-700 dark:text-slate-200">{stats.total}</span>
+                                    <span className="font-semibold text-sm text-slate-700 dark:text-slate-200">{stats.total} en Vista</span>
                                 </div>
                                 <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-100 dark:bg-green-500/10 border border-transparent dark:border-green-500/20">
                                     <Trophy className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
@@ -302,8 +352,14 @@ export function CRMDashboard() {
                             <Button variant="outline" size="icon" onClick={() => setImportSheetOpen(true)} title="Importar Leads" className="h-9 w-9">
                                 <Upload className="h-4 w-4" />
                             </Button>
+                            <Button variant="outline" size="icon" onClick={() => setTagsSheetOpen(true)} title="Gestionar Etiquetas" className="h-9 w-9">
+                                <Tag className="h-4 w-4" />
+                            </Button>
                             <Button variant="outline" size="icon" onClick={() => setSettingsSheetOpen(true)} title="Configurar Pipeline" className="h-9 w-9">
                                 <Settings className="h-4 w-4" />
+                            </Button>
+                            <Button variant="outline" size="icon" onClick={() => setManageSheetOpen(true)} title="Gestión de Leads" className="h-9 w-9 text-slate-600 dark:text-slate-300">
+                                <Wrench className="h-4 w-4" />
                             </Button>
                             <Button onClick={() => setCreateSheetOpen(true)} size="sm" className="h-9">
                                 <Plus className="mr-1.5 h-4 w-4" />
@@ -383,6 +439,8 @@ export function CRMDashboard() {
                                                             onView={handleViewLead}
                                                             onAssign={handleAssignLead}
                                                             onMessage={handleMessageLead}
+                                                            onQuote={handleQuoteLead}
+                                                            onShareQuote={handleShareQuote}
                                                             isDragging={lead.id === activeId}
                                                         />
                                                     ))
@@ -471,6 +529,50 @@ export function CRMDashboard() {
                     open={settingsSheetOpen}
                     onOpenChange={setSettingsSheetOpen}
                     onStagesChange={loadData}
+                />
+
+                {/* Tags Manager Sheet */}
+                <TagsManagerSheet
+                    open={tagsSheetOpen}
+                    onOpenChange={setTagsSheetOpen}
+                />
+
+                {/* Quote Creation Sheet - from pipeline lead */}
+                <CreateQuoteSheet
+                    open={quoteSheetOpen}
+                    onOpenChange={(open) => {
+                        setQuoteSheetOpen(open)
+                        if (!open) {
+                            setQuoteLeadId(undefined)
+                            setQuoteLeadName(undefined)
+                            setQuoteLeadEmail(undefined)
+                            setQuoteLeadPhone(undefined)
+                        }
+                    }}
+                    emitters={emitters}
+                    leadId={quoteLeadId}
+                    leadName={quoteLeadName}
+                    leadEmail={quoteLeadEmail}
+                    leadPhone={quoteLeadPhone}
+                    onSuccess={() => {
+                        loadData()
+                        setQuoteSheetOpen(false)
+                        toast.success('Cotización creada y vinculada al lead')
+                    }}
+                />
+
+                <QuoteShareSheet
+                    quoteId={shareQuoteId || undefined}
+                    open={!!shareQuoteId}
+                    onOpenChange={(open) => !open && setShareQuoteId(null)}
+                />
+
+                <LeadManagementSheet
+                    open={manageSheetOpen}
+                    onOpenChange={setManageSheetOpen}
+                    leads={leads}
+                    stages={stages}
+                    onSuccess={loadData}
                 />
             </div>
         </DndContext >
