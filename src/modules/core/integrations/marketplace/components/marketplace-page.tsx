@@ -1,0 +1,191 @@
+"use client"
+
+import { IntegrationProvider, MARKETPLACE_CATEGORIES, InstalledIntegration } from "../types"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useState, useMemo } from "react"
+import { Check, Crown, ExternalLink, Search, Sparkles } from "lucide-react"
+import { IntegrationSetupSheet } from "./integration-setup-sheet"
+
+interface MarketplacePageProps {
+    providers: IntegrationProvider[]
+    installedIntegrations: InstalledIntegration[]
+}
+
+const PROVIDER_ICONS: Record<string, string> = {
+    'meta_whatsapp': '📱',
+    'evolution_api': '💬',
+    'meta_instagram': '📸',
+    'telegram': '✈️',
+    'twilio_sms': '📨',
+    'stripe': '💳',
+    'google_calendar': '📅',
+    'openai': '🤖',
+    'anthropic': '🧠'
+}
+
+export function MarketplacePage({ providers, installedIntegrations }: MarketplacePageProps) {
+    const [search, setSearch] = useState("")
+    const [category, setCategory] = useState("all")
+    const [selectedProvider, setSelectedProvider] = useState<IntegrationProvider | null>(null)
+    const [isSheetOpen, setIsSheetOpen] = useState(false)
+
+    // Derived state for quick lookup
+    const installedKeys = useMemo(() => new Set(installedIntegrations.map(i => i.provider_key)), [installedIntegrations])
+
+    const filteredProviders = useMemo(() => {
+        return providers.filter(p => {
+            const matchesSearch = !search ||
+                p.name.toLowerCase().includes(search.toLowerCase()) ||
+                p.description?.toLowerCase().includes(search.toLowerCase())
+            const matchesCategory = category === "all" || p.category === category
+            return matchesSearch && matchesCategory
+        })
+    }, [providers, search, category])
+
+    const getProviderIcon = (key: string, category: string) => {
+        if (PROVIDER_ICONS[key]) return PROVIDER_ICONS[key]
+        const found = MARKETPLACE_CATEGORIES.find(c => c.key === category)
+        return found?.icon || '🔌'
+    }
+
+    const handleConfigure = (provider: IntegrationProvider) => {
+        setSelectedProvider(provider)
+        setIsSheetOpen(true)
+    }
+
+    const getExistingConnection = (providerKey: string) => {
+        return installedIntegrations.find(i => i.provider_key === providerKey)
+    }
+
+    const installedCount = installedIntegrations.length
+    const totalCount = providers.length
+
+    return (
+        <div className="space-y-6">
+            {/* Header */}
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                    <h1 className="text-2xl font-bold flex items-center gap-2">
+                        <Sparkles className="h-6 w-6 text-amber-500" />
+                        Marketplace de Integraciones
+                    </h1>
+                    <p className="text-muted-foreground mt-1">
+                        Conecta apps y servicios externos para potenciar tu CRM
+                    </p>
+                </div>
+                <div className="flex items-center gap-4">
+                    <div className="text-right">
+                        <p className="text-2xl font-bold">{installedCount}/{totalCount}</p>
+                        <p className="text-xs text-muted-foreground">Instaladas</p>
+                    </div>
+                </div>
+            </div>
+
+            {/* Search & Filters */}
+            <div className="flex flex-col gap-4 md:flex-row md:items-center">
+                <div className="relative flex-1 max-w-sm">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        placeholder="Buscar integraciones..."
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        className="pl-9"
+                    />
+                </div>
+                <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
+                    <Tabs value={category} onValueChange={setCategory}>
+                        <TabsList className="inline-flex h-auto p-1 overflow-x-auto w-full md:w-auto justify-start">
+                            <TabsTrigger value="all">Todas</TabsTrigger>
+                            {MARKETPLACE_CATEGORIES.slice(0, 4).map(cat => (
+                                <TabsTrigger key={cat.key} value={cat.key} className="whitespace-nowrap gap-2">
+                                    <span>{cat.icon}</span>
+                                    <span>{cat.name}</span>
+                                </TabsTrigger>
+                            ))}
+                        </TabsList>
+                    </Tabs>
+                </div>
+            </div>
+
+            {/* Provider Grid */}
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {filteredProviders.map(provider => {
+                    const isInstalled = installedKeys.has(provider.key)
+
+                    return (
+                        <Card key={provider.id} className={`relative transition-all hover:shadow-md ${isInstalled ? 'ring-2 ring-green-500/20' : ''}`}>
+                            {provider.is_premium && (
+                                <Badge className="absolute top-3 right-3 bg-amber-500 text-white">
+                                    <Crown className="h-3 w-3 mr-1" />
+                                    Premium
+                                </Badge>
+                            )}
+
+                            <CardHeader className="pb-2">
+                                <div className="flex items-center gap-3">
+                                    <div className="h-12 w-12 rounded-lg bg-gradient-to-br from-zinc-100 to-zinc-200 dark:from-zinc-800 dark:to-zinc-900 flex items-center justify-center text-2xl">
+                                        {getProviderIcon(provider.key, provider.category)}
+                                    </div>
+                                    <div>
+                                        <CardTitle className="text-base">{provider.name}</CardTitle>
+                                        <Badge variant="secondary" className="text-[10px] mt-1">
+                                            {provider.category}
+                                        </Badge>
+                                    </div>
+                                </div>
+                            </CardHeader>
+
+                            <CardContent>
+                                <CardDescription className="line-clamp-2 min-h-[40px]">
+                                    {provider.description || 'Sin descripción'}
+                                </CardDescription>
+                            </CardContent>
+
+                            <CardFooter className="pt-0">
+                                {isInstalled ? (
+                                    <Button
+                                        variant="secondary"
+                                        className="w-full gap-2 text-green-700 bg-green-50 dark:bg-green-900/20 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/30"
+                                        onClick={() => handleConfigure(provider)}
+                                    >
+                                        <Check className="h-4 w-4" />
+                                        Configurar
+                                    </Button>
+                                ) : (
+                                    <Button
+                                        variant="default"
+                                        className="w-full gap-2"
+                                        onClick={() => handleConfigure(provider)}
+                                    >
+                                        <ExternalLink className="h-4 w-4" />
+                                        Conectar
+                                    </Button>
+                                )}
+                            </CardFooter>
+                        </Card>
+                    )
+                })}
+            </div>
+
+            {filteredProviders.length === 0 && (
+                <div className="text-center py-12">
+                    <p className="text-muted-foreground">
+                        No se encontraron integraciones. Intenta con otro término de búsqueda.
+                    </p>
+                </div>
+            )}
+
+            {/* Configuration Sheet */}
+            <IntegrationSetupSheet
+                provider={selectedProvider}
+                existingConnection={selectedProvider ? getExistingConnection(selectedProvider.key) : undefined}
+                isOpen={isSheetOpen}
+                onOpenChange={setIsSheetOpen}
+            />
+        </div>
+    )
+}

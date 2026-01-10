@@ -38,8 +38,21 @@ export function ChannelDetail({ channel, pipelineStages, initialRule, agents }: 
     const [welcomeMessage, setWelcomeMessage] = useState(channel.welcome_message || "")
 
     // Working Hours
-    const defaultHours = { start: "09:00", end: "17:00", days: [1, 2, 3, 4, 5] }
-    const [workingHours, setWorkingHours] = useState<any>(channel.working_hours || defaultHours)
+    const defaultHours = { start: "09:00", end: "17:00", days: [1, 2, 3, 4, 5], timezone: 'America/Bogota' }
+    const [workingHours, setWorkingHours] = useState<any>({ ...defaultHours, ...(channel.working_hours || {}) })
+
+    // Common timezones for Latin America
+    const timezones = [
+        { value: 'America/Bogota', label: 'Colombia (GMT-5)' },
+        { value: 'America/Mexico_City', label: 'México Central (GMT-6)' },
+        { value: 'America/Lima', label: 'Perú (GMT-5)' },
+        { value: 'America/Santiago', label: 'Chile (GMT-3/4)' },
+        { value: 'America/Buenos_Aires', label: 'Argentina (GMT-3)' },
+        { value: 'America/Sao_Paulo', label: 'Brasil (GMT-3)' },
+        { value: 'America/New_York', label: 'US Eastern (GMT-5/4)' },
+        { value: 'America/Los_Angeles', label: 'US Pacific (GMT-8/7)' },
+        { value: 'Europe/Madrid', label: 'España (GMT+1/2)' },
+    ]
 
     // Routing Rule
     const [assignmentRule, setAssignmentRule] = useState<any>(initialRule)
@@ -254,6 +267,23 @@ export function ChannelDetail({ channel, pipelineStages, initialRule, agents }: 
                                 <div className="flex items-end justify-between">
                                     <Label className="text-base font-semibold">Working Hours Configuration</Label>
                                 </div>
+                                <div className="space-y-2">
+                                    <Label>Timezone</Label>
+                                    <Select
+                                        value={workingHours.timezone || 'America/Bogota'}
+                                        onValueChange={tz => setWorkingHours({ ...workingHours, timezone: tz })}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select timezone" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {timezones.map(tz => (
+                                                <SelectItem key={tz.value} value={tz.value}>{tz.label}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <p className="text-xs text-muted-foreground">Working hours will be calculated in this timezone.</p>
+                                </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <Label>Start Time</Label>
@@ -269,7 +299,7 @@ export function ChannelDetail({ channel, pipelineStages, initialRule, agents }: 
                                     <div className="flex gap-2 flex-wrap">
                                         {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, idx) => {
                                             const dayNum = idx + 1
-                                            const isActive = workingHours.days.includes(dayNum)
+                                            const isActive = workingHours.days?.includes(dayNum) || false
                                             return (
                                                 <div
                                                     key={day}

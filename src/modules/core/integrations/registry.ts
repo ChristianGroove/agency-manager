@@ -11,8 +11,13 @@ class IntegrationRegistry {
         this.register(new OpenAIAdapter())
         this.register(new MetaAdapter()) // Handles 'meta_whatsapp'
         this.register(new MockAdapter('meta_instagram'))
+        this.register(new MockAdapter('meta_ads'))
         this.register(new MockAdapter('stripe'))
         this.register(new MockAdapter('google_mail'))
+        this.register(new MockAdapter('telegram'))
+        this.register(new MockAdapter('twilio_sms'))
+        this.register(new MockAdapter('google_calendar'))
+        this.register(new MockAdapter('anthropic'))
         this.register(new EvolutionAdapter())
     }
 

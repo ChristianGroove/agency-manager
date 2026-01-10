@@ -114,7 +114,14 @@ export function ConversationListItem({ conv, isSelected, onSelect, fetchConversa
 
                     <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
                         {((conv.channel as any) === 'whatsapp' || (conv.channel as any) === 'evolution') && (
-                            <MessageSquare className="h-3 w-3" />
+                            <>
+                                <MessageSquare className="h-3 w-3" />
+                                {conv.integration_connections?.connection_name && (
+                                    <span className="text-[10px] px-1.5 py-0.5 bg-zinc-100 dark:bg-zinc-800 rounded text-zinc-600 dark:text-zinc-400 font-medium truncate max-w-[80px]">
+                                        {conv.integration_connections.connection_name}
+                                    </span>
+                                )}
+                            </>
                         )}
 
                         <span>

@@ -114,7 +114,8 @@ CRITICAL RULES:
 2. Do NOT add conversational updates.
 3. Keep the original meaning and intent.
 4. Output ONLY the rewritten text.
-5. Do NOT wrap the output in quotes.`,
+5. Do NOT wrap the output in quotes.
+6. ALWAYS output the result in SPANISH (Español). If input is English/Other, translate and refine to Spanish.`,
     userPrompt: (input: any) => `Draft to Rewrite: "${input.content}"`
   },
 

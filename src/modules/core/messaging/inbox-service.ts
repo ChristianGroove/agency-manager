@@ -112,7 +112,7 @@ export class InboxService {
             const { data: connections } = await supabase
                 .from('integration_connections')
                 .select('id, organization_id, credentials, default_pipeline_stage_id, working_hours, auto_reply_when_offline')
-                .eq('provider_key', 'meta_whatsapp')
+                .in('provider_key', ['meta_whatsapp', 'whatsapp']) // Support both legacy and new
                 .eq('status', 'active');
 
             if (connections) {
@@ -182,7 +182,8 @@ export class InboxService {
                 organization_id: orgId,
                 phone: msg.from,
                 name: msg.senderName || msg.from,
-                status: 'new'
+                status: 'new',
+                source_connection_id: connectionId // Attribution: Track which line captured this lead
             }).select().single();
 
             if (leadError) {
@@ -194,10 +195,7 @@ export class InboxService {
             fileLogger.log('[InboxService] Created new lead:', lead.id);
         }
 
-        // Handle connection automation (pipeline, working hours, auto-reply)
-        if (matchedConnection) {
-            await this.handleConnectionAutomation(supabase, matchedConnection, lead, existingLead, msg.from, orgId);
-        }
+        // Connection automation is called AFTER conversation is found/created for rate limiting to work
 
         // 3. Find with Connection Filter
         let convQuery = supabase
@@ -269,6 +267,11 @@ export class InboxService {
             })
             if (msgError) console.error('[InboxService] Failed to insert message into existing conv:', msgError)
 
+            // Handle automation (auto-reply with rate limiting)
+            if (matchedConnection) {
+                await this.handleConnectionAutomation(supabase, matchedConnection, lead, existingLead, msg.from, orgId, existingConv.id);
+            }
+
             return { data: existingConv, error: null, conversationId: existingConv.id, connectionId: existingConv.connection_id || connectionId, success: true }
         }
 
@@ -316,6 +319,11 @@ export class InboxService {
 
         if (msgError) console.error('[InboxService] Failed to insert message:', msgError)
 
+        // Handle automation for NEW conversations (welcome message, pipeline assignment)
+        if (matchedConnection) {
+            await this.handleConnectionAutomation(supabase, matchedConnection, lead, existingLead, msg.from, orgId, newConv.id);
+        }
+
         console.log('[InboxService] Created new conversation:', newConv.id)
         return { data: newConv, error: null, conversationId: newConv.id, connectionId: connectionId, success: true } // Ensure conversationId and connectionId returned
     }
@@ -349,55 +357,124 @@ export class InboxService {
     }
 
     /**
-     * Handle automation logic (Pipeline, Working Hours, Auto-Reply)
+     * Handle automation logic (Pipeline, Working Hours, Auto-Reply, Welcome Message)
      */
-    private async handleConnectionAutomation(supabase: SupabaseClient, connection: any, lead: any, existingLead: any, recipientPhone: string, orgId: string) {
+    private async handleConnectionAutomation(
+        supabase: SupabaseClient,
+        connection: any,
+        lead: any,
+        existingLead: any,
+        recipientPhone: string,
+        orgId: string,
+        conversationId?: string // For rate limiting auto-replies
+    ) {
+        const { outboundService } = await import("./outbound-service")
+
         // 1. Pipeline Auto-Assignment (New Leads Only)
         if (!existingLead && connection.default_pipeline_stage_id) {
             await this.assignPipelineStage(supabase, lead.id, connection.default_pipeline_stage_id);
         }
 
-        // 2. Working Hours & Auto-Reply
-        // Only reply if we haven't replied recently? For simplicity, we reply to every message if offline.
-        // Ideally we should check if we already sent an auto-reply in the last X hours.
-        // Skipping rate limit for now as per "complete everything" speed reqs, but worth noting.
+        // 2. Welcome Message (New Leads Only)
+        if (!existingLead && connection.welcome_message) {
+            try {
+                console.log(`[InboxService] Sending welcome message to new lead ${lead.id}`)
+                await outboundService.sendMessage(
+                    connection.id,
+                    recipientPhone,
+                    connection.welcome_message,
+                    orgId
+                )
+            } catch (error) {
+                console.error("[InboxService] Failed to send welcome message:", error)
+            }
+        }
 
+        // 3. Working Hours & Auto-Reply (Offline Message) with RATE LIMITING
         if (connection.working_hours && connection.auto_reply_when_offline) {
-            const isOnline = this.isWithinWorkingHours(connection.working_hours)
+            const timezone = connection.working_hours.timezone || 'America/Bogota'
+            const isOnline = this.isWithinWorkingHours(connection.working_hours, timezone)
 
             if (!isOnline) {
-                console.log(`[InboxService] Connection ${connection.id} is OFFLINE. Sending auto-reply.`)
-                try {
-                    // Lazy load to avoid circular dependency issues if any
-                    const { outboundService } = await import("./outbound-service")
-                    await outboundService.sendMessage(
-                        connection.id,
-                        recipientPhone,
-                        connection.auto_reply_when_offline,
-                        orgId
-                    )
-                } catch (error) {
-                    console.error("[InboxService] Failed to send auto-reply:", error)
+                // Rate limit check: Only send auto-reply once per hour per conversation
+                let shouldSend = true
+
+                if (conversationId) {
+                    const { data: conv } = await supabase
+                        .from('conversations')
+                        .select('last_auto_reply_at')
+                        .eq('id', conversationId)
+                        .single()
+
+                    if (conv?.last_auto_reply_at) {
+                        const lastReply = new Date(conv.last_auto_reply_at)
+                        const hourAgo = new Date(Date.now() - 60 * 60 * 1000)
+                        if (lastReply > hourAgo) {
+                            shouldSend = false
+                            console.log(`[InboxService] Rate limited: Already sent auto-reply within the hour`)
+                        }
+                    }
+                }
+
+                if (shouldSend) {
+                    console.log(`[InboxService] Connection ${connection.id} is OFFLINE. Sending auto-reply.`)
+                    try {
+                        await outboundService.sendMessage(
+                            connection.id,
+                            recipientPhone,
+                            connection.auto_reply_when_offline,
+                            orgId
+                        )
+
+                        // Update last_auto_reply_at
+                        if (conversationId) {
+                            await supabase
+                                .from('conversations')
+                                .update({ last_auto_reply_at: new Date().toISOString() })
+                                .eq('id', conversationId)
+                        }
+                    } catch (error) {
+                        console.error("[InboxService] Failed to send auto-reply:", error)
+                    }
                 }
             }
         }
     }
 
-    private isWithinWorkingHours(config: any): boolean {
+    private isWithinWorkingHours(config: any, timezone: string = 'America/Bogota'): boolean {
         if (!config || !config.days || !config.start || !config.end) return true; // Default to always online if invalid
 
+        // Get current time in the specified timezone
         const now = new Date();
-        // Adjust for timezone if we had it. Currently Server Time.
+        const options: Intl.DateTimeFormatOptions = {
+            timeZone: timezone,
+            hour: 'numeric',
+            minute: 'numeric',
+            weekday: 'short',
+            hour12: false
+        }
 
-        const jsDay = now.getDay();
-        const uiDay = jsDay === 0 ? 7 : jsDay; // Map 0(Sun) -> 7
+        const formatter = new Intl.DateTimeFormat('en-US', options)
+        const parts = formatter.formatToParts(now)
+
+        const hourPart = parts.find(p => p.type === 'hour')
+        const minutePart = parts.find(p => p.type === 'minute')
+        const weekdayPart = parts.find(p => p.type === 'weekday')
+
+        const currentHour = parseInt(hourPart?.value || '0')
+        const currentMinute = parseInt(minutePart?.value || '0')
+        const weekdayShort = weekdayPart?.value || 'Mon'
+
+        // Map weekday to number (1=Mon, 7=Sun)
+        const dayMap: Record<string, number> = { 'Mon': 1, 'Tue': 2, 'Wed': 3, 'Thu': 4, 'Fri': 5, 'Sat': 6, 'Sun': 7 }
+        const uiDay = dayMap[weekdayShort] || 1
 
         if (!config.days.includes(uiDay)) return false; // Not a working day
 
         const [hStart, mStart] = config.start.split(':').map(Number);
         const [hEnd, mEnd] = config.end.split(':').map(Number);
 
-        const nowMinutes = now.getHours() * 60 + now.getMinutes();
+        const nowMinutes = currentHour * 60 + currentMinute;
         const startMinutes = hStart * 60 + mStart;
         const endMinutes = hEnd * 60 + mEnd;
 

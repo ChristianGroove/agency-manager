@@ -79,7 +79,8 @@ export async function getLeadWithRelations(leadId: string): Promise<LeadWithRela
             { data: notes },
             { data: documents },
             { data: assignee },
-            { data: emails }
+            { data: emails },
+            { data: sourceConnection }
         ] = await Promise.all([
             supabase
                 .from('lead_activities')
@@ -113,7 +114,14 @@ export async function getLeadWithRelations(leadId: string): Promise<LeadWithRela
                 .from('lead_emails')
                 .select('*')
                 .eq('lead_id', leadId)
-                .order('created_at', { ascending: false })
+                .order('created_at', { ascending: false }),
+            lead.source_connection_id
+                ? supabase
+                    .from('integration_connections')
+                    .select('id, connection_name, provider_key')
+                    .eq('id', lead.source_connection_id)
+                    .single()
+                : Promise.resolve({ data: null })
         ])
 
         return {
@@ -123,7 +131,8 @@ export async function getLeadWithRelations(leadId: string): Promise<LeadWithRela
             note_entries: notes || [],
             documents: documents || [],
             emails: emails || [],
-            assignee: assignee || undefined
+            assignee: assignee || undefined,
+            source_connection: sourceConnection || undefined
         }
     } catch (error) {
         console.error('getLeadWithRelations error:', error)

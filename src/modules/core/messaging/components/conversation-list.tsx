@@ -19,11 +19,14 @@ import { useMessageNotifications } from "@/modules/core/preferences/use-message-
 import { useInboxPreferences } from "@/modules/core/preferences/use-inbox-preferences"
 import { useInboxShortcuts } from "@/modules/core/preferences/use-inbox-shortcuts"
 
-// Extended type to include joined lead data
+// Extended type to include joined lead and connection data
 type Conversation = Database['public']['Tables']['conversations']['Row'] & {
     leads: {
         name: string | null
         phone: string | null
+    } | null
+    integration_connections: {
+        connection_name: string | null
     } | null
     state?: 'active' | 'archived' | 'closed'
     tags?: string[]
@@ -75,7 +78,7 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
 
         let query = supabase
             .from('conversations')
-            .select('*, leads(name, phone)')
+            .select('*, leads(name, phone), integration_connections(connection_name)')
             .order('last_message_at', { ascending: false })
 
         console.log('[ConversationList] Active filter:', activeFilter)

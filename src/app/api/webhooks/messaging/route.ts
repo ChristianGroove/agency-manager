@@ -98,7 +98,6 @@ export async function POST(req: NextRequest) {
         fileLog('\n========== WEBHOOK POST RECEIVED ==========')
         const channel = req.nextUrl.searchParams.get('channel') as ChannelType || 'whatsapp'
         fileLog(`Channel: ${channel}`)
-        console.log('[Webhook POST] Channel:', channel)
 
         // Log the raw body
         const body = await req.json()

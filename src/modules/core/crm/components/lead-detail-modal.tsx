@@ -148,6 +148,12 @@ export function LeadDetailModal({ leadId, open, onClose, onUpdate }: LeadDetailM
                                                 <span>{lead.assignee.full_name || lead.assignee.email}</span>
                                             </div>
                                         )}
+                                        {lead.source_connection && (
+                                            <div className="flex items-center gap-1 text-green-600">
+                                                <MessageSquare className="h-4 w-4" />
+                                                <span>{lead.source_connection.connection_name}</span>
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* Stats */}

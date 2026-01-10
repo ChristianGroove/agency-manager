@@ -53,16 +53,27 @@ import { integrationRegistry } from "@/modules/core/integrations/registry"
 
 export async function checkChannelStatus(id: string) {
     const channel = await getChannel(id)
-    if (!channel) throw new Error("Channel not found")
-
-    const adapter = integrationRegistry.getAdapter(channel.provider_key)
-    if (!adapter) throw new Error("Adapter not found")
-
-    if (!adapter.checkConnectionStatus) {
-        return { status: 'unknown' }
+    if (!channel) {
+        return { status: 'error', message: 'Channel not found' }
     }
 
-    return await adapter.checkConnectionStatus(channel.credentials)
+    const adapter = integrationRegistry.getAdapter(channel.provider_key)
+    if (!adapter) {
+        // No adapter registered for this provider - can't check status
+        console.log(`[checkChannelStatus] No adapter for provider: ${channel.provider_key}`)
+        return { status: 'unknown', message: `Provider ${channel.provider_key} has no health check` }
+    }
+
+    if (!adapter.checkConnectionStatus) {
+        return { status: 'unknown', message: 'No health check available' }
+    }
+
+    try {
+        return await adapter.checkConnectionStatus(channel.credentials)
+    } catch (error: any) {
+        console.error(`[checkChannelStatus] Error checking status:`, error)
+        return { status: 'error', message: error.message }
+    }
 }
 
 /**

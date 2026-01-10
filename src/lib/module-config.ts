@@ -112,6 +112,14 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         isCore: true,   // Always visible for now
         category: 'crm'
     },
+    {
+        key: 'crm_settings',
+        label: 'CRM Settings',
+        href: '/crm/settings',
+        icon: Settings,
+        isCore: true,
+        category: 'crm'
+    },
 
 
     // --- OPERACIONES / PROYECTOS ---

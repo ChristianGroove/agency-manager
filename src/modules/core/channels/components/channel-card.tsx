@@ -79,8 +79,33 @@ export function ChannelCard({ channel }: ChannelCardProps) {
         liveStatus === 'inactive' ? 'bg-orange-500' :
             liveStatus === 'error' ? 'bg-red-500' : 'bg-slate-300'
 
+    const handleConfigure = () => {
+        router.push(`/crm/settings/channels/${channel.id}`)
+    }
+
+    const handleCardClick = () => {
+        router.push(`/crm/settings/channels/${channel.id}`)
+    }
+
+    const getProviderDisplayName = (key: string) => {
+        const providers: Record<string, string> = {
+            'meta_whatsapp': 'Meta Cloud API',
+            'evolution_api': 'Evolution API',
+            'meta_instagram': 'Instagram DM',
+            'meta_ads': 'Meta Ads',
+            'telegram': 'Telegram',
+            'twilio_sms': 'Twilio SMS',
+            'google_mail': 'Gmail',
+            'google_calendar': 'Google Calendar',
+            'stripe': 'Stripe',
+            'openai': 'OpenAI',
+            'anthropic': 'Anthropic Claude'
+        }
+        return providers[key] || key
+    }
+
     return (
-        <Card className="relative overflow-hidden">
+        <Card className="relative overflow-hidden cursor-pointer hover:shadow-md transition-shadow" onClick={handleCardClick}>
             {channel.is_primary && (
                 <div className="absolute top-0 right-0 p-2">
                     <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
@@ -96,7 +121,7 @@ export function ChannelCard({ channel }: ChannelCardProps) {
                         {channel.status}
                     </Badge>
                     <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
+                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                             <Button variant="ghost" className="h-8 w-8 p-0">
                                 <span className="sr-only">Open menu</span>
                                 <MoreVertical className="h-4 w-4" />
@@ -104,7 +129,7 @@ export function ChannelCard({ channel }: ChannelCardProps) {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={handleSetPrimary} disabled={isLoading}>
+                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleSetPrimary() }} disabled={isLoading}>
                                 {channel.is_primary ? (
                                     <>
                                         <StarOff className="mr-2 h-4 w-4" /> Unset Primary
@@ -115,11 +140,11 @@ export function ChannelCard({ channel }: ChannelCardProps) {
                                     </>
                                 )}
                             </DropdownMenuItem>
-                            <DropdownMenuItem disabled={isLoading}>
+                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleConfigure() }} disabled={isLoading}>
                                 <Edit className="mr-2 h-4 w-4" /> Configure
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={handleDelete} className="text-red-600" disabled={isLoading}>
+                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleDelete() }} className="text-red-600" disabled={isLoading}>
                                 <Trash2 className="mr-2 h-4 w-4" /> Disconnect
                             </DropdownMenuItem>
                         </DropdownMenuContent>
@@ -128,7 +153,7 @@ export function ChannelCard({ channel }: ChannelCardProps) {
             </CardHeader>
             <CardContent>
                 <div className="text-xs text-muted-foreground space-y-1">
-                    <div>Provider: {channel.provider_key === 'meta_whatsapp' ? 'Meta Cloud API' : 'Evolution API'}</div>
+                    <div>Provider: {getProviderDisplayName(channel.provider_key)}</div>
                     <div>Phone: {channel.metadata?.display_phone_number || channel.metadata?.phone_number || 'N/A'}</div>
                     <div>Created: {format(new Date(channel.created_at), 'MMM d, yyyy')}</div>
                 </div>

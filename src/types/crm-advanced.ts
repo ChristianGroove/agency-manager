@@ -26,6 +26,7 @@ export interface Lead {
     estimated_value?: number
     created_at: string
     updated_at?: string
+    source_connection_id?: string
 }
 
 // Lead Score Factors
@@ -267,6 +268,11 @@ export interface LeadWithRelations extends Lead {
         email: string
         full_name?: string
         avatar_url?: string
+    }
+    source_connection?: {
+        id: string
+        connection_name: string
+        provider_key: string
     }
 }
 

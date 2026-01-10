@@ -4,9 +4,11 @@ import { useState } from "react"
 import { IntegrationCard, IntegrationProvider } from "@/components/integrations/integration-card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
-import { Search, Facebook, Mail, CreditCard, Bot, MessageSquare, Megaphone, Smartphone } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Search, Facebook, Mail, CreditCard, Bot, MessageSquare, Megaphone, Smartphone, Sparkles } from "lucide-react"
 import { ConnectionWizard } from "./connection-wizard"
 import { Connection } from "@/modules/core/integrations/actions"
+import Link from "next/link"
 
 // Mock Providers Configuration
 // Mock Providers Configuration
@@ -142,6 +144,22 @@ export function IntegrationsGrid({ initialConnections }: IntegrationsGridProps) 
                 connections={initialConnections}
                 onEdit={handleEditConnection}
             />
+
+            {/* Header */}
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                    <h1 className="text-2xl font-bold">Integraciones Conectadas</h1>
+                    <p className="text-muted-foreground">
+                        Administra las conexiones activas de tu organización
+                    </p>
+                </div>
+                <Link href="/platform/integrations/marketplace">
+                    <Button className="gap-2">
+                        <Sparkles className="h-4 w-4" />
+                        Explorar Marketplace
+                    </Button>
+                </Link>
+            </div>
 
             {/* Toolbar */}
             <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
