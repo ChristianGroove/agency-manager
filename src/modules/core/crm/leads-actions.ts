@@ -43,7 +43,8 @@ export async function createLead(input: CreateLeadInput): Promise<ActionResponse
 
         if (error) throw error
 
-        revalidatePath('/crm')
+        revalidatePath('/crm/contacts')
+        revalidatePath('/crm/deals')
 
         // Metric: Log Security Event
         await SecurityLogger.log({
