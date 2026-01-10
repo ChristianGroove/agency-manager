@@ -50,11 +50,11 @@ export default function QuoteDetailPage() {
                 .single()
 
             if (data && !data.emitter) {
-                const { data: def } = await supabase.from('emitters').select('*').eq('is_default', true).maybeSingle()
-                if (def) data.emitter = def
-                else {
-                    const { data: any } = await supabase.from('emitters').select('*').limit(1).maybeSingle()
-                    if (any) data.emitter = any
+                // Fallback: Safe Default Emitter
+                const { getActiveEmitters } = await import("@/modules/core/settings/emitters-actions")
+                const activeEmitters = await getActiveEmitters()
+                if (activeEmitters && activeEmitters.length > 0) {
+                    data.emitter = activeEmitters.find((e: any) => e.is_default) || activeEmitters[0]
                 }
             }
 

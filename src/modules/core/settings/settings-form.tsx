@@ -402,7 +402,7 @@ export function SettingsForm({
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <Label htmlFor="agency_email">Email Administrativo</Label>
-                                        <Input id="agency_email" name="agency_email" value={formData.agency_email || ''} onChange={handleChange} placeholder="contacto@pixy.com" />
+                                        <Input id="agency_email" name="agency_email" value={formData.agency_email || ''} onChange={handleChange} placeholder="contacto@tuempresa.com" />
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="agency_phone">Teléfono / WhatsApp</Label>
@@ -551,7 +551,7 @@ export function SettingsForm({
                                         name="email_sender_name"
                                         value={formData.email_sender_name || ''}
                                         onChange={handleChange}
-                                        placeholder="Ej: Mi Agencia (Vía Pixy)"
+                                        placeholder="Ej: Mi Agencia"
                                     />
                                     <p className="text-xs text-muted-foreground">
                                         El nombre que verán los clientes en su bandeja de entrada.

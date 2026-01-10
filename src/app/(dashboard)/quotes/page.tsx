@@ -1,5 +1,6 @@
 
 import { getQuotes } from "@/modules/core/quotes/actions"
+import { getActiveEmitters } from "@/modules/core/settings/emitters-actions" // Secure import
 import { createClient } from "@/lib/supabase-server"
 import { QuotesView } from "@/modules/core/quotes/components/quotes-view"
 import { Suspense } from "react"
@@ -9,11 +10,8 @@ export const metadata = {
     description: "Gestión de propuestas comerciales",
 }
 
-async function getActiveEmitters() {
-    const supabase = await createClient()
-    const { data } = await supabase.from('emitters').select('*').eq('is_active', true)
-    return data || []
-}
+// Local helper removed in favor of imported action for security
+
 
 export default async function QuotesPage() {
     // Parallel fetching for performance

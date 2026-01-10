@@ -33,21 +33,13 @@ export default function NewQuotePage() {
     }, [])
 
     const fetchClients = async () => {
-        // 1. Safe Filter
-        const getOrgId = () => {
-            const match = document.cookie.match(new RegExp('(^| )pixy_org_id=([^;]+)'))
-            return match ? match[2] : null
+        try {
+            const { getClients } = await import("@/modules/core/clients/actions")
+            const data = await getClients()
+            if (data) setClients(data)
+        } catch (error) {
+            console.error("Error fetching clients:", error)
         }
-        const currentOrgId = getOrgId()
-
-        let query = supabase.from('clients').select('*').order('name')
-
-        if (currentOrgId) {
-            query = query.eq('organization_id', currentOrgId)
-        }
-
-        const { data } = await query
-        if (data) setClients(data)
     }
 
     const handleCreateQuoteForClient = async () => {
