@@ -149,8 +149,16 @@ export default function TemplatesPage() {
                                 </div>
                                 <div className="flex items-center justify-between mt-4 text-xs text-muted-foreground">
                                     <div className="flex gap-2">
-                                        {template.components?.some(c => c.type === 'HEADER') && <FileText className="w-3.5 h-3.5" title="Multimedia" />}
-                                        {template.components?.some(c => c.type === 'BUTTONS') && <Zap className="w-3.5 h-3.5" title="Botones" />}
+                                        {template.components?.some(c => c.type === 'HEADER') && (
+                                            <span title="Multimedia">
+                                                <FileText className="w-3.5 h-3.5" />
+                                            </span>
+                                        )}
+                                        {template.components?.some(c => c.type === 'BUTTONS') && (
+                                            <span title="Botones">
+                                                <Zap className="w-3.5 h-3.5" />
+                                            </span>
+                                        )}
                                     </div>
                                     <span className="capitalize text-[10px] bg-slate-100 px-2 py-0.5 rounded-full">
                                         {template.status.toLowerCase()}
