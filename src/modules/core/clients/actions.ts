@@ -99,8 +99,8 @@ export async function getClients() {
           invoices (id, total, status, due_date, number, pdf_url, deleted_at),
           quotes (id, number, total, status, pdf_url, deleted_at),
           hosting_accounts (status, renewal_date),
-          subscriptions (id, name, next_billing_date, status, amount, service_type, frequency),
-          services (id, status)
+          subscriptions (id, name, next_billing_date, status, amount, service_type, frequency, deleted_at),
+          services (id, status, deleted_at)
         `)
         .is('deleted_at', null)
         .order('created_at', { ascending: false })

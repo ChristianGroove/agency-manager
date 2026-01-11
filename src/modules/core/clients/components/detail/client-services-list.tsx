@@ -9,7 +9,8 @@ import {
     Trash2,
     CalendarClock,
     Layout,
-    List
+    List,
+    PauseCircle
 } from "lucide-react"
 import {
     DropdownMenu,
@@ -26,6 +27,7 @@ interface ClientServicesListProps {
     subscriptions: any[]
     onEdit: (service: any) => void
     onDelete: (id: string) => void
+    onPause: (id: string) => void
     onDetail: (service: any) => void
 }
 
@@ -34,6 +36,7 @@ export function ClientServicesList({
     subscriptions,
     onEdit,
     onDelete,
+    onPause,
     onDetail
 }: ClientServicesListProps) {
     const [viewMode, setViewMode] = useState<'list' | 'grid'>('list')
@@ -136,8 +139,11 @@ export function ClientServicesList({
                                         </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
+                                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onPause(service.id); }} className="text-amber-600">
+                                            <PauseCircle className="h-4 w-4 mr-2" /> Pausar (Cancelar)
+                                        </DropdownMenuItem>
                                         <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onDelete(service.id); }} className="text-red-600">
-                                            <Trash2 className="h-4 w-4 mr-2" /> Eliminar / Pausar
+                                            <Trash2 className="h-4 w-4 mr-2" /> Eliminar
                                         </DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>

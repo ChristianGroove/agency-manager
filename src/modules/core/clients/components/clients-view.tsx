@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Plus, Phone, ArrowRight, AlertTriangle, CheckCircle2, Clock, CreditCard, FileText, Globe } from "lucide-react"
+import { Plus, Phone, ArrowRight, AlertTriangle, CheckCircle2, Clock, CreditCard, FileText, Globe, MoreVertical, Edit, Wifi, Shield, Trash2, Copy } from "lucide-react"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -22,6 +22,14 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { supabase } from "@/lib/supabase"
 import { cn, getPortalUrl } from "@/lib/utils"
 import { getWhatsAppLink } from "@/lib/communication-utils"
@@ -38,6 +46,12 @@ import { ViewToggle, ViewMode } from "@/components/shared/view-toggle"
 import { Checkbox } from "@/components/ui/checkbox"
 import { BulkActionsFloatingBar } from "@/components/shared/bulk-actions-floating-bar"
 import { toast } from "sonner"
+
+// New Management Sheets
+import { ClientManagementSheet } from "@/modules/core/clients/components/management/client-management-sheet"
+import { EditClientSheet } from "@/modules/core/clients/components/detail/edit-client-sheet"
+import { ConnectivitySheet } from "@/components/sheets/connectivity-sheet"
+import { PortalGovernanceSheet } from "@/components/sheets/portal-governance-sheet"
 
 interface ClientsViewProps {
     initialClients: Client[]
@@ -61,6 +75,20 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
     // WhatsApp Actions Modal
     const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false)
     const [selectedClientForWhatsApp, setSelectedClientForWhatsApp] = useState<Client | null>(null)
+
+    // --- NEW SHEETS STATE ---
+    const [managementOpen, setManagementOpen] = useState(false)
+    const [selectedClientForManagement, setSelectedClientForManagement] = useState<Client | null>(null)
+
+    const [editOpen, setEditOpen] = useState(false)
+    const [clientToEdit, setClientToEdit] = useState<Client | null>(null)
+
+    const [connectivityOpen, setConnectivityOpen] = useState(false)
+    const [clientForConnectivity, setClientForConnectivity] = useState<Client | null>(null)
+
+    const [portalOpen, setPortalOpen] = useState(false)
+    const [clientForPortal, setClientForPortal] = useState<Client | null>(null)
+    // ------------------------
 
     // View State
     const [viewMode, setViewMode] = useState<ViewMode>('grid')
@@ -243,6 +271,24 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
         }
     }
 
+    const handleSingleDelete = async (id: string) => {
+        if (!confirm("ADVERTENCIA: ¿Estás seguro de eliminar este contacto? Se borrarán todos los datos asociados.")) return
+
+        try {
+            const { deleteClients } = await import("@/modules/core/clients/actions")
+            const result = await deleteClients([id])
+            if (result.success) {
+                toast.success("Contacto eliminado")
+                await fetchClients()
+            } else {
+                throw new Error(result.error)
+            }
+        } catch (error: any) {
+            console.error("Error deleting client:", error)
+            toast.error("Error al eliminar contacto: " + error.message)
+        }
+    }
+
 
 
     // Counts for tabs
@@ -308,7 +354,7 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
             {/* Clients Content - Scrollable Area */}
             <div className="flex-1 min-h-0 relative flex flex-col">
                 {viewMode !== 'list' ? (
-                    <div className="flex-1 overflow-y-auto pr-2 pb-20"> {/* pb-20 for floating bar space */}
+                    <div className="flex-1 overflow-y-auto p-6 pb-20"> {/* pb-20 for floating bar space */}
                         <BulkActionsFloatingBar
                             selectedCount={selectedIds.size}
                             onDelete={handleBulkDelete}
@@ -338,7 +384,7 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
                                         <div key={client.id} className="group relative">
                                             {/* Animated Border Effect */}
                                             <Card className={cn(
-                                                "relative h-full flex flex-col hover:shadow-lg transition-all duration-300 overflow-hidden bg-white dark:bg-white/5 border-gray-100 dark:border-white/10 backdrop-blur-sm",
+                                                "relative h-full flex flex-col hover:shadow-lg transition-all duration-300 bg-white dark:bg-white/5 border-gray-100 dark:border-white/10 backdrop-blur-sm",
                                                 debt > 0
                                                     ? "animate-shadow-pulse-slow-red"
                                                     : futureDebt > 0
@@ -346,25 +392,44 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
                                                         : ""
                                             )}>
                                                 <CardHeader className="pb-3 pt-5 px-5 relative">
-                                                    {/* Service Count Badge - Top Right */}
-                                                    <div className="absolute top-4 right-4 animate-in fade-in zoom-in duration-[250ms] delay-100 z-10">
-                                                        <Badge variant="outline" className="bg-gray-50 dark:bg-white/10 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-white/10 text-[10px] px-2 h-5 gap-0 shadow-sm group/badge cursor-help transition-all duration-[250ms] hover:bg-gray-100 dark:hover:bg-white/20 hover:pr-3">
-                                                            <div className="flex items-center overflow-hidden transition-all duration-[250ms] ease-in-out w-3 opacity-100 group-hover/badge:w-0 group-hover/badge:opacity-0">
-                                                                <CreditCard className="h-3 w-3 text-gray-400 shrink-0" />
-                                                            </div>
-                                                            <span className="transition-all duration-[250ms] group-hover/badge:ml-0 ml-1">{activeServicesCount}</span>
-                                                            <div className="flex items-center overflow-hidden transition-all duration-[250ms] ease-in-out max-w-0 opacity-0 group-hover/badge:max-w-[60px] group-hover/badge:opacity-100 group-hover/badge:ml-1">
-                                                                <span className="font-medium whitespace-nowrap">Servicios</span>
-                                                            </div>
-                                                        </Badge>
+
+                                                    {/* Dropdown Menu - Absolute Top Right */}
+                                                    <div className="absolute top-4 right-4 z-20">
+                                                        <DropdownMenu>
+                                                            <DropdownMenuTrigger asChild>
+                                                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-gray-100">
+                                                                    <MoreVertical className="h-4 w-4 text-gray-400" />
+                                                                </Button>
+                                                            </DropdownMenuTrigger>
+                                                            <DropdownMenuContent align="end" className="w-56">
+                                                                <DropdownMenuLabel>Administración</DropdownMenuLabel>
+                                                                <DropdownMenuSeparator />
+                                                                <DropdownMenuItem onClick={() => { setClientToEdit(client); setEditOpen(true); }}>
+                                                                    <Edit className="mr-2 h-4 w-4" /> Editar Información
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuItem onClick={() => { setClientForConnectivity(client); setConnectivityOpen(true); }}>
+                                                                    <Wifi className="mr-2 h-4 w-4" /> Conectividad
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuItem onClick={() => { setClientForPortal(client); setPortalOpen(true); }}>
+                                                                    <Shield className="mr-2 h-4 w-4" /> Gobernanza del Portal
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuSeparator />
+                                                                <DropdownMenuItem
+                                                                    className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                                                                    onClick={() => handleSingleDelete(client.id)}
+                                                                >
+                                                                    <Trash2 className="mr-2 h-4 w-4" /> Eliminar Contacto
+                                                                </DropdownMenuItem>
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
                                                     </div>
 
                                                     <div className="flex items-start gap-4">
                                                         {/* Avatar with enhanced styling */}
                                                         <div className="relative">
-                                                            <Avatar className="h-14 w-14 rounded-xl border border-gray-100 shadow-sm overflow-hidden bg-white">
+                                                            <Avatar className="h-14 w-14 rounded-full border-2 border-white shadow-md ring-1 ring-gray-100 overflow-hidden bg-white">
                                                                 <AvatarImage src={client.logo_url} className="object-cover w-full h-full" />
-                                                                <AvatarFallback className="bg-gray-100 text-gray-600 font-bold text-lg rounded-xl">
+                                                                <AvatarFallback className="bg-gray-100 text-gray-600 font-bold text-lg rounded-full">
                                                                     {client.name.substring(0, 2).toUpperCase()}
                                                                 </AvatarFallback>
                                                             </Avatar>
@@ -375,7 +440,7 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
                                                             )} />
                                                         </div>
 
-                                                        <div className="flex-1 min-w-0 pr-16"> {/* Added padding-right to avoid overlap with badge */}
+                                                        <div className="flex-1 min-w-0 pr-10"> {/* Added padding-right to avoid overlap with menu */}
                                                             <h3 className="font-semibold text-gray-900 dark:text-white text-lg leading-tight line-clamp-2 break-words">
                                                                 {client.name}
                                                             </h3>
@@ -502,61 +567,35 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
                                                             <Phone className="h-4 w-4" />
                                                         </Button>
 
-
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="h-8 w-8 rounded-full bg-gray-50 text-gray-400 hover:bg-white hover:text-blue-600 hover:shadow-md hover:-translate-y-0.5 hover:ring-1 hover:ring-blue-100 transition-all duration-300"
-                                                            onClick={() => handleOpenInvoices(client)}
-                                                            title="Ver Documentos"
-                                                        >
-                                                            <FileText className="h-4 w-4" />
-                                                        </Button>
-
-                                                        <CreateServiceSheet
-                                                            clientId={client.id}
-                                                            clientName={client.name}
-                                                            onSuccess={fetchClients}
-                                                            trigger={
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="icon"
-                                                                    className="h-8 w-8 rounded-full bg-gray-50 text-gray-400 hover:bg-white hover:text-indigo-600 hover:shadow-md hover:-translate-y-0.5 hover:ring-1 hover:ring-indigo-100 transition-all duration-300"
-                                                                    title="Agregar Servicio"
-                                                                >
-                                                                    <Plus className="h-4 w-4" />
-                                                                </Button>
-                                                            }
-                                                        />
-
+                                                        {/* Replaced quick invoices with copy portal link */}
                                                         {(client.portal_short_token || client.portal_token) && (
-                                                            <a
-                                                                href={getPortalUrl(`/portal/${client.portal_short_token || client.portal_token}`)}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                suppressHydrationWarning
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-8 w-8 rounded-full bg-gray-50 text-gray-400 hover:bg-white hover:text-purple-600 hover:shadow-md hover:-translate-y-0.5 hover:ring-1 hover:ring-purple-100 transition-all duration-300"
+                                                                title="Copiar Link Portal"
+                                                                onClick={() => {
+                                                                    const url = getPortalUrl(`/portal/${client.portal_short_token || client.portal_token}`)
+                                                                    navigator.clipboard.writeText(url)
+                                                                    toast.success("Enlace del portal copiado")
+                                                                }}
                                                             >
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="icon"
-                                                                    className="h-8 w-8 rounded-full bg-gray-50 text-gray-400 hover:bg-white hover:text-purple-600 hover:shadow-md hover:-translate-y-0.5 hover:ring-1 hover:ring-purple-100 transition-all duration-300"
-                                                                    title="Ir al Portal"
-                                                                >
-                                                                    <Globe className="h-4 w-4" />
-                                                                </Button>
-                                                            </a>
+                                                                <Copy className="h-4 w-4" />
+                                                            </Button>
                                                         )}
                                                     </div>
 
-                                                    <Link href={`/clients/${client.id}`} className="ml-auto">
-                                                        <Button
-                                                            size="sm"
-                                                            className="h-8 px-4 text-xs font-semibold rounded-full bg-gray-900 text-white hover:bg-black hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 group"
-                                                        >
-                                                            <span>Gestionar</span>
-                                                            <ArrowRight className="h-3 w-3 ml-1.5 transition-transform group-hover:translate-x-1" />
-                                                        </Button>
-                                                    </Link>
+                                                    <Button
+                                                        size="sm"
+                                                        onClick={() => {
+                                                            setSelectedClientForManagement(client)
+                                                            setManagementOpen(true)
+                                                        }}
+                                                        className="ml-auto h-8 px-4 text-xs font-semibold rounded-full bg-gray-900 text-white hover:bg-black hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 group"
+                                                    >
+                                                        <span>Gestionar</span>
+                                                        <ArrowRight className="h-3 w-3 ml-1.5 transition-transform group-hover:translate-x-1" />
+                                                    </Button>
                                                 </CardFooter>
                                             </Card>
                                         </div>
@@ -577,7 +616,7 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
 
                             {/* Fixed Header */}
                             <div className="flex-none border-b border-gray-200 dark:border-white/10 bg-gray-50/50 dark:bg-white/5 backdrop-blur-md z-20">
-                                <Table className="w-full table-fixed">
+                                <Table className="w-full">
                                     <TableHeader>
                                         <TableRow className="hover:bg-transparent border-none">
                                             <TableHead className="w-[50px]">
@@ -586,11 +625,11 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
                                                     onCheckedChange={toggleAll}
                                                 />
                                             </TableHead>
-                                            <TableHead className="w-[300px]">Contacto</TableHead>
-                                            <TableHead className="w-[120px]">Estado</TableHead>
-                                            <TableHead className="w-[120px]">Servicios</TableHead>
-                                            <TableHead className="w-[150px]">Próximo Cobro</TableHead>
-                                            <TableHead className="text-right">Acciones</TableHead>
+                                            <TableHead>Contacto</TableHead>
+                                            <TableHead className="w-[150px]">Estado</TableHead>
+                                            <TableHead className="w-[150px]">Servicios</TableHead>
+                                            <TableHead className="w-[180px]">Próximo Cobro</TableHead>
+                                            <TableHead className="text-right w-[100px]">Acciones</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                 </Table>
@@ -598,7 +637,7 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
 
                             {/* Scrollable Body - with pipeline scrollbar style */}
                             <div className="flex-1 overflow-y-auto scrollbar-modern relative">
-                                <Table className="w-full table-fixed">
+                                <Table className="w-full">
                                     <TableBody>
                                         {loading ? (
                                             <TableRow>
@@ -625,12 +664,12 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
                                                                 onCheckedChange={() => toggleSelection(client.id)}
                                                             />
                                                         </TableCell>
-                                                        <TableCell className="w-[300px]">
+                                                        <TableCell>
                                                             <div className="flex items-center gap-3">
                                                                 <div className="relative">
-                                                                    <Avatar className="h-10 w-10 border border-gray-100">
+                                                                    <Avatar className="h-10 w-10 rounded-full border-2 border-white shadow-sm ring-1 ring-gray-100">
                                                                         <AvatarImage src={client.logo_url} />
-                                                                        <AvatarFallback className="text-xs bg-gray-100">
+                                                                        <AvatarFallback className="text-xs bg-gray-100 rounded-full">
                                                                             {client.name.substring(0, 2).toUpperCase()}
                                                                         </AvatarFallback>
                                                                     </Avatar>
@@ -673,7 +712,7 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
                                                                 {activeServicesCount} Activos
                                                             </div>
                                                         </TableCell>
-                                                        <TableCell className="w-[150px]">
+                                                        <TableCell className="w-[180px]">
                                                             {nextPayment ? (
                                                                 <div className="flex flex-col text-sm">
                                                                     <span className="text-gray-900 dark:text-white font-medium">
@@ -687,9 +726,9 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
                                                                 <span className="text-xs text-gray-400 italic">--</span>
                                                             )}
                                                         </TableCell>
-                                                        <TableCell className="text-right">
+                                                        <TableCell className="text-right w-[100px]">
                                                             <div className="flex items-center justify-end gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                                                                {/* Quick Actions in List View */}
+
                                                                 <Button
                                                                     variant="ghost"
                                                                     size="icon"
@@ -702,20 +741,31 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
                                                                     <Phone className="h-4 w-4" />
                                                                 </Button>
 
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="icon"
-                                                                    className="h-8 w-8 text-gray-400 hover:text-blue-600"
-                                                                    onClick={() => handleOpenInvoices(client)}
-                                                                >
-                                                                    <FileText className="h-4 w-4" />
-                                                                </Button>
-
-                                                                <Link href={`/clients/${client.id}`}>
-                                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-gray-900">
-                                                                        <ArrowRight className="h-4 w-4" />
-                                                                    </Button>
-                                                                </Link>
+                                                                {/* Dropdown for List View */}
+                                                                <DropdownMenu>
+                                                                    <DropdownMenuTrigger asChild>
+                                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-gray-900">
+                                                                            <MoreVertical className="h-4 w-4" />
+                                                                        </Button>
+                                                                    </DropdownMenuTrigger>
+                                                                    <DropdownMenuContent align="end">
+                                                                        <DropdownMenuLabel>Administración</DropdownMenuLabel>
+                                                                        <DropdownMenuSeparator />
+                                                                        <DropdownMenuItem onClick={() => { setSelectedClientForManagement(client); setManagementOpen(true); }}>
+                                                                            <FileText className="mr-2 h-4 w-4" /> Gestionar
+                                                                        </DropdownMenuItem>
+                                                                        <DropdownMenuItem onClick={() => { setClientToEdit(client); setEditOpen(true); }}>
+                                                                            <Edit className="mr-2 h-4 w-4" /> Editar
+                                                                        </DropdownMenuItem>
+                                                                        <DropdownMenuSeparator />
+                                                                        <DropdownMenuItem
+                                                                            className="text-red-600"
+                                                                            onClick={() => handleSingleDelete(client.id)}
+                                                                        >
+                                                                            <Trash2 className="mr-2 h-4 w-4" /> Eliminar
+                                                                        </DropdownMenuItem>
+                                                                    </DropdownMenuContent>
+                                                                </DropdownMenu>
                                                             </div>
                                                         </TableCell>
                                                     </TableRow>
@@ -789,6 +839,45 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
                 client={selectedClientForWhatsApp}
                 settings={settings}
             />
+
+            {/* --- NEW MANAGEMENT SHEETS --- */}
+
+            <ClientManagementSheet
+                clientId={selectedClientForManagement?.id || null}
+                open={managementOpen}
+                onOpenChange={setManagementOpen}
+                initialData={selectedClientForManagement || undefined}
+            />
+
+            {clientToEdit && (
+                <EditClientSheet
+                    client={clientToEdit}
+                    open={editOpen}
+                    onOpenChange={setEditOpen}
+                    onSuccess={fetchClients}
+                />
+            )}
+
+            {clientForConnectivity && (
+                <ConnectivitySheet
+                    client={clientForConnectivity}
+                    services={clientForConnectivity.services || []}
+                    open={connectivityOpen}
+                    onOpenChange={setConnectivityOpen}
+                    trigger={<span className="hidden" />}
+                />
+            )}
+
+            {clientForPortal && (
+                <PortalGovernanceSheet
+                    client={clientForPortal}
+                    globalSettings={settings}
+                    open={portalOpen}
+                    onOpenChange={setPortalOpen}
+                    trigger={<span className="hidden" />}
+                />
+            )}
+
         </div >
     )
 }

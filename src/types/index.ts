@@ -24,6 +24,7 @@ export type Client = {
     metadata?: any
     portal_token?: string
     portal_short_token?: string
+    total_debt?: number
     invoices?: Invoice[]
     quotes?: Quote[]
     services?: Service[]
