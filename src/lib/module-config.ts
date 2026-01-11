@@ -104,14 +104,7 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         isCore: true,
         category: 'crm'
     },
-    {
-        key: 'crm_quote_settings',
-        label: 'Quote Designer 🎨',
-        href: '/settings/quotes',
-        icon: Sparkles,
-        isCore: true,   // Always visible for now
-        category: 'crm'
-    },
+    // Quote Designer moved to Inbox Sidebar per user request
     {
         key: 'crm_settings',
         label: 'CRM Settings',

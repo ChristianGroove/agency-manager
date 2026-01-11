@@ -136,8 +136,18 @@ export async function sendMessage(conversationId: string, payload: string, id?: 
                 }
                 finalCreds = decryptObject(finalCreds);
 
+                if (!finalCreds) {
+                    console.error("[sendMessage] Credentials decryption failed or empty for connection:", connection.id);
+                    throw new Error("Invalid or missing credentials for this connection. Please re-configure.");
+                }
+
                 const pId = finalCreds.phoneNumberId || finalCreds.phone_number_id;
                 const token = finalCreds.accessToken || finalCreds.access_token;
+
+                if (!pId || !token) {
+                    console.error("[sendMessage] Missing PhoneNumberID or AccessToken in credentials:", finalCreds);
+                    throw new Error("Incomplete credentials. Please re-configure the channel.");
+                }
 
                 provider = new MetaProvider(
                     token,

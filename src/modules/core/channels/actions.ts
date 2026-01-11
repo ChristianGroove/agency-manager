@@ -245,3 +245,87 @@ export async function deleteChannel(channelId: string) {
     revalidatePath('/crm/settings/channels')
     return true
 }
+
+/**
+ * ORCHESTRATOR: Automatic WhatsApp Channel Creation
+ * 1. Generates secure Instance Name
+ * 2. Provisions Evolution API Instance
+ * 3. Saves Connection to DB
+ * 4. Returns QR Code immediately
+ */
+import { EvolutionAdapter } from "@/modules/core/integrations/adapters/evolution-adapter"
+
+export async function createWhatsAppChannel(phoneNumber: string): Promise<{ channelId: string; qrCode?: string }> {
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) throw new Error("Unauthorized")
+
+    await requireOrgRole('admin')
+
+    // 1. Generate Secure Instance Name: "org_{shortId}_{phone}"
+    // Clean phone number: remove + and spaces
+    const cleanPhone = phoneNumber.replace(/[^0-9]/g, '')
+    const instanceName = `org_${orgId.split('-')[0]}_${cleanPhone}`
+
+    // 2. Provision Instance
+    const adapter = new EvolutionAdapter()
+
+    // We can define a secure token for this instance, or let Evolution generate one
+    // Let's generate one for DB storage
+    const secureToken = crypto.randomUUID().replace(/-/g, '')
+
+    // Construct Webhook URL (Dynamic based on current host - need env or hardcode relative?)
+    // Webhooks usually need public URL. 
+    // Ideally: process.env.NEXT_PUBLIC_APP_URL + '/api/webhooks/whatsapp'
+    const webhookUrl = process.env.NEXT_PUBLIC_APP_URL
+        ? `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/whatsapp`
+        : undefined
+
+    try {
+        const result = await adapter.createInstance({
+            instanceName,
+            token: secureToken,
+            qrcode: true,
+            webhook: webhookUrl
+        })
+
+        // 3. Save to DB
+        // We need global URL for reference or future usage
+        const globalUrl = process.env.EVOLUTION_API_URL || "http://localhost:8080"
+
+        const saveInput = {
+            provider_key: 'evolution_api',
+            connection_name: `WhatsApp (${cleanPhone})`,
+            credentials: {
+                baseUrl: globalUrl,
+                apiKey: result.token || secureToken,
+                instanceName: instanceName
+            },
+            config: {
+                instance_id: instanceName,
+                base_url: globalUrl
+            },
+            metadata: {
+                phone_number: cleanPhone
+            }
+        }
+
+        const channel = await createChannel(saveInput)
+
+        // 4. Return result
+        return {
+            channelId: channel.id,
+            qrCode: result.qr // Base64 string if returned immediately
+        }
+
+    } catch (error: any) {
+        console.error('[createWhatsAppChannel] Provision failed:', error)
+
+        // Check if error is "Instance already exists"
+        // If so, we might want to recover it or ask user to delete it
+        if (error.message?.includes("already exists")) {
+            throw new Error("Instance already exists. Please contact support or try a different number.")
+        }
+
+        throw new Error("Failed to provision WhatsApp channel: " + error.message)
+    }
+}

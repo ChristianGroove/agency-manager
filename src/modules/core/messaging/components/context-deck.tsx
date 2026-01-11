@@ -3,11 +3,12 @@
 import { useState, useEffect, useCallback } from "react"
 import { supabase } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
+import { QuoteDesignerSheet } from "../../crm/components/quote-designer-sheet"
 import {
     User, Phone, Mail, MapPin, ExternalLink,
     CalendarClock, Archive, CheckCircle2,
     MoreHorizontal, Tag, DollarSign, AlertCircle, Briefcase,
-    ChevronRight, ChevronDown
+    ChevronRight, ChevronDown, Palette
 } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -42,6 +43,7 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
     const [lastMessage, setLastMessage] = useState<string | undefined>(undefined)
     const [loading, setLoading] = useState(true)
     const [isDealExpanded, setIsDealExpanded] = useState(false)
+    const [isQuoteDesignerOpen, setIsQuoteDesignerOpen] = useState(false)
 
     const fetchContext = useCallback(async () => {
         setLoading(true)
@@ -295,20 +297,31 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
                 </ScrollArea>
             </div>
 
-            {/* AI Smart Replies - Bottom Docked (Only in Gestion Tab or Always? Let's keep distinct) */}
-            {/* Actually user might want smart replies always visible. Let's keep it. */}
-            <div className={cn(
-                "border-t border-border/40 bg-background/50 backdrop-blur-sm p-1 transition-all",
-                isDealExpanded ? "opacity-30 pointer-events-none grayscale" : "opacity-100"
-            )}>
-                <SmartRepliesPanel
-                    conversationId={conversationId}
-                    lastIncomingMessage={lastMessage}
-                    onSelectReply={(text) => {
-                        toast.success("Texto aplicado")
-                    }}
-                />
+            {/* AI Smart Replies OR Quote Designer - Bottom Docked */}
+            <div className="border-t border-border/40 bg-background/50 backdrop-blur-sm p-1 transition-all">
+                {isDealExpanded ? (
+                    <div className="w-full px-2 py-1">
+                        <Button
+                            variant="outline"
+                            className="w-full gap-2 border-dashed border-pink-300 dark:border-pink-800 text-pink-600 dark:text-pink-400 hover:bg-pink-50 dark:hover:bg-pink-900/20 bg-white/50 dark:bg-zinc-900/50 h-9"
+                            onClick={() => setIsQuoteDesignerOpen(true)}
+                        >
+                            <Palette className="h-4 w-4" />
+                            <span className="text-sm font-medium">Quote Designer</span>
+                        </Button>
+                    </div>
+                ) : (
+                    <SmartRepliesPanel
+                        conversationId={conversationId}
+                        lastIncomingMessage={lastMessage}
+                        onSelectReply={(text) => {
+                            toast.success("Texto aplicado")
+                        }}
+                    />
+                )}
             </div>
+
+            <QuoteDesignerSheet open={isQuoteDesignerOpen} onOpenChange={setIsQuoteDesignerOpen} />
         </div>
     )
 }
@@ -365,5 +378,3 @@ function ContactItem({ icon: Icon, label, value }: { icon: any, label: string, v
         </div>
     )
 }
-
-

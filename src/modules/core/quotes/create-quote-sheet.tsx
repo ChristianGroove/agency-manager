@@ -51,14 +51,14 @@ export function CreateQuoteSheet({ emitters = [], open: controlledOpen, onOpenCh
                 <SheetTrigger asChild>
                     {trigger}
                 </SheetTrigger>
-            ) : (
+            ) : !isControlled ? (
                 <SheetTrigger asChild>
                     <Button className="w-full md:w-auto bg-brand-pink hover:bg-brand-pink/90 text-white shadow-md border-0 transition-all hover:scale-105 active:scale-95">
                         <Plus className="mr-2 h-4 w-4" />
                         Nueva Cotización
                     </Button>
                 </SheetTrigger>
-            )}
+            ) : null}
             <SheetContent
                 side="right"
                 className="

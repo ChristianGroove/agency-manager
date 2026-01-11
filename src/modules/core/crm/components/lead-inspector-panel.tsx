@@ -252,14 +252,28 @@ function PromoteToTenantButton({ lead }: { lead: LeadWithRelations }) {
 function ChatTab({ lead }: { lead: LeadWithRelations }) {
     const [messages, setMessages] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
+    const [conversationId, setConversationId] = useState<string | null>(null)
 
     useEffect(() => {
-        const timer = setTimeout(() => {
+        async function loadPreview() {
+            setLoading(true)
+            // Dynamically import to avoid server-action build issues in client component if direct import fails
+            const { getLeadConversationPreview } = await import('@/modules/core/messaging/conversation-actions')
+            const res = await getLeadConversationPreview(lead.id)
+            if (res.success && res.messages) {
+                setMessages(res.messages)
+                setConversationId(res.conversationId || null)
+            } else {
+                setMessages([])
+            }
             setLoading(false)
-            setMessages([])
-        }, 500)
-        return () => clearTimeout(timer)
+        }
+        loadPreview()
     }, [lead.id])
+
+    const chatLink = conversationId
+        ? `/crm/inbox?conversationId=${conversationId}`
+        : `/crm/inbox?contact=${encodeURIComponent(lead.phone || lead.email || '')}`
 
     if (loading) {
         return (
@@ -276,34 +290,63 @@ function ChatTab({ lead }: { lead: LeadWithRelations }) {
 
     if (messages.length === 0) {
         return (
-            <div className="flex flex-col items-center justify-center py-8 text-center">
-                <MessageSquare className="h-10 w-10 text-muted-foreground/50 mb-3" />
-                <p className="text-sm text-muted-foreground">No hay mensajes con este contacto</p>
-                <Button variant="outline" size="sm" className="mt-3">
-                    Iniciar Conversación
+            <div className="flex flex-col items-center justify-center py-8 text-center bg-slate-50 dark:bg-slate-900/50 rounded-xl m-1">
+                <MessageSquare className="h-10 w-10 text-slate-300 dark:text-slate-600 mb-3" />
+                <p className="text-sm text-muted-foreground font-medium">No hay mensajes recientes</p>
+                <p className="text-xs text-muted-foreground mb-4">Inicia una conversación ahora</p>
+                <Button variant="default" size="sm" asChild className="bg-blue-600 hover:bg-blue-700 text-white">
+                    <Link href={chatLink}>
+                        <MessageSquare className="h-4 w-4 mr-2" />
+                        Iniciar Conversación
+                    </Link>
                 </Button>
             </div>
         )
     }
 
     return (
-        <ScrollArea className="h-[300px]">
-            <div className="space-y-3 pr-4">
-                {messages.map((msg, idx) => (
-                    <div
-                        key={idx}
-                        className={cn(
-                            "p-3 rounded-lg text-sm",
-                            msg.direction === 'outbound'
-                                ? "bg-primary text-primary-foreground ml-8"
-                                : "bg-muted mr-8"
-                        )}
-                    >
-                        {msg.content}
+        <div className="h-[350px] flex flex-col">
+            <ScrollArea className="flex-1 pr-4 -mr-4">
+                <div className="space-y-4 pr-4 pb-4">
+                    <div className="text-center">
+                        <span className="text-[10px] font-medium text-muted-foreground bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-full">
+                            Últimos 3 mensajes
+                        </span>
                     </div>
-                ))}
+                    {messages.map((msg, idx) => {
+                        const isOutbound = msg.direction === 'outbound' || msg.sender_id !== lead.phone // Simple heuristic or check direction column
+                        return (
+                            <div
+                                key={idx}
+                                className={cn(
+                                    "flex flex-col max-w-[85%] rounded-2xl px-4 py-2 text-sm shadow-sm",
+                                    isOutbound
+                                        ? "bg-blue-600 text-white ml-auto rounded-br-none"
+                                        : "bg-white dark:bg-slate-800 border mr-auto rounded-bl-none"
+                                )}
+                            >
+                                <p>{typeof msg.content === 'string' ? msg.content : (msg.content?.text || msg.content?.body || 'Mensaje multimedia')}</p>
+                                <span className={cn(
+                                    "text-[10px] mt-1 opacity-70",
+                                    isOutbound ? "text-blue-100" : "text-muted-foreground"
+                                )}>
+                                    {formatDistanceToNow(new Date(msg.created_at), { addSuffix: true, locale: es })}
+                                </span>
+                            </div>
+                        )
+                    })}
+                </div>
+            </ScrollArea>
+
+            <div className="pt-4 border-t mt-2">
+                <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white" asChild>
+                    <Link href={chatLink}>
+                        <MessageSquare className="h-4 w-4 mr-2" />
+                        Ir a la Conversación
+                    </Link>
+                </Button>
             </div>
-        </ScrollArea>
+        </div>
     )
 }
 

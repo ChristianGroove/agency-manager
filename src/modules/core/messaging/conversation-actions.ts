@@ -122,3 +122,39 @@ export async function snoozeConversation(conversationId: string, until: Date) {
     revalidatePath('/inbox')
     return { success: true }
 }
+
+/**
+ * Get the last few messages for a lead's most recent conversation
+ */
+export async function getLeadConversationPreview(leadId: string, limit: number = 3) {
+    const supabase = await createClient()
+
+    // 1. Get most recent conversation for this lead
+    const { data: conversation, error: convError } = await supabase
+        .from('conversations')
+        .select('id')
+        .eq('lead_id', leadId)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .single()
+
+    if (convError || !conversation) {
+        return { success: false, error: "No conversation found" }
+    }
+
+    // 2. Get last N messages
+    const { data: messages, error: msgError } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('conversation_id', conversation.id)
+        .order('created_at', { ascending: false })
+        .limit(limit)
+
+    if (msgError) {
+        console.error('[GetLeadPreview] Failed to fetch messages:', msgError)
+        return { success: false, error: msgError.message }
+    }
+
+    // Return reversed so they appear chronologically if needed
+    return { success: true, messages: messages.reverse(), conversationId: conversation.id }
+}

@@ -4,14 +4,38 @@ import { createClient } from "@/lib/supabase-server"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
 import { revalidatePath } from "next/cache"
 
+// Meta Structure Types
+export type TemplateCategory = 'MARKETING' | 'UTILITY' | 'AUTHENTICATION'
+export type TemplateStatus = 'APPROVED' | 'REJECTED' | 'PENDING' | 'PAUSED' | 'DISABLED'
+
+export interface TemplateButton {
+    type: 'QUICK_REPLY' | 'PHONE_NUMBER' | 'URL'
+    text: string
+    url?: string // For URL buttons
+    phone_number?: string // For Phone buttons
+}
+
+export interface TemplateComponent {
+    type: 'HEADER' | 'BODY' | 'FOOTER' | 'BUTTONS'
+    format?: 'TEXT' | 'IMAGE' | 'VIDEO' | 'DOCUMENT'
+    text?: string
+    buttons?: TemplateButton[]
+    example?: {
+        header_handle?: string[]
+        body_text?: string[][]
+    }
+}
+
 export interface MessageTemplate {
     id: string
     organization_id: string
     channel_id: string | null
     name: string
-    content: string
-    category: 'text' | 'hsm'
-    status: 'active' | 'rejected'
+    category: TemplateCategory
+    language: string
+    components: TemplateComponent[]
+    status: TemplateStatus
+    meta_id?: string
     created_at: string
 }
 
@@ -31,8 +55,9 @@ export async function getTemplates() {
 
 export async function createTemplate(input: {
     name: string
-    content: string
-    category: 'text' | 'hsm'
+    category: TemplateCategory
+    language: string
+    components: TemplateComponent[]
     channel_id?: string
 }) {
     const orgId = await getCurrentOrganizationId()
@@ -44,9 +69,12 @@ export async function createTemplate(input: {
         .insert({
             organization_id: orgId,
             name: input.name,
-            content: input.content,
             category: input.category,
-            channel_id: input.channel_id || null
+            language: input.language,
+            components: input.components,
+            status: 'PENDING',
+            channel_id: input.channel_id || null,
+            content: extractBodyText(input.components) // Legacy fallback for snippets
         })
         .select()
         .single()
@@ -61,9 +89,16 @@ export async function updateTemplate(id: string, input: Partial<MessageTemplate>
     if (!orgId) throw new Error("Organization context required")
 
     const supabase = await createClient()
+
+    // If components update, update legacy content preview too
+    const updates: any = { ...input }
+    if (input.components) {
+        updates.content = extractBodyText(input.components)
+    }
+
     const { error } = await supabase
         .from("messaging_templates")
-        .update(input)
+        .update(updates)
         .eq("id", id)
         .eq("organization_id", orgId)
 
@@ -84,4 +119,10 @@ export async function deleteTemplate(id: string) {
 
     if (error) throw new Error(error.message)
     revalidatePath("/crm/settings/templates")
+}
+
+// Helper to extract plain text for legacy list view
+function extractBodyText(components: TemplateComponent[]): string {
+    const body = components.find(c => c.type === 'BODY')
+    return body?.text || "Sin contenido de texto"
 }

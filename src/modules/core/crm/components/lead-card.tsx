@@ -43,25 +43,20 @@ function LeadCardComponent({ lead, onConvert, onMarkLost, onEdit, onView, onAssi
         <Card
             ref={setNodeRef}
             style={style}
+            {...attributes}
+            {...listeners}
             onClick={() => !isDragging && onView(lead)}
             className={cn(
-                "p-2.5 hover:shadow-sm transition-all cursor-pointer group relative border-l-2",
-                isDragging && "opacity-50 scale-95",
+                "p-2.5 hover:shadow-sm transition-all group relative border-l-2 touch-none",
+                !isDragging && "cursor-grab active:cursor-grabbing hover:bg-slate-50 dark:hover:bg-slate-900/50",
+                isDragging && "opacity-50 scale-95 cursor-grabbing z-50 shadow-xl",
                 lead.score && lead.score > 80 ? "border-l-purple-500" :
                     lead.score && lead.score > 60 ? "border-l-green-500" :
                         lead.score && lead.score > 30 ? "border-l-yellow-500" : "border-l-transparent"
             )}
         >
             <div className="flex items-center gap-2">
-                <div
-                    {...attributes}
-                    {...listeners}
-                    className="cursor-grab active:cursor-grabbing shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={(e) => e.stopPropagation()}
-                >
-                    <GripVertical className="h-3 w-3 text-muted-foreground" />
-                </div>
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0 pl-1">
                     <h4 className="font-medium text-sm truncate leading-tight">{lead.name}</h4>
                     {lead.company_name && (
                         <p className="text-[11px] text-muted-foreground truncate">{lead.company_name}</p>

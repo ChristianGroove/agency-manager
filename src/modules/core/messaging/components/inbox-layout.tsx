@@ -104,6 +104,7 @@ export function InboxLayout() {
                 <div className="flex-1 flex flex-col min-w-0 bg-muted/5 dark:bg-zinc-950 relative">
                     {selectedConversationId ? (
                         <ChatArea
+                            key={selectedConversationId} // Force remount to ensure clean subscription
                             conversationId={selectedConversationId}
                             onToggleContext={() => setIsContextOpen(!isContextOpen)}
                             isContextOpen={isContextOpen}

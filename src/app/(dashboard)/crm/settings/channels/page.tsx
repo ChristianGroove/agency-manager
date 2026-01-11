@@ -7,12 +7,19 @@ export const metadata = {
     description: "Gestiona tus conexiones de WhatsApp y otros canales",
 }
 
+import { getPipelineStages } from "@/modules/core/crm/pipeline-actions"
+import { getOrganizationMembers } from "@/modules/core/settings/actions/team-actions"
+
 export default async function ChannelsPage() {
-    const channels = await getChannels()
+    const [channels, pipelineStages, agents] = await Promise.all([
+        getChannels(),
+        getPipelineStages(),
+        getOrganizationMembers()
+    ])
 
     return (
         <Suspense fallback={<div>Loading channels...</div>}>
-            <ChannelsList channels={channels} />
+            <ChannelsList channels={channels} pipelineStages={pipelineStages} agents={agents} />
         </Suspense>
     )
 }

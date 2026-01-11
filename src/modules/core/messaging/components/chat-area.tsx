@@ -85,68 +85,86 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
         }
     }, [])
 
-    useEffect(() => {
+    const fetchConversation = async () => {
         if (!conversationId) return
+        const { data, error } = await supabase
+            .from('conversations')
+            .select(`
+                *,
+                leads (
+                    name,
+                    phone,
+                    status
+                )
+            `)
+            .eq('id', conversationId)
+            .single()
 
-        const fetchConversation = async () => {
-            const { data, error } = await supabase
-                .from('conversations')
-                .select(`
-                    *,
-                    leads (
-                        name,
-                        phone,
-                        status
-                    )
-                `)
-                .eq('id', conversationId)
-                .single()
-
-            if (data) {
-                setConversation(data as any)
-                // Mark as read immediately on open
-                if (data.unread_count > 0) {
-                    markConversationAsRead(conversationId)
-                }
-            }
+        if (data) {
+            setConversation(data as any)
+            if (data.unread_count > 0) markConversationAsRead(conversationId)
         }
+    }
 
-        const fetchMessages = async () => {
-            const { data, error } = await supabase
-                .from('messages')
-                .select('*')
-                .eq('conversation_id', conversationId)
-                .order('created_at', { ascending: true })
+    const fetchMessages = async () => {
+        if (!conversationId) return
+        const { data, error } = await supabase
+            .from('messages')
+            .select('*')
+            .eq('conversation_id', conversationId)
+            .order('created_at', { ascending: true })
 
-            if (data) {
-                setMessages(data)
-                // Scroll to bottom
-                scrollToBottom()
-            }
+        if (data) {
+            setMessages(data)
+            scrollToBottom()
         }
+    }
 
+    useEffect(() => {
         fetchConversation()
         fetchMessages()
 
         // Realtime Subscriptions
+        console.log('[ChatArea] Mounting subscription for:', conversationId)
+
         const channel = supabase
             .channel(`conversation-${conversationId}`)
             .on('postgres_changes',
-                { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${conversationId}` },
+                { event: 'INSERT', schema: 'public', table: 'messages' },
                 (payload) => {
                     const newMsg = payload.new as Message
-                    setMessages((prev) => [...prev, newMsg])
-                    setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
+                    if (newMsg.conversation_id !== conversationId) return
+                    console.log('[ChatArea] INSERT received', newMsg)
 
-                    // Mark as read if it's inbound
-                    if (newMsg.direction === 'inbound') {
-                        markConversationAsRead(conversationId)
-                    }
+                    setMessages((prev) => {
+                        if (prev.some(m => m.id === newMsg.id)) return prev
+                        return [...prev, newMsg]
+                    })
+                    setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
+                    if (newMsg.direction === 'inbound') markConversationAsRead(conversationId)
                 }
             )
-            .subscribe()
+            .on('postgres_changes',
+                { event: 'UPDATE', schema: 'public', table: 'conversations' },
+                (payload) => {
+                    const newConv = payload.new as Conversation
+                    if (newConv.id !== conversationId) return
+                    console.log('[ChatArea] UPDATE received (Fallback)', newConv)
+
+                    setTimeout(() => {
+                        fetchMessages()
+                        fetchConversation()
+                    }, 500)
+                }
+            )
+            .subscribe((status, error) => {
+                if (status === 'CHANNEL_ERROR') {
+                    console.error('[ChatArea] Realtime Error:', error)
+                }
+            })
 
         return () => {
+            console.log('[ChatArea] Unsubscribing:', conversationId)
             supabase.removeChannel(channel)
         }
     }, [conversationId])

@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { useDraggable } from "@dnd-kit/core"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
@@ -44,6 +45,19 @@ export function ConversationListItem({ conv, isSelected, onSelect, fetchConversa
 
     const priorityIcon = getPriorityIcon(conv.priority)
 
+    // Pulse Effect for New Messages
+    const [isNew, setIsNew] = useState(false)
+
+    useEffect(() => {
+        const timeDiff = new Date().getTime() - new Date(conv.last_message_at).getTime()
+        // If message is younger than 5 seconds AND not currently selected (tuned for realtime feel)
+        if (timeDiff < 5000 && !isSelected) {
+            setIsNew(true)
+            const timer = setTimeout(() => setIsNew(false), 4000)
+            return () => clearTimeout(timer)
+        }
+    }, [conv.last_message_at, isSelected])
+
     return (
         <div
             ref={setNodeRef}
@@ -54,9 +68,14 @@ export function ConversationListItem({ conv, isSelected, onSelect, fetchConversa
                 "w-full p-4 text-left hover:bg-zinc-100 dark:hover:bg-zinc-800/50 transition-all relative cursor-grab active:cursor-grabbing outline-none group touch-none border-l-4",
                 isSelected ? "bg-muted border-l-foreground" : "border-transparent",
                 isUnread && !isSelected && "bg-zinc-50/50 dark:bg-zinc-900/20 border-l-zinc-900 dark:border-l-zinc-100",
-                isDragging && "opacity-50 grayscale"
+                isDragging && "opacity-50 grayscale",
+                isNew && "ring-1 ring-inset ring-blue-500/50 bg-blue-50/50 dark:bg-blue-900/20 transition-all duration-500 ease-out"
             )}
         >
+            {/* New Message Indicator Dot (Pulsing) */}
+            {isNew && (
+                <span className="absolute right-3 top-3 h-2.5 w-2.5 rounded-full bg-blue-500 animate-ping opacity-75" />
+            )}
             {/* Priority Indicator - Move to right or subtle dot */}
             {conv.priority && conv.priority !== 'normal' && (
                 <div

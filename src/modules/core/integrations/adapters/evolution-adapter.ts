@@ -125,4 +125,68 @@ export class EvolutionAdapter implements IntegrationAdapter {
             metadata: data
         }
     }
+
+    // Instance Management (Specific to Evolution)
+    async createInstance(params: { instanceName: string; token?: string; qrcode?: boolean; webhook?: string }): Promise<{
+        id: string;
+        token: string;
+        qr?: string;
+        status: string;
+    }> {
+        // Use global config for creation if available, or throw
+        const globalUrl = process.env.EVOLUTION_API_URL
+        const globalKey = process.env.EVOLUTION_API_KEY
+
+        if (!globalUrl || !globalKey) {
+            throw new Error("Evolution API Global Configuration missing (EVOLUTION_API_URL, EVOLUTION_API_KEY)")
+        }
+
+        const url = `${globalUrl.replace(/\/$/, '')}/instance/create`
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                "apikey": globalKey,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                instanceName: params.instanceName,
+                token: params.token, // Optional: Evolution generates one if empty, or we set it
+                qrcode: params.qrcode ?? true,
+                integration: "WHATSAPP-BAILEYS",
+                webhook: params.webhook // Setup webhook immediately if possible
+            })
+        })
+
+        if (!response.ok) {
+            const errorText = await response.text()
+            throw new Error(`Evolution Instance Creation Failed: ${response.status} ${errorText}`)
+        }
+
+        const data = await response.json()
+
+        // Evolution v2 returns { instance: { instanceName, token, ... }, qrcode: { base64: ... } }
+        // We need to normalize response
+        return {
+            id: data.instance?.instanceName || params.instanceName,
+            token: data.instance?.token || data.hash?.apikey, // Verify evolution version response
+            qr: data.qrcode?.base64,
+            status: data.instance?.status || 'created'
+        }
+    }
+
+    async deleteInstance(instanceName: string): Promise<boolean> {
+        const globalUrl = process.env.EVOLUTION_API_URL
+        const globalKey = process.env.EVOLUTION_API_KEY
+
+        if (!globalUrl || !globalKey) return false
+
+        const url = `${globalUrl.replace(/\/$/, '')}/instance/delete/${instanceName}`
+        const response = await fetch(url, {
+            method: 'DELETE',
+            headers: { "apikey": globalKey }
+        })
+
+        return response.ok
+    }
 }

@@ -35,10 +35,8 @@ type Conversation = Database['public']['Tables']['conversations']['Row'] & {
 
 interface ConversationListProps {
     selectedId: string | null
-    onSelect: (id: string) => void
+    onSelect: (id: string | null) => void // Updated to allow null
 }
-
-type FilterTab = 'all' | 'unread' | 'assigned' | 'archived' | 'snoozed'
 
 export function ConversationList({ selectedId, onSelect }: ConversationListProps) {
     const [conversations, setConversations] = useState<Conversation[]>([])
@@ -69,19 +67,17 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
 
     // Initial Fetch
     useEffect(() => {
-        fetchConversations()
+        fetchConversations(true)
     }, [activeFilter])
 
-    const fetchConversations = async () => {
-        console.log('[ConversationList] Fetching conversations...')
-        setLoading(true)
+    const fetchConversations = async (showLoading = false) => {
+        if (showLoading) setLoading(true)
+        // console.log('[ConversationList] Fetching conversations...')
 
         let query = supabase
             .from('conversations')
             .select('*, leads(name, phone), integration_connections(connection_name)')
             .order('last_message_at', { ascending: false })
-
-        console.log('[ConversationList] Active filter:', activeFilter)
 
         // Apply filter
         switch (activeFilter) {
@@ -108,28 +104,38 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
 
         const { data, error } = await query
 
-        console.log('[ConversationList] Query result:', {
-            conversations: data?.length || 0,
-            error: error?.message,
-            data: data
-        })
-
         if (!error && data) {
             setConversations(data as Conversation[])
         } else if (error) {
             console.error('[ConversationList] Error fetching conversations:', JSON.stringify(error, null, 2))
         }
-        setLoading(false)
+        if (showLoading) setLoading(false)
     }
 
-    // Real-time subscription
+    // Auto-deselect if selected conversation is gone (and no search is active)
+    useEffect(() => {
+        if (!loading && selectedId && conversations.length >= 0) {
+            // Only strictly deselect if we are in 'all' filter and NOT searching
+            // This prevents closing the chat if you just filtered it out by typing search or clicking a tab
+            // BUT if the list is completely empty in 'all' view, it means it's deleted.
+            if (activeFilter === 'all' && !searchQuery) {
+                const stillExists = conversations.some(c => c.id === selectedId)
+                if (!stillExists) {
+                    console.log('[ConversationList] Selected conversation no longer in list, deselecting.')
+                    onSelect(null)
+                }
+            }
+        }
+    }, [conversations, loading, selectedId, activeFilter, searchQuery])
+
+    // Real-time subscription (Unchanged)
     useEffect(() => {
         const channel = supabase
             .channel('conversations-list')
             .on('postgres_changes',
                 { event: '*', schema: 'public', table: 'conversations' },
                 () => {
-                    fetchConversations()
+                    fetchConversations(false)
                 }
             )
             .subscribe()

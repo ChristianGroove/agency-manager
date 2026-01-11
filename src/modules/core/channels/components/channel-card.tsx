@@ -19,14 +19,19 @@ import { useEffect, useState } from "react"
 import { format } from "date-fns"
 import { useRouter } from "next/navigation"
 
+import { EditChannelSheet } from "./edit-channel-sheet"
+
 interface ChannelCardProps {
     channel: Channel
+    pipelineStages?: any[]
+    agents?: any[]
 }
 
-export function ChannelCard({ channel }: ChannelCardProps) {
+export function ChannelCard({ channel, pipelineStages = [], agents = [] }: ChannelCardProps) {
     const router = useRouter()
     const [isLoading, setIsLoading] = useState(false)
     const [liveStatus, setLiveStatus] = useState<'active' | 'inactive' | 'error' | 'unknown' | null>(null)
+    const [isEditOpen, setIsEditOpen] = useState(false)
 
     useEffect(() => {
         let mounted = true
@@ -80,11 +85,11 @@ export function ChannelCard({ channel }: ChannelCardProps) {
             liveStatus === 'error' ? 'bg-red-500' : 'bg-slate-300'
 
     const handleConfigure = () => {
-        router.push(`/crm/settings/channels/${channel.id}`)
+        setIsEditOpen(true)
     }
 
     const handleCardClick = () => {
-        router.push(`/crm/settings/channels/${channel.id}`)
+        setIsEditOpen(true)
     }
 
     const getProviderDisplayName = (key: string) => {
@@ -105,59 +110,69 @@ export function ChannelCard({ channel }: ChannelCardProps) {
     }
 
     return (
-        <Card className="relative overflow-hidden cursor-pointer hover:shadow-md transition-shadow" onClick={handleCardClick}>
-            {channel.is_primary && (
-                <div className="absolute top-0 right-0 p-2">
-                    <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
-                </div>
-            )}
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium flex items-center gap-2">
-                    <MessageCircle className="h-4 w-4 text-green-600" />
-                    {channel.connection_name}
-                </CardTitle>
-                <div className="flex items-center gap-2">
-                    <Badge variant={channel.status === 'active' ? 'default' : 'destructive'} className="text-xs">
-                        {channel.status}
-                    </Badge>
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                                <span className="sr-only">Open menu</span>
-                                <MoreVertical className="h-4 w-4" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleSetPrimary() }} disabled={isLoading}>
-                                {channel.is_primary ? (
-                                    <>
-                                        <StarOff className="mr-2 h-4 w-4" /> Unset Primary
-                                    </>
-                                ) : (
-                                    <>
-                                        <Star className="mr-2 h-4 w-4" /> Set as Primary
-                                    </>
-                                )}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleConfigure() }} disabled={isLoading}>
-                                <Edit className="mr-2 h-4 w-4" /> Configure
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleDelete() }} className="text-red-600" disabled={isLoading}>
-                                <Trash2 className="mr-2 h-4 w-4" /> Disconnect
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                </div>
-            </CardHeader>
-            <CardContent>
-                <div className="text-xs text-muted-foreground space-y-1">
-                    <div>Provider: {getProviderDisplayName(channel.provider_key)}</div>
-                    <div>Phone: {channel.metadata?.display_phone_number || channel.metadata?.phone_number || 'N/A'}</div>
-                    <div>Created: {format(new Date(channel.created_at), 'MMM d, yyyy')}</div>
-                </div>
-            </CardContent>
-        </Card>
+        <>
+            <Card className="relative overflow-hidden cursor-pointer hover:shadow-md transition-shadow" onClick={handleCardClick}>
+                {channel.is_primary && (
+                    <div className="absolute top-0 right-0 p-2">
+                        <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+                    </div>
+                )}
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium flex items-center gap-2">
+                        <MessageCircle className="h-4 w-4 text-green-600" />
+                        {channel.connection_name}
+                    </CardTitle>
+                    <div className="flex items-center gap-2">
+                        <Badge variant={channel.status === 'active' ? 'default' : 'destructive'} className="text-xs">
+                            {channel.status}
+                        </Badge>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                    <span className="sr-only">Open menu</span>
+                                    <MoreVertical className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleSetPrimary() }} disabled={isLoading}>
+                                    {channel.is_primary ? (
+                                        <>
+                                            <StarOff className="mr-2 h-4 w-4" /> Unset Primary
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Star className="mr-2 h-4 w-4" /> Set as Primary
+                                        </>
+                                    )}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleConfigure() }} disabled={isLoading}>
+                                    <Edit className="mr-2 h-4 w-4" /> Configure
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleDelete() }} className="text-red-600" disabled={isLoading}>
+                                    <Trash2 className="mr-2 h-4 w-4" /> Disconnect
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    <div className="text-xs text-muted-foreground space-y-1">
+                        <div>Provider: {getProviderDisplayName(channel.provider_key)}</div>
+                        <div>Phone: {channel.metadata?.display_phone_number || channel.metadata?.phone_number || 'N/A'}</div>
+                        <div>Created: {format(new Date(channel.created_at), 'MMM d, yyyy')}</div>
+                    </div>
+                </CardContent>
+            </Card>
+
+            <EditChannelSheet
+                open={isEditOpen}
+                onOpenChange={setIsEditOpen}
+                channel={channel}
+                pipelineStages={pipelineStages}
+                agents={agents}
+            />
+        </>
     )
 }

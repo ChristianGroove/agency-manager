@@ -55,7 +55,7 @@ export function ConnectChannelModal({ open, onOpenChange }: ConnectChannelModalP
 
     const handleFetchQr = async () => {
         if (!baseUrl || !apiKey || !instanceName) {
-            toast.error("Missing Info", { description: "Please fill in all Evolution API fields." })
+            toast.error("Missing Info", { description: "Please fill in all Server fields." })
             return
         }
 
@@ -133,7 +133,7 @@ export function ConnectChannelModal({ open, onOpenChange }: ConnectChannelModalP
                     <DialogTitle>
                         {step === 'select' ? "Connect New Channel" :
                             step === 'scan' ? "Scan QR Code" :
-                                `Connect ${provider === 'meta_whatsapp' ? 'Meta Cloud API' : 'Evolution API'}`}
+                                `Connect ${provider === 'meta_whatsapp' ? 'Meta Cloud API' : 'WhatsApp Connect'}`}
                     </DialogTitle>
                 </DialogHeader>
 
@@ -155,8 +155,8 @@ export function ConnectChannelModal({ open, onOpenChange }: ConnectChannelModalP
                                     <QrCode className="h-6 w-6 text-blue-600" />
                                 </div>
                                 <div className="text-center">
-                                    <div className="font-medium">Evolution API</div>
-                                    <span className="text-xs text-muted-foreground font-normal">QR Code / Instance</span>
+                                    <div className="font-medium">WhatsApp Web (QR)</div>
+                                    <span className="text-xs text-muted-foreground font-normal">Legacy Connection</span>
                                 </div>
                             </Button>
                         </div>
@@ -212,17 +212,17 @@ export function ConnectChannelModal({ open, onOpenChange }: ConnectChannelModalP
                         ) : (
                             <>
                                 <div className="space-y-2">
-                                    <Label>API Base URL</Label>
-                                    <Input placeholder="https://api.your-evolution.com" value={baseUrl} onChange={e => setBaseUrl(e.target.value)} required />
+                                    <Label>Server URL</Label>
+                                    <Input placeholder="https://api.whatsapp-server.com" value={baseUrl} onChange={e => setBaseUrl(e.target.value)} required />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>Global API Key</Label>
+                                    <Label>Server API Key</Label>
                                     <Input type="password" placeholder="..." value={apiKey} onChange={e => setApiKey(e.target.value)} required />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>Instance Name</Label>
+                                    <Label>Instance / Session Name</Label>
                                     <Input placeholder="instance_name" value={instanceName} onChange={e => setInstanceName(e.target.value)} required />
-                                    <p className="text-[10px] text-muted-foreground">Must be created in Evolution first</p>
+                                    <p className="text-[10px] text-muted-foreground">Must be provisioned first</p>
                                 </div>
                             </>
                         )}

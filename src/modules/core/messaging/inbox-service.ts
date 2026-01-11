@@ -291,12 +291,77 @@ export class InboxService {
         }).select().single()
 
         if (createError) {
-            console.error('[InboxService] Failed to create conversation:', createError)
-            return { data: null, error: createError, success: false }
+            // Handle Race Condition (Unique Violation)
+            if (createError.code === '23505') {
+                console.warn('[InboxService] Race condition detected: Conversation already created. Fetching existing one.');
+                const { data: existingRace } = await supabase.from('conversations')
+                    .select('*')
+                    .eq('lead_id', lead.id)
+                    .eq('channel', msg.channel)
+                    .eq('state', 'active')
+                    .single();
+
+                if (existingRace) {
+                    console.log('[InboxService] Recovered from race condition using conversation:', existingRace.id);
+                    // Use the racially discovered conversation as if it was existingConv
+                    // We need to route this to the "insert message" logic below defined for targetConv
+
+                    // Note: We skip the specific "New Conversation Automation" for this race case 
+                    // because the other thread likely handled it.
+                    // Or ideally we should ensure it runs? 
+                    // If the other thread committed, it handled it.
+                    // So we just return it to let message insertion happen?
+                    // Actually the method continues to Step 5.
+
+                    // We need to set newConv to existingRace to fall through to Step 5 properly?
+                    // But 'targetConv' uses existingConv || newConv.
+                    // So we can't easily assign to 'newConv' const. 
+                    // I need to refactor variable usage or just return here?
+
+                    // No, Step 5 (INSERT MESSAGE) is AFTER this block.
+                    // I should define targetConv differently or assign to a let.
+                    // refactoring variable declaration above.
+
+                    // QUICK FIX: Recurse or Return?
+                    // If I return here, Step 5 won't run for THIS execution.
+                    // BUT Step 5 (Insert Message) handles the message for THIS execution.
+                    // If I return, the message is lost?
+                    // NO. Step 5 is ESSENTIAL.
+
+                    // I will change the code to use 'let finalConv' instead of const newConv/existingConv mix.
+
+                    // Actually, I can just throw if I don't handle it.
+                    // Let's modify the code structure slightly to be safer.
+
+                    // RE-PLAN:
+                    // I will use `replace_file_content` to replace the entire block and introduce `targetConv` properly.
+                }
+            }
+
+            if (!createError.code || createError.code !== '23505') {
+                console.error('[InboxService] Failed to create conversation:', createError)
+                return { data: null, error: createError, success: false }
+            }
+        }
+
+        let targetConv = newConv;
+        // If we had a collision, we need to fetch and set targetConv
+        if (!targetConv && createError?.code === '23505') {
+            const { data: recovered } = await supabase.from('conversations')
+                .select('*')
+                .eq('lead_id', lead.id)
+                .eq('channel', msg.channel)
+                .eq('state', 'active')
+                .single();
+            targetConv = recovered;
+        }
+
+        if (!targetConv) {
+            return { success: false, error: new Error("Failed to resolve conversation after race condition") }
         }
 
         // 5. INSERT MESSAGE
-        const targetConv = existingConv || newConv;
+        // const targetConv removed (already defined)
         let safeDate = new Date().toISOString()
         try {
             if (msg.timestamp) {
@@ -320,12 +385,13 @@ export class InboxService {
         if (msgError) console.error('[InboxService] Failed to insert message:', msgError)
 
         // Handle automation for NEW conversations (welcome message, pipeline assignment)
-        if (matchedConnection) {
+        // Only trigger if WE created it (newConv exists) to avoid duplicates or race condition double-trigger
+        if (matchedConnection && newConv) {
             await this.handleConnectionAutomation(supabase, matchedConnection, lead, existingLead, msg.from, orgId, newConv.id);
         }
 
-        console.log('[InboxService] Created new conversation:', newConv.id)
-        return { data: newConv, error: null, conversationId: newConv.id, connectionId: connectionId, success: true } // Ensure conversationId and connectionId returned
+        console.log('[InboxService] Conversation ready:', targetConv.id)
+        return { data: targetConv, error: null, conversationId: targetConv.id, connectionId: connectionId, success: true } // Ensure conversationId and connectionId returned
     }
 
     /**

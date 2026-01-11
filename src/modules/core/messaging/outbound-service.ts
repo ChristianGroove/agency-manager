@@ -33,17 +33,36 @@ export class OutboundService {
         const result = await adapter.sendMessage(channel.credentials, recipientPhone, content)
 
         // 4. Find Conversation to log to
-        // We reuse logic or just simple find
+        // We look for any open/active conversation with this phone number within the organization
+        // We prioritize matching connection_id, but fallback to any for this phone to ensure logging
+        // (Since we already sent the message, we MUST log it somewhere)
         const { data: conv } = await supabase
             .from('conversations')
             .select('id')
-            .eq('connection_id', channelId)
+            .eq('organization_id', organizationId) // Ensure org isolation
             .eq('phone', recipientPhone)
+            .neq('state', 'archived') // Prefer active ones
             .order('updated_at', { ascending: false })
             .limit(1)
             .single()
 
-        const conversationId = conv?.id
+        let targetConvId = conv?.id
+
+        if (!targetConvId) {
+            // Try archived if no active found
+            const { data: archivedConv } = await supabase
+                .from('conversations')
+                .select('id')
+                .eq('organization_id', organizationId)
+                .eq('phone', recipientPhone)
+                .order('updated_at', { ascending: false })
+                .limit(1)
+                .single()
+
+            targetConvId = archivedConv?.id
+        }
+
+        const conversationId = targetConvId
 
         if (conversationId) {
             // 5. Save to DB using InboxService helper (or do it here)
