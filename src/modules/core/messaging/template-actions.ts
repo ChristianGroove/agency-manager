@@ -37,6 +37,7 @@ export interface MessageTemplate {
     status: TemplateStatus
     meta_id?: string
     created_at: string
+    content: string
 }
 
 export async function getTemplates() {

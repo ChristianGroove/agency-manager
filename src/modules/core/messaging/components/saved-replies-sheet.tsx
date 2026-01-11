@@ -77,14 +77,15 @@ export function SavedRepliesSheet({ open, onOpenChange, onSelect }: SavedReplies
             if (editingReply.id) {
                 await updateTemplate(editingReply.id, {
                     name: editingReply.name,
-                    content: editingReply.content,
-                    category: editingReply.category || 'text'
+                    category: editingReply.category || 'MARKETING',
+                    components: [{ type: 'BODY', format: 'TEXT', text: editingReply.content || '' }]
                 })
             } else {
                 await createTemplate({
                     name: editingReply.name!,
-                    content: editingReply.content!,
-                    category: editingReply.category || 'text'
+                    category: editingReply.category || 'MARKETING',
+                    language: 'es',
+                    components: [{ type: 'BODY', format: 'TEXT', text: editingReply.content! }]
                 })
             }
 
@@ -270,7 +271,7 @@ export function SavedRepliesSheet({ open, onOpenChange, onSelect }: SavedReplies
                                                             </div>
                                                             <div className="flex gap-2 mt-0.5">
                                                                 <span className="text-[10px] font-medium text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded-md">
-                                                                    {reply.category || 'text'}
+                                                                    {reply.category || 'MARKETING'}
                                                                 </span>
                                                             </div>
                                                         </div>

@@ -19,6 +19,8 @@ import { useMessageNotifications } from "@/modules/core/preferences/use-message-
 import { useInboxPreferences } from "@/modules/core/preferences/use-inbox-preferences"
 import { useInboxShortcuts } from "@/modules/core/preferences/use-inbox-shortcuts"
 
+type FilterTab = 'all' | 'unread' | 'assigned' | 'archived' | 'snoozed'
+
 // Extended type to include joined lead and connection data
 type Conversation = Database['public']['Tables']['conversations']['Row'] & {
     leads: {

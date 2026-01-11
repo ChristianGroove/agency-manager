@@ -48,7 +48,7 @@ export function TemplateBuilderSheet({ open, onOpenChange, templateToEdit, onSuc
     const [buttons, setButtons] = useState<Array<{ type: 'QUICK_REPLY' | 'URL' | 'PHONE_NUMBER', text: string, url?: string, phone_number?: string }>>([])
 
     const form = useForm<z.infer<typeof formSchema>>({
-        resolver: zodResolver(formSchema),
+        resolver: zodResolver(formSchema) as any,
         defaultValues: {
             name: "",
             category: 'MARKETING',
