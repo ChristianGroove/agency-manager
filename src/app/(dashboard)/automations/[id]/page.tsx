@@ -493,14 +493,38 @@ function WorkflowEditorContent({ id }: { id: string }) {
                         className="bg-slate-50 dark:bg-slate-950"
                     >
                         <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
-                        <Controls
-                            orientation="horizontal"
-                            className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200 dark:border-slate-800 rounded-full shadow-sm scale-75 origin-bottom-left p-1 mb-4 ml-4"
-                        />
-                        <MiniMap className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800" nodeColor="#64748b" maskColor="rgba(0,0,0,0.1)" />
+                        <Panel position="bottom-right" className="flex flex-col items-center gap-4 !pointer-events-auto !m-6 !p-0">
+                            <MiniMap
+                                zoomable
+                                pannable
+                                className="!relative !w-[240px] !h-[160px] !m-0 !block shadow-xl rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900"
+                                nodeColor={(node) => {
+                                    switch (node.type) {
+                                        case 'trigger': return '#0891b2';
+                                        case 'action': return '#2563eb';
+                                        case 'condition': return '#9333ea';
+                                        case 'email': return '#ca8a04';
+                                        case 'sms': return '#db2777';
+                                        case 'wait': return '#475569';
+                                        case 'crm': return '#ea580c';
+                                        case 'http': return '#16a34a';
+                                        case 'ab_test': return '#dc2626';
+                                        case 'ai_agent': return '#7c3aed';
+                                        default: return '#94a3b8';
+                                    }
+                                }}
+                                maskColor="rgba(0, 0, 0, 0.1)"
+                                style={{ width: 240, height: 160 }}
+                            />
+                            <Controls
+                                orientation="horizontal"
+                                showInteractive={false}
+                                className="!static !m-0 !p-1 !flex !gap-1 border border-slate-200 dark:border-slate-800 shadow-sm rounded-full bg-white dark:bg-slate-800 ring-1 ring-slate-100 dark:ring-slate-700 scale-75 origin-top"
+                            />
+                        </Panel>
 
                         {/* Node Sidebar */}
-                        <Panel position="top-left" className="ml-2 top-1/2 -translate-y-1/2 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm p-1.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-lg max-h-[80vh] overflow-y-auto w-28 no-scrollbar flex flex-col justify-center">
+                        <Panel position="top-left" className="ml-2 !top-1/2 !-translate-y-1/2 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm p-1.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-lg max-h-[80vh] overflow-y-auto w-28 no-scrollbar flex flex-col justify-center">
                             <div className="space-y-3">
                                 <div>
                                     <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">Trigger</h3>
@@ -602,11 +626,24 @@ function WorkflowEditorContent({ id }: { id: string }) {
                 initialName={workflowName}
                 initialDescription={workflowDescription}
                 initialIsActive={isActive}
+                initialChannelId={(nodes.find(n => n.type === 'trigger')?.data?.channel as string) || undefined}
+                onChannelChange={(channelId) => {
+                    setNodes((nds) => nds.map((node) => {
+                        if (node.type === 'trigger') {
+                            return {
+                                ...node,
+                                data: { ...node.data, channel: channelId }
+                            };
+                        }
+                        return node;
+                    }));
+                }}
                 onSaveSettings={async (name, description, active) => {
                     setWorkflowName(name);
                     setWorkflowDescription(description);
                     setIsActive(active);
                 }}
+
                 // History
                 workflowId={id}
                 onVersionRestored={onVersionRestored}

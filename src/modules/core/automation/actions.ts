@@ -458,3 +458,97 @@ export async function triggerWorkflowForLead(workflowId: string, leadId: string)
         return { success: false, error: String(error) }
     }
 }
+
+// --- Quick Actions for List View ---
+
+export async function toggleWorkflow(id: string, isActive: boolean) {
+    try {
+        const supabase = await createClient()
+        const orgId = await getCurrentOrganizationId()
+
+        if (!orgId) throw new Error("Unauthorized")
+
+        const { error } = await supabase
+            .from('workflows')
+            .update({
+                is_active: isActive,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', id)
+            .eq('organization_id', orgId)
+
+        if (error) throw error
+
+        revalidatePath('/dashboard/automations')
+        return { success: true }
+    } catch (error) {
+        console.error("Error toggling workflow:", error)
+        return { success: false, error: error instanceof Error ? error.message : "Unknown error" }
+    }
+}
+
+export async function updateWorkflowChannel(id: string, channelId: string | null) {
+    try {
+        const supabase = await createClient()
+        const orgId = await getCurrentOrganizationId()
+
+        if (!orgId) throw new Error("Unauthorized")
+
+        // 1. Fetch current definition to keep in sync
+        const { data: workflow, error: fetchError } = await supabase
+            .from('workflows')
+            .select('definition, trigger_config')
+            .eq('id', id)
+            .eq('organization_id', orgId)
+            .single()
+
+        if (fetchError || !workflow) throw new Error("Workflow not found")
+
+        let definition = workflow.definition as WorkflowDefinition;
+        // Ensure triggerConfig is treated as object
+        let triggerConfig: Record<string, unknown> = (workflow.trigger_config && typeof workflow.trigger_config === 'object')
+            ? workflow.trigger_config as Record<string, unknown>
+            : {};
+
+        // 2. Update Trigger Node in Definition
+        if (definition && definition.nodes) {
+            definition.nodes = definition.nodes.map((node: any) => {
+                if (node.type === 'trigger') {
+                    return {
+                        ...node,
+                        data: {
+                            ...node.data,
+                            channel: channelId
+                        }
+                    };
+                }
+                return node;
+            });
+        }
+
+        // 3. Update Trigger Config
+        triggerConfig = {
+            ...triggerConfig,
+            channel: channelId || 'whatsapp' // Fallback
+        };
+
+        // 4. Save updates
+        const { error: updateError } = await supabase
+            .from('workflows')
+            .update({
+                definition,
+                trigger_config: triggerConfig,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', id)
+
+        if (updateError) throw updateError
+
+        revalidatePath('/dashboard/automations')
+        return { success: true }
+
+    } catch (error) {
+        console.error("Error updating workflow channel:", error)
+        return { success: false, error: error instanceof Error ? error.message : "Unknown error" }
+    }
+}

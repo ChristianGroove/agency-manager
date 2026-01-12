@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import {
     Sheet,
     SheetContent,
@@ -14,7 +15,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { toast } from 'sonner';
 import {
     Settings2,
     History,
@@ -26,11 +26,15 @@ import {
     X,
     PlayCircle,
     Pause,
-    Tag
+    Tag,
+    Save,
+    Globe,
+    MessageCircle
 } from 'lucide-react';
 import { getWorkflowVersions, restoreWorkflowVersion } from '../actions';
 import { TestExecutionResult, TestNodeResult } from '../test-executor';
 import { WorkflowDefinition } from '../engine';
+import { ChannelSelector } from './channel-selector';
 
 interface WorkflowConfigurationSheetProps {
     isOpen: boolean;
@@ -39,7 +43,9 @@ interface WorkflowConfigurationSheetProps {
     initialName: string;
     initialDescription: string;
     initialIsActive: boolean;
+    initialChannelId?: string; // New: Current channel ID
     onSaveSettings: (name: string, description: string, isActive: boolean) => Promise<void>;
+    onChannelChange?: (channelId: string | null) => void; // New: Callback to update graph
     // History Props
     workflowId: string;
     onVersionRestored: () => void;
@@ -55,19 +61,22 @@ export function WorkflowConfigurationSheet({
     initialName,
     initialDescription,
     initialIsActive,
+    initialChannelId,
     onSaveSettings,
+    onChannelChange,
     workflowId,
     onVersionRestored,
     workflowDefinition,
     onTestComplete,
     defaultTab = "settings"
 }: WorkflowConfigurationSheetProps) {
-    const [activeTab, setActiveTab] = useState(defaultTab);
+    const [activeTab, setActiveTab] = useState(defaultTab || 'settings');
 
     // --- Settings State ---
     const [name, setName] = useState(initialName);
     const [description, setDescription] = useState(initialDescription);
     const [isActive, setIsActive] = useState(initialIsActive);
+    const [channelId, setChannelId] = useState<string | null>(initialChannelId || null);
     const [isSavingSettings, setIsSavingSettings] = useState(false);
 
     // --- History State ---
@@ -78,20 +87,21 @@ export function WorkflowConfigurationSheet({
     // --- Test State ---
     const [testVariables, setTestVariables] = useState<{ key: string; value: string }[]>([
         { key: 'lead.name', value: 'John Doe' },
-        { key: 'lead.email', value: 'test@example.com' }
+        { key: 'lead.email', value: 'john@example.com' }
     ]);
     const [isRunningTest, setIsRunningTest] = useState(false);
     const [testResult, setTestResult] = useState<TestExecutionResult | null>(null);
 
-    // Sync Props
+    // Initial state sync
     useEffect(() => {
         if (isOpen) {
             setName(initialName);
             setDescription(initialDescription || '');
             setIsActive(initialIsActive);
+            setChannelId(initialChannelId || null);
             if (defaultTab) setActiveTab(defaultTab);
         }
-    }, [isOpen, initialName, initialDescription, initialIsActive, workflowId, defaultTab]);
+    }, [isOpen, initialName, initialDescription, initialIsActive, initialChannelId, workflowId, defaultTab]);
 
     // Load history when tab changes to history
     useEffect(() => {
@@ -246,6 +256,22 @@ export function WorkflowConfigurationSheet({
                                                 placeholder="Describe el propósito de este flujo..."
                                             />
                                         </div>
+                                        <div className="space-y-4">
+                                            <Label className="text-sm font-bold text-slate-700 dark:text-slate-300">Canal Predeterminado</Label>
+                                            <div className="space-y-1.5">
+                                                <ChannelSelector
+                                                    value={channelId}
+                                                    onChange={(val) => {
+                                                        setChannelId(val);
+                                                        onChannelChange?.(val);
+                                                    }}
+                                                />
+                                                <p className="text-xs text-slate-500">
+                                                    Define el canal usado para enviar mensajes si el trigger no especifica uno (ej. CRM).
+                                                </p>
+                                            </div>
+                                        </div>
+
                                         <div className="flex items-center justify-between p-5 border border-slate-200 dark:border-slate-800 rounded-2xl bg-slate-50/50 dark:bg-slate-900/50 hover:bg-slate-50 transition-colors">
                                             <div className="space-y-1">
                                                 <Label className="text-base font-semibold block">Estado Activo</Label>
