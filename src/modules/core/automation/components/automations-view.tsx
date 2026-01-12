@@ -16,12 +16,11 @@ import {
     AlertCircle,
     LayoutGrid,
     List,
-    MoreHorizontal,
+    MoreVertical,
     Play,
     Pause,
     History,
     Sparkles,
-    ArrowRight
 } from 'lucide-react';
 import { TemplatesSheet } from './templates-sheet';
 import { ActivitySheet } from './activity-sheet';
@@ -246,35 +245,68 @@ export function AutomationsView({
                             )}>
                                 {filteredWorkflows.map(workflow => (
                                     <Link key={workflow.id} href={`/crm/automations/${workflow.id}`} className="block group h-full">
-                                        <Card className="h-full relative overflow-hidden transition-all duration-200 border-gray-100 dark:border-white/10 hover:border-gray-200 dark:hover:border-white/20 hover:shadow-md bg-white dark:bg-white/5 backdrop-blur-md group-hover:-translate-y-0.5">
+                                        <Card className="h-full relative overflow-visible transition-all duration-200 border-gray-100 dark:border-white/10 hover:border-gray-200 dark:hover:border-white/20 hover:shadow-md bg-white dark:bg-white/5 backdrop-blur-md group-hover:-translate-y-0.5">
+
                                             <div className="p-4 flex items-center gap-3">
-                                                <div className="p-2 rounded-xl bg-slate-50 dark:bg-white/10 group-hover:bg-indigo-50 dark:group-hover:bg-indigo-500/20 transition-colors shrink-0">
+                                                <div className="p-2 rounded-xl bg-slate-50 dark:bg-white/10 group-hover:bg-zinc-100 dark:group-hover:bg-white/20 transition-colors shrink-0">
                                                     <Zap className={cn(
                                                         "h-5 w-5 transition-colors",
-                                                        workflow.is_active ? "text-indigo-600 dark:text-indigo-400" : "text-slate-400"
+                                                        workflow.is_active ? "text-zinc-900 dark:text-white" : "text-zinc-400"
                                                     )} />
                                                 </div>
+
                                                 <div className="flex-1 min-w-0">
-                                                    <div className="flex items-center gap-2">
-                                                        <h3 className="text-sm font-semibold text-slate-900 dark:text-white truncate group-hover:text-indigo-600 transition-colors">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <h3 className="text-sm font-semibold text-slate-900 dark:text-white truncate group-hover:text-zinc-700 dark:group-hover:text-zinc-300 transition-colors">
                                                             {workflow.name}
                                                         </h3>
-                                                        <Badge variant={workflow.is_active ? "default" : "secondary"} className={cn(
-                                                            "rounded-full px-2 text-[10px] h-5 shrink-0",
-                                                            workflow.is_active ? "bg-emerald-500 hover:bg-emerald-600" : ""
-                                                        )}>
-                                                            {workflow.is_active ? "Activo" : "Borrador"}
-                                                        </Badge>
                                                     </div>
-                                                    <p className="text-xs text-slate-500 truncate mt-0.5">
-                                                        {workflow.description || "Sin descripción"}
-                                                    </p>
+                                                    <div className="flex items-center gap-2">
+                                                        <Badge variant="outline" className="rounded-full px-2 py-0 h-5 font-normal border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 text-zinc-500 dark:text-zinc-400 gap-1.5 shrink-0">
+                                                            <div className={cn("h-1.5 w-1.5 rounded-full", workflow.is_active ? "bg-emerald-500" : "bg-zinc-300 dark:bg-zinc-600")} />
+                                                            <span className="text-[10px]">{workflow.is_active ? "Activo" : "Borrador"}</span>
+                                                        </Badge>
+                                                        <span className="text-xs text-slate-400 truncate flex items-center gap-1">
+                                                            <span className="text-slate-300">•</span>
+                                                            <Clock className="h-3 w-3" />
+                                                            {new Date(workflow.updated_at || "").toLocaleDateString()}
+                                                        </span>
+                                                    </div>
                                                 </div>
-                                                <div className="flex items-center gap-2 text-xs text-slate-400 shrink-0" suppressHydrationWarning>
-                                                    <Clock className="h-3 w-3" />
-                                                    {new Date(workflow.updated_at || "").toLocaleDateString()}
+
+                                                {/* Actions Menu - Dedicated Space */}
+                                                <div className="flex items-center shrink-0 pl-2">
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild onClick={(e) => e.preventDefault()}>
+                                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-slate-400 hover:text-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                                                                <MoreVertical className="h-4 w-4" />
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end" className="w-40 z-50">
+                                                            <DropdownMenuItem onClick={(e) => {
+                                                                e.preventDefault();
+                                                                e.stopPropagation();
+                                                                window.location.href = `/crm/automations/${workflow.id}`
+                                                            }}>
+                                                                Editar
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuSeparator />
+                                                            <DropdownMenuItem
+                                                                className="text-red-600 dark:text-red-400"
+                                                                onClick={async (e) => {
+                                                                    e.preventDefault();
+                                                                    e.stopPropagation();
+                                                                    if (confirm('¿Estás seguro de eliminar este workflow?')) {
+                                                                        const { deleteWorkflow } = await import('../actions');
+                                                                        await deleteWorkflow(workflow.id);
+                                                                    }
+                                                                }}
+                                                            >
+                                                                Eliminar
+                                                            </DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
                                                 </div>
-                                                <ArrowRight className="h-4 w-4 text-slate-300 group-hover:text-indigo-500 group-hover:translate-x-0.5 transition-all shrink-0" />
                                             </div>
                                         </Card>
                                     </Link>

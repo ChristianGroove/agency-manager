@@ -10,8 +10,12 @@ import { ConversationDropZones } from "./conversation-drop-zones"
 import { updateConversationState } from "../conversation-management-actions"
 import { toast } from "sonner"
 
-export function InboxLayout() {
-    const [selectedConversationId, setSelectedConversationId] = React.useState<string | null>(null)
+interface InboxLayoutProps {
+    initialConversationId?: string | null
+}
+
+export function InboxLayout({ initialConversationId }: InboxLayoutProps) {
+    const [selectedConversationId, setSelectedConversationId] = React.useState<string | null>(initialConversationId || null)
     const [isContextOpen, setIsContextOpen] = React.useState(true)
     const [activeDragId, setActiveDragId] = React.useState<string | null>(null)
 

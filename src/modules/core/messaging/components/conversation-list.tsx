@@ -5,8 +5,8 @@ import { useEffect, useState, useMemo, useRef } from "react"
 import { supabase } from "@/lib/supabase"
 import { formatDistanceToNow } from "date-fns"
 import { Search, MessageSquare, Phone, User, Check, CheckCheck, Filter, Archive, UserCheck, Clock, Bell, BellOff, Settings as SettingsIcon } from "lucide-react"
+import { Virtuoso } from "react-virtuoso"
 import { Input } from "@/components/ui/input"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
@@ -275,7 +275,7 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
             </div>
 
             {/* Conversation List */}
-            <ScrollArea className="flex-1">
+            <div className="flex-1 min-h-0 bg-background">
                 {loading ? (
                     <div className="p-8 text-center text-sm text-muted-foreground">
                         Loading...
@@ -289,19 +289,24 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
                         </p>
                     </div>
                 ) : (
-                    <div className="divide-y border-t border-border/50">
-                        {filteredConversations.map((conv) => (
-                            <ConversationListItem
-                                key={conv.id}
-                                conv={conv}
-                                isSelected={conv.id === selectedId}
-                                onSelect={onSelect}
-                                fetchConversations={fetchConversations}
-                            />
-                        ))}
-                    </div>
+                    <Virtuoso
+                        style={{ height: '100%' }}
+                        totalCount={filteredConversations.length}
+                        data={filteredConversations}
+                        itemContent={(index, conv) => (
+                            <div className="border-b border-border/50">
+                                <ConversationListItem
+                                    key={conv.id}
+                                    conv={conv}
+                                    isSelected={conv.id === selectedId}
+                                    onSelect={onSelect}
+                                    fetchConversations={fetchConversations}
+                                />
+                            </div>
+                        )}
+                    />
                 )}
-            </ScrollArea>
+            </div>
         </div>
     )
 }

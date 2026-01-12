@@ -42,8 +42,14 @@
     /* Reduced expanded width */
     border-radius: 50px;
     transition-duration: 0.3s;
-    background-color: var(--hover-color, rgb(181, 160, 255));
+    /* Lighten the hover color significantly for light mode */
+    background-color: color-mix(in srgb, var(--hover-color), white 80%);
     align-items: center;
+}
+
+:global(.dark) .button:hover {
+    /* Keep original or slightly adjusted for dark mode functionality */
+    background-color: var(--hover-color);
 }
 
 .button:hover .svgIcon {

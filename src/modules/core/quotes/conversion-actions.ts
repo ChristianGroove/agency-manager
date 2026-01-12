@@ -182,7 +182,7 @@ export async function convertQuote(quoteId: string) {
             const invRes = await createInvoice({
                 client_id: quote.client_id,
                 emitter_id: quote.emitter_id || null, // VITAL: Use the emitter from quote
-                number: `INV-Uni-${Date.now()}`, // Temporary numbering
+                // number: `INV-Uni-${Date.now()}`, // Let backend generate it
                 date: new Date().toISOString(),
                 due_date: new Date().toISOString(),
                 items: invoiceItems,

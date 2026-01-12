@@ -77,6 +77,18 @@ export async function deleteServices(ids: string[]) {
 
     if (error) throw error
 
+    // Cascade: Soft delete UNPAID invoices linked to these services
+    const { error: invoiceError } = await supabase
+        .from('invoices')
+        .update({ deleted_at: new Date().toISOString(), status: 'void' })
+        .in('service_id', ids)
+        .in('status', ['pending', 'overdue', 'draft'])
+        .eq('organization_id', orgId)
+
+    if (invoiceError) {
+        console.error("Error cleaning up invoices for deleted services:", invoiceError)
+    }
+
     revalidatePath('/hosting')
     return { success: true }
 }

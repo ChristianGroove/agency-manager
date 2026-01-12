@@ -567,21 +567,30 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
                                                             <Phone className="h-4 w-4" />
                                                         </Button>
 
-                                                        {/* Replaced quick invoices with copy portal link */}
+                                                        {/* Quick Documents (Invoices) */}
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8 rounded-full bg-gray-50 text-gray-400 hover:bg-white hover:text-blue-600 hover:shadow-md hover:-translate-y-0.5 hover:ring-1 hover:ring-blue-100 transition-all duration-300"
+                                                            title="Documentos Rápidos"
+                                                            onClick={() => handleOpenInvoices(client)}
+                                                        >
+                                                            <FileText className="h-4 w-4" />
+                                                        </Button>
+
+                                                        {/* Portal Actions */}
                                                         {(client.portal_short_token || client.portal_token) && (
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                className="h-8 w-8 rounded-full bg-gray-50 text-gray-400 hover:bg-white hover:text-purple-600 hover:shadow-md hover:-translate-y-0.5 hover:ring-1 hover:ring-purple-100 transition-all duration-300"
-                                                                title="Copiar Link Portal"
-                                                                onClick={() => {
-                                                                    const url = getPortalUrl(`/portal/${client.portal_short_token || client.portal_token}`)
-                                                                    navigator.clipboard.writeText(url)
-                                                                    toast.success("Enlace del portal copiado")
-                                                                }}
-                                                            >
-                                                                <Copy className="h-4 w-4" />
-                                                            </Button>
+                                                            <>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="h-8 w-8 rounded-full bg-gray-50 text-gray-400 hover:bg-white hover:text-purple-600 hover:shadow-md hover:-translate-y-0.5 hover:ring-1 hover:ring-purple-100 transition-all duration-300"
+                                                                    title="Abrir Portal"
+                                                                    onClick={() => window.open(getPortalUrl(`/portal/${client.portal_short_token || client.portal_token}`), '_blank')}
+                                                                >
+                                                                    <Globe className="h-4 w-4" />
+                                                                </Button>
+                                                            </>
                                                         )}
                                                     </div>
 

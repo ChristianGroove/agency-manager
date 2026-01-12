@@ -117,6 +117,31 @@ export async function getWorkflow(id: string) {
     return data
 }
 
+export async function deleteWorkflow(id: string) {
+    try {
+        const supabase = await createClient()
+        const orgId = await getCurrentOrganizationId()
+
+        if (!orgId) throw new Error("Unauthorized")
+
+        // Check if exists and belongs to org
+        const { error: deleteError } = await supabase
+            .from('workflows')
+            .delete()
+            .eq('id', id)
+            .eq('organization_id', orgId)
+
+        if (deleteError) throw deleteError
+
+        revalidatePath('/dashboard/automations')
+        revalidatePath('/crm/automations')
+        return { success: true }
+    } catch (error) {
+        console.error("Error deleting workflow:", error)
+        return { success: false, error: error instanceof Error ? error.message : "Unknown error" }
+    }
+}
+
 export async function queueWorkflowForResume(executionId: string, stepId: string, resumeAt: Date) {
     const supabase = await createClient()
     const { error } = await supabase

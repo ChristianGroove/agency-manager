@@ -84,6 +84,10 @@ export function ClientManagementSheet({ clientId, open, onOpenChange, initialDat
             if (data.services) {
                 data.services = data.services.filter((s: any) => !s.deleted_at)
             }
+            // Filter out soft-deleted invoices
+            if (data.invoices) {
+                data.invoices = data.invoices.filter((i: any) => !i.deleted_at)
+            }
             setClient(data)
 
             // Fetch Settings

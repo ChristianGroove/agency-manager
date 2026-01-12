@@ -62,7 +62,16 @@ function LeadCardComponent({ lead, onConvert, onMarkLost, onEdit, onView, onAssi
                         <p className="text-[11px] text-muted-foreground truncate">{lead.company_name}</p>
                     )}
                 </div>
-                <div onClick={(e) => e.stopPropagation()} className="shrink-0">
+                <div onClick={(e) => e.stopPropagation()} className="shrink-0 flex items-center">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0 mr-1 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-green-50 hover:text-green-600"
+                        onClick={() => onMessage(lead)}
+                        title="Enviar WhatsApp"
+                    >
+                        <MessageSquare className="h-3.5 w-3.5" />
+                    </Button>
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="sm" className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity">

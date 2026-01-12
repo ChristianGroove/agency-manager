@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { CreateQuoteSheet } from "@/modules/core/quotes/create-quote-sheet"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Download, Eye, Loader2, Trash, MoreVertical, Search, ListFilter, Copy, Send, CheckCircle, RefreshCcw, FileCheck } from "lucide-react"
+import { Download, Eye, Loader2, Trash, MoreVertical, Search, ListFilter, Copy, Send, CheckCircle, RefreshCcw, FileCheck, MessageCircle } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { BulkActionsFloatingBar } from "@/components/shared/bulk-actions-floating-bar"
 import { cn } from "@/lib/utils"
@@ -366,66 +366,79 @@ export function QuotesView({ initialQuotes, initialEmitters }: QuotesViewProps) 
                                             {actionLoading === quote.id ? (
                                                 <Loader2 className="h-4 w-4 animate-spin inline-block text-gray-400" />
                                             ) : (
-                                                <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild>
-                                                        <Button variant="ghost" size="icon" className="h-8 w-8 p-0 text-gray-400 hover:text-gray-900 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                            <span className="sr-only">Abrir menú</span>
-                                                            <MoreVertical className="h-4 w-4" />
+                                                <div className="flex items-center justify-end gap-1">
+                                                    {quote.status !== 'draft' && (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                            onClick={() => setShareQuote(quote)}
+                                                            title="Compartir por WhatsApp"
+                                                        >
+                                                            <MessageCircle className="h-4 w-4" />
                                                         </Button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end" className="w-48">
-                                                        <DropdownMenuItem onClick={() => router.push(`/quotes/${quote.id}`)}>
-                                                            <Eye className="mr-2 h-4 w-4 text-gray-400" />
-                                                            <span>Ver Detalle</span>
-                                                        </DropdownMenuItem>
-
-                                                        <DropdownMenuItem onClick={() => handleDuplicate(quote)}>
-                                                            <Copy className="mr-2 h-4 w-4 text-gray-400" />
-                                                            <span>Duplicar</span>
-                                                        </DropdownMenuItem>
-
-                                                        <DropdownMenuItem disabled>
-                                                            <Download className="mr-2 h-4 w-4 text-gray-400" />
-                                                            <span>Descargar PDF</span>
-                                                        </DropdownMenuItem>
-
-                                                        <DropdownMenuSeparator />
-
-                                                        {quote.status === 'draft' && (
-                                                            <DropdownMenuItem onClick={() => setShareQuote(quote)} className="text-green-600 focus:text-green-700 focus:bg-green-50">
-                                                                <Send className="mr-2 h-4 w-4" />
-                                                                <span>Compartir WhatsApp</span>
+                                                    )}
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" size="icon" className="h-8 w-8 p-0 text-gray-400 hover:text-gray-900 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                <span className="sr-only">Abrir menú</span>
+                                                                <MoreVertical className="h-4 w-4" />
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end" className="w-48">
+                                                            <DropdownMenuItem onClick={() => router.push(`/quotes/${quote.id}`)}>
+                                                                <Eye className="mr-2 h-4 w-4 text-gray-400" />
+                                                                <span>Ver Detalle</span>
                                                             </DropdownMenuItem>
-                                                        )}
 
-                                                        {quote.status === 'draft' && (
-                                                            <DropdownMenuItem onClick={() => handleSend(quote)} className="text-blue-600 focus:text-blue-700 focus:bg-blue-50">
-                                                                <FileCheck className="mr-2 h-4 w-4" />
-                                                                <span>Marcar Enviada (Manual)</span>
+                                                            <DropdownMenuItem onClick={() => handleDuplicate(quote)}>
+                                                                <Copy className="mr-2 h-4 w-4 text-gray-400" />
+                                                                <span>Duplicar</span>
                                                             </DropdownMenuItem>
-                                                        )}
 
-                                                        {quote.status === 'accepted' && (
-                                                            <DropdownMenuItem onClick={() => handleConvert(quote)} className="text-purple-600 focus:text-purple-700 focus:bg-purple-50 font-medium">
-                                                                <FileCheck className="mr-2 h-4 w-4" />
-                                                                <span>Convertir a Factura</span>
+                                                            <DropdownMenuItem disabled>
+                                                                <Download className="mr-2 h-4 w-4 text-gray-400" />
+                                                                <span>Descargar PDF</span>
                                                             </DropdownMenuItem>
-                                                        )}
 
-                                                        {(quote.status === 'draft' || quote.status === 'rejected') && (
-                                                            <>
-                                                                <DropdownMenuSeparator />
-                                                                <DropdownMenuItem
-                                                                    onClick={() => handleDelete(quote.id)}
-                                                                    className="text-red-600 focus:text-red-600 focus:bg-red-50"
-                                                                >
-                                                                    <Trash className="mr-2 h-4 w-4" />
-                                                                    <span>Eliminar</span>
+                                                            <DropdownMenuSeparator />
+
+                                                            {quote.status === 'draft' && (
+                                                                <DropdownMenuItem onClick={() => setShareQuote(quote)} className="text-green-600 focus:text-green-700 focus:bg-green-50">
+                                                                    <Send className="mr-2 h-4 w-4" />
+                                                                    <span>Compartir WhatsApp</span>
                                                                 </DropdownMenuItem>
-                                                            </>
-                                                        )}
-                                                    </DropdownMenuContent>
-                                                </DropdownMenu>
+                                                            )}
+
+                                                            {quote.status === 'draft' && (
+                                                                <DropdownMenuItem onClick={() => handleSend(quote)} className="text-blue-600 focus:text-blue-700 focus:bg-blue-50">
+                                                                    <FileCheck className="mr-2 h-4 w-4" />
+                                                                    <span>Marcar Enviada (Manual)</span>
+                                                                </DropdownMenuItem>
+                                                            )}
+
+                                                            {quote.status === 'accepted' && (
+                                                                <DropdownMenuItem onClick={() => handleConvert(quote)} className="text-purple-600 focus:text-purple-700 focus:bg-purple-50 font-medium">
+                                                                    <FileCheck className="mr-2 h-4 w-4" />
+                                                                    <span>Convertir a Factura</span>
+                                                                </DropdownMenuItem>
+                                                            )}
+
+                                                            {(quote.status === 'draft' || quote.status === 'rejected') && (
+                                                                <>
+                                                                    <DropdownMenuSeparator />
+                                                                    <DropdownMenuItem
+                                                                        onClick={() => handleDelete(quote.id)}
+                                                                        className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                                                                    >
+                                                                        <Trash className="mr-2 h-4 w-4" />
+                                                                        <span>Eliminar</span>
+                                                                    </DropdownMenuItem>
+                                                                </>
+                                                            )}
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                </div>
                                             )}
                                         </TableCell>
                                     </TableRow>

@@ -10,6 +10,7 @@
     "test": "vitest"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.485.0",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
@@ -46,6 +47,7 @@
     "date-fns": "^4.1.0",
     "emoji-picker-react": "^4.16.1",
     "framer-motion": "^12.23.26",
+    "googleapis": "^129.0.0",
     "html-to-image": "^1.11.13",
     "inngest": "^3.48.1",
     "jspdf": "^3.0.4",
@@ -66,6 +68,7 @@
     "react-dom": "^19.2.3",
     "react-hook-form": "^7.69.0",
     "react-hotkeys-hook": "^5.2.1",
+    "react-virtuoso": "^4.18.1",
     "recharts": "^3.6.0",
     "resend": "^6.6.0",
     "sonner": "^2.0.7",
@@ -73,9 +76,7 @@
     "tailwindcss-animate": "^1.0.7",
     "use-debounce": "^10.0.6",
     "vaul": "^1.1.2",
-    "zod": "^4.2.1",
-    "@aws-sdk/client-s3": "^3.485.0",
-    "googleapis": "^129.0.0"
+    "zod": "^4.2.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

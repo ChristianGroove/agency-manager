@@ -14,8 +14,10 @@ import {
     Node,
     BackgroundVariant,
     ReactFlowProvider,
-    useReactFlow
+    useReactFlow,
 } from '@xyflow/react';
+import { AISuggestion } from '@/modules/core/automation/ai-analyzer';
+import { Panel, type ReactFlowInstance } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,11 +39,9 @@ import WaitInputNode from '@/modules/core/automation/components/nodes/WaitInputN
 import TagNode from '@/modules/core/automation/components/nodes/TagNode';
 import StageNode from '@/modules/core/automation/components/nodes/StageNode';
 import { PropertiesSheet } from '@/modules/core/automation/components/properties-sheet';
-import { TestPanel } from '@/modules/core/automation/components/test-panel';
 import { AISuggestionsPanel } from '@/modules/core/automation/components/ai-suggestions-panel';
 import { createWorkflowVersion, getWorkflow, saveWorkflow } from '@/modules/core/automation/actions';
-import { VersionHistorySheet } from '@/modules/core/automation/components/version-history-sheet';
-import { WorkflowSettingsSheet } from '@/modules/core/automation/components/workflow-settings-sheet';
+import { WorkflowConfigurationSheet } from '@/modules/core/automation/components/workflow-configuration-sheet';
 import { WORKFLOW_TEMPLATES } from '@/modules/core/automation/templates';
 import { getLayoutedElements } from '@/modules/core/automation/utils/layout-utils';
 import { SimulatorOverlay } from '@/modules/core/automation/components/simulator/SimulatorOverlay';
@@ -66,16 +66,16 @@ function WorkflowEditorContent({ id }: { id: string }) {
     const searchParams = useSearchParams();
     const reactFlowWrapper = useRef<HTMLDivElement>(null);
     const { screenToFlowPosition } = useReactFlow();
+    const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null);
 
     // State with proper types
     const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
     const [selectedNode, setSelectedNode] = useState<Node | null>(null);
     const [isPropertiesOpen, setIsPropertiesOpen] = useState(false);
-    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-    const [testPanelOpen, setTestPanelOpen] = useState(false);
+    const [configSheetOpen, setConfigSheetOpen] = useState(false);
+    const [configTab, setConfigTab] = useState("settings");
     const [aiPanelOpen, setAIPanelOpen] = useState(false);
-    const [historySheetOpen, setHistorySheetOpen] = useState(false);
     const [workflowName, setWorkflowName] = useState('New Workflow');
     const [workflowDescription, setWorkflowDescription] = useState('');
     const [isActive, setIsActive] = useState(false);
@@ -420,17 +420,27 @@ function WorkflowEditorContent({ id }: { id: string }) {
 
     // Add AI suggestion handler
     const handleAddAISuggestion = useCallback(
-        (suggestion: { type: string; data: Record<string, unknown> }) => {
+        (suggestion: AISuggestion) => {
             const newNode: Node = {
-                id: `${suggestion.type}-${Date.now()}`,
-                type: suggestion.type,
+                id: `${suggestion.nodeType}-${Date.now()}`,
+                type: suggestion.nodeType,
                 position: { x: 250, y: nodes.length * 100 + 50 },
-                data: suggestion.data,
+                data: suggestion.suggestedConfig || {},
             };
             setNodes((nds) => [...nds, newNode]);
-            saveToHistory();
+            // Also create an edge from the last node if exists
+            if (nodes.length > 0) {
+                const lastNode = nodes[nodes.length - 1];
+                const newEdge: Edge = {
+                    id: `e-${lastNode.id}-${newNode.id}`,
+                    source: lastNode.id,
+                    target: newNode.id,
+                    type: 'smoothstep'
+                };
+                setEdges((eds) => [...eds, newEdge]);
+            }
         },
-        [nodes.length, setNodes, saveToHistory]
+        [nodes, setNodes, setEdges]
     );
 
     // Auto-Layout function using dagre algorithm
@@ -461,178 +471,148 @@ function WorkflowEditorContent({ id }: { id: string }) {
     }
 
     return (
-        <div className="relative w-full h-[calc(100vh-4rem)] flex flex-col bg-slate-100 dark:bg-slate-950">
-            {/* Version History Sheet */}
-            <VersionHistorySheet
-                workflowId={id}
-                isOpen={historySheetOpen}
-                onClose={() => setHistorySheetOpen(false)}
-                onVersionRestored={onVersionRestored}
-            />
+        <div className="dnd-flow relative w-full h-[calc(100vh-4rem)] flex flex-col bg-white dark:bg-slate-950 rounded-3xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm my-2 mr-2">
 
-            {/* Floating Toolbar (Top Center) */}
-            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-white/20 shadow-lg rounded-full px-6 py-2 flex items-center gap-4 animate-in fade-in slide-in-from-top-4 duration-500">
-                <Button size="icon" variant="ghost" className="rounded-full" onClick={() => router.push('/crm/automations')}>
-                    <ArrowLeft className="h-4 w-4" />
-                </Button>
+            {/* ReactFlow Canvas Area */}
+            <div className="flex-1 w-full h-full relative cursor-default" style={{ cursor: 'default' }}>
+                <div ref={reactFlowWrapper} className="w-full h-full">
+                    <ReactFlow
+                        nodes={nodes}
+                        edges={edges}
+                        onNodesChange={onNodesChange}
+                        onEdgesChange={onEdgesChange}
+                        onConnect={onConnect}
+                        onNodeClick={onNodeClick}
+                        onNodesDelete={onNodesDelete}
+                        onInit={setReactFlowInstance}
+                        onDragOver={onDragOver}
+                        onDrop={onDrop}
+                        nodeTypes={nodeTypes}
+                        fitView
+                        proOptions={{ hideAttribution: true }}
+                        className="bg-slate-50 dark:bg-slate-950"
+                    >
+                        <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
+                        <Controls
+                            orientation="horizontal"
+                            className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200 dark:border-slate-800 rounded-full shadow-sm scale-75 origin-bottom-left p-1 mb-4 ml-4"
+                        />
+                        <MiniMap className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800" nodeColor="#64748b" maskColor="rgba(0,0,0,0.1)" />
 
-                <Input
-                    value={workflowName}
-                    onChange={(e) => setWorkflowName(e.target.value)}
-                    className="w-48 bg-transparent border-none font-semibold text-center"
-                />
+                        {/* Node Sidebar */}
+                        <Panel position="top-left" className="ml-2 top-1/2 -translate-y-1/2 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm p-1.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-lg max-h-[80vh] overflow-y-auto w-28 no-scrollbar flex flex-col justify-center">
+                            <div className="space-y-3">
+                                <div>
+                                    <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">Trigger</h3>
+                                    <div className="space-y-1.5">
+                                        <div
+                                            draggable
+                                            onDragStart={(event) => onDragStart(event, 'trigger')}
+                                            className="flex items-center p-1.5 rounded-lg border border-slate-100 dark:border-slate-800 hover:border-cyan-500 hover:bg-cyan-50 dark:hover:bg-cyan-950/30 cursor-grab transition-all group bg-white dark:bg-slate-800"
+                                        >
+                                            <Zap className="h-4 w-4 text-cyan-600 mr-1.5 group-hover:scale-110 transition-transform" />
+                                            <span className="text-xs font-medium">Trigger</span>
+                                        </div>
+                                    </div>
+                                </div>
 
-                <div className="h-4 w-px bg-slate-200 dark:bg-slate-700" />
+                                <div>
+                                    <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">Acciones</h3>
+                                    <div className="space-y-1.5">
+                                        <div draggable onDragStart={(e) => onDragStart(e, 'action')} className="flex items-center p-1.5 rounded-lg border border-slate-100 bg-white dark:bg-slate-800 hover:border-blue-500 hover:bg-blue-50 cursor-grab transition-all">
+                                            <Box className="h-4 w-4 text-blue-600 mr-1.5" />
+                                            <span className="text-xs font-medium">Acción</span>
+                                        </div>
+                                        <div draggable onDragStart={(e) => onDragStart(e, 'crm')} className="flex items-center p-1.5 rounded-lg border border-slate-100 bg-white dark:bg-slate-800 hover:border-orange-500 hover:bg-orange-50 cursor-grab transition-all">
+                                            <Database className="h-4 w-4 text-orange-600 mr-1.5" />
+                                            <span className="text-xs font-medium">CRM</span>
+                                        </div>
+                                        <div draggable onDragStart={(e) => onDragStart(e, 'http')} className="flex items-center p-1.5 rounded-lg border border-slate-100 bg-white dark:bg-slate-800 hover:border-green-500 hover:bg-green-50 cursor-grab transition-all">
+                                            <Globe className="h-4 w-4 text-green-600 mr-1.5" />
+                                            <span className="text-xs font-medium">HTTP</span>
+                                        </div>
+                                        <div draggable onDragStart={(e) => onDragStart(e, 'condition')} className="flex items-center p-1.5 rounded-lg border border-slate-100 bg-white dark:bg-slate-800 hover:border-purple-500 hover:bg-purple-50 cursor-grab transition-all">
+                                            <GitBranch className="h-4 w-4 text-purple-600 mr-1.5" />
+                                            <span className="text-xs font-medium">Condición</span>
+                                        </div>
+                                        <div draggable onDragStart={(e) => onDragStart(e, 'email')} className="flex items-center p-1.5 rounded-lg border border-slate-100 bg-white dark:bg-slate-800 hover:border-yellow-500 hover:bg-yellow-50 cursor-grab transition-all">
+                                            <Mail className="h-4 w-4 text-yellow-600 mr-1.5" />
+                                            <span className="text-xs font-medium">Email</span>
+                                        </div>
+                                        <div draggable onDragStart={(e) => onDragStart(e, 'sms')} className="flex items-center p-1.5 rounded-lg border border-slate-100 bg-white dark:bg-slate-800 hover:border-pink-500 hover:bg-pink-50 cursor-grab transition-all">
+                                            <MessageSquare className="h-4 w-4 text-pink-600 mr-1.5" />
+                                            <span className="text-xs font-medium">SMS</span>
+                                        </div>
+                                        <div draggable onDragStart={(e) => onDragStart(e, 'wait')} className="flex items-center p-1.5 rounded-lg border border-slate-100 bg-white dark:bg-slate-800 hover:border-slate-500 hover:bg-slate-50 cursor-grab transition-all">
+                                            <Clock className="h-4 w-4 text-slate-600 mr-1.5" />
+                                            <span className="text-xs font-medium">Espera</span>
+                                        </div>
+                                    </div>
+                                </div>
 
-                <Button size="icon" variant="ghost" className="rounded-full" onClick={handleUndo} disabled={historyIndex <= 0}>
-                    <Undo2 className="h-4 w-4" />
-                </Button>
-                <Button size="icon" variant="ghost" className="rounded-full" onClick={handleRedo} disabled={historyIndex >= history.length - 1}>
-                    <Redo2 className="h-4 w-4" />
-                </Button>
-
-                <div className="h-4 w-px bg-slate-200 dark:bg-slate-700" />
-
-                <Button size="icon" variant="ghost" className="rounded-full" onClick={() => setIsSettingsOpen(true)}>
-                    <Settings2 className="h-4 w-4" />
-                </Button>
-
-                <Button size="icon" variant="ghost" className="rounded-full" onClick={() => setHistorySheetOpen(true)} title="Version History">
-                    <GitBranch className="h-4 w-4" />
-                </Button>
-
-                <Button size="icon" variant="ghost" className="rounded-full" onClick={() => setTestPanelOpen(true)} title="Debug & Dry Run (Panél de Pruebas)">
-                    <FlaskConical className="h-4 w-4" />
-                </Button>
-
-                <Button size="sm" variant={simulatorOpen ? "default" : "secondary"} className={cn("rounded-full px-3 text-xs transition-colors", simulatorOpen ? "bg-emerald-600 hover:bg-emerald-700 text-white" : "bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400")} onClick={() => setSimulatorOpen(prev => !prev)} title={simulatorOpen ? "Cerrar Simulador" : "Abrir Simulador Visual"}>
-                    <Smartphone className="h-3.5 w-3.5 mr-2" />
-                    {simulatorOpen ? 'Ocultar' : 'Simular'}
-                </Button>
-
-                <Button size="icon" variant="ghost" className="rounded-full" onClick={() => setAIPanelOpen(true)} title="AI Suggestions">
-                    <Sparkles className="h-4 w-4" />
-                </Button>
-
-                <Button size="icon" variant="ghost" className="rounded-full" onClick={handleAutoLayout} title="Auto-Organizar (Layout Automático)">
-                    <LayoutGrid className="h-4 w-4" />
-                </Button>
-
-                <div className="h-4 w-px bg-slate-200 dark:bg-slate-700" />
-
-                <Button size="sm" variant="outline" className="rounded-full" onClick={handleSaveVersion} title="Create Version Snapshot">
-                    <Save className="h-3.5 w-3.5 mr-2" />
-                    Snapshot
-                </Button>
-
-                <Button size="sm" className="rounded-full bg-black text-white hover:bg-slate-800" onClick={handleSave}>
-                    <Save className="h-4 w-4 mr-2" />
-                    Save
-                </Button>
-            </div>
-
-            {/* Floating Palette (Left) */}
-            <div className="absolute top-1/2 left-6 -translate-y-1/2 z-10 flex flex-col gap-4 animate-in fade-in slide-in-from-left-4 duration-500 delay-150">
-                <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md p-2 rounded-full border shadow-2xl flex flex-col gap-3 items-center">
-                    <div className="h-10 w-10 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center shadow-sm cursor-grab hover:scale-110 transition-transform" draggable onDragStart={(e) => onDragStart(e, 'trigger')} title="Trigger Node">
-                        <Zap size={20} className="text-amber-500" />
-                    </div>
-                    <div className="h-10 w-10 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center shadow-sm cursor-grab hover:scale-110 transition-transform" draggable onDragStart={(e) => onDragStart(e, 'action')} title="Action Node">
-                        <Box size={20} className="text-blue-500" />
-                    </div>
-                    <div className="h-10 w-10 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center shadow-sm cursor-grab hover:scale-110 transition-transform" draggable onDragStart={(e) => onDragStart(e, 'crm')} title="CRM Node">
-                        <Database size={20} className="text-indigo-500" />
-                    </div>
-                    <div className="h-10 w-10 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center shadow-sm cursor-grab hover:scale-110 transition-transform" draggable onDragStart={(e) => onDragStart(e, 'http')} title="HTTP Node">
-                        <Globe size={20} className="text-cyan-500" />
-                    </div>
-                    <div className="h-10 w-10 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center shadow-sm cursor-grab hover:scale-110 transition-transform" draggable onDragStart={(e) => onDragStart(e, 'email')} title="Email Node">
-                        <Mail size={20} className="text-purple-500" />
-                    </div>
-                    <div className="h-10 w-10 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center shadow-sm cursor-grab hover:scale-110 transition-transform" draggable onDragStart={(e) => onDragStart(e, 'sms')} title="SMS Node">
-                        <MessageSquare size={20} className="text-green-500" />
-                    </div>
-                    <div className="h-10 w-10 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center shadow-sm cursor-grab hover:scale-110 transition-transform" draggable onDragStart={(e) => onDragStart(e, 'ab_test')} title="A/B Test Node">
-                        <Split size={20} className="text-orange-500" />
-                    </div>
-                    <div className="h-10 w-10 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center shadow-sm cursor-grab hover:scale-110 transition-transform" draggable onDragStart={(e) => onDragStart(e, 'ai_agent')} title="AI Agent Node">
-                        <Sparkles size={20} className="text-purple-600" />
-                    </div>
-                    <div className="h-10 w-10 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center shadow-sm cursor-grab hover:scale-110 transition-transform" draggable onDragStart={(e) => onDragStart(e, 'buttons')} title="Botones Interactivos">
-                        <MousePointer size={20} className="text-violet-500" />
-                    </div>
-                    <div className="h-10 w-10 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center shadow-sm cursor-grab hover:scale-110 transition-transform" draggable onDragStart={(e) => onDragStart(e, 'wait_input')} title="Esperar Respuesta">
-                        <Clock size={20} className="text-amber-500" />
-                    </div>
-                    <div className="h-10 w-10 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center shadow-sm cursor-grab hover:scale-110 transition-transform" draggable onDragStart={(e) => onDragStart(e, 'tag')} title="Gestionar Etiquetas">
-                        <Tag size={20} className="text-orange-500" />
-                    </div>
-                    <div className="h-10 w-10 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center shadow-sm cursor-grab hover:scale-110 transition-transform" draggable onDragStart={(e) => onDragStart(e, 'stage')} title="Cambiar Etapa">
-                        <ArrowRightCircle size={20} className="text-blue-600" />
-                    </div>
+                                <div>
+                                    <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">Lógica</h3>
+                                    <div className="space-y-1.5">
+                                        <div draggable onDragStart={(e) => onDragStart(e, 'ab_test')} className="flex items-center p-1.5 rounded-lg border border-slate-100 bg-white dark:bg-slate-800 hover:border-red-500 hover:bg-red-50 cursor-grab transition-all">
+                                            <Split className="h-4 w-4 text-red-600 mr-1.5" />
+                                            <span className="text-xs font-medium">A/B Test</span>
+                                        </div>
+                                        <div draggable onDragStart={(e) => onDragStart(e, 'ai_agent')} className="flex items-center p-1.5 rounded-lg border border-slate-100 bg-white dark:bg-slate-800 hover:border-violet-500 hover:bg-violet-50 cursor-grab transition-all">
+                                            <Sparkles className="h-4 w-4 text-violet-600 mr-1.5" />
+                                            <span className="text-xs font-medium">Agente AI</span>
+                                        </div>
+                                        <div draggable onDragStart={(e) => onDragStart(e, 'tag')} className="flex items-center p-1.5 rounded-lg border border-slate-100 bg-white dark:bg-slate-800 hover:border-teal-500 hover:bg-teal-50 cursor-grab transition-all">
+                                            <Tag className="h-4 w-4 text-teal-600 mr-1.5" />
+                                            <span className="text-xs font-medium">Etiqueta</span>
+                                        </div>
+                                        <div draggable onDragStart={(e) => onDragStart(e, 'stage')} className="flex items-center p-1.5 rounded-lg border border-slate-100 bg-white dark:bg-slate-800 hover:border-rose-500 hover:bg-rose-50 cursor-grab transition-all">
+                                            <ArrowRightCircle className="h-4 w-4 text-rose-600 mr-1.5" />
+                                            <span className="text-xs font-medium">Etapa</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </Panel>
+                    </ReactFlow>
                 </div>
             </div>
 
-            {/* Canvas */}
-            <div ref={reactFlowWrapper} className="flex-1 w-full h-full" onDrop={onDrop} onDragOver={onDragOver}>
-                <ReactFlow
-                    nodes={nodes}
-                    edges={edges}
-                    onNodesChange={onNodesChange}
-                    onEdgesChange={onEdgesChange}
-                    onConnect={onConnect}
-                    onNodesDelete={onNodesDelete}
-                    deleteKeyCode={['Backspace', 'Delete']}
-                    nodeTypes={nodeTypes}
-                    onNodeClick={onNodeClick}
-                    fitView
-                    proOptions={{ hideAttribution: true }}
-                    className="bg-slate-50 dark:bg-slate-950"
-                >
-                    <Controls
-                        position="bottom-left"
-                        orientation="horizontal"
-                        className="!m-4 !bg-white/95 dark:!bg-slate-900/95 !border !border-slate-200 dark:!border-slate-800 !rounded-full !shadow-xl"
-                        style={{ bottom: 16, left: 80 }}
-                    />
-                    <MiniMap
-                        className="!bg-white/95 dark:!bg-slate-900/95 !border !border-slate-200 dark:!border-slate-800/50 !rounded-xl !shadow-lg"
-                        style={{ bottom: 16, right: 16 }}
-                        nodeStrokeWidth={3}
-                        zoomable
-                        pannable
-                    />
-                    <Background color="#94a3b8" gap={20} size={1} variant={BackgroundVariant.Dots} />
+            {/* Overlays */}
+            <SimulatorOverlay
+                open={simulatorOpen}
+                onClose={() => setSimulatorOpen(false)}
+                nodes={nodes}
+                edges={edges}
+            />
 
-                    {nodes.length === 0 && (
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-                            <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl text-center max-w-sm">
-                                <Zap className="h-10 w-10 text-slate-400 mx-auto mb-3" />
-                                <h3 className="font-semibold text-lg text-slate-800 dark:text-slate-200">Start your workflow</h3>
-                                <p className="text-sm text-muted-foreground mt-1">
-                                    Drag a <strong>Trigger</strong> from the left palette to begin.
-                                </p>
-                            </div>
-                        </div>
-                    )}
-                </ReactFlow>
-            </div>
-
-            {/* AI Suggestions Panel */}
             <AISuggestionsPanel
                 open={aiPanelOpen}
                 onOpenChange={setAIPanelOpen}
-                nodes={nodes as any[]}
-                edges={edges as any[]}
-                onAddNode={handleAddAISuggestion as any}
+                nodes={nodes.map((n) => ({ ...n, type: n.type || 'custom', data: n.data as Record<string, unknown> }))}
+                edges={edges.map((e) => ({ ...e, label: typeof e.label === 'string' ? e.label : undefined }))}
+                onAddNode={handleAddAISuggestion}
             />
 
-            {/* Test Panel (Debug / Dry Run) */}
-            <TestPanel
-                open={testPanelOpen}
-                onOpenChange={setTestPanelOpen}
+            {/* Configuration Sheet (Unified) */}
+            <WorkflowConfigurationSheet
+                isOpen={configSheetOpen}
+                onClose={() => setConfigSheetOpen(false)}
+                defaultTab={configTab}
+                // Settings
+                initialName={workflowName}
+                initialDescription={workflowDescription}
+                initialIsActive={isActive}
+                onSaveSettings={async (name, description, active) => {
+                    setWorkflowName(name);
+                    setWorkflowDescription(description);
+                    setIsActive(active);
+                }}
+                // History
+                workflowId={id}
+                onVersionRestored={onVersionRestored}
+                // Test
                 workflowDefinition={{
-                    nodes: nodes.map((n) => ({ ...n, data: n.data as Record<string, unknown> })) as any,
+                    nodes: nodes.map((n) => ({ ...n, type: n.type || 'custom', data: n.data as Record<string, unknown> })),
                     edges: edges.map((e) => ({
                         id: e.id,
                         source: e.source,
@@ -644,27 +624,81 @@ function WorkflowEditorContent({ id }: { id: string }) {
                 }}
             />
 
-            {/* Visual Simulator Overlay */}
-            <SimulatorOverlay
-                open={simulatorOpen}
-                onClose={() => setSimulatorOpen(false)}
-                nodes={nodes}
-                edges={edges}
-            />
+            {/* Floating Toolbar (Unified Single Pill) */}
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 flex items-center justify-center pointer-events-none w-full max-w-5xl">
+                <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-white/20 shadow-lg rounded-full px-4 py-2 flex items-center gap-2 pointer-events-auto h-14">
 
-            {/* Settings Sheet */}
-            <WorkflowSettingsSheet
-                isOpen={isSettingsOpen}
-                onClose={() => setIsSettingsOpen(false)}
-                initialName={workflowName}
-                initialDescription={workflowDescription}
-                initialIsActive={isActive}
-                onSave={async (name: string, description: string, active: boolean) => {
-                    setWorkflowName(name);
-                    setWorkflowDescription(description);
-                    setIsActive(active);
-                }}
-            />
+                    {/* Left: Nav & Name */}
+                    <div className="flex items-center gap-2 mr-2">
+                        <Button size="icon" variant="ghost" className="rounded-full h-8 w-8" onClick={() => router.push('/crm/automations')}>
+                            <ArrowLeft className="h-4 w-4" />
+                        </Button>
+                        <div className="h-4 w-px bg-slate-200 dark:bg-slate-700 mx-1" />
+                        <Input
+                            value={workflowName}
+                            onChange={(e) => setWorkflowName(e.target.value)}
+                            className="w-48 bg-transparent border-none font-semibold h-8 focus-visible:ring-0 px-2"
+                        />
+                    </div>
+
+                    <div className="h-6 w-px bg-slate-200 dark:bg-slate-700 mx-1" />
+
+                    {/* Center: Tools & Actions */}
+                    <div className="flex items-center gap-1">
+                        <Button size="icon" variant="ghost" className="rounded-full w-8 h-8" onClick={handleUndo} disabled={historyIndex <= 0}>
+                            <Undo2 className="h-4 w-4 text-slate-500" />
+                        </Button>
+                        <Button size="icon" variant="ghost" className="rounded-full w-8 h-8" onClick={handleRedo} disabled={historyIndex >= history.length - 1}>
+                            <Redo2 className="h-4 w-4 text-slate-500" />
+                        </Button>
+
+                        <div className="h-4 w-px bg-slate-200 dark:bg-slate-700 mx-2" />
+
+                        {/* Unified Config Tools */}
+                        <Button size="icon" variant="ghost" className="rounded-full w-8 h-8" onClick={() => { setConfigTab("settings"); setConfigSheetOpen(true); }} title="Configuración">
+                            <Settings2 className="h-4 w-4 text-slate-600 dark:text-slate-300" />
+                        </Button>
+
+
+                        <Button size="icon" variant="ghost" className="rounded-full w-8 h-8" onClick={() => setAIPanelOpen(true)} title="AI Suggestions">
+                            <Sparkles className="h-4 w-4 text-purple-500" />
+                        </Button>
+
+                        <Button size="icon" variant="ghost" className="rounded-full w-8 h-8" onClick={handleAutoLayout} title="Auto-Organizar">
+                            <LayoutGrid className="h-4 w-4 text-slate-600 dark:text-slate-300" />
+                        </Button>
+
+                        <Button size="icon" variant="ghost" className="rounded-full w-8 h-8" onClick={handleSaveVersion} title="Crear Snapshot">
+                            <Save className="h-4 w-4 text-slate-600 dark:text-slate-300" />
+                        </Button>
+                    </div>
+
+                    <div className="h-6 w-px bg-slate-200 dark:bg-slate-700 mx-2" />
+
+                    {/* Right: Primary Actions */}
+                    <div className="flex items-center gap-3">
+                        <Button
+                            size="sm"
+                            className={cn(
+                                "rounded-full px-4 font-medium transition-all shadow-sm hover:shadow-md",
+                                simulatorOpen
+                                    ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                                    : "bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400"
+                            )}
+                            onClick={() => setSimulatorOpen(prev => !prev)}
+                        >
+                            <Smartphone className="h-4 w-4 mr-2" />
+                            {simulatorOpen ? 'Ocultar' : 'Simular'}
+                        </Button>
+
+                        <Button size="sm" className="rounded-full bg-black dark:bg-white text-white dark:text-black hover:bg-zinc-800 dark:hover:bg-zinc-200 shadow-md px-6 font-medium" onClick={handleSave}>
+                            <Save className="h-4 w-4 mr-2" />
+                            Guardar
+                        </Button>
+                    </div>
+
+                </div>
+            </div>
 
             {/* Properties Sheet */}
             <PropertiesSheet

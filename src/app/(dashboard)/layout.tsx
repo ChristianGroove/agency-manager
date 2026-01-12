@@ -6,6 +6,9 @@ import { isSuperAdmin } from "@/lib/auth/platform-roles"
 import { SystemAlertBanner } from "@/components/layout/system-alert-banner"
 import { Suspense } from "react"
 import { GlobalLoader } from "@/components/ui/global-loader"
+import { GlobalInboxProvider } from "@/modules/core/messaging/context/global-inbox-context"
+import { InboxOverlay } from "@/modules/core/messaging/components/floating-inbox/inbox-overlay"
+import { GlobalMessageListener } from "@/modules/core/messaging/components/floating-inbox/global-message-listener"
 
 export default async function DashboardLayout({
     children,
@@ -37,10 +40,14 @@ export default async function DashboardLayout({
     // solving the "stale UI" issue without needing a full browser reload.
     return (
         <DashboardShell key={currentOrgId} user={user} currentOrgId={currentOrgId} isSuperAdmin={isAdmin}>
-            <SystemAlertBanner />
-            <Suspense fallback={<GlobalLoader />}>
-                {children}
-            </Suspense>
+            <GlobalInboxProvider>
+                <GlobalMessageListener />
+                <InboxOverlay />
+                <SystemAlertBanner />
+                <Suspense fallback={<GlobalLoader />}>
+                    {children}
+                </Suspense>
+            </GlobalInboxProvider>
         </DashboardShell>
     )
 }

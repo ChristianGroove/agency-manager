@@ -1,11 +1,11 @@
-"use client"
+
+import { Virtuoso, VirtuosoHandle } from "react-virtuoso"
 
 import { useEffect, useRef, useState } from "react"
 import { supabase } from "@/lib/supabase"
 import { Send, Phone, MoreVertical, Sidebar, Paperclip, Smile, Check, CheckCheck, User, X, Target, Wand2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
@@ -51,16 +51,20 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
     const scrollRef = useRef<HTMLDivElement>(null)
     const scrollContainerRef = useRef<HTMLDivElement>(null)
     const fileInputRef = useRef<HTMLInputElement>(null)
+    const virtuosoRef = useRef<VirtuosoHandle>(null)
 
-    const scrollToBottom = () => {
-        setTimeout(() => {
-            if (scrollContainerRef.current) {
-                const scrollElement = scrollContainerRef.current.querySelector('[data-radix-scroll-area-viewport]')
-                if (scrollElement) {
-                    scrollElement.scrollTop = scrollElement.scrollHeight
-                }
-            }
-        }, 100)
+    const scrollToBottom = (index?: number) => {
+        // We allow passing an explicit index to handle optimistic updates 
+        // where state hasn't flushed yet but we know the target content exists/will exist.
+        const targetIndex = index !== undefined ? index : messages.length - 1
+
+        requestAnimationFrame(() => {
+            virtuosoRef.current?.scrollToIndex({
+                index: targetIndex,
+                align: 'end',
+                behavior: 'smooth'
+            })
+        })
     }
 
     // Listen for Smart Reply insertions
@@ -116,7 +120,7 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
 
         if (data) {
             setMessages(data)
-            scrollToBottom()
+            // Initial scroll handled by useEffect below
         }
     }
 
@@ -140,7 +144,7 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
                         if (prev.some(m => m.id === newMsg.id)) return prev
                         return [...prev, newMsg]
                     })
-                    setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
+                    // Virtuoso 'followOutput' handles scrolling automatically
                     if (newMsg.direction === 'inbound') markConversationAsRead(conversationId)
                 }
             )
@@ -152,7 +156,8 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
                     console.log('[ChatArea] UPDATE received (Fallback)', newConv)
 
                     setTimeout(() => {
-                        fetchMessages()
+                        // Only update conversation details (header, etc), do NOT re-fetch all messages
+                        // The 'INSERT' listener on messages table handles the chat stream
                         fetchConversation()
                     }, 500)
                 }
@@ -222,7 +227,8 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
         }
 
         setMessages(prev => [...prev, optimisticMsg])
-        scrollToBottom()
+        // Scroll to the new item's index (current length)
+        scrollToBottom(messages.length)
 
         try {
             const payload = JSON.stringify(messageContent)
@@ -383,47 +389,61 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
             </div>
 
             {/* Messages Area */}
-            <ScrollArea ref={scrollContainerRef} className="flex-1 p-2 md:p-4 min-h-0">
-                <div className="flex flex-col gap-2 max-w-4xl mx-auto py-2">
-                    {messages.map((msg, index) => {
-                        const currentDate = new Date(msg.created_at).toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })
-                        const prevDate = index > 0 ? new Date(messages[index - 1].created_at).toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' }) : null
-                        const showDateSeparator = currentDate !== prevDate
+            {/* Messages Area */}
+            <div className="flex-1 min-h-0 bg-background/50 relative">
+                {messages.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-full text-muted-foreground opacity-50">
+                        <p className="text-sm">No messages yet</p>
+                    </div>
+                ) : (
+                    <Virtuoso
+                        ref={virtuosoRef}
+                        style={{ height: '100%' }}
+                        totalCount={messages.length}
+                        data={messages}
+                        initialTopMostItemIndex={messages.length - 1}
+                        alignToBottom
+                        followOutput="auto"
+                        atBottomThreshold={50}
+                        itemContent={(index: number, msg: Message) => {
+                            const currentDate = new Date(msg.created_at).toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })
+                            const prevDate = index > 0 ? new Date(messages[index - 1].created_at).toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' }) : null
+                            const showDateSeparator = currentDate !== prevDate
 
-                        let content: any = msg.content
-                        if (typeof content !== 'object' || content === null) {
-                            content = { type: 'text', text: String(content) }
-                        } else if (!content.type && content.text) {
-                            content = { type: 'text', text: content.text }
-                        }
+                            let content: any = msg.content
+                            if (typeof content !== 'object' || content === null) {
+                                content = { type: 'text', text: String(content) }
+                            } else if (!content.type && content.text) {
+                                content = { type: 'text', text: content.text }
+                            }
 
-                        if (content.mediaUrl && !content.url) {
-                            content.url = content.mediaUrl
-                        }
+                            if (content.mediaUrl && !content.url) {
+                                content.url = content.mediaUrl
+                            }
 
-                        return (
-                            <div key={msg.id} className="w-full flex flex-col">
-                                {showDateSeparator && (
-                                    <div className="flex justify-center my-4 opacity-100">
-                                        <div className="bg-black/5 dark:bg-white/5 text-muted-foreground text-[10px] px-2 py-1 rounded-full uppercase tracking-wider font-medium">
-                                            {currentDate}
+                            return (
+                                <div className="px-2 md:px-4 py-1 max-w-4xl mx-auto w-full">
+                                    {showDateSeparator && (
+                                        <div className="flex justify-center my-4 opacity-100">
+                                            <div className="bg-black/5 dark:bg-white/5 text-muted-foreground text-[10px] px-2 py-1 rounded-full uppercase tracking-wider font-medium">
+                                                {currentDate}
+                                            </div>
                                         </div>
-                                    </div>
-                                )}
-                                <MessageBubble
-                                    content={content}
-                                    direction={msg.direction as 'inbound' | 'outbound'}
-                                    timestamp={msg.created_at}
-                                    status={msg.status as any}
-                                    messageId={msg.id}
-                                    metadata={msg.metadata}
-                                />
-                            </div>
-                        )
-                    })}
-                    <div ref={scrollRef} />
-                </div>
-            </ScrollArea>
+                                    )}
+                                    <MessageBubble
+                                        content={content}
+                                        direction={msg.direction as 'inbound' | 'outbound'}
+                                        timestamp={msg.created_at}
+                                        status={msg.status as any}
+                                        messageId={msg.id}
+                                        metadata={msg.metadata}
+                                    />
+                                </div>
+                            )
+                        }}
+                    />
+                )}
+            </div>
 
             {/* Input Area */}
             <div className="p-3 bg-white dark:bg-zinc-900 items-end flex gap-2 border-t relative z-20">

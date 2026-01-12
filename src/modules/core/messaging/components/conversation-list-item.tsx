@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, memo } from "react"
 import { useDraggable } from "@dnd-kit/core"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
@@ -18,7 +18,7 @@ interface ConversationListItemProps {
     fetchConversations: () => void
 }
 
-export function ConversationListItem({ conv, isSelected, onSelect, fetchConversations }: ConversationListItemProps) {
+export const ConversationListItem = memo(function ConversationListItem({ conv, isSelected, onSelect, fetchConversations }: ConversationListItemProps) {
     const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
         id: conv.id,
     })
@@ -67,7 +67,7 @@ export function ConversationListItem({ conv, isSelected, onSelect, fetchConversa
             className={cn(
                 "w-full p-4 text-left hover:bg-zinc-100 dark:hover:bg-zinc-800/50 transition-all relative cursor-grab active:cursor-grabbing outline-none group touch-none border-l-4",
                 isSelected ? "bg-muted border-l-foreground" : "border-transparent",
-                isUnread && !isSelected && "bg-zinc-50/50 dark:bg-zinc-900/20 border-l-zinc-900 dark:border-l-zinc-100",
+                isUnread && !isSelected && "bg-zinc-50/50 dark:bg-zinc-900/20",
                 isDragging && "opacity-50 grayscale",
                 isNew && "ring-1 ring-inset ring-blue-500/50 bg-blue-50/50 dark:bg-blue-900/20 transition-all duration-500 ease-out"
             )}
@@ -164,4 +164,4 @@ export function ConversationListItem({ conv, isSelected, onSelect, fetchConversa
             </div>
         </div>
     )
-}
+})

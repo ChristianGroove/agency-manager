@@ -27,7 +27,7 @@ export function SidebarFloatingActions({ isSuperAdmin, user, currentOrgId }: Sid
                         <ActionButton
                             icon={Building2}
                             text="Organizaciones"
-                            color="#6366f1" // Indigo
+                            color="#64748b" // Neutral Slate
                         />
                     }
                 />
@@ -40,7 +40,7 @@ export function SidebarFloatingActions({ isSuperAdmin, user, currentOrgId }: Sid
                         <ActionButton
                             icon={Bell}
                             text="Notificaciones"
-                            color="#f59e0b" // Amber
+                            color="#64748b" // Neutral Slate
                         />
                     }
                 />
@@ -51,7 +51,7 @@ export function SidebarFloatingActions({ isSuperAdmin, user, currentOrgId }: Sid
                 <ActionButton
                     icon={UserIcon}
                     text="Perfil"
-                    color="#10b981" // Emerald
+                    color="#64748b" // Neutral Slate
                     onClick={() => setIsProfileOpen(true)}
                 />
                 <ProfileSheet open={isProfileOpen} onOpenChange={setIsProfileOpen} user={user} />
@@ -66,21 +66,21 @@ export function SidebarFloatingActions({ isSuperAdmin, user, currentOrgId }: Sid
                         href="/platform/admin"
                         icon={LayoutDashboard}
                         text="Admin"
-                        color="#4f46e5"
+                        color="#64748b"
                     />
 
                     <ActionButton
                         href="/platform/admin/modules"
                         icon={Package}
                         text="Módulos"
-                        color="#a855f7"
+                        color="#64748b"
                     />
 
                     <ActionButton
                         href="/platform/admin/branding"
                         icon={Shield}
                         text="Branding"
-                        color="#ec4899"
+                        color="#64748b"
                     />
                 </>
             )}

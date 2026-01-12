@@ -111,7 +111,7 @@ function SidebarSection({
                 )} />
             </button>
             <div className={cn(
-                "space-y-0.5 overflow-hidden transition-all duration-200",
+                "space-y-0.5 overflow-hidden transition-all duration-200 ml-3.5 pl-2 border-l border-gray-200 dark:border-zinc-800",
                 isExpanded ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"
             )}>
                 {children}

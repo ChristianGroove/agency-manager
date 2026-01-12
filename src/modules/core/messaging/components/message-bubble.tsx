@@ -3,6 +3,7 @@
 import { cn } from "@/lib/utils"
 import { Check, CheckCheck, FileIcon, Volume2, Play } from "lucide-react"
 import { AudioTranscriber } from "./audio-transcriber"
+import { memo } from "react"
 
 interface MessageContent {
     type: 'text' | 'image' | 'audio' | 'video' | 'document' | 'location' | 'note'
@@ -22,7 +23,7 @@ interface MessageBubbleProps {
     metadata?: any;
 }
 
-export function MessageBubble({ content, direction, timestamp, status, messageId, metadata }: MessageBubbleProps) {
+export const MessageBubble = memo(function MessageBubble({ content, direction, timestamp, status, messageId, metadata }: MessageBubbleProps) {
     const isOutbound = direction === 'outbound'
 
     return (
@@ -61,7 +62,7 @@ export function MessageBubble({ content, direction, timestamp, status, messageId
             </div>
         </div>
     )
-}
+})
 
 function renderContent(content: any, isOutbound: boolean, messageId?: string, metadata?: any) {
     // Normalize content properties
