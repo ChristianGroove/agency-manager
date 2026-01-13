@@ -9,7 +9,8 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { CreateOrganizationSheet } from "@/components/organizations/create-organization-sheet"
 import { EditLimitsModal } from "@/components/organizations/edit-limits-modal"
-import { Plus, Building2, Settings2, ArrowRight } from "lucide-react"
+import { Plus, Building2, Settings2, ArrowRight, BarChart3 } from "lucide-react"
+import { HierarchyAnalytics } from "@/modules/core/organizations/components/hierarchy-analytics"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { SetPasswordModal } from "@/components/auth/set-password-modal"
@@ -37,6 +38,9 @@ export default function PlatformOrganizationsPage() {
 
     // Tree State
     const [expandedOrgs, setExpandedOrgs] = useState<Set<string>>(new Set())
+
+    // Analytics Toggle
+    const [showAnalytics, setShowAnalytics] = useState(false)
 
     useEffect(() => {
         fetchOrgs()
@@ -175,6 +179,14 @@ export default function PlatformOrganizationsPage() {
                     <p className="text-muted-foreground mt-1">Gestión global de organizaciones.</p>
                 </div>
                 <div className="flex items-center gap-3 w-full md:w-auto">
+                    <Button
+                        variant={showAnalytics ? "default" : "outline"}
+                        onClick={() => setShowAnalytics(!showAnalytics)}
+                        className={showAnalytics ? "bg-purple-600 hover:bg-purple-700" : ""}
+                    >
+                        <BarChart3 className="mr-2 h-4 w-4" />
+                        {showAnalytics ? "Ocultar Analytics" : "Ver Analytics"}
+                    </Button>
                     <Button onClick={() => setIsCreateOpen(true)} className="bg-brand-pink hover:bg-brand-pink/90 text-white">
                         <Plus className="mr-2 h-4 w-4" /> Nueva Organización
                     </Button>
@@ -197,6 +209,13 @@ export default function PlatformOrganizationsPage() {
                     showCompact={false} // Disable compact
                 />
             </div>
+
+            {/* Analytics Dashboard (Collapsible) */}
+            {showAnalytics && (
+                <div className="animate-in slide-in-from-top-2 duration-300">
+                    <HierarchyAnalytics />
+                </div>
+            )}
 
             {viewMode === 'list' ? (
                 <Card className="border-gray-200 dark:border-white/10 shadow-sm bg-white dark:bg-white/5 backdrop-blur-md">
