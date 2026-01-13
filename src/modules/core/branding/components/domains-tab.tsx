@@ -1,6 +1,6 @@
 "use client"
 
-import { BrandingConfig } from "../actions"
+import { BrandingConfig } from "@/types/branding"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"

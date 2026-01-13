@@ -9,8 +9,10 @@ import { OrgBranding } from "@/components/organizations/org-branding"
 import { useActiveModules } from "@/hooks/use-active-modules"
 import { MODULE_ROUTES, filterRoutesByModules, CATEGORY_LABELS, CATEGORY_ICONS, ModuleCategory } from "@/lib/module-config"
 import { logout } from "@/modules/core/auth/actions"
-import { SidebarFloatingActions } from "./sidebar-floating-actions"
 import { SidebarParticles } from "./sidebar-particles"
+import { OrganizationSwitcher } from "@/components/organizations/organization-switcher"
+import { OrganizationCard } from "@/components/organizations/organization-card"
+import { SidebarFloatingActions } from "./sidebar-floating-actions"
 import {
     Tooltip,
     TooltipContent,
@@ -183,14 +185,15 @@ export function SidebarContent({ isCollapsed = false, currentOrgId, isSuperAdmin
 
     return (
         <div className="px-4 py-6 flex-1 flex flex-col h-full overflow-hidden relative z-10">
-            {/* Branding Section - Compact */}
-            <div className={cn("flex items-center mb-6 transition-all duration-300 min-h-[40px]", isCollapsed ? "justify-center px-0" : "px-3")}>
+
+            {/* Header Logo */}
+            <div className={cn("flex items-center mb-6 pl-2 transition-all duration-300 min-h-[40px]", isCollapsed ? "justify-center px-0" : "")}>
                 <OrgBranding orgId={currentOrgId} collapsed={isCollapsed} />
             </div>
 
             {/* Show loading skeleton while fetching modules */}
             {isLoading ? (
-                <div className="space-y-2">
+                <div className="space-y-2 mb-auto">
                     {[...Array(3)].map((_, i) => (
                         <div key={i} className="space-y-1">
                             <div className="h-3 w-16 bg-gray-200 dark:bg-white/5 rounded mx-3" />
@@ -201,7 +204,7 @@ export function SidebarContent({ isCollapsed = false, currentOrgId, isSuperAdmin
                     ))}
                 </div>
             ) : (
-                <nav className="flex-1 overflow-y-auto custom-scrollbar pr-1">
+                <nav className="flex-1 overflow-y-auto custom-scrollbar pr-1 mb-2">
                     {categoryOrder.map(category => {
                         const routes = groupedRoutes[category]
                         if (!routes || routes.length === 0) return null
@@ -249,18 +252,14 @@ export function SidebarContent({ isCollapsed = false, currentOrgId, isSuperAdmin
                 </nav>
             )}
 
-            {/* Logout Footer - Compact */}
+
+            {/* Organization Footer (Switcher + Logout) */}
             <div className="mt-auto pt-2 border-t border-gray-200 dark:border-white/5">
-                <button
-                    onClick={() => logout()}
-                    className={cn(
-                        "w-full flex items-center gap-x-3 text-sm font-medium rounded-xl py-2 text-gray-500 hover:text-gray-900 hover:bg-gray-100 dark:text-zinc-400 dark:hover:text-white dark:hover:bg-white/5 transition-all duration-200 group",
-                        isCollapsed ? "justify-center px-0" : "px-3"
-                    )}
-                >
-                    <LogOut className="h-4 w-4 shrink-0" />
-                    {!isCollapsed && <span className="text-[13px]">Cerrar Sesión</span>}
-                </button>
+                <div className={cn("flex items-center transition-all duration-300 min-h-[40px]", isCollapsed ? "justify-center px-0" : "px-0")}>
+                    <OrganizationSwitcher
+                        trigger={<OrganizationCard orgId={currentOrgId} collapsed={isCollapsed} />}
+                    />
+                </div>
             </div>
         </div>
     )

@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Sparkles, Mail, ExternalLink } from "lucide-react"
-import { BrandingConfig } from "@/modules/core/branding/actions"
+import { BrandingConfig } from "@/types/branding"
 import { EmailSignatureGenerator } from "@/modules/core/branding/components/email-signature-generator"
 
 interface ToolsViewProps {

@@ -80,7 +80,7 @@ export default function LoginPage() {
                     <img
                         src={logoUrl}
                         alt="Logo"
-                        className="h-16 w-auto object-contain drop-shadow-lg"
+                        className="h-11 w-auto object-contain drop-shadow-lg"
                     />
                 </div>
 
@@ -155,8 +155,8 @@ export default function LoginPage() {
                     </CardContent>
                 </Card>
 
-                <p className="text-sm text-white/50 font-medium z-10">
-                    &copy; 2026 {branding ? branding.name : 'Pixy Agency'}
+                <p className="text-xs text-white/50 font-medium z-10">
+                    Powered by Pixy
                 </p>
             </div>
         </div>

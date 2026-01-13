@@ -2,11 +2,12 @@ import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { AlertCircle } from "lucide-react"
 
-export default function AuthErrorPage({
-    searchParams,
-}: {
-    searchParams: { error?: string; error_description?: string; error_code?: string }
+export default async function AuthErrorPage(props: {
+    searchParams: Promise<{ error?: string; error_description?: string; error_code?: string }>
 }) {
+    const searchParams = await props.searchParams
+    const { error, error_description, error_code } = searchParams
+
     return (
         <div className="flex min-h-screen flex-col items-center justify-center p-4">
             <div className="mx-auto flex w-full max-w-md flex-col items-center space-y-6 text-center">
@@ -16,11 +17,11 @@ export default function AuthErrorPage({
                 <div className="space-y-2">
                     <h1 className="text-3xl font-bold tracking-tighter">Authentication Error</h1>
                     <p className="text-gray-500">
-                        {searchParams.error_description || "There was a problem signing you in."}
+                        {error_description || "There was a problem signing you in."}
                     </p>
-                    {searchParams.error_code && (
+                    {error_code && (
                         <code className="rounded bg-muted px-2 py-1 text-sm">
-                            Code: {searchParams.error_code}
+                            Code: {error_code}
                         </code>
                     )}
                 </div>

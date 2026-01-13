@@ -49,6 +49,17 @@ export default function PlatformOrganizationsPage() {
         const { getCurrentOrgDetails } = await import('@/modules/core/organizations/actions')
         const currentOrg = await getCurrentOrgDetails()
 
+        // SECURITY CHECK: Strict Role Enforcement
+        // Only Resellers and Platform Admins can view this page.
+        if (currentOrg?.organization_type === 'client') {
+            const { redirect } = await import('next/navigation')
+            // Client-side redirect not ideal inside async fn, but useEffect handles it via router usually.
+            // Better: use window.location or router.push
+            // Since we are inside a client component:
+            window.location.href = '/' // Hard redirect to dashboard
+            return
+        }
+
         let query = supabase
             .from('organizations')
             .select(`

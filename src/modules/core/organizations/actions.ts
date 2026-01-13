@@ -5,12 +5,15 @@ import { supabaseAdmin } from "@/lib/supabase-admin"
 import { revalidatePath } from "next/cache"
 import { OrganizationMember } from "@/types/organization"
 import { cookies } from "next/headers"
+import { getEffectiveBranding } from "@/modules/core/branding/actions"
+import { isSuperAdmin } from "@/lib/auth/platform-roles"
 
 /**
  * Fetch all organizations the current user belongs to.
  */
 export async function getUserOrganizations() {
     const supabase = await createClient()
+    // ... existing code ...
     const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) return []
@@ -116,6 +119,63 @@ export async function getCurrentOrgDetails() {
 }
 
 /**
+ * Get details for the Sidebar Organization Card (Branding + Subscription)
+ */
+export async function getOrganizationCardDetails(orgId: string | null) {
+    if (!orgId) return null
+
+    const supabase = await createClient()
+
+    // Parallel fetch: Branding + Org Details with Plan
+    // We try to fetch both potential FKs for safety during migration
+    const [branding, orgResult] = await Promise.all([
+        getEffectiveBranding(orgId),
+        supabase
+            .from('organizations')
+            .select(`
+                organization_type,
+                subscription_status,
+                subscription_product:saas_products!subscription_product_id (name),
+                active_app:saas_apps!active_app_id (name)
+            `)
+            .eq('id', orgId)
+            .single()
+    ])
+
+    const org = orgResult.data
+
+    // Determine Plan Name
+    // Prefer subscription_product (Legacy/Stable) or active_app (New)
+    const subProduct = org?.subscription_product as any
+    const activeApp = org?.active_app as any
+    const subName = Array.isArray(subProduct) ? subProduct[0]?.name : subProduct?.name
+    const appName = Array.isArray(activeApp) ? activeApp[0]?.name : activeApp?.name
+
+    const planName = subName || appName || "Plan Gratuito"
+
+    // Map Status to Label
+    const statusMap: Record<string, string> = {
+        'active': 'Activo',
+        'trialing': 'Prueba',
+        'past_due': 'Vencido',
+        'canceled': 'Cancelado',
+        'incomplete': 'Incompleto'
+    }
+
+    const statusLabel = statusMap[org?.subscription_status || ''] || 'Desconocido'
+
+    return {
+        branding,
+        subscription: {
+            planName,
+            status: org?.subscription_status,
+            statusLabel
+        },
+        type: org?.organization_type || 'client'
+    }
+}
+
+/**
  * Create a new Organization (Tenant Provisioning)
  */
 export async function createOrganization(formData: {
@@ -145,6 +205,46 @@ export async function createOrganization(formData: {
 
             if (!membership || !['owner', 'admin'].includes(membership.role)) {
                 return { success: false, error: "No tienes permiso para crear sub-organizaciones en esta cuenta." }
+            }
+        } else {
+            // Root Organization Creation
+            // STRICT SECURITY: Public users can ONLY create 'client' orgs (Onboarding)
+            // Any other type (reseller, platform) requires Super Admin
+            if (formData.organization_type && formData.organization_type !== 'client') {
+                const isAdmin = await isSuperAdmin(user.id)
+                if (!isAdmin) {
+                    return { success: false, error: "No tienes permiso para crear este tipo de organización." }
+                }
+            } else {
+                // If creating a 'client' org as a root org (e.g. via internal dashboard)
+                // WE MUST CHECK if the user is already a 'client' member trying to self-provision another org.
+                // Generally, only Resellers or Platform should create orgs from Dashboard.
+                // Self-service creation is done via Onboarding (which calls strict createClientOrganization).
+
+                // If this is called from dashboard (internal), check roles.
+                // We can't easily distinguish source, but we can check if user is allowed multiple orgs.
+                // Rule: If user is ONLY a client member, BLOCK creation.
+                // They must be Reseller or Platform to create new orgs from here.
+
+                const isAdmin = await isSuperAdmin(user.id)
+                if (!isAdmin) {
+                    // Check if Reseller
+                    const memberships = await getUserOrganizations()
+                    const isReseller = memberships.some(m => m.organization?.organization_type === 'reseller' && ['owner', 'admin'].includes(m.role))
+
+                    if (!isReseller) {
+                        // If checking for Onboarding logic:
+                        // Onboarding calls `createClientOrganization` which calls this.
+                        // But `createClientOrganization` sets type='client'.
+                        // We need to differentiate "Onboarding User" (no orgs yet) vs "Client User" (has orgs).
+
+                        // If user has NO organizations, allow (First time onboarding).
+                        // If user HAS organizations, and is not Reseller/Admin, BLOCK.
+                        if (memberships.length > 0) {
+                            return { success: false, error: "Tu plan actual no permite crear múltiples organizaciones. Contacta a soporte." }
+                        }
+                    }
+                }
             }
         }
 
@@ -181,6 +281,18 @@ export async function createOrganization(formData: {
             })
 
         if (memberError) throw memberError
+
+        // 2a. Seed Default Roles (Owner/Admin/Member)
+        // We do this BEFORE assigning the owner role to the member if we were using role_id,
+        // but currently organization_members uses 'role' string (legacy enum).
+        // The RBAC system mirrors this. We just ensure roles exist for future usage.
+        try {
+            const { seedDefaultRoles } = await import('@/modules/core/iam/services/role-service')
+            await seedDefaultRoles(newOrg.id)
+        } catch (e) {
+            console.error("Warning: Failed to seed default roles", e)
+            // Non-blocking for now, as strict RBAC might be optional or fallback to enum
+        }
 
         // 2b. [New] Automated Onboarding: Invite Admin
         if (formData.admin_email) {
@@ -258,6 +370,26 @@ export async function createOrganization(formData: {
         console.error("Error creating organization:", error)
         return { success: false, error: error.message }
     }
+}
+
+/**
+ * Onboarding: Create a Client Organization (Strict)
+ * This is the public-facing action for the Onboarding Wizard.
+ * It strictly enforces 'client' type and prevents abuse of permissions.
+ */
+export async function createClientOrganization(formData: {
+    name: string
+    slug: string
+    logo_url?: string
+    app_id: string
+    admin_email?: string
+}) {
+    // Force strict parameters for public onboarding
+    return await createOrganization({
+        ...formData,
+        organization_type: 'client', // STRICT ENFORCEMENT
+        parent_organization_id: undefined // No hierarchy for self-service clients
+    })
 }
 
 /**

@@ -104,3 +104,28 @@ export async function deleteAICredential(id: string) {
     revalidatePath('/platform/settings')
     return { success: true }
 }
+
+/**
+ * Update priority order for a batch of credentials
+ */
+export async function updateAICredentialPriority(items: { id: string; priority: number }[]) {
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) throw new Error("Unauthorized")
+
+    const supabase = await createClient()
+
+    // Process in parallel or batch
+    const updates = items.map(item =>
+        supabase
+            .from('ai_credentials')
+            .update({ priority: item.priority })
+            .eq('id', item.id)
+            .eq('organization_id', orgId)
+    )
+
+    await Promise.all(updates)
+
+    revalidatePath('/platform/settings')
+    revalidatePath('/platform/integrations')
+    return { success: true }
+}

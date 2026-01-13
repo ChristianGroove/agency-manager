@@ -269,6 +269,24 @@ Return JSON:
   "improvements": ["Faster responses", "More empathy phrases"]
 }`,
     userPrompt: (input: any) => `Agent Messages:\n${input.agentMessages}`
+  },
+
+  'quote.generate_copy_v1': {
+    id: 'quote.generate_copy_v1',
+    description: 'Generate professional copy for quote headers and footers.',
+    temperature: 0.7,
+    maxTokens: 100,
+    jsonMode: true,
+    systemPrompt: () => `You are an expert Copywriter for business documents.
+Task: Generate a single, short, professional Header or Footer text.
+
+Return JSON:
+{
+  "text": "Generated text here"
+}
+
+Do NOT include quotes in the text value.`,
+    userPrompt: (input: any) => `Prompt: ${input.prompt}`
   }
 };
 

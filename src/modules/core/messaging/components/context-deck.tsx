@@ -321,7 +321,11 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
                 )}
             </div>
 
-            <QuoteDesignerSheet open={isQuoteDesignerOpen} onOpenChange={setIsQuoteDesignerOpen} />
+            <QuoteDesignerSheet
+                open={isQuoteDesignerOpen}
+                onOpenChange={setIsQuoteDesignerOpen}
+                organizationId={conversation?.organization_id}
+            />
         </div>
     )
 }

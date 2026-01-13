@@ -63,6 +63,26 @@ export async function getSaaSProducts() {
 }
 
 /**
+ * Fetch available Apps (Verticals) for Onboarding.
+ * Fetches from saas_products which is the table linked by active_app_id.
+ */
+export async function getAvailableApps() {
+    const supabase = await createClient()
+    const { data, error } = await supabase
+        .from("saas_apps")
+        .select("id, name, slug, description, price_monthly")
+        .eq('is_active', true) // 'status' might not exist on saas_apps, migration says 'is_active'
+        .order("sort_order", { ascending: true }) // Use sort_order for better control
+
+    if (error) {
+        console.error("Error fetching available apps:", error)
+        return []
+    }
+
+    return data
+}
+
+/**
  * Create a new SaaS Product (App) and link selected modules.
  */
 export async function createSaaSProduct(productData: Partial<SaaSProduct>, moduleIds: string[]) {

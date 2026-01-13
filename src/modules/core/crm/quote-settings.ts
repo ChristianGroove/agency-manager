@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache"
 
 export interface QuoteSettings {
     organization_id: string
-    vertical: 'agency' | 'ecommerce' | 'reservation' | 'custom'
+    vertical: string // Changed from strict union to string to support many templates
     approve_label: string
     reject_label: string
     actions_config: {
@@ -27,25 +27,33 @@ export interface QuoteSettings {
     }
 }
 
-export async function getQuoteSettings(): Promise<{ success: boolean; settings?: QuoteSettings; error?: string }> {
+// Templates moved to ./templates.ts
+
+export async function getQuoteSettings(overrideOrgId?: string): Promise<{ success: boolean; settings?: QuoteSettings; error?: string }> {
     const supabase = await createClient()
 
     try {
         const { data: user } = await supabase.auth.getUser()
         if (!user.user) return { success: false, error: "Unauthorized" }
 
-        // Get Org ID - try via membership first, then fallback to first available org
-        let orgId: string | null = null
+        // Get Org ID - prioritizing active membership
+        let orgId: string | null = overrideOrgId || null
 
-        const { data: member } = await supabase
-            .from('organization_members')
-            .select('organization_id')
-            .eq('user_id', user.user.id)
-            .single()
+        if (!orgId) {
+            const { data: members, error: membersError } = await supabase
+                .from('organization_members')
+                .select('organization_id')
+                .eq('user_id', user.user.id)
+                .limit(1) // Get the first one found
 
-        if (member) {
-            orgId = member.organization_id
-        } else {
+            if (members && members.length > 0) {
+                orgId = members[0].organization_id
+            }
+        }
+
+        // Only use fallback if NO memberships found (should not happen for valid users)
+        if (!orgId) {
+            console.warn("[getQuoteSettings] No memberships found for user, checking fallback...")
             // Fallback: get first organization (using admin to ensure we can read it)
             const { data: firstOrg } = await supabaseAdmin
                 .from('organizations')
@@ -55,9 +63,10 @@ export async function getQuoteSettings(): Promise<{ success: boolean; settings?:
 
             if (firstOrg) {
                 orgId = firstOrg.id
-                console.log("[getQuoteSettings] Using fallback org:", orgId)
             }
         }
+
+        console.log(`[getQuoteSettings] Resolved Org ID: ${orgId}`)
 
         if (!orgId) return { success: false, error: "No organization found" }
 

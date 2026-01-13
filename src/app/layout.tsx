@@ -51,6 +51,7 @@ export default async function RootLayout({
     <html lang="es" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        suppressHydrationWarning
       >
         <BrandingProvider initialBranding={branding}>
           <ThemeProvider

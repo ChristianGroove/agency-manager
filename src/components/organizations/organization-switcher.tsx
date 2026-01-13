@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { Building2, Plus, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import Link from "next/link"
 import {
     Sheet,
     SheetContent,
@@ -11,7 +12,7 @@ import {
     SheetDescription,
 } from "@/components/ui/sheet"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { CreateOrganizationSheet } from "./create-organization-sheet"
+// import { CreateOrganizationSheet } from "./create-organization-sheet" // Removed for public onboarding
 import { OrganizationMember } from "@/types/organization"
 import { getUserOrganizations, switchOrganization, getCurrentOrgName, getCurrentOrganizationId } from "@/modules/core/organizations/actions"
 import { toast } from "sonner"
@@ -26,8 +27,9 @@ export function OrganizationSwitcher({ trigger }: OrganizationSwitcherProps) {
     const [organizations, setOrganizations] = useState<OrganizationMember[]>([])
     const [currentOrgId, setCurrentOrgId] = useState<string | null>(null)
     const [isLoading, setIsLoading] = useState(true)
+
     const [isOpen, setIsOpen] = useState(false)
-    const [isCreateOpen, setIsCreateOpen] = useState(false)
+    // const [isCreateOpen, setIsCreateOpen] = useState(false) // Deprecated for public onboarding
 
     // Load initial state
     useEffect(() => {
@@ -150,8 +152,8 @@ export function OrganizationSwitcher({ trigger }: OrganizationSwitcherProps) {
                                     >
                                         {/* Status Line */}
                                         <div className={`absolute left-0 top-0 bottom-0 w-1 ${member.organization?.organization_type === 'reseller' ? 'bg-blue-500' :
-                                                member.organization?.organization_type === 'platform' ? 'bg-purple-500' :
-                                                    'bg-gray-200'
+                                            member.organization?.organization_type === 'platform' ? 'bg-purple-500' :
+                                                'bg-gray-200'
                                             }`} />
 
                                         <div className={`
@@ -208,26 +210,32 @@ export function OrganizationSwitcher({ trigger }: OrganizationSwitcherProps) {
                             <Button variant="ghost" onClick={() => setIsOpen(false)} className="text-gray-500 hover:text-red-600 hover:bg-red-50">
                                 Cerrar
                             </Button>
-                            <Button
-                                className="shadow-lg shadow-indigo-500/20 bg-indigo-600 hover:bg-indigo-700 text-white"
-                                onClick={() => setIsCreateOpen(true)}
-                            >
-                                <Plus className="mr-2 h-4 w-4" />
-                                Nueva Organización
-                            </Button>
+
+                            {/* Hide Create Button for Clients */}
+                            {/* Logic: If user has organizations and NONE are reseller/platform, assume Client. */}
+                            {(!organizations.length || organizations.some(m => ['reseller', 'platform'].includes(m.organization?.organization_type || ''))) && (
+                                <Link href="/onboarding" onClick={() => setIsOpen(false)}>
+                                    <Button
+                                        className="shadow-lg shadow-indigo-500/20 bg-indigo-600 hover:bg-indigo-700 text-white"
+                                    >
+                                        <Plus className="mr-2 h-4 w-4" />
+                                        Nueva Organización
+                                    </Button>
+                                </Link>
+                            )}
                         </div>
                     </div>
                 </SheetContent>
             </Sheet>
 
-            <CreateOrganizationSheet
+            {/*             <CreateOrganizationSheet
                 open={isCreateOpen}
                 onOpenChange={setIsCreateOpen}
                 onSuccess={() => {
                     loadData()
                     // Optional: Switch to new org automatically or keep list open
                 }}
-            />
+            /> */}
         </>
     )
 }

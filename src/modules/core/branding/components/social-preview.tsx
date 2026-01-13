@@ -1,6 +1,6 @@
 "use client"
 
-import { BrandingConfig } from "../actions"
+import { BrandingConfig } from "@/types/branding"
 import { Card } from "@/components/ui/card"
 
 interface SocialPreviewProps {

@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase-server"
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
-import { cookies } from "next/headers"
+import { cookies, headers } from "next/headers"
 
 /**
  * =======================
@@ -35,6 +35,75 @@ export async function logout() {
     const supabase = await createClient()
     await supabase.auth.signOut()
     redirect('/login')
+}
+
+export async function signup(formData: FormData) {
+    const supabase = await createClient()
+
+    const email = formData.get('email') as string
+    const password = formData.get('password') as string
+    const fullName = formData.get('fullName') as string
+    const captchaToken = formData.get('captchaToken') as string
+
+    // 0. Captcha Verification
+    if (process.env.TURNSTILE_SECRET_KEY) {
+        if (!captchaToken) {
+            return { error: "Por favor completa el captcha." }
+        }
+
+        const ip = (await headers()).get('x-forwarded-for') || '127.0.0.1'
+
+        const verifyFormData = new FormData()
+        verifyFormData.append('secret', process.env.TURNSTILE_SECRET_KEY)
+        verifyFormData.append('response', captchaToken)
+        verifyFormData.append('remoteip', ip)
+
+        const verification = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+            body: verifyFormData,
+            method: 'POST',
+        })
+
+        const outcome = await verification.json()
+        if (!outcome.success) {
+            console.error("Captcha verification failed:", outcome)
+            return { error: "Verificación de seguridad fallida. Por favor recarga e intenta de nuevo." }
+        }
+    }
+
+    // 1. Sign Up
+    const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+            data: {
+                full_name: fullName,
+                // Default metadata
+                onboarding_completed: false
+            },
+            // Redirect to onboarding after email confirmation (if enabled)
+            // Redirect to onboarding after email confirmation (if enabled)
+            emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/callback?next=/onboarding`
+        }
+    })
+
+    if (error) {
+        if (error.message.includes('User already registered') || error.message.includes('weak_password')) {
+            return { error: "Este correo ya está registrado o la contraseña es muy débil." }
+        }
+        return { error: error.message }
+    }
+
+    // 2. Check if session was created immediately (Email Confirm Disabled)
+    if (data.session) {
+        revalidatePath('/', 'layout')
+        redirect('/onboarding')
+    }
+
+    // 3. Email Confirmation Required
+    return {
+        success: true,
+        message: "Por favor revisa tu correo para confirmar tu cuenta."
+    }
 }
 
 /**

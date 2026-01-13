@@ -18,9 +18,11 @@ interface Particle {
 export const ParticlesBackground = ({
     children,
     className,
+    theme = "dark",
 }: {
     children?: React.ReactNode
     className?: string
+    theme?: "dark" | "light"
 }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null)
     const containerRef = useRef<HTMLDivElement>(null)
@@ -45,15 +47,22 @@ export const ParticlesBackground = ({
 
         const initParticles = () => {
             particles = []
-            const particleCount = 100 // Increased from 20 to 100
+            const particleCount = 100
 
             for (let i = 0; i < particleCount; i++) {
-                const size = Math.random() * 2 + 1 // Reduced size by half
+                const size = Math.random() * 2 + 1
                 const x = Math.random() * canvas.width
                 const y = Math.random() * canvas.height
                 const directionX = (Math.random() - 0.5) * 0.5
                 const directionY = (Math.random() - 0.5) * 0.5
-                const color = Math.random() > 0.5 ? "rgba(242, 5, 226, 0.6)" : "rgba(0, 224, 255, 0.6)" // Increased opacity
+
+                // Theme-based colors
+                let color;
+                if (theme === "light") {
+                    color = Math.random() > 0.5 ? "rgba(242, 5, 226, 0.4)" : "rgba(0, 224, 255, 0.4)" // Slightly more transparent for light
+                } else {
+                    color = Math.random() > 0.5 ? "rgba(242, 5, 226, 0.6)" : "rgba(0, 224, 255, 0.6)"
+                }
 
                 particles.push({
                     x,
@@ -79,11 +88,10 @@ export const ParticlesBackground = ({
                 const distance = Math.sqrt(dx * dx + dy * dy)
                 const forceDirectionX = dx / distance
                 const forceDirectionY = dy / distance
-                const maxDistance = 300 // Interaction radius
+                const maxDistance = 300
                 const force = (maxDistance - distance) / maxDistance
 
                 if (distance < maxDistance) {
-                    // Attraction to mouse
                     particle.vx += forceDirectionX * force * 0.05
                     particle.vy += forceDirectionY * force * 0.05
                 }
@@ -92,11 +100,11 @@ export const ParticlesBackground = ({
                 particle.x += particle.vx
                 particle.y += particle.vy
 
-                // Friction (to stop them from accelerating forever)
+                // Friction
                 particle.vx *= 0.99
                 particle.vy *= 0.99
 
-                // Base floating movement (if not influenced strongly by mouse)
+                // Base floating movement
                 if (distance >= maxDistance) {
                     if (particle.vx < 0.2 && particle.vx > -0.2) particle.vx += (Math.random() - 0.5) * 0.02
                     if (particle.vy < 0.2 && particle.vy > -0.2) particle.vy += (Math.random() - 0.5) * 0.02
@@ -137,16 +145,31 @@ export const ParticlesBackground = ({
             window.removeEventListener("mousemove", handleMouseMove)
             cancelAnimationFrame(animationFrameId)
         }
-    }, [])
+    }, [theme])
 
     return (
-        <div ref={containerRef} className={cn("relative min-h-screen w-full overflow-hidden bg-black flex flex-col items-center justify-center", className)}>
+        <div ref={containerRef} className={cn(
+            "relative min-h-screen w-full overflow-hidden flex flex-col items-center justify-center",
+            theme === "light" ? "bg-gray-50" : "bg-black",
+            className
+        )}>
             {/* Dynamic Gradient Background */}
             <div className="absolute inset-0 z-0 pointer-events-none">
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,_#1a1a1a_0%,_#000000_100%)]" />
+                {theme === "light" ? (
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,_#ffffff_0%,_#f3f4f6_100%)]" />
+                ) : (
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,_#1a1a1a_0%,_#000000_100%)]" />
+                )}
+
                 <div className="absolute top-0 left-0 w-full h-full opacity-40">
-                    <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-brand-pink/20 blur-[100px] animate-pulse" />
-                    <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-brand-cyan/20 blur-[100px] animate-pulse delay-1000" />
+                    <div className={cn(
+                        "absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full blur-[100px] animate-pulse",
+                        theme === "light" ? "bg-brand-pink/10" : "bg-brand-pink/20"
+                    )} />
+                    <div className={cn(
+                        "absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full blur-[100px] animate-pulse delay-1000",
+                        theme === "light" ? "bg-brand-cyan/10" : "bg-brand-cyan/20"
+                    )} />
                 </div>
             </div>
 

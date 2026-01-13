@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, createContext, useContext } from "react"
-import { BrandingConfig } from "@/modules/core/branding/actions"
+import { BrandingConfig } from "@/types/branding"
 
 interface BrandingProviderProps {
     initialBranding: BrandingConfig

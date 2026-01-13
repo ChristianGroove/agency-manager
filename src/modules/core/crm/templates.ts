@@ -1,0 +1,135 @@
+
+export const INDUSTRY_TEMPLATES = [
+    {
+        id: 'agency',
+        label: 'Agencia / B2B',
+        icon: 'Briefcase',
+        color: 'indigo',
+        approve_label: '✅ Aprobar Presupuesto',
+        reject_label: '❌ Rechazar / Cambios',
+        reject_reasons: ['Presupuesto Alto', 'Alcance Incorrecto', 'Ya contraté otro', 'Postergar'],
+        header: 'PROPUESTA DE SERVICIOS',
+        footer: 'Documento confidencial. Validez de 15 días.',
+        ack_msg: 'Entendido, gracias por el feedback. ¿Podemos re-negociar?'
+    },
+    {
+        id: 'ecommerce',
+        label: 'Ecommerce / Retail',
+        icon: 'Zap',
+        color: 'orange',
+        approve_label: '🍕 Confirmar Pedido',
+        reject_label: '❌ Cancelar Pedido',
+        reject_reasons: ['Error en pedido', 'Muy caro', 'Demora mucho', 'Ya no lo quiero'],
+        header: 'RESUMEN DE TU PEDIDO',
+        footer: 'Gracias por tu compra. Te avisaremos cuando salga.',
+        ack_msg: 'Pedido cancelado. Esperamos servirte pronto.'
+    },
+    {
+        id: 'reservation',
+        label: 'Citas / Salud',
+        icon: 'Calendar',
+        color: 'green',
+        approve_label: '📅 Confirmar Cita',
+        reject_label: '❌ Re-agendar',
+        reject_reasons: ['Horario no sirve', 'Ya no necesito', 'Muy costoso', 'Otro doctor'],
+        header: 'CONFIRMACIÓN DE CITA',
+        footer: 'Por favor llegar 15 min antes. Cancelaciones con 24h.',
+        ack_msg: 'Cita cancelada. Avísanos si deseas re-agendar.'
+    },
+    {
+        id: 'real_estate',
+        label: 'Inmobiliaria / Real Estate',
+        icon: 'Home',
+        color: 'blue',
+        approve_label: '🏡 Me Interesa / Visitar',
+        reject_label: '❌ No es lo que busco',
+        reject_reasons: ['Precio fuera de rango', 'Ubicación no gusta', 'Muy pequeño', 'Busco alquilar'],
+        header: 'OPORTUNIDAD DE INVERSIÓN',
+        footer: 'Sujeto a disponibilidad y cambios de precio.',
+        ack_msg: 'Entendido. Seguiremos buscando la propiedad ideal para ti.'
+    },
+    {
+        id: 'legal',
+        label: 'Legal / Abogados',
+        icon: 'Scale',
+        color: 'slate',
+        approve_label: '⚖️ Aceptar Honorarios',
+        reject_label: '❌ Consultar Dudas',
+        reject_reasons: ['Honorarios Altos', 'Busco otra opinión', 'No es el momento', 'Caso resuelto'],
+        header: 'PROPUESTA DE HONORARIOS',
+        footer: 'Información protegida por secreto profesional.',
+        ack_msg: 'Gracias. Quedamos atentos a cualquier consulta adicional.'
+    },
+    {
+        id: 'saas',
+        label: 'SaaS / Software',
+        icon: 'Monitor',
+        color: 'violet',
+        approve_label: '🚀 Activar Suscripción',
+        reject_label: '❌ No por ahora',
+        reject_reasons: ['Faltan Features', 'Precio Enterprise', 'Usando Competencia', 'Solo explorando'],
+        header: 'PLAN DE SUSCRIPCIÓN',
+        footer: 'Términos de servicio aplican. Renovación automática.',
+        ack_msg: 'Gracias por evaluar nuestro software. Feedback recibido.'
+    },
+    {
+        id: 'education',
+        label: 'Educación / Cursos',
+        icon: 'GraduationCap',
+        color: 'yellow',
+        approve_label: '🎓 Inscribirme Ahora',
+        reject_label: '❌ Ver otro curso',
+        reject_reasons: ['Horario difícil', 'Precio alto', 'Temario no encaja', 'Lo pensaré'],
+        header: 'INSCRIPCIÓN ACADÉMICA',
+        footer: 'Cupos limitados. Certificado incluido al finalizar.',
+        ack_msg: 'Entendido. Te enviaremos info de próximos cursos.'
+    },
+    {
+        id: 'travel',
+        label: 'Turismo / Viajes',
+        icon: 'Plane',
+        color: 'sky',
+        approve_label: '✈️ Reservar Viaje',
+        reject_label: '❌ Cambiar Destino',
+        reject_reasons: ['Muy caro', 'Fechas no sirven', 'Prefiero otro destino', 'Solo cotizando'],
+        header: 'TU PRÓXIMA AVENTURA',
+        footer: 'Tarifas sujetas a cambio sin previo aviso. Impuestos incluidos.',
+        ack_msg: 'Lástima que no puedas viajar ahora. ¡Avísanos para la próxima!'
+    },
+    {
+        id: 'events',
+        label: 'Eventos / Catering',
+        icon: 'PartyPopper',
+        color: 'pink',
+        approve_label: '🎉 Confirmar Evento',
+        reject_label: '❌ Modificar Menú',
+        reject_reasons: ['Presupuesto excedido', 'Cambio de fecha', 'Menú no gusta', 'Cancelado'],
+        header: 'COTIZACIÓN DE EVENTO',
+        footer: 'Se requiere 50% de anticipo para bloquear la fecha.',
+        ack_msg: 'Evento no confirmado. La fecha queda liberada.'
+    },
+    {
+        id: 'logistics',
+        label: 'Logística / Transporte',
+        icon: 'Truck',
+        color: 'amber',
+        approve_label: '🚛 Confirmar Flete',
+        reject_label: '❌ Rechazar Tarifa',
+        reject_reasons: ['Tarifa muy alta', 'Tiempo de tránsito largo', 'Ya despaché', 'Cotizando'],
+        header: 'COTIZACIÓN DE TRANSPORTE',
+        footer: 'Mercancía viaja asegurada según valor declarado.',
+        ack_msg: 'Tarifa rechazada. Gracias por la oportunidad.'
+    },
+    {
+        id: 'consulting',
+        label: 'Consultoría / Coaching',
+        icon: 'Lightbulb',
+        color: 'teal',
+        approve_label: '💡 Iniciar Proceso',
+        reject_label: '❌ No estoy listo',
+        reject_reasons: ['Inversión alta', 'No tengo tiempo', 'Dudas del proceso', 'Lo haré solo'],
+        header: 'PROPUESTA DE CONSULTORÍA',
+        footer: 'Resultados dependen del compromiso mutuo.',
+        ack_msg: 'Comprendido. Éxitos en tu camino.'
+    }
+]

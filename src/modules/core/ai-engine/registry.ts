@@ -1,5 +1,7 @@
 import { BaseAIProvider } from './providers/base';
 import { OpenAIProvider } from './providers/openai';
+import { GroqProvider } from './providers/groq';
+import { GoogleProvider } from './providers/google';
 
 export class AIRegistry {
     private static providers: Map<string, BaseAIProvider> = new Map();
@@ -19,3 +21,5 @@ export class AIRegistry {
 
 // Initialize default providers
 AIRegistry.register(new OpenAIProvider());
+AIRegistry.register(new GroqProvider());
+AIRegistry.register(new GoogleProvider());

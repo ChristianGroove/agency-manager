@@ -159,3 +159,63 @@ export async function deleteRole(roleId: string) {
     if (error) throw error;
     return { success: true };
 }
+
+/**
+ * Seed Default Roles for a New Organization
+ */
+export async function seedDefaultRoles(orgId: string) {
+    const supabase = await createClient();
+
+    const roles = [
+        {
+            organization_id: orgId,
+            name: 'Owner',
+            description: 'Acceso total a la organización',
+            is_system_role: true,
+            hierarchy_level: 100,
+            permissions: { all: true }
+        },
+        {
+            organization_id: orgId,
+            name: 'Admin',
+            description: 'Puede gestionar miembros y configuraciones',
+            is_system_role: true,
+            hierarchy_level: 50,
+            permissions: {
+                // Administrative
+                'org.manage_members': true,
+                'org.manage_roles': true, // Admins can manage roles below them (logic handled in service)
+                'org.manage_settings': true,
+                'org.view_audit': true,
+
+                // Content
+                'crm.view': true,
+                'crm.edit': true,
+                'crm.delete': true,
+                'content.publish': true
+            }
+        },
+        {
+            organization_id: orgId,
+            name: 'Member',
+            description: 'Acceso estándar a las funciones asignadas',
+            is_system_role: true,
+            hierarchy_level: 10,
+            permissions: {
+                'crm.view': true,
+                'crm.edit': true
+            }
+        }
+    ];
+
+    const { error } = await supabase
+        .from('organization_roles')
+        .insert(roles);
+
+    if (error) {
+        console.error('Failed to seed roles:', error);
+        throw error;
+    }
+
+    return { success: true };
+}

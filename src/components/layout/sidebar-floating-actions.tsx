@@ -20,7 +20,8 @@ export function SidebarFloatingActions({ isSuperAdmin, user, currentOrgId }: Sid
         <div className="flex flex-col gap-3 items-end">
             {/* --- General Actions --- */}
 
-            {/* Organization Switcher */}
+            {/* Organization Switcher - Only show if Reseller/Admin or if multiple orgs exist (context switching) */}
+            {/* Ideally we hide the 'Manage' intent but keep 'Switch'. But user asked to hide it if client can't do anything. */}
             <div className="relative">
                 <OrganizationSwitcher
                     trigger={
@@ -54,7 +55,7 @@ export function SidebarFloatingActions({ isSuperAdmin, user, currentOrgId }: Sid
                     color="#64748b" // Neutral Slate
                     onClick={() => setIsProfileOpen(true)}
                 />
-                <ProfileSheet open={isProfileOpen} onOpenChange={setIsProfileOpen} user={user} />
+                <ProfileSheet open={isProfileOpen} onOpenChange={setIsProfileOpen} user={user} currentOrgId={currentOrgId} />
             </div>
 
             {/* --- Super Admin Actions --- */}

@@ -3,43 +3,13 @@
 import { createClient } from "@/lib/supabase-server"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { revalidatePath } from "next/cache"
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
-import { getActiveModules } from "@/modules/core/saas/actions"
+// import { getActiveModules } from "@/modules/core/saas/actions"
 import { requireOrgRole } from "@/lib/auth/org-roles"
 
-export interface BrandingConfig {
-    name: string
-    logos: {
-        main: string | null
-        main_light?: string | null // For light mode
-        portal: string | null
-        favicon: string | null
-        dashboard_bg?: string | null
-        login_bg?: string | null
-    }
-    colors: {
-        primary: string
-        secondary: string
-    }
-    website?: string
-    font_family?: string | null
-    login_bg_color?: string | null
-    custom_domain?: string | null
-    invoice_footer?: string | null
-    portal_title?: string | null  // Custom title for client portal
+import { BrandingConfig } from "@/types/branding"
 
-    // Document Specifics
-    document_logo_size?: 'small' | 'medium' | 'large'
-    document_show_watermark?: boolean
-
-    socials: {
-        facebook?: string
-        instagram?: string
-        twitter?: string
-        linkedin?: string
-        youtube?: string
-    }
-}
+// BrandingConfig type removed from export to strictly use @/types/branding
+// export type { BrandingConfig }
 
 // Default "Pixy" Branding (Safety Fallback)
 const DEFAULT_BRANDING: BrandingConfig = {
@@ -254,6 +224,7 @@ export async function uploadBrandingAsset(formData: FormData) {
     }
 
     // Verify Admin for uploads
+    const { getCurrentOrganizationId } = await import('@/modules/core/organizations/actions')
     const orgId = await getCurrentOrganizationId()
     if (orgId) {
         // Only check if inside org context. If global profile upload, maybe skip?
@@ -310,6 +281,7 @@ export async function updateOrganizationBranding(settings: BrandingConfig) {
         throw new Error("Unauthorized")
     }
 
+    const { getCurrentOrganizationId } = await import('@/modules/core/organizations/actions')
     const orgId = await getCurrentOrganizationId()
     if (!orgId) {
         throw new Error("Organization not found")

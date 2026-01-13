@@ -15,7 +15,6 @@ export const metadata = {
 
 
 import { getSnapshots, getVaultConfig } from "@/modules/core/data-vault/actions"
-import { getAICredentials, getAIProviders } from "@/modules/core/ai-engine/actions"
 
 export default async function SettingsPage() {
     const orgId = await getCurrentOrganizationId()
@@ -24,7 +23,7 @@ export default async function SettingsPage() {
         return <div>Error: Organización no encontrada</div>
     }
 
-    const [settings, activeModules, subscriptionApp, brandingSettings, userRole, tierData, snapshots, vaultConfig, aiCredentials, aiProviders] = await Promise.all([
+    const [settings, activeModules, subscriptionApp, brandingSettings, userRole, tierData, snapshots, vaultConfig] = await Promise.all([
         getSettings(),
         getOrganizationModules(orgId),
         getSubscriptionApp(),
@@ -32,9 +31,7 @@ export default async function SettingsPage() {
         getCurrentOrgRole(),
         getCurrentBrandingTier(),
         getSnapshots(),
-        getVaultConfig(),
-        getAICredentials(),
-        getAIProviders()
+        getVaultConfig()
     ])
 
     const tierFeatures = tierData?.tier?.features || {}
@@ -51,8 +48,6 @@ export default async function SettingsPage() {
                     tierFeatures={tierFeatures}
                     snapshots={snapshots}
                     vaultConfig={vaultConfig || { enabled: false, frequency: 'weekly' }}
-                    aiCredentials={aiCredentials || []}
-                    aiProviders={aiProviders || []}
                 />
             </Suspense>
         </div>

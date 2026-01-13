@@ -21,7 +21,7 @@ import { COMMUNICATION_VARIABLES, DEFAULT_TEMPLATES } from "@/lib/communication-
 import { useEffect } from "react"
 import { SplitText } from "@/components/ui/split-text"
 import { getSettings, updateSettings } from "@/modules/core/settings/actions"
-import { BrandingConfig } from "@/modules/core/branding/actions"
+import { BrandingConfig } from "@/types/branding"
 import { BrandCenterSheet } from "@/modules/core/branding/components/brand-center-sheet"
 import { OrganizationRole } from "@/lib/auth/org-roles"
 
@@ -34,8 +34,7 @@ import { SubscriptionSettingsTab } from "./subscription-settings-tab"
 import { SaasApp } from "@/modules/core/saas/app-management-actions"
 import { VaultSettingsTab } from "@/modules/core/data-vault/components/vault-settings-tab"
 import { DataSnapshot } from "@/modules/core/data-vault/types"
-import { AISettingsTab } from "./ai-settings-tab"
-import { getAICredentials, getAIProviders } from "../ai-engine/actions"
+
 
 
 import { VaultConfig } from "@/modules/core/data-vault/types"
@@ -49,8 +48,7 @@ interface SettingsFormProps {
     userRole: OrganizationRole
     snapshots: DataSnapshot[]
     vaultConfig: VaultConfig
-    aiCredentials?: any[]
-    aiProviders?: any[]
+
 }
 
 export function SettingsForm({
@@ -62,8 +60,7 @@ export function SettingsForm({
     userRole,
     snapshots,
     vaultConfig,
-    aiCredentials,
-    aiProviders
+
 }: SettingsFormProps) {
     // ... existing code ...
 
@@ -186,13 +183,7 @@ export function SettingsForm({
             minRole: 'owner',
             isCore: true
         },
-        {
-            id: 'ai',
-            label: 'IA Engine',
-            icon: Bot,
-            minRole: 'owner',
-            isCore: true
-        },
+
         {
             id: 'team',
             label: 'Equipo',
@@ -350,10 +341,7 @@ export function SettingsForm({
                     <VaultSettingsTab snapshots={snapshots || []} initialConfig={vaultConfig!} />
                 </TabsContent>
 
-                {/* AI ENGINE TAB */}
-                <TabsContent value="ai" className="space-y-4 mt-4" suppressHydrationWarning>
-                    <AISettingsTab credentials={aiCredentials || []} providers={aiProviders || []} />
-                </TabsContent>
+
                 {/* GENERAL TAB */}
                 <TabsContent value="general" className="space-y-4 mt-4" suppressHydrationWarning>
                     <Card className="bg-white dark:bg-white/5 border-gray-100 dark:border-white/10 shadow-sm backdrop-blur-md">

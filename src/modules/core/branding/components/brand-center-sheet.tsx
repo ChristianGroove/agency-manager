@@ -2,7 +2,7 @@
 
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet"
 import { BrandCenter } from "./brand-center"
-import { BrandingConfig } from "../actions"
+import { BrandingConfig } from "@/types/branding"
 
 interface BrandCenterSheetProps {
     open: boolean

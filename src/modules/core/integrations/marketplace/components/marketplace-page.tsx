@@ -13,6 +13,8 @@ import { IntegrationSetupSheet } from "./integration-setup-sheet"
 interface MarketplacePageProps {
     providers: IntegrationProvider[]
     installedIntegrations: InstalledIntegration[]
+    aiCredentials?: any[]
+    aiProviders?: any[]
 }
 
 const PROVIDER_ICONS: Record<string, string> = {
@@ -24,20 +26,54 @@ const PROVIDER_ICONS: Record<string, string> = {
     'stripe': '💳',
     'google_calendar': '📅',
     'openai': '🤖',
-    'anthropic': '🧠'
+    'anthropic': '🧠',
+    'ai-engine': '🔮'
 }
 
-export function MarketplacePage({ providers, installedIntegrations }: MarketplacePageProps) {
+import { AIEngineSheet } from "./ai-engine-sheet"
+
+export function MarketplacePage({ providers, installedIntegrations, aiCredentials = [], aiProviders = [] }: MarketplacePageProps) {
     const [search, setSearch] = useState("")
     const [category, setCategory] = useState("all")
     const [selectedProvider, setSelectedProvider] = useState<IntegrationProvider | null>(null)
     const [isSheetOpen, setIsSheetOpen] = useState(false)
+    const [isAIEngineOpen, setIsAIEngineOpen] = useState(false)
 
     // Derived state for quick lookup
     const installedKeys = useMemo(() => new Set(installedIntegrations.map(i => i.provider_key)), [installedIntegrations])
 
     const filteredProviders = useMemo(() => {
-        return providers.filter(p => {
+        // 1. Create Synthetic AI Card
+        const aiCard: IntegrationProvider = {
+            id: 'ai-engine-synth',
+            key: 'ai-engine',
+            name: 'AI Engine',
+            description: 'Centro de Comando Centralizado. Gestiona claves de OpenAI, Anthropic, Gemini y Groq con enrutamiento inteligente.',
+            category: 'ai',
+            is_premium: true,
+            is_enabled: true,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            config_schema: { required: [], properties: {} },
+            icon_url: null,
+            documentation_url: null,
+            setup_instructions: null
+        }
+
+        // 2. Filter original list (remove individual AI providers)
+        const AI_KEYS = ['openai', 'anthropic', 'groq', 'google']
+        const cleaned = providers.filter(p => !AI_KEYS.includes(p.key))
+
+        // 3. Inject AI Card if category matches
+        let list = cleaned
+        if (category === 'all' || category === 'ai') {
+            const hasAi = providers.some(p => AI_KEYS.includes(p.key))
+            // Always show it if we are in AI category or ALL
+            list = [aiCard, ...cleaned]
+        }
+
+        // 4. Apply filters
+        return list.filter(p => {
             const matchesSearch = !search ||
                 p.name.toLowerCase().includes(search.toLowerCase()) ||
                 p.description?.toLowerCase().includes(search.toLowerCase())
@@ -53,6 +89,10 @@ export function MarketplacePage({ providers, installedIntegrations }: Marketplac
     }
 
     const handleConfigure = (provider: IntegrationProvider) => {
+        if (provider.key === 'ai-engine') {
+            setIsAIEngineOpen(true)
+            return
+        }
         setSelectedProvider(provider)
         setIsSheetOpen(true)
     }
@@ -114,12 +154,18 @@ export function MarketplacePage({ providers, installedIntegrations }: Marketplac
             {/* Provider Grid */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {filteredProviders.map(provider => {
-                    const isInstalled = installedKeys.has(provider.key)
+                    // Logic for AI Engine special status
+                    let isInstalled = installedKeys.has(provider.key)
+
+                    if (provider.key === 'ai-engine') {
+                        // Consider installed if we have ANY credential
+                        isInstalled = aiCredentials.length > 0
+                    }
 
                     return (
                         <Card key={provider.id} className={`relative transition-all hover:shadow-md ${isInstalled ? 'ring-2 ring-green-500/20' : ''}`}>
                             {provider.is_premium && (
-                                <Badge className="absolute top-3 right-3 bg-amber-500 text-white">
+                                <Badge className="absolute top-3 right-3 bg-amber-500 text-white hover:bg-amber-600">
                                     <Crown className="h-3 w-3 mr-1" />
                                     Premium
                                 </Badge>
@@ -127,7 +173,10 @@ export function MarketplacePage({ providers, installedIntegrations }: Marketplac
 
                             <CardHeader className="pb-2">
                                 <div className="flex items-center gap-3">
-                                    <div className="h-12 w-12 rounded-lg bg-gradient-to-br from-zinc-100 to-zinc-200 dark:from-zinc-800 dark:to-zinc-900 flex items-center justify-center text-2xl">
+                                    <div className={`h-12 w-12 rounded-lg flex items-center justify-center text-2xl ${provider.key === 'ai-engine'
+                                        ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/20'
+                                        : 'bg-gradient-to-br from-zinc-100 to-zinc-200 dark:from-zinc-800 dark:to-zinc-900'
+                                        }`}>
                                         {getProviderIcon(provider.key, provider.category)}
                                     </div>
                                     <div>
@@ -158,7 +207,7 @@ export function MarketplacePage({ providers, installedIntegrations }: Marketplac
                                 ) : (
                                     <Button
                                         variant="default"
-                                        className="w-full gap-2"
+                                        className={provider.key === 'ai-engine' ? "w-full gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:to-purple-700 text-white shadow-md border-0" : "w-full gap-2"}
                                         onClick={() => handleConfigure(provider)}
                                     >
                                         <ExternalLink className="h-4 w-4" />
@@ -185,6 +234,14 @@ export function MarketplacePage({ providers, installedIntegrations }: Marketplac
                 existingConnection={selectedProvider ? getExistingConnection(selectedProvider.key) : undefined}
                 isOpen={isSheetOpen}
                 onOpenChange={setIsSheetOpen}
+            />
+
+            {/* AI Engine Sheet */}
+            <AIEngineSheet
+                open={isAIEngineOpen}
+                onOpenChange={setIsAIEngineOpen}
+                credentials={aiCredentials}
+                providers={aiProviders}
             />
         </div>
     )

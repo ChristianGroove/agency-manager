@@ -1,6 +1,6 @@
 "use client"
 
-import { BrandingConfig } from "../actions"
+import { BrandingConfig } from "@/types/branding"
 import { cn } from "@/lib/utils"
 
 interface DocumentPreviewProps {

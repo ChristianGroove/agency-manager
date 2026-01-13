@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { Globe, LayoutTemplate, Palette, FileText, Lock } from "lucide-react"
-import { BrandingConfig, updateOrganizationBranding } from "../actions"
+import { updateOrganizationBranding } from "../actions"; import { BrandingConfig } from "@/types/branding"
 import { toast } from "sonner"
 
 import { IdentityTab } from "./identity-tab"
