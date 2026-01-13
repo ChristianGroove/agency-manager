@@ -58,7 +58,8 @@ export async function initializeOrganizationCRM(organizationId: string, template
                     is_terminal: s.is_terminal,
                     allowed_next_states: s.allowed_next_states,
                     metadata: s.metadata,
-                    suggested_actions: s.suggested_actions || []
+                    suggested_actions: s.suggested_actions || [],
+                    auto_tags: s.auto_tags || []
                 }, { onConflict: 'organization_id,type,key' })
                 .select('id')
                 .single()

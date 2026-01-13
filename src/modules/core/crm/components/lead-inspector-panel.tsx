@@ -35,6 +35,9 @@ import {
     AlertCircle
 } from 'lucide-react'
 import { useLeadInspector } from './lead-inspector-context'
+import { CopilotWidget } from './copilot-widget'
+import { getLeadAnalysis } from '@/modules/core/ai/actions'
+import { AnalysisRecommendation } from '@/modules/core/ai/analysis-service'
 import { getLeadWithRelations } from '../crm-advanced-actions'
 import type { LeadWithRelations } from '@/types/crm-advanced'
 import { getScoreTier } from '@/types/crm-advanced'
@@ -597,6 +600,7 @@ function TasksTab({ lead, onUpdate }: { lead: LeadWithRelations, onUpdate?: () =
     )
 }
 
+
 // Main Panel Component
 export function LeadInspectorPanel() {
     const { isOpen, leadId, defaultTab, closeInspector } = useLeadInspector()
@@ -604,9 +608,16 @@ export function LeadInspectorPanel() {
     const [loading, setLoading] = useState(false)
     const [activeTab, setActiveTab] = useState(defaultTab)
 
+    // AI Copilot State
+    const [recommendations, setRecommendations] = useState<AnalysisRecommendation[]>([])
+    const [analyzing, setAnalyzing] = useState(false)
+
     useEffect(() => {
         if (leadId && isOpen) {
             loadLead()
+            loadAnalysis()
+        } else {
+            setRecommendations([]) // Clear on close/change
         }
     }, [leadId, isOpen])
 
@@ -614,10 +625,21 @@ export function LeadInspectorPanel() {
         setActiveTab(defaultTab)
     }, [defaultTab])
 
+    async function loadAnalysis() {
+        if (!leadId) return
+        setAnalyzing(true)
+        const res = await getLeadAnalysis(leadId)
+        if (res.success && res.recommendations) {
+            setRecommendations(res.recommendations)
+        }
+        setAnalyzing(false)
+    }
+
     async function loadLead() {
         if (!leadId) return
         setLoading(true)
         try {
+            // Updated to use the imported action correctly
             const data = await getLeadWithRelations(leadId)
             setLead(data)
         } catch (error) {
@@ -629,6 +651,17 @@ export function LeadInspectorPanel() {
 
     return (
         <Sheet open={isOpen} onOpenChange={closeInspector}>
+            {/* Copilot Widget Integration */}
+            {isOpen && leadId && recommendations.length > 0 && (
+                <CopilotWidget
+                    recommendations={recommendations}
+                    onAction={(rec) => {
+                        toast.info(`Acción seleccionada: ${rec.action_label}`)
+                        // Future: Handle specific actions like 'book_audit' or 'send_email'
+                    }}
+                />
+            )}
+
             <SheetContent
                 side="right"
                 className="

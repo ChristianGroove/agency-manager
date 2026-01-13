@@ -31,9 +31,9 @@ export const CRMTemplates: Record<string, CRMTemplate> = {
                 metadata: { goal: 'Firmas y pago' },
                 suggested_actions: [{ label: 'Enviar Contrato', action: 'send_contract', type: 'primary' }]
             },
-            { key: 'payment_issue', name: 'Problema de Pago', type: 'sale', is_initial: false, is_terminal: false, allowed_next_states: ['won', 'lost', 'closing'], metadata: { goal: 'Resolver fallo de pago' }, suggested_actions: [{ label: 'Reintentar Pago', action: 'retry_payment', type: 'primary' }] },
-            { key: 'won', name: 'Ganado', type: 'sale', is_initial: false, is_terminal: true, allowed_next_states: [], metadata: { goal: 'Onboarding' } },
-            { key: 'lost', name: 'Perdido', type: 'sale', is_initial: false, is_terminal: true, allowed_next_states: ['discovery'], metadata: { goal: 'Nutrir' } }
+            { key: 'payment_issue', name: 'Problema de Pago', type: 'sale', is_initial: false, is_terminal: false, allowed_next_states: ['won', 'lost', 'closing'], metadata: { goal: 'Resolver fallo de pago' }, suggested_actions: [{ label: 'Reintentar Pago', action: 'retry_payment', type: 'primary' }], auto_tags: ['pago_atrasado', 'riesgo_medio'] },
+            { key: 'won', name: 'Ganado', type: 'sale', is_initial: false, is_terminal: true, allowed_next_states: [], metadata: { goal: 'Onboarding' }, auto_tags: ['cliente_ganado'] },
+            { key: 'lost', name: 'Perdido', type: 'sale', is_initial: false, is_terminal: true, allowed_next_states: ['discovery'], metadata: { goal: 'Nutrir' }, auto_tags: ['oportunidad_perdida'] }
         ],
         pipelineStages: [
             { name: 'Consulta', key: 'new', mapToProcessKey: 'discovery', color: 'bg-blue-500', icon: 'circle' },

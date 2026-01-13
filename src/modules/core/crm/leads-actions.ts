@@ -43,6 +43,47 @@ export async function createLead(input: CreateLeadInput): Promise<ActionResponse
 
         if (error) throw error
 
+        // --- Process Engine Auto-Start ---
+        try {
+            const { ProcessEngine } = await import('./process-engine/engine')
+            // Default to 'sale' process for new leads
+            // TODO: infer type from context if needed
+            const processRes = await ProcessEngine.startProcess(data.id, 'sale')
+
+            if (processRes.success && processRes.process) {
+                const startState = processRes.process.current_state
+
+                // Sync UI status/stage
+                // Find stage matching this start state (e.g. 'discovery')
+                const { data: stage } = await supabase
+                    .from('pipeline_stages')
+                    .select('id, status_key')
+                    .eq('organization_id', organizationId)
+                    .eq('status_key', startState)
+                    .maybeSingle()
+
+                if (stage) {
+                    await supabase
+                        .from('leads')
+                        .update({
+                            pipeline_stage_id: stage.id,
+                            status: stage.status_key
+                        })
+                        .eq('id', data.id)
+                } else {
+                    // Fallback: just update status key if no visual stage found
+                    await supabase
+                        .from('leads')
+                        .update({ status: startState })
+                        .eq('id', data.id)
+                }
+            }
+        } catch (procErr) {
+            console.error("Process Engine Start Failed:", procErr)
+            // Continue, don't block lead creation
+        }
+        // ---------------------------------
+
         revalidatePath('/crm/contacts')
         revalidatePath('/crm/deals')
 
@@ -173,13 +214,13 @@ export async function getLeads(): Promise<Lead[]> {
     const supabase = await createClient()
 
     try {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return []
+        const organizationId = await getCurrentOrganizationId()
+        if (!organizationId) return []
 
         const { data, error } = await supabase
             .from('leads')
             .select('*')
-            .eq('user_id', user.id)
+            .eq('organization_id', organizationId)
             .order('created_at', { ascending: false })
 
         if (error) throw error

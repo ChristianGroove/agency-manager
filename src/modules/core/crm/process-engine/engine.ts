@@ -177,7 +177,27 @@ export class ProcessEngine {
 
         if (updateError) return { success: false, error: updateError.message }
 
+        // 5. Apply Auto-Tags (if any)
+        if (targetState.auto_tags && targetState.auto_tags.length > 0) {
+            console.log(`[ProcessEngine] Applying auto-tags: ${targetState.auto_tags.join(', ')}`)
 
+            // Fetch current tags
+            const { data: lead } = await supabaseAdmin
+                .from('leads') // Assuming 'leads' table (or clients/contacts?)
+                .select('tags, id')
+                .eq('id', instance.lead_id)
+                .single()
+
+            if (lead) {
+                const currentTags = (lead.tags || []) as string[]
+                const newTags = [...new Set([...currentTags, ...targetState.auto_tags])]
+
+                await supabaseAdmin
+                    .from('leads')
+                    .update({ tags: newTags })
+                    .eq('id', lead.id)
+            }
+        }
 
         return { success: true, process: updated as ProcessInstance }
     }

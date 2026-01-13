@@ -10,6 +10,7 @@ export interface ProcessState {
     is_initial: boolean
     metadata: Record<string, any>
     suggested_actions?: Array<{ label: string, action: string, type: 'primary' | 'secondary' }>
+    auto_tags?: string[]
     created_at: string
     updated_at: string
 }

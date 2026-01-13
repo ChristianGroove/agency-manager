@@ -16,6 +16,7 @@ export interface ProcessStateDef {
         action: string
         type: 'primary' | 'secondary'
     }>
+    auto_tags?: string[]
 }
 
 export interface PipelineStageDef {
