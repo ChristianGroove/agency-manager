@@ -7,86 +7,46 @@ import { supabaseAdmin } from "@/lib/supabase-admin"
  * 2. Creates matching Pipeline Stages (UI)
  * 3. Maps them together (Bridge)
  */
-export async function initializeOrganizationCRM(organizationId: string) {
+export async function initializeOrganizationCRM(organizationId: string, templateId: string = 'agency') {
     console.log(`[CRM Init] Initializing for Org: ${organizationId}`)
 
     try {
-        // 1. Seed Process States (Engine)
-        // Default strict process 'sale'
-        const states = [
-            {
-                key: 'discovery',
-                name: 'Descubrimiento',
-                type: 'sale',
-                is_initial: true,
-                is_terminal: false,
-                allowed_next_states: ['presentation', 'lost'],
-                metadata: { goal: 'Calificar al cliente', required_fields: ['email'] },
-                suggested_actions: [
-                    { label: 'Agendar Demo', action: 'book_meeting', type: 'primary' },
-                    { label: 'Descalificar', action: 'mark_lost', type: 'secondary' }
-                ]
-            },
-            {
-                key: 'presentation',
-                name: 'Presentación',
-                type: 'sale',
-                is_initial: false,
-                is_terminal: false,
-                allowed_next_states: ['negotiation', 'lost', 'discovery'],
-                metadata: { goal: 'Presentar propuesta de valor' },
-                suggested_actions: [
-                    { label: 'Enviar Propuesta', action: 'send_proposal', type: 'primary' }
-                ]
-            },
-            {
-                key: 'negotiation',
-                name: 'Negociación',
-                type: 'sale',
-                is_initial: false,
-                is_terminal: false,
-                allowed_next_states: ['checkout', 'lost', 'presentation'],
-                metadata: { goal: 'Cerrar términos económicos' },
-                suggested_actions: [
-                    { label: 'Ir al Cierre', action: 'move_to_checkout', type: 'primary' }
-                ]
-            },
-            {
-                key: 'checkout',
-                name: 'Cierre / Pago',
-                type: 'sale',
-                is_initial: false,
-                is_terminal: false, // Wait for payment
-                allowed_next_states: ['won', 'lost', 'negotiation'],
-                metadata: { goal: 'Recepcionar pago' },
-                suggested_actions: [
-                    { label: 'Registrar Pago', action: 'register_payment', type: 'primary' },
-                    { label: 'Reenviar Link', action: 'resend_link', type: 'secondary' }
-                ]
-            },
-            {
-                key: 'won',
-                name: 'Ganado',
-                type: 'sale',
-                is_initial: false,
-                is_terminal: true,
-                allowed_next_states: [],
-                metadata: { goal: 'Onboarding' }
-            },
-            {
-                key: 'lost',
-                name: 'Perdido',
-                type: 'sale',
-                is_initial: false,
-                is_terminal: true,
-                allowed_next_states: ['discovery'], // Allow revival
-                metadata: { goal: 'Nurture / Reactivación' }
-            }
-        ]
+        // 1. Determine Template
+        const { CRMTemplates } = await import("../templates/registry")
+        const template = CRMTemplates[templateId] || CRMTemplates['agency']
 
+        console.log(`[CRM Init] Applying template: ${template.name}`)
+
+        // --- CLEANUP PHASE (RESET) ---
+        // Since we want a fresh start, we delete existing configurations.
+        // NOTE: This assumes no critical data needs preservation, or that this is a desired hard-reset.
+
+        // 2.1 Delete all Pipelines (Cascade should handle stages, but let's be safe)
+        const { error: deletePipelineError } = await supabaseAdmin
+            .from('pipelines')
+            .delete()
+            .eq('organization_id', organizationId)
+
+        if (deletePipelineError) console.error("[CRM Init] Cleanup Pipelines Error:", deletePipelineError)
+
+        // 2.2 Delete existing Process States (Engine) for 'sale' type
+        const { error: deleteStateError } = await supabaseAdmin
+            .from('process_states')
+            .delete()
+            .eq('organization_id', organizationId)
+            .eq('type', 'sale')
+
+        if (deleteStateError) console.error("[CRM Init] Cleanup States Error:", deleteStateError)
+
+        console.log(`[CRM Init] Cleanup completed for ${organizationId}`)
+
+
+        // --- CREATION PHASE ---
+
+        // 3. Seed Process States (Engine)
         const stateMap = new Map<string, string>() // key -> id
 
-        for (const s of states) {
+        for (const s of template.processStates) {
             const { data: stateData, error: stateError } = await supabaseAdmin
                 .from('process_states')
                 .upsert({
@@ -107,50 +67,32 @@ export async function initializeOrganizationCRM(organizationId: string) {
             if (stateError) console.error(`[CRM Init] Error creating state ${s.key}:`, stateError.message)
         }
 
-        console.log(`[CRM Init] Created ${stateMap.size} process states`)
+        console.log(`[CRM Init] Created ${stateMap.size} process states from template`)
 
-        // 2. Create DEFAULT Pipeline (if not exists)
+        // 4. Create NEW Default Pipeline
         let pipelineId: string | null = null
-        const { data: existingPipeline } = await supabaseAdmin
+
+        const { data: newPipeline, error: pipeError } = await supabaseAdmin
             .from('pipelines')
+            .insert({
+                organization_id: organizationId,
+                name: `Ventas (${template.name})`,
+                is_default: true,
+                process_enabled: true // Default Strict Mode ON
+            })
             .select('id')
-            .eq('organization_id', organizationId)
-            .eq('is_default', true)
-            .maybeSingle()
+            .single()
 
-        if (existingPipeline) {
-            pipelineId = existingPipeline.id
+        if (newPipeline) {
+            pipelineId = newPipeline.id
         } else {
-            const { data: newPipeline } = await supabaseAdmin
-                .from('pipelines')
-                .insert({
-                    organization_id: organizationId,
-                    name: 'Ventas (Estándar)',
-                    is_default: true,
-                    process_enabled: true // Default Strict Mode ON
-                })
-                .select('id')
-                .single()
-            if (newPipeline) pipelineId = newPipeline.id
-        }
-
-        if (!pipelineId) {
-            console.error("[CRM Init] Failed to get/create pipeline")
+            console.error("[CRM Init] Failed to create pipeline:", pipeError)
             return
         }
 
-        // 3. Create Default Pipeline Stages (Visual) & Map them
-        const stages = [
-            { name: 'Nuevos', key: 'new', mapTo: 'discovery', color: 'bg-blue-500', icon: 'circle' },
-            { name: 'En Conversación', key: 'contacted', mapTo: 'presentation', color: 'bg-indigo-500', icon: 'message-circle' },
-            { name: 'Propuesta', key: 'proposal', mapTo: 'negotiation', color: 'bg-purple-500', icon: 'file-text' },
-            { name: 'Esperando Pago', key: 'closing', mapTo: 'checkout', color: 'bg-amber-500', icon: 'credit-card' },
-            { name: 'Ganado', key: 'won', mapTo: 'won', color: 'bg-green-500', icon: 'check-circle' },
-            { name: 'Perdido', key: 'lost', mapTo: 'lost', color: 'bg-red-500', icon: 'x-circle' }
-        ]
-
-        for (let i = 0; i < stages.length; i++) {
-            const stage = stages[i]
+        // 5. Create Pipeline Stages (Visual) & Map them
+        for (let i = 0; i < template.pipelineStages.length; i++) {
+            const stage = template.pipelineStages[i]
 
             // Create Stage
             const { data: stageData, error: stageError } = await supabaseAdmin
@@ -159,7 +101,7 @@ export async function initializeOrganizationCRM(organizationId: string) {
                     organization_id: organizationId,
                     pipeline_id: pipelineId,
                     name: stage.name,
-                    status_key: stage.key, // Legacy key
+                    status_key: stage.key,
                     display_order: i + 1,
                     color: stage.color,
                     icon: stage.icon,
@@ -168,7 +110,7 @@ export async function initializeOrganizationCRM(organizationId: string) {
                 .select('id')
                 .single()
 
-            if (stageData && stage.mapTo && stateMap.has(stage.mapTo)) {
+            if (stageData && stage.mapToProcessKey && stateMap.has(stage.mapToProcessKey)) {
                 // Create Mapping
                 await supabaseAdmin
                     .from('pipeline_process_map')
@@ -176,7 +118,7 @@ export async function initializeOrganizationCRM(organizationId: string) {
                         organization_id: organizationId,
                         pipeline_stage_id: stageData.id,
                         process_type: 'sale',
-                        process_state_key: stage.mapTo
+                        process_state_key: stage.mapToProcessKey
                     })
             }
         }

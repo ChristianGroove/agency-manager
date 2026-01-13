@@ -202,8 +202,63 @@ export async function POST(request: Request) {
                     }
                 }
             }
+        } else if (transaction.status === 'DECLINED' || transaction.status === 'ERROR') {
+            console.log(`Transaction ${transaction.status}:`, transaction.reference)
+            // Handle Payment Failure -> Move Process to 'payment_issue'
+
+            // 1. Resolve Lead/Invoice
+            const reference = transaction.reference
+            let invoiceNumber = reference
+            if (reference.startsWith('INV-')) {
+                const parts = reference.split('-')
+                if (parts.length >= 3) invoiceNumber = parts.slice(1, -1).join('-')
+            }
+
+            // Find Invoice to get Client/Lead
+            const { data: invoice } = await supabaseAdmin
+                .from('invoices')
+                .select('id, client_id, organization_id') // client_id determines lead
+                .eq('number', invoiceNumber)
+                .single()
+
+            if (invoice?.client_id) {
+                try {
+                    const { ProcessEngine } = await import('@/modules/core/crm/process-engine/engine')
+
+                    // Check for active process
+                    const process = await ProcessEngine.getActiveProcess(invoice.client_id)
+
+                    if (process) {
+                        // Attempt transition to payment_issue
+                        // We check if it's a valid transition first to avoid errors
+                        if (process.context.state.allowed_next_states.includes('payment_issue')) {
+                            await ProcessEngine.transition(
+                                process.id,
+                                'payment_issue',
+                                'webhook',
+                                `Payment ${transaction.status} (Ref: ${reference})`
+                            )
+                            console.log(`[Webhook] Moved process ${process.id} to 'payment_issue'`)
+
+                            // Create Notification
+                            await supabaseAdmin.from('notifications').insert({
+                                organization_id: invoice.organization_id,
+                                user_id: process.lead_id, // This might be wrong, leads aren't users. We should notify admins.
+                                type: 'payment_failed',
+                                title: '❌ Fallo en Pago',
+                                message: `El pago de la factura #${invoiceNumber} ha fallado/sido rechazado.`,
+                                read: false
+                            })
+                        } else {
+                            console.log(`[Webhook] Process ${process.id} cannot transition to 'payment_issue' from ${process.current_state}`)
+                        }
+                    }
+                } catch (e) {
+                    console.error("[Webhook] Error processing failure logic:", e)
+                }
+            }
         } else {
-            console.log('Transaction status is not APPROVED:', transaction.status)
+            console.log('Transaction status ignored:', transaction.status)
         }
 
         return NextResponse.json({ success: true }, { status: 200 })

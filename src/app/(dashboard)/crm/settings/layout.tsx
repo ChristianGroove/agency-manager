@@ -34,10 +34,16 @@ export default function SettingsLayout({ children }: SettingsLayoutProps) {
             description: "Etapas de venta"
         },
         {
-            title: "Plantillas",
+            title: "Plantillas (Meta)",
             href: "/crm/settings/templates",
             icon: FileText,
             description: "Mensajes predefinidos"
+        },
+        {
+            title: "Plantillas de Industria",
+            href: "/crm/settings/pipeline-templates",
+            icon: Layout,
+            description: "Modelos de Pipeline"
         },
     ]
 

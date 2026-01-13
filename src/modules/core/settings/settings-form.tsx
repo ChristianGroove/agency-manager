@@ -39,6 +39,7 @@ import { DataSnapshot } from "@/modules/core/data-vault/types"
 
 import { VaultConfig } from "@/modules/core/data-vault/types"
 
+
 interface SettingsFormProps {
     initialSettings: any
     activeModules: string[]
@@ -183,6 +184,7 @@ export function SettingsForm({
             minRole: 'owner',
             isCore: true
         },
+
 
         {
             id: 'team',
@@ -933,6 +935,8 @@ export function SettingsForm({
                         </div>
                     </div>
                 </TabsContent>
+
+
 
                 {/* SUBSCRIPTION TAB */}
                 <TabsContent value="subscription" className="space-y-4 mt-4" suppressHydrationWarning>
