@@ -10,7 +10,9 @@ import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { OrgSmartModulesView } from "../_components/org-smart-modules-view"
 import { OrgSecurityManager } from "./_components/org-security-manager"
-import { Activity, ShieldCheck, Box } from "lucide-react"
+import { FeatureFlagsManager } from "@/modules/core/admin/components/feature-flags-manager"
+import { RateLimitConfigCard } from "@/modules/core/organizations/components/rate-limit-config-card"
+import { Activity, ShieldCheck, Box, Sparkles } from "lucide-react"
 
 interface PageProps {
     params: {
@@ -47,7 +49,11 @@ export default async function AdminOrgDetailsPage({ params }: PageProps) {
                     </TabsTrigger>
                     <TabsTrigger value="features">
                         <Box className="h-4 w-4 mr-2" />
-                        Funcionalidades
+                        Módulos
+                    </TabsTrigger>
+                    <TabsTrigger value="flags">
+                        <Sparkles className="h-4 w-4 mr-2" />
+                        Feature Flags
                     </TabsTrigger>
                     <TabsTrigger value="security">
                         <ShieldCheck className="h-4 w-4 mr-2" />
@@ -108,9 +114,28 @@ export default async function AdminOrgDetailsPage({ params }: PageProps) {
                     />
                 </TabsContent>
 
+                {/* FEATURE FLAGS TAB */}
+                <TabsContent value="flags">
+                    <FeatureFlagsManager
+                        organizationId={organization.id}
+                        organizationName={organization.name}
+                    />
+                </TabsContent>
+
                 {/* SECURITY TAB */}
-                <TabsContent value="security">
-                    <OrgSecurityManager users={users} />
+                <TabsContent value="security" className="space-y-6">
+                    <div className="grid gap-6 md:grid-cols-2">
+                        <div>
+                            <OrgSecurityManager users={users} />
+                        </div>
+                        <div>
+                            <RateLimitConfigCard
+                                organizationId={organization.id}
+                                organizationName={organization.name}
+                                initialConfig={(organization as any).rate_limit_config}
+                            />
+                        </div>
+                    </div>
                 </TabsContent>
             </Tabs>
         </div>
