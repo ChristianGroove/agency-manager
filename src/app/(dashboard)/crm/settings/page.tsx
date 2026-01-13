@@ -1,15 +1,16 @@
-import { Suspense } from "react"
-import { PipelineStagesManager } from "@/modules/core/crm/components/pipeline-stages-manager"
+import { redirect } from "next/navigation"
 
 export const metadata = {
-    title: "Configuración de Pipeline | CRM",
-    description: "Gestiona las etapas de tu pipeline de ventas",
+    title: "Configuración CRM",
+    description: "Gestiona la configuración de tu CRM",
 }
 
-export default function PipelineSettingsPage() {
-    return (
-        <Suspense fallback={<div className="p-8 text-center">Cargando...</div>}>
-            <PipelineStagesManager />
-        </Suspense>
-    )
+/**
+ * CRM Settings Index Page
+ * 
+ * Redirects to the Channels tab by default since it's the most common
+ * configuration users need to access (connecting WhatsApp, etc.)
+ */
+export default function CRMSettingsPage() {
+    redirect("/crm/settings/channels")
 }

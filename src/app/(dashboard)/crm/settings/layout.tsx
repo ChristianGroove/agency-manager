@@ -29,7 +29,7 @@ export default function SettingsLayout({ children }: SettingsLayoutProps) {
         },
         {
             title: "Pipelines",
-            href: "/crm/settings",
+            href: "/crm/settings/pipeline",
             icon: GitBranch,
             description: "Etapas de venta"
         },

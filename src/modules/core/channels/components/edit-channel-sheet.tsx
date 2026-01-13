@@ -15,6 +15,7 @@ import { toast } from "sonner"
 import { Switch } from "@/components/ui/switch"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet"
 import { getChannelAssignmentRule, upsertAssignmentRule, deleteAssignmentRule } from "@/modules/core/messaging/assignment-actions"
+import { WebhookUrlCard } from "./webhook-url-card"
 
 interface EditChannelSheetProps {
     open: boolean
@@ -257,6 +258,9 @@ export function EditChannelSheet({ open, onOpenChange, channel, pipelineStages, 
                                         )}
                                     </CardContent>
                                 </Card>
+
+                                {/* Webhook URL Display */}
+                                <WebhookUrlCard providerKey={channel.provider_key} />
                             </TabsContent>
 
                             {/* --- ROUTING --- */}
