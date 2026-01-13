@@ -36,11 +36,11 @@ export function DashboardShell({ children, user, currentOrgId, isSuperAdmin = fa
             {/* Main Content Area */}
             <main
                 className={cn(
-                    "transition-all duration-300 ease-in-out min-h-screen flex flex-col print:pl-0 print:p-0 pl-0",
+                    "transition-all duration-300 ease-in-out min-h-[100dvh] flex flex-col print:pl-0 print:p-0 pl-0",
                     isCollapsed ? "md:pl-[88px]" : "md:pl-[280px]" // sidebar width (w-64=256px) + gap (16px left + 8px gap)
                 )}
             >
-                <div className="flex-1 p-8 print:p-0">
+                <div className="flex-1 p-4 md:p-8 print:p-0">
                     {children}
                 </div>
             </main>
