@@ -198,6 +198,61 @@ export async function updateLeadStatus(leadId: string, newStatus: string): Promi
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) throw new Error("User not authenticated")
 
+        const organizationId = await getCurrentOrganizationId()
+
+        // --- Process Engine Interception ---
+        if (organizationId) {
+            // 1. Resolve Stage ID from Status Key
+            // Note: This relies on pipeline_stages having status_key matching the lead status string.
+            const { data: stage } = await supabase
+                .from('pipeline_stages')
+                .select('id, pipeline_id')
+                .eq('organization_id', organizationId)
+                .eq('status_key', newStatus)
+                .maybeSingle()
+
+            if (stage) {
+                // 1.1 Check Pipeline "Process Enabled" Flag (Strict Mode)
+                // If pipeline_id is null (legacy stages not yet migrated), assume Strict Mode OFF or ON?
+                // Migration backfills it. So fetching pipeline is safe.
+                let strictMode = false
+                if (stage.pipeline_id) {
+                    const { data: pipeline } = await supabase
+                        .from('pipelines')
+                        .select('process_enabled')
+                        .eq('id', stage.pipeline_id)
+                        .single()
+                    if (pipeline) strictMode = pipeline.process_enabled
+                }
+
+                if (strictMode) {
+                    // 2. Validate Transition (Only in Strict Mode)
+                    const { ProcessMapper } = await import('@/modules/core/crm/process-engine/map-service')
+                    const { allowed, reason, requiredProcessState } = await ProcessMapper.validatePipelineMove(leadId, stage.id)
+
+                    if (!allowed) {
+                        return { success: false, error: reason || "Action blocked by Process Rules." }
+                    }
+
+                    // 3. Sync Process State (Auto-Transition)
+                    if (requiredProcessState) {
+                        const { ProcessEngine } = await import('@/modules/core/crm/process-engine/engine')
+                        // Get active instance
+                        const instance = await ProcessEngine.getActiveProcess(leadId)
+                        if (instance) {
+                            const result = await ProcessEngine.transition(instance.id, requiredProcessState, 'user', 'Pipeline Stage Sync')
+                            if (!result.success) {
+                                // In Strict Mode, if Process sync fails, we block Payload? 
+                                // "Process is Law". Yes.
+                                return { success: false, error: "Process synchronization failed: " + result.error }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        // -----------------------------------
+
         const { data, error } = await supabase
             .from('leads')
             .update({ status: newStatus })

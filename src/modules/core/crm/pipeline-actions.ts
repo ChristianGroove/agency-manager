@@ -155,3 +155,62 @@ export async function reorderPipelineStages(
         return { success: false, error: error.message }
     }
 }
+
+// --- Pipeline Entity Actions (Phase 8) ---
+
+export type Pipeline = {
+    id: string
+    organization_id: string
+    name: string
+    is_default: boolean
+    process_enabled: boolean
+}
+
+/**
+ * Get the default pipeline for the organization
+ * (For MVP we assume 1 pipeline per org)
+ */
+export async function getDefaultPipeline(): Promise<Pipeline | null> {
+    const supabase = await createClient()
+    const orgId = await getCurrentOrganizationId()
+
+    if (!orgId) return null
+
+    try {
+        const { data, error } = await supabase
+            .from('pipelines')
+            .select('*')
+            .eq('organization_id', orgId)
+            .eq('is_default', true)
+            .maybeSingle()
+
+        if (error) throw error
+        return data as Pipeline
+    } catch (error: any) {
+        console.error("Error fetching pipeline:", error)
+        return null
+    }
+}
+
+export async function togglePipelineStrictMode(pipelineId: string, enabled: boolean): Promise<ActionResponse<Pipeline>> {
+    const supabase = await createClient()
+    const orgId = await getCurrentOrganizationId()
+
+    if (!orgId) return { success: false, error: "Unauthorized" }
+
+    try {
+        const { data, error } = await supabase
+            .from('pipelines')
+            .update({ process_enabled: enabled })
+            .eq('id', pipelineId)
+            .eq('organization_id', orgId)
+            .select()
+            .single()
+
+        if (error) throw error
+        return { success: true, data: data as Pipeline }
+    } catch (error: any) {
+        console.error("Error toggling strict mode:", error)
+        return { success: false, error: error.message }
+    }
+}

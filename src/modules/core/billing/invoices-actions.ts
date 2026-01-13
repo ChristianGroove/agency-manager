@@ -326,6 +326,81 @@ export async function registerPayment(id: string, amount: number, notes?: string
     }
 
     revalidatePath('/invoices')
+
+    // --- Process Engine Hook (Phase 7) ---
+    if (newStatus === 'PAID') {
+        try {
+            // 1. Resolve Lead
+            let leadId = (invoice as any).lead_id || (invoice as any).metadata?.lead_id
+
+            if (!leadId && invoice.client) {
+                // Fallback: Find lead by client email (heuristic)
+                const { data: client } = await supabase
+                    .from('clients')
+                    .select('email, organization_id')
+                    .eq('id', invoice.client_id)
+                    .single()
+
+                if (client?.email) {
+                    const { data: lead } = await supabase
+                        .from('leads')
+                        .select('id')
+                        .eq('organization_id', client.organization_id)
+                        .eq('email', client.email)
+                        .limit(1)
+                        .maybeSingle()
+
+                    if (lead) leadId = lead.id
+                }
+            }
+
+            if (leadId) {
+                const { ProcessEngine } = await import('@/modules/core/crm/process-engine/engine')
+                const instance = await ProcessEngine.getActiveProcess(leadId, 'sale') // Assuming 'sale' process for invoices
+
+                if (instance) {
+                    // 2. Transition Process
+                    const result = await ProcessEngine.transition(instance.id, 'won', 'system', 'Invoice Paid')
+                    console.log("Payment Triggered Process Transition:", result)
+
+                    // 3. Sync Pipeline (Reverse Mapping)
+                    // Find pipeline stage maps to 'won'
+                    if (result.success) {
+                        // We need to know which pipeline stage maps to 'won' and 'sale'
+                        const { data: mapping } = await supabaseAdmin
+                            .from('pipeline_process_map')
+                            .select('pipeline_stage_id')
+                            .eq('process_type', 'sale')
+                            .eq('process_state_key', 'won')
+                            .eq('organization_id', orgId)
+                            .maybeSingle()
+
+                        if (mapping) {
+                            const { data: stage } = await supabaseAdmin
+                                .from('pipeline_stages')
+                                .select('status_key')
+                                .eq('id', mapping.pipeline_stage_id)
+                                .single()
+
+                            if (stage) {
+                                await supabaseAdmin
+                                    .from('leads')
+                                    .update({ status: stage.status_key })
+                                    .eq('id', leadId)
+
+                                console.log("Payment Triggered Pipeline Update:", stage.status_key)
+                                revalidatePath('/crm')
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (e) {
+            console.error("Process Engine Hook Failed:", e)
+        }
+    }
+    // -------------------------------------
+
     return { success: true }
 }
 

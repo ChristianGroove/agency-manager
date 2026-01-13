@@ -21,6 +21,13 @@ export interface GenerateRepliesOptions {
         priority?: string
     }
     businessContext?: string
+    processContext?: {
+        state: string
+        stateKey: string
+        goal: string
+        description?: string
+        nextActions?: string[]
+    }
 }
 
 /**
@@ -43,7 +50,11 @@ export async function generateSmartReplies(
                 businessContext: options.businessContext,
                 customerName: options.customerContext?.name,
                 customerTags: options.customerContext?.tags,
-                priority: options.customerContext?.priority
+                priority: options.customerContext?.priority,
+                // Inject Process Context for "Intelligent" replies
+                processState: options.processContext?.state,
+                processGoal: options.processContext?.goal,
+                processDescription: options.processContext?.description
             }
         })
 

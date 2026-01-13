@@ -361,7 +361,15 @@ export async function createOrganization(formData: {
             // Don't fail if app assignment fails, org is created
         }
 
-        // 4. Switch Context Immediately
+        // 4. Initialize CRM Defaults (Process Engine & Pipeline)
+        try {
+            const { initializeOrganizationCRM } = await import('@/modules/core/crm/process-engine/init')
+            await initializeOrganizationCRM(newOrg.id)
+        } catch (initErr) {
+            console.error("Warning: CRM Init failed", initErr)
+        }
+
+        // 5. Switch Context Immediately
         await switchOrganization(newOrg.id)
 
         return { success: true, data: newOrg }

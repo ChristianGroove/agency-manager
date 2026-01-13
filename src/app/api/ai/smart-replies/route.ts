@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
         // Fetch conversation context
         const { data: conversation } = await supabase
             .from('conversations')
-            .select('priority, tags, leads(name)')
+            .select('priority, tags, leads(id, name)')
             .eq('id', conversationId)
             .single()
 
@@ -44,11 +44,34 @@ export async function POST(req: NextRequest) {
             created_at: m.created_at
         }))
 
+        // Fetch Process Engine Context
+        let processContext = undefined
+        const lead = Array.isArray(conversation?.leads) ? conversation?.leads[0] : (conversation?.leads as any)
+
+        if (lead?.id) {
+            try {
+                const { ProcessEngine } = await import('@/modules/core/crm/process-engine/engine')
+                const context = await ProcessEngine.getProcessContext(lead.id)
+                if (context) {
+                    processContext = {
+                        state: context.state.name,
+                        stateKey: context.state.key,
+                        goal: context.state.metadata?.goal || 'Advance the sale',
+                        description: context.state.description,
+                        nextActions: context.state.allowed_next_states
+                    }
+                }
+            } catch (e) {
+                console.warn("Failed to fetch process context for AI:", e)
+            }
+        }
+
         // Generate AI replies
         const result = await generateSmartReplies({
             conversationHistory,
+            processContext,
             customerContext: {
-                name: Array.isArray(conversation?.leads) ? conversation?.leads[0]?.name : (conversation?.leads as any)?.name || undefined,
+                name: lead?.name,
                 tags: conversation?.tags || [],
                 priority: conversation?.priority || undefined
             },

@@ -117,12 +117,17 @@ function TriggerAutomationButton({ leadId }: { leadId: string }) {
     )
 }
 
+import { ProcessStateCard } from './process/process-state-card'
+
 // Info Tab - Compact lead information
 function InfoTab({ lead }: { lead: LeadWithRelations }) {
     const scoreTier = lead.score ? getScoreTier(lead.score) : null
 
     return (
         <div className="space-y-4">
+            {/* Process Engine State Card */}
+            <ProcessStateCard leadId={lead.id} />
+
             {/* Header with Score */}
             <div className="flex items-center justify-between">
                 <div>
