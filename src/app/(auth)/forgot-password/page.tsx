@@ -63,6 +63,7 @@ export default function ForgotPasswordPage() {
                                         type="email"
                                         placeholder="tu@email.com"
                                         required
+                                        style={{ color: 'white' }}
                                         className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-brand-pink/50 focus:ring-brand-pink/20 transition-all h-11 backdrop-blur-sm"
                                     />
                                 </div>

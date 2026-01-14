@@ -160,6 +160,7 @@ export function UpdatePasswordForm() {
                                     type="password"
                                     required
                                     minLength={6}
+                                    style={{ color: 'white' }}
                                     className="bg-white/5 border-white/10 text-white focus:border-brand-pink/50 focus:ring-brand-pink/20 transition-all h-11 backdrop-blur-sm"
                                 />
                             </div>
@@ -171,6 +172,7 @@ export function UpdatePasswordForm() {
                                     type="password"
                                     required
                                     minLength={6}
+                                    style={{ color: 'white' }}
                                     className="bg-white/5 border-white/10 text-white focus:border-brand-pink/50 focus:ring-brand-pink/20 transition-all h-11 backdrop-blur-sm"
                                 />
                             </div>
