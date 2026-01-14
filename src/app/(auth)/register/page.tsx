@@ -103,7 +103,7 @@ export default function RegisterPage() {
                                 </div>
                                 <h3 className="text-lg font-semibold text-gray-900">¡Cuenta creada!</h3>
                                 <p className="text-gray-500 text-sm">{successMessage}</p>
-                                <Button variant="outline" className="mt-4 border-gray-200 text-gray-900 hover:bg-gray-50 mb-4" asChild>
+                                <Button className="mt-4 mb-4 bg-indigo-600 hover:bg-indigo-700 text-white" asChild>
                                     <Link href="/login">Ir a Iniciar Sesión</Link>
                                 </Button>
                             </div>
@@ -119,6 +119,7 @@ export default function RegisterPage() {
                                         onChange={(e) => setFullName(e.target.value)}
                                         placeholder="Juan Pérez"
                                         required
+                                        style={{ color: '#1f2937' }}
                                         className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:border-indigo-500 focus:ring-indigo-500 transition-all h-11 shadow-sm"
                                     />
                                 </div>
@@ -132,6 +133,7 @@ export default function RegisterPage() {
                                         onChange={(e) => setEmail(e.target.value)}
                                         placeholder="nombre@empresa.com"
                                         required
+                                        style={{ color: '#1f2937' }}
                                         className="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:border-indigo-500 focus:ring-indigo-500 transition-all h-11 shadow-sm"
                                     />
                                 </div>
@@ -145,6 +147,7 @@ export default function RegisterPage() {
                                         minLength={6}
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
+                                        style={{ color: '#1f2937' }}
                                         className="bg-white border-gray-200 text-gray-900 focus:border-indigo-500 focus:ring-indigo-500 transition-all h-11 shadow-sm"
                                     />
                                 </div>
