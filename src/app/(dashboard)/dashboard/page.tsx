@@ -21,6 +21,8 @@ import { CreateOrganizationSheet } from "@/components/organizations/create-organ
 // Utils
 import { resolveDocumentState, resolveServiceState } from "@/domain/state"
 
+import { useRegisterView } from "@/modules/core/caa/context/view-context"
+
 const AGENCY_TIPS = [
     "Fideliza a tus clientes: Un servicio post-venta excepcional puede incrementar el LTV hasta en un 40%.",
     "Optimiza tu flujo de caja: Automatiza los recordatorios de pago para reducir drásticamente la morosidad.",
@@ -49,6 +51,19 @@ export default function DashboardPage() {
     const [isBriefingModalOpen, setIsBriefingModalOpen] = useState(false)
     const [isNewJobModalOpen, setIsNewJobModalOpen] = useState(false)
     const [isNewOrgModalOpen, setIsNewOrgModalOpen] = useState(false)
+
+    // CAA Registration
+    useRegisterView({
+        viewId: "dashboard",
+        label: "Dashboard",
+        topics: ["getting-started", "metrics", "quick-actions"],
+        actions: [
+            { id: "new-client", label: "Nuevo Cliente", type: "function", target: "open_client_modal", icon: UserPlus, description: "Registrar un nuevo cliente en el sistema" },
+            { id: "new-quote", label: "Nueva Cotización", type: "function", target: "open_quote_modal", icon: FilePlus, description: "Crear una cotización para un cliente" },
+            { id: "new-invoice", label: "Nueva Factura", type: "function", target: "open_invoice_modal", icon: Receipt, description: "Facturar servicios o productos" },
+            { id: "view-reports", label: "Ver Reportes", type: "route", target: "/crm/reports", icon: TrendingUp, description: "Analizar métricas de rendimiento" }
+        ]
+    })
 
     useEffect(() => {
         loadDashboard()

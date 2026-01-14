@@ -2,6 +2,7 @@
 
 import { PaymentMethodsManager } from "./payment-methods-manager"
 
+
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -55,6 +56,8 @@ interface SettingsFormProps {
     isReseller?: boolean
 }
 
+import { useRegisterView } from "@/modules/core/caa/context/view-context"
+
 export function SettingsForm({
     initialSettings,
     activeModules,
@@ -82,6 +85,18 @@ export function SettingsForm({
     const router = useRouter()
     const [isLoading, setIsLoading] = useState(false)
     const [formData, setFormData] = useState(initialSettings || {})
+
+    // CAA Registration
+    useRegisterView({
+        viewId: "settings",
+        label: "Configuración",
+        topics: ["configuration", "billing", "branding", "roles"],
+        actions: [
+            { id: "save-settings", label: "Guardar Cambios", type: "function", target: "submit_form", icon: Save, description: "Guardar la configuración actual" },
+            { id: "view-billing", label: "Facturación y Planes", type: "route", target: "/platform/settings?tab=subscription", icon: CreditCard, description: "Gestionar plan y métodos de pago" },
+            { id: "manage-team", label: "Gestionar Equipo", type: "route", target: "/platform/settings?tab=team", icon: Users, description: "Invitar o eliminar miembros" }
+        ]
+    })
 
     // Local UI Settings State
     const [showMarqueeLocal, setShowMarqueeLocal] = useState(false)

@@ -38,6 +38,10 @@ import { BrandingProvider } from "@/components/providers/branding-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 
+import { ViewContextProvider } from "@/modules/core/caa/context/view-context";
+import { ContextualActionAssistant } from "@/modules/core/caa/components";
+import { ClientInit } from "@/modules/core/caa/client-init";
+
 export default async function RootLayout({
   children,
 }: Readonly<{
@@ -60,7 +64,11 @@ export default async function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
-            {children}
+            <ViewContextProvider>
+              <ClientInit />
+              {children}
+              <ContextualActionAssistant />
+            </ViewContextProvider>
             <ThemeToggle />
             <TrashBinModal shortcut={settings?.trash_shortcut} />
             <Toaster />
