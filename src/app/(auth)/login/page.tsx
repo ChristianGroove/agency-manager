@@ -105,6 +105,7 @@ export default function LoginPage() {
                                     onChange={(e) => setEmail(e.target.value)}
                                     placeholder="nombre@empresa.com"
                                     required
+                                    style={{ color: 'white' }}
                                     className="bg-white/10 border-white/10 text-white placeholder:text-gray-400 focus:border-white/30 focus:ring-white/20 transition-all h-11"
                                 />
                             </div>
@@ -124,6 +125,7 @@ export default function LoginPage() {
                                     name="password"
                                     type="password"
                                     required
+                                    style={{ color: 'white' }}
                                     className="bg-white/10 border-white/10 text-white focus:border-white/30 focus:ring-white/20 transition-all h-11"
                                 />
                             </div>
@@ -150,6 +152,13 @@ export default function LoginPage() {
 
                         <div className="flex justify-center pt-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
                             <BiometricButton iconOnly email={email} />
+                        </div>
+
+                        <div className="text-center text-sm pt-2">
+                            <span className="text-gray-400">¿No tienes cuenta? </span>
+                            <Link href="/register" className="text-white font-medium hover:underline">
+                                Regístrate
+                            </Link>
                         </div>
 
                     </CardContent>

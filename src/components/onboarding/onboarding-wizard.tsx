@@ -144,8 +144,8 @@ export function OnboardingWizard() {
                             placeholder="Nombre de tu empresa"
                             value={formData.name}
                             onChange={handleNameChange}
+                            style={{ color: '#1f2937' }}
                             className="bg-white/80 border-gray-200 focus:ring-2 focus:ring-offset-0 transition-all shadow-sm h-10 text-sm"
-                            style={{ "--tw-ring-color": primaryColor } as React.CSSProperties}
                         />
                     </div>
 
@@ -156,8 +156,8 @@ export function OnboardingWizard() {
                                 id="slug"
                                 value={formData.slug}
                                 onChange={(e) => setFormData(prev => ({ ...prev, slug: e.target.value }))}
+                                style={{ color: '#1f2937' }}
                                 className="rounded-r-none bg-white/80 border-gray-200 focus:z-10 focus:ring-2 focus:ring-offset-0 text-right font-medium text-sm h-full"
-                                style={{ "--tw-ring-color": primaryColor } as React.CSSProperties}
                                 placeholder="slug"
                             />
                             <span className="inline-flex items-center px-3 rounded-r-md border border-l-0 border-gray-200 bg-gray-50/50 text-gray-500 text-[10px] select-none font-medium h-full">
