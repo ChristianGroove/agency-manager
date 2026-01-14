@@ -126,6 +126,10 @@ export class InboxService {
                         try { creds = JSON.parse(creds); } catch (e) { }
                     }
                     creds = decryptObject(creds);
+                    if (!creds) {
+                        fileLogger.log(`[InboxService] Connection ${c.id}: decryption failed, skipping`);
+                        continue;
+                    }
                     const storedId = creds.phoneNumberId || creds.phone_number_id;
                     fileLogger.log(`[InboxService] Checking connection ${c.id}: storedId="${storedId}" vs webhook="${metadata?.phoneNumberId}"`);
                 }
@@ -136,6 +140,7 @@ export class InboxService {
                         try { creds = JSON.parse(creds); } catch (e) { }
                     }
                     creds = decryptObject(creds);
+                    if (!creds) return false;
                     const storedId = creds.phoneNumberId || creds.phone_number_id;
                     return storedId === metadata?.phoneNumberId || storedId === metadata?.phone_number_id;
                 });

@@ -99,9 +99,10 @@ export class WebhookManager {
             }
 
             return { success: true }
-        } catch (error) {
-            console.error(`[WebhookManager] Error in handleParsed:`, error)
-            return { success: false, message: "Internal processing error" }
+        } catch (error: any) {
+            const errorMsg = error?.message || String(error)
+            console.error(`[WebhookManager] Error in handleParsed:`, errorMsg, error?.stack)
+            return { success: false, message: `Internal processing error: ${errorMsg}` }
         }
     }
 
