@@ -28,6 +28,7 @@ const dictionaries = {
                 description: "Descripción",
                 category: "Categoría",
                 price: "Precio Mensual",
+                search_placeholder: "Buscar plantillas...",
                 save: "Guardar Cambios",
                 create: "Crear"
             },
@@ -58,6 +59,7 @@ const dictionaries = {
                 description: "Description",
                 category: "Category",
                 price: "Monthly Price",
+                search_placeholder: "Search templates...",
                 save: "Save Changes",
                 create: "Create"
             },

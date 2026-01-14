@@ -6,10 +6,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Search, Settings, Users, Package, LayoutGrid, CheckCircle2, XCircle } from "lucide-react"
-import Link from "next/link"
 import { SearchFilterBar, FilterOption } from "@/components/shared/search-filter-bar"
 import { ViewToggle, ViewMode } from "@/components/shared/view-toggle"
 import { cn } from "@/lib/utils"
+// Import the new Sheet
+import { AppDetailsSheet } from "./app-details-sheet"
 
 interface AppsListProps {
     initialApps: (SaasApp & { active_org_count: number })[]
@@ -21,6 +22,10 @@ export function AppsList({ initialApps, dict }: AppsListProps) {
     const [viewMode, setViewMode] = useState<ViewMode>('grid')
     const [activeFilter, setActiveFilter] = useState('all')
 
+    // State for the Sheet
+    const [selectedApp, setSelectedApp] = useState<any | null>(null)
+    const [isSheetOpen, setIsSheetOpen] = useState(false)
+
     const filteredApps = initialApps.filter(app => {
         const matchesSearch = app.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             app.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -31,8 +36,6 @@ export function AppsList({ initialApps, dict }: AppsListProps) {
         if (activeFilter === 'all') return true
         if (activeFilter === 'active') return app.is_active
         if (activeFilter === 'inactive') return !app.is_active
-        // Add specific category filters if needed, strictly based on filter ID matching category?
-        // For now, let's keep it simple with status
 
         return true
     })
@@ -49,8 +52,21 @@ export function AppsList({ initialApps, dict }: AppsListProps) {
         { id: 'inactive', label: 'Inactivos', count: counts.inactive, color: 'slate' },
     ]
 
+    const handleManageClick = (app: any) => {
+        setSelectedApp(app)
+        setIsSheetOpen(true)
+    }
+
     return (
         <div className="space-y-6">
+            {/* Sheet Component */}
+            <AppDetailsSheet
+                app={selectedApp}
+                isOpen={isSheetOpen}
+                onClose={() => setIsSheetOpen(false)}
+                dict={dict}
+            />
+
             {/* Unified Control Bar */}
             <div className="flex flex-col md:flex-row gap-3 sticky top-4 z-30">
                 <SearchFilterBar
@@ -86,7 +102,7 @@ export function AppsList({ initialApps, dict }: AppsListProps) {
                         )}>
                             <div className={cn(
                                 "flex justify-between items-start w-full",
-                                viewMode === 'list' ? "items-center" : ""
+                                "items-center" // Always center vertically in header
                             )}>
                                 <div className="flex items-center gap-4 w-full">
                                     <div
@@ -169,15 +185,18 @@ export function AppsList({ initialApps, dict }: AppsListProps) {
                             "pt-0",
                             viewMode === 'list' ? "p-4 w-full md:w-auto border-t md:border-t-0 md:border-l bg-gray-50/50 md:bg-transparent justify-end" : "bg-gray-50/30 border-t border-slate-100 dark:border-slate-800 p-4"
                         )}>
-                            <Link href={`/platform/admin/apps/${app.slug}`} className={viewMode === 'list' ? "" : "w-full"}>
-                                <Button size={viewMode === 'list' ? "sm" : "default"} variant="outline" className={cn(
+                            <Button
+                                size={viewMode === 'list' ? "sm" : "default"}
+                                variant="outline"
+                                className={cn(
                                     "group-hover:border-primary/50 group-hover:text-primary transition-all bg-white",
                                     viewMode === 'list' ? "h-9 w-full md:w-auto px-4" : "w-full shadow-sm"
-                                )}>
-                                    <Settings className="mr-2 h-4 w-4" />
-                                    {dict.form.manage || "Gestionar Plantilla"}
-                                </Button>
-                            </Link>
+                                )}
+                                onClick={() => handleManageClick(app)}
+                            >
+                                <Settings className="mr-2 h-4 w-4" />
+                                {dict.form.manage || "Gestionar Plantilla"}
+                            </Button>
                         </CardFooter>
                     </Card>
                 ))}

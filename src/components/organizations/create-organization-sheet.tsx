@@ -104,11 +104,15 @@ export function CreateOrganizationSheet({ open, onOpenChange, onSuccess, initial
         try {
             // Logic:
             // If Platform -> Parent = NULL (unless user wants to nest?), Type = User Selected
-            // If Reseller -> Parent = CurrentOrg, Type = Client
+            // If Reseller -> Parent = CurrentOrg, Type = Client, acquired_by_reseller = CurrentOrg
 
             let parentId = null
+            let acquiredByResellerId = null
+
             if (currentParentOrg?.organization_type === 'reseller') {
                 parentId = currentParentOrg.id
+                // Revenue Sharing: Track that this org was acquired by the reseller
+                acquiredByResellerId = currentParentOrg.id
             }
 
             const result = await createOrganization({
@@ -118,6 +122,7 @@ export function CreateOrganizationSheet({ open, onOpenChange, onSuccess, initial
                 parent_organization_id: parentId, // V2
                 organization_type: orgType, // V2
                 admin_email: adminEmail || undefined, // New: Automated Onboarding
+                acquired_by_reseller_id: acquiredByResellerId, // Revenue Sharing
             })
 
             if (result.success) {

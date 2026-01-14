@@ -29,6 +29,11 @@ export default function RegisterPage() {
     const [email, setEmail] = useState("")
     const [password, setPassword] = useState("")
 
+    // Check if captcha is configured
+    const captchaSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
+    const isCaptchaRequired = Boolean(captchaSiteKey && captchaSiteKey.length > 0)
+    const isCaptchaValid = !isCaptchaRequired || captchaToken !== null
+
     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault()
         setIsLoading(true)
@@ -151,18 +156,20 @@ export default function RegisterPage() {
                                 )}
 
 
-                                <div className="space-y-2 flex justify-center">
-                                    <Turnstile
-                                        siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || ""}
-                                        onSuccess={(token) => setCaptchaToken(token)}
-                                        onExpire={() => setCaptchaToken(null)}
-                                        onError={() => setCaptchaToken(null)}
-                                        options={{
-                                            theme: 'light',
-                                            size: 'normal',
-                                        }}
-                                    />
-                                </div>
+                                {isCaptchaRequired && (
+                                    <div className="space-y-2 flex justify-center">
+                                        <Turnstile
+                                            siteKey={captchaSiteKey!}
+                                            onSuccess={(token) => setCaptchaToken(token)}
+                                            onExpire={() => setCaptchaToken(null)}
+                                            onError={() => setCaptchaToken(null)}
+                                            options={{
+                                                theme: 'light',
+                                                size: 'normal',
+                                            }}
+                                        />
+                                    </div>
+                                )}
 
                                 <Button
                                     type="submit"
@@ -171,7 +178,7 @@ export default function RegisterPage() {
                                         backgroundColor: primaryColor,
                                         // Slight darken for hover could be handled via CSS var manipulation or just kept simple
                                     }}
-                                    disabled={isLoading || !captchaToken}
+                                    disabled={isLoading || !isCaptchaValid}
                                 >
                                     {isLoading ? (
                                         <>

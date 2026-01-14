@@ -187,6 +187,8 @@ export async function createOrganization(formData: {
     parent_organization_id?: string
     organization_type?: 'platform' | 'reseller' | 'operator' | 'client'
     admin_email?: string // New
+    // Revenue Sharing V1
+    acquired_by_reseller_id?: string // Reseller that acquired this client
 }) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -264,7 +266,10 @@ export async function createOrganization(formData: {
                 // V2 Fields
                 parent_organization_id: formData.parent_organization_id || null,
                 organization_type: formData.organization_type || 'client',
-                status: 'active'
+                status: 'active',
+                // Revenue Sharing: Track acquisition
+                acquired_by_reseller_id: formData.acquired_by_reseller_id || null,
+                acquisition_date: formData.acquired_by_reseller_id ? new Date().toISOString() : null
             })
             .select()
             .single()
