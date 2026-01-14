@@ -4,10 +4,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { AppsList } from "../apps/_components/apps-list"
 import { FeatureFlagsManager } from "@/modules/core/admin/components/feature-flags-manager"
-import { Boxes, Settings2, Palette, Crown, DollarSign } from "lucide-react"
+import { Boxes, Settings2, Palette, Crown, DollarSign, CreditCard } from "lucide-react"
 import { GlobalBrandingManager } from "./global-branding-manager"
 import { BrandingPlansManager } from "./branding-plans-manager"
 import { SettlementsManager } from "./settlements-manager"
+import { PaymentSettingsManager } from "./payment-settings-manager"
 
 interface SaasEngineManagerProps {
     allModules: any[]
@@ -41,6 +42,10 @@ export function SaasEngineManager({ allModules, apps, dict }: SaasEngineManagerP
                     <TabsTrigger value="global-flags" className="gap-2">
                         <Settings2 className="h-4 w-4" />
                         Feature Flags
+                    </TabsTrigger>
+                    <TabsTrigger value="payments" className="gap-2">
+                        <CreditCard className="h-4 w-4" />
+                        Pagos
                     </TabsTrigger>
                 </TabsList>
 
@@ -94,6 +99,10 @@ export function SaasEngineManager({ allModules, apps, dict }: SaasEngineManagerP
                             </div>
                         </CardContent>
                     </Card>
+                </TabsContent>
+
+                <TabsContent value="payments" className="focus-visible:outline-none">
+                    <PaymentSettingsManager />
                 </TabsContent>
             </Tabs>
         </Card>
