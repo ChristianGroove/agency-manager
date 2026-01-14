@@ -3,7 +3,7 @@ import { SettingsForm } from "@/modules/core/settings/settings-form"
 import { getSettings } from "@/modules/core/settings/actions"
 import { getEffectiveBranding } from "@/modules/core/branding/actions"
 import { getCurrentBrandingTier } from "@/modules/core/branding/tier-actions"
-import { getOrganizationModules, getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getOrganizationModules, getCurrentOrganizationId, getOrganizationCardDetails } from "@/modules/core/organizations/actions"
 import { getSubscriptionApp } from "@/modules/core/catalog/actions"
 import { getCurrentOrgRole } from "@/lib/auth/org-roles"
 import { Loader2 } from "lucide-react"
@@ -23,7 +23,7 @@ export default async function SettingsPage() {
         return <div>Error: Organización no encontrada</div>
     }
 
-    const [settings, activeModules, subscriptionApp, brandingSettings, userRole, tierData, snapshots, vaultConfig] = await Promise.all([
+    const [settings, activeModules, subscriptionApp, brandingSettings, userRole, tierData, snapshots, vaultConfig, organization] = await Promise.all([
         getSettings(),
         getOrganizationModules(orgId),
         getSubscriptionApp(),
@@ -31,10 +31,12 @@ export default async function SettingsPage() {
         getCurrentOrgRole(),
         getCurrentBrandingTier(),
         getSnapshots(),
-        getVaultConfig()
+        getVaultConfig(),
+        getOrganizationCardDetails(orgId)
     ])
 
     const tierFeatures = tierData?.tier?.features || {}
+    const isReseller = organization?.type === 'reseller'
 
     return (
         <div className="space-y-6">
@@ -48,6 +50,8 @@ export default async function SettingsPage() {
                     tierFeatures={tierFeatures}
                     snapshots={snapshots}
                     vaultConfig={vaultConfig || { enabled: false, frequency: 'weekly' }}
+                    organizationId={orgId}
+                    isReseller={isReseller}
                 />
             </Suspense>
         </div>

@@ -16,7 +16,9 @@ import { Badge } from "@/components/ui/badge"
 // import { TrashBinSettings } from "./trash-bin-settings"
 import { EmittersSettings } from "./emitters-settings"
 import { isEmittersModuleEnabled } from "@/lib/flags"
-import { Loader2, Save, CreditCard, FileText, Building2, Globe, Layout, Palette, Eye, MessageSquare, LayoutTemplate, Users, AlertTriangle, Lock, Shield } from "lucide-react"
+import { Loader2, Save, CreditCard, FileText, Building2, Globe, Layout, Palette, Eye, MessageSquare, LayoutTemplate, Users, AlertTriangle, Lock, Shield, DollarSign } from "lucide-react"
+import { ResellerDashboard } from "@/modules/core/revenue/components/reseller-dashboard"
+import { UsageStatusCard } from "@/modules/core/billing/components/usage-status-card"
 import { COMMUNICATION_VARIABLES, DEFAULT_TEMPLATES } from "@/lib/communication-utils"
 import { useEffect } from "react"
 import { SplitText } from "@/components/ui/split-text"
@@ -49,7 +51,8 @@ interface SettingsFormProps {
     userRole: OrganizationRole
     snapshots: DataSnapshot[]
     vaultConfig: VaultConfig
-
+    organizationId: string
+    isReseller?: boolean
 }
 
 export function SettingsForm({
@@ -61,7 +64,8 @@ export function SettingsForm({
     userRole,
     snapshots,
     vaultConfig,
-
+    organizationId,
+    isReseller = false,
 }: SettingsFormProps) {
     // ... existing code ...
 
@@ -246,6 +250,15 @@ export function SettingsForm({
             icon: LayoutTemplate,
             requiredModule: null,
             isCore: true
+        },
+        {
+            id: 'revenue',
+            label: 'Comisiones',
+            icon: DollarSign,
+            requiredModule: null,
+            isCore: false,
+            minRole: 'owner',
+            customCheck: () => isReseller
         }
     ]
 
@@ -343,8 +356,12 @@ export function SettingsForm({
                     <VaultSettingsTab snapshots={snapshots || []} initialConfig={vaultConfig!} />
                 </TabsContent>
 
-
-                {/* GENERAL TAB */}
+                {/* REVENUE TAB - Resellers Only */}
+                {isReseller && (
+                    <TabsContent value="revenue" className="space-y-6 mt-4" suppressHydrationWarning>
+                        <ResellerDashboard organizationId={organizationId} />
+                    </TabsContent>
+                )}                {/* GENERAL TAB */}
                 <TabsContent value="general" className="space-y-4 mt-4" suppressHydrationWarning>
                     <Card className="bg-white dark:bg-white/5 border-gray-100 dark:border-white/10 shadow-sm backdrop-blur-md">
                         <CardHeader>
