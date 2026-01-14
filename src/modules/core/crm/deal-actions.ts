@@ -158,11 +158,20 @@ export async function updateCartItem(itemId: string, quantity: number) {
 export async function searchCatalog(query: string = '', category?: string) {
     const supabase = await createClient()
 
+    // Get current organization
+    const { getCurrentOrganizationId } = await import('@/modules/core/organizations/actions')
+    const orgId = await getCurrentOrganizationId()
+
     let dbQuery = supabase
         .from('service_catalog')
         .select('*')
         .order('name', { ascending: true })
         .limit(20)
+
+    // Filter by organization if available
+    if (orgId) {
+        dbQuery = dbQuery.eq('organization_id', orgId)
+    }
 
     if (query) {
         dbQuery = dbQuery.ilike('name', `%${query}%`)

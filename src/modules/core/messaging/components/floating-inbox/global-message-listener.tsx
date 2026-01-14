@@ -18,6 +18,17 @@ export function GlobalMessageListener() {
     const { preferences } = useInboxPreferences()
     const { openInbox } = useGlobalInbox()
     const processedMessages = useRef<Set<string>>(new Set())
+    const pathnameRef = useRef(pathname)
+    const preferencesRef = useRef(preferences)
+
+    // Keep refs updated without triggering useEffect
+    useEffect(() => {
+        pathnameRef.current = pathname
+    }, [pathname])
+
+    useEffect(() => {
+        preferencesRef.current = preferences
+    }, [preferences])
 
     useEffect(() => {
         // Define channel colors
@@ -53,12 +64,12 @@ export function GlobalMessageListener() {
 
                     // 2. Suppress if on Inbox Page
                     // Note: This matches /platform/inbox or similar. Adjust based on real route.
-                    if (pathname?.includes('/inbox')) return
+                    if (pathnameRef.current?.includes('/inbox')) return
 
                     console.log('[GlobalListener] New Inbound Message:', msg)
 
                     // 3. Play Sound
-                    if (preferences.notifications.sound_enabled) {
+                    if (preferencesRef.current.notifications.sound_enabled) {
                         try {
                             const audio = new Audio('/sounds/notification.mp3') // Ensure this file exists
                             audio.volume = 0.5
@@ -135,9 +146,14 @@ export function GlobalMessageListener() {
                                         size="sm"
                                         variant="ghost"
                                         className="h-7 px-3 text-xs text-muted-foreground hover:text-foreground"
-                                        onClick={() => {
+                                        onClick={async () => {
                                             toast.dismiss(t)
-                                            markConversationAsRead(msg.conversation_id)
+                                            const result = await markConversationAsRead(msg.conversation_id)
+                                            if (result.success) {
+                                                toast.success('Marcado como leído')
+                                            } else {
+                                                toast.error('Error al marcar como leído')
+                                            }
                                         }}
                                     >
                                         <CheckCheck className="h-3 w-3 mr-1.5" />
@@ -166,7 +182,8 @@ export function GlobalMessageListener() {
         return () => {
             channel.unsubscribe()
         }
-    }, [pathname, preferences.notifications.sound_enabled])
+        // Run only once on mount - refs handle dynamic values
+    }, [openInbox])
 
     return null
 }
