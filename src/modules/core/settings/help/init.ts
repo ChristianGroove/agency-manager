@@ -26,6 +26,18 @@ export function registerSettingsHelp() {
                 { type: "text", content: "Invita a tu equipo y asigna roles granulares (Admin, Miembro, Contador)." },
                 { type: "text", content: "Accede a {{action:manage-team|Gestión de Equipo}} para ver la lista actual." }
             ]
+        },
+        {
+            id: "security-basics",
+            title: "Seguridad y Auditoría",
+            description: "Protege tu cuenta y monitorea actividad sospechosa.",
+            relatedViews: ["settings"],
+            relatedActions: [],
+            keywords: ["seguridad", "password", "2fa", "auditoria"],
+            contentBlocks: [
+                { type: "text", content: "Tu seguridad es prioridad. Recomendamos cambiar tu contraseña periódicamente y activar la autenticación de dos pasos si está disponible en tu plan." },
+                { type: "callout", content: "Los administradores pueden ver el registro de actividad (Audit Log) para rastrear cambios sensibles.", variant: "warning" }
+            ]
         }
     ]
 

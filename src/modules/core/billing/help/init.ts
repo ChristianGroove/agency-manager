@@ -4,9 +4,22 @@ import { HelpArticle } from "@/modules/core/caa/types"
 export function registerBillingHelp() {
     const articles: HelpArticle[] = [
         {
+            id: "plan-mastery",
+            title: "Domina tu Plan",
+            description: "Conoce los límites y alcances de tu suscripción actual.",
+            relatedViews: ["settings", "billing"],
+            relatedActions: ["view-billing"],
+            keywords: ["plan", "limites", "upgrade", "pro", "enterprise"],
+            contentBlocks: [
+                { type: "text", content: "Cada plan en Pixy está diseñado para una etapa diferente de tu agencia. Tu plan actual define cuántos miembros, contactos y almacenamiento tienes disponible." },
+                { type: "callout", content: "Si te acercas al límite, te notificaremos. Puedes hacer upgrade en cualquier momento sin perder datos.", variant: "info" },
+                { type: "text", content: "Revisa tu consumo actual en {{action:view-billing|Gestión de Plan}}." }
+            ]
+        },
+        {
             id: "billing-overview",
             title: "Entendiendo tu Facturación",
-            description: "Todo lo que necesitas saber sobre tu plan, ciclos de cobro y métodos de pago.",
+            description: "Ciclos de cobro, facturas y métodos de pago.",
             relatedViews: ["settings", "dashboard"],
             relatedActions: ["view-billing"], // Kept for metadata, but hidden from list
             keywords: ["factura", "pago", "ciclo", "tarjeta", "plan"],

@@ -4,10 +4,11 @@ import { useState, useEffect } from "react"
 import { FloatingAssistant } from "./floating-assistant"
 import { AssistantModal } from "./assistant-modal"
 
+// Main Contextual Action Assistant - combines floating button + modal
 export function ContextualActionAssistant() {
     const [isOpen, setIsOpen] = useState(false)
 
-    // Keyboard shortcut to open (Cmd+K or Ctrl+K usually conflicts, let's try Ctrl+Space or just generic)
+    // Keyboard shortcut to open (Cmd+K or Ctrl+K)
     useEffect(() => {
         const down = (e: KeyboardEvent) => {
             if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
@@ -26,3 +27,15 @@ export function ContextualActionAssistant() {
         </>
     )
 }
+
+// Re-export components for external use
+export { AssistantModal } from "./assistant-modal"
+export { FloatingAssistant } from "./floating-assistant"
+
+// Phase 2: Polish Components
+export { EmptyStateHelpCard } from "./empty-state-help-card"
+export { OnboardingChecklist } from "./onboarding-checklist"
+export { ContextualTooltip, InlineTooltip } from "./contextual-tooltip"
+
+// Phase 3: Innovation
+export { AIChatPanel } from "./ai-chat-panel"
