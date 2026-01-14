@@ -103,7 +103,11 @@ export default function RegisterPage() {
                                 </div>
                                 <h3 className="text-lg font-semibold text-gray-900">¡Cuenta creada!</h3>
                                 <p className="text-gray-500 text-sm">{successMessage}</p>
-                                <Button className="mt-4 mb-4 bg-indigo-600 hover:bg-indigo-700 text-white" asChild>
+                                <Button
+                                    className="mt-4 mb-4 text-white"
+                                    style={{ backgroundColor: primaryColor }}
+                                    asChild
+                                >
                                     <Link href="/login">Ir a Iniciar Sesión</Link>
                                 </Button>
                             </div>
