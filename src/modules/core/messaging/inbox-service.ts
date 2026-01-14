@@ -115,8 +115,20 @@ export class InboxService {
                 .in('provider_key', ['meta_whatsapp', 'whatsapp']) // Support both legacy and new
                 .eq('status', 'active');
 
+            fileLogger.log('[InboxService] Active WhatsApp connections found:', connections?.length || 0);
+
             if (connections) {
                 const { decryptObject } = await import('@/modules/core/integrations/encryption');
+
+                for (const c of connections) {
+                    let creds = c.credentials || {};
+                    if (typeof creds === 'string') {
+                        try { creds = JSON.parse(creds); } catch (e) { }
+                    }
+                    creds = decryptObject(creds);
+                    const storedId = creds.phoneNumberId || creds.phone_number_id;
+                    fileLogger.log(`[InboxService] Checking connection ${c.id}: storedId="${storedId}" vs webhook="${metadata?.phoneNumberId}"`);
+                }
 
                 const found: any = connections.find((c: any) => {
                     let creds = c.credentials || {};
@@ -133,6 +145,8 @@ export class InboxService {
                     orgId = found.organization_id; // CRITICAL: Use connection's org
                     matchedConnection = found;
                     fileLogger.log('[InboxService] Matched Meta WhatsApp connection:', { connectionId, orgId });
+                } else {
+                    fileLogger.log('[InboxService] NO MATCH FOUND. Webhook phoneNumberId:', metadata?.phoneNumberId);
                 }
             }
         }
