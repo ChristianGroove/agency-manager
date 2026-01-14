@@ -129,10 +129,11 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
         fetchMessages()
 
         // Realtime Subscriptions
+        if (!conversationId) return
         console.log('[ChatArea] Mounting subscription for:', conversationId)
 
         const channel = supabase
-            .channel(`conversation-${conversationId}`)
+            .channel(`chat-area-${conversationId}`)
             .on('postgres_changes',
                 { event: 'INSERT', schema: 'public', table: 'messages' },
                 (payload) => {

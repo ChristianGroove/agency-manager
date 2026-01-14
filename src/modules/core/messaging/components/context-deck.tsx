@@ -102,8 +102,10 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
 
     // Real-time Subscription
     useEffect(() => {
+        if (!conversationId) return
+
         const channel = supabase
-            .channel(`conversation-${conversationId}`)
+            .channel(`context-deck-${conversationId}`)
             .on('postgres_changes', {
                 event: 'UPDATE',
                 schema: 'public',
