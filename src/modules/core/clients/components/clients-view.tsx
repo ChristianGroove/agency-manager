@@ -38,8 +38,8 @@ import { SplitText } from "@/components/ui/split-text"
 import { Client } from "@/types"
 import { CreateClientSheet } from "@/modules/core/clients/create-client-sheet"
 import { CreateServiceSheet } from "@/modules/core/billing/components/create-service-sheet"
-import { quickCreateProspect } from "@/modules/core/clients/actions"
-import { getClients } from "@/modules/core/clients/actions"
+import { getClients, quickCreateProspect } from "@/modules/core/clients/actions"
+import { getTemplates } from "@/modules/core/messaging/template-actions"
 import { SearchFilterBar, FilterOption } from "@/components/shared/search-filter-bar"
 import { ViewToggle, ViewMode } from "@/components/shared/view-toggle"
 
@@ -88,6 +88,13 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
 
     const [portalOpen, setPortalOpen] = useState(false)
     const [clientForPortal, setClientForPortal] = useState<Client | null>(null)
+
+    // Templates for WhatsApp
+    const [templates, setTemplates] = useState<any[]>([])
+
+    useEffect(() => {
+        getTemplates().then(setTemplates).catch(console.error)
+    }, [])
     // ------------------------
 
     // View State
@@ -852,6 +859,7 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
                 onOpenChange={setIsWhatsAppModalOpen}
                 client={selectedClientForWhatsApp}
                 settings={settings}
+                templates={templates}
             />
 
             {/* --- NEW MANAGEMENT SHEETS --- */}

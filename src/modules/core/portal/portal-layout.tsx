@@ -228,7 +228,7 @@ export function PortalLayout({ token, client, invoices, quotes, briefings, event
                     )}
                     {dynamicTabs.find(t => t.key === activeTab)?.component === 'billing' && (
                         <PortalBillingTab
-                            invoices={invoices} settings={settings} onPay={onPay} onViewInvoice={onViewInvoice}
+                            invoices={invoices} settings={settings} onPay={onPay} onViewInvoice={onViewInvoice} token={token}
                         />
                     )}
                     {dynamicTabs.find(t => t.key === activeTab)?.component === 'insights' && <InsightsTab client={client} services={services} token={token} insightsAccess={insightsAccess} />}

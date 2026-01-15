@@ -12,9 +12,10 @@ interface PortalBillingTabProps {
     settings: any
     onPay: (invoiceIds: string[]) => void
     onViewInvoice: (invoice: Invoice) => void
+    token: string
 }
 
-export function PortalBillingTab({ invoices, settings, onPay, onViewInvoice }: PortalBillingTabProps) {
+export function PortalBillingTab({ invoices, settings, onPay, onViewInvoice, token }: PortalBillingTabProps) {
     const [selectedInvoices, setSelectedInvoices] = useState<string[]>([])
 
     // Calculate Stats
@@ -67,6 +68,7 @@ export function PortalBillingTab({ invoices, settings, onPay, onViewInvoice }: P
                 onToggle={toggleInvoice}
                 onToggleAll={toggleAll}
                 onView={onViewInvoice}
+                token={token}
             />
 
             {/* Sticky Bottom Payment Bar (Scoped to this Tab) */}

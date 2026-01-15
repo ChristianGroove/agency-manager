@@ -1,10 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { MessageCircle, Globe, FileText, FileBarChart2, ArrowRight, Check, Copy } from "lucide-react"
-import { Client, Invoice, Quote } from "@/types"
+import { MessageCircle, Globe, FileText, FileBarChart2, ArrowRight, Wallet } from "lucide-react"
+import { Client } from "@/types"
 import { getWhatsAppLink } from "@/lib/communication-utils"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { cn, getPortalShortUrl } from "@/lib/utils"
@@ -14,59 +14,138 @@ interface WhatsAppActionsModalProps {
     onOpenChange: (open: boolean) => void
     client: Client | null
     settings: any
+    templates?: any[]
 }
 
 type ActionType = 'chat' | 'portal' | 'invoice' | 'quote'
 
-export function WhatsAppActionsModal({ isOpen, onOpenChange, client, settings }: WhatsAppActionsModalProps) {
+export function WhatsAppActionsModal({ isOpen, onOpenChange, client, settings, templates = [] }: WhatsAppActionsModalProps) {
     const [action, setAction] = useState<ActionType>('chat')
     const [selectedInvoiceId, setSelectedInvoiceId] = useState<string>("")
     const [selectedQuoteId, setSelectedQuoteId] = useState<string>("")
+    const [shareAllInvoices, setShareAllInvoices] = useState(false)
 
-    if (!client) return null
+    // 1. Helper to find template (Case insensitive, lenient)
+    const findTemplate = (name: string) => {
+        return templates.find(t => t.name.toLowerCase().includes(name.toLowerCase()) && t.status === 'APPROVED')
+    }
+
+    const portalLink = getPortalShortUrl(client?.portal_short_token || client?.portal_token || '')
+
+    // 2. Logic to generate message body
+    const getMessage = () => {
+        if (!client) return ""
+        let template = null
+        let message = ""
+
+        switch (action) {
+            case 'chat':
+                // Default greeting
+                message = `Hola ${client.name}, ¿cómo estás? Te escribo de ${settings?.agency_name || "nuestra empresa"}.`
+                break
+
+            case 'portal':
+                // Try find template
+                template = findTemplate('Portal')
+                if (template) {
+                    message = template.content
+                } else {
+                    message = `Hola {{cliente}}, aquí tienes acceso a tu portal de cliente: {{link}}`
+                }
+                break
+
+            case 'invoice':
+                if (shareAllInvoices) {
+                    // SPECIAL CASE: Billing Summary
+                    const pending = client.invoices?.filter(i => ['pending', 'overdue'].includes(i.status)) || []
+                    const total = pending.reduce((sum, i) => sum + i.total, 0)
+
+                    // Try to find a summary template, otherwise Hardcoded Professional Format
+                    template = findTemplate('Billing Summary')
+
+                    if (template) {
+                        message = template.content
+                            .replace('{{total}}', `$${total.toLocaleString()}`)
+                            .replace('{{count}}', pending.length.toString())
+                    } else {
+                        // Fallback Standard Message
+                        const invoiceList = pending.map(i => `- Factura #${i.number}: $${i.total.toLocaleString()}`).join('\n')
+                        message = `Hola {{cliente}}, hemos generado tu facturación pendiente por un total de $${total.toLocaleString()}.\n\nDetalle:\n${invoiceList}\n\nPuedes verlas y pagar aquí: {{link}}`
+                    }
+                } else {
+                    // Single Invoice
+                    const invoice = client.invoices?.find(i => i.id === selectedInvoiceId)
+                    if (!invoice) return ""
+
+                    template = findTemplate('Invoice Sent')
+                    if (template) {
+                        message = template.content
+                            .replace('{{factura}}', invoice.number)
+                            .replace('{{monto}}', `$${invoice.total.toLocaleString()}`)
+                    } else {
+                        message = `Hola {{cliente}}, te enviamos tu factura #{{factura}} por valor de {{monto}}. Puedes verla y pagarla aquí: {{link}}`
+                            .replace('{{factura}}', invoice.number)
+                            .replace('{{monto}}', `$${invoice.total.toLocaleString()}`)
+                    }
+                }
+                break
+
+            case 'quote':
+                const quote = client.quotes?.find((q: any) => q.id === selectedQuoteId)
+                if (!quote) return ""
+
+                template = findTemplate('Quote') || findTemplate('Cotización')
+                if (template) {
+                    message = template.content
+                        // Assume template might use {{id}} or {{number}}
+                        .replace('{{cotizacion}}', quote.number)
+                        .replace('{{monto}}', `$${quote.total.toLocaleString()}`)
+                } else {
+                    message = `Hola {{cliente}}, hemos preparado la cotización #{{cotizacion}} por {{monto}}. Puedes revisarla aquí: {{link}}`
+                        .replace('{{cotizacion}}', quote.number)
+                        .replace('{{monto}}', `$${quote.total.toLocaleString()}`)
+                }
+                break
+        }
+
+        // Global Replacements
+        return message
+            .replace('{{cliente}}', client.name.split(' ')[0]) // First name
+            .replace('{{client}}', client.name.split(' ')[0])
+            .replace('{{link}}', portalLink)
+            .replace('{{empresa}}', settings?.agency_name || '')
+            .replace('{{company}}', settings?.agency_name || '')
+    }
 
     const handleSend = () => {
-        let message = ""
-        let phone = client.phone
-
+        if (!client) return
+        const phone = client.phone
         if (!phone) {
             alert("El cliente no tiene teléfono registrado")
             return
         }
 
-        switch (action) {
-            case 'chat':
-                message = `Hola ${client.name}, ¿cómo estás? Te escribo de ${settings?.agency_name || "nuestra empresa"}.`
-                break
-            case 'portal':
-                const link = getPortalShortUrl(client.portal_short_token || client.portal_token || '')
-                message = `Hola ${client.name}, aquí te comparto el enlace a tu portal de cliente para que revises tus servicios y facturas: ${link}`
-                break
-            case 'invoice':
-                const invoice = client.invoices?.find(i => i.id === selectedInvoiceId)
-                if (invoice) {
-                    const portalLink = getPortalShortUrl(client.portal_short_token || client.portal_token || '')
-                    message = `Hola ${client.name} hemos generado una factura por $${invoice.total.toLocaleString()}, para ver los detalles ingresa a tu portal de cliente: ${portalLink}`
-                }
-                break
-            case 'quote':
-                const quote = client.quotes?.find((q: any) => q.id === selectedQuoteId)
-                if (quote) {
-                    const portalLink = getPortalShortUrl(client.portal_short_token || client.portal_token || '')
-                    message = `Hola ${client.name} hemos generado una cotización por $${quote.total.toLocaleString()}, para ver los detalles ingresa a tu portal de cliente: ${portalLink}`
-                }
-                break
-        }
-
+        const message = getMessage()
         const url = getWhatsAppLink(phone, message, settings)
         window.open(url, '_blank')
         onOpenChange(false)
     }
 
-    // Filter content
-    const pendingInvoices = client.invoices?.filter(i => ['pending', 'overdue'].includes(i.status)) || []
+    const pendingInvoices = client?.invoices?.filter(i => ['pending', 'overdue'].includes(i.status)) || []
     // @ts-ignore
-    const quotes = client.quotes || []
+    const quotes = client?.quotes || []
+
+    // Preview for UI (Real-time update)
+    const previewMessage = useMemo(() => {
+        if (!client) return ""
+        try {
+            return getMessage()
+        } catch (e) {
+            return "Selecciona una opción..."
+        }
+    }, [action, selectedInvoiceId, selectedQuoteId, shareAllInvoices, client, templates])
+
+    if (!client) return null
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -80,7 +159,7 @@ export function WhatsAppActionsModal({ isOpen, onOpenChange, client, settings }:
                             Contactar Cliente
                         </DialogTitle>
                         <DialogDescription className="text-gray-500">
-                            Elige cómo quieres contactar a <span className="font-semibold text-gray-900">{client.name}</span>
+                            Personaliza el mensaje para <span className="font-semibold text-gray-900">{client.name}</span>
                         </DialogDescription>
                     </DialogHeader>
                 </div>
@@ -96,7 +175,11 @@ export function WhatsAppActionsModal({ isOpen, onOpenChange, client, settings }:
                         ].map(opt => (
                             <button
                                 key={opt.id}
-                                onClick={() => setAction(opt.id as ActionType)}
+                                onClick={() => {
+                                    setAction(opt.id as ActionType)
+                                    // Reset submenu states
+                                    setShareAllInvoices(false)
+                                }}
                                 className={cn(
                                     "flex-1 min-w-[90px] flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all duration-200",
                                     action === opt.id
@@ -111,23 +194,24 @@ export function WhatsAppActionsModal({ isOpen, onOpenChange, client, settings }:
                     </div>
 
                     {/* Dynamic Content Area */}
-                    <div className="bg-gray-50 rounded-xl p-4 min-h-[120px] flex flex-col justify-center border border-gray-100">
-                        {action === 'chat' && (
-                            <p className="text-sm text-gray-600 text-center">
-                                Se abrirá un chat directo con un saludo profesional.
-                            </p>
-                        )}
-                        {action === 'portal' && (
-                            <div className="text-center space-y-2">
-                                <p className="text-sm text-gray-600">Se enviará el enlace directo al portal del cliente.</p>
-                                <div className="text-xs bg-white p-2 rounded border border-gray-200 text-gray-400 truncate font-mono">
-                                    {getPortalShortUrl(client.portal_short_token || '...')}
+                    <div className="space-y-4">
+                        {action === 'invoice' && pendingInvoices.length > 0 && (
+                            <div className="bg-blue-50 p-3 rounded-lg border border-blue-100 flex items-center gap-3 cursor-pointer hover:bg-blue-100 transition-colors"
+                                onClick={() => setShareAllInvoices(!shareAllInvoices)}
+                            >
+                                <div className={cn("w-5 h-5 rounded border flex items-center justify-center bg-white", shareAllInvoices ? "border-blue-500 bg-blue-500 text-white" : "border-gray-300")}>
+                                    {shareAllInvoices && <ArrowRight className="h-3 w-3" />}
                                 </div>
+                                <div className="flex-1">
+                                    <p className="text-sm font-medium text-blue-900">Resumen de Cuenta ({pendingInvoices.length})</p>
+                                    <p className="text-xs text-blue-700">Enviar todas las facturas pendientes juntas</p>
+                                </div>
+                                <Wallet className="h-5 w-5 text-blue-500" />
                             </div>
                         )}
-                        {action === 'invoice' && (
+
+                        {!shareAllInvoices && action === 'invoice' && (
                             <div className="space-y-3 w-full">
-                                {pendingInvoices.length > 0 && <label className="text-xs font-medium text-gray-500 ml-1">Selecciona Factura Pending/Vencida</label>}
                                 {pendingInvoices.length > 0 ? (
                                     <Select value={selectedInvoiceId} onValueChange={setSelectedInvoiceId}>
                                         <SelectTrigger className="w-full bg-white">
@@ -142,13 +226,13 @@ export function WhatsAppActionsModal({ isOpen, onOpenChange, client, settings }:
                                         </SelectContent>
                                     </Select>
                                 ) : (
-                                    <p className="text-sm text-gray-400 italic text-center">No hay facturas pendientes.</p>
+                                    <p className="text-sm text-gray-400 italic text-center py-2">No hay facturas pendientes individuales.</p>
                                 )}
                             </div>
                         )}
+
                         {action === 'quote' && (
                             <div className="space-y-3 w-full">
-                                {quotes.length > 0 && <label className="text-xs font-medium text-gray-500 ml-1">Selecciona Cotización</label>}
                                 {quotes.length > 0 ? (
                                     <Select value={selectedQuoteId} onValueChange={setSelectedQuoteId}>
                                         <SelectTrigger className="w-full bg-white">
@@ -163,21 +247,40 @@ export function WhatsAppActionsModal({ isOpen, onOpenChange, client, settings }:
                                         </SelectContent>
                                     </Select>
                                 ) : (
-                                    <p className="text-sm text-gray-400 italic text-center">No hay cotizaciones disponibles.</p>
+                                    <p className="text-sm text-gray-400 italic text-center py-2">No hay cotizaciones disponibles.</p>
                                 )}
                             </div>
                         )}
+
+                        {/* Live Preview Box */}
+                        <div className="bg-gray-100/50 rounded-xl p-4 border border-gray-200 relative group">
+                            <label className="absolute -top-2.5 left-3 bg-white px-2 text-[10px] uppercase font-bold text-gray-400 tracking-wider">Vista Previa</label>
+                            <div className="whitespace-pre-wrap text-sm text-gray-700 font-sans leading-relaxed min-h-[60px]">
+                                {previewMessage || <span className="text-gray-400 italic">Configura el mensaje...</span>}
+                            </div>
+                            {templates.length > 0 && action !== 'chat' && (
+                                <div className="absolute bottom-2 right-2 opacity-50 text-[10px] text-gray-400 flex items-center gap-1">
+                                    <FileText className="h-3 w-3" />
+                                    Plantilla: {
+                                        shareAllInvoices ? (findTemplate('Billing Summary') ? 'Billing Summary' : 'Default') :
+                                            action === 'invoice' ? (findTemplate('Invoice Sent') ? 'Invoice Sent' : 'Default') :
+                                                action === 'quote' ? (findTemplate('Quote') ? 'Quote' : 'Default') :
+                                                    action === 'portal' ? (findTemplate('Portal') ? 'Portal' : 'Default') : 'N/A'
+                                    }
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     <Button
                         className="w-full bg-[#25D366] hover:bg-[#128C7E] text-white font-bold h-12 rounded-xl shadow-md transition-all active:scale-[0.98]"
                         onClick={handleSend}
                         disabled={
-                            (action === 'invoice' && !selectedInvoiceId) ||
+                            (action === 'invoice' && !shareAllInvoices && !selectedInvoiceId) ||
                             (action === 'quote' && !selectedQuoteId)
                         }
                     >
-                        <span>Ir a WhatsApp</span>
+                        <span>Ir a WhatsApp Web</span>
                         <ArrowRight className="ml-2 h-5 w-5" />
                     </Button>
                 </div>
