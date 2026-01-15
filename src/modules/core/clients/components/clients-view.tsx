@@ -53,12 +53,25 @@ import { EditClientSheet } from "@/modules/core/clients/components/detail/edit-c
 import { ConnectivitySheet } from "@/components/sheets/connectivity-sheet"
 import { PortalGovernanceSheet } from "@/components/sheets/portal-governance-sheet"
 
+// (imports)
+import { useRegisterView } from "@/modules/core/caa/context/view-context"
+
 interface ClientsViewProps {
     initialClients: Client[]
     initialSettings: any
 }
 
 export function ClientsView({ initialClients, initialSettings }: ClientsViewProps) {
+    // Register View Context for Help Assistant
+    useRegisterView({
+        viewId: "clients",
+        label: "Gestión de Contactos",
+        actions: [
+            { id: "new-client", label: "Nuevo Contacto", type: "modal", target: "create-client", keywords: ["crear", "nuevo", "cliente"] }
+        ],
+        topics: ["clients-overview", "contact-card-guide"]
+    })
+
     const [clients, setClients] = useState<Client[]>(initialClients || [])
     const [loading, setLoading] = useState(false)
     const [searchTerm, setSearchTerm] = useState("")

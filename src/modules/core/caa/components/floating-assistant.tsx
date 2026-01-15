@@ -50,7 +50,7 @@ export function FloatingAssistant({ onOpen }: FloatingAssistantProps) {
             onDragStart={() => setIsDragging(true)}
             onDragEnd={() => setTimeout(() => setIsDragging(false), 100)}
             whileDrag={{ scale: 1.05, cursor: "grabbing" }}
-            className="fixed bottom-6 right-6 z-[100] cursor-grab"
+            className="fixed bottom-[52px] right-[12px] z-[100] cursor-grab"
             style={{ touchAction: "none" }}
         >
             {/* Ambient Glow */}
