@@ -156,21 +156,12 @@ export async function seedSystemModules() {
 
 /**
  * Gets the list of active module keys for the current organization
- * Uses the fallback function for safety - returns core modules if no subscription
- */
-/**
- * Gets the list of active module keys for the current organization
  * Uses the strict Verticals Architecture (with manual overrides fallback)
+ * PERF: Cached with unstable_cache for 5 minutes
  */
-export async function getActiveModules(orgId?: string): Promise<string[]> {
+async function _getActiveModulesInternal(organizationId: string): Promise<string[]> {
     try {
         const supabase = await createClient()
-        const organizationId = orgId || await getCurrentOrganizationId()
-
-        if (!organizationId) {
-            console.warn('No organization ID found, returning empty array')
-            return []
-        }
 
         // 1. Get Organization Vertical & Overrides
         const { data: org, error: orgError } = await supabaseAdmin
@@ -200,9 +191,7 @@ export async function getActiveModules(orgId?: string): Promise<string[]> {
                 verticalModules = vModules.map(m => m.module_key)
             }
         } else {
-            // Legacy/No-Vertical fallback: Check manual assignments or return basic set
-            // For transition period, we might want to default to 'agency' modules if no vertical set?
-            // But migration should have set it.
+            // Legacy/No-Vertical fallback
             console.warn('Organization has no vertical assigned. Falling back to core.')
             verticalModules = ['core_clients', 'core_settings']
         }
@@ -219,9 +208,27 @@ export async function getActiveModules(orgId?: string): Promise<string[]> {
 
     } catch (error) {
         console.error('Unexpected error in getActiveModules:', error)
-        // Safety fallback
         return ['core_clients', 'core_settings']
     }
+}
+
+// Cached version with 5-minute TTL
+const getCachedActiveModules = (orgId: string) => unstable_cache(
+    async () => _getActiveModulesInternal(orgId),
+    [`active-modules-${orgId}`],
+    { revalidate: 300, tags: ['org-modules'] }
+)()
+
+/**
+ * Public API: Gets active modules with caching
+ */
+export async function getActiveModules(orgId?: string): Promise<string[]> {
+    const organizationId = orgId || await getCurrentOrganizationId()
+    if (!organizationId) {
+        console.warn('No organization ID found, returning empty array')
+        return []
+    }
+    return getCachedActiveModules(organizationId)
 }
 
 /**

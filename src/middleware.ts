@@ -123,26 +123,28 @@ export async function middleware(request: NextRequest) {
             !request.nextUrl.pathname.startsWith('/auth') &&
             !request.nextUrl.pathname.startsWith('/api')) {
 
-            // Check Platform Role
-            // Need to fetch profile. Standard client is fine for this if profile is public-read
-            const { data: profile } = await supabase
-                .from('profiles')
-                .select('platform_role')
-                .eq('id', user.id)
-                .single()
+            // PERF: Run profile and membership checks IN PARALLEL
+            const adminClient = createClient(
+                process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                process.env.SUPABASE_SERVICE_ROLE_KEY!
+            )
 
-            if (profile?.platform_role !== 'super_admin') {
-                // Check Organization Status using Admin Client (Bypass RLS)
-                // This ensures we catch suspended orgs even if the user can't "see" them
-                const adminClient = createClient(
-                    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-                    process.env.SUPABASE_SERVICE_ROLE_KEY!
-                )
-
-                const { data: memberships } = await adminClient
+            const [profileResult, membershipResult] = await Promise.all([
+                supabase
+                    .from('profiles')
+                    .select('platform_role')
+                    .eq('id', user.id)
+                    .single(),
+                adminClient
                     .from('organization_members')
                     .select('organization:organizations!inner(status)')
                     .eq('user_id', user.id)
+            ])
+
+            const profile = profileResult.data
+
+            if (profile?.platform_role !== 'super_admin') {
+                const memberships = membershipResult.data
 
                 // Block ONLY if the user has memberships AND NONE of them are active.
                 // If the user has 0 memberships (new user), we don't block (they need to accept invite).

@@ -273,25 +273,8 @@ import { useTheme } from "next-themes"
 
 export function Sidebar({ isCollapsed, toggleCollapse, currentOrgId, isSuperAdmin = false, user }: SidebarProps) {
     const { resolvedTheme } = useTheme()
-    const [brandingColor, setBrandingColor] = React.useState<string>("255, 255, 255")
-
-    React.useEffect(() => {
-        const fetchBranding = async () => {
-            try {
-                const data = await getEffectiveBranding(currentOrgId)
-                if (data?.colors?.primary) {
-                    const hex = data.colors.primary.replace('#', '')
-                    const r = parseInt(hex.substring(0, 2), 16)
-                    const g = parseInt(hex.substring(2, 4), 16)
-                    const b = parseInt(hex.substring(4, 6), 16)
-                    setBrandingColor(`${r}, ${g}, ${b}`)
-                }
-            } catch (e) {
-                console.error("Failed to load branding for sidebar glow", e)
-            }
-        }
-        fetchBranding()
-    }, [currentOrgId])
+    // PERF: Removed redundant branding fetch. Use CSS variable or default pink.
+    const brandingColor = "242, 5, 226" // brand-pink RGB
 
     const [isDragging, setIsDragging] = React.useState(false)
     const [dragStartX, setDragStartX] = React.useState(0)

@@ -7,6 +7,7 @@ import { OrganizationMember } from "@/types/organization"
 import { cookies } from "next/headers"
 import { getEffectiveBranding } from "@/modules/core/branding/actions"
 import { isSuperAdmin } from "@/lib/auth/platform-roles"
+import { cache } from "react"
 
 /**
  * Fetch all organizations the current user belongs to.
@@ -41,8 +42,9 @@ export async function getUserOrganizations() {
 /**
  * Get the current active organization ID from cookies or default to the first one available.
  * SECURITY: Validates that the user is actually a member of the organization before returning.
+ * PERF: Wrapped with React cache() for request-scoped deduplication.
  */
-export async function getCurrentOrganizationId() {
+export const getCurrentOrganizationId = cache(async () => {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
@@ -78,7 +80,7 @@ export async function getCurrentOrganizationId() {
     }
 
     return null
-}
+})
 
 
 
