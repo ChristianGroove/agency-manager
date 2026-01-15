@@ -24,6 +24,7 @@ import { Input } from '@/components/ui/input';
 import { Save, Settings2, Box, Zap, ArrowLeft, Database, Undo2, Redo2, Globe, Mail, MessageSquare, Sparkles, GitBranch, Split, FlaskConical, LayoutGrid, MousePointer, Clock, Tag, ArrowRightCircle, Smartphone } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
+import { useRegisterView } from '@/modules/core/caa/context/view-context';
 
 import TriggerNode from '@/modules/core/automation/components/nodes/TriggerNode';
 import ActionNode from '@/modules/core/automation/components/nodes/ActionNode';
@@ -73,6 +74,13 @@ function WorkflowEditorContent({ id }: { id: string }) {
     const reactFlowWrapper = useRef<HTMLDivElement>(null);
     const { screenToFlowPosition } = useReactFlow();
     const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null);
+
+    // Register CAA View Context
+    useRegisterView({
+        viewId: 'automation',
+        label: 'Editor de Automatización',
+        actions: [] // Could add specific actions like 'save-workflow' here if they are in registry
+    });
 
     // State with proper types
     const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
