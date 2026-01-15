@@ -79,7 +79,8 @@ function WorkflowEditorContent({ id }: { id: string }) {
     useRegisterView({
         viewId: 'automation',
         label: 'Editor de Automatización',
-        actions: [] // Could add specific actions like 'save-workflow' here if they are in registry
+        actions: [],
+        topics: ['automation', 'workflow', 'trigger', 'node']
     });
 
     // State with proper types

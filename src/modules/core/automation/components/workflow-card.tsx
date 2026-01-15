@@ -203,7 +203,7 @@ export function WorkflowCard({
                         {!isTemplate && onChannelChange && (
                             <ChannelSelector
                                 value={channelId}
-                                onChange={(val) => onChannelChange(val)}
+                                onChange={(val) => onChannelChange(val as string | null)}
                                 renderTrigger={(selectedChannel) => (
                                     <Button
                                         variant="ghost"

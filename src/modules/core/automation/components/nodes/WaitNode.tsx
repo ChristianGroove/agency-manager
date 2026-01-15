@@ -16,9 +16,9 @@ const WaitNode = ({ data, selected }: NodeProps) => {
                     <div className="text-xs font-bold text-slate-700 dark:text-slate-200">
                         {data.label as string || 'Wait'}
                     </div>
-                    {(data.duration || data.unit) && (
+                    {(data.duration !== undefined || data.unit !== undefined) && (
                         <div className="text-[10px] text-slate-500 dark:text-slate-400">
-                            {String(data.duration || '0')} {String(data.unit || 'mins')}
+                            {String(data.duration ?? '0')} {String(data.unit ?? 'mins')}
                         </div>
                     )}
                 </div>

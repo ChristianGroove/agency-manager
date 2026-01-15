@@ -31,9 +31,9 @@ const BillingNode = ({ data, selected }: NodeProps) => {
                             Action: {(data.actionType as string)?.replace('_', ' ').toUpperCase() || 'SELECT ACTION'}
                         </span>
                     </div>
-                    {data.itemId && (
+                    {data.itemId !== undefined && (
                         <div className="pl-5.5 text-[10px] text-slate-500 truncate">
-                            Item: {data.itemId as string}
+                            Item: {String(data.itemId)}
                         </div>
                     )}
                 </div>
