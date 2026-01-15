@@ -3,6 +3,7 @@
 import { OrchestratorResponseSchema, GeneratedNode, GeneratedEdge } from './schema';
 import { validatePromptContext, checkOrchestratorRateLimit } from './context-guard';
 import { getLayoutedElements } from '../utils/layout-utils';
+import { getCurrentOrganizationId } from '@/modules/core/organizations/actions';
 import { Node, Edge } from '@xyflow/react';
 
 export interface OrchestratorResult {
@@ -25,9 +26,17 @@ export interface OrchestratorResult {
  * Main orchestration function: Takes user prompt, generates complete workflow.
  */
 export async function orchestrateWorkflow(
-    organizationId: string,
     userPrompt: string
 ): Promise<OrchestratorResult> {
+
+    // 0. Get Organization ID from session
+    const organizationId = await getCurrentOrganizationId();
+    if (!organizationId) {
+        return {
+            success: false,
+            error: 'No se pudo identificar tu organización. Por favor recarga la página.'
+        };
+    }
 
     // 1. Rate Limit Check
     const rateLimit = checkOrchestratorRateLimit(organizationId);

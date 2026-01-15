@@ -330,10 +330,7 @@ function WorkflowEditorContent({ id }: { id: string }) {
 
         setIsOrchestrating(true);
         try {
-            // Get org ID from workflow or session (simplified for now)
-            const orgId = 'current-org'; // TODO: Get from session context
-
-            const result = await orchestrateWorkflow(orgId, magicPrompt);
+            const result = await orchestrateWorkflow(magicPrompt);
 
             if (result.rateLimitInfo) {
                 setOrchestratorRemaining(result.rateLimitInfo.remaining);
