@@ -26,6 +26,7 @@ interface SidebarProps {
     currentOrgId: string | null;
     isSuperAdmin?: boolean;
     user?: any
+    prefetchedModules?: string[]
 }
 
 function SidebarItem({ icon: Icon, label, href, active, collapsed, isSuperAdminRoute = false }: { icon: any, label: string, href: string, active: boolean, collapsed: boolean, isSuperAdminRoute?: boolean }) {
@@ -122,9 +123,14 @@ function SidebarSection({
     )
 }
 
-export function SidebarContent({ isCollapsed = false, currentOrgId, isSuperAdmin = false }: { isCollapsed?: boolean, currentOrgId: string | null, isSuperAdmin?: boolean }) {
+export function SidebarContent({ isCollapsed = false, currentOrgId, isSuperAdmin = false, prefetchedModules }: { isCollapsed?: boolean, currentOrgId: string | null, isSuperAdmin?: boolean, prefetchedModules?: string[] }) {
     const pathname = usePathname()
-    const { modules, isLoading, organizationType } = useActiveModules()
+    // PERF: Use prefetched modules if available, fall back to hook for client-side updates
+    const { modules: hookModules, isLoading: hookLoading, organizationType } = useActiveModules()
+
+    // Use prefetched data immediately, no loading state
+    const modules = prefetchedModules && prefetchedModules.length > 0 ? prefetchedModules : hookModules
+    const isLoading = prefetchedModules && prefetchedModules.length > 0 ? false : hookLoading
 
     // Track which categories are expanded - default to core and crm
     const [activeCategories, setActiveCategories] = useState<string[]>(['core', 'crm'])
@@ -271,7 +277,7 @@ export function SidebarContent({ isCollapsed = false, currentOrgId, isSuperAdmin
 import { getEffectiveBranding } from "@/modules/core/branding/actions"
 import { useTheme } from "next-themes"
 
-export function Sidebar({ isCollapsed, toggleCollapse, currentOrgId, isSuperAdmin = false, user }: SidebarProps) {
+export function Sidebar({ isCollapsed, toggleCollapse, currentOrgId, isSuperAdmin = false, user, prefetchedModules }: SidebarProps) {
     const { resolvedTheme } = useTheme()
     // PERF: Removed redundant branding fetch. Use CSS variable or default pink.
     const brandingColor = "242, 5, 226" // brand-pink RGB
@@ -346,7 +352,7 @@ export function Sidebar({ isCollapsed, toggleCollapse, currentOrgId, isSuperAdmi
                     />
                 </div>
 
-                <SidebarContent isCollapsed={isCollapsed} currentOrgId={currentOrgId} isSuperAdmin={isSuperAdmin} />
+                <SidebarContent isCollapsed={isCollapsed} currentOrgId={currentOrgId} isSuperAdmin={isSuperAdmin} prefetchedModules={prefetchedModules} />
             </div>
         </TooltipProvider>
     )

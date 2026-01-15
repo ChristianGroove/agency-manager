@@ -14,9 +14,10 @@ interface DashboardShellProps {
     user: User
     currentOrgId: string | null
     isSuperAdmin?: boolean
+    prefetchedModules?: string[]
 }
 
-export function DashboardShell({ children, user, currentOrgId, isSuperAdmin = false }: DashboardShellProps) {
+export function DashboardShell({ children, user, currentOrgId, isSuperAdmin = false, prefetchedModules }: DashboardShellProps) {
     const [isCollapsed, setIsCollapsed] = useState(false)
 
     return (
@@ -30,6 +31,7 @@ export function DashboardShell({ children, user, currentOrgId, isSuperAdmin = fa
                     currentOrgId={currentOrgId}
                     isSuperAdmin={isSuperAdmin}
                     user={user}
+                    prefetchedModules={prefetchedModules}
                 />
             </div>
 

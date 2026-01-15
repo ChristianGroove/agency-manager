@@ -2,6 +2,7 @@ import { DashboardShell } from "@/components/layout/dashboard-shell"
 import { createClient } from "@/lib/supabase-server"
 import { redirect } from "next/navigation"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getActiveModules } from "@/modules/core/saas/actions"
 import { isSuperAdmin } from "@/lib/auth/platform-roles"
 import { SystemAlertBanner } from "@/components/layout/system-alert-banner"
 import { Suspense } from "react"
@@ -17,8 +18,7 @@ export default async function DashboardLayout({
 }) {
     const supabase = await createClient()
 
-    // Parallel fetch: User Auth AND Current Org ID
-    // Note: getCurrentOrganizationId hits cookies first (fast), if fallback hits DB it runs parallel with Auth
+    // PERF: Parallel fetch of ALL initial data needed for dashboard
     const [userResponse, currentOrgId] = await Promise.all([
         supabase.auth.getUser(),
         getCurrentOrganizationId()
@@ -34,12 +34,22 @@ export default async function DashboardLayout({
         redirect('/login')
     }
 
-    const isAdmin = await isSuperAdmin(user.id)
+    // PERF: Fetch modules and admin status in parallel (after we have user/orgId)
+    const [isAdmin, activeModules] = await Promise.all([
+        isSuperAdmin(user.id),
+        currentOrgId ? getActiveModules(currentOrgId) : Promise.resolve([])
+    ])
 
     // Key forces a complete remount of the shell when organization changes,
     // solving the "stale UI" issue without needing a full browser reload.
     return (
-        <DashboardShell key={currentOrgId} user={user} currentOrgId={currentOrgId} isSuperAdmin={isAdmin}>
+        <DashboardShell
+            key={currentOrgId}
+            user={user}
+            currentOrgId={currentOrgId}
+            isSuperAdmin={isAdmin}
+            prefetchedModules={activeModules}
+        >
             <GlobalInboxProvider>
                 <GlobalMessageListener />
                 <InboxOverlay />
