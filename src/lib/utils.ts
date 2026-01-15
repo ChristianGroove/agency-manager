@@ -40,6 +40,28 @@ export function getPortalUrl(path: string = ''): string {
 }
 
 /**
+ * Get short portal URL for sharing (uses /p/ shortlink)
+ * Example: mi.pixy.com.co/p/Abc123
+ */
+export function getPortalShortUrl(token: string): string {
+  const cleanToken = token.startsWith('/') ? token.slice(1) : token
+
+  // Client-side: use current origin
+  if (typeof window !== 'undefined') {
+    return `${window.location.origin}/p/${cleanToken}`
+  }
+
+  // Server-side development
+  if (process.env.NODE_ENV === 'development') {
+    return `http://localhost:3000/p/${cleanToken}`
+  }
+
+  // Server-side production
+  const baseUrl = process.env.NEXT_PUBLIC_PORTAL_URL || 'mi.pixy.com.co'
+  return `https://${baseUrl}/p/${cleanToken}`
+}
+
+/**
  * Get admin URL - Client-safe synchronous version
  */
 export function getAdminUrl(path: string = ''): string {

@@ -31,7 +31,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { supabase } from "@/lib/supabase"
-import { cn, getPortalUrl } from "@/lib/utils"
+import { cn, getPortalUrl, getPortalShortUrl } from "@/lib/utils"
 import { getWhatsAppLink } from "@/lib/communication-utils"
 import { WhatsAppActionsModal } from "@/modules/core/clients/whatsapp-modal"
 import { SplitText } from "@/components/ui/split-text"
