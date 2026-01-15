@@ -158,10 +158,12 @@ export async function seedSystemModules() {
  * Gets the list of active module keys for the current organization
  * Uses the strict Verticals Architecture (with manual overrides fallback)
  * PERF: Cached with unstable_cache for 5 minutes
+ * NOTE: Uses supabaseAdmin to avoid cookies() inside cache scope
  */
 async function _getActiveModulesInternal(organizationId: string): Promise<string[]> {
     try {
-        const supabase = await createClient()
+        // NOTE: Using supabaseAdmin instead of createClient because
+        // unstable_cache cannot use dynamic data sources like cookies()
 
         // 1. Get Organization Vertical & Overrides
         const { data: org, error: orgError } = await supabaseAdmin
@@ -179,10 +181,10 @@ async function _getActiveModulesInternal(organizationId: string): Promise<string
         const verticalKey = org.vertical_key
         const manualOverrides = org.manual_module_overrides as string[] || []
 
-        // 2. Fetch Vertical Modules
+        // 2. Fetch Vertical Modules (also using admin to stay within cache scope)
         let verticalModules: string[] = []
         if (verticalKey) {
-            const { data: vModules, error: vmError } = await supabase
+            const { data: vModules, error: vmError } = await supabaseAdmin
                 .from('vertical_modules')
                 .select('module_key')
                 .eq('vertical_key', verticalKey)
