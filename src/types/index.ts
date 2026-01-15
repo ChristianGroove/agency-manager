@@ -34,6 +34,8 @@ export type Client = {
         enabled?: boolean
         modules?: Record<string, { mode: 'auto' | 'on' | 'off', access_level?: string }>
     }
+    portal_token_expires_at?: string | null
+    portal_token_never_expires?: boolean
     deleted_at?: string
 }
 

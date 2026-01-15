@@ -4,8 +4,8 @@ import { useState } from "react"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
-import { Layout, Globe, Server, FileText, BarChart3, ExternalLink } from "lucide-react"
-import { updateClientPortalConfig } from "@/modules/core/portal/actions"
+import { Layout, Globe, Server, FileText, BarChart3, ExternalLink, Shield, Calendar } from "lucide-react"
+import { updateClientPortalConfig, updatePortalTokenExpiration } from "@/modules/core/portal/actions"
 import { toast } from "sonner"
 import { Client } from "@/types"
 import { Switch } from "@/components/ui/switch"
@@ -38,6 +38,13 @@ export function PortalGovernanceSheet({ client, globalSettings, trigger, open: c
         modules: {}
     })
 
+    // Token Security State
+    const [tokenNeverExpires, setTokenNeverExpires] = useState(client.portal_token_never_expires !== false)
+    const [tokenExpiresAt, setTokenExpiresAt] = useState(
+        client.portal_token_expires_at ? new Date(client.portal_token_expires_at).toISOString().split('T')[0] : ''
+    )
+    const [isSavingExpiration, setIsSavingExpiration] = useState(false)
+
     const handleMasterToggle = async (checked: boolean) => {
         const newConfig = { ...config, enabled: checked }
         setConfig(newConfig)
@@ -66,6 +73,39 @@ export function PortalGovernanceSheet({ client, globalSettings, trigger, open: c
             console.error(error)
         } finally {
             setIsLoading(false)
+        }
+    }
+
+    // Token Expiration Handlers
+    const handleTokenExpirationToggle = async (neverExpires: boolean) => {
+        setTokenNeverExpires(neverExpires)
+        if (neverExpires) {
+            // Save immediately when toggling to "never expires"
+            await saveTokenExpiration(neverExpires, null)
+        }
+    }
+
+    const handleExpirationDateChange = async (date: string) => {
+        setTokenExpiresAt(date)
+        if (date) {
+            await saveTokenExpiration(false, date)
+        }
+    }
+
+    const saveTokenExpiration = async (neverExpires: boolean, expiresAt: string | null) => {
+        setIsSavingExpiration(true)
+        try {
+            const result = await updatePortalTokenExpiration(client.id, neverExpires, expiresAt)
+            if (result.success) {
+                toast.success(neverExpires ? "Enlace configurado sin expiración" : "Fecha de expiración actualizada")
+            } else {
+                toast.error("Error al guardar configuración de seguridad")
+            }
+        } catch (error) {
+            toast.error("Error al guardar")
+            console.error(error)
+        } finally {
+            setIsSavingExpiration(false)
         }
     }
 
@@ -118,6 +158,55 @@ export function PortalGovernanceSheet({ client, globalSettings, trigger, open: c
                                 checked={config.enabled !== false}
                                 onCheckedChange={handleMasterToggle}
                             />
+                        </div>
+
+                        {/* Token Security Section */}
+                        <div className="bg-white p-4 rounded-xl border border-amber-200 shadow-sm space-y-4">
+                            <div className="flex items-center gap-2">
+                                <div className="p-2 rounded-lg bg-amber-50">
+                                    <Shield className="h-4 w-4 text-amber-600" />
+                                </div>
+                                <div>
+                                    <p className="font-semibold text-gray-900">Seguridad del Enlace</p>
+                                    <p className="text-xs text-gray-500">Configura la expiración del token de acceso</p>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                <div>
+                                    <p className="text-sm font-medium text-gray-700">Enlace permanente</p>
+                                    <p className="text-xs text-gray-500">
+                                        {tokenNeverExpires ? 'El enlace nunca expira' : 'El enlace tiene fecha límite'}
+                                    </p>
+                                </div>
+                                <Switch
+                                    checked={tokenNeverExpires}
+                                    onCheckedChange={handleTokenExpirationToggle}
+                                    disabled={isSavingExpiration}
+                                />
+                            </div>
+
+                            {!tokenNeverExpires && (
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-medium text-gray-600 flex items-center gap-1">
+                                        <Calendar className="h-3 w-3" />
+                                        Fecha de expiración
+                                    </Label>
+                                    <input
+                                        type="date"
+                                        value={tokenExpiresAt}
+                                        onChange={(e) => handleExpirationDateChange(e.target.value)}
+                                        min={new Date().toISOString().split('T')[0]}
+                                        className="w-full p-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                                        disabled={isSavingExpiration}
+                                    />
+                                    {tokenExpiresAt && (
+                                        <p className="text-xs text-amber-600">
+                                            ⚠️ El cliente perderá acceso después de esta fecha
+                                        </p>
+                                    )}
+                                </div>
+                            )}
                         </div>
 
                         <Separator />

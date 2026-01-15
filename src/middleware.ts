@@ -2,7 +2,7 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-import { checkRateLimit } from '@/lib/security/rate-limit'
+import { checkRateLimit, checkPortalRateLimit } from '@/lib/security/rate-limit'
 import { applySecurityHeaders } from '@/lib/security/headers'
 
 export async function middleware(request: NextRequest) {
@@ -13,6 +13,14 @@ export async function middleware(request: NextRequest) {
 
     // 0. SECURITY SHIELD: Rate Limiting & Headers
     const ip = request.headers.get('x-forwarded-for') || '127.0.0.1'
+
+    // Portal-specific rate limiting (stricter)
+    if (request.nextUrl.pathname.startsWith('/portal')) {
+        const { success } = checkPortalRateLimit(ip)
+        if (!success) {
+            return new NextResponse('Too Many Requests - Portal access limited', { status: 429 })
+        }
+    }
 
     // Skip RL for static assets (handled by matcher) and internal APIs if needed
     if (!request.nextUrl.pathname.startsWith('/_next')) {

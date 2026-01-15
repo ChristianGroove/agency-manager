@@ -29,6 +29,15 @@ export async function getPortalData(token: string) {
         // 2. If CLIENT found, proceed with Client Portal flow
         // ---------------------------------------------------------
         if (client) {
+            // ---------------------------------------------------------
+            // SECURITY: Validate Token Expiration
+            // ---------------------------------------------------------
+            if (client.portal_token_never_expires !== true) {
+                if (client.portal_token_expires_at && new Date(client.portal_token_expires_at) < new Date()) {
+                    throw new Error('PORTAL_TOKEN_EXPIRED')
+                }
+            }
+
             // First, fetch raw settings for functional flags
             const { data: rawSettings } = await supabaseAdmin
                 .from('organization_settings')
@@ -333,6 +342,84 @@ export async function regeneratePortalToken(clientId: string) {
     } catch (error) {
         console.error('regeneratePortalToken Error:', error)
         return { success: false, error: 'Error regenerating token' }
+    }
+}
+
+// ---------------------------------------------------------
+// PORTAL ACCESS LOGGING
+// ---------------------------------------------------------
+export async function logPortalAccess(params: {
+    clientId: string
+    organizationId: string
+    tokenUsed: string
+    ipAddress?: string
+    userAgent?: string
+    accessType?: 'view' | 'pay' | 'download' | 'action'
+    metadata?: Record<string, any>
+}) {
+    try {
+        await supabaseAdmin.from('portal_access_logs').insert({
+            client_id: params.clientId,
+            organization_id: params.organizationId,
+            token_used: params.tokenUsed,
+            ip_address: params.ipAddress || null,
+            user_agent: params.userAgent || null,
+            access_type: params.accessType || 'view',
+            metadata: params.metadata || {}
+        })
+    } catch (error) {
+        // Non-blocking: Log errors but don't fail the request
+        console.error('Portal access logging failed:', error)
+    }
+}
+
+// ---------------------------------------------------------
+// TOKEN EXPIRATION MANAGEMENT
+// ---------------------------------------------------------
+export async function updatePortalTokenExpiration(
+    clientId: string,
+    neverExpires: boolean,
+    expiresAt?: string | null
+) {
+    try {
+        const updateData: Record<string, any> = {
+            portal_token_never_expires: neverExpires
+        }
+
+        if (!neverExpires && expiresAt) {
+            updateData.portal_token_expires_at = expiresAt
+        } else if (neverExpires) {
+            updateData.portal_token_expires_at = null
+        }
+
+        const { error } = await supabaseAdmin
+            .from('clients')
+            .update(updateData)
+            .eq('id', clientId)
+
+        if (error) throw error
+
+        return { success: true }
+    } catch (error) {
+        console.error('updatePortalTokenExpiration Error:', error)
+        return { success: false, error: 'Error updating token expiration' }
+    }
+}
+
+export async function getPortalAccessLogs(clientId: string, limit: number = 50) {
+    try {
+        const { data, error } = await supabaseAdmin
+            .from('portal_access_logs')
+            .select('*')
+            .eq('client_id', clientId)
+            .order('created_at', { ascending: false })
+            .limit(limit)
+
+        if (error) throw error
+        return { success: true, data }
+    } catch (error) {
+        console.error('getPortalAccessLogs Error:', error)
+        return { success: false, data: [] }
     }
 }
 

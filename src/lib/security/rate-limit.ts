@@ -104,6 +104,18 @@ export function checkAIRateLimit(
 }
 
 /**
+ * Check rate limit for portal access (stricter limits to prevent brute force)
+ */
+export function checkPortalRateLimit(identifier: string): { success: boolean, remaining: number } {
+    const config: RateLimitConfig = {
+        intervalMs: 60 * 1000,  // 1 minute
+        maxTokens: 30          // 30 requests per minute (stricter than default)
+    };
+
+    return checkRateLimit(`portal:${identifier}`, config);
+}
+
+/**
  * Get current rate limit status without consuming a token
  */
 export function getRateLimitStatus(identifier: string): { tokens: number, isLimited: boolean } {
