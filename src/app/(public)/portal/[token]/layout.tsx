@@ -14,10 +14,13 @@ export async function generateMetadata(
         const token = resolvedParams.token
         const settings = await getPortalMetadata(token)
 
-        const title = settings.portal_og_title || settings.agency_name || "Portal de Cliente"
-        const description = settings.portal_og_description || "Acceso seguro a su cuenta"
-        const image = settings.portal_og_image_url || settings.portal_logo_url || "/pixy-isotipo.png"
+        const brandName = settings.agency_name || "Pixy"
+        const title = settings.portal_og_title || `${brandName} - Portal de Clientes`
+        const description = settings.portal_og_description || "Accede a tus facturas, cotizaciones y servicios de forma segura."
         const favicon = settings.portal_favicon_url || settings.isotipo_url || "/pixy-isotipo.png"
+
+        // Use custom image if set, otherwise use dynamic generator
+        const ogImage = settings.portal_og_image_url || `${process.env.NEXT_PUBLIC_APP_URL || 'https://app.pixy.com.co'}/api/og/portal?token=${token}`
 
         return {
             title: title,
@@ -30,21 +33,22 @@ export async function generateMetadata(
             openGraph: {
                 title: title,
                 description: description,
-                images: image ? [image] : [],
+                images: [{ url: ogImage, width: 1200, height: 630 }],
                 type: 'website',
+                siteName: brandName,
             },
             twitter: {
                 card: 'summary_large_image',
                 title: title,
                 description: description,
-                images: image ? [image] : [],
+                images: [ogImage],
             }
         }
     } catch (e) {
         console.error("Metadata generation error:", e)
         return {
-            title: "Portal de Cliente",
-            description: "Acceso seguro a su cuenta"
+            title: "Portal de Clientes",
+            description: "Accede a tus facturas, cotizaciones y servicios de forma segura."
         }
     }
 }
