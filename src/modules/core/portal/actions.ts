@@ -69,7 +69,8 @@ export async function getPortalData(token: string) {
                 { data: events },
                 { data: services },
                 { data: hostingAccounts },
-                { data: paymentMethods }
+                { data: paymentMethods },
+                { data: appPortalConfig }
             ] = await Promise.all([
                 // Invoices: Filter out cancelled and deleted
                 supabaseAdmin.from('invoices').select('*').eq('client_id', client.id).is('deleted_at', null).neq('status', 'cancelled').order('created_at', { ascending: false }),
@@ -84,7 +85,9 @@ export async function getPortalData(token: string) {
                 // Hosting: Fetch active accounts
                 supabaseAdmin.from('hosting_accounts').select('*').eq('client_id', client.id).eq('status', 'active').order('created_at', { ascending: false }),
                 // Payment Methods: Active only (for manual transfers etc)
-                supabaseAdmin.from('organization_payment_methods').select('*').eq('organization_id', client.organization_id).eq('is_active', true).order('display_order', { ascending: true })
+                supabaseAdmin.from('organization_payment_methods').select('*').eq('organization_id', client.organization_id).eq('is_active', true).order('display_order', { ascending: true }),
+                // Portal Modules Config: From app-based configuration (V2 Multivertical)
+                supabaseAdmin.from('saas_apps_portal_config').select('*').eq('app_id', rawSettings?.active_app_id || '').eq('is_enabled', true).eq('target_portal', 'client').order('display_order', { ascending: true })
             ])
 
             // ---------------------------------------------------------
@@ -168,25 +171,51 @@ export async function getPortalData(token: string) {
             })
 
             // BUILD ACTIVE MODULES LIST
-            const computedModules = []
+            // V2: Use app-based config if available, fallback to legacy hardcoded
+            let computedModules: Array<{ slug: string, portal_tab_label: string, portal_icon_key: string }> = []
 
-            if (resolveModuleVisibility('summary', () => true)) {
-                computedModules.push({ slug: 'core_summary', portal_tab_label: 'Resumen', portal_icon_key: 'Layout' })
-            }
-            if (showBilling) {
-                computedModules.push({ slug: 'module_invoicing', portal_tab_label: 'Facturación', portal_icon_key: 'CreditCard' })
-            }
-            if (showServices) {
-                computedModules.push({ slug: 'core_services', portal_tab_label: 'Servicios', portal_icon_key: 'Briefcase' })
-            }
-            if (showHosting) {
-                computedModules.push({ slug: 'core_hosting', portal_tab_label: 'Hosting', portal_icon_key: 'Server' })
-            }
-            if (resolveModuleVisibility('catalog', () => true)) {
-                computedModules.push({ slug: 'module_catalog', portal_tab_label: 'Explorar', portal_icon_key: 'Globe' })
-            }
-            if (showInsights) {
-                computedModules.push({ slug: 'meta_insights', portal_tab_label: 'Insights', portal_icon_key: 'BarChart' })
+            if (appPortalConfig && appPortalConfig.length > 0) {
+                // ============================================
+                // V2: CONFIG-DRIVEN MODULE RESOLUTION
+                // ============================================
+                computedModules = appPortalConfig
+                    .filter(mod => {
+                        // Apply visibility rules based on component key
+                        const key = mod.portal_component_key || mod.module_slug
+                        if (key === 'billing') return showBilling
+                        if (key === 'services') return showServices
+                        if (key === 'hosting') return showHosting
+                        if (key === 'insights') return showInsights
+                        if (key === 'summary') return resolveModuleVisibility('summary', () => true)
+                        return true // Default show for unknown modules
+                    })
+                    .map(mod => ({
+                        slug: mod.module_slug,
+                        portal_tab_label: mod.portal_tab_label,
+                        portal_icon_key: mod.portal_icon_key
+                    }))
+            } else {
+                // ============================================
+                // LEGACY: HARDCODED MODULE RESOLUTION (Fallback)
+                // ============================================
+                if (resolveModuleVisibility('summary', () => true)) {
+                    computedModules.push({ slug: 'core_summary', portal_tab_label: 'Resumen', portal_icon_key: 'Layout' })
+                }
+                if (showBilling) {
+                    computedModules.push({ slug: 'module_invoicing', portal_tab_label: 'Facturación', portal_icon_key: 'CreditCard' })
+                }
+                if (showServices) {
+                    computedModules.push({ slug: 'core_services', portal_tab_label: 'Servicios', portal_icon_key: 'Briefcase' })
+                }
+                if (showHosting) {
+                    computedModules.push({ slug: 'core_hosting', portal_tab_label: 'Hosting', portal_icon_key: 'Server' })
+                }
+                if (resolveModuleVisibility('catalog', () => true)) {
+                    computedModules.push({ slug: 'module_catalog', portal_tab_label: 'Explorar', portal_icon_key: 'Globe' })
+                }
+                if (showInsights) {
+                    computedModules.push({ slug: 'meta_insights', portal_tab_label: 'Insights', portal_icon_key: 'BarChart' })
+                }
             }
 
             return {
