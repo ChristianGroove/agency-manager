@@ -27,7 +27,7 @@ interface ChannelSelectorProps {
     renderTrigger?: (selectedChannel: Channel | undefined) => React.ReactNode;
 }
 
-export function ChannelSelector({ value, onChange, className, renderTrigger }: ChannelSelectorProps) {
+export function ChannelSelector({ value, onChange, className, renderTrigger, multiple = false }: { value?: string | string[] | null, onChange: (value: string | string[] | null) => void, className?: string, renderTrigger?: (selected: any) => React.ReactNode, multiple?: boolean }) {
     const [open, setOpen] = useState(false);
     const [channels, setChannels] = useState<Channel[]>([]);
     const [loading, setLoading] = useState(false);
@@ -50,7 +50,9 @@ export function ChannelSelector({ value, onChange, className, renderTrigger }: C
         return () => { mounted = false; };
     }, []);
 
-    const selectedChannel = channels.find((framework) => framework.id === value);
+    const selectedChannels = multiple
+        ? channels.filter((c) => Array.isArray(value) && value.includes(c.id))
+        : channels.find((c) => c.id === value);
 
     const getIcon = (provider: string) => {
         if (provider.includes('whatsapp') || provider.includes('evolution')) return <MessageCircle className="mr-2 h-4 w-4 text-[#25D366]" />;
@@ -58,30 +60,58 @@ export function ChannelSelector({ value, onChange, className, renderTrigger }: C
         return <Globe className="mr-2 h-4 w-4 text-slate-500" />;
     };
 
+    const handleSelect = (id: string) => {
+        if (multiple) {
+            const current = Array.isArray(value) ? value : [];
+            const newValue = current.includes(id)
+                ? current.filter(i => i !== id)
+                : [...current, id];
+            onChange(newValue);
+        } else {
+            onChange(id);
+            setOpen(false);
+        }
+    };
+
     return (
         <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
                 {renderTrigger ? (
-                    renderTrigger(selectedChannel)
+                    renderTrigger(selectedChannels)
                 ) : (
                     <Button
                         variant="outline"
                         role="combobox"
                         aria-expanded={open}
-                        className={cn("w-full justify-between h-11 rounded-xl bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800", className)}
+                        className={cn("w-full justify-between h-auto min-h-11 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800", className)}
                     >
-                        {value === 'all' ? (
-                            <span className="flex items-center text-slate-600 dark:text-slate-400">
-                                <Globe className="mr-2 h-4 w-4" />
-                                Todos los canales
-                            </span>
-                        ) : selectedChannel ? (
-                            <span className="flex items-center">
-                                {getIcon(selectedChannel.provider_key)}
-                                {selectedChannel.connection_name}
-                            </span>
+                        {multiple ? (
+                            Array.isArray(value) && value.length > 0 ? (
+                                <div className="flex flex-wrap gap-1">
+                                    {(selectedChannels as Channel[]).map(c => (
+                                        <div key={c.id} className="flex items-center bg-white dark:bg-slate-800 border px-2 py-0.5 rounded-full text-xs">
+                                            {getIcon(c.provider_key)}
+                                            {c.connection_name}
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <span className="text-muted-foreground">Seleccionar canales...</span>
+                            )
                         ) : (
-                            <span className="text-muted-foreground">Seleccionar canal predeterminado...</span>
+                            value === 'all' || !value ? (
+                                <span className="flex items-center text-slate-600 dark:text-slate-400">
+                                    <Globe className="mr-2 h-4 w-4" />
+                                    Todos los canales
+                                </span>
+                            ) : (selectedChannels as Channel) ? (
+                                <span className="flex items-center">
+                                    {getIcon((selectedChannels as Channel).provider_key)}
+                                    {(selectedChannels as Channel).connection_name}
+                                </span>
+                            ) : (
+                                <span className="text-muted-foreground">Seleccionar canal predeterminado...</span>
+                            )
                         )}
                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
@@ -92,32 +122,12 @@ export function ChannelSelector({ value, onChange, className, renderTrigger }: C
                     <CommandInput placeholder="Buscar canal..." />
                     <CommandList>
                         <CommandEmpty>No se encontraron canales.</CommandEmpty>
-                        <CommandGroup heading="Opciones Globales">
-                            <CommandItem
-                                value="all"
-                                onSelect={() => {
-                                    onChange(null); // 'all' is effectively null/undefined in DB config usually, or explicit 'all'
-                                    setOpen(false);
-                                }}
-                                className="cursor-pointer"
-                            >
-                                <Check
-                                    className={cn(
-                                        "mr-2 h-4 w-4",
-                                        !value ? "opacity-100" : "opacity-0"
-                                    )}
-                                />
-                                <Globe className="mr-2 h-4 w-4 text-slate-500" />
-                                Todos los canales (Predeterminado)
-                            </CommandItem>
-                        </CommandGroup>
-                        <CommandGroup heading="Mis Canales">
-                            {channels.map((channel) => (
+                        {!multiple && (
+                            <CommandGroup heading="Opciones Globales">
                                 <CommandItem
-                                    key={channel.id}
-                                    value={channel.connection_name}
+                                    value="all"
                                     onSelect={() => {
-                                        onChange(channel.id);
+                                        onChange(null);
                                         setOpen(false);
                                     }}
                                     className="cursor-pointer"
@@ -125,9 +135,31 @@ export function ChannelSelector({ value, onChange, className, renderTrigger }: C
                                     <Check
                                         className={cn(
                                             "mr-2 h-4 w-4",
-                                            value === channel.id ? "opacity-100" : "opacity-0"
+                                            !value ? "opacity-100" : "opacity-0"
                                         )}
                                     />
+                                    <Globe className="mr-2 h-4 w-4 text-slate-500" />
+                                    Todos los canales (Predeterminado)
+                                </CommandItem>
+                            </CommandGroup>
+                        )}
+                        <CommandGroup heading="Mis Canales">
+                            {channels.map((channel) => (
+                                <CommandItem
+                                    key={channel.id}
+                                    value={channel.connection_name}
+                                    onSelect={() => handleSelect(channel.id)}
+                                    className="cursor-pointer"
+                                >
+                                    <div className={cn(
+                                        "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
+                                        multiple
+                                            ? ((Array.isArray(value) && value.includes(channel.id)) ? "bg-primary text-primary-foreground" : "opacity-50 [&_svg]:invisible")
+                                            : "border-none"
+                                    )}>
+                                        {multiple ? <Check className={cn("h-4 w-4")} /> : <Check className={cn("h-4 w-4", value === channel.id ? "opacity-100" : "opacity-0")} />}
+                                    </div>
+
                                     {getIcon(channel.provider_key)}
                                     <div className="flex flex-col">
                                         <span>{channel.connection_name}</span>

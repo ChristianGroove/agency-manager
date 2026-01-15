@@ -12,7 +12,15 @@ import { StageNode, StageNodeData } from './nodes/stage-node'
 import { ConditionNode, ConditionNodeData } from './nodes/condition-node'
 import { DelayNode, DelayNodeData } from './nodes/delay-node'
 import { AiAgentNode, AIAgentNodeData } from './nodes/ai-agent-node'
+import { SendMessageNode, SendMessageNodeData } from './nodes/send-message-node'
+import { ABTestNode, ABTestNodeData } from './nodes/ab-test-node'
+import { BillingNode, BillingNodeData } from './nodes/billing-node'
+import { NotificationNode, NotificationNodeData } from './nodes/notification-node'
+import { VariableNode, VariableNodeData } from './nodes/variable-node'
 import { queueWorkflowForResume } from './actions'
+
+
+
 
 
 export interface WorkflowNode {
@@ -103,14 +111,45 @@ export class WorkflowEngine {
 
 
 
+    private async logStep(nodeId: string, level: 'info' | 'warn' | 'error', message: string, details?: any): Promise<void> {
+        try {
+            // Check context keys - executionId might be camelCase or snake_case depending on how it was passed
+            const executionId = (this.context.executionId || this.context.execution_id) as string;
+            const orgId = (this.context.organization_id || this.context.organizationId) as string;
+
+            if (!executionId || !orgId) return;
+
+            const { supabaseAdmin } = await import('@/lib/supabase-admin');
+
+            await supabaseAdmin.from('workflow_logs').insert({
+                organization_id: orgId,
+                execution_id: executionId,
+                node_id: nodeId,
+                level: level,
+                message: message,
+                details: details ? details : null,
+                created_at: new Date().toISOString()
+            });
+
+        } catch (error) {
+            console.error('[Engine] Failed to log step:', error);
+        }
+    }
+
     private async runStep(node: WorkflowNode): Promise<void> {
         console.log(`[Engine] Running Step: ${node.type} (${node.id})`)
+        await this.logStep(node.id, 'info', `Running ${node.type}`, { type: node.type });
 
         // 1. Execute Node Logic
         try {
             await this.executeNodeLogic(node)
-        } catch (error) {
+        } catch (error: any) {
             console.error(`[Engine] Error in step ${node.id}:`, error)
+            await this.logStep(node.id, 'error', `Failed: ${error.message}`, { error: String(error) });
+
+            if (error.message === "WORKFLOW_SUSPENDED") {
+                throw error
+            }
             return
         }
 
@@ -119,6 +158,7 @@ export class WorkflowEngine {
 
         if (nextNodes.length === 0) {
             console.log(`[Engine] Workflow Completed or stopped at node ${node.id}`)
+            await this.logStep(node.id, 'info', `Completed (End of branch)`);
             return
         }
 
@@ -210,45 +250,31 @@ export class WorkflowEngine {
                 // Initial context setup
                 break
 
+            case 'billing': {
+                const billingNode = new BillingNode(this.contextManager);
+                await billingNode.execute(node.data as unknown as BillingNodeData);
+                break;
+            }
+
+            case 'notification': {
+                const notificationNode = new NotificationNode(this.contextManager);
+                await notificationNode.execute(node.data as unknown as NotificationNodeData);
+                break;
+            }
+
+            case 'variable': {
+                const variableNode = new VariableNode(this.contextManager);
+                variableNode.execute(node.data as unknown as VariableNodeData);
+                break;
+            }
+
             case 'action':
+
+
                 // E.g. Send Message
                 if (node.data.actionType === 'send_message') {
-                    const messageContent = this.contextManager.resolve((node.data.message as string) || '')
-                    const { fileLogger } = await import('@/lib/file-logger')
-                    fileLogger.log(`[Engine] send_message action started. Message: "${messageContent}"`)
-
-                    // REAL SENDING LOGIC
-                    try {
-                        // Dynamic import to avoid cycles if Engine is used elsewhere
-                        const { outboundService } = await import('../messaging/outbound-service')
-
-                        // Extract context
-                        const connectionId = this.context.connection_id as string
-                        const recipient = (this.context.message as any)?.sender || (this.context.lead as any)?.phone || this.context.userPhone
-                        const orgId = this.context.organization_id as string
-
-                        fileLogger.log(`[Engine] Context: connectionId=${connectionId}, recipient=${recipient}, orgId=${orgId}`)
-
-                        if (!connectionId || !recipient || !orgId) {
-                            const errMsg = `Missing required context for sending: conn=${connectionId}, recipient=${recipient}, org=${orgId}`
-                            fileLogger.log(`[Engine] ERROR: ${errMsg}`)
-                            throw new Error(errMsg)
-                        }
-
-                        // Send via OutboundService
-                        await outboundService.sendMessage(
-                            connectionId,
-                            recipient,
-                            messageContent,
-                            orgId
-                        )
-                        fileLogger.log(`[Engine] Message sent successfully via connection ${connectionId}`)
-
-                    } catch (err: any) {
-                        const { fileLogger } = await import('@/lib/file-logger')
-                        fileLogger.log(`[Engine] EXCEPTION in send_message:`, err.message || err)
-                        throw new Error(`Send Message Failed: ${err.message}`)
-                    }
+                    const sendMessageNode = new SendMessageNode(this.contextManager);
+                    await sendMessageNode.execute(node.data as unknown as SendMessageNodeData);
                 }
                 break
 
@@ -284,43 +310,9 @@ export class WorkflowEngine {
             }
 
             case 'ab_test': {
-                const data = node.data as {
-                    paths?: Array<{ id: string; label: string; percentage: number }>;
-                };
-
-                // Deterministic Split based on Context ID (e.g. Lead ID)
-                // If no specific ID, use Random (fallback)
-                const identifier = (this.context.lead as any)?.id ||
-                    (this.context.user as any)?.id ||
-                    Math.random().toString();
-
-                const hash = this.simpleHash(String(identifier) + node.id);
-                const normalized = hash % 100; // 0-99
-
-                let cumulative = 0;
-                let selectedPathLabel = '';
-
-                // Defaults
-                const paths = data.paths || [
-                    { id: 'a', label: 'Path A', percentage: 50 },
-                    { id: 'b', label: 'Path B', percentage: 50 }
-                ];
-
-                for (const path of paths) {
-                    cumulative += path.percentage;
-                    if (normalized < cumulative) {
-                        selectedPathLabel = path.label; // We match against Edge Label
-                        break;
-                    }
-                }
-
-                // Fallback to last path if rounding errors
-                if (!selectedPathLabel && paths.length > 0) {
-                    selectedPathLabel = paths[paths.length - 1].label;
-                }
-
-                console.log(`[AB-Test] ID: ${identifier} -> Hash: ${normalized} -> Path: ${selectedPathLabel}`);
-                this.context._lastSplitPath = selectedPathLabel;
+                const abTestNode = new ABTestNode(this.contextManager);
+                const result = abTestNode.execute(node.data as unknown as ABTestNodeData, node.id);
+                // Navigation logic uses context variables set by the node
                 break;
             }
 
@@ -485,15 +477,7 @@ export class WorkflowEngine {
         }
     }
 
-    private simpleHash(str: string): number {
-        let hash = 0;
-        for (let i = 0; i < str.length; i++) {
-            const char = str.charCodeAt(i);
-            hash = ((hash << 5) - hash) + char;
-            hash = hash & hash; // Convert to 32bit integer
-        }
-        return Math.abs(hash);
-    }
+
 
 
 

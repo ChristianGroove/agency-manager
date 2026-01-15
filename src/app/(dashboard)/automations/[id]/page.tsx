@@ -27,6 +27,11 @@ import { useRouter, useParams, useSearchParams } from 'next/navigation';
 
 import TriggerNode from '@/modules/core/automation/components/nodes/TriggerNode';
 import ActionNode from '@/modules/core/automation/components/nodes/ActionNode';
+import BillingNode from '@/modules/core/automation/components/nodes/BillingNode';
+import NotificationNode from '@/modules/core/automation/components/nodes/NotificationNode';
+import VariableNode from '@/modules/core/automation/components/nodes/VariableNode';
+import WaitNode from '@/modules/core/automation/components/nodes/WaitNode';
+
 import CRMNode from '@/modules/core/automation/components/nodes/CRMNode';
 import HTTPNode from '@/modules/core/automation/components/nodes/HTTPNode';
 import EmailNode from '@/modules/core/automation/components/nodes/EmailNode';
@@ -54,6 +59,7 @@ const nodeTypes = {
     email: EmailNode,
     sms: SMSNode,
     ab_test: ABTestNode,
+    wait: WaitNode,
     ai_agent: AIAgentNode,
     buttons: ButtonsNode,
     wait_input: WaitInputNode,
@@ -524,7 +530,7 @@ function WorkflowEditorContent({ id }: { id: string }) {
                         </Panel>
 
                         {/* Node Sidebar */}
-                        <Panel position="top-left" className="ml-2 !top-1/2 !-translate-y-1/2 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm p-1.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-lg max-h-[80vh] overflow-y-auto w-28 no-scrollbar flex flex-col justify-center">
+                        <Panel position="top-left" className="ml-2 !top-1/2 !-translate-y-1/2 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm p-1.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-lg max-h-[80vh] overflow-y-auto w-28 no-scrollbar flex flex-col">
                             <div className="space-y-3">
                                 <div>
                                     <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">Trigger</h3>
@@ -567,9 +573,17 @@ function WorkflowEditorContent({ id }: { id: string }) {
                                             <MessageSquare className="h-4 w-4 text-pink-600 mr-1.5" />
                                             <span className="text-xs font-medium">SMS</span>
                                         </div>
+                                        <div draggable onDragStart={(e) => onDragStart(e, 'buttons')} className="flex items-center p-1.5 rounded-lg border border-slate-100 bg-white dark:bg-slate-800 hover:border-indigo-500 hover:bg-indigo-50 cursor-grab transition-all">
+                                            <MousePointer className="h-4 w-4 text-indigo-600 mr-1.5" />
+                                            <span className="text-xs font-medium">Botones</span>
+                                        </div>
                                         <div draggable onDragStart={(e) => onDragStart(e, 'wait')} className="flex items-center p-1.5 rounded-lg border border-slate-100 bg-white dark:bg-slate-800 hover:border-slate-500 hover:bg-slate-50 cursor-grab transition-all">
                                             <Clock className="h-4 w-4 text-slate-600 mr-1.5" />
                                             <span className="text-xs font-medium">Espera</span>
+                                        </div>
+                                        <div draggable onDragStart={(e) => onDragStart(e, 'wait_input')} className="flex items-center p-1.5 rounded-lg border border-slate-100 bg-white dark:bg-slate-800 hover:border-slate-500 hover:bg-slate-50 cursor-grab transition-all">
+                                            <Clock className="h-4 w-4 text-slate-600 mr-1.5" />
+                                            <span className="text-xs font-medium">Esperar Input</span>
                                         </div>
                                     </div>
                                 </div>
@@ -592,6 +606,30 @@ function WorkflowEditorContent({ id }: { id: string }) {
                                         <div draggable onDragStart={(e) => onDragStart(e, 'stage')} className="flex items-center p-1.5 rounded-lg border border-slate-100 bg-white dark:bg-slate-800 hover:border-rose-500 hover:bg-rose-50 cursor-grab transition-all">
                                             <ArrowRightCircle className="h-4 w-4 text-rose-600 mr-1.5" />
                                             <span className="text-xs font-medium">Etapa</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">Negocio</h3>
+                                    <div className="space-y-1.5">
+                                        <div draggable onDragStart={(e) => onDragStart(e, 'billing')} className="flex items-center p-1.5 rounded-lg border border-slate-100 bg-white dark:bg-slate-800 hover:border-amber-500 hover:bg-amber-50 cursor-grab transition-all">
+                                            <Box className="h-4 w-4 text-amber-600 mr-1.5" />
+                                            <span className="text-xs font-medium">Facturación</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">Sistema</h3>
+                                    <div className="space-y-1.5">
+                                        <div draggable onDragStart={(e) => onDragStart(e, 'variable')} className="flex items-center p-1.5 rounded-lg border border-slate-100 bg-white dark:bg-slate-800 hover:border-fuchsia-500 hover:bg-fuchsia-50 cursor-grab transition-all">
+                                            <Box className="h-4 w-4 text-fuchsia-600 mr-1.5" />
+                                            <span className="text-xs font-medium">Variable</span>
+                                        </div>
+                                        <div draggable onDragStart={(e) => onDragStart(e, 'notification')} className="flex items-center p-1.5 rounded-lg border border-slate-100 bg-white dark:bg-slate-800 hover:border-sky-500 hover:bg-sky-50 cursor-grab transition-all">
+                                            <Box className="h-4 w-4 text-sky-600 mr-1.5" />
+                                            <span className="text-xs font-medium">Notificación</span>
                                         </div>
                                     </div>
                                 </div>

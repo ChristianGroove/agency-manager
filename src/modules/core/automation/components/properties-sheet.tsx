@@ -12,6 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Node } from '@xyflow/react';
 import { Trash2, Copy, Zap, Box, Settings2, X, Check, Database, Globe, Mail, MessageSquare, Plus, AlertCircle, MousePointer, Clock, Tag, ArrowRightCircle } from 'lucide-react';
+import { ChannelSelector } from './channel-selector';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
@@ -230,6 +231,39 @@ export function PropertiesSheet({ node, isOpen, onClose, onUpdate, onDelete, onD
             }
         }
 
+        // Billing node validations
+        if (node.type === 'billing') {
+            if (!formData.actionType) {
+                newErrors.actionType = 'El tipo de acción de facturación es requerido';
+            }
+            if (formData.actionType === 'create_invoice' && !formData.items) {
+                // newErrors.items = 'Items requeridos'; // Optional validation
+            }
+        }
+
+        // Notification node validations
+        if (node.type === 'notification') {
+            if (!formData.title || (formData.title as string).trim() === '') {
+                newErrors.title = 'El título es requerido';
+            }
+            if (!formData.message || (formData.message as string).trim() === '') {
+                newErrors.message = 'El mensaje es requerido';
+            }
+        }
+
+        // Variable node validations
+        if (node.type === 'variable') {
+            if (!formData.targetVar || (formData.targetVar as string).trim() === '') {
+                newErrors.targetVar = 'El nombre de la variable es requerido';
+            }
+            if (!formData.actionType) {
+                newErrors.actionType = 'El tipo de operación es requerido';
+            }
+            if (formData.actionType === 'math' && (!formData.operand1 || !formData.operand2)) {
+                newErrors.operands = 'Ambos operandos son requeridos para operaciones matemáticas';
+            }
+        }
+
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
@@ -269,6 +303,18 @@ export function PropertiesSheet({ node, isOpen, onClose, onUpdate, onDelete, onD
         HeaderIcon = Database;
         headerColor = "bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400";
         typeLabel = "CRM";
+    } else if (node.type === 'billing') {
+        HeaderIcon = Database; // Import Receipt from lucide-react if available, else Database
+        headerColor = "bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400";
+        typeLabel = "Billing";
+    } else if (node.type === 'notification') {
+        HeaderIcon = Mail; // Import Bell
+        headerColor = "bg-sky-100 text-sky-600 dark:bg-sky-900/30 dark:text-sky-400";
+        typeLabel = "Notification";
+    } else if (node.type === 'variable') {
+        HeaderIcon = Settings2; // Import Calculator
+        headerColor = "bg-fuchsia-100 text-fuchsia-600 dark:bg-fuchsia-900/30 dark:text-fuchsia-400";
+        typeLabel = "Variable";
     } else if (node.type === 'http') {
         HeaderIcon = Globe;
         headerColor = "bg-cyan-100 text-cyan-600 dark:bg-cyan-900/30 dark:text-cyan-400";
@@ -297,6 +343,10 @@ export function PropertiesSheet({ node, isOpen, onClose, onUpdate, onDelete, onD
         HeaderIcon = ArrowRightCircle;
         headerColor = "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400";
         typeLabel = "Change Stage";
+    } else if (node.type === 'wait') {
+        HeaderIcon = Clock;
+        headerColor = "bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400";
+        typeLabel = "Wait";
     } else {
         // Action defaults
         HeaderIcon = Box;
@@ -349,6 +399,218 @@ export function PropertiesSheet({ node, isOpen, onClose, onUpdate, onDelete, onD
                     </div>
 
 
+                    {/* Billing Node Config */}
+                    {node.type === 'billing' && (
+                        <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                            <Separator className="bg-slate-100 dark:bg-slate-800" />
+                            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Configuración de Facturación</Label>
+
+                            <div className="space-y-3">
+                                <Label>Acción</Label>
+                                <Select
+                                    value={(formData.actionType as string) || 'create_invoice'}
+                                    onValueChange={(v) => handleChange('actionType', v)}
+                                >
+                                    <SelectTrigger className="h-10 bg-slate-50 dark:bg-slate-900">
+                                        <SelectValue placeholder="Seleccionar acción" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="create_invoice">Crear Factura</SelectItem>
+                                        <SelectItem value="create_quote">Crear Cotización</SelectItem>
+                                        <SelectItem value="send_quote">Enviar Cotización (WhatsApp)</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {(formData.actionType === 'create_invoice' || formData.actionType === 'create_quote') && (
+                                <div className="space-y-3">
+                                    <div className="space-y-2">
+                                        <Label>Cliente ID (Lead/Client)</Label>
+                                        <Input
+                                            value={(formData.clientId as string) || ''}
+                                            onChange={(e) => handleChange('clientId', e.target.value)}
+                                            placeholder="{{clientId}}"
+                                            className="font-mono text-sm bg-slate-50 dark:bg-slate-900"
+                                        />
+                                        <p className="text-[10px] text-muted-foreground">ID del cliente al que se asociará el documento.</p>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Items (JSON Array)</Label>
+                                        <Textarea
+                                            value={(formData.items as string) || ''}
+                                            onChange={(e) => handleChange('items', e.target.value)}
+                                            placeholder='[{"description": "Service", "quantity": 1, "unit_price": 100}]'
+                                            className="font-mono text-xs bg-slate-50 dark:bg-slate-900 h-24"
+                                        />
+                                        <p className="text-[10px] text-muted-foreground">Array de objetos con descripción, cantidad y precio unitario.</p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {formData.actionType === 'send_quote' && (
+                                <div className="space-y-3">
+                                    <div className="space-y-2">
+                                        <Label>Quote ID</Label>
+                                        <Input
+                                            value={(formData.quoteId as string) || ''}
+                                            onChange={(e) => handleChange('quoteId', e.target.value)}
+                                            placeholder="{{quote_id}}"
+                                            className="font-mono text-sm bg-slate-50 dark:bg-slate-900"
+                                        />
+                                        <p className="text-[10px] text-muted-foreground">ID de la cotización a enviar. Usualmente viene de un paso anterior.</p>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Notification Node Config */}
+                    {node.type === 'notification' && (
+                        <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                            <Separator className="bg-slate-100 dark:bg-slate-800" />
+                            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Configuración de Notificación</Label>
+
+                            <div className="space-y-3">
+                                <Label>Tipo</Label>
+                                <Select
+                                    value={(formData.actionType as string) || 'notify_user'}
+                                    onValueChange={(v) => handleChange('actionType', v)}
+                                >
+                                    <SelectTrigger className="h-10 bg-slate-50 dark:bg-slate-900">
+                                        <SelectValue placeholder="Seleccionar tipo" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="notify_user">Notificación Interna (Sistema)</SelectItem>
+                                        {/* <SelectItem value="notify_email">Notificación por Email</SelectItem> */}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="space-y-3">
+                                <div className="space-y-2">
+                                    <Label>Usuario ID (Opcional)</Label>
+                                    <Input
+                                        value={(formData.userId as string) || ''}
+                                        onChange={(e) => handleChange('userId', e.target.value)}
+                                        placeholder="user_..."
+                                        className="font-mono text-sm bg-slate-50 dark:bg-slate-900"
+                                    />
+                                    <p className="text-[10px] text-muted-foreground">Si se deja vacío, notifica a los administradores.</p>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Título</Label>
+                                    <Input
+                                        value={(formData.title as string) || ''}
+                                        onChange={(e) => handleChange('title', e.target.value)}
+                                        placeholder="Nuevo Lead Asignado"
+                                        className="bg-slate-50 dark:bg-slate-900"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Mensaje</Label>
+                                    <Textarea
+                                        value={(formData.message as string) || ''}
+                                        onChange={(e) => handleChange('message', e.target.value)}
+                                        placeholder="Se ha asignado el lead {{lead.name}} a tu cartera."
+                                        rows={3}
+                                        className="bg-slate-50 dark:bg-slate-900"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Link de Redirección (Opcional)</Label>
+                                    <Input
+                                        value={(formData.linkIdx as string) || ''}
+                                        onChange={(e) => handleChange('linkIdx', e.target.value)}
+                                        placeholder="/crm/inbox/..."
+                                        className="bg-slate-50 dark:bg-slate-900"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Variable Node Config */}
+                    {node.type === 'variable' && (
+                        <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                            <Separator className="bg-slate-100 dark:bg-slate-800" />
+                            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Gestión de Variables</Label>
+
+                            <div className="space-y-3">
+                                <Label>Operación</Label>
+                                <Select
+                                    value={(formData.actionType as string) || 'set'}
+                                    onValueChange={(v) => handleChange('actionType', v)}
+                                >
+                                    <SelectTrigger className="h-10 bg-slate-50 dark:bg-slate-900">
+                                        <SelectValue placeholder="Seleccionar operación" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="set">Establecer Valor (Set)</SelectItem>
+                                        <SelectItem value="math">Cálculo Matemático</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="space-y-3">
+                                <div className="space-y-2">
+                                    <Label>Nombre de Variable Destino</Label>
+                                    <Input
+                                        value={(formData.targetVar as string) || ''}
+                                        onChange={(e) => handleChange('targetVar', e.target.value)}
+                                        placeholder="score"
+                                        className="font-mono text-sm bg-slate-50 dark:bg-slate-900"
+                                    />
+                                    <p className="text-[10px] text-muted-foreground">La variable donde se guardará el resultado (sin llaves).</p>
+                                </div>
+
+                                {formData.actionType === 'set' ? (
+                                    <div className="space-y-2">
+                                        <Label>Valor</Label>
+                                        <Input
+                                            value={(formData.value as string) || ''}
+                                            onChange={(e) => handleChange('value', e.target.value)}
+                                            placeholder="100, true, o {{otra_var}}"
+                                            className="bg-slate-50 dark:bg-slate-900"
+                                        />
+                                    </div>
+                                ) : (
+                                    <div className="p-3 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 space-y-3">
+                                        <div className="grid grid-cols-3 gap-2 items-center">
+                                            <Input
+                                                value={(formData.operand1 as string) || ''}
+                                                onChange={(e) => handleChange('operand1', e.target.value)}
+                                                placeholder="Op 1"
+                                                className="font-mono text-sm"
+                                            />
+                                            <Select
+                                                value={(formData.operator as string) || 'add'}
+                                                onValueChange={(v) => handleChange('operator', v)}
+                                            >
+                                                <SelectTrigger>
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="add">+</SelectItem>
+                                                    <SelectItem value="sub">-</SelectItem>
+                                                    <SelectItem value="mult">*</SelectItem>
+                                                    <SelectItem value="div">/</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                            <Input
+                                                value={(formData.operand2 as string) || ''}
+                                                onChange={(e) => handleChange('operand2', e.target.value)}
+                                                placeholder="Op 2"
+                                                className="font-mono text-sm"
+                                            />
+                                        </div>
+                                        <p className="text-[10px] text-muted-foreground text-center">Ej: <code>{`{{ score }}`} + 10</code></p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+
                     {node.type === 'trigger' && (
                         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
                             <Separator className="bg-slate-100 dark:bg-slate-800" />
@@ -393,20 +655,23 @@ export function PropertiesSheet({ node, isOpen, onClose, onUpdate, onDelete, onD
                                 <div className="space-y-4 p-4 bg-amber-50/50 dark:bg-amber-950/20 rounded-lg border border-amber-100 dark:border-amber-900/50">
                                     <div className="space-y-2">
                                         <Label>Canal</Label>
-                                        <Select
-                                            value={(formData.channel as string) || 'whatsapp'}
-                                            onValueChange={(v) => handleChange('channel', v)}
-                                        >
-                                            <SelectTrigger className="bg-white dark:bg-slate-900">
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="whatsapp">WhatsApp</SelectItem>
-                                                <SelectItem value="email">Email</SelectItem>
-                                                <SelectItem value="sms">SMS</SelectItem>
-                                                <SelectItem value="instagram">Instagram</SelectItem>
-                                            </SelectContent>
-                                        </Select>
+                                        <div className="space-y-2">
+                                            <Label>Canales Activos</Label>
+                                            <ChannelSelector
+                                                multiple={true}
+                                                value={(formData.channels as string[]) || (formData.channel ? [formData.channel] : [])}
+                                                onChange={(val) => {
+                                                    handleChange('channels', val);
+                                                    // Sync legacy field for backward compatibility if needed, or just clear it
+                                                    if (Array.isArray(val) && val.length > 0) {
+                                                        handleChange('channel', val[0]);
+                                                    }
+                                                }}
+                                            />
+                                            <p className="text-xs text-muted-foreground pt-1">
+                                                Selecciona uno o más canales donde este workflow escuchará mensajes.
+                                            </p>
+                                        </div>
                                     </div>
 
                                     {formData.triggerType === 'keyword' && (
@@ -1152,6 +1417,46 @@ export function PropertiesSheet({ node, isOpen, onClose, onUpdate, onDelete, onD
                                     onChange={(e) => handleChange('temperature', parseFloat(e.target.value))}
                                     className="bg-slate-50 dark:bg-slate-900"
                                 />
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Wait/Delay Node Configuration */}
+                    {node.type === 'wait' && (
+                        <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                            <Separator className="bg-slate-100 dark:bg-slate-800" />
+                            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                Configuración de Espera
+                            </Label>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label>Duración</Label>
+                                    <Input
+                                        type="number"
+                                        min="1"
+                                        value={(formData.duration as number) || 1}
+                                        onChange={(e) => handleChange('duration', parseInt(e.target.value) || 1)}
+                                        className="bg-slate-50 dark:bg-slate-900"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Unidad</Label>
+                                    <Select
+                                        value={(formData.unit as string) || 'minutes'}
+                                        onValueChange={(v) => handleChange('unit', v)}
+                                    >
+                                        <SelectTrigger className="bg-slate-50 dark:bg-slate-900">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="seconds">Segundos</SelectItem>
+                                            <SelectItem value="minutes">Minutos</SelectItem>
+                                            <SelectItem value="hours">Horas</SelectItem>
+                                            <SelectItem value="days">Días</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                             </div>
                         </div>
                     )}

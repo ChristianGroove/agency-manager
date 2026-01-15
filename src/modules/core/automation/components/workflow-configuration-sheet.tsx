@@ -257,17 +257,19 @@ export function WorkflowConfigurationSheet({
                                             />
                                         </div>
                                         <div className="space-y-4">
-                                            <Label className="text-sm font-bold text-slate-700 dark:text-slate-300">Canal Predeterminado</Label>
+                                            <Label className="text-sm font-bold text-slate-700 dark:text-slate-300">Canal Predeterminado (Salida)</Label>
                                             <div className="space-y-1.5">
                                                 <ChannelSelector
                                                     value={channelId}
                                                     onChange={(val) => {
-                                                        setChannelId(val);
-                                                        onChannelChange?.(val);
+                                                        setChannelId(val as string | null);
+                                                        onChannelChange?.(val as string | null);
                                                     }}
                                                 />
-                                                <p className="text-xs text-slate-500">
-                                                    Define el canal usado para enviar mensajes si el trigger no especifica uno (ej. CRM).
+                                                <p className="text-xs text-slate-500 leading-relaxed">
+                                                    Canal de respaldo (fallback) usado cuando el workflow se inicia manualmente o desde CRM.
+                                                    <br />
+                                                    <span className="text-amber-600 dark:text-amber-500 font-medium">Nota:</span> Para configurar qué canales <strong>disparan</strong> este flujo, edita el nodo "Trigger".
                                                 </p>
                                             </div>
                                         </div>
