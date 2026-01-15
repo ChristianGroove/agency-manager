@@ -21,7 +21,7 @@ import { Panel, type ReactFlowInstance } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Save, Settings2, Box, Zap, ArrowLeft, Database, Undo2, Redo2, Globe, Mail, MessageSquare, Sparkles, GitBranch, Split, FlaskConical, LayoutGrid, MousePointer, Clock, Tag, ArrowRightCircle, Smartphone } from 'lucide-react';
+import { Save, Settings2, Box, Zap, ArrowLeft, Database, Undo2, Redo2, Globe, Mail, MessageSquare, Sparkles, GitBranch, Split, FlaskConical, LayoutGrid, MousePointer, Clock, Tag, ArrowRightCircle, Smartphone, Wand2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { useRegisterView } from '@/modules/core/caa/context/view-context';
@@ -51,6 +51,9 @@ import { WorkflowConfigurationSheet } from '@/modules/core/automation/components
 import { WORKFLOW_TEMPLATES } from '@/modules/core/automation/templates';
 import { getLayoutedElements } from '@/modules/core/automation/utils/layout-utils';
 import { SimulatorOverlay } from '@/modules/core/automation/components/simulator/SimulatorOverlay';
+import { orchestrateWorkflow } from '@/modules/core/automation/orchestrator';
+import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 
 const nodeTypes = {
     trigger: TriggerNode,
@@ -101,6 +104,12 @@ function WorkflowEditorContent({ id }: { id: string }) {
     const [historyIndex, setHistoryIndex] = useState(-1);
 
     const [simulatorOpen, setSimulatorOpen] = useState(false);
+
+    // AI Orchestrator State
+    const [magicPrompt, setMagicPrompt] = useState('');
+    const [isOrchestrating, setIsOrchestrating] = useState(false);
+    const [orchestratorModalOpen, setOrchestratorModalOpen] = useState(false);
+    const [orchestratorRemaining, setOrchestratorRemaining] = useState<number | null>(null);
 
     // Load workflow
     useEffect(() => {
@@ -311,6 +320,50 @@ function WorkflowEditorContent({ id }: { id: string }) {
             setHistoryIndex(historyIndex + 1);
         }
     }, [history, historyIndex, setNodes, setEdges]);
+
+    // AI Orchestrator Handler
+    const handleMagicGenerate = useCallback(async () => {
+        if (!magicPrompt.trim()) {
+            toast.error('Escribe una descripción del flujo que quieres crear');
+            return;
+        }
+
+        setIsOrchestrating(true);
+        try {
+            // Get org ID from workflow or session (simplified for now)
+            const orgId = 'current-org'; // TODO: Get from session context
+
+            const result = await orchestrateWorkflow(orgId, magicPrompt);
+
+            if (result.rateLimitInfo) {
+                setOrchestratorRemaining(result.rateLimitInfo.remaining);
+            }
+
+            if (result.success && result.workflow) {
+                setNodes(result.workflow.nodes);
+                setEdges(result.workflow.edges);
+                setWorkflowName(result.workflow.name);
+                setWorkflowDescription(result.workflow.description);
+                setOrchestratorModalOpen(false);
+                setMagicPrompt('');
+                saveToHistory();
+
+                toast.success('¡Workflow generado con IA!', {
+                    description: result.reasoning || 'Tu flujo ha sido creado automáticamente.'
+                });
+            } else {
+                toast.error('No se pudo generar', {
+                    description: result.error || 'Intenta con una descripción diferente.'
+                });
+            }
+        } catch (error: any) {
+            toast.error('Error al generar', {
+                description: error.message || 'Intenta de nuevo más tarde.'
+            });
+        } finally {
+            setIsOrchestrating(false);
+        }
+    }, [magicPrompt, setNodes, setEdges, saveToHistory]);
 
     // Validate workflow before saving
     const validateWorkflow = useCallback((): { valid: boolean; errors: string[] } => {
@@ -744,6 +797,10 @@ function WorkflowEditorContent({ id }: { id: string }) {
                         </Button>
 
 
+                        <Button size="icon" variant="ghost" className="rounded-full w-8 h-8 bg-gradient-to-r from-violet-500 to-fuchsia-500 hover:from-violet-600 hover:to-fuchsia-600 text-white shadow-lg" onClick={() => setOrchestratorModalOpen(true)} title="Generar con IA">
+                            <Wand2 className="h-4 w-4" />
+                        </Button>
+
                         <Button size="icon" variant="ghost" className="rounded-full w-8 h-8" onClick={() => setAIPanelOpen(true)} title="AI Suggestions">
                             <Sparkles className="h-4 w-4 text-purple-500" />
                         </Button>
@@ -816,6 +873,59 @@ function WorkflowEditorContent({ id }: { id: string }) {
                     }
                 }}
             />
+
+            {/* AI Orchestrator Modal */}
+            <Dialog open={orchestratorModalOpen} onOpenChange={setOrchestratorModalOpen}>
+                <DialogContent className="sm:max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <div className="p-2 rounded-lg bg-gradient-to-r from-violet-500 to-fuchsia-500">
+                                <Wand2 className="h-5 w-5 text-white" />
+                            </div>
+                            Generar Workflow con IA
+                        </DialogTitle>
+                        <DialogDescription>
+                            Describe el flujo de trabajo que necesitas y la IA lo construirá automáticamente.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <Textarea
+                            placeholder="Ej: Cuando alguien escriba 'PROMO', enviar mensaje de bienvenida, esperar respuesta, y si dicen 'sí' crear un lead en el CRM..."
+                            value={magicPrompt}
+                            onChange={(e) => setMagicPrompt(e.target.value)}
+                            className="min-h-[120px] resize-none"
+                            disabled={isOrchestrating}
+                        />
+                        {orchestratorRemaining !== null && (
+                            <p className="text-xs text-slate-500">
+                                Generaciones restantes esta hora: <span className="font-semibold">{orchestratorRemaining}</span>
+                            </p>
+                        )}
+                        <div className="flex justify-end gap-2">
+                            <Button variant="outline" onClick={() => setOrchestratorModalOpen(false)} disabled={isOrchestrating}>
+                                Cancelar
+                            </Button>
+                            <Button
+                                onClick={handleMagicGenerate}
+                                disabled={isOrchestrating || !magicPrompt.trim()}
+                                className="bg-gradient-to-r from-violet-500 to-fuchsia-500 hover:from-violet-600 hover:to-fuchsia-600 text-white"
+                            >
+                                {isOrchestrating ? (
+                                    <>
+                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                        Generando...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Wand2 className="h-4 w-4 mr-2" />
+                                        Generar Workflow
+                                    </>
+                                )}
+                            </Button>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
