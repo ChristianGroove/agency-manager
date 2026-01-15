@@ -11,9 +11,9 @@ import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Switch } from "@/components/ui/switch"
-import { Package, Users, DollarSign, Settings, Save, Loader2, AlertCircle, LayoutGrid, CheckCircle2, Globe, GripVertical } from "lucide-react"
+import { Package, Users, DollarSign, Settings, Save, Loader2, AlertCircle, LayoutGrid, CheckCircle2, Globe, ChevronUp, ChevronDown } from "lucide-react"
 import { updateApp } from "@/modules/core/saas/app-management-actions"
-import { getAppPortalConfig, updateAppPortalModule } from "@/modules/core/saas/portal-config-actions"
+import { getAppPortalConfig, updateAppPortalModule, reorderAppPortalModules } from "@/modules/core/saas/portal-config-actions"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 
@@ -40,6 +40,30 @@ export function AppDetailsSheet({ app, isOpen, onClose, dict }: AppDetailsSheetP
                 .finally(() => setPortalLoading(false))
         }
     }, [isOpen, app?.id])
+
+    // Reorder handler
+    const handleReorder = async (moduleId: string, direction: 'up' | 'down', targetPortal: string) => {
+        const filtered = portalModules.filter(m => m.target_portal === targetPortal).sort((a, b) => a.display_order - b.display_order)
+        const idx = filtered.findIndex(m => m.id === moduleId)
+        if ((direction === 'up' && idx === 0) || (direction === 'down' && idx === filtered.length - 1)) return
+
+        const swapIdx = direction === 'up' ? idx - 1 : idx + 1
+        const updates = [
+            { id: filtered[idx].id, display_order: filtered[swapIdx].display_order },
+            { id: filtered[swapIdx].id, display_order: filtered[idx].display_order }
+        ]
+
+        const result = await reorderAppPortalModules(updates)
+        if (result.success) {
+            setPortalModules(prev => prev.map(m => {
+                const update = updates.find(u => u.id === m.id)
+                return update ? { ...m, display_order: update.display_order } : m
+            }))
+            toast.success("Orden actualizado")
+        } else {
+            toast.error("Error al reordenar")
+        }
+    }
 
     if (!app) return null
 
@@ -250,14 +274,28 @@ export function AppDetailsSheet({ app, isOpen, onClose, dict }: AppDetailsSheetP
                                                         <div className="space-y-2">
                                                             {portalModules
                                                                 .filter(m => m.target_portal === 'client')
-                                                                .map((module, idx) => (
+                                                                .sort((a, b) => a.display_order - b.display_order)
+                                                                .map((module, idx, arr) => (
                                                                     <div
                                                                         key={module.id}
                                                                         className={`flex items-center justify-between p-4 rounded-xl border transition-all ${module.is_enabled ? 'border-emerald-200 bg-emerald-50/30 dark:bg-emerald-900/10' : 'border-gray-200 bg-gray-50/50 dark:bg-gray-900/20'}`}
                                                                     >
                                                                         <div className="flex items-center gap-3">
-                                                                            <div className="p-2 rounded-lg bg-white/80 dark:bg-black/20 shadow-sm">
-                                                                                <GripVertical className="h-4 w-4 text-muted-foreground/50" />
+                                                                            <div className="flex flex-col gap-0.5">
+                                                                                <button
+                                                                                    onClick={() => handleReorder(module.id, 'up', 'client')}
+                                                                                    disabled={idx === 0}
+                                                                                    className="p-1 rounded hover:bg-black/5 dark:hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                                                                                >
+                                                                                    <ChevronUp className="h-3 w-3" />
+                                                                                </button>
+                                                                                <button
+                                                                                    onClick={() => handleReorder(module.id, 'down', 'client')}
+                                                                                    disabled={idx === arr.length - 1}
+                                                                                    className="p-1 rounded hover:bg-black/5 dark:hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                                                                                >
+                                                                                    <ChevronDown className="h-3 w-3" />
+                                                                                </button>
                                                                             </div>
                                                                             <div>
                                                                                 <div className="font-medium">{module.portal_tab_label}</div>
@@ -292,14 +330,28 @@ export function AppDetailsSheet({ app, isOpen, onClose, dict }: AppDetailsSheetP
                                                         <div className="space-y-2">
                                                             {portalModules
                                                                 .filter(m => m.target_portal === 'staff')
-                                                                .map((module) => (
+                                                                .sort((a, b) => a.display_order - b.display_order)
+                                                                .map((module, idx, arr) => (
                                                                     <div
                                                                         key={module.id}
                                                                         className={`flex items-center justify-between p-4 rounded-xl border transition-all ${module.is_enabled ? 'border-blue-200 bg-blue-50/30 dark:bg-blue-900/10' : 'border-gray-200 bg-gray-50/50 dark:bg-gray-900/20'}`}
                                                                     >
                                                                         <div className="flex items-center gap-3">
-                                                                            <div className="p-2 rounded-lg bg-white/80 dark:bg-black/20 shadow-sm">
-                                                                                <GripVertical className="h-4 w-4 text-muted-foreground/50" />
+                                                                            <div className="flex flex-col gap-0.5">
+                                                                                <button
+                                                                                    onClick={() => handleReorder(module.id, 'up', 'staff')}
+                                                                                    disabled={idx === 0}
+                                                                                    className="p-1 rounded hover:bg-black/5 dark:hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                                                                                >
+                                                                                    <ChevronUp className="h-3 w-3" />
+                                                                                </button>
+                                                                                <button
+                                                                                    onClick={() => handleReorder(module.id, 'down', 'staff')}
+                                                                                    disabled={idx === arr.length - 1}
+                                                                                    className="p-1 rounded hover:bg-black/5 dark:hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                                                                                >
+                                                                                    <ChevronDown className="h-3 w-3" />
+                                                                                </button>
                                                                             </div>
                                                                             <div>
                                                                                 <div className="font-medium">{module.portal_tab_label}</div>
