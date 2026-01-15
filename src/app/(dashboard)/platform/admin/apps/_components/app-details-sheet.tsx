@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -10,8 +10,10 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Package, Users, DollarSign, Settings, Save, Loader2, AlertCircle, LayoutGrid, CheckCircle2 } from "lucide-react"
+import { Switch } from "@/components/ui/switch"
+import { Package, Users, DollarSign, Settings, Save, Loader2, AlertCircle, LayoutGrid, CheckCircle2, Globe, GripVertical } from "lucide-react"
 import { updateApp } from "@/modules/core/saas/app-management-actions"
+import { getAppPortalConfig, updateAppPortalModule } from "@/modules/core/saas/portal-config-actions"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 
@@ -25,6 +27,19 @@ interface AppDetailsSheetProps {
 export function AppDetailsSheet({ app, isOpen, onClose, dict }: AppDetailsSheetProps) {
     const router = useRouter()
     const [isSubmitting, setIsSubmitting] = useState(false)
+    const [portalModules, setPortalModules] = useState<any[]>([])
+    const [portalLoading, setPortalLoading] = useState(false)
+
+    // Fetch portal modules when sheet opens
+    useEffect(() => {
+        if (isOpen && app?.id) {
+            setPortalLoading(true)
+            getAppPortalConfig(app.id)
+                .then(modules => setPortalModules(modules || []))
+                .catch(console.error)
+                .finally(() => setPortalLoading(false))
+        }
+    }, [isOpen, app?.id])
 
     if (!app) return null
 
@@ -116,9 +131,13 @@ export function AppDetailsSheet({ app, isOpen, onClose, dict }: AppDetailsSheetP
 
                     <Tabs defaultValue="overview" className="flex-1 flex flex-col overflow-hidden">
                         <div className="px-8 pt-6 pb-2">
-                            <TabsList className="grid w-full max-w-md grid-cols-2 bg-muted/50 p-1 rounded-xl">
-                                <TabsTrigger value="overview" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">Resumen & Métricas</TabsTrigger>
-                                <TabsTrigger value="settings" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">Configuración</TabsTrigger>
+                            <TabsList className="grid w-full max-w-md grid-cols-3 bg-muted/50 p-1 rounded-xl">
+                                <TabsTrigger value="overview" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">Resumen</TabsTrigger>
+                                <TabsTrigger value="portal" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                                    <Globe className="h-4 w-4 mr-1.5" />
+                                    Portal
+                                </TabsTrigger>
+                                <TabsTrigger value="settings" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">Config</TabsTrigger>
                             </TabsList>
                         </div>
 
@@ -196,6 +215,124 @@ export function AppDetailsSheet({ app, isOpen, onClose, dict }: AppDetailsSheetP
                                             </div>
                                         </div>
                                     )}
+                                </TabsContent>
+
+                                {/* PORTAL TAB */}
+                                <TabsContent value="portal" className="space-y-6 mt-0 animate-in fade-in-50 duration-500 slide-in-from-bottom-2">
+                                    <div className="space-y-6">
+                                        {/* Header */}
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Módulos del Portal</h3>
+                                                <p className="text-sm text-muted-foreground">Configura qué módulos estarán disponibles en el portal de esta aplicación.</p>
+                                            </div>
+                                        </div>
+
+                                        {portalLoading ? (
+                                            <div className="flex items-center justify-center py-12">
+                                                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                                            </div>
+                                        ) : portalModules.length === 0 ? (
+                                            <div className="text-center py-12 border-2 border-dashed rounded-xl">
+                                                <Globe className="h-10 w-10 mx-auto text-muted-foreground/50 mb-3" />
+                                                <p className="text-muted-foreground">No hay módulos configurados.</p>
+                                                <p className="text-sm text-muted-foreground/70 mt-1">Los módulos se heredarán de la configuración por defecto.</p>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                {/* Client Portal Modules */}
+                                                {portalModules.filter(m => m.target_portal === 'client').length > 0 && (
+                                                    <div className="space-y-3">
+                                                        <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                                                            <Users className="h-4 w-4" />
+                                                            Portal de Cliente
+                                                        </h4>
+                                                        <div className="space-y-2">
+                                                            {portalModules
+                                                                .filter(m => m.target_portal === 'client')
+                                                                .map((module, idx) => (
+                                                                    <div
+                                                                        key={module.id}
+                                                                        className={`flex items-center justify-between p-4 rounded-xl border transition-all ${module.is_enabled ? 'border-emerald-200 bg-emerald-50/30 dark:bg-emerald-900/10' : 'border-gray-200 bg-gray-50/50 dark:bg-gray-900/20'}`}
+                                                                    >
+                                                                        <div className="flex items-center gap-3">
+                                                                            <div className="p-2 rounded-lg bg-white/80 dark:bg-black/20 shadow-sm">
+                                                                                <GripVertical className="h-4 w-4 text-muted-foreground/50" />
+                                                                            </div>
+                                                                            <div>
+                                                                                <div className="font-medium">{module.portal_tab_label}</div>
+                                                                                <div className="text-xs text-muted-foreground font-mono">{module.module_slug}</div>
+                                                                            </div>
+                                                                        </div>
+                                                                        <Switch
+                                                                            checked={module.is_enabled}
+                                                                            onCheckedChange={async (checked) => {
+                                                                                const result = await updateAppPortalModule(module.id, { is_enabled: checked })
+                                                                                if (result.success) {
+                                                                                    setPortalModules(prev => prev.map(m => m.id === module.id ? { ...m, is_enabled: checked } : m))
+                                                                                    toast.success(checked ? "Módulo activado" : "Módulo desactivado")
+                                                                                } else {
+                                                                                    toast.error("Error al actualizar")
+                                                                                }
+                                                                            }}
+                                                                        />
+                                                                    </div>
+                                                                ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* Staff Portal Modules */}
+                                                {portalModules.filter(m => m.target_portal === 'staff').length > 0 && (
+                                                    <div className="space-y-3 pt-4 border-t">
+                                                        <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                                                            <Package className="h-4 w-4" />
+                                                            Portal de Staff
+                                                        </h4>
+                                                        <div className="space-y-2">
+                                                            {portalModules
+                                                                .filter(m => m.target_portal === 'staff')
+                                                                .map((module) => (
+                                                                    <div
+                                                                        key={module.id}
+                                                                        className={`flex items-center justify-between p-4 rounded-xl border transition-all ${module.is_enabled ? 'border-blue-200 bg-blue-50/30 dark:bg-blue-900/10' : 'border-gray-200 bg-gray-50/50 dark:bg-gray-900/20'}`}
+                                                                    >
+                                                                        <div className="flex items-center gap-3">
+                                                                            <div className="p-2 rounded-lg bg-white/80 dark:bg-black/20 shadow-sm">
+                                                                                <GripVertical className="h-4 w-4 text-muted-foreground/50" />
+                                                                            </div>
+                                                                            <div>
+                                                                                <div className="font-medium">{module.portal_tab_label}</div>
+                                                                                <div className="text-xs text-muted-foreground font-mono">{module.module_slug}</div>
+                                                                            </div>
+                                                                        </div>
+                                                                        <Switch
+                                                                            checked={module.is_enabled}
+                                                                            onCheckedChange={async (checked) => {
+                                                                                const result = await updateAppPortalModule(module.id, { is_enabled: checked })
+                                                                                if (result.success) {
+                                                                                    setPortalModules(prev => prev.map(m => m.id === module.id ? { ...m, is_enabled: checked } : m))
+                                                                                    toast.success(checked ? "Módulo activado" : "Módulo desactivado")
+                                                                                } else {
+                                                                                    toast.error("Error al actualizar")
+                                                                                }
+                                                                            }}
+                                                                        />
+                                                                    </div>
+                                                                ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </>
+                                        )}
+
+                                        {/* Info Box */}
+                                        <div className="p-4 rounded-xl bg-blue-50/50 border border-blue-100 dark:bg-blue-900/10 dark:border-blue-900/30">
+                                            <p className="text-sm text-blue-700 dark:text-blue-400">
+                                                <strong>💡 Tip:</strong> Los módulos desactivados no aparecerán en el portal de los clientes que usen esta aplicación.
+                                            </p>
+                                        </div>
+                                    </div>
                                 </TabsContent>
 
                                 {/* SETTINGS TAB */}

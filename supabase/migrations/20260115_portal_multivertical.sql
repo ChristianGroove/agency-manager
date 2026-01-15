@@ -8,7 +8,7 @@
 
 CREATE TABLE IF NOT EXISTS saas_apps_portal_config (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    app_id uuid REFERENCES saas_apps(id) ON DELETE CASCADE,
+    app_id text REFERENCES saas_apps(id) ON DELETE CASCADE,
     module_slug text NOT NULL,
     is_enabled boolean DEFAULT true,
     display_order integer DEFAULT 0,
