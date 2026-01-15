@@ -12,7 +12,7 @@ import {
     SheetDescription,
 } from "@/components/ui/sheet"
 import { ScrollArea } from "@/components/ui/scroll-area"
-// import { CreateOrganizationSheet } from "./create-organization-sheet" // Removed for public onboarding
+import { CreateOrganizationSheet } from "./create-organization-sheet" // Restored for admin users
 import { OrganizationMember } from "@/types/organization"
 import { getUserOrganizations, switchOrganization, getCurrentOrgName, getCurrentOrganizationId } from "@/modules/core/organizations/actions"
 import { toast } from "sonner"
@@ -29,7 +29,7 @@ export function OrganizationSwitcher({ trigger }: OrganizationSwitcherProps) {
     const [isLoading, setIsLoading] = useState(true)
 
     const [isOpen, setIsOpen] = useState(false)
-    // const [isCreateOpen, setIsCreateOpen] = useState(false) // Deprecated for public onboarding
+    const [isCreateOpen, setIsCreateOpen] = useState(false) // Restored for admin sheet
 
     // Load initial state
     useEffect(() => {
@@ -211,13 +211,22 @@ export function OrganizationSwitcher({ trigger }: OrganizationSwitcherProps) {
                                 Cerrar
                             </Button>
 
-                            {/* Hide Create Button for Clients */}
-                            {/* Logic: If user has organizations and NONE are reseller/platform, assume Client. */}
-                            {(!organizations.length || organizations.some(m => ['reseller', 'platform'].includes(m.organization?.organization_type || ''))) && (
+                            {/* Show Create Button for Platform/Reseller admins */}
+                            {organizations.some(m => ['reseller', 'platform'].includes(m.organization?.organization_type || '')) ? (
+                                <Button
+                                    onClick={() => {
+                                        setIsOpen(false)
+                                        setIsCreateOpen(true)
+                                    }}
+                                    className="shadow-lg shadow-indigo-500/20 bg-indigo-600 hover:bg-indigo-700 text-white"
+                                >
+                                    <Plus className="mr-2 h-4 w-4" />
+                                    Nueva Organización
+                                </Button>
+                            ) : (
+                                /* Regular users: redirect to onboarding */
                                 <Link href="/onboarding" onClick={() => setIsOpen(false)}>
-                                    <Button
-                                        className="shadow-lg shadow-indigo-500/20 bg-indigo-600 hover:bg-indigo-700 text-white"
-                                    >
+                                    <Button className="shadow-lg shadow-indigo-500/20 bg-indigo-600 hover:bg-indigo-700 text-white">
                                         <Plus className="mr-2 h-4 w-4" />
                                         Nueva Organización
                                     </Button>
@@ -228,14 +237,14 @@ export function OrganizationSwitcher({ trigger }: OrganizationSwitcherProps) {
                 </SheetContent>
             </Sheet>
 
-            {/*             <CreateOrganizationSheet
+            {/* Admin Create Sheet */}
+            <CreateOrganizationSheet
                 open={isCreateOpen}
                 onOpenChange={setIsCreateOpen}
                 onSuccess={() => {
                     loadData()
-                    // Optional: Switch to new org automatically or keep list open
                 }}
-            /> */}
+            />
         </>
     )
 }
