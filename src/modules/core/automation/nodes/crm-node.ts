@@ -120,13 +120,25 @@ export class CRMNode {
             throw new Error('Lead ID and Tag Name are required for add_tag action');
         }
 
+        const organizationId = this.contextManager.get('organization_id') as string;
+        if (!organizationId) {
+            throw new Error('[CRM Node] Organization Context missing');
+        }
+
         console.log('[CRM Node] Adding tag to lead:', { leadId, tagName });
 
-        // TODO: Implement tag functionality once tags system exists
-        // For now, we'll add it to the lead's notes field as a workaround
-        console.warn('[CRM Node] Tag system not implemented yet. Skipping tag addition.');
+        // Dynamic import to avoid circular dependencies if any, or just standard usage
+        const { addLeadTagSystem } = await import('@/modules/core/crm/tags-actions');
 
-        // Future implementation:
-        // await addLeadTag(leadId, tagName);
+        const result = await addLeadTagSystem(leadId, tagName, organizationId);
+
+        if (result.success) {
+            console.log('[CRM Node] Tag added successfully');
+        } else {
+            console.error('[CRM Node] Failed to add tag:', result.error);
+            // We don't throw error here to avoid stopping workflow if tag already exists or minor issue? 
+            // Ideally we should throw if it's critical. Let's throw to be safe on "100% operative".
+            throw new Error(`Failed to add tag: ${result.error}`);
+        }
     }
 }

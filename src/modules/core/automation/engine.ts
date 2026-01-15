@@ -9,7 +9,11 @@ import { WaitInputNode, WaitInputNodeData } from './nodes/wait-input-node'
 
 import { TagNode, TagNodeData } from './nodes/tag-node'
 import { StageNode, StageNodeData } from './nodes/stage-node'
+import { ConditionNode, ConditionNodeData } from './nodes/condition-node'
+import { DelayNode, DelayNodeData } from './nodes/delay-node'
+import { AiAgentNode, AIAgentNodeData } from './nodes/ai-agent-node'
 import { queueWorkflowForResume } from './actions'
+
 
 export interface WorkflowNode {
     id: string
@@ -97,16 +101,7 @@ export class WorkflowEngine {
         }
     }
 
-    private resolveContext(text: string): string {
-        return text.replace(/\{\{(.+?)\}\}/g, (_, path) => {
-            const keys = path.trim().split('.')
-            let value: any = this.context
-            for (const key of keys) {
-                value = value?.[key]
-            }
-            return value !== undefined ? String(value) : ''
-        })
-    }
+
 
     private async runStep(node: WorkflowNode): Promise<void> {
         console.log(`[Engine] Running Step: ${node.type} (${node.id})`)
@@ -218,7 +213,7 @@ export class WorkflowEngine {
             case 'action':
                 // E.g. Send Message
                 if (node.data.actionType === 'send_message') {
-                    const messageContent = this.resolveContext((node.data.message as string) || '')
+                    const messageContent = this.contextManager.resolve((node.data.message as string) || '')
                     const { fileLogger } = await import('@/lib/file-logger')
                     fileLogger.log(`[Engine] send_message action started. Message: "${messageContent}"`)
 
@@ -258,57 +253,9 @@ export class WorkflowEngine {
                 break
 
             case 'condition': {
-                // Enhanced condition evaluator with multiple conditions and operators
-                const conditionData = node.data as {
-                    logic?: 'ALL' | 'ANY';
-                    conditions?: Array<{
-                        variable: string;
-                        operator: string;
-                        value: string;
-                    }>;
-                    variable?: string;
-                    operator?: string;
-                    value?: string;
-                };
-
-                const conditions = conditionData.conditions || [{
-                    variable: conditionData.variable || '',
-                    operator: conditionData.operator || 'equals',
-                    value: conditionData.value || ''
-                }];
-
-                const logic = conditionData.logic || 'ALL';
-
-                const results = conditions.map(cond => {
-                    const resolvedVar = this.resolveContext(`{{${cond.variable}}}`);
-                    let result = false;
-
-                    switch (cond.operator) {
-                        case '==':
-                        case 'equals': result = resolvedVar === cond.value; break;
-                        case '!=':
-                        case 'not_equals': result = resolvedVar !== cond.value; break;
-                        case '>':
-                        case 'greater_than': result = Number(resolvedVar) > Number(cond.value); break;
-                        case '<':
-                        case 'less_than': result = Number(resolvedVar) < Number(cond.value); break;
-                        case '>=':
-                        case 'greater_equal': result = Number(resolvedVar) >= Number(cond.value); break;
-                        case '<=':
-                        case 'less_equal': result = Number(resolvedVar) <= Number(cond.value); break;
-                        case 'contains': result = String(resolvedVar).includes(cond.value); break;
-                        case 'starts_with': result = String(resolvedVar).startsWith(cond.value); break;
-                        case 'ends_with': result = String(resolvedVar).endsWith(cond.value); break;
-                        default: result = false;
-                    }
-
-                    console.log(`[Condition] ${cond.variable} (${resolvedVar}) ${cond.operator} ${cond.value} = ${result}`);
-                    return result;
-                });
-
-                const finalResult = logic === 'ALL' ? results.every(r => r) : results.some(r => r);
-                console.log(`[Condition] Final result (${logic}): ${finalResult}`);
-                this.context._lastConditionResult = finalResult;
+                const conditionNode = new ConditionNode(this.contextManager);
+                const result = conditionNode.execute(node.data as unknown as ConditionNodeData);
+                this.context._lastConditionResult = result;
                 break;
             }
 
@@ -378,61 +325,23 @@ export class WorkflowEngine {
             }
 
             case 'delay': {
-                // Pause execution
-                const duration = String(node.data.duration || '1m'); // Default 1 minute
-                console.log(`[Delay] Processing delay: ${duration}`)
+                const delayNode = new DelayNode();
+                const result = delayNode.execute(node.data as unknown as DelayNodeData);
 
-                // Parse duration
-                let minutes = 1;
-                if (duration.endsWith('m')) minutes = parseInt(duration);
-                else if (duration.endsWith('h')) minutes = parseInt(duration) * 60;
-                else if (duration.endsWith('d')) minutes = parseInt(duration) * 60 * 24;
-                else minutes = parseInt(duration) || 1;
-
-                const resumeAt = new Date();
-                resumeAt.setMinutes(resumeAt.getMinutes() + minutes);
-
-                console.log(`[Delay] Resuming at: ${resumeAt.toISOString()}`)
-
-                this.context._suspended = {
-                    stepId: node.id,
-                    resumeAt: resumeAt
-                };
-
-                console.log(`[Delay] Execution suspended.`)
-                throw new Error("WORKFLOW_SUSPENDED");
+                if (result.suspended) {
+                    this.context._suspended = {
+                        stepId: node.id,
+                        resumeAt: result.resumeAt
+                    };
+                    console.log(`[Delay] Execution suspended.`)
+                    throw new Error("WORKFLOW_SUSPENDED");
+                }
+                break;
             }
 
             case 'ai_agent': {
-                console.log(`[AI-Agent] Processing node ${node.id}`);
-                const data = node.data as {
-                    systemPrompt?: string;
-                    userPrompt?: string;
-                    model?: string;
-                    temperature?: number;
-                };
-
-                const systemPrompt = data.systemPrompt || 'You are a helpful assistant.';
-                const userPromptRaw = data.userPrompt || '';
-                const userPrompt = this.resolveContext(userPromptRaw);
-                const model = data.model || 'gpt-4o';
-
-                console.log(`[AI-Agent] Model: ${model}`);
-                console.log(`[AI-Agent] Prompt: ${userPrompt.substring(0, 50)}...`);
-
-                // Call Server Action (Simulated for now directly here or via imported action)
-                // Since we cannot easily await an imported server action dynamically without complex setup in this class structure
-                // We will simulate the call or assume executeAIAction is available.
-                // ideally: const result = await executeAIAction(userPrompt, model, systemPrompt);
-
-                // SIMULATION for MVP
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                const mockOutput = `[AI Processed] ${userPrompt}`;
-
-                this.context[`ai_${node.id}`] = mockOutput;
-                this.context['ai_last_output'] = mockOutput;
-
-                console.log(`[AI-Agent] Output: ${mockOutput}`);
+                const aiNode = new AiAgentNode(this.contextManager);
+                await aiNode.execute(node.data as unknown as AIAgentNodeData, node.id);
                 break;
             }
 
