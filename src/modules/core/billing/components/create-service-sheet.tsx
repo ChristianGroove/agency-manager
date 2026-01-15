@@ -40,6 +40,7 @@ import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { ServiceCatalogSelector } from "@/modules/core/catalog/components/service-catalog-selector"
 import { logDomainEventAction } from "@/modules/core/logging/actions"
+import { ServiceRetroactiveModal } from "./service-retroactive-modal"
 
 interface CreateServiceSheetProps {
     clientId?: string
@@ -72,6 +73,8 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
     const [emitters, setEmitters] = useState<any[]>([])
     const [selectedEmitterId, setSelectedEmitterId] = useState<string>("")
     const [derivedDocType, setDerivedDocType] = useState<string>("")
+    const [retroactiveModalOpen, setRetroactiveModalOpen] = useState(false)
+    const [pendingSaveData, setPendingSaveData] = useState<any>(null)
 
     const [formData, setFormData] = useState({
         name: "",
@@ -189,11 +192,24 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
         setStep('form')
     }
 
-    const handleSave = async () => {
+    const handleSave = async (strategy: 'RETROACTIVE' | 'IGNORE_PAST' | null = null) => {
         if (!formData.name) return toast.error("El nombre es requerido")
         const finalClient = clientId || selectedClientId
         if (!finalClient) return toast.error("Debes seleccionar un cliente")
         if (!selectedEmitterId) return toast.error("Debes seleccionar un emisor")
+
+        // Date Check Interception
+        const startDate = formData.service_start_date ? new Date(formData.service_start_date) : new Date()
+        const today = new Date()
+
+        // Check if date is in past (more than 24 hours to be safe)
+        const isPastDate = startDate < new Date(today.getTime() - 24 * 60 * 60 * 1000)
+
+        // If it's a past date AND we haven't selected a strategy yet AND it's a recurring service
+        if (isPastDate && strategy === null && formData.type === 'recurring' && !serviceToEdit) {
+            setRetroactiveModalOpen(true)
+            return
+        }
 
         // CRITICAL: Get organization context
         const { getCurrentOrganizationId } = await import('@/modules/core/organizations/actions')
@@ -203,8 +219,17 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
 
         setLoading(true)
         try {
-            const startDate = formData.service_start_date ? new Date(formData.service_start_date) : new Date()
-            const billingStart = new Date() // Simplified strategy: Start Today
+            // Determine Billing Start based on strategy
+            let billingStart = new Date() // Default: Today
+
+            if (strategy === 'RETROACTIVE') {
+                billingStart = startDate // Start billing from the past date
+            } else if (strategy === 'IGNORE_PAST') {
+                billingStart = new Date() // Start billing from now (ignore gap)
+            } else {
+                // Future dates or non-recurring
+                billingStart = startDate < new Date() ? new Date() : startDate
+            }
 
             // Calc Cycle End
             let cycleEnd = new Date(billingStart)
@@ -235,7 +260,10 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
                 status: 'active',
                 billing_cycle_start_date: billingStart.toISOString(),
                 next_billing_date: cycleEnd.toISOString(),
-                metadata: { strategy: 'start_from_today' }
+                metadata: {
+                    strategy: strategy || 'standard',
+                    original_start: startDate.toISOString()
+                }
             }
 
             let resultService;
@@ -557,7 +585,7 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
                     <div className="sticky bottom-0 bg-white/80 backdrop-blur-md p-6 border-t border-gray-100 flex items-center justify-between z-20">
                         <Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>
                         {step === 'form' && (
-                            <Button onClick={handleSave} disabled={loading} className="bg-black text-white px-8 rounded-xl hover:bg-gray-800">
+                            <Button onClick={() => handleSave(null)} disabled={loading} className="bg-black text-white px-8 rounded-xl hover:bg-gray-800">
                                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 {serviceToEdit ? 'Guardar Cambios' : 'Confirmar Servicio'}
                             </Button>
@@ -565,6 +593,12 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
                     </div>
                 </div>
             </SheetContent>
+            <ServiceRetroactiveModal
+                isOpen={retroactiveModalOpen}
+                onOpenChange={setRetroactiveModalOpen}
+                startDate={new Date(formData.service_start_date)}
+                onConfirm={handleSave}
+            />
         </Sheet>
     )
 }

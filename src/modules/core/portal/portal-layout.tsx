@@ -64,38 +64,55 @@ function mapModuleToComponent(moduleSlug: string): string {
 type TabKey = 'summary' | 'services' | 'billing' | 'explore' | 'insights' | 'hosting'
 
 export function PortalLayout({ token, client, invoices, quotes, briefings, events, services, hostingAccounts = [], settings, activeModules, onPay, onViewInvoice, onViewQuote, insightsAccess }: PortalLayoutProps) {
-    // Build dynamic tabs based on active modules
+    // Determine which tabs to show based on active modules (Deduplicated Logic)
+    const showServices = activeModules.some(m => ['core_services', 'module_briefings', 'module_projects'].includes(m.slug))
+    const showBilling = activeModules.some(m => ['module_invoicing', 'core_billing', 'payments', 'module_payments'].includes(m.slug))
+    const showExplore = activeModules.some(m => ['module_catalog', 'core_catalog'].includes(m.slug))
+    const showInsights = activeModules.some(m => ['meta_insights', 'module_insights'].includes(m.slug)) && insightsAccess?.show === true
+
     const dynamicTabs = [
-        // Summary is ALWAYS shown (not module-based)
+        // 1. Summary (Always shown)
         {
             key: 'summary',
             component: 'summary',
             label: 'Resumen',
             icon: LayoutDashboard
         },
-        // Hosting Tab (Auto-detected)
+        // 2. Services (If any service-related module is active)
+        ...(showServices ? [{
+            key: 'services',
+            component: 'services',
+            label: 'Servicios',
+            icon: Layers
+        }] : []),
+        // 3. Billing (If invoicing/payments is active)
+        ...(showBilling ? [{
+            key: 'billing',
+            component: 'billing',
+            label: 'Pagos',
+            icon: CreditCard
+        }] : []),
+        // 4. Explore/Catalog
+        ...(showExplore ? [{
+            key: 'explore',
+            component: 'explore',
+            label: 'Explorar',
+            icon: Search
+        }] : []),
+        // 5. Insights
+        ...(showInsights ? [{
+            key: 'insights',
+            component: 'insights',
+            label: 'Insights',
+            icon: BarChart3
+        }] : []),
+        // 6. Hosting (Auto-detected)
         ...(hostingAccounts && hostingAccounts.length > 0 ? [{
             key: 'hosting',
             component: 'hosting',
             label: 'Hosting',
             icon: Server
-        }] : []),
-        // Map active modules to tabs
-        ...activeModules
-            .filter(mod => {
-                // SPECIAL LOGIC: Insights Module
-                if (mod.slug === 'meta_insights') {
-                    // Only show if insightsAccess.show is true
-                    return insightsAccess?.show === true
-                }
-                return true
-            })
-            .map(mod => ({
-                key: mod.slug,
-                component: mapModuleToComponent(mod.slug),
-                label: mod.portal_tab_label,
-                icon: ICON_MAP[mod.portal_icon_key] || Layers
-            }))
+        }] : [])
     ]
 
     const [activeTab, setActiveTab] = useState(dynamicTabs[0]?.key || 'summary')

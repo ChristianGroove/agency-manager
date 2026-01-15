@@ -204,7 +204,10 @@ export function SidebarContent({ isCollapsed = false, currentOrgId, isSuperAdmin
                     ))}
                 </div>
             ) : (
-                <nav className="flex-1 overflow-y-auto custom-scrollbar pr-1 mb-2">
+                <nav className={cn(
+                    "flex-1 overflow-y-auto pr-1 mb-2",
+                    isCollapsed ? "no-scrollbar" : "scrollbar-modern"
+                )}>
                     {categoryOrder.map(category => {
                         const routes = groupedRoutes[category]
                         if (!routes || routes.length === 0) return null

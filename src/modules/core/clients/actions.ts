@@ -96,7 +96,7 @@ export async function getClients() {
           *,
           portal_token,
           portal_short_token,
-          invoices (id, total, status, due_date, number, pdf_url, deleted_at),
+          invoices (id, total, status, due_date, number, pdf_url, deleted_at, billing_cycles:billing_cycles!billing_cycle_id (start_date, end_date)),
           quotes (id, number, total, status, pdf_url, deleted_at),
           hosting_accounts (status, renewal_date),
           subscriptions (id, name, next_billing_date, status, amount, service_type, frequency, deleted_at),

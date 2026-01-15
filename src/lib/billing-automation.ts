@@ -100,7 +100,8 @@ export async function checkAndGenerateCycles() {
                         description: `${service.name} (${formatDate(cycle.start_date)} - ${formatDate(cycle.end_date)})`,
                         quantity: service.quantity || 1,
                         price: (cycle.amount / (service.quantity || 1))
-                    }]
+                    }],
+                    billing_cycle_id: cycle.id // NEW: Populating proper FK
                 })
                 .select()
                 .single()

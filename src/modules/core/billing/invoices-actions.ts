@@ -167,14 +167,18 @@ export async function createInvoice(data: Partial<Invoice> & { items: InvoiceIte
     // === End of Core processing ===
 
     // 5. Save to database (same format as before)
-    const { items, ...invoiceData } = data
+    const { items, cycle_id, ...invoiceData } = data
 
-    const payload = {
+    const payload: any = {
         ...invoiceData,
         organization_id: orgId,
         status: legacyInvoice.status || 'pending', // Use Core-derived status
         items: items, // JSONB column
         total: legacyInvoice.total // Use calculated total from Core
+    }
+
+    if (cycle_id) {
+        payload.billing_cycle_id = cycle_id
     }
 
     const { data: newInvoice, error } = await supabase
@@ -189,6 +193,18 @@ export async function createInvoice(data: Partial<Invoice> & { items: InvoiceIte
             error: error.message,
             data: null
         }
+    }
+
+    if (cycle_id && newInvoice) {
+        // CRITICAL: Mark cycle as invoiced to prevent automation from duplicating it
+        await supabase
+            .from('billing_cycles')
+            .update({
+                status: 'invoiced',
+                invoice_id: newInvoice.id,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', cycle_id)
     }
 
     revalidatePath('/invoices')

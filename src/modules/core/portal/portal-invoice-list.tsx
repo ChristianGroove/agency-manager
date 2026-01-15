@@ -22,6 +22,9 @@ export function PortalInvoiceList({ invoices, settings = {}, selectedInvoices = 
     const paymentsEnabled = settings?.enable_portal_payments !== false && settings?.portal_modules?.payments !== false
     const pendingInvoices = invoices.filter(i => i.status !== 'paid')
 
+    // Filter out paid invoices for display as per requirement
+    const displayInvoices = invoices.filter(i => i.status !== 'paid')
+
     const getInvoiceStatus = (invoice: Invoice) => {
         if (invoice.status === 'paid') return 'paid'
         if (invoice.due_date && new Date(invoice.due_date) < new Date()) return 'overdue'
@@ -62,7 +65,7 @@ export function PortalInvoiceList({ invoices, settings = {}, selectedInvoices = 
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
-                                {invoices.map((invoice, index) => {
+                                {displayInvoices.map((invoice, index) => {
                                     const status = getInvoiceStatus(invoice)
                                     return (
                                         <tr
@@ -110,7 +113,7 @@ export function PortalInvoiceList({ invoices, settings = {}, selectedInvoices = 
 
                     {/* Mobile List */}
                     <div className="md:hidden divide-y divide-gray-100">
-                        {invoices.map((invoice, index) => {
+                        {displayInvoices.map((invoice, index) => {
                             const status = getInvoiceStatus(invoice)
                             return (
                                 <div

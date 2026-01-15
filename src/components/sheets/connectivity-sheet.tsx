@@ -267,11 +267,12 @@ export function ConnectivitySheet({ client, services, trigger, open: controlledO
                         </div>
 
                         {/* Right: Preview Panel (Hidden on small, visible lg) */}
-                        <div className="hidden lg:flex w-5/12 bg-gray-100 relative items-center justify-center p-8 bg-grid-gray-200/50 [mask-image:linear-gradient(to_bottom,transparent,black,transparent)]">
+                        <div className="hidden lg:flex w-5/12 bg-gray-100 relative items-center justify-center p-8 bg-grid-gray-200/50">
                             <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-purple-500/5" />
                             <div className="relative z-10 scale-[0.85] origin-center shadow-2xl rounded-[2.5rem]">
                                 <MobilePreview className="h-[600px] w-[300px] border-gray-800 ring-4 ring-black/10">
-                                    <div className="pt-2 px-2">
+                                    {/* Scaling Wrapper: Simulates Samsung S25 Ultra / Large Android (412px width) scaled down to fit 300px container */}
+                                    <div className="w-[412px] h-[915px] origin-top-left scale-[0.728] bg-white pt-2 px-2">
                                         <InsightsTab
                                             client={client}
                                             services={services}

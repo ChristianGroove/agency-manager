@@ -84,16 +84,40 @@
   .animate-pulse-glow {
     animation: pulse-glow 2s ease-in-out infinite;
   }
+
+  /* Hide scrollbar utility */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 }
 
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @keyframes pulse-glow {
-  0%, 100% { opacity: 0.5; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.1); }
+
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
 }
 
 @keyframes sidebar-float-up {
@@ -242,13 +266,50 @@
     @apply bg-background text-foreground;
   }
 
+  /* Apply Modern Scrollbar to Global Navigation (body) */
+  html {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(203 213 225) transparent;
+  }
+
+  html.dark {
+    scrollbar-color: rgb(63 63 70) transparent;
+  }
+
+  body::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  body::-webkit-scrollbar-track {
+    background: transparent;
+    border-radius: 10px;
+  }
+
+  body::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, rgb(148 163 184), rgb(203 213 225));
+    border-radius: 10px;
+  }
+
+  body::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(135deg, rgb(100 116 139), rgb(148 163 184));
+  }
+
+  .dark body::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, rgb(63 63 70), rgb(82 82 91));
+  }
+
+  .dark body::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(135deg, rgb(82 82 91), rgb(113 113 122));
+  }
+
   .dark body {
     background: radial-gradient(circle at 50% 0%, #1a0b1e 0%, #000000 60%);
     background-attachment: fixed;
   }
 }
 
-/* Modern Scrollbar Styles for Pipeline */
+/* Modern Scrollbar Styles for Pipeline & Global Use */
 .scrollbar-modern {
   scrollbar-width: thin;
   scrollbar-color: rgb(203 213 225) transparent;

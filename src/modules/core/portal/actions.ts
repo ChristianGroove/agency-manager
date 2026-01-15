@@ -59,7 +59,8 @@ export async function getPortalData(token: string) {
                 { data: briefings },
                 { data: events },
                 { data: services },
-                { data: hostingAccounts }
+                { data: hostingAccounts },
+                { data: paymentMethods }
             ] = await Promise.all([
                 // Invoices: Filter out cancelled and deleted
                 supabaseAdmin.from('invoices').select('*').eq('client_id', client.id).is('deleted_at', null).neq('status', 'cancelled').order('created_at', { ascending: false }),
@@ -72,7 +73,9 @@ export async function getPortalData(token: string) {
                 // Services: Add deleted_at filter
                 supabaseAdmin.from('services').select('*').eq('client_id', client.id).eq('status', 'active').is('deleted_at', null).order('created_at', { ascending: false }),
                 // Hosting: Fetch active accounts
-                supabaseAdmin.from('hosting_accounts').select('*').eq('client_id', client.id).eq('status', 'active').order('created_at', { ascending: false })
+                supabaseAdmin.from('hosting_accounts').select('*').eq('client_id', client.id).eq('status', 'active').order('created_at', { ascending: false }),
+                // Payment Methods: Active only (for manual transfers etc)
+                supabaseAdmin.from('organization_payment_methods').select('*').eq('organization_id', client.organization_id).eq('is_active', true).order('display_order', { ascending: true })
             ])
 
             // ---------------------------------------------------------
@@ -162,7 +165,7 @@ export async function getPortalData(token: string) {
                 computedModules.push({ slug: 'core_summary', portal_tab_label: 'Resumen', portal_icon_key: 'Layout' })
             }
             if (showBilling) {
-                computedModules.push({ slug: 'core_billing', portal_tab_label: 'Facturación', portal_icon_key: 'CreditCard' })
+                computedModules.push({ slug: 'module_invoicing', portal_tab_label: 'Facturación', portal_icon_key: 'CreditCard' })
             }
             if (showServices) {
                 computedModules.push({ slug: 'core_services', portal_tab_label: 'Servicios', portal_icon_key: 'Briefcase' })
@@ -171,7 +174,10 @@ export async function getPortalData(token: string) {
                 computedModules.push({ slug: 'core_hosting', portal_tab_label: 'Hosting', portal_icon_key: 'Server' })
             }
             if (resolveModuleVisibility('catalog', () => true)) {
-                computedModules.push({ slug: 'core_catalog', portal_tab_label: 'Explorar', portal_icon_key: 'Globe' })
+                computedModules.push({ slug: 'module_catalog', portal_tab_label: 'Explorar', portal_icon_key: 'Globe' })
+            }
+            if (showInsights) {
+                computedModules.push({ slug: 'meta_insights', portal_tab_label: 'Insights', portal_icon_key: 'BarChart' })
             }
 
             return {
@@ -185,7 +191,7 @@ export async function getPortalData(token: string) {
                 services: filteredServices as Service[],
                 hostingAccounts: (hostingAccounts || []) as any[],
                 activePortalModules: computedModules,
-                paymentMethods: [],
+                paymentMethods: (paymentMethods || []),
                 insightsAccess: {
                     show: showInsights,
                     mode: { organic: true, ads: true }

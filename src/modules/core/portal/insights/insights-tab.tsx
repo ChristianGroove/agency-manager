@@ -161,15 +161,16 @@ export function InsightsTab({ client, services, token, insightsAccess }: Insight
 
 
 
+
 const MetricCard = ({ icon: Icon, label, value, color }: any) => {
     // Basic implementation based on usage
     return (
-        <div className="bg-white p-6 rounded-xl border border-brand-gray-200 shadow-sm flex flex-col items-center justify-center text-center hover:border-brand-primary/50 transition-colors">
-            <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-3 bg-${color}-50 text-${color}-500`}>
-                <Icon className="w-6 h-6" />
+        <div className="bg-white p-3 md:p-6 rounded-xl border border-brand-gray-200 shadow-sm flex flex-col items-center justify-center text-center hover:border-brand-primary/50 transition-colors">
+            <div className={`w-8 h-8 md:w-12 md:h-12 rounded-full flex items-center justify-center mb-2 md:mb-3 bg-${color}-50 text-${color}-500`}>
+                <Icon className="w-4 h-4 md:w-6 md:h-6" />
             </div>
-            <p className="text-xs font-semibold text-brand-gray-500 uppercase tracking-wider mb-1">{label}</p>
-            <h3 className="text-2xl font-bold text-brand-gray-900">
+            <p className="text-[10px] md:text-xs font-semibold text-brand-gray-500 uppercase tracking-wider mb-1">{label}</p>
+            <h3 className="text-sm md:text-2xl font-bold text-brand-gray-900 truncate max-w-full">
                 {typeof value === 'number' ? value.toLocaleString() : value}
             </h3>
         </div>

@@ -34,14 +34,53 @@ export function ServiceDetailModal({ isOpen, onOpenChange, service }: ServiceDet
 
     const fetchCycles = async (serviceId: string) => {
         setLoadingCycles(true)
-        const { data, error } = await supabase
-            .from('billing_cycles')
-            .select('*, invoice:invoices(id, number, is_late_issued, status, due_date)')
-            .eq('service_id', serviceId)
-            .order('start_date', { ascending: false })
+        try {
+            // 1. Fetch Cycles (without join to avoid ambiguity)
+            const { data: cyclesData, error: cyclesError } = await supabase
+                .from('billing_cycles')
+                .select('*')
+                .eq('service_id', serviceId)
+                .order('start_date', { ascending: false })
 
-        if (data) setCycles(data)
-        setLoadingCycles(false)
+            if (cyclesError) throw cyclesError
+            if (!cyclesData) {
+                setCycles([])
+                return
+            }
+
+            // 2. Fetch Invoices manually
+            const invoiceIds = cyclesData
+                .map(c => c.invoice_id)
+                .filter(id => id !== null && id !== undefined)
+
+            let invoicesMap: Record<string, any> = {}
+
+            if (invoiceIds.length > 0) {
+                const { data: invoicesData } = await supabase
+                    .from('invoices')
+                    .select('id, number, is_late_issued, status, due_date')
+                    .in('id', invoiceIds)
+
+                if (invoicesData) {
+                    invoicesData.forEach(inv => {
+                        invoicesMap[inv.id] = inv
+                    })
+                }
+            }
+
+            // 3. Merge
+            const mergedCycles = cyclesData.map(c => ({
+                ...c,
+                invoice: c.invoice_id ? invoicesMap[c.invoice_id] : null
+            }))
+
+            setCycles(mergedCycles)
+
+        } catch (error) {
+            console.error("Error fetching cycles:", error)
+        } finally {
+            setLoadingCycles(false)
+        }
     }
 
     if (!service) return null
@@ -234,6 +273,7 @@ export function ServiceDetailModal({ isOpen, onOpenChange, service }: ServiceDet
                                                                         defaultDescription={`${service.name} (${format(new Date(cycle.start_date), "dd/MM")}-${format(new Date(cycle.end_date), "dd/MM")})`}
                                                                         serviceId={service.id}
                                                                         cycleId={cycle.id}
+                                                                        emitterId={service.emitter_id}
                                                                         onSuccess={() => fetchCycles(service.id)}
                                                                         trigger={
                                                                             <Button size="sm" variant="outline" className="h-7 text-xs border-indigo-200 text-indigo-700 hover:bg-indigo-50">

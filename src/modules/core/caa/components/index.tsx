@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { usePathname } from "next/navigation"
 import { FloatingAssistant } from "./floating-assistant"
 import { AssistantModal } from "./assistant-modal"
 
@@ -19,6 +20,13 @@ export function ContextualActionAssistant() {
         document.addEventListener("keydown", down)
         return () => document.removeEventListener("keydown", down)
     }, [])
+
+    // Check for public routes
+    const pathname = usePathname()
+    // Hide on: Client Portal (/portal) or Shared Links (/share)
+    const isPublicRoute = pathname?.startsWith('/portal') || pathname?.startsWith('/share')
+
+    if (isPublicRoute) return null
 
     return (
         <>

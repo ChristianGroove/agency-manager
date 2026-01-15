@@ -57,6 +57,7 @@ interface CreateInvoiceSheetProps {
     // Linking Props
     serviceId?: string
     cycleId?: string
+    emitterId?: string
     initialAmount?: number
     defaultDescription?: string
 }
@@ -73,6 +74,7 @@ export function CreateInvoiceSheet({
     invoiceToEdit,
     serviceId,
     cycleId,
+    emitterId,
     initialAmount,
     defaultDescription
 }: CreateInvoiceSheetProps) {
@@ -188,6 +190,10 @@ export function CreateInvoiceSheet({
                 // Auto-select logic
                 if (activeEmitters.length === 1 && !selectedEmitterId && !invoiceToEdit) {
                     setSelectedEmitterId(activeEmitters[0].id)
+                }
+                // Pre-fill from prop
+                if (emitterId && !selectedEmitterId && !invoiceToEdit) {
+                    setSelectedEmitterId(emitterId)
                 }
             }
 

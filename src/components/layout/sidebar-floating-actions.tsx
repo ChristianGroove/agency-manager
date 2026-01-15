@@ -69,20 +69,6 @@ export function SidebarFloatingActions({ isSuperAdmin, user, currentOrgId }: Sid
                         text="Admin"
                         color="#64748b"
                     />
-
-                    <ActionButton
-                        href="/platform/admin/modules"
-                        icon={Package}
-                        text="Módulos"
-                        color="#64748b"
-                    />
-
-                    <ActionButton
-                        href="/platform/admin/branding"
-                        icon={Shield}
-                        text="Branding"
-                        color="#64748b"
-                    />
                 </>
             )}
         </div>

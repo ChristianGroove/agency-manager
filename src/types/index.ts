@@ -145,6 +145,7 @@ export type Invoice = {
     is_late_issued?: boolean
     metadata?: any
     cycle_id?: string
+    billing_cycles?: BillingCycle
     organization_id: string
     payment_status?: 'PAID' | 'PARTIALLY_PAID' | 'UNPAID' | 'OVERDUE' | string
 }

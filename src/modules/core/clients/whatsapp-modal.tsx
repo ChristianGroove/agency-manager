@@ -64,7 +64,7 @@ export function WhatsAppActionsModal({ isOpen, onOpenChange, client, settings }:
     }
 
     // Filter content
-    const pendingInvoices = client.invoices?.filter(i => i.status !== 'paid') || []
+    const pendingInvoices = client.invoices?.filter(i => ['pending', 'overdue'].includes(i.status)) || []
     // @ts-ignore
     const quotes = client.quotes || []
 

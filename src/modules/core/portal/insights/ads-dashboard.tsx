@@ -88,7 +88,7 @@ export function AdsDashboard({ data, datePreset, onDatePresetChange, loading }: 
             )}
 
             {/* KPI Grid */}
-            <div className={cn("grid grid-cols-2 md:grid-cols-4 gap-4 transition-opacity duration-300", loading ? "opacity-50" : "opacity-100")}>
+            <div className={cn("grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4 transition-opacity duration-300", loading ? "opacity-50" : "opacity-100")}>
                 <KPICard
                     title="Inversión"
                     value={formatCurrency(safeData.spend)}
@@ -121,7 +121,7 @@ export function AdsDashboard({ data, datePreset, onDatePresetChange, loading }: 
             </div>
 
             {/* Secondary Metrics */}
-            <div className={cn("grid grid-cols-2 gap-4 transition-opacity", loading ? "opacity-50" : "opacity-100")}>
+            <div className={cn("grid grid-cols-2 gap-2 md:gap-4 transition-opacity", loading ? "opacity-50" : "opacity-100")}>
                 <Card>
                     <CardContent className="pt-6">
                         <div className="flex justify-between items-center">
@@ -327,13 +327,13 @@ function FilterButton({ active, onClick, label }: { active: boolean, onClick: ()
 function KPICard({ title, value, icon: Icon, color, bg, info }: any) {
     return (
         <Card>
-            <CardContent className="p-4 flex flex-col items-center text-center gap-2 relative group">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${bg} ${color} mb-1`}>
-                    <Icon className="w-5 h-5" />
+            <CardContent className="p-3 md:p-4 flex flex-col items-center text-center gap-2 relative group">
+                <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center ${bg} ${color} mb-1`}>
+                    <Icon className="w-4 h-4 md:w-5 md:h-5" />
                 </div>
                 <div>
-                    <span className="text-xs text-gray-500 font-medium uppercase tracking-wide">{title}</span>
-                    <p className="text-xl md:text-2xl font-bold text-gray-900 mt-0.5">{value}</p>
+                    <span className="text-[10px] md:text-xs text-gray-500 font-medium uppercase tracking-wide">{title}</span>
+                    <p className="text-base md:text-2xl font-bold text-gray-900 mt-0.5 truncate max-w-full">{value}</p>
                 </div>
                 {info && (
                     <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">

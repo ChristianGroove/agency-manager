@@ -802,7 +802,7 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
                     <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
                         {selectedClientForInvoices?.invoices && selectedClientForInvoices.invoices.length > 0 ? (
                             selectedClientForInvoices.invoices
-                                .filter(inv => !inv.deleted_at)
+                                .filter(inv => !inv.deleted_at && (inv.status === 'pending' || inv.status === 'overdue'))
                                 .sort((a, b) => new Date(b.due_date || '').getTime() - new Date(a.due_date || '').getTime())
                                 .map(invoice => (
                                     <div key={invoice.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
@@ -815,6 +815,11 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
                                             </div>
                                             <p className="text-xs text-gray-500 mt-1">
                                                 Vence: {invoice.due_date ? new Date(invoice.due_date).toLocaleDateString() : 'Sin fecha'}
+                                                {invoice.billing_cycles && (
+                                                    <span className="block text-[10px] text-indigo-500 mt-0.5 font-medium">
+                                                        Periodo: {new Date(invoice.billing_cycles.start_date).toLocaleDateString()} - {new Date(invoice.billing_cycles.end_date).toLocaleDateString()}
+                                                    </span>
+                                                )}
                                             </p>
                                         </div>
 
