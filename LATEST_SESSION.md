@@ -52,6 +52,12 @@ El objetivo fue alejarse de los modelos técnicos (n8n/Zapier) y adoptar una met
 20. **`execution-history-list.tsx`**: Componente de logs narrativos (Fase 6).
 21. **`email-provider.ts`**: Integración Real/Simulada para envíos (Fase 8).
 
+### UI Polish & Fixes (Production Ready)
+22. **`AUDIT_AND_MANUAL.md`**: Informe de auditoría y guía de uso.
+23. **`module-config.ts`**: Añadido enlace "Pixy Flows" al Sidebar.
+24. **`flows-gallery.tsx`**: Fix Runtime Error ("use client") + Interacción Real.
+25. **`wizard-modal.tsx`**: Fix hook compatibility + Conexión a Galería.
+
 ---
 
 ## ✨ CARACTERÍSTICAS IMPLEMENTADAS

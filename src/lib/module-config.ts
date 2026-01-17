@@ -118,6 +118,15 @@ export const MODULE_ROUTES: ModuleRoute[] = [
     // --- OPERACIONES / PROYECTOS ---
 
     {
+        key: 'pixy_flows',
+        label: 'Pixy Flows',
+        href: '/flows',
+        icon: BrainCircuit, // Usando BrainCircuit para denotar "Cerebro/IA"
+        category: 'operations',
+        isCore: true
+    },
+
+    {
         key: 'module_quotes',
         label: 'Cotizaciones',
         href: '/quotes',

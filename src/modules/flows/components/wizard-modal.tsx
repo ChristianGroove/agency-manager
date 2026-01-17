@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog'; // Assuming generic UI components
 import { useSpacePolicies } from '../hooks/use-space-policies';
