@@ -42,10 +42,15 @@ El objetivo fue alejarse de los modelos técnicos (n8n/Zapier) y adoptar una met
 
 ### Execution Phase (Roadmap Implementation)
 14. **`src/db/seed_flows.sql`**: Insert statements para los 5 Templates Maestros.
-15. **`flow-engine.ts`**: Updated with `restoreRoutineVersion` (Rollback Logic).
-16. **`wizard-modal.tsx`**: Updated to support ALL 5 templates (Budget, Reactivation, Onboarding).
-17. **`rail-container.tsx`**: Refactored to accept `props.steps` instead of mocks.
-18. **`flow-verification.test.ts`**: Added Test Case for Rollback (AC 2.4).
+15. **`flow-engine.ts`**: Updated with `restoreRoutineVersion` (Rollback) & `processTrigger` (Runtime).
+16. **`wizard-modal.tsx`**: Updated to support ALL 5 templates.
+17. **`rail-container.tsx`**: Refactored to dynamic + Added `ExecutionHistoryList` + Control Buttons.
+18. **`flow-verification.test.ts`**: Added Test Case for Rollback.
+19. **`integration-onboarding.test.ts`**: Added E2E Test (Trigger -> Engine -> Real Email Provider).
+
+### "Pixy Starts Working Alone" (Trust & Reality)
+20. **`execution-history-list.tsx`**: Componente de logs narrativos (Fase 6).
+21. **`email-provider.ts`**: Integración Real/Simulada para envíos (Fase 8).
 
 ---
 

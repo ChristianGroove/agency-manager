@@ -1,4 +1,5 @@
 import { ExecutionIntent, ExecutionResult } from '../types';
+import { EmailProvider } from './providers/email-provider';
 
 /**
  * FLOW WORKER (The Hands)
@@ -43,17 +44,20 @@ export class FlowWorker {
     // --- SPECIFIC HANDLERS (Simulated for Happy Path) ---
 
     private static async handleSendEmail(context: any, config: any, subject: string): Promise<ExecutionResult> {
-        // SIMULATION: In real life, convert to Resend/SendGrid call
         const clientEmail = context.triggerPayload.clientEmail || 'demo@example.com';
 
-        // Pretend async work
-        await new Promise(r => setTimeout(r, 100));
+        // Phase 8: REALITY CHECK
+        const { id, provider } = await EmailProvider.sendEmail(
+            clientEmail,
+            subject,
+            `<p>Hola ${context.triggerPayload.clientName || 'Cliente'},</p><p>Bienvenido a bordo.</p>`
+        );
 
         return {
             success: true,
             status: 'completed',
-            narrativeLog: `Enviado email "${subject}" a ${clientEmail} (vía ${config.channel || 'email'})`,
-            outputData: { messageId: 'msg_123' },
+            narrativeLog: `Enviado email "${subject}" a ${clientEmail} (vía ${provider})`,
+            outputData: { messageId: id },
             shouldCreateNextIntent: true
         };
     }

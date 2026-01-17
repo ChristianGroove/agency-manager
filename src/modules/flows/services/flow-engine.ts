@@ -83,6 +83,15 @@ export class FlowEngine {
         };
     }
 
+    // 6. LIFE CONTROLS (Phase 7)
+    // Enforces that dead employees don't work.
+    static async updateStatus(routineId: string, status: 'active' | 'paused' | 'archived') {
+        console.log(`[Engine] Setting routine ${routineId} to ${status}`);
+        // MOCK DB UPDATE
+        // db.update(routines).set({ status }).where(eq(routines.id, routineId))
+        return { success: true, newStatus: status };
+    }
+
     // 4. RUNTIME: Processing Triggers (The "Wake Up" Call)
     static async processTrigger(
         triggerKey: string,
@@ -99,6 +108,7 @@ export class FlowEngine {
         const mockMatchingRoutine: any = {
             id: 'routine_onboarding_1',
             spaceId,
+            status: 'active', // <--- CHECK THIS IN DB
             definition: {
                 steps: [
                     { id: 's1', type: 'trigger', key: 'new_client_signed', label: 'Start' },
@@ -107,6 +117,12 @@ export class FlowEngine {
                 ]
             }
         };
+
+        // PHASE 7 CHECK: Life or Death
+        if (mockMatchingRoutine.status !== 'active') {
+            console.warn(`[Engine] Routine ${mockMatchingRoutine.id} is ${mockMatchingRoutine.status}. Ignoring trigger.`);
+            return [];
+        }
 
         if (triggerKey !== 'new_client_signed') return [];
 
@@ -135,5 +151,25 @@ export class FlowEngine {
         // For this demo, let's just return the first result.
 
         return [result];
+    }
+
+    // 5. OBSERVABILITY: The "Logbook" (Phase 6)
+    static async getRecentExecutions(routineId: string): Promise<ExecutionResult[]> {
+        // MOCK: In real DB -> Select * from flow_executions where routine_id = routineId order by started_at desc limit 10
+
+        return [
+            {
+                success: true,
+                status: 'completed',
+                narrativeLog: 'Ejecutado exitosamente: Enviado email "Welcome Kit" a cliente@demo.com',
+                shouldCreateNextIntent: false
+            },
+            {
+                success: true,
+                status: 'completed',
+                narrativeLog: 'Ejecutado exitosamente: Carpeta "Clientes/Demo" creada en Drive',
+                shouldCreateNextIntent: false
+            }
+        ];
     }
 }

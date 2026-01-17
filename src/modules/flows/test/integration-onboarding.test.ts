@@ -27,6 +27,7 @@ describe('Pixy Flows MVP - Integration Verification (Happy Path)', () => {
 
         // Check Narrative (The "Virtual Employee" speaking)
         expect(emailResult.narrativeLog).toContain('Enviado email "Welcome Kit" a contact@acmecorp.com');
+        expect(emailResult.narrativeLog).toContain('(vía pixy-smtp-simulator)'); // Phase 8 check
 
         // Check Output connection
         expect(emailResult.outputData).toBeDefined();
