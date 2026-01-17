@@ -3,8 +3,9 @@
 import { Channel } from "../types"
 import { ChannelCard } from "./channel-card"
 import { Button } from "@/components/ui/button"
-import { Plus, MessageCircle, Store } from "lucide-react"
+import { Plus, MessageCircle, Store, Facebook } from "lucide-react"
 import { useState } from "react"
+import { supabase } from "@/lib/supabase"
 import { ConnectWhatsAppSheet } from "./connect-whatsapp-sheet"
 import { useRouter } from "next/navigation"
 
@@ -22,6 +23,19 @@ export function ChannelsList({ channels, pipelineStages, agents }: ChannelsListP
         router.refresh()
     }
 
+    const handleMetaLogin = async () => {
+        const { error } = await supabase.auth.signInWithOAuth({
+            provider: 'facebook',
+            options: {
+                redirectTo: `${window.location.origin}/auth/callback`,
+                scopes: 'email'
+            }
+        })
+        if (error) {
+            console.error("Meta login error:", error)
+        }
+    }
+
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -37,6 +51,9 @@ export function ChannelsList({ channels, pipelineStages, agents }: ChannelsListP
                     </Button>
                     <Button onClick={() => setIsWhatsAppOpen(true)} className="bg-[#25D366] hover:bg-[#128C7E] text-white">
                         <MessageCircle className="mr-2 h-4 w-4" /> Conectar WhatsApp
+                    </Button>
+                    <Button onClick={handleMetaLogin} className="bg-[#1877F2] hover:bg-[#166FE5] text-white">
+                        <Facebook className="mr-2 h-4 w-4" /> Conectar Meta
                     </Button>
                 </div>
             </div>
