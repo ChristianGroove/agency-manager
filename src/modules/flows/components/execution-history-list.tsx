@@ -1,5 +1,5 @@
 import React from 'react';
-import { ExecutionResult } from '../../types';
+import { ExecutionResult } from '../types';
 
 interface ExecutionHistoryListProps {
     executions: ExecutionResult[];
