@@ -1,4 +1,5 @@
-import { FlowRoutine, FlowTemplate, RoutineDefinition } from '../types';
+import { FlowRoutine, FlowTemplate, RoutineDefinition, ExecutionIntent, FlowStep, ExecutionResult } from '../types';
+import { FlowWorker } from './flow-worker';
 
 /**
  * FLOW ENGINE (The Brain)
@@ -80,5 +81,59 @@ export class FlowEngine {
             currentVersion: targetVersion + 1, // Moving forward by looking back
             // configuration: snapshot.config ...
         };
+    }
+
+    // 4. RUNTIME: Processing Triggers (The "Wake Up" Call)
+    static async processTrigger(
+        triggerKey: string,
+        payload: any,
+        spaceId: string
+    ): Promise<ExecutionResult[]> {
+        console.log(`[Engine] Processing trigger "${triggerKey}" for Space ${spaceId}`);
+
+        // 1. FIND ROUTINES (Mock DB Lookup)
+        // In real life: Select * from flow_routines where space_id = spaceId AND status = 'active'
+        // AND template definition includes a first step with key == triggerKey
+
+        // MOCK: matching a routine for 'new_client_signed'
+        const mockMatchingRoutine: any = {
+            id: 'routine_onboarding_1',
+            spaceId,
+            definition: {
+                steps: [
+                    { id: 's1', type: 'trigger', key: 'new_client_signed', label: 'Start' },
+                    { id: 's2', type: 'action', key: 'send_welcome_kit', label: 'Email', config: { channel: 'email' } },
+                    { id: 's3', type: 'action', key: 'create_drive_folder', label: 'Drive', config: {} }
+                ]
+            }
+        };
+
+        if (triggerKey !== 'new_client_signed') return [];
+
+        // 2. CREATE EXECUTION INTENT (For the FIRST action after the trigger)
+        // We skip the trigger step itself (it just happened) and look for Step 2
+        const firstActionStep = mockMatchingRoutine.definition.steps[1];
+
+        const intent: ExecutionIntent = {
+            routineId: mockMatchingRoutine.id,
+            executionId: `exec_${Date.now()}`,
+            stepToExecute: firstActionStep,
+            context: {
+                routineId: mockMatchingRoutine.id,
+                spaceId,
+                organizationId: 'org_1',
+                triggerPayload: payload,
+                memory: {}
+            }
+        };
+
+        // 3. DELEGATE TO WORKER
+        const result = await FlowWorker.execute(intent);
+
+        // 4. CHAINING (Simplified for MVP Happy Path)
+        // If successful, we would technically find the NEXT step (s3) and execute it too.
+        // For this demo, let's just return the first result.
+
+        return [result];
     }
 }
