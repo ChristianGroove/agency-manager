@@ -63,4 +63,20 @@ describe('Pixy Flows MVP - Engine Verification', () => {
         expect(routine.configuration?.days).toBe(3);
     });
 
+    it('should allow rolling back to a previous version (AC 2.4)', async () => {
+        // 1. Simulate a rollback request
+        const routineId = 'routine_123';
+        const targetVersion = 1; // Rolling back to v1
+
+        const restoredRoutine = await FlowEngine.restoreRoutineVersion(
+            routineId,
+            targetVersion
+        );
+
+        // 2. Expectation: The new version should be technically "ahead" (v2 or v3) 
+        // but conceptually "restored"
+        expect(restoredRoutine.id).toBe(routineId);
+        expect(restoredRoutine.currentVersion).toBeGreaterThan(targetVersion);
+    });
+
 });

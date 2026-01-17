@@ -50,6 +50,31 @@ export function WizardModal({ isOpen, onClose, templateId, onDeploy }: WizardMod
                         .
                     </div>
                 );
+            case 'budget_followup':
+                return (
+                    <div className="text-2xl leading-relaxed font-light text-gray-200">
+                        Si no hay respuesta al <span className="text-blue-400 font-medium">Presupuesto</span> después de
+                        <input type="number" defaultValue={48} className="mx-2 w-16 bg-gray-800 border-b-2 border-blue-500 text-center focus:outline-none" />
+                        horas, enviar un email de <span className="text-purple-400 font-medium">Seguimiento</span>.
+                    </div>
+                );
+            case 'client_reactivation':
+                return (
+                    <div className="text-2xl leading-relaxed font-light text-gray-200">
+                        Si el <span className="text-blue-400 font-medium">{policy.vocabulary.client}</span> lleva inactivo
+                        <input type="number" defaultValue={60} className="mx-2 w-16 bg-gray-800 border-b-2 border-amber-500 text-center focus:outline-none" />
+                        días, enviar un cupón del
+                        <input type="number" defaultValue={15} className="mx-2 w-16 bg-gray-800 border-b-2 border-green-500 text-center focus:outline-none" />
+                        % para reactivarlo.
+                    </div>
+                );
+            case 'client_onboarding':
+                return (
+                    <div className="text-2xl leading-relaxed font-light text-gray-200">
+                        Al cerrar un nuevo contrato, enviar <span className="text-pink-400 font-medium">Bienvenida</span> por Email, crear carpeta en
+                        <span className="text-green-400 font-medium mx-2">Google Drive</span> y avisar en Slack.
+                    </div>
+                );
             case 'review_request': // Example of vocabulary injection
                 return (
                     <div className="text-2xl leading-relaxed font-light text-gray-200">

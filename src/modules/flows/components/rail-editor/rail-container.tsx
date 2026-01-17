@@ -3,15 +3,11 @@ import { StepCard } from './step-card';
 import { StepConfigPanel } from './step-config-panel';
 import { FlowStep } from '../../types';
 
-// MOCK STEPS for Visualization
-const MOCK_STEPS: FlowStep[] = [
-    { id: '1', position: 1, type: 'trigger', key: 'invoice_overdue', label: 'Cuando la factura vence', config: {} },
-    { id: '2', position: 2, type: 'wait', key: 'wait_3_days', label: 'Esperar 3 días', config: { days: 3 } },
-    { id: '3', position: 3, type: 'rule', key: 'check_amount', label: '¿Monto > $50?', config: { amount: 50 } },
-    { id: '4', position: 4, type: 'action', key: 'send_whatsapp', label: 'Enviar WhatsApp Amable', config: { template: 'soft' } },
-];
+interface RailContainerProps {
+    steps: FlowStep[];
+}
 
-export function RailContainer() {
+export function RailContainer({ steps }: RailContainerProps) {
     const [selectedStep, setSelectedStep] = useState<FlowStep | null>(null);
 
     return (
@@ -31,7 +27,7 @@ export function RailContainer() {
                     </div>
 
                     {/* STEPS */}
-                    {MOCK_STEPS.map((step) => (
+                    {steps.map((step) => (
                         <StepCard
                             key={step.id}
                             step={step}

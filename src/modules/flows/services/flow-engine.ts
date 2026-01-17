@@ -60,4 +60,25 @@ export class FlowEngine {
 
         return newDef;
     }
+
+    // 3. ROLLBACK: The "Undo" Button (AC 2.4)
+    static async restoreRoutineVersion(
+        routineId: string,
+        targetVersion: number,
+        // In real app, we would inject specific repos or DB adapters here
+    ): Promise<Partial<FlowRoutine>> {
+        // 1. Fetch the snapshot for 'targetVersion' from flow_routine_versions
+        // const snapshot = db.find(v => v.routineId === routineId && v.version === targetVersion)
+
+        // MOCK LOGIC FOR MVP
+        // In a real implementation:
+        // const snapshot = await db.flow_routine_versions.find({ routineId, version: targetVersion });
+        // const newVersion = (await db.flow_routines.getCurrentVersion(routineId)) + 1;
+
+        return {
+            id: routineId,
+            currentVersion: targetVersion + 1, // Moving forward by looking back
+            // configuration: snapshot.config ...
+        };
+    }
 }

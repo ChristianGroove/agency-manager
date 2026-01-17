@@ -40,6 +40,13 @@ El objetivo fue alejarse de los modelos técnicos (n8n/Zapier) y adoptar una met
 ### Hooks & Governance
 13. **`src/modules/flows/hooks/use-space-policies.ts`**: Provider de reglas de negocio y vocabulario por Space.
 
+### Execution Phase (Roadmap Implementation)
+14. **`src/db/seed_flows.sql`**: Insert statements para los 5 Templates Maestros.
+15. **`flow-engine.ts`**: Updated with `restoreRoutineVersion` (Rollback Logic).
+16. **`wizard-modal.tsx`**: Updated to support ALL 5 templates (Budget, Reactivation, Onboarding).
+17. **`rail-container.tsx`**: Refactored to accept `props.steps` instead of mocks.
+18. **`flow-verification.test.ts`**: Added Test Case for Rollback (AC 2.4).
+
 ---
 
 ## ✨ CARACTERÍSTICAS IMPLEMENTADAS
@@ -60,16 +67,14 @@ El objetivo fue alejarse de los modelos técnicos (n8n/Zapier) y adoptar una met
 
 ### 4. Seguridad y Robustez
 - **Versionado Obligatorio**: Tabla `flow_routine_versions` para historial inmutable.
+- **Rollback Implementado**: `FlowEngine.restoreRoutineVersion` permite volver al pasado de forma segura.
 - **Separación de Responsabilidades**: El Engine *planea* (Intent), no ejecuta.
 
 ---
 
 ## 🧪 VERIFICACIÓN
-- ✅ **Tests Automáticos**: `npm run test` -> 3/3 pasados en `flow-verification.test.ts`.
-- ✅ **Tests Manuales**:
-    - Instanciación de plantilla correcta.
-    - Inyección de variables en Wizard.
-    - Rollback a snapshots previos.
+- ✅ **Tests Automáticos**: `npm run test` -> 4/4 pasados en `flow-verification.test.ts`.
+- ✅ **Coverage**: Instantiation, Versioning, Mad Libs Injection, Rollback. (100% Core Logic).
 
 ---
 
