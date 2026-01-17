@@ -19,22 +19,26 @@ El objetivo fue alejarse de los modelos técnicos (n8n/Zapier) y adoptar una met
 ### Base de Datos
 3. **`src/db/schema_flows.sql`**: Schema SQL con 5 tablas core (`templates`, `routines`, `versions`, `steps`, `executions`).
 
+### QA & Handover
+4. **`ACCEPTANCE_CRITERIA.md`**: Contrato estricto de entrega del MVP.
+5. **`IMPLEMENTATION_ROADMAP.md`**: Plan técnico secuencial (Fases 0-4).
+
 ### Backend Core
-4. **`src/modules/flows/types.ts`**: Definiciones TypeScript estrictas (Routine, Step, Intent).
-5. **`src/modules/flows/services/flow-engine.ts`**: Lógica de instanciación y versionado (sin ejecución lateral).
-6. **`src/modules/flows/test/flow-verification.test.ts`**: Suite de tests automatizados.
+6. **`src/modules/flows/types.ts`**: Definiciones TypeScript estrictas (Routine, Step, Intent).
+7. **`src/modules/flows/services/flow-engine.ts`**: Lógica de instanciación y versionado (sin ejecución lateral).
+8. **`src/modules/flows/test/flow-verification.test.ts`**: Suite de tests automatizados.
 
 ### Frontend Experience
-7. **`src/app/(dashboard)/flows/page.tsx`**: Entry point principal (Galería de Resultados).
-8. **`src/modules/flows/components/flows-gallery.tsx`**: Componente de selección de objetivos.
-9. **`src/modules/flows/components/wizard-modal.tsx`**: Configurador narrativo ("Mad Libs").
-10. **`src/modules/flows/components/rail-editor/`**:
+9. **`src/app/(dashboard)/flows/page.tsx`**: Entry point principal (Galería de Resultados).
+10. **`src/modules/flows/components/flows-gallery.tsx`**: Componente de selección de objetivos.
+11. **`src/modules/flows/components/wizard-modal.tsx`**: Configurador narrativo ("Mad Libs").
+12. **`src/modules/flows/components/rail-editor/`**:
     - `rail-container.tsx`: Visualización de timeline vertical.
     - `step-card.tsx`: Tarjetas visuales de pasos.
     - `step-config-panel.tsx`: Panel de edición seguro.
 
 ### Hooks & Governance
-11. **`src/modules/flows/hooks/use-space-policies.ts`**: Provider de reglas de negocio y vocabulario por Space.
+13. **`src/modules/flows/hooks/use-space-policies.ts`**: Provider de reglas de negocio y vocabulario por Space.
 
 ---
 
