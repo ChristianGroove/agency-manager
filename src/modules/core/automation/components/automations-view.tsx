@@ -436,22 +436,24 @@ export function AutomationsView({
                                         return (
                                             <div key={workflow.id} className="h-full">
                                                 <WorkflowCard
-                                                    id={workflow.id}
-                                                    name={workflow.name}
-                                                    description={workflow.description || ""}
-                                                    type="workflow"
-                                                    category="other"
-                                                    status={workflow.is_active ? 'active' : 'draft'}
-                                                    nodeCount={workflow.definition?.nodes?.length || 0}
-                                                    updatedAt={workflow.updated_at}
-                                                    channelId={channelId}
-                                                    isConflicted={conflictedWorkflowIds.has(workflow.id)}
-                                                    onToggle={(val) => handleToggle(workflow.id, val)}
+                                                    workflow={workflow}
+                                                    onToggle={handleToggle}
                                                     onChannelChange={(val) => handleChannelChange(workflow.id, val)}
-                                                    onDelete={async () => {
+                                                    onDelete={async (id) => {
                                                         if (confirm('¿Estás seguro de eliminar este workflow?')) {
                                                             const { deleteWorkflow } = await import('../actions');
-                                                            await deleteWorkflow(workflow.id);
+                                                            await deleteWorkflow(id);
+                                                            // Optional: trigger refresh
+                                                        }
+                                                    }}
+                                                    onEdit={(id) => {
+                                                        window.location.href = `/crm/automations/${id}`;
+                                                    }}
+                                                    onDuplicate={async (id) => {
+                                                        // Placeholder for duplicate, or implement if action exists
+                                                        if (confirm('¿Duplicar este workflow?')) {
+                                                            const { duplicateWorkflow } = await import('../actions');
+                                                            if (duplicateWorkflow) await duplicateWorkflow(id);
                                                         }
                                                     }}
                                                 />

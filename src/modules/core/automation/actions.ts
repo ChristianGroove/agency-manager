@@ -17,7 +17,7 @@ export async function saveWorkflow(id: string, name: string, description: string
         // This is crucial for the WebhookManager to find this workflow efficiently
         const triggerNode = definition.nodes.find((n: any) => n.type === 'trigger');
         let triggerType = 'webhook'; // Default
-        let triggerConfig: Record<string, unknown> = { channel: 'whatsapp' }; // Default
+        let triggerConfig: Record<string, unknown> = { channel: 'all' }; // Default
 
         if (triggerNode && triggerNode.data) {
             const rawType = (triggerNode.data.triggerType as string) || 'webhook';
@@ -25,8 +25,12 @@ export async function saveWorkflow(id: string, name: string, description: string
             const hasKeyword = keyword.trim() !== '';
 
             // Build trigger config - only include keyword if it has a value
+            const channels = (triggerNode.data.channels as string[]) ||
+                (triggerNode.data.channel ? [triggerNode.data.channel as string] : ['all']);
+
             triggerConfig = {
-                channel: (triggerNode.data.channel as string) || 'whatsapp',
+                channel: (triggerNode.data.channel as string) || 'all', // Legacy backward compat
+                channels: channels, // New Multi-channel support
                 ...(hasKeyword ? { keyword: keyword.trim() } : {}),
                 // Include other config options based on trigger type
                 ...(rawType === 'business_hours' || rawType === 'outside_hours' ? {
@@ -487,7 +491,7 @@ export async function toggleWorkflow(id: string, isActive: boolean) {
     }
 }
 
-export async function updateWorkflowChannel(id: string, channelId: string | null) {
+export async function updateWorkflowChannel(id: string, channelId: string | string[] | null) {
     try {
         const supabase = await createClient()
         const orgId = await getCurrentOrganizationId()
@@ -510,6 +514,12 @@ export async function updateWorkflowChannel(id: string, channelId: string | null
             ? workflow.trigger_config as Record<string, unknown>
             : {};
 
+        // Determine array vs string
+        const channels = Array.isArray(channelId) ? channelId : (channelId ? [channelId] : []);
+        // Legacy fallback: Use 'all' if empty, or the first element if exists.
+        // If string 'all' is passed, it remains 'all'.
+        const legacyChannel = channels.length > 0 ? channels[0] : 'all';
+
         // 2. Update Trigger Node in Definition
         if (definition && definition.nodes) {
             definition.nodes = definition.nodes.map((node: any) => {
@@ -518,7 +528,8 @@ export async function updateWorkflowChannel(id: string, channelId: string | null
                         ...node,
                         data: {
                             ...node.data,
-                            channel: channelId
+                            channel: legacyChannel, // Keep for display compatibility
+                            channels: channels      // New Multi-channel support
                         }
                     };
                 }
@@ -529,7 +540,8 @@ export async function updateWorkflowChannel(id: string, channelId: string | null
         // 3. Update Trigger Config
         triggerConfig = {
             ...triggerConfig,
-            channel: channelId || 'whatsapp' // Fallback
+            channel: legacyChannel,  // Legacy support
+            channels: channels       // New support
         };
 
         // 4. Save updates
@@ -549,6 +561,51 @@ export async function updateWorkflowChannel(id: string, channelId: string | null
 
     } catch (error) {
         console.error("Error updating workflow channel:", error)
+        return { success: false, error: error instanceof Error ? error.message : "Unknown error" }
+    }
+}
+
+export async function duplicateWorkflow(id: string) {
+    try {
+        const supabase = await createClient()
+        const orgId = await getCurrentOrganizationId()
+
+        if (!orgId) throw new Error("Unauthorized")
+
+        // 1. Get original workflow
+        const { data: original, error: fetchError } = await supabase
+            .from('workflows')
+            .select('*')
+            .eq('id', id)
+            .eq('organization_id', orgId)
+            .single()
+
+        if (fetchError || !original) throw new Error("Workflow not found")
+
+        // 2. Create copy
+        const newName = `${original.name} (Copy)`
+        const newId = crypto.randomUUID()
+
+        const { error: insertError } = await supabase
+            .from('workflows')
+            .insert({
+                id: newId,
+                organization_id: orgId,
+                name: newName,
+                description: original.description,
+                definition: original.definition,
+                trigger_type: original.trigger_type,
+                trigger_config: original.trigger_config,
+                is_active: false // Default to inactive
+            })
+
+        if (insertError) throw insertError
+
+        revalidatePath('/dashboard/automations')
+        return { success: true, newId: newId }
+
+    } catch (error) {
+        console.error("Error duplicating workflow:", error)
         return { success: false, error: error instanceof Error ? error.message : "Unknown error" }
     }
 }

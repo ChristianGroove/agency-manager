@@ -1,5 +1,4 @@
 import { supabaseAdmin } from "@/lib/supabase-admin"
-import { fileLogger } from "@/lib/file-logger"
 import { IncomingMessage } from "./providers/types"
 import { ChannelType } from "@/types/messaging"
 import { SupabaseClient } from "@supabase/supabase-js"
@@ -14,17 +13,17 @@ export class InboxService {
         // Use Admin Client to bypass RLS for Webhook insertions using Service Role
         const supabase = supabaseAdmin
 
-        fileLogger.log('[InboxService] Processing message from:', msg.from)
+        console.log('[InboxService] Processing message from:', msg.from)
 
         // 1. Find or Create Conversation
         const { data: conversation, error: convError, connectionId } = await this.upsertConversation(msg, supabase)
 
         if (convError || !conversation) {
-            fileLogger.log('[InboxService] FAILED to upsert conversation:', convError)
+            console.log('[InboxService] FAILED to upsert conversation:', convError)
             return null
         }
 
-        fileLogger.log(`[InboxService] Using conversation: ${conversation.id} `)
+        console.log(`[InboxService] Using conversation: ${conversation.id} `)
 
         // 2. Check for Duplicates (Idempotency)
         if (msg.externalId) {
@@ -35,7 +34,7 @@ export class InboxService {
                 .single()
 
             if (existingMsg) {
-                fileLogger.log(`[InboxService] Skipping DUPLICATE message: ${msg.externalId} `)
+                console.log(`[InboxService] Skipping DUPLICATE message: ${msg.externalId} `)
                 // CRITICAL FIX: Trigger automation even for duplicates (message was already inserted by upsertConversation)
                 try {
                     const { automationTrigger } = await import("../automation/automation-trigger.service")
@@ -46,9 +45,9 @@ export class InboxService {
                         msg.from,
                         conversation.lead_id,
                         connectionId || conversation.connection_id
-                    ).catch(err => fileLogger.log('[InboxService] Automation Trigger Error on duplicate:', err))
+                    ).catch(err => console.log('[InboxService] Automation Trigger Error on duplicate:', err))
                 } catch (e) {
-                    fileLogger.log('[InboxService] Failed to load automation service on duplicate:', e)
+                    console.log('[InboxService] Failed to load automation service on duplicate:', e)
                 }
                 return { success: true, conversationId: conversation.id }
             }
@@ -68,13 +67,13 @@ export class InboxService {
         })
 
         if (msgError) {
-            fileLogger.log('[InboxService] Failed to save message:', msgError)
+            console.log('[InboxService] Failed to save message:', msgError)
             return null
         }
 
         // 4. Update triggers automatically via DB
         // The DB trigger 'update_conversation_last_message' handles unread_count increment and last_message update.
-        fileLogger.log(`[InboxService] Message saved.About to trigger automation...`)
+        console.log(`[InboxService] Message saved.About to trigger automation...`)
 
         // 5. Trigger Automation
         try {
@@ -87,9 +86,9 @@ export class InboxService {
                 msg.from,
                 conversation.lead_id, // Using conversation's lead reference
                 connectionId || conversation.connection_id // Include resolved connection ID
-            ).catch(err => fileLogger.log('[InboxService] Automation Trigger Error:', err))
+            ).catch(err => console.log('[InboxService] Automation Trigger Error:', err))
         } catch (e) {
-            fileLogger.log('[InboxService] Failed to load automation service:', e)
+            console.log('[InboxService] Failed to load automation service:', e)
         }
 
         return { success: true, conversationId: conversation.id }
@@ -106,7 +105,7 @@ export class InboxService {
         let matchedConnection: any = null;
 
         const metadata = msg.metadata as any;
-        fileLogger.log('[InboxService] Resolving connection from metadata:', {
+        console.log('[InboxService] Resolving connection from metadata:', {
             phoneNumberId: metadata?.phoneNumberId,
             pageId: metadata?.pageId,
             instagramBusinessId: metadata?.instagramBusinessId,
@@ -121,7 +120,7 @@ export class InboxService {
                 .in('provider_key', ['meta_whatsapp', 'whatsapp', 'meta_business']) // Support legacy and unified
                 .eq('status', 'active');
 
-            fileLogger.log('[InboxService] Active WhatsApp connections found:', connections?.length || 0);
+            console.log('[InboxService] Active WhatsApp connections found:', connections?.length || 0);
 
             if (connections) {
                 const { decryptObject } = await import('@/modules/core/integrations/encryption');
@@ -134,7 +133,7 @@ export class InboxService {
                             a.id === metadata?.phoneNumberId ||
                             a.id === metadata?.phone_number_id
                         );
-                        if (match) fileLogger.log(`[InboxService] Match found in meta_business connection ${c.id} `);
+                        if (match) console.log(`[InboxService] Match found in meta_business connection ${c.id} `);
                         return match;
                     }
 
@@ -147,7 +146,7 @@ export class InboxService {
                     if (!creds) return false;
                     const storedId = creds.phoneNumberId || creds.phone_number_id;
                     const isMatch = storedId === metadata?.phoneNumberId || storedId === metadata?.phone_number_id;
-                    if (isMatch) fileLogger.log(`[InboxService] Match found in meta_whatsapp connection ${c.id} `);
+                    if (isMatch) console.log(`[InboxService] Match found in meta_whatsapp connection ${c.id} `);
                     return isMatch;
                 });
 
@@ -155,9 +154,9 @@ export class InboxService {
                     connectionId = found.id;
                     orgId = found.organization_id; // CRITICAL: Use connection's org
                     matchedConnection = found;
-                    fileLogger.log('[InboxService] Matched Meta WhatsApp connection:', { connectionId, orgId });
+                    console.log('[InboxService] Matched Meta WhatsApp connection:', { connectionId, orgId });
                 } else {
-                    fileLogger.log('[InboxService] NO MATCH FOUND. Webhook phoneNumberId:', metadata?.phoneNumberId);
+                    console.log('[InboxService] NO MATCH FOUND. Webhook phoneNumberId:', metadata?.phoneNumberId);
                 }
             }
         }
@@ -170,7 +169,7 @@ export class InboxService {
                 .eq('provider_key', 'meta_business')
                 .eq('status', 'active');
 
-            fileLogger.log(`[InboxService] Active meta_business connections found for ${msg.channel}: `, connections?.length || 0);
+            console.log(`[InboxService] Active meta_business connections found for ${msg.channel}: `, connections?.length || 0);
 
             if (connections) {
                 const found: any = connections.find((c: any) => {
@@ -186,7 +185,7 @@ export class InboxService {
                     connectionId = found.id;
                     orgId = found.organization_id;
                     matchedConnection = found;
-                    fileLogger.log(`[InboxService] Matched Meta ${msg.channel} connection: `, { connectionId, orgId });
+                    console.log(`[InboxService] Matched Meta ${msg.channel} connection: `, { connectionId, orgId });
                 }
             }
         }
@@ -205,17 +204,17 @@ export class InboxService {
                     connectionId = found.id;
                     orgId = found.organization_id; // CRITICAL: Use connection's org
                     matchedConnection = found;
-                    fileLogger.log('[InboxService] Matched Evolution API connection:', { connectionId, orgId });
+                    console.log('[InboxService] Matched Evolution API connection:', { connectionId, orgId });
                 }
             }
         }
 
         // STRICT TENANT ISOLATION: If no connection matched, REJECT the message
         if (!orgId || !connectionId) {
-            fileLogger.log('[InboxService] REJECTED: No matching integration connection for this webhook');
+            console.log('[InboxService] REJECTED: No matching integration connection for this webhook');
             return { data: null, error: new Error('No matching integration connection found. Message rejected for tenant isolation.'), success: false };
         }
-        fileLogger.log(`Matched Org: ${orgId}, Connection: ${connectionId} `);
+        console.log(`Matched Org: ${orgId}, Connection: ${connectionId} `);
 
         // 2. Find or create Lead by phone (now using correct org)
         let lead = null;
@@ -230,16 +229,16 @@ export class InboxService {
         if (foundLead) {
             lead = foundLead;
             existingLead = foundLead;
-            fileLogger.log('[InboxService] Found existing lead:', lead.id);
+            console.log('[InboxService] Found existing lead:', lead.id);
 
             // AUTO-HEAL: If name is generic and we have a real one now, update it
             if ((lead.name === 'User' || lead.name === lead.phone) && msg.senderName && msg.senderName !== 'User') {
                 await supabase.from('leads').update({ name: msg.senderName }).eq('id', lead.id);
                 lead.name = msg.senderName;
-                fileLogger.log('[InboxService] Updated lead name to:', msg.senderName);
+                console.log('[InboxService] Updated lead name to:', msg.senderName);
             }
         } else {
-            fileLogger.log('[InboxService] Creating new lead for:', msg.from);
+            console.log('[InboxService] Creating new lead for:', msg.from);
             const { data: newLead, error: leadError } = await supabase.from('leads').insert({
                 organization_id: orgId,
                 phone: msg.from,
@@ -249,12 +248,12 @@ export class InboxService {
             }).select().single();
 
             if (leadError) {
-                fileLogger.log('[InboxService] Failed to create lead:', leadError);
+                console.log('[InboxService] Failed to create lead:', leadError);
                 return { data: null, error: leadError, success: false };
             }
 
             lead = newLead;
-            fileLogger.log('[InboxService] Created new lead:', lead.id);
+            console.log('[InboxService] Created new lead:', lead.id);
         }
 
         // Connection automation is called AFTER conversation is found/created for rate limiting to work

@@ -50,7 +50,7 @@ export interface IntegrationAdapter {
     /**
      * Send a message via this provider
      */
-    sendMessage?(credentials: ConnectionCredentials, recipient: string, content: any): Promise<{ messageId: string, metadata?: any }>
+    sendMessage?(credentials: ConnectionCredentials, recipient: string, content: any, metadata?: any): Promise<{ messageId: string, metadata?: any }>
 
     /**
      * Storage Capability (Optional)

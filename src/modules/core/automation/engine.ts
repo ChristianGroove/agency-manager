@@ -380,19 +380,27 @@ export class WorkflowEngine {
                         }
 
                         // Create implicit configuration for waiting
-                        // We map button IDs to valid branches implies we accept 'button_click' or text matching title
                         const waitConfig: WaitInputNodeData = {
-                            timeout: '24h', // Default for buttons
+                            timeout: buttonsData.timeout || '24h',
                             inputType: 'button_click',
-                            timeoutAction: 'continue',
-                            buttonOptions // Pass options for text matching
-                            // storeAs is optional
+                            timeoutAction: buttonsData.timeoutBranchId ? 'branch' : 'continue',
+                            timeoutBranchId: buttonsData.timeoutBranchId,
+                            buttonOptions,
+                            buttonBranches: buttonsData.buttons?.reduce((acc, btn) => {
+                                if (btn.branchId) acc[btn.id] = btn.branchId
+                                return acc
+                            }, {} as Record<string, string>)
                         }
 
                         const waitResult = await waitNode.startWaiting(waitConfig, executionId, node.id)
+
+                        // STRICT CHECK: If we asked to wait, we MUST suspend unless error
                         if (waitResult.suspended) {
                             console.log(`[Buttons] Workflow suspended waiting for user interaction on buttons.`)
                             throw new Error("WORKFLOW_SUSPENDED")
+                        } else if (!waitResult.success) {
+                            // If wait failed (e.g. invalid config), log error but maybe don't crash
+                            console.error(`[Buttons] Failed to start waiting: ${waitResult.error}`)
                         }
                     }
                 }

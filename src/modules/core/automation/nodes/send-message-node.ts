@@ -13,45 +13,46 @@ export class SendMessageNode {
     async execute(data: SendMessageNodeData): Promise<NodeExecutionResult> {
         const messageContent = this.contextManager.resolve((data.message as string) || '');
         const { fileLogger } = await import('@/lib/file-logger');
+        const { sendOutboundMessage } = await import('../../messaging/actions');
 
         fileLogger.log(`[SendMessageNode] Started. Message: "${messageContent}"`);
 
         try {
-            // Dynamic import to avoid cycles
-            const { outboundService } = await import('../../messaging/outbound-service');
-
             // Extract context
-            const connectionId = this.contextManager.get('connection_id') as string;
-            // Try to find recipient in various context locations
-            const recipient =
-                (this.contextManager.get('message') as any)?.sender ||
-                (this.contextManager.get('lead') as any)?.phone ||
-                this.contextManager.get('userPhone');
+            const conversationId = (
+                this.contextManager.get('conversation.id') ||
+                this.contextManager.get('conversationId') ||
+                (this.contextManager.get('message') as any)?.conversationId
+            ) as string;
 
-            const orgId = this.contextManager.get('organization_id') as string;
+            const channel = (
+                this.contextManager.get('channel') ||
+                this.contextManager.get('conversation.channel') ||
+                'whatsapp'
+            ) as string;
 
-            fileLogger.log(`[SendMessageNode] Context: connectionId=${connectionId}, recipient=${recipient}, orgId=${orgId}`);
-
-            if (!connectionId || !recipient || !orgId) {
-                const errMsg = `Missing required context for sending: conn=${connectionId}, recipient=${recipient}, org=${orgId}`;
-                fileLogger.log(`[SendMessageNode] ERROR: ${errMsg}`);
-                throw new Error(errMsg);
+            if (!conversationId) {
+                throw new Error("Missing required context: conversationId");
             }
 
-            // Send via OutboundService
-            await outboundService.sendMessage(
-                connectionId,
-                recipient,
-                messageContent,
-                orgId
+            fileLogger.log(`[SendMessageNode] Sending via actions.ts. Conv=${conversationId}, Channel=${channel}`);
+
+            // Send via Server Action (Robust Fallback)
+            const result = await sendOutboundMessage(
+                conversationId,
+                { type: 'text', text: messageContent },
+                channel
             );
 
-            fileLogger.log(`[SendMessageNode] Message sent successfully via connection ${connectionId}`);
+            if (!result.success) {
+                throw new Error(result.error || "Failed to send message via action");
+            }
+
+            fileLogger.log(`[SendMessageNode] Message sent successfully. ID: ${result.externalId}`);
 
             return { success: true };
 
         } catch (err: any) {
-            const { fileLogger } = await import('@/lib/file-logger');
             fileLogger.log(`[SendMessageNode] EXCEPTION:`, err.message || err);
             throw new Error(`Send Message Failed: ${err.message}`);
         }

@@ -83,25 +83,14 @@ export async function GET(req: NextRequest) {
     }
 }
 
-import * as fs from 'fs';
-import * as path from 'path';
-
-function fileLog(msg: string) {
-    try {
-        const logPath = path.join(process.cwd(), 'debug.log');
-        fs.appendFileSync(logPath, `[${new Date().toISOString()}] [ROUTE] ${msg}\n`);
-    } catch (e) { }
-}
-
 export async function POST(req: NextRequest) {
     try {
-        fileLog('\n========== WEBHOOK POST RECEIVED ==========')
+        console.log('\n========== WEBHOOK POST RECEIVED ==========')
         const channel = req.nextUrl.searchParams.get('channel') as ChannelType || 'whatsapp'
-        fileLog(`Channel: ${channel}`)
+        console.log(`Channel: ${channel}`)
 
         // Log the raw body
         const body = await req.json()
-        fileLog(`Body: ${JSON.stringify(body)}`)
         console.log('[Webhook POST] Body:', JSON.stringify(body, null, 2))
 
         // Dynamically load manager to handle the heavy lifting
@@ -110,7 +99,6 @@ export async function POST(req: NextRequest) {
         console.log('[Webhook POST] Manager loaded, processing...')
 
         const result = await manager.handleParsed(channel, body)
-        fileLog(`Result: ${JSON.stringify(result)}`)
         console.log('[Webhook POST] Result:', result)
 
         if (!result.success) {

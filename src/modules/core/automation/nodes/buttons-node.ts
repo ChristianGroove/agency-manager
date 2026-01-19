@@ -70,7 +70,8 @@ export class ButtonsNode {
             const conversationId = (
                 data.conversationId ||
                 this.contextManager.get('conversation.id') ||
-                this.contextManager.get('conversationId')
+                this.contextManager.get('conversationId') ||
+                (this.contextManager.get('message') as any)?.conversationId
             ) as string
 
             const recipientPhone = this.contextManager.get('message.sender') ||
@@ -151,11 +152,13 @@ export class ButtonsNode {
                     return { success: false, error: `Unknown message type: ${data.messageType}` }
             }
 
+            const channel = (this.contextManager.get('channel') || this.contextManager.get('conversation.channel') || 'whatsapp') as string
+
             // Send the message
             const result = await sendOutboundMessage(
                 conversationId,
                 messageContent,
-                'whatsapp'
+                channel
             )
 
             if (!result.success) {

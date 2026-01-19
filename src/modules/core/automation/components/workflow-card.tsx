@@ -1,246 +1,212 @@
-import React, { useState } from 'react';
-import Link from 'next/link';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import {
-    MoreHorizontal,
     Play,
     Copy,
-    Trash2,
-    Edit,
-    Zap,
-    Star,
-    Clock,
-    GitBranch,
-    AlertTriangle,
+    Activity,
     MessageCircle,
-    Globe
+    Globe,
+    Facebook,
+    Instagram,
+    MoreVertical,
+    Trash2
 } from 'lucide-react';
+import { getChannelDetails } from '@/modules/core/channels/actions';
+import { ChannelSelector } from './channel-selector';
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
-    DropdownMenuSeparator,
     DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
-} from "@/components/ui/tooltip"
-import { ChannelSelector } from './channel-selector';
-import { toast } from 'sonner';
+    DropdownMenuSeparator
+} from "@/components/ui/dropdown-menu";
 
 interface WorkflowCardProps {
-    id: string;
-    name: string;
-    description: string;
-    type: 'workflow' | 'template';
-    category: string;
-    status?: 'active' | 'draft' | 'archived';
-    nodeCount: number;
-    tags?: string[];
-    difficulty?: 'beginner' | 'intermediate' | 'advanced';
-    createdAt?: string;
-    updatedAt?: string;
-    channelId?: string | null;
-    isConflicted?: boolean;
-    onDuplicate?: () => void;
-    onDelete?: () => void;
-    onToggle?: (isActive: boolean) => Promise<void>;
-    onChannelChange?: (channelId: string | null) => Promise<void>;
+    workflow: any;
+    onToggle: (id: string, active: boolean) => void;
+    onDelete: (id: string) => void;
+    onDuplicate: (id: string) => void;
+    onEdit: (id: string) => void;
+    isTemplate?: boolean;
+    onUseTemplate?: (template: any) => void;
+    onChannelChange?: (channelId: string | null) => void;
 }
 
-const categoryColors: Record<string, string> = {
-    sales: 'from-blue-500 to-indigo-600',
-    marketing: 'from-pink-500 to-rose-600',
-    support: 'from-green-500 to-emerald-600',
-    operations: 'from-orange-500 to-amber-600',
-    other: 'from-slate-500 to-slate-600',
-};
-
-const difficultyLabels: Record<string, { label: string; color: string }> = {
-    beginner: { label: 'Fácil', color: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' },
-    intermediate: { label: 'Intermedio', color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' },
-    advanced: { label: 'Avanzado', color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' },
-};
-
 export function WorkflowCard({
-    id,
-    name,
-    description,
-    type,
-    category,
-    status,
-    nodeCount,
-    tags = [],
-    difficulty,
-    createdAt,
-    updatedAt,
-    channelId,
-    isConflicted,
-    onDuplicate,
-    onDelete,
+    workflow,
     onToggle,
+    onDelete,
+    onDuplicate,
+    onEdit,
+    isTemplate,
+    onUseTemplate,
     onChannelChange
 }: WorkflowCardProps) {
-    const isTemplate = type === 'template';
-    const gradientClass = categoryColors[category] || categoryColors.other;
-    const href = isTemplate
-        ? `/automations/${crypto.randomUUID()}?template=${id}`
-        : `/automations/${id}`;
+    if (!workflow) return null;
 
-    const [isActive, setIsActive] = useState(status === 'active');
-    const [isToggling, setIsToggling] = useState(false);
+    // Determine channel ID (support legacy structure)
+    // Priority: trigger_config.channels (Array) > trigger_config.channel (Legacy) > workflow.channel_id (DB)
+    const config = workflow.trigger_config || {};
+    const effectiveValue = config.channels || config.channel || workflow.channel_id || 'all';
 
-    const handleToggle = async (checked: boolean) => {
-        if (!onToggle) return;
-        setIsActive(checked); // Optimistic
-        setIsToggling(true);
-        try {
-            await onToggle(checked);
-            toast.success(checked ? "Workflow activado" : "Workflow desactivado");
-        } catch (error) {
-            setIsActive(!checked); // Revert
-            toast.error("Error al cambiar estado");
-        } finally {
-            setIsToggling(false);
+    // Helper for display
+    const isMulti = Array.isArray(effectiveValue) && effectiveValue.length > 1;
+
+    const [channelInfo, setChannelInfo] = useState<{ name: string, iconType: string } | null>(null);
+
+    useEffect(() => {
+        let isMounted = true;
+        // If single value and not 'all', fetch details for display
+        const singleId = Array.isArray(effectiveValue) ? effectiveValue[0] : effectiveValue;
+
+        if (singleId && typeof singleId === 'string' && singleId !== 'all') {
+            getChannelDetails(singleId).then(info => {
+                if (isMounted && info) {
+                    setChannelInfo({ name: info.name, iconType: info.iconType });
+                }
+            }).catch(() => {
+                if (isMounted) setChannelInfo(null);
+            });
+        } else {
+            setChannelInfo(null);
         }
+        return () => { isMounted = false; };
+    }, [JSON.stringify(effectiveValue)]);
+
+    const getIconByType = (type: string) => {
+        if (type === 'whatsapp') return <MessageCircle className="h-3 w-3 mr-1 text-green-500" />;
+        if (type === 'instagram') return <Instagram className="h-3 w-3 mr-1 text-[#E4405F]" />;
+        if (type === 'messenger') return <Facebook className="h-3 w-3 mr-1 text-[#1877F2]" />;
+        return <Globe className="h-3 w-3 mr-1 text-blue-500" />;
     };
 
     return (
-        <div className={`group relative bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800 transition-all duration-200 hover:shadow-md hover:border-slate-300 dark:hover:border-slate-700 ${isConflicted && isActive
-            ? 'border-amber-300 dark:border-amber-700 bg-amber-50/10'
-            : ''
-            }`}>
-
-            {/* Conflict Warning Header */}
-            {isConflicted && isActive && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
-                    <TooltipProvider>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <div className="bg-amber-100 dark:bg-amber-900/80 text-amber-700 dark:text-amber-400 px-3 py-1 rounded-full text-xs font-bold border border-amber-200 dark:border-amber-700 flex items-center shadow-sm cursor-help animate-pulse">
-                                    <AlertTriangle className="h-3 w-3 mr-1.5" />
-                                    Conflicto
-                                </div>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                                <p>Múltiples bots activos en el mismo canal.</p>
-                            </TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
-                </div>
-            )}
-
-            {/* Content */}
-            <div className="p-4">
-                {/* Top Row: Name + Actions */}
-                <div className="flex items-start justify-between mb-2">
-                    <div className="flex-1 min-w-0 mr-2">
-                        <Link href={href} className="block">
-                            <h3 className="font-semibold text-sm text-slate-900 dark:text-white truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                                {name}
-                            </h3>
-                        </Link>
-                        <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 line-clamp-1">
-                            {description || "Sin descripción"}
+        <div className="group relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 hover:shadow-lg hover:border-slate-300 dark:hover:border-slate-700 transition-all duration-200">
+            {/* Header */}
+            <div className="flex justify-between items-start mb-3">
+                <div className="flex gap-3">
+                    <div className={`mt-1 p-2 rounded-lg ${isTemplate ? 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400' : (workflow.is_active ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400')}`}>
+                        {isTemplate ? <Copy size={18} /> : <Activity size={18} />}
+                    </div>
+                    <div>
+                        <h3 className="font-semibold text-slate-900 dark:text-slate-100 leading-tight mb-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                            {workflow.name}
+                        </h3>
+                        <p className="text-xs text-muted-foreground line-clamp-2 max-w-[200px]">
+                            {workflow.description || 'Sin descripción'}
                         </p>
                     </div>
-
-                    <div className="flex items-center gap-1">
-                        {!isTemplate && (
-                            <Switch
-                                checked={isActive}
-                                onCheckedChange={handleToggle}
-                                disabled={isToggling}
-                                className="scale-[0.7] data-[state=checked]:bg-green-500 origin-right"
-                            />
-                        )}
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-slate-600"
-                                >
-                                    <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                <DropdownMenuItem asChild>
-                                    <Link href={href} className="flex items-center gap-2">
-                                        <Edit className="h-4 w-4" />
-                                        {isTemplate ? 'Usar Template' : 'Editar'}
-                                    </Link>
-                                </DropdownMenuItem>
-                                {onDuplicate && (
-                                    <DropdownMenuItem onClick={onDuplicate}>
-                                        <Copy className="h-4 w-4 mr-2" />
-                                        Duplicar
-                                    </DropdownMenuItem>
-                                )}
-                                {!isTemplate && (
-                                    <>
-                                        <DropdownMenuSeparator />
-                                        <DropdownMenuItem onClick={onDelete} className="text-red-600">
-                                            <Trash2 className="h-4 w-4 mr-2" />
-                                            Eliminar
-                                        </DropdownMenuItem>
-                                    </>
-                                )}
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    </div>
                 </div>
 
-                {/* Status & Channel Row */}
-                <div className="flex items-center justify-between pt-2 border-t border-slate-50 dark:border-slate-800/50 mt-2">
-                    <div className="flex gap-2">
-                        {/* Channel Badge with Selector */}
-                        {!isTemplate && onChannelChange && (
+                {!isTemplate && (
+                    <div onClick={(e) => e.stopPropagation()} className="relative z-10">
+                        <Switch
+                            checked={workflow.is_active}
+                            onCheckedChange={(checked) => onToggle(workflow.id, checked)}
+                            className="data-[state=checked]:bg-green-500"
+                        />
+                    </div>
+                )}
+            </div>
+
+            {/* Stats / Info */}
+            {!isTemplate ? (
+                <div className="flex items-center gap-4 text-xs text-muted-foreground mb-4">
+                    <div className="flex items-center gap-1">
+                        <Play size={12} />
+                        <span>{workflow.runs_count || 0} ejecuciones</span>
+                    </div>
+                </div>
+            ) : (
+                <div className="h-4 mb-4"></div>
+            )}
+
+
+            <div className="flex items-center justify-between pt-2 border-t border-slate-50 dark:border-slate-800/50 mt-2">
+                <div className="flex gap-2">
+                    {/* Channel Badge with Selector */}
+                    {!isTemplate && onChannelChange && (
+                        <div onClick={(e) => e.stopPropagation()} className="relative z-10">
                             <ChannelSelector
-                                value={channelId}
-                                onChange={(val) => onChannelChange(val as string | null)}
-                                renderTrigger={(selectedChannel) => (
+                                value={effectiveValue}
+                                multiple={true} // Enable Multi-select
+                                onChange={(val) => onChannelChange(val as any)}
+                                renderTrigger={(selectedOption: any) => (
                                     <Button
                                         variant="ghost"
                                         size="sm"
                                         className="h-5 px-1.5 -ml-1.5 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all text-[10px] font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400"
                                     >
-                                        {selectedChannel ? (
+                                        {isMulti ? (
                                             <>
-                                                {selectedChannel.provider_key.includes('whatsapp') ? <MessageCircle className="h-3 w-3 mr-1 text-green-500" /> : <Globe className="h-3 w-3 mr-1 text-blue-500" />}
-                                                {selectedChannel.connection_name}
+                                                <div className="flex -space-x-1 mr-1">
+                                                    <div className="w-3 h-3 rounded-full bg-slate-200 border border-white dark:border-slate-900"></div>
+                                                    <div className="w-3 h-3 rounded-full bg-slate-300 border border-white dark:border-slate-900"></div>
+                                                </div>
+                                                Varios canales
                                             </>
                                         ) : (
-                                            <>
-                                                <Globe className="h-3 w-3 mr-1 text-slate-400" />
-                                                Sin canal
-                                            </>
+                                            selectedOption ? (
+                                                <>
+                                                    {selectedOption.icon ? selectedOption.icon : getIconByType('other')}
+                                                    {selectedOption.label}
+                                                </>
+                                            ) : (
+                                                channelInfo ? (
+                                                    <>
+                                                        {getIconByType(channelInfo.iconType)}
+                                                        {channelInfo.name}
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Globe className="h-3 w-3 mr-1" />
+                                                        Todos los canales
+                                                    </>
+                                                )
+                                            )
                                         )}
                                     </Button>
                                 )}
                             />
-                        )}
+                        </div>
+                    )}
+                </div>
 
-                        {isTemplate && (
-                            <Badge variant="secondary" className="bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400 border-0 h-5 text-[10px]">
-                                <Star className="h-2.5 w-2.5 mr-1" />
-                                Template
-                            </Badge>
-                        )}
-                    </div>
-
-                    {/* Node Count */}
-                    <span className="text-[10px] text-slate-400 flex items-center bg-slate-50 dark:bg-slate-800/50 px-1.5 py-0.5 rounded-md">
-                        <GitBranch className="h-3 w-3 mr-1" />
-                        {nodeCount}
-                    </span>
+                {/* Actions Menu */}
+                <div className="flex items-center gap-1 relative z-10" onClick={(e) => e.stopPropagation()}>
+                    <Button variant="ghost" size="sm" onClick={() => onEdit(workflow.id)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 h-8 px-2">
+                        Editar
+                    </Button>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-slate-400 hover:text-slate-600">
+                                <MoreVertical className="h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => onDuplicate(workflow.id)}>
+                                <Copy className="mr-2 h-4 w-4" />
+                                Duplicar
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                                onClick={() => {
+                                    if (confirm('¿Seguro que deseas eliminar este workflow?')) onDelete(workflow.id);
+                                }}
+                                className="text-red-600 focus:text-red-600"
+                            >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Eliminar
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </div>
             </div>
+
+
+            {/* Click to Edit Area (Hidden Overlay) */}
+            <div className="absolute inset-x-0 top-0 bottom-16 cursor-pointer" onClick={() => onEdit(workflow.id)}></div>
         </div>
     );
 }

@@ -195,11 +195,26 @@ export class AutomationTriggerService {
             }
 
             if (match) {
+                // DEDUPLICATION CHECK: Check if this message (by WAMID) has already triggered a workflow
+                const messageId = (messageContent as any).id || (typeof messageContent === 'object' ? (messageContent as any).id : null);
+
+                if (messageId) {
+                    const { count } = await supabaseAdmin
+                        .from('workflow_executions')
+                        .select('id', { count: 'exact', head: true })
+                        .contains('context', { message: { id: messageId } })
+
+                    if (count && count > 0) {
+                        fileLogger.log(`[AutomationTrigger] Duplicate trigger for message ${messageId}. Skipping.`)
+                        continue;
+                    }
+                }
+
                 fileLogger.log(`[AutomationTrigger] 🚀 Triggering Workflow: ${wf.name} (${wf.id})`)
                 this.executeWorkflow(wf, {
                     organization_id: orgId,
                     conversation: { id: conversationId, channel },
-                    message: { content: messageContent, sender },
+                    message: { content: messageContent, sender, id: messageId || `msg_${Date.now()}` }, // Ensure ID
                     lead: { id: leadId },
                     connection_id: finalConnectionId // PASS CONNECTION ID
                 })

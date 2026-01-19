@@ -1,3 +1,5 @@
+
+
 import { createClient } from "@/lib/supabase-server"
 import { ChannelType, MessageContentType } from "@/types/messaging"
 import { WorkflowEngine, WorkflowDefinition } from "@/modules/core/automation/engine"
@@ -239,102 +241,11 @@ export class WebhookManager {
         // (Supabase admin already imported above)
 
         // 5. Trigger Automation Workflows
-        const { data: workflows, error } = await supabase
-            .from('workflows')
-            .select('*')
-            .eq('is_active', true)
-            .eq('trigger_type', 'webhook')
+        // REMOVED: Automation handling is now centralized in InboxService (lines 80-90)
+        // InboxService calls AutomationTriggerService.evaluateInput() after saving the message.
+        // Keeping this here causes DOUBLE EXECUTION.
 
-        if (error || !workflows || workflows.length === 0) {
-            console.log("[WebhookManager] No active webhook workflows found")
-            return
-        }
-
-        console.log(`[WebhookManager] Found ${workflows.length} active workflows candidates`)
-
-        for (const wf of workflows) {
-            // Check channel config match
-            const config = wf.trigger_config as Record<string, unknown>
-
-            // If workflow is specific to a channel, check match
-            if (config?.channel && config.channel !== msg.channel) {
-                continue
-            }
-
-            // If workflow is specific to a keyword (optional)
-            if (config?.keyword && msg.content.type === 'text') {
-                const keyword = (config.keyword as string).toLowerCase()
-                const text = (msg.content.text || '').toLowerCase()
-                if (!text.includes(keyword)) continue
-            }
-
-
-            // Initialize Context
-            const context = {
-                message: {
-                    id: msg.id,
-                    text: msg.content.text,
-                    mediaUrl: msg.content.mediaUrl,
-                    sender: msg.from,
-                    channel: msg.channel,
-                    timestamp: msg.timestamp,
-                    conversationId: conversationId
-                },
-                lead: {
-                    phone: msg.from,
-                    name: msg.senderName || "Unknown"
-                }
-            }
-
-            // Create Execution Record
-            const { data: execution, error: execError } = await supabase
-                .from('workflow_executions')
-                .insert({
-                    organization_id: wf.organization_id,
-                    workflow_id: wf.id,
-                    status: 'running',
-                    started_at: new Date().toISOString(),
-                    context: context
-                })
-                .select()
-                .single()
-
-            if (execError) {
-                console.error("[WebhookManager] Failed to create execution record:", execError)
-                continue
-            }
-
-            try {
-                console.log(`[WebhookManager] Starting workflow ${wf.name} (${wf.id}) Execution: ${execution.id}`)
-                const definition = wf.definition as WorkflowDefinition
-
-                const engine = new WorkflowEngine(definition, context)
-                await engine.start()
-
-                // Update Execution Status: Completed
-                await supabase
-                    .from('workflow_executions')
-                    .update({
-                        status: 'completed',
-                        completed_at: new Date().toISOString()
-                    })
-                    .eq('id', execution.id)
-
-            } catch (err: any) {
-                console.error(`[WebhookManager] Failed to run workflow ${wf.id}:`, err)
-
-                // Update Execution Status: Failed
-                await supabase
-                    .from('workflow_executions')
-                    .update({
-                        status: 'failed',
-                        completed_at: new Date().toISOString(),
-                        error_message: err.message
-                    })
-                    .eq('id', execution.id)
-            }
-
-        }
+        console.log('[WebhookManager] Message processed. Automation triggered via InboxService if applicable.')
     }
 }
 

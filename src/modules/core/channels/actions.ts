@@ -49,6 +49,54 @@ export async function getChannel(id: string): Promise<Channel | null> {
     return data as Channel
 }
 
+/**
+ * Get channel details handling Composite IDs (connectionId:assetId)
+ */
+export async function getChannelDetails(channelString: string): Promise<{ name: string, provider: string, iconType: 'whatsapp' | 'instagram' | 'messenger' | 'other' } | null> {
+    if (!channelString || channelString === 'all') return null;
+
+    let connectionId = channelString;
+    let assetId: string | null = null;
+
+    if (channelString.includes(':')) {
+        [connectionId, assetId] = channelString.split(':');
+    }
+
+    const channel = await getChannel(connectionId);
+    if (!channel) return null;
+
+    let name = channel.connection_name;
+    let provider = channel.provider_key;
+    let iconType: 'whatsapp' | 'instagram' | 'messenger' | 'other' = 'other';
+
+    // Determine basic icon type
+    if (provider.includes('whatsapp') || provider.includes('evolution')) iconType = 'whatsapp';
+    else if (provider.includes('instagram')) iconType = 'instagram';
+    else if (provider === 'meta_business') iconType = 'messenger'; // Default to messenger for meta
+
+    // If Composite ID, refine name and icon
+    if (assetId && channel.metadata?.selected_assets) {
+        const asset = channel.metadata.selected_assets.find((a: any) => String(a.id) === String(assetId));
+        if (asset) {
+            name = asset.name || 'Unknown Asset';
+            // Refine Icon based on type
+            if (asset.type === 'whatsapp') {
+                iconType = 'whatsapp';
+                name = `WhatsApp: ${name}`;
+            } else if (asset.type === 'instagram') {
+                iconType = 'instagram';
+                name = `Instagram: ${name}`;
+            } else {
+                // Default to Messenger
+                iconType = 'messenger';
+                name = `Messenger: ${name}`;
+            }
+        }
+    }
+
+    return { name, provider, iconType };
+}
+
 import { integrationRegistry } from "@/modules/core/integrations/registry"
 
 export async function checkChannelStatus(id: string) {

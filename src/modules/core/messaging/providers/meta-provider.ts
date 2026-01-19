@@ -27,14 +27,25 @@ export class MetaProvider implements MessagingProvider {
         try {
             const isMessengerOrIg = options.metadata?.channel === 'messenger' || options.metadata?.channel === 'instagram';
             let url = `https://graph.facebook.com/v22.0/${this.assetId}/messages`;
+
+            // Resolve Token: options.credentials > this.apiToken
             let activeToken = this.apiToken;
+            if (options.credentials) {
+                const creds = typeof options.credentials === 'string'
+                    ? JSON.parse(options.credentials)
+                    : options.credentials;
+                activeToken = creds.accessToken || creds.apiToken || creds.access_token || activeToken;
+
+                // Also update assetId if provided in credentials (for legacy whatsapp)
+                if (creds.phoneNumberId) this.assetId = creds.phoneNumberId;
+            }
 
             // For Messenger/Instagram, we need the Page Access Token. 
             // If apiToken is a User Token, we try to exchange it for a Page Token for this assetId.
             if (isMessengerOrIg) {
                 url = `https://graph.facebook.com/v22.0/me/messages`;
                 // If it's not already a page token (we check if we can get a page token for this asset)
-                activeToken = await this.getPageAccessToken(this.assetId, this.apiToken);
+                activeToken = await this.getPageAccessToken(this.assetId, activeToken);
             }
 
             const payload = isMessengerOrIg
@@ -116,9 +127,13 @@ export class MetaProvider implements MessagingProvider {
         try {
             if (payload.object === 'whatsapp_business_account') {
                 for (const entry of payload.entry || []) {
+                    debugLog(`Processing WA entry: ${entry.id}`);
                     for (const change of entry.changes || []) {
+                        debugLog(`Change field: ${change.field}`);
                         if (change.value?.messages) {
+                            debugLog(`Found ${change.value.messages.length} WA messages`);
                             for (const msg of change.value.messages) {
+                                debugLog(`Processing WA msg: ${msg.id}`);
                                 // Extract sender info
                                 const contact = change.value.contacts?.find((c: any) => c.wa_id === msg.from);
                                 const phoneNumberId = change.value.metadata?.phone_number_id;
@@ -133,6 +148,8 @@ export class MetaProvider implements MessagingProvider {
                                         buttonId = msg.interactive.list_reply.id;
                                     }
                                 }
+
+                                debugLog(`WA Msg Parsed: From=${msg.from}, ContentType=${content.type}, Metadata=${JSON.stringify(change.value.metadata)}`);
 
                                 messages.push({
                                     id: msg.id,

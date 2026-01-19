@@ -368,7 +368,7 @@ export async function sendOutboundMessage(conversationId: string, content: any, 
     // 2. Resolve Connection (Simple Default Strategy for Automation)
     // We assume default connection for the channel
     let provider: any = null
-    const providerKey = channel === 'evolution' ? 'evolution_api' : 'meta_whatsapp'
+    const providerKey = (channel === 'messenger' || channel === 'instagram') ? 'meta_business' : (channel === 'evolution' ? 'evolution_api' : 'meta_whatsapp');
 
     // Try bound connection first
     let connection: any = null
@@ -416,8 +416,20 @@ export async function sendOutboundMessage(conversationId: string, content: any, 
                 }
                 finalCreds = decryptObject(finalCreds);
 
-                const pId = finalCreds.phoneNumberId || finalCreds.phone_number_id;
+                const metadata = (conversation as any).metadata || {};
+                const pId = finalCreds.phoneNumberId ||
+                    finalCreds.phone_number_id ||
+                    metadata.phoneNumberId ||
+                    metadata.pageId ||
+                    metadata.instagramBusinessId;
+
                 const token = finalCreds.accessToken || finalCreds.access_token;
+
+                if (!pId || !token) {
+                    console.error("[sendOutboundMessage] Missing AssetID or Token:", { pId, token: !!token });
+                    // Fallback to env if allowed? No, we stick to DB strictness here or simple env fallback below
+                }
+
                 provider = new MetaProvider(token, pId, process.env.META_VERIFY_TOKEN!)
             }
         }

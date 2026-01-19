@@ -28,53 +28,71 @@ export class OutboundService {
 
         console.log(`[OutboundService] Sending via ${channel.provider_key} to ${recipientPhone}`)
 
-        // 3. Send via Adapter
-        // Note: recipientPhone might need formatting depending on provider, but usually raw e.164 is fine
-        const result = await adapter.sendMessage(channel.credentials, recipientPhone, content)
-
-        // 4. Find Conversation to log to
-        // We look for any open/active conversation with this phone number within the organization
-        // We prioritize matching connection_id, but fallback to any for this phone to ensure logging
-        // (Since we already sent the message, we MUST log it somewhere)
+        // 3. Find Conversation Context (Moved before sending to get metadata)
         const { data: conv } = await supabase
             .from('conversations')
-            .select('id')
-            .eq('organization_id', organizationId) // Ensure org isolation
+            .select('id, channel, metadata')
+            .eq('organization_id', organizationId)
             .eq('phone', recipientPhone)
-            .neq('state', 'archived') // Prefer active ones
+            .neq('state', 'archived')
             .order('updated_at', { ascending: false })
             .limit(1)
             .single()
 
-        let targetConvId = conv?.id
+        let metadata: any = {};
 
-        if (!targetConvId) {
-            // Try archived if no active found
-            const { data: archivedConv } = await supabase
+        if (conv) {
+            const meta = conv.metadata || {};
+
+            if (conv.channel === 'whatsapp' && meta.phoneNumberId) {
+                metadata.phoneNumberId = meta.phoneNumberId;
+            } else if (conv.channel === 'messenger' && meta.pageId) {
+                metadata.pageId = meta.pageId;
+            } else if (conv.channel === 'instagram') {
+                // Fallback to pageId or instagramBusinessId
+                metadata.pageId = meta.instagramBusinessId || meta.pageId;
+            }
+        }
+
+        // Fallback: If no active conversation, try to check archived
+        let conversationId = conv?.id;
+
+        if (!conversationId) {
+            const { data: archived } = await supabase
                 .from('conversations')
-                .select('id')
+                .select('id, channel, metadata')
                 .eq('organization_id', organizationId)
                 .eq('phone', recipientPhone)
                 .order('updated_at', { ascending: false })
                 .limit(1)
                 .single()
 
-            targetConvId = archivedConv?.id
+            if (archived) {
+                conversationId = archived.id;
+                const meta = archived.metadata || {};
+                if (archived.channel === 'whatsapp' && meta.phoneNumberId) {
+                    metadata.phoneNumberId = meta.phoneNumberId;
+                } else if (archived.channel === 'messenger' && meta.pageId) {
+                    metadata.pageId = meta.pageId;
+                }
+            }
         }
 
-        const conversationId = targetConvId
+        console.log(`[OutboundService] Resolved Metadata for Send:`, metadata);
 
+        // 4. Send via Adapter
+        const result = await adapter.sendMessage(channel.credentials, recipientPhone, content, metadata)
+
+        // 5. Log to DB
         if (conversationId) {
-            // 5. Save to DB using InboxService helper (or do it here)
-            // InboxService.saveOutboundMessage saves as "sent" from "Agent"
             await inboxService.saveOutboundMessage(
                 conversationId,
                 content,
                 result.messageId,
-                'System' // Or 'Auto-Reply'
+                'System'
             )
         } else {
-            console.warn(`[OutboundService] No conversation found for ${recipientPhone}, message sent but not logged to a conversation.`)
+            console.warn(`[OutboundService] No conversation found for ${recipientPhone}, message sent but not logged.`)
         }
 
         return result

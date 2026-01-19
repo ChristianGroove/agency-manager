@@ -19,6 +19,7 @@ export interface SendMessageOptions {
     to: string
     content: MessageContent
     metadata?: Record<string, unknown>
+    credentials?: any // For multi-tenant support (passing specific connection credentials)
 }
 
 export type MessageContent =

@@ -52,7 +52,11 @@ export class WaitInputNode {
             console.log('[WaitInputNode] Starting wait for:', data.inputType)
 
             const orgId = this.contextManager.get('organization_id')
-            const conversationId = this.contextManager.get('conversation.id')
+            const conversationId = (
+                this.contextManager.get('conversation.id') ||
+                this.contextManager.get('conversationId') ||
+                (this.contextManager.get('message') as any)?.conversationId
+            ) as string
 
             if (!conversationId) {
                 return { success: false, suspended: false, error: 'No conversation context' }

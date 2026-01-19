@@ -1,7 +1,7 @@
 import React, { memo, useEffect, useState } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { Zap, MessageCircle, Globe } from 'lucide-react';
-import { getChannel } from '@/modules/core/channels/actions';
+import { getChannel, getChannelDetails } from '@/modules/core/channels/actions';
 
 interface NodeData extends Record<string, unknown> {
     label?: string;
@@ -12,8 +12,25 @@ const TriggerNode = ({ data, selected }: { data: NodeData, selected: boolean }) 
     const [channelName, setChannelName] = useState<string | null>(null);
 
     useEffect(() => {
+        // Handle Multi-channel display
+        if (data.channels && Array.isArray(data.channels) && data.channels.length > 0) {
+            if (data.channels.length > 1) {
+                setChannelName(`${data.channels.length} canales`);
+                return;
+            }
+            // If single valid channel in array, fall through to single check
+            const singleId = data.channels[0];
+            getChannelDetails(singleId).then(info => {
+                setChannelName(info ? info.name : 'Canal Desconocido');
+            });
+            return;
+        }
+
+        // Legacy Single Channel
         if (data.channel && typeof data.channel === 'string') {
-            if (data.channel === 'whatsapp') {
+            if (data.channel === 'all') {
+                setChannelName('Todos los canales');
+            } else if (data.channel === 'whatsapp') {
                 setChannelName('WhatsApp (Default)');
             } else {
                 getChannel(data.channel).then(c => {
@@ -23,7 +40,7 @@ const TriggerNode = ({ data, selected }: { data: NodeData, selected: boolean }) 
         } else {
             setChannelName(null);
         }
-    }, [data.channel]);
+    }, [data.channel, JSON.stringify(data.channels)]);
 
     return (
         <div className={`px-4 py-3 shadow-lg rounded-full bg-slate-900 border-2 transition-all min-w-[200px] ${selected ? 'border-green-400 shadow-green-500/20' : 'border-slate-800'}`}>
