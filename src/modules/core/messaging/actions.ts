@@ -68,7 +68,7 @@ export async function sendMessage(conversationId: string, payload: string, id?: 
     let provider: any = null;
     const channel = conversation.channel;
 
-    if (channel !== 'whatsapp' && channel !== 'evolution') {
+    if (channel !== 'whatsapp' && channel !== 'evolution' && channel !== 'messenger' && channel !== 'instagram') {
         throw new Error(`Channel ${channel} not supported for outbound yet`)
     }
 
@@ -90,7 +90,7 @@ export async function sendMessage(conversationId: string, payload: string, id?: 
     // Strategy B: Fallback to finding ANY active connection for channel (Legacy/Default)
     if (!connection) {
         console.log(`[sendMessage] No bound connection, searching default for channel: ${channel}`);
-        const providerKey = channel === 'evolution' ? 'evolution_api' : 'meta_whatsapp';
+        const providerKey = (channel === 'messenger' || channel === 'instagram') ? 'meta_business' : (channel === 'evolution' ? 'evolution_api' : 'meta_whatsapp');
         const { data: defaultConn } = await supabase
             .from('integration_connections')
             .select('*')
@@ -141,17 +141,23 @@ export async function sendMessage(conversationId: string, payload: string, id?: 
                     throw new Error("Invalid or missing credentials for this connection. Please re-configure.");
                 }
 
-                const pId = finalCreds.phoneNumberId || finalCreds.phone_number_id;
+                const metadata = (conversation as any).metadata || {};
+                const assetId = finalCreds.phoneNumberId ||
+                    finalCreds.phone_number_id ||
+                    metadata.phoneNumberId ||
+                    metadata.pageId ||
+                    metadata.instagramBusinessId;
+
                 const token = finalCreds.accessToken || finalCreds.access_token;
 
-                if (!pId || !token) {
-                    console.error("[sendMessage] Missing PhoneNumberID or AccessToken in credentials:", finalCreds);
+                if (!assetId || !token) {
+                    console.error("[sendMessage] Missing AssetID or AccessToken in credentials/metadata:", { assetId, token, channel: (conversation as any).channel });
                     throw new Error("Incomplete credentials. Please re-configure the channel.");
                 }
 
                 provider = new MetaProvider(
                     token,
-                    pId,
+                    assetId,
                     process.env.META_VERIFY_TOKEN!
                 )
             }
@@ -190,6 +196,9 @@ export async function sendMessage(conversationId: string, payload: string, id?: 
             type: content.type === 'document' ? 'image' : content.type, // Map doc to image or text for now if provider limited, but types.ts allows image
             text: content.text || content.caption,
             mediaUrl: content.url || content.mediaUrl
+        },
+        metadata: {
+            channel: channel
         }
     }
 

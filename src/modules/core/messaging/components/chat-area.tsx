@@ -218,7 +218,7 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
             id: optimisticId,
             conversation_id: conversationId,
             direction: 'outbound',
-            channel: 'whatsapp',
+            channel: conversation?.channel || 'whatsapp',
             content: messageContent,
             status: 'sent',
             external_id: null,
@@ -375,7 +375,7 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
                                 </Badge>
                             )}
                         </div>
-                        <p className="text-[11px] text-muted-foreground">WhatsApp • {conversation?.id.slice(0, 8)}</p>
+                        <p className="text-[11px] text-muted-foreground capitalize">{conversation?.channel || 'WhatsApp'} • {conversation?.id.slice(0, 8)}</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-1">

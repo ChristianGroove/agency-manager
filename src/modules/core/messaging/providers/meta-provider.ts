@@ -1,29 +1,50 @@
 import { IncomingMessage, MessagingProvider, SendMessageOptions, WebhookValidationResult } from './types';
+import * as fs from 'fs';
+import * as path from 'path';
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { decryptObject } from "@/modules/core/integrations/encryption"
+
+function debugLog(msg: string) {
+    try {
+        const logPath = path.join(process.cwd(), 'debug.log');
+        fs.appendFileSync(logPath, `[${new Date().toISOString()}][MetaProvider] ${msg} \n`);
+    } catch (e) { }
+}
 
 export class MetaProvider implements MessagingProvider {
     name = 'meta';
 
     constructor(
         private apiToken: string,
-        private phoneNumberId: string,
+        private assetId: string,
         private verifyToken: string
     ) { }
 
     /**
-     * Send a message via Meta/WhatsApp Business API
+     * Send a message via Meta APIs (WhatsApp, Messenger, Instagram)
      */
     async sendMessage(options: SendMessageOptions): Promise<{ success: boolean; messageId?: string; error?: string }> {
         try {
-            const url = `https://graph.facebook.com/v18.0/${this.phoneNumberId}/messages`;
+            const isMessengerOrIg = options.metadata?.channel === 'messenger' || options.metadata?.channel === 'instagram';
+            let url = `https://graph.facebook.com/v22.0/${this.assetId}/messages`;
+            let activeToken = this.apiToken;
 
-            const payload = this.buildPayload(options);
+            // For Messenger/Instagram, we need the Page Access Token. 
+            // If apiToken is a User Token, we try to exchange it for a Page Token for this assetId.
+            if (isMessengerOrIg) {
+                url = `https://graph.facebook.com/v22.0/me/messages`;
+                // If it's not already a page token (we check if we can get a page token for this asset)
+                activeToken = await this.getPageAccessToken(this.assetId, this.apiToken);
+            }
+
+            const payload = isMessengerOrIg
+                ? { recipient: { id: options.to }, message: { text: (options.content as any).text || '' } }
+                : this.buildPayload(options);
 
             const response = await fetch(url, {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${this.apiToken}`,
+                    'Authorization': `Bearer ${activeToken}`,
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(payload)
@@ -131,6 +152,47 @@ export class MetaProvider implements MessagingProvider {
                         }
                     }
                 }
+            } else if (payload.object === 'page' || payload.object === 'instagram') {
+                for (const entry of payload.entry || []) {
+                    const pageOrIgId = entry.id;
+                    debugLog(`Processing entry for ${payload.object} (${pageOrIgId})`);
+
+                    const messagingEvents = entry.messaging || entry.standby || [];
+                    if (entry.standby) debugLog('Found STANDBY events');
+                    debugLog(`Events count: ${messagingEvents.length}`);
+
+                    for (const messaging of messagingEvents) {
+                        debugLog(`Event: ${JSON.stringify(messaging)}`);
+                        if (messaging.message && !messaging.message.is_echo) {
+                            const msg = messaging.message;
+                            const channel = payload.object === 'page' ? 'messenger' : 'instagram';
+
+                            // Try to fetch real name if we have a token
+                            let senderName = 'User';
+                            if (this.apiToken) {
+                                debugLog('Fetching sender profile...');
+                                const profile = await this.getSenderProfile(messaging.sender.id, pageOrIgId, this.apiToken);
+                                if (profile?.name) senderName = profile.name;
+                            }
+
+                            debugLog(`Pushing message from ${senderName} (${channel})`);
+                            messages.push({
+                                id: msg.mid,
+                                externalId: msg.mid,
+                                channel: channel as any,
+                                from: messaging.sender.id,
+                                senderName: senderName,
+                                timestamp: new Date(messaging.timestamp),
+                                content: msg.text || (msg.attachments ? '[Attachment]' : ''),
+                                metadata: {
+                                    [payload.object === 'page' ? 'pageId' : 'instagramBusinessId']: pageOrIgId,
+                                    psid: messaging.sender.id,
+                                    senderName: senderName
+                                }
+                            });
+                        }
+                    }
+                }
             }
         } catch (error) {
             console.error('[MetaProvider] Parse Error:', error);
@@ -140,16 +202,63 @@ export class MetaProvider implements MessagingProvider {
     }
 
     /**
+     * Helper to get FB/IG User Profile (Name/Picture)
+     */
+    private async getSenderProfile(psid: string, assetId: string, userToken: string) {
+        try {
+            const pageToken = await this.getPageAccessToken(assetId, userToken);
+            const url = `https://graph.facebook.com/v22.0/${psid}?fields=first_name,last_name,profile_pic&access_token=${pageToken}`;
+            const res = await fetch(url);
+            const data = await res.json();
+            if (data.first_name) {
+                return {
+                    name: `${data.first_name} ${data.last_name || ''}`.trim(),
+                    picture: data.profile_pic
+                };
+            }
+        } catch (e) {
+            console.error('[MetaProvider] Failed to fetch sender profile:', e);
+        }
+        return null;
+    }
+
+    /**
+     * Helper to get Page Access Token for a specific Page ID using a User Token
+     */
+    private async getPageAccessToken(pageId: string, userToken: string): Promise<string> {
+        try {
+            // First, check if this is already a page token by calling /me
+            const meRes = await fetch(`https://graph.facebook.com/v22.0/me?access_token=${userToken}`);
+            const meData = await meRes.json();
+            if (meData.id === pageId) return userToken; // It's already the page token
+
+            // If not, fetch pages for this user
+            const url = `https://graph.facebook.com/v22.0/me/accounts?access_token=${userToken}`;
+            const res = await fetch(url);
+            const data = await res.json();
+            const page = data.data?.find((p: any) => p.id === pageId);
+            if (page?.access_token) {
+                console.log(`[MetaProvider] Successfully exchanged User Token for Page Token for ${pageId}`);
+                return page.access_token;
+            }
+            return userToken;
+        } catch (e) {
+            console.error('[MetaProvider] Failed to fetch Page Token:', e);
+            return userToken;
+        }
+    }
+
+    /**
      * Helper to get API token from integration_connections if not provided in constructor
      */
-    private async getTokenByPhoneNumberId(phoneNumberId: string): Promise<string> {
-        console.log(`[MetaProvider] getTokenByPhoneNumberId called with: "${phoneNumberId}"`);
+    private async getTokenByAssetId(assetId: string, options?: { forceDb?: boolean }): Promise<string> {
+        console.log(`[MetaProvider] getTokenByAssetId called with: "${assetId}"`);
 
         try {
             const { data: connections, error } = await supabaseAdmin
                 .from('integration_connections')
-                .select('credentials')
-                .eq('provider_key', 'meta_whatsapp')
+                .select('credentials, provider_key, metadata')
+                .in('provider_key', ['meta_whatsapp', 'meta_business'])
                 .eq('status', 'active');
 
             if (error) {
@@ -157,7 +266,7 @@ export class MetaProvider implements MessagingProvider {
                 return '';
             }
 
-            console.log(`[MetaProvider] Found ${connections?.length || 0} active meta_whatsapp connections`);
+            console.log(`[MetaProvider] Found ${connections?.length || 0} active meta connections`);
 
             if (!connections || connections.length === 0) return '';
 
@@ -165,17 +274,29 @@ export class MetaProvider implements MessagingProvider {
 
             for (const conn of connections) {
                 let creds = conn.credentials || {};
-                console.log(`[MetaProvider] Raw credentials type: ${typeof creds}`);
 
                 if (typeof creds === 'string') {
                     try { creds = JSON.parse(creds); } catch (e) { }
                 }
                 creds = decryptObject(creds);
 
-                const storedId = creds.phoneNumberId || creds.phone_number_id;
-                console.log(`[MetaProvider] Checking connection - storedId: "${storedId}" vs requested: "${phoneNumberId}"`);
+                // STRATEGY 1: Meta Business (Unified)
+                if (conn.provider_key === 'meta_business') {
+                    const assets = conn.metadata?.selected_assets || [];
+                    const hasAsset = assets.some((a: any) => a.id === assetId || a.id === String(assetId));
 
-                if (storedId === phoneNumberId) {
+                    if (hasAsset) {
+                        const token = creds.access_token || creds.accessToken || '';
+                        console.log(`[MetaProvider] MATCH! Token found in meta_business (length: ${token.length})`);
+                        return token;
+                    }
+                }
+
+                // STRATEGY 2: Legacy Meta WhatsApp
+                const storedId = creds.phoneNumberId || creds.phone_number_id;
+                console.log(`[MetaProvider] Checking connection - storedId: "${storedId}" vs requested: "${assetId}"`);
+
+                if (storedId === assetId) {
                     const token = creds.accessToken || creds.apiToken || creds.access_token || '';
                     console.log(`[MetaProvider] MATCH! Token found (length: ${token.length})`);
                     return token;
@@ -184,7 +305,7 @@ export class MetaProvider implements MessagingProvider {
             console.log('[MetaProvider] No matching connection found');
             return '';
         } catch (error) {
-            console.error('[MetaProvider] getTokenByPhoneNumberId failed:', error);
+            console.error('[MetaProvider] getTokenByAssetId failed:', error);
             return '';
         }
     }
@@ -192,14 +313,14 @@ export class MetaProvider implements MessagingProvider {
     /**
      * Helper to download media from Meta and upload to Supabase
      */
-    private async processMedia(mediaId: string, mimeType?: string, phoneNumberId?: string): Promise<string> {
+    private async processMedia(mediaId: string, mimeType?: string, assetId?: string): Promise<string> {
         console.log(`[MetaProvider] processMedia called for mediaId: ${mediaId}, mimeType: ${mimeType}`);
 
         // Get token - either from constructor or from database
         let token = this.apiToken;
-        if (!token && phoneNumberId) {
-            console.log(`[MetaProvider] No apiToken in constructor, fetching from database for phoneNumberId: ${phoneNumberId}`);
-            token = await this.getTokenByPhoneNumberId(phoneNumberId);
+        if (!token && assetId) {
+            console.log(`[MetaProvider] No apiToken in constructor, fetching from database for assetId: ${assetId}`);
+            token = await this.getTokenByAssetId(assetId);
         }
 
         if (!token) {

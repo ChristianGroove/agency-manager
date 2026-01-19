@@ -3,7 +3,7 @@ export type ChannelStatus = 'active' | 'disconnected' | 'error' | 'expired' | 'c
 export interface Channel {
     id: string
     organization_id: string
-    provider_key: 'meta_whatsapp' | 'evolution_api' | 'meta_instagram'
+    provider_key: 'meta_whatsapp' | 'evolution_api' | 'meta_instagram' | 'meta_business'
     connection_name: string
     status: ChannelStatus
     credentials: Record<string, any>
@@ -31,6 +31,10 @@ export interface ChannelMetadata {
     verified_name?: string
     profile_picture_url?: string
     quality_rating?: string
+    selected_assets?: any[] // Meta Business Assets
+    assets_preview?: any[] // Meta Business Preview
+    waba_debug_error?: any // Debugging
+    _virtual_asset_type?: string // For UI visuals (WABA vs Page)
 }
 
 export interface WorkingHoursConfig {

@@ -9,6 +9,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useState, useMemo } from "react"
 import { Check, Crown, ExternalLink, Search, Sparkles } from "lucide-react"
 import { IntegrationSetupSheet } from "./integration-setup-sheet"
+import { useSearchParams } from "next/navigation"
 
 interface MarketplacePageProps {
     providers: IntegrationProvider[]
@@ -18,6 +19,7 @@ interface MarketplacePageProps {
 }
 
 const PROVIDER_ICONS: Record<string, string> = {
+    'meta_business': '🏢',
     'meta_whatsapp': '📱',
     'evolution_api': '💬',
     'meta_instagram': '📸',
@@ -31,13 +33,27 @@ const PROVIDER_ICONS: Record<string, string> = {
 }
 
 import { AIEngineSheet } from "./ai-engine-sheet"
+import { useEffect } from "react"
 
 export function MarketplacePage({ providers, installedIntegrations, aiCredentials = [], aiProviders = [] }: MarketplacePageProps) {
+    const searchParams = useSearchParams()
     const [search, setSearch] = useState("")
     const [category, setCategory] = useState("all")
     const [selectedProvider, setSelectedProvider] = useState<IntegrationProvider | null>(null)
     const [isSheetOpen, setIsSheetOpen] = useState(false)
     const [isAIEngineOpen, setIsAIEngineOpen] = useState(false)
+
+    // Auto-open sheet if return from OAuth
+    useEffect(() => {
+        const action = searchParams.get('action')
+        if (action === 'configure_assets') {
+            const metaProvider = providers.find(p => p.key === 'meta_business')
+            if (metaProvider) {
+                setSelectedProvider(metaProvider)
+                setIsSheetOpen(true)
+            }
+        }
+    }, [searchParams, providers])
 
     // Derived state for quick lookup
     const installedKeys = useMemo(() => new Set(installedIntegrations.map(i => i.provider_key)), [installedIntegrations])
@@ -66,10 +82,15 @@ export function MarketplacePage({ providers, installedIntegrations, aiCredential
 
         // 3. Inject AI Card if category matches
         let list = cleaned
+
+        // [VIDEO-PREP] Quick Filter: Ocultar Evolution API para el video de revisión de Meta
+        // Para que se vea 100% "oficial".
+        list = list.filter(p => p.key !== 'evolution_api');
+
         if (category === 'all' || category === 'ai') {
             const hasAi = providers.some(p => AI_KEYS.includes(p.key))
             // Always show it if we are in AI category or ALL
-            list = [aiCard, ...cleaned]
+            list = [aiCard, ...list]
         }
 
         // 4. Apply filters

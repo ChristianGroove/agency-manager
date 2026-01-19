@@ -5,7 +5,7 @@ import { useDraggable } from "@dnd-kit/core"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { formatDistanceToNow } from "date-fns"
-import { UserCheck, MessageSquare } from "lucide-react"
+import { UserCheck, MessageSquare, Facebook, Instagram } from "lucide-react"
 import { ConversationActionsMenu } from "./conversation-actions-menu"
 
 // Redefine type or import if shared. Using local definition for now or basic shape.
@@ -127,7 +127,7 @@ export const ConversationListItem = memo(function ConversationListItem({ conv, i
                             "text-sm text-muted-foreground line-clamp-2 break-all",
                             isUnread && "text-foreground/80 font-medium"
                         )}>
-                            {conv.last_message || "No messages yet"}
+                            {conv.last_message_preview || conv.last_message || "No messages yet"}
                         </p>
                     </div>
 
@@ -141,6 +141,12 @@ export const ConversationListItem = memo(function ConversationListItem({ conv, i
                                     </span>
                                 )}
                             </>
+                        )}
+                        {(conv.channel as any) === 'messenger' && (
+                            <Facebook className="h-3 w-3 text-blue-600" />
+                        )}
+                        {(conv.channel as any) === 'instagram' && (
+                            <Instagram className="h-3 w-3 text-pink-600" />
                         )}
 
                         <span>

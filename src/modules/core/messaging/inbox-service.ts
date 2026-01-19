@@ -3,6 +3,7 @@ import { fileLogger } from "@/lib/file-logger"
 import { IncomingMessage } from "./providers/types"
 import { ChannelType } from "@/types/messaging"
 import { SupabaseClient } from "@supabase/supabase-js"
+import { createClient } from '@supabase/supabase-js'
 
 export class InboxService {
 
@@ -23,7 +24,7 @@ export class InboxService {
             return null
         }
 
-        fileLogger.log(`[InboxService] Using conversation: ${conversation.id}`)
+        fileLogger.log(`[InboxService] Using conversation: ${conversation.id} `)
 
         // 2. Check for Duplicates (Idempotency)
         if (msg.externalId) {
@@ -34,7 +35,7 @@ export class InboxService {
                 .single()
 
             if (existingMsg) {
-                fileLogger.log(`[InboxService] Skipping DUPLICATE message: ${msg.externalId}`)
+                fileLogger.log(`[InboxService] Skipping DUPLICATE message: ${msg.externalId} `)
                 // CRITICAL FIX: Trigger automation even for duplicates (message was already inserted by upsertConversation)
                 try {
                     const { automationTrigger } = await import("../automation/automation-trigger.service")
@@ -73,7 +74,7 @@ export class InboxService {
 
         // 4. Update triggers automatically via DB
         // The DB trigger 'update_conversation_last_message' handles unread_count increment and last_message update.
-        fileLogger.log(`[InboxService] Message saved. About to trigger automation...`)
+        fileLogger.log(`[InboxService] Message saved.About to trigger automation...`)
 
         // 5. Trigger Automation
         try {
@@ -105,14 +106,19 @@ export class InboxService {
         let matchedConnection: any = null;
 
         const metadata = msg.metadata as any;
-        fileLogger.log('[InboxService] Resolving connection from metadata:', { phoneNumberId: metadata?.phoneNumberId, channel: msg.channel });
+        fileLogger.log('[InboxService] Resolving connection from metadata:', {
+            phoneNumberId: metadata?.phoneNumberId,
+            pageId: metadata?.pageId,
+            instagramBusinessId: metadata?.instagramBusinessId,
+            channel: msg.channel
+        });
 
         // Strategy A: Meta WhatsApp (phone_number_id)
         if (msg.channel === 'whatsapp') {
             const { data: connections } = await supabase
                 .from('integration_connections')
-                .select('id, organization_id, credentials, default_pipeline_stage_id, working_hours, auto_reply_when_offline')
-                .in('provider_key', ['meta_whatsapp', 'whatsapp']) // Support both legacy and new
+                .select('id, organization_id, credentials, provider_key, metadata, default_pipeline_stage_id, working_hours, auto_reply_when_offline')
+                .in('provider_key', ['meta_whatsapp', 'whatsapp', 'meta_business']) // Support legacy and unified
                 .eq('status', 'active');
 
             fileLogger.log('[InboxService] Active WhatsApp connections found:', connections?.length || 0);
@@ -120,21 +126,19 @@ export class InboxService {
             if (connections) {
                 const { decryptObject } = await import('@/modules/core/integrations/encryption');
 
-                for (const c of connections) {
-                    let creds = c.credentials || {};
-                    if (typeof creds === 'string') {
-                        try { creds = JSON.parse(creds); } catch (e) { }
-                    }
-                    creds = decryptObject(creds);
-                    if (!creds) {
-                        fileLogger.log(`[InboxService] Connection ${c.id}: decryption failed, skipping`);
-                        continue;
-                    }
-                    const storedId = creds.phoneNumberId || creds.phone_number_id;
-                    fileLogger.log(`[InboxService] Checking connection ${c.id}: storedId="${storedId}" vs webhook="${metadata?.phoneNumberId}"`);
-                }
-
                 const found: any = connections.find((c: any) => {
+                    // 1. Unified Meta Business Connection
+                    if (c.provider_key === 'meta_business') {
+                        const assets = c.metadata?.selected_assets || [];
+                        const match = assets.some((a: any) =>
+                            a.id === metadata?.phoneNumberId ||
+                            a.id === metadata?.phone_number_id
+                        );
+                        if (match) fileLogger.log(`[InboxService] Match found in meta_business connection ${c.id} `);
+                        return match;
+                    }
+
+                    // 2. Legacy Meta WhatsApp Connection
                     let creds = c.credentials || {};
                     if (typeof creds === 'string') {
                         try { creds = JSON.parse(creds); } catch (e) { }
@@ -142,7 +146,9 @@ export class InboxService {
                     creds = decryptObject(creds);
                     if (!creds) return false;
                     const storedId = creds.phoneNumberId || creds.phone_number_id;
-                    return storedId === metadata?.phoneNumberId || storedId === metadata?.phone_number_id;
+                    const isMatch = storedId === metadata?.phoneNumberId || storedId === metadata?.phone_number_id;
+                    if (isMatch) fileLogger.log(`[InboxService] Match found in meta_whatsapp connection ${c.id} `);
+                    return isMatch;
                 });
 
                 if (found) {
@@ -152,6 +158,35 @@ export class InboxService {
                     fileLogger.log('[InboxService] Matched Meta WhatsApp connection:', { connectionId, orgId });
                 } else {
                     fileLogger.log('[InboxService] NO MATCH FOUND. Webhook phoneNumberId:', metadata?.phoneNumberId);
+                }
+            }
+        }
+
+        // Strategy A.2: Facebook / Instagram (via meta_business)
+        if (!connectionId && (msg.channel === 'messenger' || msg.channel === 'instagram')) {
+            const { data: connections } = await supabase
+                .from('integration_connections')
+                .select('id, organization_id, provider_key, metadata, status')
+                .eq('provider_key', 'meta_business')
+                .eq('status', 'active');
+
+            fileLogger.log(`[InboxService] Active meta_business connections found for ${msg.channel}: `, connections?.length || 0);
+
+            if (connections) {
+                const found: any = connections.find((c: any) => {
+                    const assets = c.metadata?.selected_assets || [];
+                    if (msg.channel === 'messenger') {
+                        return assets.some((a: any) => (a.id === metadata?.pageId || a.id === metadata?.page_id) && (a.type === 'page' || a.type === 'facebook_page'));
+                    } else {
+                        return assets.some((a: any) => (a.id === metadata?.instagramBusinessId || a.id === metadata?.instagram_business_id) && a.type === 'instagram_business_account');
+                    }
+                });
+
+                if (found) {
+                    connectionId = found.id;
+                    orgId = found.organization_id;
+                    matchedConnection = found;
+                    fileLogger.log(`[InboxService] Matched Meta ${msg.channel} connection: `, { connectionId, orgId });
                 }
             }
         }
@@ -180,6 +215,7 @@ export class InboxService {
             fileLogger.log('[InboxService] REJECTED: No matching integration connection for this webhook');
             return { data: null, error: new Error('No matching integration connection found. Message rejected for tenant isolation.'), success: false };
         }
+        fileLogger.log(`Matched Org: ${orgId}, Connection: ${connectionId} `);
 
         // 2. Find or create Lead by phone (now using correct org)
         let lead = null;
@@ -195,6 +231,13 @@ export class InboxService {
             lead = foundLead;
             existingLead = foundLead;
             fileLogger.log('[InboxService] Found existing lead:', lead.id);
+
+            // AUTO-HEAL: If name is generic and we have a real one now, update it
+            if ((lead.name === 'User' || lead.name === lead.phone) && msg.senderName && msg.senderName !== 'User') {
+                await supabase.from('leads').update({ name: msg.senderName }).eq('id', lead.id);
+                lead.name = msg.senderName;
+                fileLogger.log('[InboxService] Updated lead name to:', msg.senderName);
+            }
         } else {
             fileLogger.log('[InboxService] Creating new lead for:', msg.from);
             const { data: newLead, error: leadError } = await supabase.from('leads').insert({
@@ -216,10 +259,10 @@ export class InboxService {
 
         // Connection automation is called AFTER conversation is found/created for rate limiting to work
 
-        // 3. Find with Connection Filter
+        // 3. Find existing conversation (regardless of state/status)
         let convQuery = supabase
             .from('conversations')
-            .select('id, phone, state, status, connection_id')
+            .select('id, phone, state, status, connection_id, metadata')
             .eq('channel', msg.channel)
             .eq('lead_id', lead.id)
             .order('updated_at', { ascending: false });
@@ -245,7 +288,7 @@ export class InboxService {
 
             // Reopen if archived and ensure phone is set
             const updates: any = {}
-            if (existingConv.state === 'archived') {
+            if (existingConv.state !== 'active') {
                 updates.state = 'active'
                 updates.status = 'open'
             }
@@ -253,18 +296,27 @@ export class InboxService {
                 updates.phone = msg.from
             }
 
-            // Auto-heal connection_id if missing and we found one now
+            // Populate preview for sidebar
+            updates.last_message = msg.content;
+            updates.last_message_preview = typeof msg.content === 'object' ? (msg.content as any).text : msg.content;
+
+            // Auto-heal connection_id and metadata if missing and we found one now
+            const metadataChange = (metadata?.phoneNumberId || metadata?.pageId || metadata?.instagramBusinessId)
+                ? { ...((existingConv as any).metadata || {}), ...metadata }
+                : null;
+
             if (!existingConv.connection_id && connectionId) {
                 updates.connection_id = connectionId;
-                console.log('[InboxService] Auto-healing conversation connection_id');
+            }
+            if (metadataChange && JSON.stringify((existingConv as any).metadata) !== JSON.stringify(metadataChange)) {
+                updates.metadata = metadataChange;
             }
 
             if (Object.keys(updates).length > 0) {
-                await supabase.from('conversations').update(updates).eq('id', existingConv.id)
+                await supabase.from('conversations').update(updates).eq('id', (existingConv as any).id)
                 console.log('[InboxService] Updated conversation:', updates)
             }
 
-            // INSERT MESSAGE (Missing Link)
             // INSERT MESSAGE (Missing Link)
             let safeDate = new Date().toISOString()
             try {
@@ -275,7 +327,7 @@ export class InboxService {
             } catch (e) { }
 
             const { error: msgError } = await supabase.from('messages').insert({
-                conversation_id: existingConv.id,
+                conversation_id: (existingConv as any).id,
                 direction: 'inbound',
                 channel: msg.channel,
                 content: msg.content,
@@ -288,28 +340,44 @@ export class InboxService {
 
             // Handle automation (auto-reply with rate limiting)
             if (matchedConnection) {
-                await this.handleConnectionAutomation(supabase, matchedConnection, lead, existingLead, msg.from, orgId, existingConv.id);
+                await this.handleConnectionAutomation(supabase, matchedConnection, lead, existingLead, msg.from, orgId, (existingConv as any).id);
             }
 
             return { data: existingConv, error: null, conversationId: existingConv.id, connectionId: existingConv.connection_id || connectionId, success: true }
         }
 
         // 4. Create new conversation
-        console.log('[InboxService] Creating new conversation for lead:', lead.id, 'Connection:', connectionId)
-        const { data: newConv, error: createError } = await supabase.from('conversations').insert({
+        console.log('[InboxService] Creating new conversation for lead:', lead?.id, 'Connection:', connectionId)
+
+        if (!lead?.id) {
+            console.error('[InboxService] CRITICAL: Cannot create conversation because Lead ID is missing.');
+            return { success: false, error: new Error('Lead ID missing') };
+        }
+
+        const newConvMetadata = {
+            ...(metadata?.phoneNumberId && { phoneNumberId: metadata.phoneNumberId }),
+            ...(metadata?.pageId && { pageId: metadata.pageId }),
+            ...(metadata?.instagramBusinessId && { instagramBusinessId: metadata.instagramBusinessId })
+        };
+        const insertPayload = {
             organization_id: orgId,
             lead_id: lead.id,
-            channel: msg.channel,
+            channel: msg.channel, // Ensure this maps to DB enum
             phone: msg.from,
             status: 'open',
             state: 'active',
             last_message: msg.content,
+            last_message_preview: typeof msg.content === 'object' ? (msg.content as any).text : msg.content,
             last_message_at: new Date().toISOString(),
             unread_count: 1,
-            connection_id: connectionId // New field
-        }).select().single()
+            connection_id: connectionId,
+            metadata: newConvMetadata // FIXED: Include all metadata
+        };
+
+        const { data: newConv, error: createError } = await supabase.from('conversations').insert(insertPayload).select().single()
 
         if (createError) {
+            console.error('[InboxService] INSERT ERROR:', createError);
             // Handle Race Condition (Unique Violation)
             if (createError.code === '23505') {
                 console.warn('[InboxService] Race condition detected: Conversation already created. Fetching existing one.');
@@ -438,7 +506,7 @@ export class InboxService {
         // Update triggers automatically via DB
         // The DB trigger 'update_conversation_last_message' updates last_message, 
         // but does NOT increment unread_count for outbound (checked trigger definition).
-        console.log(`[InboxService] Outbound message saved, trigger will update convo ${conversationId}`)
+        console.log(`[InboxService] Outbound message saved, trigger will update convo ${conversationId} `)
     }
 
     /**
@@ -463,7 +531,7 @@ export class InboxService {
         // 2. Welcome Message (New Leads Only)
         if (!existingLead && connection.welcome_message) {
             try {
-                console.log(`[InboxService] Sending welcome message to new lead ${lead.id}`)
+                console.log(`[InboxService] Sending welcome message to new lead ${lead.id} `)
                 await outboundService.sendMessage(
                     connection.id,
                     recipientPhone,
@@ -496,13 +564,13 @@ export class InboxService {
                         const hourAgo = new Date(Date.now() - 60 * 60 * 1000)
                         if (lastReply > hourAgo) {
                             shouldSend = false
-                            console.log(`[InboxService] Rate limited: Already sent auto-reply within the hour`)
+                            console.log(`[InboxService] Rate limited: Already sent auto - reply within the hour`)
                         }
                     }
                 }
 
                 if (shouldSend) {
-                    console.log(`[InboxService] Connection ${connection.id} is OFFLINE. Sending auto-reply.`)
+                    console.log(`[InboxService] Connection ${connection.id} is OFFLINE.Sending auto - reply.`)
                     try {
                         await outboundService.sendMessage(
                             connection.id,
@@ -583,7 +651,7 @@ export class InboxService {
                     .from('leads')
                     .update({ status: stage.status_key })
                     .eq('id', leadId);
-                console.log(`[InboxService] Auto-assigned lead ${leadId} to stage ${stage.status_key}`);
+                console.log(`[InboxService] Auto - assigned lead ${leadId} to stage ${stage.status_key} `);
             }
         } catch (error) {
             console.error('[InboxService] Failed to auto-assign pipeline stage:', error);

@@ -1,0 +1,30 @@
+
+const { createClient } = require('@supabase/supabase-js');
+const dotenv = require('dotenv');
+dotenv.config({ path: '.env.local' });
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+
+async function run() {
+    console.log("--- 🕵️ CHECKING PHONE NUMBER STRING ---");
+    const { data: conn } = await supabase.from('integration_connections').select('*').eq('provider_key', 'meta_business').order('created_at', { ascending: false }).limit(1).single();
+    if (!conn) return;
+
+    const assets = conn.metadata?.assets_preview || [];
+    let wabaId = assets.find(a => a.waba_id)?.waba_id || assets.find(a => a.type === 'whatsapp_waba')?.id;
+
+    const url = `https://graph.facebook.com/v22.0/${wabaId}/phone_numbers?access_token=${conn.credentials.access_token}`;
+    const res = await fetch(url);
+    const data = await res.json();
+
+    if (data.data) {
+        data.data.forEach(p => {
+            console.log(`\n📞 FOUND NUMBER: "${p.display_phone_number}"`);
+            console.log(`   ID: ${p.id}`);
+            console.log(`   Status: ${p.name_status}`);
+            console.log(`   Verified Name: ${p.verified_name}`);
+        });
+    } else {
+        console.log("❌ No data found");
+    }
+}
+run();

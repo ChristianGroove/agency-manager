@@ -33,7 +33,7 @@ export interface InstalledIntegration {
     provider_id: string | null
     provider_key: string
     connection_name: string
-    status: 'active' | 'disconnected' | 'error' | 'expired' | 'connecting' | 'deleted'
+    status: 'active' | 'disconnected' | 'error' | 'expired' | 'connecting' | 'deleted' | 'action_required'
     credentials: Record<string, any>
     config: Record<string, any>
     metadata: Record<string, any>
