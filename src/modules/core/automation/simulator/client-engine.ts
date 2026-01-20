@@ -110,7 +110,17 @@ export class ClientEngine {
             case 'buttons':
                 const data = node.data as any;
                 const body = this.replaceVariables(data.body || '');
-                const buttons = data.buttons || [];
+                let buttons = data.buttons || [];
+
+                // Handle Interactive List (flatten rows to buttons for simulator)
+                if (data.messageType === 'list' && data.sections) {
+                    buttons = data.sections.flatMap((section: any) =>
+                        section.rows.map((row: any) => ({
+                            id: row.id,
+                            title: row.title
+                        }))
+                    );
+                }
 
                 this.addBotMessage(body, {
                     type: 'buttons',

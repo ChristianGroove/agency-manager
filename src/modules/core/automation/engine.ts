@@ -64,7 +64,9 @@ export class WorkflowEngine {
      * Starts execution from the Trigger node.
      */
     async start(): Promise<void> {
+        const { fileLogger } = await import('@/lib/file-logger')
         console.log(`[Engine] Starting workflow execution...`)
+        fileLogger.log(`[Engine] Starting execution. Trigger: ${this.definition.nodes.find(n => n.type === 'trigger')?.id}`)
 
         // Find Trigger Node (Assuming single trigger for MVP)
         const triggerNode = this.definition.nodes.find(n => n.type === 'trigger')
@@ -194,10 +196,13 @@ export class WorkflowEngine {
         else if (node.type === 'buttons') {
             // Check if we have a result from a button click (after suspension)
             const result = this.context._lastInputResult as any
+            const { fileLogger } = require('@/lib/file-logger')
 
             if (result && result.buttonId) {
                 // If we have a button ID, follow the specific handle
                 const buttonEdge = outEdges.find(e => e.sourceHandle === result.buttonId)
+                // console.log(`[Engine] Buttons Navigation Check`, { buttonId: result.buttonId, outEdges: outEdges.map(e => ({ id: e.id, handle: e.sourceHandle })) })
+
                 if (buttonEdge) {
                     filteredEdges = [buttonEdge]
                 } else {
@@ -341,6 +346,8 @@ export class WorkflowEngine {
                 // Check if Resuming
                 const pendingInputResponse = this.context._resumedInputResponse as any
 
+                const { fileLogger } = await import('@/lib/file-logger')
+
                 if (pendingInputResponse) {
                     // RESUMED
                     console.log(`[Buttons] Resumed with input:`, pendingInputResponse)
@@ -386,10 +393,16 @@ export class WorkflowEngine {
                             timeoutAction: buttonsData.timeoutBranchId ? 'branch' : 'continue',
                             timeoutBranchId: buttonsData.timeoutBranchId,
                             buttonOptions,
-                            buttonBranches: buttonsData.buttons?.reduce((acc, btn) => {
-                                if (btn.branchId) acc[btn.id] = btn.branchId
-                                return acc
-                            }, {} as Record<string, string>)
+                            buttonBranches: (buttonsData.messageType === 'list' && buttonsData.sections)
+                                ? buttonsData.sections.flatMap(s => s.rows).reduce((acc, row) => {
+                                    // Lists usually don't have per-row branching in this UI yet, but if they did:
+                                    if ((row as any).branchId) acc[row.id] = (row as any).branchId
+                                    return acc
+                                }, {} as Record<string, string>)
+                                : (buttonsData.buttons?.reduce((acc, btn) => {
+                                    if (btn.branchId) acc[btn.id] = btn.branchId
+                                    return acc
+                                }, {} as Record<string, string>) || {})
                         }
 
                         const waitResult = await waitNode.startWaiting(waitConfig, executionId, node.id)

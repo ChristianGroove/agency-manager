@@ -90,7 +90,10 @@ export async function resumeSuspendedWorkflow(
         // Prepare Resume Context
         const context = execution.context || {}
         const resumeContext = {
-            _resumedInputResponse: responsePayload
+            _resumedInputResponse: responsePayload,
+            executionId: execution.id,
+            organizationId: execution.organization_id,
+            organization_id: execution.organization_id // Redundant safety
         }
 
         engine = new WorkflowEngine(workflow.definition as WorkflowDefinition, context)

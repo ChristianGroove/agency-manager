@@ -60,6 +60,8 @@ export class ButtonsNode {
         try {
             // Default to 'buttons' type if not specified
             const messageType = data.messageType || 'buttons'
+            const { fileLogger } = await import('@/lib/file-logger')
+            fileLogger.log('[ButtonsNode] Executing with Data:', data)
             console.log('[ButtonsNode] Executing with type:', messageType)
 
             // Resolve variables in message content

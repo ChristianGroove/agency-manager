@@ -52,6 +52,8 @@ export class MetaProvider implements MessagingProvider {
                 ? { recipient: { id: options.to }, message: { text: (options.content as any).text || '' } }
                 : this.buildPayload(options);
 
+            debugLog(`[MetaProvider] Sending Payload: ${JSON.stringify(payload)}`);
+
             const response = await fetch(url, {
                 method: 'POST',
                 headers: {
@@ -62,6 +64,7 @@ export class MetaProvider implements MessagingProvider {
             });
 
             const data = await response.json();
+            debugLog(`[MetaProvider] API Response: ${JSON.stringify(data)}`);
 
             if (!response.ok) {
                 console.error('[MetaProvider] API Error:', data);
@@ -608,19 +611,22 @@ export class MetaProvider implements MessagingProvider {
                     type: 'list',
                     body: { text: content.body },
                     action: {
-                        button: content.buttonText.substring(0, 20),  // Menu button text
+                        button: (content.buttonText || 'Ver opciones').substring(0, 20),
                         sections: content.sections.slice(0, 10).map(section => ({
-                            title: section.title?.substring(0, 24),
+                            title: (section.title || 'Sección').substring(0, 24),
                             rows: section.rows.slice(0, 10).map(row => ({
                                 id: row.id,
-                                title: row.title.substring(0, 24),
+                                title: (row.title || 'Opción').substring(0, 24),
                                 description: row.description?.substring(0, 72)
                             }))
                         }))
                     }
                 };
                 if (content.header) {
-                    payload.interactive.header = { type: 'text', text: content.header };
+                    const headerText = typeof content.header === 'string' ? content.header : (content.header as any).text;
+                    if (headerText) {
+                        payload.interactive.header = { type: 'text', text: headerText };
+                    }
                 }
                 if (content.footer) {
                     payload.interactive.footer = { text: content.footer };

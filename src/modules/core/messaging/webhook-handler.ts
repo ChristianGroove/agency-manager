@@ -202,6 +202,7 @@ export class WebhookManager {
         // 2. CHECK SUSPENDED WORKFLOWS (Pending Inputs)
         // Use Admin client because Webhooks are unauthenticated system events
         const { supabaseAdmin } = await import('@/lib/supabase-admin')
+        const { fileLogger } = await import('@/lib/file-logger') // Import Logger
         const supabase = supabaseAdmin
 
         // Find active pending input for this conversation
@@ -214,12 +215,21 @@ export class WebhookManager {
             .limit(1)
             .single()
 
+        // Log what we found
+        fileLogger.log(`[WebhookManager] Checking pending inputs for conversation ${conversationId}`, {
+            hasPending: !!pendingInput,
+            pendingId: pendingInput?.id,
+            buttonId: buttonId
+        })
+
         if (pendingInput) {
             console.log(`[WebhookManager] Found pending input for conversation ${conversationId}`)
             const { resumeSuspendedWorkflow } = await import('@/modules/core/automation/runner')
 
             // Resume
             const result = await resumeSuspendedWorkflow(pendingInput.execution_id, pendingInput.id, msg)
+
+            fileLogger.log(`[WebhookManager] Resume Attempt`, { success: result.success, error: result.error })
 
             if (result.success) {
                 console.log(`[WebhookManager] Workflow resumed successfully. Stopping further processing.`)

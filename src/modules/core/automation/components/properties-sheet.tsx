@@ -1,4 +1,7 @@
+"use client";
+
 import React, { useState, useEffect } from 'react';
+import { getPipelineStages, type PipelineStage } from '@/modules/core/crm/pipeline-actions';
 import {
     Sheet,
     SheetContent,
@@ -35,14 +38,50 @@ export function PropertiesSheet({ node, isOpen, onClose, onUpdate, onDelete, onD
 
     const [formData, setFormData] = useState<Record<string, unknown>>({});
     const [errors, setErrors] = useState<Record<string, string>>({});
+    const [stages, setStages] = useState<PipelineStage[]>([]);
+
+    // Fetch pipeline stages when needed
+    useEffect(() => {
+        if (node?.type === 'stage') {
+            getPipelineStages()
+                .then(data => setStages(data))
+                .catch(err => console.error("Failed to load stages", err));
+        }
+    }, [node?.type]);
 
     useEffect(() => {
         if (node) {
-            const data = node.data || {};
-            // Set defaults for trigger node
+            const data = { ...node.data };
+
+            // Set defaults based on node type to fix UI initialization bugs
             if (node.type === 'trigger' && !data.triggerType) {
                 data.triggerType = 'webhook';
             }
+
+            if (node.type === 'action' && !data.actionType) {
+                data.actionType = 'send_message';
+            }
+
+            if (node.type === 'buttons' && !data.messageType) {
+                data.messageType = 'buttons';
+            }
+
+            if (node.type === 'crm' && !data.actionType) {
+                data.actionType = 'create_lead';
+            }
+
+            if (node.type === 'billing' && !data.actionType) {
+                data.actionType = 'create_invoice';
+            }
+
+            if (node.type === 'wait_input' && !data.inputType) {
+                data.inputType = 'any';
+            }
+
+            if (node.type === 'wait' && !data.unit) {
+                data.unit = 'minutes';
+            }
+
             setFormData(data);
         }
     }, [node]);
@@ -220,6 +259,34 @@ export function PropertiesSheet({ node, isOpen, onClose, onUpdate, onDelete, onD
                 }
                 if (buttons.some(b => !b.title)) {
                     newErrors.buttons = 'Todos los botones deben tener texto';
+                }
+            } else if (formData.messageType === 'list') {
+                const sections = (formData.sections as any[]) || [];
+                if (sections.length === 0) {
+                    newErrors.sections = 'Agrega al menos una sección';
+                }
+
+                const totalRows = sections.reduce((acc: number, s: any) => acc + (s.rows?.length || 0), 0);
+                if (totalRows === 0) {
+                    newErrors.sections = 'La lista debe tener al menos una opción';
+                }
+                if (totalRows > 10) {
+                    newErrors.sections = 'Máximo 10 opciones en total permitidas por WhatsApp';
+                }
+
+                // Validate individual sections and rows
+                let hasEmptyTitles = false;
+                sections.forEach((section: any) => {
+                    if (!section.title || section.title.trim() === '') {
+                        hasEmptyTitles = true;
+                    }
+                    if (section.rows?.some((r: any) => !r.title || r.title.trim() === '')) {
+                        hasEmptyTitles = true;
+                    }
+                });
+
+                if (hasEmptyTitles) {
+                    newErrors.sections = 'Todas las secciones y opciones deben tener título';
                 }
             }
         }
@@ -1466,7 +1533,7 @@ export function PropertiesSheet({ node, isOpen, onClose, onUpdate, onDelete, onD
                         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
                             <Separator className="bg-slate-100 dark:bg-slate-800" />
                             <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                Configuración de Botones
+                                Configuración de Mensaje Interactivo
                             </Label>
 
                             <div className="space-y-3">
@@ -1502,8 +1569,8 @@ export function PropertiesSheet({ node, isOpen, onClose, onUpdate, onDelete, onD
                                 <div className="space-y-2">
                                     <Label>Encabezado (Opcional)</Label>
                                     <Input
-                                        value={(formData.header as string) || ''}
-                                        onChange={(e) => handleChange('header', e.target.value)}
+                                        value={(formData.header as any)?.content || (formData.header as string) || ''}
+                                        onChange={(e) => handleChange('header', { type: 'text', content: e.target.value })}
                                         placeholder="Negrita superior"
                                         className="bg-slate-50 dark:bg-slate-900"
                                     />
@@ -1608,8 +1675,8 @@ export function PropertiesSheet({ node, isOpen, onClose, onUpdate, onDelete, onD
                                                             sections[sIdx] = { ...sections[sIdx], title: e.target.value };
                                                             handleChange('sections', sections);
                                                         }}
-                                                        placeholder="Título de Sección (Opcional)"
-                                                        className="h-8 font-semibold"
+                                                        placeholder="Título de Sección (Requerido)"
+                                                        className={`h-8 font-semibold ${errors.sections ? 'border-red-500' : ''}`}
                                                     />
                                                     <Button
                                                         variant="ghost"
@@ -1833,20 +1900,27 @@ export function PropertiesSheet({ node, isOpen, onClose, onUpdate, onDelete, onD
                             <div className="space-y-3">
                                 <Label>Mover a Etapa</Label>
                                 <Select
-                                    value={(formData.status as string) || 'new'}
+                                    value={(formData.status as string) || ''}
                                     onValueChange={(v) => handleChange('status', v)}
                                 >
                                     <SelectTrigger className="h-10 bg-slate-50 dark:bg-slate-900">
-                                        <SelectValue />
+                                        <SelectValue placeholder="Seleccionar etapa..." />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="open">Abierto / Nuevo</SelectItem>
-                                        <SelectItem value="contacted">Contactado</SelectItem>
-                                        <SelectItem value="qualified">Calificado</SelectItem>
-                                        <SelectItem value="proposal">Propuesta Enviada</SelectItem>
-                                        <SelectItem value="negotiation">Negociación</SelectItem>
-                                        <SelectItem value="converted">Convertido / Ganado</SelectItem>
-                                        <SelectItem value="lost">Perdido</SelectItem>
+                                        {stages.length > 0 ? (
+                                            stages.map((stage) => (
+                                                <SelectItem key={stage.id} value={stage.status_key || stage.id}>
+                                                    <div className="flex items-center gap-2">
+                                                        <div className={`w-2 h-2 rounded-full ${stage.color || 'bg-slate-400'}`} />
+                                                        {stage.name}
+                                                    </div>
+                                                </SelectItem>
+                                            ))
+                                        ) : (
+                                            <div className="p-2 text-xs text-muted-foreground text-center">
+                                                Cargando etapas...
+                                            </div>
+                                        )}
                                     </SelectContent>
                                 </Select>
                             </div>

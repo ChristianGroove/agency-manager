@@ -12,6 +12,9 @@ export interface WaitInputNodeData {
     timeoutAction: 'continue' | 'branch' | 'stop'
     timeoutBranchId?: string
 
+    // Context override
+    conversationId?: string
+
     // Validation (for text input)
     validation?: {
         type: 'regex' | 'contains' | 'length' | 'email' | 'phone' | 'number'
@@ -53,12 +56,15 @@ export class WaitInputNode {
 
             const orgId = this.contextManager.get('organization_id')
             const conversationId = (
+                data.conversationId || // Direct override
                 this.contextManager.get('conversation.id') ||
                 this.contextManager.get('conversationId') ||
-                (this.contextManager.get('message') as any)?.conversationId
+                (this.contextManager.get('message') as any)?.conversationId ||
+                ((this.contextManager.get('execution') as any)?.context?.conversationId) // Fallback to deep execution context
             ) as string
 
             if (!conversationId) {
+                console.error('[WaitInputNode] Context keys:', Object.keys(this.contextManager.getAll()))
                 return { success: false, suspended: false, error: 'No conversation context' }
             }
 
