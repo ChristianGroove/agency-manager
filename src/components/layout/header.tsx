@@ -1,6 +1,6 @@
 "use client"
 
-import { MobileSidebar } from "./mobile-sidebar"
+// import { MobileSidebar } from "./mobile-sidebar"
 import { NotificationBell } from "./notification-bell"
 import { ToolsMarquee } from "@/components/ui/tools-marquee"
 import { useEffect, useState } from "react"
@@ -67,7 +67,7 @@ export function Header({ currentOrgId }: { currentOrgId: string | null }) {
 
     return (
         <div className="flex items-center px-4 border-b h-full bg-white/80 dark:bg-transparent dark:border-white/10 backdrop-blur-sm relative z-50 transition-colors duration-300">
-            <MobileSidebar />
+            {/* MobileSidebar removed - moved to DashboardShell */}
 
             <div className="flex-1 w-full mx-6 overflow-hidden h-16 relative">
                 {showMarquee && <ToolsMarquee />}

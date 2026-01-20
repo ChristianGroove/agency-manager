@@ -6,20 +6,30 @@ import { Building2 } from "lucide-react"
 import { getEffectiveBranding } from "@/modules/core/branding/actions"
 import { useTheme } from "next-themes"
 
+const brandingCache = new Map<string, any>()
+
 export function OrgBranding({ orgId, collapsed = false }: { orgId: string | null, collapsed?: boolean }) {
-    const [branding, setBranding] = useState<any>(null)
-    const [loading, setLoading] = useState(true)
+    const [branding, setBranding] = useState<any>(brandingCache.get(orgId || 'platform') || null)
+    const [loading, setLoading] = useState(!branding)
     const { resolvedTheme } = useTheme()
     const [mounted, setMounted] = useState(false)
 
     useEffect(() => {
         setMounted(true)
-        const fetchBranding = async () => {
 
+        // If we have cached data, don't re-fetch unless force refresh needed
+        if (brandingCache.has(orgId || 'platform')) {
+            setBranding(brandingCache.get(orgId || 'platform'))
+            setLoading(false)
+            return
+        }
+
+        const fetchBranding = async () => {
             setLoading(true)
             try {
                 // If orgId is null, it returns Platform branding automatically
                 const data = await getEffectiveBranding(orgId)
+                brandingCache.set(orgId || 'platform', data)
                 setBranding(data)
             } catch (error) {
                 console.error("Failed to load branding", error)
