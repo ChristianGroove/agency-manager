@@ -728,12 +728,11 @@ export async function getPortalCatalog(token: string) {
 
     if (clientError || !client) throw new Error('Unauthorized')
 
-    // 2. Fetch Catalog (Admin bypasses RLS)
+    // 2. Fetch Catalog from service_catalog table (Templates)
     const { data, error } = await supabaseAdmin
-        .from('services')
+        .from('service_catalog')  // ✅ Fixed: Was 'services', now 'service_catalog'
         .select('*')
-        .eq('organization_id', client.organization_id) // ✅ Fix: Isolate by Org
-        .eq('is_catalog_item', true)
+        .eq('organization_id', client.organization_id)
         .eq('is_visible_in_portal', true)
         .order('category')
 

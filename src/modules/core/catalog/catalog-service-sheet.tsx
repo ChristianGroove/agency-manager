@@ -18,6 +18,7 @@ import { getCategories, ServiceCategory } from "@/modules/core/catalog/categorie
 import { getFormTemplates, FormTemplate } from "@/modules/core/forms/actions"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
+import { CatalogItemFlipCard } from "@/modules/core/portal/catalog-item-flip-card"
 
 interface CatalogServiceSheetProps {
     open: boolean
@@ -290,6 +291,183 @@ export function CatalogServiceSheet({
                                     onCheckedChange={(checked) => setFormData({ ...formData, is_visible_in_portal: checked })}
                                 />
                             </div>
+
+                            <Separator />
+
+                            {/* Portal Card Metadata */}
+                            <div className="space-y-4">
+                                <div className="flex items-center gap-2">
+                                    <div className="h-8 w-8 rounded-lg bg-purple-100 flex items-center justify-center">
+                                        <Sparkles className="h-4 w-4 text-purple-600" />
+                                    </div>
+                                    <div>
+                                        <h4 className="text-sm font-bold text-gray-900">Información para Portal del Cliente</h4>
+                                        <p className="text-xs text-gray-500">Detalles que verán al explorar el catálogo</p>
+                                    </div>
+                                </div>
+
+                                {/* Descripción Detallada */}
+                                <div className="space-y-2">
+                                    <Label className="text-sm">Descripción Detallada (Reverso de Card)</Label>
+                                    <Textarea
+                                        value={formData.metadata?.portal_card?.detailed_description || ""}
+                                        onChange={(e) => setFormData({
+                                            ...formData,
+                                            metadata: {
+                                                ...formData.metadata,
+                                                portal_card: {
+                                                    ...formData.metadata?.portal_card,
+                                                    detailed_description: e.target.value
+                                                }
+                                            }
+                                        })}
+                                        placeholder="Descripción extensa que se mostrará al girar la tarjeta..."
+                                        rows={4}
+                                        className="resize-none"
+                                    />
+                                    <p className="text-xs text-gray-500">Se mostrará en el reverso de la card cuando el cliente la seleccione</p>
+                                </div>
+
+                                {/* Features */}
+                                <div className="space-y-2">
+                                    <Label className="text-sm">Características</Label>
+                                    <div className="space-y-2">
+                                        {(formData.metadata?.portal_card?.features || []).map((feature: string, idx: number) => (
+                                            <div key={idx} className="flex gap-2">
+                                                <Input
+                                                    value={feature}
+                                                    onChange={(e) => {
+                                                        const features = [...(formData.metadata?.portal_card?.features || [])]
+                                                        features[idx] = e.target.value
+                                                        setFormData({
+                                                            ...formData,
+                                                            metadata: {
+                                                                ...formData.metadata,
+                                                                portal_card: {
+                                                                    ...formData.metadata?.portal_card,
+                                                                    features
+                                                                }
+                                                            }
+                                                        })
+                                                    }}
+                                                    placeholder="Ej. Soporte 24/7"
+                                                    className="text-sm"
+                                                />
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => {
+                                                        const features = (formData.metadata?.portal_card?.features || []).filter((_: any, i: number) => i !== idx)
+                                                        setFormData({
+                                                            ...formData,
+                                                            metadata: {
+                                                                ...formData.metadata,
+                                                                portal_card: {
+                                                                    ...formData.metadata?.portal_card,
+                                                                    features
+                                                                }
+                                                            }
+                                                        })
+                                                    }}
+                                                    className="shrink-0"
+                                                >
+                                                    ✕
+                                                </Button>
+                                            </div>
+                                        ))}
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => {
+                                                const features = [...(formData.metadata?.portal_card?.features || []), ""]
+                                                setFormData({
+                                                    ...formData,
+                                                    metadata: {
+                                                        ...formData.metadata,
+                                                        portal_card: {
+                                                            ...formData.metadata?.portal_card,
+                                                            features
+                                                        }
+                                                    }
+                                                })
+                                            }}
+                                            className="w-full text-xs"
+                                        >
+                                            + Agregar característica
+                                        </Button>
+                                    </div>
+                                </div>
+
+                                {/* Highlights */}
+                                <div className="space-y-2">
+                                    <Label className="text-sm">Destacados</Label>
+                                    <div className="space-y-2">
+                                        {(formData.metadata?.portal_card?.highlights || []).map((highlight: string, idx: number) => (
+                                            <div key={idx} className="flex gap-2">
+                                                <Input
+                                                    value={highlight}
+                                                    onChange={(e) => {
+                                                        const highlights = [...(formData.metadata?.portal_card?.highlights || [])]
+                                                        highlights[idx] = e.target.value
+                                                        setFormData({
+                                                            ...formData,
+                                                            metadata: {
+                                                                ...formData.metadata,
+                                                                portal_card: {
+                                                                    ...formData.metadata?.portal_card,
+                                                                    highlights
+                                                                }
+                                                            }
+                                                        })
+                                                    }}
+                                                    placeholder="Ej. Más vendido"
+                                                    className="text-sm"
+                                                />
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => {
+                                                        const highlights = (formData.metadata?.portal_card?.highlights || []).filter((_: any, i: number) => i !== idx)
+                                                        setFormData({
+                                                            ...formData,
+                                                            metadata: {
+                                                                ...formData.metadata,
+                                                                portal_card: {
+                                                                    ...formData.metadata?.portal_card,
+                                                                    highlights
+                                                                }
+                                                            }
+                                                        })
+                                                    }}
+                                                    className="shrink-0"
+                                                >
+                                                    ✕
+                                                </Button>
+                                            </div>
+                                        ))}
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => {
+                                                const highlights = [...(formData.metadata?.portal_card?.highlights || []), ""]
+                                                setFormData({
+                                                    ...formData,
+                                                    metadata: {
+                                                        ...formData.metadata,
+                                                        portal_card: {
+                                                            ...formData.metadata?.portal_card,
+                                                            highlights
+                                                        }
+                                                    }
+                                                })
+                                            }}
+                                            className="w-full text-xs"
+                                        >
+                                            + Agregar destacado
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         {/* Footer */}
@@ -316,63 +494,35 @@ export function CatalogServiceSheet({
                                     Vista Previa (Catálogo)
                                 </h3>
                                 <p className="text-sm text-gray-500">Así verán tus clientes este servicio</p>
+                                <p className="text-xs text-purple-600">Click para voltear la card →</p>
                             </div>
 
-                            {/* Preview Card */}
-                            <Card className={cn(
-                                "overflow-hidden transition-all duration-300 transform hover:scale-[1.02]",
-                                "border-gray-200 shadow-xl shadow-indigo-100/50"
-                            )}>
-                                <div className="h-32 bg-gradient-to-br from-indigo-500/10 to-purple-500/10 flex items-center justify-center border-b border-gray-100">
-                                    <div className="bg-white p-4 rounded-2xl shadow-sm">
-                                        <Server className="h-8 w-8 text-indigo-600" />
-                                    </div>
-                                </div>
-                                <CardHeader>
-                                    <div className="flex justify-between items-start gap-4">
-                                        <div>
-                                            <Badge variant="outline" className="mb-2 border-indigo-100 text-indigo-600 bg-indigo-50">
-                                                {formData.category || "Categoría"}
-                                            </Badge>
-                                            <CardTitle className="text-xl font-bold text-gray-900">
-                                                {formData.name || "Nombre del Servicio"}
-                                            </CardTitle>
-                                        </div>
-                                    </div>
-                                </CardHeader>
-                                <CardContent className="space-y-4">
-                                    <p className="text-sm text-gray-600 line-clamp-3 min-h-[60px]">
-                                        {formData.description || "Descripción del servicio..."}
-                                    </p>
-
-                                    <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg text-sm">
-                                        {formData.metadata?.form_template_id ? (
-                                            <>
-                                                <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
-                                                <span className="text-gray-700 font-medium">Incluye: {formTemplates.find(t => t.id === formData.metadata?.form_template_id)?.name}</span>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <span className="text-gray-400">Sin formulario adicional</span>
-                                            </>
-                                        )}
-                                    </div>
-                                </CardContent>
-                                <CardFooter className="bg-gray-50 border-t border-gray-100 p-4 flex items-center justify-between">
-                                    <div className="text-xs text-gray-500 font-medium uppercase tracking-wide">Inversión</div>
-                                    <div className="text-right">
-                                        <div className="text-lg font-bold text-gray-900">
-                                            ${(formData.base_price || 0).toLocaleString()}
-                                        </div>
-                                        <div className="text-xs text-gray-500 capitalize">
-                                            {formData.type === 'recurring'
-                                                ? `Facturación ${formData.frequency === 'monthly' ? 'Mensual' : formData.frequency}`
-                                                : 'Pago Único'
-                                            }
-                                        </div>
-                                    </div>
-                                </CardFooter>
-                            </Card>
+                            {/* Interactive Flip Card Preview */}
+                            <CatalogItemFlipCard
+                                item={{
+                                    id: 'preview',
+                                    name: formData.name || 'Nombre del Servicio',
+                                    description: formData.description || 'Descripción del servicio...',
+                                    category: formData.category || 'Categoría',
+                                    type: formData.type || 'recurring',
+                                    frequency: formData.frequency,
+                                    base_price: formData.base_price || 0,
+                                    is_visible_in_portal: formData.is_visible_in_portal ?? true,
+                                    metadata: {
+                                        portal_card: {
+                                            detailed_description: formData.metadata?.portal_card?.detailed_description || 'Agrega una descripción detallada para mostrar aquí...',
+                                            features: formData.metadata?.portal_card?.features || [],
+                                            highlights: formData.metadata?.portal_card?.highlights || []
+                                        }
+                                    },
+                                    organization_id: '',
+                                    created_at: new Date().toISOString()
+                                }}
+                                variant="portal"
+                                isRequested={false}
+                                onRequestInterest={() => { }}
+                                settings={{ agency_phone: '1234567890' }}
+                            />
 
                             {!formData.is_visible_in_portal && (
                                 <div className="flex items-center gap-2 justify-center text-xs text-amber-600 bg-amber-50 p-2 rounded-lg border border-amber-100">

@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
+import { CatalogItemFlipCard } from "@/modules/core/portal/catalog-item-flip-card"
 
 import { ViewMode } from "@/components/shared/view-toggle"
 
@@ -33,43 +34,17 @@ export function CatalogList({ items, onEdit, onDelete, viewMode }: CatalogListPr
         }
 
         return (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {itemsToRender.map(item => (
-                    <div
+                    <CatalogItemFlipCard
                         key={item.id}
-                        className="group bg-white rounded-xl border border-gray-100 p-4 hover:shadow-xl hover:border-indigo-100 transition-all duration-300 flex flex-col relative h-full"
-                    >
-                        <div className="flex justify-between items-start mb-3">
-                            <Badge variant="secondary" className={cn(
-                                "text-[10px] uppercase font-bold tracking-tight",
-                                item.type === 'recurring' ? "bg-indigo-50 text-indigo-600" : "bg-orange-50 text-orange-600"
-                            )}>
-                                {categoryShorthand(item.type)}
-                            </Badge>
-
-                            <ActionMenu item={item} onEdit={onEdit} onDelete={onDelete} />
-                        </div>
-
-                        <h4 className="font-bold text-gray-900 mb-1 group-hover:text-indigo-600 transition-colors line-clamp-1" title={item.name}>{item.name}</h4>
-                        <p className="text-sm text-gray-500 line-clamp-2 mb-4 flex-1 min-h-[40px]">
-                            {item.description || "Sin descripción"}
-                        </p>
-
-                        <div className="pt-3 border-t border-gray-50 flex items-center justify-between mt-auto">
-                            <div className="flex flex-col">
-                                <span className="text-[10px] text-gray-400 font-medium">PRECIO BASE</span>
-                                <span className="font-bold text-gray-900">
-                                    ${item.base_price?.toLocaleString() || 0}
-                                    {item.type === 'recurring' && <span className="text-xs font-normal text-gray-400">/{item.frequency === 'monthly' ? 'mes' : 'año'}</span>}
-                                </span>
-                            </div>
-                            {item.category && (
-                                <Badge variant="outline" className="text-[10px] text-gray-500 bg-gray-50">
-                                    {item.category}
-                                </Badge>
-                            )}
-                        </div>
-                    </div>
+                        item={item}
+                        variant="admin"
+                        isRequested={false}
+                        onEdit={() => onEdit(item)}
+                        onDelete={() => onDelete(item.id)}
+                        settings={{}}
+                    />
                 ))}
             </div>
         )

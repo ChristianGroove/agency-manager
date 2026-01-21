@@ -85,7 +85,11 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
         frequency: 'monthly',
         status: 'active',
         insights_access: 'NONE', // NEW
-        service_start_date: new Date().toISOString()
+        service_start_date: new Date().toISOString(),
+        // Portal Card Metadata
+        portal_detailed_description: "",
+        portal_features: [] as string[],
+        portal_highlights: [] as string[]
     })
 
     const [unitPrice, setUnitPrice] = useState<number>(0)
@@ -101,7 +105,10 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
                 name: "", description: "", amount: 0, quantity: 1,
                 type: 'recurring', frequency: 'monthly', status: 'active',
                 insights_access: 'NONE',
-                service_start_date: new Date().toISOString()
+                service_start_date: new Date().toISOString(),
+                portal_detailed_description: "",
+                portal_features: [],
+                portal_highlights: []
             })
             setUnitPrice(0)
             if (!clientId) setSelectedClientId("")
@@ -112,6 +119,7 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
             // Pre-fill if editing
             if (serviceToEdit) {
                 setStep('form')
+                const portalMeta = serviceToEdit.metadata?.portal_card || {}
                 setFormData({
                     name: serviceToEdit.name,
                     description: serviceToEdit.description || "",
@@ -121,7 +129,10 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
                     frequency: serviceToEdit.frequency || 'monthly',
                     status: serviceToEdit.status,
                     insights_access: serviceToEdit.insights_access || 'NONE',
-                    service_start_date: serviceToEdit.service_start_date || new Date().toISOString()
+                    service_start_date: serviceToEdit.service_start_date || new Date().toISOString(),
+                    portal_detailed_description: portalMeta.detailed_description || "",
+                    portal_features: portalMeta.features || [],
+                    portal_highlights: portalMeta.highlights || []
                 })
                 setUnitPrice((serviceToEdit.amount || 0) / (serviceToEdit.quantity || 1))
                 if (serviceToEdit.emitter_id) setSelectedEmitterId(serviceToEdit.emitter_id)
@@ -182,12 +193,19 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
     const handleCatalogSelect = (item: any) => {
         const initialPrice = item.base_price || 0
         setUnitPrice(initialPrice)
+
+        // Extract portal metadata if exists
+        const portalMeta = item.metadata?.portal_card || {}
+
         setFormData(prev => ({
             ...prev,
             name: item.name,
             description: item.description || "",
             type: item.type,
             frequency: item.frequency || 'monthly',
+            portal_detailed_description: portalMeta.detailed_description || "",
+            portal_features: portalMeta.features || [],
+            portal_highlights: portalMeta.highlights || []
         }))
         setStep('form')
     }
@@ -251,7 +269,15 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
                 insights_access: formData.insights_access,
                 emitter_id: selectedEmitterId,
                 document_type: derivedDocType,
-                service_start_date: startDate.toISOString()
+                service_start_date: startDate.toISOString(),
+                // Build portal_card metadata
+                metadata: {
+                    portal_card: {
+                        detailed_description: formData.portal_detailed_description || undefined,
+                        features: formData.portal_features.filter(f => f.trim() !== ''),
+                        highlights: formData.portal_highlights.filter(h => h.trim() !== ''),
+                    }
+                }
             }
 
             // Combine with create-specific fields if new
@@ -518,6 +544,108 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
                                                         <Calendar mode="single" selected={new Date(formData.service_start_date)} onSelect={d => d && setFormData({ ...formData, service_start_date: d.toISOString() })} initialFocus />
                                                     </PopoverContent>
                                                 </Popover>
+                                            </div>
+
+                                            {/* Portal Card Metadata Section */}
+                                            <div className="space-y-4 pt-6 border-t border-gray-200">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="h-8 w-8 rounded-lg bg-purple-100 flex items-center justify-center">
+                                                        <Info className="h-4 w-4 text-purple-600" />
+                                                    </div>
+                                                    <div>
+                                                        <h4 className="text-sm font-bold text-gray-900">Información para Portal del Cliente</h4>
+                                                        <p className="text-xs text-gray-500">Detalles que verán tus clientes en el catálogo</p>
+                                                    </div>
+                                                </div>
+
+                                                <div className="space-y-2">
+                                                    <Label className="text-sm">Descripción Detallada</Label>
+                                                    <textarea
+                                                        value={formData.portal_detailed_description}
+                                                        onChange={(e) => setFormData({ ...formData, portal_detailed_description: e.target.value })}
+                                                        placeholder="Descripción extensa que se mostrará al girar la tarjeta..."
+                                                        className="w-full min-h-[100px] px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-pink/20 resize-none"
+                                                    />
+                                                    <p className="text-xs text-gray-500">Se mostrará en el reverso de la card del portal</p>
+                                                </div>
+
+                                                <div className="space-y-2">
+                                                    <Label className="text-sm">Características (opcional)</Label>
+                                                    <div className="space-y-2">
+                                                        {formData.portal_features.map((feature, idx) => (
+                                                            <div key={idx} className="flex gap-2">
+                                                                <Input
+                                                                    value={feature}
+                                                                    onChange={(e) => {
+                                                                        const newFeatures = [...formData.portal_features]
+                                                                        newFeatures[idx] = e.target.value
+                                                                        setFormData({ ...formData, portal_features: newFeatures })
+                                                                    }}
+                                                                    placeholder="Ej. Soporte 24/7"
+                                                                    className="text-sm"
+                                                                />
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    onClick={() => {
+                                                                        const newFeatures = formData.portal_features.filter((_, i) => i !== idx)
+                                                                        setFormData({ ...formData, portal_features: newFeatures })
+                                                                    }}
+                                                                    className="shrink-0"
+                                                                >
+                                                                    ✕
+                                                                </Button>
+                                                            </div>
+                                                        ))}
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={() => setFormData({ ...formData, portal_features: [...formData.portal_features, ""] })}
+                                                            className="w-full text-xs"
+                                                        >
+                                                            + Agregar característica
+                                                        </Button>
+                                                    </div>
+                                                </div>
+
+                                                <div className="space-y-2">
+                                                    <Label className="text-sm">Destacados (opcional)</Label>
+                                                    <div className="space-y-2">
+                                                        {formData.portal_highlights.map((highlight, idx) => (
+                                                            <div key={idx} className="flex gap-2">
+                                                                <Input
+                                                                    value={highlight}
+                                                                    onChange={(e) => {
+                                                                        const newHighlights = [...formData.portal_highlights]
+                                                                        newHighlights[idx] = e.target.value
+                                                                        setFormData({ ...formData, portal_highlights: newHighlights })
+                                                                    }}
+                                                                    placeholder="Ej. Más vendido"
+                                                                    className="text-sm"
+                                                                />
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    onClick={() => {
+                                                                        const newHighlights = formData.portal_highlights.filter((_, i) => i !== idx)
+                                                                        setFormData({ ...formData, portal_highlights: newHighlights })
+                                                                    }}
+                                                                    className="shrink-0"
+                                                                >
+                                                                    ✕
+                                                                </Button>
+                                                            </div>
+                                                        ))}
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={() => setFormData({ ...formData, portal_highlights: [...formData.portal_highlights, ""] })}
+                                                            className="w-full text-xs"
+                                                        >
+                                                            + Agregar destacado
+                                                        </Button>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>

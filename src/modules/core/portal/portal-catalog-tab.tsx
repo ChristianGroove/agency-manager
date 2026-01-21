@@ -9,6 +9,7 @@ import { Loader2, Search, CheckCircle, ArrowRight, MessageCircle } from "lucide-
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import { getPortalCatalog, registerServiceInterest } from "@/modules/core/portal/actions"
+import { CatalogItemFlipCard } from "./catalog-item-flip-card"
 
 export function PortalCatalogTab({ settings, client, token }: { settings: any, client: any, token: string }) {
     const [items, setItems] = useState<ServiceCatalogItem[]>([])
@@ -108,58 +109,19 @@ export function PortalCatalogTab({ settings, client, token }: { settings: any, c
                 </div>
             </div>
 
-            {/* Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* Catalog Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {filteredItems.map(item => {
                     const isRequested = requestedItems.includes(item.id)
                     return (
-                        <Card key={item.id} className="group overflow-hidden border-gray-100 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 flex flex-col">
-                            <div className="p-6 flex-1 space-y-4">
-                                <div className="flex justify-between items-start">
-                                    <Badge variant="secondary" className="capitalize bg-gray-100 text-gray-600">
-                                        {item.category}
-                                    </Badge>
-                                    {item.type === 'recurring' && <Badge variant="outline" className="text-xs">Suscripción</Badge>}
-                                </div>
-
-                                <div>
-                                    <h3 className="text-xl font-bold text-gray-900 group-hover:text-brand-pink transition-colors">
-                                        {item.name}
-                                    </h3>
-                                    <p className="text-gray-500 text-sm mt-2 line-clamp-3">
-                                        {item.description}
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div className="p-6 pt-0 mt-auto border-t border-gray-50 bg-gray-50/30">
-                                <div className="flex items-center justify-between mb-4 mt-4">
-                                    <div className="text-sm text-gray-500">
-                                        {item.type === 'recurring' ? 'Desde / mes' : 'Precio base'}
-                                    </div>
-                                    <div className="text-lg font-bold text-gray-900">
-                                        {formatPrice(item.base_price)}
-                                    </div>
-                                </div>
-
-                                <Button
-                                    className={cn("w-full transition-all", isRequested ? "bg-green-600 hover:bg-green-700" : "bg-green-600 hover:bg-green-700 text-white")}
-                                    onClick={() => handleRequestInterest(item)}
-                                >
-                                    {isRequested ? (
-                                        <>
-                                            <MessageCircle className="h-4 w-4 mr-2" />
-                                            Solicitar de nuevo
-                                        </>
-                                    ) : (
-                                        <>
-                                            <MessageCircle className="h-4 w-4 mr-2" />
-                                            Solicitar por WhatsApp
-                                        </>
-                                    )}
-                                </Button>
-                            </div>
-                        </Card>
+                        <CatalogItemFlipCard
+                            key={item.id}
+                            item={item}
+                            variant="portal"
+                            isRequested={isRequested}
+                            onRequestInterest={handleRequestInterest}
+                            settings={settings}
+                        />
                     )
                 })}
             </div>
