@@ -133,7 +133,6 @@ export class EvolutionAdapter implements IntegrationAdapter {
         qr?: string;
         status: string;
     }> {
-        // Use global config for creation if available, or throw
         const globalUrl = process.env.EVOLUTION_API_URL
         const globalKey = process.env.EVOLUTION_API_KEY
 
@@ -143,33 +142,57 @@ export class EvolutionAdapter implements IntegrationAdapter {
 
         const url = `${globalUrl.replace(/\/$/, '')}/instance/create`
 
+        // Build request body according to Evolution API v2 format
+        const requestBody: any = {
+            instanceName: params.instanceName,
+            qrcode: params.qrcode ?? true,
+            integration: "WHATSAPP-BAILEYS"
+        }
+
+        // Only add token if provided
+        if (params.token) {
+            requestBody.token = params.token
+        }
+
+        // Webhook configuration for Evolution v2 - needs proper structure
+        if (params.webhook) {
+            requestBody.webhook = {
+                url: params.webhook,
+                webhookByEvents: false,
+                webhookBase64: false,
+                events: [
+                    "MESSAGES_UPSERT",
+                    "MESSAGES_UPDATE",
+                    "CONNECTION_UPDATE",
+                    "QRCODE_UPDATED"
+                ]
+            }
+        }
+
+        console.log(`[EvolutionAdapter] Creating instance: ${params.instanceName}`)
+
         const response = await fetch(url, {
             method: 'POST',
             headers: {
                 "apikey": globalKey,
                 "Content-Type": "application/json"
             },
-            body: JSON.stringify({
-                instanceName: params.instanceName,
-                token: params.token, // Optional: Evolution generates one if empty, or we set it
-                qrcode: params.qrcode ?? true,
-                integration: "WHATSAPP-BAILEYS",
-                webhook: params.webhook // Setup webhook immediately if possible
-            })
+            body: JSON.stringify(requestBody)
         })
 
         if (!response.ok) {
             const errorText = await response.text()
+            console.error(`[EvolutionAdapter] Create failed: ${response.status}`, errorText)
             throw new Error(`Evolution Instance Creation Failed: ${response.status} ${errorText}`)
         }
 
         const data = await response.json()
+        console.log(`[EvolutionAdapter] Instance created:`, data)
 
         // Evolution v2 returns { instance: { instanceName, token, ... }, qrcode: { base64: ... } }
-        // We need to normalize response
         return {
             id: data.instance?.instanceName || params.instanceName,
-            token: data.instance?.token || data.hash?.apikey, // Verify evolution version response
+            token: data.instance?.token || data.hash?.apikey || params.token || '',
             qr: data.qrcode?.base64,
             status: data.instance?.status || 'created'
         }
@@ -188,5 +211,104 @@ export class EvolutionAdapter implements IntegrationAdapter {
         })
 
         return response.ok
+    }
+
+    /**
+     * Fetch a specific instance to check if it exists
+     */
+    async fetchInstance(instanceName: string): Promise<{
+        exists: boolean;
+        state?: 'open' | 'close' | 'connecting';
+        ownerJid?: string;
+        token?: string;
+    }> {
+        const globalUrl = process.env.EVOLUTION_API_URL
+        const globalKey = process.env.EVOLUTION_API_KEY
+
+        if (!globalUrl || !globalKey) {
+            return { exists: false }
+        }
+
+        try {
+            // First try to get connection state
+            const stateUrl = `${globalUrl.replace(/\/$/, '')}/instance/connectionState/${instanceName}`
+            const stateResponse = await fetch(stateUrl, {
+                headers: { "apikey": globalKey }
+            })
+
+            if (stateResponse.ok) {
+                const data = await stateResponse.json()
+                return {
+                    exists: true,
+                    state: data.instance?.state || 'close',
+                    ownerJid: data.instance?.ownerJid
+                }
+            }
+
+            // If 404, instance doesn't exist
+            if (stateResponse.status === 404) {
+                return { exists: false }
+            }
+
+            // Try fetching from instances list as fallback
+            const listUrl = `${globalUrl.replace(/\/$/, '')}/instance/fetchInstances`
+            const listResponse = await fetch(listUrl, {
+                headers: { "apikey": globalKey }
+            })
+
+            if (listResponse.ok) {
+                const instances = await listResponse.json()
+                const found = instances.find((i: any) =>
+                    i.instance?.instanceName === instanceName ||
+                    i.instanceName === instanceName
+                )
+
+                if (found) {
+                    return {
+                        exists: true,
+                        state: found.instance?.status || found.status || 'close',
+                        token: found.instance?.token || found.token
+                    }
+                }
+            }
+
+            return { exists: false }
+        } catch (error) {
+            console.error('[EvolutionAdapter] fetchInstance error:', error)
+            return { exists: false }
+        }
+    }
+
+    /**
+     * List all instances (for admin purposes)
+     */
+    async fetchInstances(): Promise<Array<{
+        instanceName: string;
+        status: string;
+        ownerJid?: string;
+    }>> {
+        const globalUrl = process.env.EVOLUTION_API_URL
+        const globalKey = process.env.EVOLUTION_API_KEY
+
+        if (!globalUrl || !globalKey) return []
+
+        try {
+            const url = `${globalUrl.replace(/\/$/, '')}/instance/fetchInstances`
+            const response = await fetch(url, {
+                headers: { "apikey": globalKey }
+            })
+
+            if (!response.ok) return []
+
+            const data = await response.json()
+            return data.map((i: any) => ({
+                instanceName: i.instance?.instanceName || i.instanceName,
+                status: i.instance?.status || i.status || 'unknown',
+                ownerJid: i.instance?.ownerJid
+            }))
+        } catch (error) {
+            console.error('[EvolutionAdapter] fetchInstances error:', error)
+            return []
+        }
     }
 }

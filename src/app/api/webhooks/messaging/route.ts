@@ -37,7 +37,7 @@ async function getConfiguredManager() {
         const metaProvider = new MetaProvider(
             process.env.META_API_TOKEN || '',
             process.env.META_PHONE_NUMBER_ID || '',
-            'antigravity_verification_token_2026'
+            process.env.META_WEBHOOK_VERIFY_TOKEN || 'pixy_webhook_2026'
         )
         webhookManager.registerProvider('whatsapp', metaProvider)
 
@@ -65,8 +65,9 @@ export async function GET(req: NextRequest) {
 
         // --- 1. FAST VERIFICATION PATH (Recommended) ---
         // Bypasses heavy module loading for maximum reliability during Meta Handshake
+        const VERIFY_TOKEN = process.env.META_WEBHOOK_VERIFY_TOKEN || 'pixy_webhook_2026'
         if (req.nextUrl.searchParams.get('hub.mode') === 'subscribe' &&
-            req.nextUrl.searchParams.get('hub.verify_token') === 'antigravity_verification_token_2026') {
+            req.nextUrl.searchParams.get('hub.verify_token') === VERIFY_TOKEN) {
             const challenge = req.nextUrl.searchParams.get('hub.challenge')
             console.log('[Webhook GET] Fast Verify Success')
             return new NextResponse(challenge, {
@@ -84,6 +85,12 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+    console.error('========================================');
+    console.error('🚨 WEBHOOK POST RECEIVED - FORCED LOG');
+    console.error('Time:', new Date().toISOString());
+    console.error('URL:', req.url);
+    console.error('========================================');
+
     try {
         console.log('\n========== WEBHOOK POST RECEIVED ==========')
         const channel = req.nextUrl.searchParams.get('channel') as ChannelType || 'whatsapp'
@@ -91,6 +98,7 @@ export async function POST(req: NextRequest) {
 
         // Log the raw body
         const body = await req.json()
+        console.error('📦 BODY RECEIVED:', JSON.stringify(body, null, 2));
         console.log('[Webhook POST] Body:', JSON.stringify(body, null, 2))
 
         // Dynamically load manager to handle the heavy lifting

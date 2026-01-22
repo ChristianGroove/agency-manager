@@ -112,81 +112,134 @@ export class InboxService {
             channel: msg.channel
         });
 
-        // Strategy A: Meta WhatsApp (phone_number_id)
+        // ========================================
+        // NEW SIMPLIFIED META MATCHING
+        // Uses specific provider_keys and direct asset_id matching
+        // ========================================
+
+        // Strategy A: WhatsApp Cloud (Official API)
         if (msg.channel === 'whatsapp') {
-            const { data: connections } = await supabase
+            const phoneNumberId = metadata?.phoneNumberId || metadata?.phone_number_id;
+            console.log(`[InboxService] WhatsApp - Looking for phoneNumberId: ${phoneNumberId}`);
+
+            // Search for new whatsapp_cloud channels (primary method)
+            const { data: newChannels } = await supabase
                 .from('integration_connections')
-                .select('id, organization_id, credentials, provider_key, metadata, default_pipeline_stage_id, working_hours, auto_reply_when_offline')
-                .in('provider_key', ['meta_whatsapp', 'whatsapp', 'meta_business']) // Support legacy and unified
-                .eq('status', 'active');
+                .select('id, organization_id, credentials, metadata, default_pipeline_stage_id, working_hours, auto_reply_when_offline')
+                .eq('provider_key', 'whatsapp_cloud')
+                .eq('status', 'active')
+                .eq('metadata->>asset_id', phoneNumberId);
 
-            console.log('[InboxService] Active WhatsApp connections found:', connections?.length || 0);
+            if (newChannels && newChannels.length > 0) {
+                const found = newChannels[0];
+                connectionId = found.id;
+                orgId = found.organization_id;
+                matchedConnection = found;
+                console.log('[InboxService] ✅ Matched whatsapp_cloud channel:', { connectionId, orgId });
+            } else {
+                // Fallback: Legacy meta_business with selected_assets
+                const { data: legacyConnections } = await supabase
+                    .from('integration_connections')
+                    .select('id, organization_id, credentials, metadata, default_pipeline_stage_id, working_hours, auto_reply_when_offline')
+                    .in('provider_key', ['meta_business', 'meta_whatsapp'])
+                    .eq('status', 'active');
 
-            if (connections) {
-                const { decryptObject } = await import('@/modules/core/integrations/encryption');
+                if (legacyConnections) {
+                    const found = legacyConnections.find((c: any) => {
+                        const assetId = c.metadata?.asset_id;
+                        const selectedAssets = c.metadata?.selected_assets || [];
+                        return assetId === phoneNumberId ||
+                            selectedAssets.some((a: any) => a.id === phoneNumberId);
+                    });
 
-                const found: any = connections.find((c: any) => {
-                    // 1. Unified Meta Business Connection
-                    if (c.provider_key === 'meta_business') {
-                        const assets = c.metadata?.selected_assets || [];
-                        const match = assets.some((a: any) =>
-                            a.id === metadata?.phoneNumberId ||
-                            a.id === metadata?.phone_number_id
-                        );
-                        if (match) console.log(`[InboxService] Match found in meta_business connection ${c.id} `);
-                        return match;
+                    if (found) {
+                        connectionId = found.id;
+                        orgId = found.organization_id;
+                        matchedConnection = found;
+                        console.log('[InboxService] ✅ Matched legacy WhatsApp connection:', { connectionId, orgId });
                     }
-
-                    // 2. Legacy Meta WhatsApp Connection
-                    let creds = c.credentials || {};
-                    if (typeof creds === 'string') {
-                        try { creds = JSON.parse(creds); } catch (e) { }
-                    }
-                    creds = decryptObject(creds);
-                    if (!creds) return false;
-                    const storedId = creds.phoneNumberId || creds.phone_number_id;
-                    const isMatch = storedId === metadata?.phoneNumberId || storedId === metadata?.phone_number_id;
-                    if (isMatch) console.log(`[InboxService] Match found in meta_whatsapp connection ${c.id} `);
-                    return isMatch;
-                });
-
-                if (found) {
-                    connectionId = found.id;
-                    orgId = found.organization_id; // CRITICAL: Use connection's org
-                    matchedConnection = found;
-                    console.log('[InboxService] Matched Meta WhatsApp connection:', { connectionId, orgId });
-                } else {
-                    console.log('[InboxService] NO MATCH FOUND. Webhook phoneNumberId:', metadata?.phoneNumberId);
                 }
+            }
+
+            if (!connectionId) {
+                console.log(`[InboxService] ❌ No WhatsApp channel found for phoneNumberId: ${phoneNumberId}`);
             }
         }
 
-        // Strategy A.2: Facebook / Instagram (via meta_business)
-        if (!connectionId && (msg.channel === 'messenger' || msg.channel === 'instagram')) {
-            const { data: connections } = await supabase
+        // Strategy B: Facebook Messenger
+        if (!connectionId && msg.channel === 'messenger') {
+            const pageId = metadata?.pageId || metadata?.page_id;
+            console.log(`[InboxService] Messenger - Looking for pageId: ${pageId}`);
+
+            // Search for new facebook_page channels (primary method)
+            const { data: newChannels } = await supabase
                 .from('integration_connections')
-                .select('id, organization_id, provider_key, metadata, status')
-                .eq('provider_key', 'meta_business')
-                .eq('status', 'active');
+                .select('id, organization_id, credentials, metadata, default_pipeline_stage_id, working_hours, auto_reply_when_offline')
+                .eq('provider_key', 'facebook_page')
+                .eq('status', 'active')
+                .eq('metadata->>asset_id', pageId);
 
-            console.log(`[InboxService] Active meta_business connections found for ${msg.channel}: `, connections?.length || 0);
+            if (newChannels && newChannels.length > 0) {
+                const found = newChannels[0];
+                connectionId = found.id;
+                orgId = found.organization_id;
+                matchedConnection = found;
+                console.log('[InboxService] ✅ Matched facebook_page channel:', { connectionId, orgId });
+            } else {
+                // Fallback: Legacy meta_business with assets_preview
+                const { data: legacyConnections } = await supabase
+                    .from('integration_connections')
+                    .select('id, organization_id, credentials, metadata, default_pipeline_stage_id, working_hours, auto_reply_when_offline')
+                    .eq('provider_key', 'meta_business')
+                    .eq('status', 'active');
 
-            if (connections) {
-                const found: any = connections.find((c: any) => {
-                    const assets = c.metadata?.selected_assets || [];
-                    if (msg.channel === 'messenger') {
-                        return assets.some((a: any) => (a.id === metadata?.pageId || a.id === metadata?.page_id) && (a.type === 'page' || a.type === 'facebook_page'));
-                    } else {
-                        return assets.some((a: any) => (a.id === metadata?.instagramBusinessId || a.id === metadata?.instagram_business_id) && a.type === 'instagram_business_account');
+                if (legacyConnections) {
+                    const found = legacyConnections.find((c: any) => {
+                        const assetId = c.metadata?.asset_id;
+                        const selectedAssets = c.metadata?.selected_assets || [];
+                        const assetsPreview = c.metadata?.assets_preview || [];
+                        return assetId === pageId ||
+                            selectedAssets.some((a: any) => a.id === pageId) ||
+                            assetsPreview.some((a: any) => a.id === pageId && a.type === 'page');
+                    });
+
+                    if (found) {
+                        connectionId = found.id;
+                        orgId = found.organization_id;
+                        matchedConnection = found;
+                        console.log('[InboxService] ✅ Matched legacy Messenger connection:', { connectionId, orgId });
                     }
-                });
-
-                if (found) {
-                    connectionId = found.id;
-                    orgId = found.organization_id;
-                    matchedConnection = found;
-                    console.log(`[InboxService] Matched Meta ${msg.channel} connection: `, { connectionId, orgId });
                 }
+            }
+
+            if (!connectionId) {
+                console.log(`[InboxService] ❌ No Messenger channel found for pageId: ${pageId}`);
+            }
+        }
+
+        // Strategy C: Instagram DM
+        if (!connectionId && msg.channel === 'instagram') {
+            const igId = metadata?.instagramBusinessId || metadata?.instagram_business_id;
+            console.log(`[InboxService] Instagram - Looking for igId: ${igId}`);
+
+            // Search for new instagram_dm channels (primary method)
+            const { data: newChannels } = await supabase
+                .from('integration_connections')
+                .select('id, organization_id, credentials, metadata, default_pipeline_stage_id, working_hours, auto_reply_when_offline')
+                .eq('provider_key', 'instagram_dm')
+                .eq('status', 'active')
+                .eq('metadata->>asset_id', igId);
+
+            if (newChannels && newChannels.length > 0) {
+                const found = newChannels[0];
+                connectionId = found.id;
+                orgId = found.organization_id;
+                matchedConnection = found;
+                console.log('[InboxService] ✅ Matched instagram_dm channel:', { connectionId, orgId });
+            }
+
+            if (!connectionId) {
+                console.log(`[InboxService] ❌ No Instagram channel found for igId: ${igId}`);
             }
         }
 

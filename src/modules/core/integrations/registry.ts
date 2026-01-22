@@ -23,7 +23,7 @@ class IntegrationRegistry {
         this.register(new MockAdapter('twilio_sms'))
         this.register(new MockAdapter('google_calendar'))
         this.register(new MockAdapter('anthropic'))
-        // this.register(new EvolutionAdapter()) // Unofficial - Hidden
+        this.register(new EvolutionAdapter()) // WhatsApp QR via Evolution API
         this.register(new S3StorageAdapter())
         this.register(new GoogleDriveAdapter())
     }

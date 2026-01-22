@@ -1,4 +1,4 @@
-export type ChannelStatus = 'active' | 'disconnected' | 'error' | 'expired' | 'connecting'
+export type ChannelStatus = 'active' | 'disconnected' | 'error' | 'expired' | 'connecting' | 'deleted'
 
 export interface Channel {
     id: string

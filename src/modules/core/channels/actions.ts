@@ -258,12 +258,49 @@ export async function updateChannel(channelId: string, updates: Partial<Channel>
 
 /**
  * Delete a channel
+ * For Evolution channels: also deletes the instance if disconnected
  */
 export async function deleteChannel(channelId: string) {
     const orgId = await getCurrentOrganizationId()
     if (!orgId) throw new Error("Unauthorized")
 
     await requireOrgRole('admin')
+
+    // Get channel details first to check if Evolution
+    const { data: channel } = await supabaseAdmin
+        .from('integration_connections')
+        .select('*')
+        .eq('id', channelId)
+        .eq('organization_id', orgId)
+        .single()
+
+    if (!channel) {
+        throw new Error("Channel not found")
+    }
+
+    // If Evolution channel, try to cleanup instance
+    if (channel.provider_key === 'evolution_api') {
+        const instanceName = channel.credentials?.instanceName
+        if (instanceName) {
+            try {
+                const adapter = new EvolutionAdapter()
+
+                // Check instance state
+                const instanceInfo = await adapter.fetchInstance(instanceName)
+
+                // Only delete instance if it exists and is NOT actively connected
+                if (instanceInfo.exists && instanceInfo.state !== 'open') {
+                    console.log(`[deleteChannel] Deleting Evolution instance: ${instanceName}`)
+                    await adapter.deleteInstance(instanceName)
+                } else if (instanceInfo.exists && instanceInfo.state === 'open') {
+                    console.log(`[deleteChannel] Instance ${instanceName} is still connected, only soft deleting channel`)
+                }
+            } catch (err) {
+                console.error('[deleteChannel] Error cleaning up instance:', err)
+                // Continue with channel deletion even if instance cleanup fails
+            }
+        }
+    }
 
     // First try hard delete
     const { error } = await supabaseAdmin
@@ -295,35 +332,136 @@ export async function deleteChannel(channelId: string) {
 }
 
 /**
- * ORCHESTRATOR: Automatic WhatsApp Channel Creation
- * 1. Generates secure Instance Name
- * 2. Provisions Evolution API Instance
- * 3. Saves Connection to DB
- * 4. Returns QR Code immediately
+ * Helper: Get channel by instance name (includes deleted for reconnection)
+ */
+async function getChannelByInstanceName(instanceName: string, orgId: string): Promise<Channel | null> {
+    const { data } = await supabaseAdmin
+        .from('integration_connections')
+        .select('*')
+        .eq('organization_id', orgId)
+        .eq('provider_key', 'evolution_api')
+        // Don't filter by status - allow finding deleted channels for reconnection
+        .order('created_at', { ascending: false })
+
+    if (!data) return null
+
+    // Find channel with matching instance name in credentials
+    const channel = data.find(c => c.credentials?.instanceName === instanceName)
+    return channel as Channel | null
+}
+
+/**
+ * ORCHESTRATOR: Smart WhatsApp Channel Connection
+ * 
+ * Flow:
+ * 1. Check if instance exists in Evolution
+ * 2. If exists + belongs to this org → reconnect (get QR)
+ * 3. If exists + different org → error
+ * 4. If not exists → create new instance
  */
 import { EvolutionAdapter } from "@/modules/core/integrations/adapters/evolution-adapter"
 
-export async function createWhatsAppChannel(phoneNumber: string): Promise<{ channelId: string; qrCode?: string }> {
+export async function createWhatsAppChannel(phoneNumber: string): Promise<{ channelId: string; qrCode?: string; reconnected?: boolean }> {
     const orgId = await getCurrentOrganizationId()
     if (!orgId) throw new Error("Unauthorized")
 
     await requireOrgRole('admin')
 
     // 1. Generate Secure Instance Name: "org_{shortId}_{phone}"
-    // Clean phone number: remove + and spaces
     const cleanPhone = phoneNumber.replace(/[^0-9]/g, '')
-    const instanceName = `org_${orgId.split('-')[0]}_${cleanPhone}`
+    const orgPrefix = orgId.split('-')[0]
+    const instanceName = `org_${orgPrefix}_${cleanPhone}`
 
-    // 2. Provision Instance
     const adapter = new EvolutionAdapter()
+    const globalUrl = process.env.EVOLUTION_API_URL || "http://localhost:8080"
 
-    // We can define a secure token for this instance, or let Evolution generate one
-    // Let's generate one for DB storage
+    // 2. Check if instance already exists
+    const instanceInfo = await adapter.fetchInstance(instanceName)
+    console.log(`[createWhatsAppChannel] Instance ${instanceName} exists:`, instanceInfo.exists, 'state:', instanceInfo.state)
+
+    if (instanceInfo.exists) {
+        // Instance exists - check if we own it
+        const instanceOwnerPrefix = instanceName.split('_')[1]
+
+        if (instanceOwnerPrefix !== orgPrefix) {
+            // Different org owns this instance (shouldn't happen with naming, but safety check)
+            throw new Error("Este número ya está en uso por otra organización")
+        }
+
+        // Check if we have a channel record for this instance
+        const existingChannel = await getChannelByInstanceName(instanceName, orgId)
+
+        if (existingChannel) {
+            // We have a channel record - check if it's active and connected
+            if (existingChannel.status === 'active' && instanceInfo.state === 'open') {
+                throw new Error("Este número ya está conectado como canal activo")
+            }
+
+            // Channel exists but disconnected - get QR to reconnect
+            console.log(`[createWhatsAppChannel] Reconnecting existing channel ${existingChannel.id}`)
+
+            const qrResult = await adapter.getQrCode({
+                baseUrl: globalUrl,
+                apiKey: existingChannel.credentials?.apiKey || process.env.EVOLUTION_API_KEY,
+                instanceName: instanceName
+            })
+
+            // Update channel status if it was marked as deleted
+            if (existingChannel.status === 'deleted') {
+                await supabaseAdmin
+                    .from('integration_connections')
+                    .update({ status: 'active' })
+                    .eq('id', existingChannel.id)
+            }
+
+            return {
+                channelId: existingChannel.id,
+                qrCode: qrResult?.qr,
+                reconnected: true
+            }
+        }
+
+        // Instance exists in Evolution but no channel in DB
+        // This could be orphaned instance - try to get QR and create channel record
+        console.log(`[createWhatsAppChannel] Creating channel for existing instance ${instanceName}`)
+
+        const qrResult = await adapter.getQrCode({
+            baseUrl: globalUrl,
+            apiKey: instanceInfo.token || process.env.EVOLUTION_API_KEY,
+            instanceName: instanceName
+        })
+
+        // Save channel to DB
+        const saveInput = {
+            provider_key: 'evolution_api',
+            connection_name: `WhatsApp (${cleanPhone})`,
+            credentials: {
+                baseUrl: globalUrl,
+                apiKey: instanceInfo.token || process.env.EVOLUTION_API_KEY,
+                instanceName: instanceName
+            },
+            config: {
+                instance_id: instanceName,
+                base_url: globalUrl
+            },
+            metadata: {
+                phone_number: cleanPhone
+            }
+        }
+
+        const channel = await createChannel(saveInput)
+
+        return {
+            channelId: channel.id,
+            qrCode: qrResult?.qr,
+            reconnected: true
+        }
+    }
+
+    // 3. Instance does not exist - create new one
+    console.log(`[createWhatsAppChannel] Creating new instance ${instanceName}`)
+
     const secureToken = crypto.randomUUID().replace(/-/g, '')
-
-    // Construct Webhook URL (Dynamic based on current host - need env or hardcode relative?)
-    // Webhooks usually need public URL. 
-    // Ideally: process.env.NEXT_PUBLIC_APP_URL + '/api/webhooks/whatsapp'
     const webhookUrl = process.env.NEXT_PUBLIC_APP_URL
         ? `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/whatsapp`
         : undefined
@@ -336,10 +474,7 @@ export async function createWhatsAppChannel(phoneNumber: string): Promise<{ chan
             webhook: webhookUrl
         })
 
-        // 3. Save to DB
-        // We need global URL for reference or future usage
-        const globalUrl = process.env.EVOLUTION_API_URL || "http://localhost:8080"
-
+        // Save to DB
         const saveInput = {
             provider_key: 'evolution_api',
             connection_name: `WhatsApp (${cleanPhone})`,
@@ -359,21 +494,20 @@ export async function createWhatsAppChannel(phoneNumber: string): Promise<{ chan
 
         const channel = await createChannel(saveInput)
 
-        // 4. Return result
         return {
             channelId: channel.id,
-            qrCode: result.qr // Base64 string if returned immediately
+            qrCode: result.qr
         }
 
     } catch (error: any) {
         console.error('[createWhatsAppChannel] Provision failed:', error)
 
-        // Check if error is "Instance already exists"
-        // If so, we might want to recover it or ask user to delete it
-        if (error.message?.includes("already exists")) {
-            throw new Error("Instance already exists. Please contact support or try a different number.")
+        // If error is still "already exists", provide clearer message
+        if (error.message?.includes("already") || error.message?.includes("in use")) {
+            throw new Error("Este número ya está registrado. Por favor contacta soporte si crees que es un error.")
         }
 
-        throw new Error("Failed to provision WhatsApp channel: " + error.message)
+        throw new Error("Error al crear canal WhatsApp: " + error.message)
     }
 }
+

@@ -294,35 +294,65 @@ export async function getMarketplaceStats(): Promise<{
 
 /**
  * Generate Meta OAuth URL securely
+ * @param channelType - Optional: 'whatsapp' | 'messenger' | 'instagram' for granular connection
+ *                      If provided, limits the OAuth to only that channel type
  */
-export async function getMetaAuthUrl(): Promise<string> {
+export async function getMetaAuthUrl(channelType?: 'whatsapp' | 'messenger' | 'instagram'): Promise<string> {
     const orgId = await getCurrentOrganizationId()
     if (!orgId) throw new Error("No organization context")
 
-    // In production, use a secure state cache (e.g. Redis) to link this state to the user session
-    // For now, we sign it with the orgId to ensure we link back to the correct org
-    const state = orgId;
+    // State includes orgId and optional channelType for filtering in callback
+    // Format: "orgId" or "orgId:channelType"
+    const state = channelType ? `${orgId}:${channelType}` : orgId;
 
-    // Hardcode for now or use env, consistent with prior user screenshot/code
-    const CLIENT_ID = process.env.NEXT_PUBLIC_META_APP_ID || '812673724531634';
-    const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'; // Make sure this matches ngrok/prod if deployed
+    const CLIENT_ID = process.env.NEXT_PUBLIC_META_APP_ID || '25468410932828305';
+    const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     const REDIRECT_URI = `${BASE_URL}/api/integrations/meta/callback`;
 
-    // Updated Scopes
-    const SCOPES = [
-        'email',
-        'public_profile',
-        'instagram_basic',
-        'instagram_manage_messages',
-        'pages_show_list',
-        'pages_read_engagement',
-        'pages_manage_metadata',
-        'pages_messaging',
-        'pages_utility_messaging',
-        // 'business_management', // Removed: Causes heavy review requirement and permission errors. We rely on granular scopes.
-        'whatsapp_business_messaging',
-        'whatsapp_business_management'
-    ].join(',');
+    // Scopes based on channel type
+    // For granular connections, request only the necessary scopes
+    let scopes: string[];
 
-    return `https://www.facebook.com/v19.0/dialog/oauth?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&state=${state}&scope=${SCOPES}&response_type=code`;
+    switch (channelType) {
+        case 'whatsapp':
+            scopes = [
+                'public_profile',
+                'whatsapp_business_messaging',
+                'whatsapp_business_management'
+            ];
+            break;
+        case 'messenger':
+            scopes = [
+                'public_profile',
+                'pages_show_list',
+                'pages_read_engagement',
+                'pages_manage_metadata',
+                'pages_messaging'
+            ];
+            break;
+        case 'instagram':
+            scopes = [
+                'public_profile',
+                'instagram_basic',
+                'instagram_manage_messages',
+                'pages_show_list'  // Required for Instagram DMs
+            ];
+            break;
+        default:
+            // Full OAuth for Integraciones page - all scopes
+            scopes = [
+                'public_profile',
+                'instagram_basic',
+                'instagram_manage_messages',
+                'pages_show_list',
+                'pages_read_engagement',
+                'pages_manage_metadata',
+                'pages_messaging',
+                'whatsapp_business_messaging',
+                'whatsapp_business_management'
+            ];
+    }
+
+    return `https://www.facebook.com/v19.0/dialog/oauth?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&state=${state}&scope=${scopes.join(',')}&response_type=code`;
 }
+

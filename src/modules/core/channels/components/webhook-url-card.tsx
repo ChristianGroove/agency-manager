@@ -53,7 +53,7 @@ export function WebhookUrlCard({ providerKey }: WebhookUrlCardProps) {
     }
 
     // The verify token used in Meta configuration (must match the one in route.ts)
-    const VERIFY_TOKEN = "antigravity_verification_token_2026"
+    const VERIFY_TOKEN = "pixy_webhook_2026"
 
     const handleCopy = async (text: string, type: 'url' | 'token') => {
         try {

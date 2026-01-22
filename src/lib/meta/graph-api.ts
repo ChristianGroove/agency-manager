@@ -24,7 +24,7 @@ export class MetaGraphAPI {
     private redirectUri: string;
 
     constructor() {
-        this.appId = process.env.NEXT_PUBLIC_META_APP_ID || '812673724531634';
+        this.appId = process.env.NEXT_PUBLIC_META_APP_ID || '25468410932828305';
         this.appSecret = process.env.META_APP_SECRET || '';
         // Dynamic redirect URI based on environment would be better, but consistent with frontend for now
         this.redirectUri = process.env.NEXT_PUBLIC_APP_URL
@@ -54,6 +54,55 @@ export class MetaGraphAPI {
         }
 
         return data.access_token;
+    }
+
+    /**
+     * Exchange short-lived Page Access Token for long-lived Page Access Token
+     * CRITICAL: Long-lived page tokens don't expire if the page admin doesn't change permissions
+     * This is the recommended approach by Meta for Tech Providers
+     */
+    async exchangeForLongLivedPageToken(shortLivedPageToken: string): Promise<string> {
+        const url = new URL(`${META_GRAPH_URL}/${META_API_VERSION}/oauth/access_token`);
+        url.searchParams.append('grant_type', 'fb_exchange_token');
+        url.searchParams.append('client_id', this.appId);
+        url.searchParams.append('client_secret', this.appSecret);
+        url.searchParams.append('fb_exchange_token', shortLivedPageToken);
+
+        const res = await fetch(url.toString());
+        const data = await res.json();
+
+        if (data.error) {
+            throw new Error(`Page Token Exchange Failed: ${data.error.message}`);
+        }
+
+        return data.access_token;
+    }
+
+    /**
+     * Subscribe webhooks for a specific Page
+     * Calls /{page-id}/subscribed_apps to enable webhook delivery
+     * Required permissions: pages_manage_metadata
+     */
+    async subscribePageWebhooks(pageId: string, pageAccessToken: string, fields: string[] = ['messages', 'messaging_postbacks', 'message_deliveries', 'message_reads']): Promise<{ success: boolean; error?: string }> {
+        try {
+            const url = new URL(`${META_GRAPH_URL}/${META_API_VERSION}/${pageId}/subscribed_apps`);
+            url.searchParams.append('access_token', pageAccessToken);
+            url.searchParams.append('subscribed_fields', fields.join(','));
+
+            const res = await fetch(url.toString(), { method: 'POST' });
+            const data = await res.json();
+
+            if (data.error) {
+                console.error('[MetaGraphAPI] Webhook subscription failed:', data.error);
+                return { success: false, error: data.error.message };
+            }
+
+            console.log('[MetaGraphAPI] ✅ Webhooks subscribed for page:', pageId);
+            return { success: true };
+        } catch (error: any) {
+            console.error('[MetaGraphAPI] Webhook subscription error:', error);
+            return { success: false, error: error.message };
+        }
     }
 
     /**
