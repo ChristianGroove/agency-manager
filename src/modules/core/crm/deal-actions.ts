@@ -1,4 +1,4 @@
-"use server"
+﻿"use server"
 
 import { createClient } from '@/lib/supabase-server'
 import { supabaseAdmin } from "@/lib/supabase-admin"
@@ -190,19 +190,11 @@ export async function searchCatalog(query: string = '', category?: string) {
 // 6. Send Interactive Quote (The Innovation)
 import { getQuoteSettings } from './quote-settings'
 import { MetaProvider } from '../messaging/providers/meta-provider'
-import { logDebug } from '@/lib/debug-logger'
 
 export async function sendInteractiveQuote(cartId: string, conversationId: string) {
     const supabase = await createClient()
 
     try {
-        await logDebug("Starting sendInteractiveQuote", { cartId, conversationId })
-        // Check env var existence (but for security, don't log full key)
-        await logDebug("Env Check", {
-            hasServiceRole: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
-            keyLength: process.env.SUPABASE_SERVICE_ROLE_KEY?.length
-        })
-
         // 1. Get Cart (using admin client to bypass auth)
         const { data: cart } = await supabaseAdmin
             .from('deal_carts')
@@ -211,27 +203,23 @@ export async function sendInteractiveQuote(cartId: string, conversationId: strin
             .single()
 
         if (!cart || !cart.items.length) {
-            await logDebug("Cart empty or not found", cart)
             throw new Error("Cart empty or not found")
         }
 
         // 2. Get Conversation info (using admin client)
         const { data: conversation } = await supabaseAdmin
             .from('conversations')
-            .select('id, phone, metadata, connection_id')
+            .select('id, phone, metadata, connection_id, leads(phone)')
             .eq('id', conversationId)
             .single()
 
         if (!conversation) {
-            await logDebug("Conversation not found", conversationId)
             throw new Error("Conversation not found")
         }
 
-        await logDebug("Conversation found", conversation)
+        let recipientPhone = (conversation as any).leads?.phone || conversation.phone || conversation.metadata?.phone_number || conversation.metadata?.displayPhoneNumber || ''
 
-        let recipientPhone = conversation.phone || conversation.metadata?.phone_number || conversation.metadata?.displayPhoneNumber || ''
         if (!recipientPhone) {
-            await logDebug("No recipient phone", conversation)
             throw new Error("No phone number found for recipient")
         }
 
@@ -261,66 +249,59 @@ export async function sendInteractiveQuote(cartId: string, conversationId: strin
         bodyText += `----------------------------------\n`
         bodyText += `*TOTAL: $${cart.total_amount?.toLocaleString()}*`
 
-        // 5. Connection Lookup
-        let provider = new MetaProvider('', '', '')
-        let connectionFound = false
+        // 5. Connection & Provider Resolution (NEW DYNAMIC LOGIC)
+        let provider: any = null
+        const channel = conversation.metadata?.channel || (conversation.connection_id ? 'unknown' : 'whatsapp')
 
+        // Find connection
+        let connection: any = null
         if (conversation.connection_id) {
-            await logDebug(`Using connection_id: ${conversation.connection_id}`)
-            const { data: conn, error: connError } = await supabaseAdmin.from('integration_connections').select('*').eq('id', conversation.connection_id).single()
-
-            if (connError) await logDebug("Connection lookup error", connError)
-
-            if (conn?.credentials) {
-                const { decryptObject } = await import('../integrations/encryption')
-                let creds = conn.credentials
-                if (typeof creds === 'string') {
-                    try { creds = JSON.parse(creds) } catch (e) { }
-                }
-                creds = decryptObject(creds)
-
-                const token = creds.accessToken || creds.apiToken || creds.access_token
-                const phoneId = creds.phoneNumberId || creds.phone_number_id
-                const verify = creds.verifyToken || ''
-
-                if (token && phoneId) {
-                    provider = new MetaProvider(token, phoneId, verify)
-                    connectionFound = true
-                    await logDebug("Provider initialized with connection_id credentials")
-                } else {
-                    await logDebug("Credentials missing fields", creds)
-                }
-            } else {
-                await logDebug("Connection has no credentials")
-            }
+            const { data: conn } = await supabaseAdmin.from('integration_connections').select('*').eq('id', conversation.connection_id).single()
+            connection = conn
         }
 
-        if (!connectionFound) {
-            await logDebug("Fallback: Searching for any active meta_whatsapp connection")
-            const { data: conn } = await supabaseAdmin.from('integration_connections').select('*').eq('provider_key', 'meta_whatsapp').eq('status', 'active').limit(1).single()
-            if (conn?.credentials) {
-                const { decryptObject } = await import('../integrations/encryption')
-                let creds = conn.credentials
-                if (typeof creds === 'string') {
-                    try { creds = JSON.parse(creds) } catch (e) { }
-                }
-                creds = decryptObject(creds)
-
-                const token = creds.accessToken || creds.apiToken || creds.access_token
-                const phoneId = creds.phoneNumberId || creds.phone_number_id
-                const verify = creds.verifyToken || ''
-
-                if (token && phoneId) {
-                    provider = new MetaProvider(token, phoneId, verify)
-                    await logDebug("Provider initialized with fallback connection")
-                }
-            } else {
-                await logDebug("No fallback connection found")
-            }
+        if (!connection) {
+            // Fallback: Default for WhatsApp
+            const { data: defaultConn } = await supabaseAdmin
+                .from('integration_connections')
+                .select('*')
+                .eq('organization_id', cart.organization_id)
+                .in('provider_key', ['meta_whatsapp', 'evolution_api'])
+                .eq('status', 'active')
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .single()
+            connection = defaultConn
         }
+
+        if (!connection) {
+            throw new Error("No hay una conexión de WhatsApp activa para enviar la cotización.")
+        }
+
+        const creds = connection.credentials as any
+        const providerKey = connection.provider_key
+
+        // Interactive quotes only work with official WhatsApp Business API (Meta)
+        // Evolution API / Baileys cannot send interactive messages - WhatsApp blocks them
+        if (providerKey === 'evolution_api') {
+            throw new Error("Las cotizaciones interactivas solo están disponibles para WhatsApp Oficial (Meta). Evolution API no soporta mensajes interactivos.")
+        }
+
+        // Initialize Meta Provider
+        const { MetaProvider } = await import("../messaging/providers/meta-provider")
+        const { decryptObject } = await import('../integrations/encryption')
+        let finalCreds = decryptObject(creds)
+
+        const token = finalCreds.accessToken || finalCreds.apiToken || finalCreds.access_token
+        const phoneId = finalCreds.phoneNumberId || finalCreds.phone_number_id
+
+        if (!token || !phoneId) {
+            throw new Error("Credenciales de Meta incompletas.")
+        }
+
+        provider = new MetaProvider(token, phoneId, finalCreds.verifyToken || '')
 
         // Send Interactive Message
-        await logDebug("Sending message to " + recipientPhone)
         const result = await provider.sendMessage({
             to: recipientPhone,
             content: {
@@ -335,19 +316,15 @@ export async function sendInteractiveQuote(cartId: string, conversationId: strin
             }
         })
 
-        await logDebug("Send Result", result)
-
         if (!result.success) throw new Error("Meta API Error: " + result.error)
 
-        // 6. Save to Database (So it appears in chat)
-        await logDebug("Saving to Inbox...")
+        // Save to Database (So it appears in chat)
         const { inboxService } = await import('../messaging/inbox-service')
 
         await inboxService.saveOutboundMessage(
             conversation.id,
             {
-                type: 'interactive_buttons', // frontend needs to handle this or fallback
-                // Fallback text is CRITICAL for display if component fails
+                type: 'interactive_buttons',
                 text: `[COTIZACIÓN] ${headerText}\n\n${bodyText}\n\n${footerText}\n\n[Botones: ${approveLabel} | ${rejectLabel}]`,
                 header: { type: 'text', text: headerText },
                 body: bodyText,
@@ -357,19 +334,19 @@ export async function sendInteractiveQuote(cartId: string, conversationId: strin
                     { id: `reject_cart_${cartId}`, title: rejectLabel }
                 ]
             },
-            result.messageId, // External ID from Meta
-            'Agent', // Sender
-            undefined, // ID autogenerated
-            'whatsapp'
+            result.messageId,
+            'Agent',
+            undefined,
+            'whatsapp' // Only Meta/WhatsApp is supported for interactive quotes
         )
-        await logDebug("Saved to Inbox")
 
-        revalidatePath('/crm/inbox')
+        revalidatePath('/inbox')
+        revalidatePath('/platform/inbox')
         return { success: true }
 
     } catch (e: any) {
         console.error("Send Quote Error", e)
-        await logDebug("EXCEPTION", e.message + " " + e.stack)
-        return { success: false, error: e.message }
+        throw new Error(e.message || 'Error al enviar cotización')
     }
 }
+

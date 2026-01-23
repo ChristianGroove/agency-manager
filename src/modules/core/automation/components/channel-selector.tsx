@@ -126,11 +126,11 @@ export function ChannelSelector({ value, onChange, className, renderTrigger, mul
     // Fallback display if ID matches but specific asset logic is fuzzy
     const displaySelected = selectedOption || (value && value !== 'all' ? { label: 'Canal Desconocido', icon: <Globe className="h-4 w-4" /> } : null);
 
-    const getIcon = (provider: string) => {
+    function getIcon(provider: string) {
         if (provider.includes('whatsapp') || provider.includes('evolution')) return <MessageCircle className="mr-2 h-4 w-4 text-[#25D366]" />;
         if (provider.includes('instagram')) return <Instagram className="mr-2 h-4 w-4 text-[#E4405F]" />;
         return <Globe className="mr-2 h-4 w-4 text-slate-500" />;
-    };
+    }
 
     const handleSelect = (id: string) => {
         if (multiple) {

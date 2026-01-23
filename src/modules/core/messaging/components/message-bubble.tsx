@@ -129,6 +129,49 @@ function renderContent(content: any, isOutbound: boolean, messageId?: string, me
                 </a>
             )
 
+        case 'interactive_buttons':
+        case 'interactive':
+            const buttons = content.buttons || [];
+            const header = content.header || metadata?.header;
+            const footer = content.footer || metadata?.footer;
+
+            return (
+                <div className="flex flex-col gap-2 py-1">
+                    {header && (
+                        <div className="mb-1">
+                            {header.type === 'text' ? (
+                                <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground mr-1 h-fit leading-none mb-1">
+                                    {header.text}
+                                </span>
+                            ) : header.mediaUrl ? (
+                                <img src={header.mediaUrl} alt="Header" className="rounded-md max-h-40 w-full object-cover mb-2" />
+                            ) : null}
+                        </div>
+                    )}
+
+                    <p className="whitespace-pre-wrap leading-relaxed text-[15px]">{text}</p>
+
+                    {footer && (
+                        <p className="text-[10px] text-muted-foreground italic mt-0.5">{footer}</p>
+                    )}
+
+                    {buttons.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mt-2 pt-2 border-t border-black/5 dark:border-white/5">
+                            {buttons.map((btn: any) => (
+                                <button
+                                    key={btn.id}
+                                    className="flex-1 min-w-[100px] py-1.5 px-3 rounded-lg bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 hover:bg-black/10 dark:hover:bg-white/10 transition-colors text-xs font-medium text-center"
+                                    onClick={() => console.log('Button clicked:', btn.id)} // Actions handled by webhook in backend
+                                    disabled={true} // For now, buttons in chat history are just for preview
+                                >
+                                    {btn.title || btn.text || btn.displayText}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )
+
         case 'note':
             return (
                 <div className="flex flex-col gap-1 -mx-1 -my-1 p-2 bg-yellow-100/50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800/50">

@@ -16,25 +16,85 @@ export class EvolutionProvider implements MessagingProvider {
 
     async sendMessage(options: SendMessageOptions): Promise<{ success: boolean; messageId?: string; error?: string }> {
         const { baseUrl, apiKey, instanceName } = this.config
+        const content = options.content
 
-        // Normalize endpoint (trim slashes)
-        const url = `${baseUrl.replace(/\/$/, '')}/message/sendText/${instanceName}`
+        // 1. Determine Endpoint and Payload based on Content Type
+        let endpoint = ''
+        const cleanNumber = options.to.replace(/\D/g, '')
+        const jid = cleanNumber.includes('@') ? cleanNumber : `${cleanNumber}@s.whatsapp.net`
 
-        const textContent = options.content.type === 'text' ? options.content.text : (options.content as any).text || '';
-
-        const body = {
-            number: options.to,
+        let body: any = {
+            number: jid,
             options: {
                 delay: 1200,
                 presence: "composing",
-                linkPreview: false
-            },
-            textMessage: {
-                text: textContent
+                linkPreview: false,
+                ...((options.metadata as any)?.options || {})
             }
         }
 
+        switch (content.type) {
+            case 'text':
+                endpoint = 'message/sendText'
+                body.text = content.text
+                break
+
+            case 'image':
+            case 'audio':
+            case 'video':
+            case 'document':
+                endpoint = 'message/sendMedia'
+                body.media = content.mediaUrl
+                body.mediatype = content.type === 'image' ? 'image' :
+                    content.type === 'video' ? 'video' :
+                        content.type === 'audio' ? 'audio' : 'document'
+                body.caption = (content as any).caption || ''
+                if (content.type === 'document' && (content as any).filename) {
+                    body.fileName = (content as any).filename
+                }
+                break
+
+            case 'interactive_buttons':
+                endpoint = 'message/sendButtons'
+                body.title = (content as any).header?.text || 'Cotización'
+                body.description = content.body
+                body.footer = (content as any).footer || ''
+                body.buttons = (content as any).buttons.map((b: any) => ({
+                    buttonId: b.id,
+                    buttonText: { displayText: b.title },
+                    type: 'reply'
+                }))
+                break
+
+            case 'interactive_list':
+                endpoint = 'message/sendList'
+                body.title = (content as any).header || ''
+                body.description = content.body
+                body.buttonText = (content as any).buttonText || 'Opciones'
+                body.footer = (content as any).footer || ''
+                body.sections = (content as any).sections.map((s: any) => ({
+                    title: s.title,
+                    rows: s.rows.map((r: any) => ({
+                        title: r.title,
+                        description: r.description,
+                        rowId: r.id
+                    }))
+                }))
+                break
+
+            default:
+                return { success: false, error: `Content type ${content.type} not supported by Evolution provider` }
+        }
+
+        const url = `${baseUrl.replace(/\/$/, '')}/${endpoint}/${instanceName}`
+
         try {
+            // Log to file for debugging
+            const fs = require('fs')
+            const logPath = require('path').join(process.cwd(), 'evolution_api_debug.log')
+            const debugLog = `\n[${new Date().toISOString()}] EVOLUTION SEND REQUEST\nURL: ${url}\nEndpoint: ${endpoint}\nBody: ${JSON.stringify(body, null, 2)}\n`
+            fs.appendFileSync(logPath, debugLog)
+
             const response = await fetch(url, {
                 method: "POST",
                 headers: {
@@ -44,14 +104,24 @@ export class EvolutionProvider implements MessagingProvider {
                 body: JSON.stringify(body)
             })
 
-            const data = await response.json()
+            const textResponse = await response.text()
+            let data: any = {}
+            try {
+                data = JSON.parse(textResponse)
+            } catch (e) {
+                data = { error: textResponse }
+            }
 
             if (response.ok) {
-                return { success: true, messageId: data.key?.id } // Evolution usually returns key.id
+                // Return consistent messageId format
+                const messageId = data.key?.id || data.messageId || `evo_${Date.now()}`
+                return { success: true, messageId }
             } else {
+                console.error(`[EvolutionProvider] API ERROR (${response.status}):`, data)
                 return { success: false, error: JSON.stringify(data) }
             }
         } catch (error: any) {
+            console.error(`[EvolutionProvider] Connection Error:`, error)
             return { success: false, error: error.message }
         }
     }

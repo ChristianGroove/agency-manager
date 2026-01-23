@@ -3,24 +3,32 @@ import { supabaseAdmin } from "@/lib/supabase-admin"
 import { InboxService } from "@/modules/core/messaging/inbox-service"
 
 /**
- * Evolution API Webhook Handler
+ * Evolution API Webhook Handler (Catch-all)
  * 
- * Receives events from Evolution instances for:
- * - connection.update: Connection state changes
- * - messages.upsert: Incoming messages
- * - messages.update: Message status updates (read, delivered, etc)
+ * Handles both:
+ * - /api/webhooks/whatsapp
+ * - /api/webhooks/whatsapp/[event-name] (e.g. /messages-upsert)
  */
 
-export async function POST(req: NextRequest) {
+export async function POST(req: NextRequest, { params }: { params: { slug?: string[] } }) {
     try {
         const body = await req.json()
         const { event, instance, data } = body
 
         // Evolution v2 uses 'event' field, some versions use 'type'
-        const eventType = event || body.type
+        // If missing in body, check the URL slug (catch-all)
+        let eventType = event || body.type
+
+        if (!eventType && params.slug && params.slug.length > 0) {
+            // Map slug (e.g. "messages-upsert") to standard event name if needed
+            const slugEvent = params.slug[0].replace(/-/g, '.').toUpperCase()
+            eventType = slugEvent
+            console.log(`[Webhook:Evolution] Derived event type from slug: ${params.slug[0]} -> ${eventType}`)
+        }
+
         const instanceName = instance || body.instance?.instanceName
 
-        console.log(`[Webhook:Evolution] Received: ${eventType} from ${instanceName}`)
+        console.log(`[Webhook:Evolution] Received: ${eventType} from ${instanceName} (Slug: ${params.slug?.join('/') || 'none'})`)
 
         if (!instanceName) {
             console.warn('[Webhook:Evolution] No instance name in payload')
@@ -39,8 +47,10 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ status: 'ignored', reason: 'channel_not_found' })
         }
 
+        const normalizedEvent = (eventType || '').toUpperCase().replace(/\./g, '_')
+
         // 1. Connection Update
-        if (eventType === 'connection.update' || eventType === 'CONNECTION_UPDATE') {
+        if (normalizedEvent === 'CONNECTION_UPDATE' || normalizedEvent === 'STATE_CHANGE') {
             const state = data?.state || data?.instance?.state
 
             let channelStatus = 'unknown'
@@ -61,7 +71,7 @@ export async function POST(req: NextRequest) {
         }
 
         // 2. Messages Upsert (Incoming Messages)
-        if (eventType === 'messages.upsert' || eventType === 'MESSAGES_UPSERT') {
+        if (normalizedEvent === 'MESSAGES_UPSERT' || normalizedEvent === 'SEND_MESSAGE') {
             const messages = data?.messages || (Array.isArray(data) ? data : [data])
 
             if (!messages || messages.length === 0) {
@@ -85,6 +95,8 @@ export async function POST(req: NextRequest) {
                 let content = ''
                 let contentType = 'text'
 
+                let buttonId = undefined
+
                 if (message.message?.conversation) {
                     content = message.message.conversation
                 } else if (message.message?.extendedTextMessage?.text) {
@@ -101,6 +113,14 @@ export async function POST(req: NextRequest) {
                 } else if (message.message?.documentMessage) {
                     content = message.message.documentMessage.fileName || '[Document]'
                     contentType = 'document'
+                } else if (message.message?.buttonsResponseMessage) {
+                    contentType = 'interactive'
+                    buttonId = message.message.buttonsResponseMessage.selectedButtonId
+                    content = message.message.buttonsResponseMessage.selectedDisplayText || `[Botón: ${buttonId}]`
+                } else if (message.message?.listResponseMessage) {
+                    contentType = 'interactive'
+                    buttonId = message.message.listResponseMessage.singleSelectReply?.selectedRowId
+                    content = message.message.listResponseMessage.title || message.message.listResponseMessage.description || `[Lista: ${buttonId}]`
                 } else if (message.message?.stickerMessage) {
                     content = '[Sticker]'
                     contentType = 'sticker'
@@ -114,7 +134,7 @@ export async function POST(req: NextRequest) {
                 console.log(`[Webhook:Evolution] Processing message from ${senderPhone}: ${content.substring(0, 50)}...`)
 
                 // Build correct content structure for IncomingMessage
-                const messageContent: { type: 'text' | 'image' | 'audio' | 'video' | 'document' | 'unknown'; text?: string; mediaUrl?: string; raw?: unknown } = {
+                const messageContent: any = {
                     type: contentType === 'text' ? 'text' :
                         contentType === 'image' ? 'image' :
                             contentType === 'video' ? 'video' :
@@ -125,35 +145,42 @@ export async function POST(req: NextRequest) {
                 }
 
                 // Send to InboxService
-                await inboxService.handleIncomingMessage({
+                const result = await inboxService.handleIncomingMessage({
                     id: message.key?.id || `evo_${Date.now()}`,
                     externalId: message.key?.id || `evo_${Date.now()}`,
-                    channel: 'whatsapp',
+                    channel: 'evolution',
                     from: senderPhone,
                     senderName: pushName,
                     content: messageContent,
                     timestamp: new Date(message.messageTimestamp ? Number(message.messageTimestamp) * 1000 : Date.now()),
                     metadata: {
-                        instanceName,
+                        instance: instanceName, // InboxService looks for 'instance'
+                        instanceName: instanceName, // Keep instanceName for backward compatibility
                         connectionId: channel.id,
                         pushName,
                         rawMessage: message
                     }
                 })
+
+                if (result) {
+                    console.log(`[Webhook:Evolution] InboxService SUCCESS: CID ${result.conversationId}`)
+                } else {
+                    console.error(`[Webhook:Evolution] InboxService FAILED for message ${message.key?.id}`)
+                }
             }
 
             return NextResponse.json({ status: 'ok', event: 'messages_processed', count: messages.length })
         }
 
         // 3. Messages Update (Status changes)
-        if (eventType === 'messages.update' || eventType === 'MESSAGES_UPDATE') {
+        if (normalizedEvent === 'MESSAGES_UPDATE' || normalizedEvent === 'MESSAGES_SET') {
             // TODO: Update message status in DB (delivered, read, etc)
-            console.log(`[Webhook:Evolution] Message status update (not yet implemented)`)
+            // console.log(`[Webhook:Evolution] Message status update (not yet implemented)`)
             return NextResponse.json({ status: 'ok', event: 'status_update_ack' })
         }
 
         // Unknown event type - just acknowledge
-        console.log(`[Webhook:Evolution] Unhandled event type: ${eventType}`)
+        console.log(`[Webhook:Evolution] Unhandled event type: ${eventType} (${normalizedEvent})`)
         return NextResponse.json({ status: 'ok', event: 'unknown_ack' })
 
     } catch (error: any) {

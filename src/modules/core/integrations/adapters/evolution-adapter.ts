@@ -93,14 +93,59 @@ export class EvolutionAdapter implements IntegrationAdapter {
         }
     }
 
-    async sendMessage(credentials: ConnectionCredentials, recipient: string, content: any): Promise<{ messageId: string, metadata?: any }> {
+    async sendMessage(credentials: ConnectionCredentials, recipient: string, content: any, metadata?: any): Promise<{ messageId: string, metadata?: any }> {
         const { baseUrl, apiKey, instanceName } = credentials
         if (!baseUrl || !apiKey || !instanceName) throw new Error("Missing credentials")
 
-        const url = `${baseUrl.replace(/\/$/, '')}/message/sendText/${instanceName}`
+        // 1. Determine Endpoint and Payload
+        let endpoint = 'message/sendText'
+        const cleanNumber = recipient.replace(/\D/g, '')
+        const jid = cleanNumber.includes('@') ? cleanNumber : `${cleanNumber}@s.whatsapp.net`
 
-        // Handle text vs media (for now assuming text for auto-replies)
-        const text = typeof content === 'string' ? content : content.text || JSON.stringify(content)
+        const body: any = {
+            number: jid,
+            options: {
+                delay: 1200,
+                presence: "composing",
+                linkPreview: false,
+                ...(metadata?.options || {})
+            }
+        }
+
+        const type = content.type || 'text'
+
+        switch (type) {
+            case 'image':
+            case 'video':
+            case 'audio':
+            case 'document':
+                endpoint = 'message/sendMedia'
+                body.media = content.mediaUrl || content.url || content.link
+                body.mediatype = type
+                body.caption = content.caption || content.text || ''
+                if (type === 'document' && content.filename) body.fileName = content.filename
+                break
+
+            case 'interactive_buttons':
+                endpoint = 'message/sendButtons'
+                body.title = content.header?.text || 'Opciones'
+                body.description = content.body || content.text || ''
+                body.footer = content.footer || ''
+                body.buttons = content.buttons?.map((b: any) => ({
+                    buttonId: b.id,
+                    buttonText: { displayText: b.title },
+                    type: 'reply'
+                })) || []
+                break
+
+            case 'text':
+            default:
+                endpoint = 'message/sendText'
+                body.text = typeof content === 'string' ? content : (content.text || content.body || JSON.stringify(content))
+                break
+        }
+
+        const url = `${baseUrl.replace(/\/$/, '')}/${endpoint}/${instanceName}`
 
         const response = await fetch(url, {
             method: 'POST',
@@ -108,20 +153,17 @@ export class EvolutionAdapter implements IntegrationAdapter {
                 "apikey": apiKey,
                 "Content-Type": "application/json"
             },
-            body: JSON.stringify({
-                number: recipient,
-                text: text,
-                delay: 1000
-            })
+            body: JSON.stringify(body)
         })
 
         if (!response.ok) {
-            throw new Error(`Evolution Send Failed: ${response.statusText}`)
+            const errData = await response.json().catch(() => ({ error: response.statusText }))
+            throw new Error(`Evolution Send Failed (${response.status}): ${JSON.stringify(errData)}`)
         }
 
         const data = await response.json()
         return {
-            messageId: data.key?.id || Date.now().toString(),
+            messageId: data.key?.id || data.messageId || Date.now().toString(),
             metadata: data
         }
     }

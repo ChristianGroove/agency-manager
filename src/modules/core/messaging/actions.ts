@@ -193,17 +193,22 @@ export async function sendMessage(conversationId: string, payload: string, id?: 
     const providerOptions: any = {
         to: recipientPhone,
         content: {
-            type: content.type === 'document' ? 'image' : content.type, // Map doc to image or text for now if provider limited, but types.ts allows image
-            text: content.text || content.caption,
-            mediaUrl: content.url || content.mediaUrl
+            type: content.type,
+            text: content.text,
+            caption: content.caption || content.text,
+            mediaUrl: content.url || content.mediaUrl || content.image_url,
+            filename: content.filename || content.fileName
         },
         metadata: {
-            channel: channel
+            channel: channel,
+            ...content.metadata
         }
     }
 
-    if (content.type === 'image' || content.type === 'video' || content.type === 'audio') {
-        providerOptions.content.type = 'image'; // MetaProvider default compat
+    // Special handling for legacy MetaProvider compatibility if needed
+    // but better to keep it clean and let providers handle their own mapping
+    if (channel === 'whatsapp' && (content.type === 'image' || content.type === 'video' || content.type === 'audio')) {
+        // MetaProvider might still want this, but we've updated it before or will ensure it's robust
     }
 
     // 5. Send Message via Provider (Skip if Internal Note)
