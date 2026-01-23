@@ -10,7 +10,8 @@ import { InboxService } from "@/modules/core/messaging/inbox-service"
  * - /api/webhooks/whatsapp/[event-name] (e.g. /messages-upsert)
  */
 
-export async function POST(req: NextRequest, { params }: { params: { slug?: string[] } }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ slug?: string[] }> }) {
+    const { slug } = await params
     try {
         const body = await req.json()
         const { event, instance, data } = body
@@ -19,16 +20,16 @@ export async function POST(req: NextRequest, { params }: { params: { slug?: stri
         // If missing in body, check the URL slug (catch-all)
         let eventType = event || body.type
 
-        if (!eventType && params.slug && params.slug.length > 0) {
+        if (!eventType && slug && slug.length > 0) {
             // Map slug (e.g. "messages-upsert") to standard event name if needed
-            const slugEvent = params.slug[0].replace(/-/g, '.').toUpperCase()
+            const slugEvent = slug[0].replace(/-/g, '.').toUpperCase()
             eventType = slugEvent
-            console.log(`[Webhook:Evolution] Derived event type from slug: ${params.slug[0]} -> ${eventType}`)
+            console.log(`[Webhook:Evolution] Derived event type from slug: ${slug[0]} -> ${eventType}`)
         }
 
         const instanceName = instance || body.instance?.instanceName
 
-        console.log(`[Webhook:Evolution] Received: ${eventType} from ${instanceName} (Slug: ${params.slug?.join('/') || 'none'})`)
+        console.log(`[Webhook:Evolution] Received: ${eventType} from ${instanceName} (Slug: ${slug?.join('/') || 'none'})`)
 
         if (!instanceName) {
             console.warn('[Webhook:Evolution] No instance name in payload')
@@ -190,6 +191,11 @@ export async function POST(req: NextRequest, { params }: { params: { slug?: stri
 }
 
 // Evolution may send GET for webhook verification
-export async function GET() {
+export async function GET(
+    request: NextRequest,
+    { params }: { params: Promise<{ slug?: string[] }> }
+) {
+    // Await params even if not used to satisfy Next.js types
+    await params
     return NextResponse.json({ status: 'active', service: 'evolution-webhook' })
 }
