@@ -1,0 +1,157 @@
+{
+    "version": "5.0",
+    "data_api_version": "3.0",
+    "routing_model": {
+        "APPOINTMENT_SCREEN": [
+            "SUCCESS_SCREEN"
+        ]
+    },
+    "screens": [
+        {
+            "id": "APPOINTMENT_SCREEN",
+            "title": "Agendar Cita Técnica",
+            "terminal": false,
+            "data": {
+                "available_dates": {
+                    "type": "array",
+                    "__example__": [
+                        "2026-01-23",
+                        "2026-01-24",
+                        "2026-01-25"
+                    ]
+                },
+                "time_slots": {
+                    "type": "array",
+                    "__example__": [
+                        {
+                            "id": "09:00",
+                            "title": "9:00 AM"
+                        },
+                        {
+                            "id": "10:00",
+                            "title": "10:00 AM"
+                        },
+                        {
+                            "id": "11:00",
+                            "title": "11:00 AM"
+                        }
+                    ]
+                }
+            },
+            "layout": {
+                "type": "SingleColumnLayout",
+                "children": [
+                    {
+                        "type": "Form",
+                        "name": "appointment_form",
+                        "children": [
+                            {
+                                "type": "TextHeading",
+                                "text": "Selecciona fecha y hora para tu cita técnica de WhatsApp Business API"
+                            },
+                            {
+                                "type": "CalendarPicker",
+                                "name": "appointment_date",
+                                "label": "Fecha de cita",
+                                "required": true,
+                                "min-date": "2026-01-23",
+                                "max-date": "2026-02-28",
+                                "unavailable-dates": [],
+                                "helper-text": "Formato: YYYY-MM-DD",
+                                "on-select-action": {
+                                    "name": "data_exchange",
+                                    "payload": {
+                                        "action": "get_time_slots",
+                                        "selected_date": "${form.appointment_date}"
+                                    }
+                                }
+                            },
+                            {
+                                "type": "Dropdown",
+                                "name": "time_slot",
+                                "label": "Hora disponible",
+                                "required": true,
+                                "data-source": "${data.time_slots}",
+                                "helper-text": "Selecciona horario preferido"
+                            },
+                            {
+                                "type": "TextInput",
+                                "name": "customer_name",
+                                "label": "Nombre completo",
+                                "input-type": "text",
+                                "required": true,
+                                "helper-text": "Tu nombre para la reserva"
+                            },
+                            {
+                                "type": "TextInput",
+                                "name": "customer_email",
+                                "label": "Email",
+                                "input-type": "email",
+                                "required": true,
+                                "helper-text": "Recibirás confirmación por email"
+                            },
+                            {
+                                "type": "TextInput",
+                                "name": "customer_phone",
+                                "label": "Teléfono",
+                                "input-type": "phone",
+                                "required": false,
+                                "helper-text": "Opcional (sin código de país)"
+                            },
+                            {
+                                "type": "TextArea",
+                                "name": "appointment_notes",
+                                "label": "Detalles de la consulta",
+                                "required": false,
+                                "helper-text": "Describe brevemente tu consulta técnica",
+                                "max-length": 500
+                            },
+                            {
+                                "type": "Footer",
+                                "label": "Confirmar Cita",
+                                "on-click-action": {
+                                    "name": "complete",
+                                    "payload": {
+                                        "appointment_date": "${form.appointment_date}",
+                                        "time_slot": "${form.time_slot}",
+                                        "customer_name": "${form.customer_name}",
+                                        "customer_email": "${form.customer_email}",
+                                        "customer_phone": "${form.customer_phone}",
+                                        "notes": "${form.appointment_notes}"
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "id": "SUCCESS_SCREEN",
+            "title": "¡Cita Confirmada!",
+            "terminal": true,
+            "success": true,
+            "layout": {
+                "type": "SingleColumnLayout",
+                "children": [
+                    {
+                        "type": "TextHeading",
+                        "text": "✅ Tu cita ha sido agendada"
+                    },
+                    {
+                        "type": "TextBody",
+                        "text": "Fecha: ${data.appointment_date}\nHora: ${data.time_slot}\n\nRecibirás un email de confirmación en breve."
+                    },
+                    {
+                        "type": "Footer",
+                        "label": "Cerrar",
+                        "on-click-action": {
+                            "name": "complete",
+                            "payload": {}
+                        }
+                    }
+                ]
+            }
+        }
+    ]
+}

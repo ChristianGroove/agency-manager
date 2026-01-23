@@ -1,0 +1,224 @@
+{
+    "version": "5.0",
+    "data_api_version": "3.0",
+    "routing_model": {
+        "LEAD_FORM_SCREEN": [
+            "OPT_IN_SCREEN"
+        ],
+        "OPT_IN_SCREEN": [
+            "SUCCESS_SCREEN"
+        ]
+    },
+    "screens": [
+        {
+            "id": "LEAD_FORM_SCREEN",
+            "title": "Información de Contacto",
+            "terminal": false,
+            "layout": {
+                "type": "SingleColumnLayout",
+                "children": [
+                    {
+                        "type": "Form",
+                        "name": "lead_form",
+                        "children": [
+                            {
+                                "type": "TextHeading",
+                                "text": "Recibe información sobre WhatsApp Business API"
+                            },
+                            {
+                                "type": "TextInput",
+                                "name": "company_name",
+                                "label": "Nombre de empresa",
+                                "input-type": "text",
+                                "required": true
+                            },
+                            {
+                                "type": "TextInput",
+                                "name": "contact_name",
+                                "label": "Nombre de contacto",
+                                "input-type": "text",
+                                "required": true
+                            },
+                            {
+                                "type": "TextInput",
+                                "name": "contact_email",
+                                "label": "Email corporativo",
+                                "input-type": "email",
+                                "required": true
+                            },
+                            {
+                                "type": "TextInput",
+                                "name": "contact_phone",
+                                "label": "Teléfono",
+                                "input-type": "phone",
+                                "required": true
+                            },
+                            {
+                                "type": "Dropdown",
+                                "name": "company_size",
+                                "label": "Tamaño de empresa",
+                                "required": true,
+                                "data-source": [
+                                    {
+                                        "id": "1-10",
+                                        "title": "1-10 empleados"
+                                    },
+                                    {
+                                        "id": "11-50",
+                                        "title": "11-50 empleados"
+                                    },
+                                    {
+                                        "id": "51-200",
+                                        "title": "51-200 empleados"
+                                    },
+                                    {
+                                        "id": "201+",
+                                        "title": "Más de 200 empleados"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "CheckboxGroup",
+                                "name": "interests",
+                                "label": "Intereses",
+                                "required": false,
+                                "data-source": [
+                                    {
+                                        "id": "api_integration",
+                                        "title": "Integración de API"
+                                    },
+                                    {
+                                        "id": "flows",
+                                        "title": "WhatsApp Flows"
+                                    },
+                                    {
+                                        "id": "calling",
+                                        "title": "Llamadas de voz"
+                                    },
+                                    {
+                                        "id": "ai_chatbot",
+                                        "title": "Chatbot con IA"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "Footer",
+                                "label": "Continuar",
+                                "on-click-action": {
+                                    "name": "navigate",
+                                    "next": {
+                                        "type": "screen",
+                                        "name": "OPT_IN_SCREEN"
+                                    },
+                                    "payload": {
+                                        "company_name": "${form.company_name}",
+                                        "contact_name": "${form.contact_name}",
+                                        "contact_email": "${form.contact_email}",
+                                        "contact_phone": "${form.contact_phone}",
+                                        "company_size": "${form.company_size}",
+                                        "interests": "${form.interests}"
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "id": "OPT_IN_SCREEN",
+            "title": "Consentimiento",
+            "terminal": false,
+            "data": {
+                "company_name": {
+                    "type": "string",
+                    "__example__": "Tech Corp"
+                },
+                "contact_name": {
+                    "type": "string",
+                    "__example__": "Juan Pérez"
+                }
+            },
+            "layout": {
+                "type": "SingleColumnLayout",
+                "children": [
+                    {
+                        "type": "Form",
+                        "name": "consent_form",
+                        "children": [
+                            {
+                                "type": "TextHeading",
+                                "text": "Preferencias de Comunicación"
+                            },
+                            {
+                                "type": "TextBody",
+                                "text": "Gracias ${data.contact_name}, queremos asegurarnos de comunicarnos contigo de la manera que prefieras."
+                            },
+                            {
+                                "type": "OptIn",
+                                "name": "marketing_consent",
+                                "label": "Acepto recibir información de productos y ofertas de Pixy",
+                                "required": true,
+                                "on-click-action": {
+                                    "name": "data_exchange",
+                                    "payload": {
+                                        "action": "log_consent",
+                                        "consent_type": "marketing",
+                                        "user_email": "${data.contact_email}"
+                                    }
+                                }
+                            },
+                            {
+                                "type": "OptIn",
+                                "name": "newsletter_consent",
+                                "label": "Suscribirme al newsletter semanal de WhatsApp Business",
+                                "required": false
+                            },
+                            {
+                                "type": "Footer",
+                                "label": "Enviar",
+                                "on-click-action": {
+                                    "name": "complete",
+                                    "payload": {
+                                        "company_name": "${data.company_name}",
+                                        "contact_name": "${data.contact_name}",
+                                        "contact_email": "${data.contact_email}",
+                                        "marketing_consent": "${form.marketing_consent}",
+                                        "newsletter_consent": "${form.newsletter_consent}"
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "id": "SUCCESS_SCREEN",
+            "title": "¡Gracias!",
+            "terminal": true,
+            "success": true,
+            "layout": {
+                "type": "SingleColumnLayout",
+                "children": [
+                    {
+                        "type": "TextHeading",
+                        "text": "✅ Información recibida"
+                    },
+                    {
+                        "type": "TextBody",
+                        "text": "Gracias por tu interés en Pixy. Un ejecutivo se pondrá en contacto contigo en las próximas 24 horas.\n\nRevisaremos tu consulta y te enviaremos información personalizada a ${data.contact_email}."
+                    },
+                    {
+                        "type": "Footer",
+                        "label": "Cerrar",
+                        "on-click-action": {
+                            "name": "complete",
+                            "payload": {}
+                        }
+                    }
+                ]
+            }
+        }
+    ]
+}

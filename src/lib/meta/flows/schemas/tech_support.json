@@ -1,0 +1,200 @@
+{
+    "version": "5.0",
+    "data_api_version": "3.0",
+    "routing_model": {
+        "CATEGORY_SCREEN": [
+            "DETAILS_SCREEN"
+        ],
+        "DETAILS_SCREEN": [
+            "SUCCESS_SCREEN"
+        ]
+    },
+    "screens": [
+        {
+            "id": "CATEGORY_SCREEN",
+            "title": "Soporte Técnico",
+            "terminal": false,
+            "layout": {
+                "type": "SingleColumnLayout",
+                "children": [
+                    {
+                        "type": "Form",
+                        "name": "category_form",
+                        "children": [
+                            {
+                                "type": "TextHeading",
+                                "text": "¿En qué te podemos ayudar?"
+                            },
+                            {
+                                "type": "RadioButtonsGroup",
+                                "name": "support_category",
+                                "label": "Categoría de soporte",
+                                "required": true,
+                                "data-source": [
+                                    {
+                                        "id": "error_diagnostics",
+                                        "title": "Diagnóstico de Errores",
+                                        "description": "Códigos 132018, 131049, problemas de entrega"
+                                    },
+                                    {
+                                        "id": "template_issues",
+                                        "title": "Problemas con Plantillas",
+                                        "description": "Aprobación, categorización, optimización"
+                                    },
+                                    {
+                                        "id": "account_health",
+                                        "title": "Salud de Cuenta",
+                                        "description": "Quality rating, límites, tier scaling"
+                                    },
+                                    {
+                                        "id": "api_version",
+                                        "title": "Versionado de API",
+                                        "description": "Migración, deprecaciones, v24.0"
+                                    },
+                                    {
+                                        "id": "advanced_features",
+                                        "title": "Funciones Avanzadas",
+                                        "description": "Flows, botones, catálogos, Calling API"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "Footer",
+                                "label": "Continuar",
+                                "on-click-action": {
+                                    "name": "navigate",
+                                    "next": {
+                                        "type": "screen",
+                                        "name": "DETAILS_SCREEN"
+                                    },
+                                    "payload": {
+                                        "category": "${form.support_category}"
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "id": "DETAILS_SCREEN",
+            "title": "Detalles del Problema",
+            "terminal": false,
+            "data": {
+                "category": {
+                    "type": "string",
+                    "__example__": "error_diagnostics"
+                }
+            },
+            "layout": {
+                "type": "SingleColumnLayout",
+                "children": [
+                    {
+                        "type": "Form",
+                        "name": "details_form",
+                        "children": [
+                            {
+                                "type": "TextHeading",
+                                "text": "Describe tu problema técnico"
+                            },
+                            {
+                                "type": "TextInput",
+                                "name": "error_code",
+                                "label": "Código de error (si aplica)",
+                                "input-type": "text",
+                                "required": false,
+                                "helper-text": "Ej: 132018, 131049, 24"
+                            },
+                            {
+                                "type": "TextArea",
+                                "name": "problem_description",
+                                "label": "Descripción del problema",
+                                "required": true,
+                                "helper-text": "Explica tu consulta técnica",
+                                "max-length": 1000
+                            },
+                            {
+                                "type": "Dropdown",
+                                "name": "urgency",
+                                "label": "Urgencia",
+                                "required": true,
+                                "data-source": [
+                                    {
+                                        "id": "low",
+                                        "title": "Baja - Consulta general"
+                                    },
+                                    {
+                                        "id": "medium",
+                                        "title": "Media - Afecta operación"
+                                    },
+                                    {
+                                        "id": "high",
+                                        "title": "Alta - Servicio caído"
+                                    },
+                                    {
+                                        "id": "critical",
+                                        "title": "Crítica - Producción afectada"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "OptIn",
+                                "name": "follow_up_consent",
+                                "label": "Permitir seguimiento por email/WhatsApp",
+                                "required": false
+                            },
+                            {
+                                "type": "Footer",
+                                "label": "Enviar Ticket",
+                                "on-click-action": {
+                                    "name": "complete",
+                                    "payload": {
+                                        "category": "${data.category}",
+                                        "error_code": "${form.error_code}",
+                                        "description": "${form.problem_description}",
+                                        "urgency": "${form.urgency}",
+                                        "follow_up_consent": "${form.follow_up_consent}"
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "id": "SUCCESS_SCREEN",
+            "title": "Ticket Creado",
+            "terminal": true,
+            "success": true,
+            "data": {
+                "ticket_id": {
+                    "type": "string",
+                    "__example__": "TICKET-2026-001234"
+                }
+            },
+            "layout": {
+                "type": "SingleColumnLayout",
+                "children": [
+                    {
+                        "type": "TextHeading",
+                        "text": "✅ Ticket de soporte creado"
+                    },
+                    {
+                        "type": "TextBody",
+                        "text": "Tu ticket de soporte técnico ha sido registrado.\n\nNúmero de ticket: ${data.ticket_id}\n\nUn ingeniero revisará tu caso y te contactará según la urgencia indicada."
+                    },
+                    {
+                        "type": "Footer",
+                        "label": "Cerrar",
+                        "on-click-action": {
+                            "name": "complete",
+                            "payload": {}
+                        }
+                    }
+                ]
+            }
+        }
+    ]
+}

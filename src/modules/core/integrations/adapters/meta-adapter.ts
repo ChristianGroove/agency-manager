@@ -51,7 +51,7 @@ export class MetaAdapter implements IntegrationAdapter {
 
         if (isMessenger) {
             // Messenger / Instagram
-            url = `https://graph.facebook.com/v19.0/${pageId}/messages`;
+            url = `https://graph.facebook.com/v24.0/${pageId}/messages`;
 
             // Auto-fetch Page Access Token if we only have User Token
             if (pageId) {
@@ -101,7 +101,7 @@ export class MetaAdapter implements IntegrationAdapter {
 
         } else {
             // WhatsApp
-            url = `https://graph.facebook.com/v19.0/${phoneNumberId}/messages`;
+            url = `https://graph.facebook.com/v24.0/${phoneNumberId}/messages`;
 
             if (buttons.length > 0) {
                 // Interactive Button Message

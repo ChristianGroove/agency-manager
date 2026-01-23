@@ -10,6 +10,7 @@ import { GlobalLoader } from "@/components/ui/global-loader"
 import { GlobalInboxProvider } from "@/modules/core/messaging/context/global-inbox-context"
 import { InboxOverlay } from "@/modules/core/messaging/components/floating-inbox/inbox-overlay"
 import { GlobalMessageListener } from "@/modules/core/messaging/components/floating-inbox/global-message-listener"
+import MetaControlSheet from "@/components/meta/MetaControlSheet"
 
 export default async function DashboardLayout({
     children,
@@ -53,6 +54,7 @@ export default async function DashboardLayout({
             <GlobalInboxProvider>
                 <GlobalMessageListener />
                 <InboxOverlay />
+                <MetaControlSheet />
                 <SystemAlertBanner />
                 <Suspense fallback={<GlobalLoader />}>
                     {children}

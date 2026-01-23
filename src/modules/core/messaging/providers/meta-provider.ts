@@ -26,7 +26,7 @@ export class MetaProvider implements MessagingProvider {
     async sendMessage(options: SendMessageOptions): Promise<{ success: boolean; messageId?: string; error?: string }> {
         try {
             const isMessengerOrIg = options.metadata?.channel === 'messenger' || options.metadata?.channel === 'instagram';
-            let url = `https://graph.facebook.com/v22.0/${this.assetId}/messages`;
+            let url = `https://graph.facebook.com/v24.0/${this.assetId}/messages`;
 
             // Resolve Token: options.credentials > this.apiToken
             let activeToken = this.apiToken;
@@ -43,7 +43,7 @@ export class MetaProvider implements MessagingProvider {
             // For Messenger/Instagram, we need the Page Access Token. 
             // If apiToken is a User Token, we try to exchange it for a Page Token for this assetId.
             if (isMessengerOrIg) {
-                url = `https://graph.facebook.com/v22.0/me/messages`;
+                url = `https://graph.facebook.com/v24.0/me/messages`;
                 // If it's not already a page token (we check if we can get a page token for this asset)
                 activeToken = await this.getPageAccessToken(this.assetId, activeToken);
             }
@@ -227,7 +227,7 @@ export class MetaProvider implements MessagingProvider {
     private async getSenderProfile(psid: string, assetId: string, userToken: string) {
         try {
             const pageToken = await this.getPageAccessToken(assetId, userToken);
-            const url = `https://graph.facebook.com/v22.0/${psid}?fields=first_name,last_name,profile_pic&access_token=${pageToken}`;
+            const url = `https://graph.facebook.com/v24.0/${psid}?fields=first_name,last_name,profile_pic&access_token=${pageToken}`;
             const res = await fetch(url);
             const data = await res.json();
             if (data.first_name) {
@@ -248,12 +248,12 @@ export class MetaProvider implements MessagingProvider {
     private async getPageAccessToken(pageId: string, userToken: string): Promise<string> {
         try {
             // First, check if this is already a page token by calling /me
-            const meRes = await fetch(`https://graph.facebook.com/v22.0/me?access_token=${userToken}`);
+            const meRes = await fetch(`https://graph.facebook.com/v24.0/me?access_token=${userToken}`);
             const meData = await meRes.json();
             if (meData.id === pageId) return userToken; // It's already the page token
 
             // If not, fetch pages for this user
-            const url = `https://graph.facebook.com/v22.0/me/accounts?access_token=${userToken}`;
+            const url = `https://graph.facebook.com/v24.0/me/accounts?access_token=${userToken}`;
             const res = await fetch(url);
             const data = await res.json();
             const page = data.data?.find((p: any) => p.id === pageId);
@@ -352,7 +352,7 @@ export class MetaProvider implements MessagingProvider {
         try {
             // 1. Get Media URL from Meta
             console.log(`[MetaProvider] Step 1: Fetching media URL from Meta...`);
-            const urlRes = await fetch(`https://graph.facebook.com/v18.0/${mediaId}`, {
+            const urlRes = await fetch(`https://graph.facebook.com/v24.0/${mediaId}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
 

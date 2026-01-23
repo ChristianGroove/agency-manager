@@ -1,5 +1,6 @@
 
-const META_API_VERSION = 'v19.0';
+
+const META_API_VERSION = 'v24.0';
 const META_GRAPH_URL = 'https://graph.facebook.com';
 
 export interface MetaTokenResponse {
