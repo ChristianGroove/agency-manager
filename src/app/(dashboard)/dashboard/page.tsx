@@ -23,23 +23,10 @@ import { resolveDocumentState, resolveServiceState } from "@/domain/state"
 
 import { useRegisterView } from "@/modules/core/caa/context/view-context"
 
-const AGENCY_TIPS = [
-    "Fideliza a tus clientes: Un servicio post-venta excepcional puede incrementar el LTV hasta en un 40%.",
-    "Optimiza tu flujo de caja: Automatiza los recordatorios de pago para reducir drásticamente la morosidad.",
-    "Escala inteligentemente: Documenta tus procesos operativos para delegar sin perder calidad en la entrega.",
-    "Valor sobre precio: Enfócate en comunicar el ROI que generas, no en las horas operativas que trabajas.",
-    "La especialización es clave: Definir un nicho de mercado claro te permite cobrar tarifas premium."
-]
-
-const CLEANING_TIPS = [
-    "La puntualidad es tu mejor marketing: Un equipo a tiempo genera 50% más retención.",
-    "Revisa los insumos semanalmente para evitar paradas operativas.",
-    "Capacita a tu personal en atención al cliente, no solo en limpieza.",
-    "Ofrece servicios recurrentes con descuento para asegurar flujo de caja.",
-    "Documenta el 'antes y después' para portafolio visual."
-]
+import { useTranslation } from "@/lib/i18n/use-translation"
 
 export default function DashboardPage() {
+    const { t } = useTranslation()
     const [dashboardData, setDashboardData] = useState<DashboardDataProps | null>(null)
     const [loading, setLoading] = useState(true)
     const [orgType, setOrgType] = useState<'agency' | 'cleaning'>('agency') // Default to agency
@@ -58,10 +45,10 @@ export default function DashboardPage() {
         label: "Dashboard",
         topics: ["getting-started", "metrics", "quick-actions"],
         actions: [
-            { id: "new-client", label: "Nuevo Cliente", type: "function", target: "open_client_modal", icon: UserPlus, description: "Registrar un nuevo cliente en el sistema" },
-            { id: "new-quote", label: "Nueva Cotización", type: "function", target: "open_quote_modal", icon: FilePlus, description: "Crear una cotización para un cliente" },
-            { id: "new-invoice", label: "Nueva Factura", type: "function", target: "open_invoice_modal", icon: Receipt, description: "Facturar servicios o productos" },
-            { id: "view-reports", label: "Ver Reportes", type: "route", target: "/crm/reports", icon: TrendingUp, description: "Analizar métricas de rendimiento" }
+            { id: "new-client", label: t('dashboard.actions.new_client'), type: "function", target: "open_client_modal", icon: UserPlus, description: t('dashboard.actions.new_client_desc') },
+            { id: "new-quote", label: t('dashboard.actions.new_quote'), type: "function", target: "open_quote_modal", icon: FilePlus, description: t('dashboard.actions.new_quote_desc') },
+            { id: "new-invoice", label: t('dashboard.actions.new_invoice'), type: "function", target: "open_invoice_modal", icon: Receipt, description: t('dashboard.actions.new_invoice_desc') },
+            { id: "view-reports", label: t('dashboard.actions.view_reports'), type: "route", target: "/crm/reports", icon: TrendingUp, description: t('dashboard.actions.view_reports_desc') }
         ]
     })
 
@@ -160,32 +147,32 @@ export default function DashboardPage() {
         const data: DashboardDataProps = {
             stats: [
                 {
-                    title: "Tenants Activos",
+                    title: t('dashboard.stats.active_tenants'),
                     value: tenantCount || 0,
                     icon: Building2,
-                    subtext: "Clientes SaaS gestionados"
+                    subtext: t('dashboard.stats.active_tenants_sub')
                 },
                 {
-                    title: "Ingresos Totales",
+                    title: t('dashboard.stats.total_revenue'),
                     value: <CountUp end={totalRevenue} duration={2} separator="," prefix="$" />,
                     icon: DollarSign,
-                    subtext: "Facturado a clientes"
+                    subtext: t('dashboard.stats.total_revenue_sub')
                 },
                 {
-                    title: "Por Cobrar",
+                    title: t('dashboard.stats.receivable'),
                     value: <CountUp end={pendingPayments} duration={2} separator="," prefix="$" />,
                     icon: AlertCircle,
-                    subtext: "Saldo pendiente"
+                    subtext: t('dashboard.stats.receivable_sub')
                 },
                 {
-                    title: "Ticket Promedio",
+                    title: t('dashboard.stats.avg_ticket'),
                     value: <CountUp end={(tenantCount ?? 0) > 0 ? totalRevenue / (tenantCount ?? 1) : 0} duration={2} separator="," prefix="$" />,
                     icon: CreditCard,
-                    subtext: "Ingreso por Tenant (ARPU)"
+                    subtext: t('dashboard.stats.avg_ticket_sub')
                 }
             ],
             revenueHero: {
-                title: "Ingresos Recurrentes (SaaS)",
+                title: t('dashboard.hero.recurring_revenue'),
                 value: <CountUp end={totalRevenue} duration={2} separator="," />, // Placeholder for MRR
                 unit: "COP/mes",
                 tips: ["Ofrece planes anuales para mejorar el flujo.", "Revisa el uso de tus clientes top."]
@@ -198,16 +185,16 @@ export default function DashboardPage() {
                 igFollowers: settings?.social_instagram_followers
             },
             quickActions: [
-                { title: "Nuevo Tenant", icon: Building2, colorClass: "bg-purple-50 text-purple-600 group-hover:bg-purple-600 group-hover:text-white", onClick: () => setIsNewOrgModalOpen(true) },
-                { title: "Nuevo Cliente", icon: UserPlus, colorClass: "bg-brand-cyan/10 text-brand-cyan group-hover:bg-brand-cyan group-hover:text-white", onClick: () => setIsClientModalOpen(true) },
-                { title: "Nueva Cotización", icon: FilePlus, colorClass: "bg-yellow-50 text-yellow-600 group-hover:bg-yellow-500 group-hover:text-white", onClick: () => setIsQuoteModalOpen(true) },
-                { title: "Nuevo Brief", icon: ClipboardCheck, colorClass: "bg-indigo-50 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white", onClick: () => setIsBriefingModalOpen(true) },
-                { title: "Nueva Factura", icon: Receipt, colorClass: "bg-brand-pink/10 text-brand-pink group-hover:bg-brand-pink group-hover:text-white", onClick: () => setIsInvoiceModalOpen(true) }
+                { title: t('dashboard.actions.new_tenant'), icon: Building2, colorClass: "bg-purple-50 text-purple-600 group-hover:bg-purple-600 group-hover:text-white", onClick: () => setIsNewOrgModalOpen(true) },
+                { title: t('dashboard.actions.new_client'), icon: UserPlus, colorClass: "bg-brand-cyan/10 text-brand-cyan group-hover:bg-brand-cyan group-hover:text-white", onClick: () => setIsClientModalOpen(true) },
+                { title: t('dashboard.actions.new_quote'), icon: FilePlus, colorClass: "bg-yellow-50 text-yellow-600 group-hover:bg-yellow-500 group-hover:text-white", onClick: () => setIsQuoteModalOpen(true) },
+                { title: t('dashboard.actions.new_brief'), icon: ClipboardCheck, colorClass: "bg-indigo-50 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white", onClick: () => setIsBriefingModalOpen(true) },
+                { title: t('dashboard.actions.new_invoice'), icon: Receipt, colorClass: "bg-brand-pink/10 text-brand-pink group-hover:bg-brand-pink group-hover:text-white", onClick: () => setIsInvoiceModalOpen(true) }
             ],
             smartAlert: clientsWithOverdueMap.size > 0 ? {
-                title: "Atención Requerida (Cartera)",
-                message: <span>Hay <span className="font-bold text-red-500">{clientsWithOverdueMap.size} clientes/tenants</span> con cuentas vencidas. Total: <span className="font-bold text-gray-900">${totalOverdue.toLocaleString()}</span>.</span>,
-                itemsHeading: "En Mora",
+                title: t('dashboard.alerts.attention_portfolio'),
+                message: <span>{t('dashboard.alerts.attention_portfolio_msg')} Total: <span className="font-bold text-gray-900">${totalOverdue.toLocaleString()}</span>.</span>,
+                itemsHeading: t('dashboard.alerts.in_debt'),
                 items: debtors
             } : undefined
         }
@@ -274,37 +261,37 @@ export default function DashboardPage() {
         const data: DashboardDataProps = {
             stats: [
                 {
-                    title: "Total Clientes",
+                    title: t('dashboard.stats.total_clients'),
                     value: clients.length,
                     icon: Users,
                     subtext: clientsWithPendingSet.size > 0
-                        ? <span className="text-indigo-600 flex items-center gap-1"><AlertCircle className="h-3 w-3" /> {clientsWithPendingSet.size} con saldo pendiente</span>
-                        : <span className="text-green-600 flex items-center gap-1"><TrendingUp className="h-3 w-3" /> Todos al día</span>
+                        ? <span className="text-indigo-600 flex items-center gap-1"><AlertCircle className="h-3 w-3" /> {clientsWithPendingSet.size} {t('dashboard.stats.pending_balance')}</span>
+                        : <span className="text-green-600 flex items-center gap-1"><TrendingUp className="h-3 w-3" /> {t('dashboard.stats.all_good')}</span>
                 },
                 {
-                    title: "Ingresos Totales",
+                    title: t('dashboard.stats.total_revenue'),
                     value: <CountUp end={totalRevenue} duration={2} separator="," prefix="$" />,
                     icon: DollarSign,
-                    subtext: `${paidInvoicesCount} documentos pagados`
+                    subtext: `${paidInvoicesCount} ${t('dashboard.stats.paid_docs_sub')}`
                 },
                 {
-                    title: "Por Cobrar",
+                    title: t('dashboard.stats.receivable'),
                     value: <CountUp end={pendingPayments} duration={2} separator="," prefix="$" />,
                     icon: AlertCircle,
-                    subtext: "Pendientes (Vencidas + En tiempo)"
+                    subtext: t('dashboard.stats.receivable_sub_agency')
                 },
                 {
-                    title: "Suscripciones Activas",
+                    title: t('dashboard.stats.active_subs'),
                     value: activeSubscriptions,
                     icon: CreditCard,
-                    subtext: "Servicios recurrentes"
+                    subtext: t('dashboard.stats.active_subs_sub')
                 }
             ],
             revenueHero: {
-                title: "Ingresos Recurrentes Mensuales (MRR)",
+                title: t('dashboard.hero.mrr_agency'),
                 value: <CountUp end={monthlyRecurring} duration={2} separator="," />,
                 unit: "COP/mes",
-                tips: AGENCY_TIPS
+                tips: t('dashboard.tips.agency') || []
             },
             social: {
                 facebook: settings?.social_facebook,
@@ -314,15 +301,15 @@ export default function DashboardPage() {
                 igFollowers: settings?.social_instagram_followers
             },
             quickActions: [
-                { title: "Nuevo Cliente", icon: UserPlus, colorClass: "bg-brand-cyan/10 text-brand-cyan group-hover:bg-brand-cyan group-hover:text-white", onClick: () => setIsClientModalOpen(true) },
-                { title: "Nueva Cotización", icon: FilePlus, colorClass: "bg-yellow-50 text-yellow-600 group-hover:bg-yellow-500 group-hover:text-white", onClick: () => setIsQuoteModalOpen(true) },
-                { title: "Nuevo Brief", icon: ClipboardCheck, colorClass: "bg-indigo-50 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white", onClick: () => setIsBriefingModalOpen(true) },
-                { title: "Nueva Factura", icon: Receipt, colorClass: "bg-brand-pink/10 text-brand-pink group-hover:bg-brand-pink group-hover:text-white", onClick: () => setIsInvoiceModalOpen(true) }
+                { title: t('dashboard.actions.new_client'), icon: UserPlus, colorClass: "bg-brand-cyan/10 text-brand-cyan group-hover:bg-brand-cyan group-hover:text-white", onClick: () => setIsClientModalOpen(true) },
+                { title: t('dashboard.actions.new_quote'), icon: FilePlus, colorClass: "bg-yellow-50 text-yellow-600 group-hover:bg-yellow-500 group-hover:text-white", onClick: () => setIsQuoteModalOpen(true) },
+                { title: t('dashboard.actions.new_brief'), icon: ClipboardCheck, colorClass: "bg-indigo-50 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white", onClick: () => setIsBriefingModalOpen(true) },
+                { title: t('dashboard.actions.new_invoice'), icon: Receipt, colorClass: "bg-brand-pink/10 text-brand-pink group-hover:bg-brand-pink group-hover:text-white", onClick: () => setIsInvoiceModalOpen(true) }
             ],
             smartAlert: clientsWithOverdueMap.size > 0 ? {
-                title: "Atención Requerida",
-                message: <span>Hay <span className="font-bold text-red-500">{clientsWithOverdueMap.size} clientes</span> con cuentas de cobro vencidas. Gestionar estos cobros podría recuperar <span className="font-bold text-gray-900">${totalOverdue.toLocaleString()}</span>.</span>,
-                itemsHeading: "Clientes en Mora",
+                title: t('dashboard.alerts.attention_required'),
+                message: <span>{clientsWithOverdueMap.size} {t('dashboard.alerts.clients_in_debt')}. <span className="font-bold text-gray-900">${totalOverdue.toLocaleString()}</span>.</span>,
+                itemsHeading: t('dashboard.alerts.in_debt'),
                 items: debtors
             } : undefined
         }
@@ -346,25 +333,25 @@ export default function DashboardPage() {
         // Define Cleaning Actions that make sense
         const quickActions = [
             {
-                title: "Nuevo Trabajo",
+                title: t('dashboard.actions.new_job'),
                 icon: Sparkles,
                 colorClass: "bg-green-50 text-green-600 group-hover:bg-green-600 group-hover:text-white",
                 onClick: () => setIsNewJobModalOpen(true)
             },
             {
-                title: "Ver Calendario",
+                title: t('dashboard.actions.view_calendar'),
                 icon: Calendar,
                 colorClass: "bg-indigo-50 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white",
                 onClick: () => window.location.href = '/cleaning' // Redirects to calendar view implicitly
             },
             {
-                title: "Personal",
+                title: t('dashboard.actions.staff'),
                 icon: Users,
                 colorClass: "bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white",
                 onClick: () => window.location.href = '/cleaning?tab=staff'
             },
             {
-                title: "Nuevo Cliente",
+                title: t('dashboard.actions.new_client'),
                 icon: UserPlus,
                 colorClass: "bg-brand-cyan/10 text-brand-cyan group-hover:bg-brand-cyan group-hover:text-white",
                 onClick: () => setIsClientModalOpen(true)
@@ -375,8 +362,8 @@ export default function DashboardPage() {
         let smartAlert = undefined
         if (metrics.pending > 0) {
             smartAlert = {
-                title: "Operaciones Pendientes",
-                message: <span>Tienes <span className="font-bold text-orange-500">{metrics.pending} trabajos</span> pendientes de iniciar o asignar hoy.</span>,
+                title: t('dashboard.alerts.pending_ops'),
+                message: <span>{t('dashboard.alerts.pending_ops_msg')}</span>,
                 items: [], // We could fetch specific jobs/staff here if we wanted deeper integration
             }
         }
@@ -384,38 +371,38 @@ export default function DashboardPage() {
         const data: DashboardDataProps = {
             stats: [
                 {
-                    title: "Trabajos Hoy",
+                    title: t('dashboard.stats.jobs_today'),
                     value: metrics.total,
                     icon: Calendar,
-                    subtext: "Total programados"
+                    subtext: t('dashboard.stats.jobs_today_sub')
                 },
                 {
-                    title: "En Curso",
+                    title: t('dashboard.stats.in_progress'),
                     value: metrics.in_progress,
                     icon: PlayCircle,
                     gradientColor: "#F97316",
-                    subtext: "Servicios activos ahora"
+                    subtext: t('dashboard.stats.in_progress_sub')
                 },
                 {
-                    title: "Pendientes",
+                    title: t('dashboard.stats.pending'),
                     value: metrics.pending,
                     icon: Clock,
                     gradientColor: "#EAB308",
-                    subtext: "Por iniciar o asignar"
+                    subtext: t('dashboard.stats.pending_sub')
                 },
                 {
-                    title: "Completados",
+                    title: t('dashboard.stats.completed'),
                     value: metrics.completed,
                     icon: CheckCircle2,
                     gradientColor: "#22C55E",
-                    subtext: "Finalizados hoy"
+                    subtext: t('dashboard.stats.completed_sub')
                 }
             ],
             revenueHero: {
-                title: "Ingresos (Últimos 7 Días)",
+                title: t('dashboard.hero.revenue_7d'),
                 value: <CountUp end={totalRevenueWeek} duration={2} separator="," />,
                 unit: "COP",
-                tips: CLEANING_TIPS
+                tips: t('dashboard.tips.cleaning') || []
             },
             social: {
                 facebook: coreData.settings?.social_facebook,

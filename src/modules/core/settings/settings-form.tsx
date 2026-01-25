@@ -57,6 +57,7 @@ interface SettingsFormProps {
 }
 
 import { useRegisterView } from "@/modules/core/caa/context/view-context"
+import { useTranslation } from "@/lib/i18n/use-translation"
 
 export function SettingsForm({
     initialSettings,
@@ -82,7 +83,9 @@ export function SettingsForm({
     // ... inside TabsContent render
 
 
+
     const router = useRouter()
+    const { t } = useTranslation()
     const [isLoading, setIsLoading] = useState(false)
     const [formData, setFormData] = useState(initialSettings || {})
 
@@ -191,14 +194,14 @@ export function SettingsForm({
 
         {
             id: 'subscription',
-            label: 'Suscripción',
+            label: t('settings.tabs.subscription'),
             icon: CreditCard,
             requiredModule: null,
             isCore: true
         },
         {
             id: 'vault',
-            label: 'Seguridad',
+            label: t('settings.tabs.security'),
             icon: Shield,
             minRole: 'owner',
             isCore: true
@@ -207,7 +210,7 @@ export function SettingsForm({
 
         {
             id: 'team',
-            label: 'Equipo',
+            label: t('settings.tabs.team'),
             icon: Users,
             requiredModule: null,
             isCore: true,
@@ -215,7 +218,7 @@ export function SettingsForm({
         },
         {
             id: 'general',
-            label: 'General',
+            label: t('settings.tabs.general'),
             icon: Globe,
             requiredModule: null,
             isCore: true,
@@ -223,7 +226,7 @@ export function SettingsForm({
         },
         {
             id: 'notifications',
-            label: 'Notificaciones',
+            label: t('settings.tabs.notifications'),
             icon: Bell,
             requiredModule: 'module_communications',
             matchAny: true,
@@ -231,7 +234,7 @@ export function SettingsForm({
         },
         {
             id: 'billing',
-            label: 'Facturación',
+            label: t('settings.tabs.billing'),
             icon: FileText,
             requiredModule: 'module_invoicing',
             minRole: 'admin'
@@ -239,7 +242,7 @@ export function SettingsForm({
 
         {
             id: 'payments',
-            label: 'Pagos',
+            label: t('settings.tabs.payments'),
             icon: CreditCard,
             requiredModules: ['module_payments', 'module_invoicing'],
             matchAny: true,
@@ -247,7 +250,7 @@ export function SettingsForm({
         },
         {
             id: 'portal',
-            label: 'Portal',
+            label: t('settings.tabs.portal'),
             icon: Layout,
             requiredModule: null,
             customCheck: (modules: string[]) => modules.some(m => m.startsWith('module_') || m.startsWith('core_'))
@@ -261,7 +264,7 @@ export function SettingsForm({
         },
         {
             id: 'interface',
-            label: 'Interfaz',
+            label: t('settings.tabs.interface'),
             icon: LayoutTemplate,
             requiredModule: null,
             isCore: true
@@ -327,14 +330,14 @@ export function SettingsForm({
             <div className="flex items-center justify-between">
                 <div>
                     <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
-                        <SplitText>Configuración</SplitText>
+                        <SplitText>{t('settings.title')}</SplitText>
                     </h2>
-                    <p className="text-muted-foreground">Administra los datos de tu negocio y preferencias globales.</p>
+                    <p className="text-muted-foreground">{t('settings.description')}</p>
                 </div>
                 {userRole !== 'member' && (
                     <Button onClick={handleSubmit} disabled={isLoading} className="bg-brand-pink hover:bg-brand-pink/90">
                         {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                        Guardar Cambios
+                        {t('common.save')}
                     </Button>
                 )}
             </div>
@@ -380,33 +383,33 @@ export function SettingsForm({
                 <TabsContent value="general" className="space-y-4 mt-4" suppressHydrationWarning>
                     <Card className="bg-white dark:bg-white/5 border-gray-100 dark:border-white/10 shadow-sm backdrop-blur-md">
                         <CardHeader>
-                            <CardTitle>Configuración Regional y Legal</CardTitle>
+                            <CardTitle>{t('settings.general.title')}</CardTitle>
                             <CardDescription>
-                                Define los formatos y textos legales predeterminados.
+                                {t('settings.general.description')}
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-6">
                             {/* Identity Section (Read Only) */}
                             <div className="space-y-4">
                                 <div className="flex items-center justify-between">
-                                    <h3 className="text-lg font-medium">Identidad de la Marca</h3>
+                                    <h3 className="text-lg font-medium">{t('settings.general.brand_identity')}</h3>
                                     {userRole !== 'member' && (
                                         <Button
                                             variant="outline"
                                             className="border-blue-200 text-blue-700 hover:bg-blue-100"
                                             onClick={() => setShowBrandCenter(true)}
                                         >
-                                            Abrir Centro de Marca
+                                            {t('settings.general.open_brand_center')}
                                         </Button>
                                     )}
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                        <Label className="text-muted-foreground">Nombre Comercial</Label>
+                                        <Label className="text-muted-foreground">{t('settings.general.agency_name')}</Label>
                                         <Input value={formData.agency_name || ''} disabled className="bg-muted" />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label className="text-muted-foreground">Sitio Web</Label>
+                                        <Label className="text-muted-foreground">{t('settings.general.website')}</Label>
                                         <Input value={formData.agency_website || ''} disabled className="bg-muted" />
                                     </div>
                                 </div>
@@ -420,14 +423,14 @@ export function SettingsForm({
 
                             {/* Contact Info */}
                             <div className="space-y-4">
-                                <h3 className="text-lg font-medium">Información de Contacto</h3>
+                                <h3 className="text-lg font-medium">{t('settings.general.contact_info')}</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                        <Label htmlFor="agency_email">Email Administrativo</Label>
+                                        <Label htmlFor="agency_email">{t('settings.general.admin_email')}</Label>
                                         <Input id="agency_email" name="agency_email" value={formData.agency_email || ''} onChange={handleChange} placeholder="contacto@tuempresa.com" />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label htmlFor="agency_phone">Teléfono / WhatsApp</Label>
+                                        <Label htmlFor="agency_phone">{t('settings.general.phone')}</Label>
                                         <Input id="agency_phone" name="agency_phone" value={formData.agency_phone || ''} onChange={handleChange} placeholder="+57 300 123 4567" />
                                     </div>
                                 </div>
@@ -437,14 +440,14 @@ export function SettingsForm({
 
                             {/* Regional Settings */}
                             <div className="space-y-4">
-                                <h3 className="text-lg font-medium">Configuración Regional</h3>
+                                <h3 className="text-lg font-medium">{t('settings.general.regional_settings')}</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div className="space-y-2">
-                                        <Label htmlFor="agency_country">País</Label>
+                                        <Label htmlFor="agency_country">{t('settings.general.country')}</Label>
                                         <Input id="agency_country" name="agency_country" value={formData.agency_country || ''} onChange={handleChange} />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label htmlFor="agency_currency">Moneda Base</Label>
+                                        <Label htmlFor="agency_currency">{t('settings.general.currency')}</Label>
                                         <Select name="agency_currency" value={formData.agency_currency || 'COP'} onValueChange={(val) => handleSelectChange('agency_currency', val)}>
                                             <SelectTrigger suppressHydrationWarning>
                                                 <SelectValue placeholder="Seleccionar" />
@@ -458,7 +461,7 @@ export function SettingsForm({
                                         </Select>
                                     </div>
                                     <div className="space-y-2">
-                                        <Label htmlFor="agency_timezone">Zona Horaria</Label>
+                                        <Label htmlFor="agency_timezone">{t('settings.general.timezone')}</Label>
                                         <Input id="agency_timezone" name="agency_timezone" value={formData.agency_timezone || ''} onChange={handleChange} />
                                     </div>
                                 </div>
@@ -466,10 +469,10 @@ export function SettingsForm({
 
                             <div className="h-px bg-border my-2" />
 
-                            <h3 className="text-lg font-medium">Preferencias del Sistema</h3>
+                            <h3 className="text-lg font-medium">{t('settings.general.system_preferences')}</h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label htmlFor="default_language">Idioma de la App</Label>
+                                    <Label htmlFor="default_language">{t('settings.general.app_language')}</Label>
                                     <Select name="default_language" value={formData.default_language || 'es'} onValueChange={(val) => handleSelectChange('default_language', val)}>
                                         <SelectTrigger suppressHydrationWarning>
                                             <SelectValue placeholder="Seleccionar" />
@@ -481,7 +484,7 @@ export function SettingsForm({
                                     </Select>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="portal_language">Idioma del Portal</Label>
+                                    <Label htmlFor="portal_language">{t('settings.general.portal_language')}</Label>
                                     <Select name="portal_language" value={formData.portal_language || 'es'} onValueChange={(val) => handleSelectChange('portal_language', val)}>
                                         <SelectTrigger suppressHydrationWarning>
                                             <SelectValue placeholder="Seleccionar" />
@@ -493,7 +496,7 @@ export function SettingsForm({
                                     </Select>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="date_format">Formato de Fecha</Label>
+                                    <Label htmlFor="date_format">{t('settings.general.date_format')}</Label>
                                     <Select name="date_format" value={formData.date_format || 'DD/MM/YYYY'} onValueChange={(val) => handleSelectChange('date_format', val)}>
                                         <SelectTrigger suppressHydrationWarning>
                                             <SelectValue placeholder="Seleccionar" />
@@ -506,7 +509,7 @@ export function SettingsForm({
                                     </Select>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="currency_format">Formato de Moneda</Label>
+                                    <Label htmlFor="currency_format">{t('settings.general.currency_format')}</Label>
                                     <Select name="currency_format" value={formData.currency_format || 'es-CO'} onValueChange={(val) => handleSelectChange('currency_format', val)}>
                                         <SelectTrigger suppressHydrationWarning>
                                             <SelectValue placeholder="Seleccionar" />
@@ -521,7 +524,7 @@ export function SettingsForm({
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="legal_text">Texto Legal Predeterminado</Label>
+                                <Label htmlFor="legal_text">{t('settings.general.legal_text')}</Label>
                                 <Textarea
                                     id="legal_text"
                                     name="legal_text"
@@ -533,9 +536,9 @@ export function SettingsForm({
                             </div>
 
                             <div className="space-y-2 pt-4 border-t dark:border-white/10">
-                                <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-2">Accesibilidad</h4>
+                                <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-2">{t('settings.general.accessibility')}</h4>
                                 <div className="space-y-2">
-                                    <Label htmlFor="trash_shortcut">Atajo de Papelera</Label>
+                                    <Label htmlFor="trash_shortcut">{t('settings.general.trash_shortcut')}</Label>
                                     <div className="flex items-center gap-2">
                                         <Input
                                             id="trash_shortcut"
@@ -559,9 +562,9 @@ export function SettingsForm({
                 <TabsContent value="notifications" className="space-y-4 mt-4" suppressHydrationWarning>
                     <Card className="bg-white dark:bg-white/5 border-gray-100 dark:border-white/10 shadow-sm backdrop-blur-md">
                         <CardHeader>
-                            <CardTitle>Configuración de Correo</CardTitle>
+                            <CardTitle>{t('settings.notifications.title')}</CardTitle>
                             <CardDescription>
-                                Personaliza cómo tus clientes reciben las notificaciones por correo electrónico.
+                                {t('settings.notifications.description')}
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
@@ -598,9 +601,9 @@ export function SettingsForm({
 
                     <Card>
                         <CardHeader>
-                            <CardTitle>Registro de Actividad</CardTitle>
+                            <CardTitle>{t('settings.notifications.activity_log')}</CardTitle>
                             <CardDescription>
-                                Monitorea los correos transaccionales enviados por el sistema.
+                                {t('settings.notifications.activity_log_desc')}
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
@@ -622,15 +625,15 @@ export function SettingsForm({
                             <span className="w-full border-t" />
                         </div>
                         <div className="relative flex justify-center text-xs uppercase">
-                            <span className="bg-background px-2 text-muted-foreground">Configuración General de Documentos</span>
+                            <span className="bg-background px-2 text-muted-foreground">{t('settings.billing.general_docs')}</span>
                         </div>
                     </div>
 
                     <Card>
                         <CardHeader>
-                            <CardTitle>Preferencias de Facturación</CardTitle>
+                            <CardTitle>{t('settings.billing.title')}</CardTitle>
                             <CardDescription>
-                                Controla los valores predeterminados para tus nuevos documentos.
+                                {t('settings.billing.description')}
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
@@ -677,9 +680,9 @@ export function SettingsForm({
 
                     <Card>
                         <CardHeader>
-                            <CardTitle>Control de Pagos en Línea</CardTitle>
+                            <CardTitle>{t('settings.payments.title')}</CardTitle>
                             <CardDescription>
-                                Configura el comportamiento del portal de pagos y la integración con Wompi.
+                                {t('settings.payments.description')}
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-6">

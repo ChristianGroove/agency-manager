@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useTranslation } from "@/lib/i18n/use-translation"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -78,6 +79,7 @@ export function CreateInvoiceSheet({
     initialAmount,
     defaultDescription
 }: CreateInvoiceSheetProps) {
+    const { t, locale } = useTranslation() // Hook added
     const [internalOpen, setInternalOpen] = useState(false)
     const isControlled = controlledOpen !== undefined
     const open = isControlled ? controlledOpen : internalOpen
@@ -266,8 +268,8 @@ export function CreateInvoiceSheet({
 
     const handleSave = async () => {
         const finalClient = clientId || selectedClientId
-        if (!finalClient) return toast.error("Selecciona un cliente")
-        if (isEmittersModuleEnabled() && !selectedEmitterId && emitters.length > 0) return toast.error("Selecciona un emisor")
+        if (!finalClient) return toast.error(t('invoicing.toasts.select_client'))
+        if (isEmittersModuleEnabled() && !selectedEmitterId && emitters.length > 0) return toast.error(t('invoicing.toasts.select_emitter'))
 
         setLoading(true)
         try {
@@ -290,7 +292,7 @@ export function CreateInvoiceSheet({
                     .select().single()
                 if (error) throw error
                 result = data
-                toast.success("Documento actualizado")
+                toast.success(t('invoicing.toasts.updated_success'))
             } else {
                 const { createInvoice } = await import('@/modules/core/billing/invoices-actions')
                 const response = await createInvoice({
@@ -308,7 +310,7 @@ export function CreateInvoiceSheet({
                 })
                 if (!response.success) throw new Error(response.error || "Error desconocido al crear la factura")
                 result = response.data
-                toast.success("Documento creado exitosamente")
+                toast.success(t('invoicing.toasts.created_success'))
             }
 
             setOpen(false)
@@ -324,7 +326,7 @@ export function CreateInvoiceSheet({
 
         } catch (error: any) {
             console.error(error)
-            toast.error("Error al guardar: " + error.message)
+            toast.error(t('invoicing.toasts.error_create') + ": " + error.message)
         } finally {
             setLoading(false)
         }
@@ -336,7 +338,7 @@ export function CreateInvoiceSheet({
                 {trigger || (
                     <Button className="h-9 px-4 bg-brand-pink hover:bg-brand-pink/90 shadow-md text-white border-0">
                         <Plus className="mr-2 h-4 w-4" />
-                        Nuevo Documento
+                        {t('invoicing.form.create_title')}
                     </Button>
                 )}
             </SheetTrigger>
@@ -350,7 +352,7 @@ export function CreateInvoiceSheet({
             >
                 <SheetHeader className="hidden">
                     <SheetTitle>
-                        {invoiceToEdit ? 'Editar Documento' : 'Nuevo Documento'}
+                        {invoiceToEdit ? t('invoicing.form.edit_title') : t('invoicing.form.create_title')}
                     </SheetTitle>
                 </SheetHeader>
                 <div className="flex flex-col h-full bg-white/95 backdrop-blur-xl">
@@ -359,7 +361,7 @@ export function CreateInvoiceSheet({
                         <div className="flex items-center gap-4">
                             <div>
                                 <h2 className="text-xl font-bold text-gray-900 tracking-tight">
-                                    {invoiceToEdit ? 'Editar Documento' : 'Nuevo Documento'}
+                                    {invoiceToEdit ? t('invoicing.form.edit_title') : t('invoicing.form.create_title')}
                                 </h2>
                                 <p className="text-xs text-muted-foreground">
                                     {getDocumentTypeLabel(derivedDocType)}
@@ -379,21 +381,21 @@ export function CreateInvoiceSheet({
                                     <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 space-y-4">
                                         {!clientId && (
                                             <div className="space-y-2">
-                                                <Label className="text-xs uppercase font-bold text-slate-500">Cliente</Label>
+                                                <Label className="text-xs uppercase font-bold text-slate-500">{t('invoicing.form.client_label')}</Label>
                                                 <Popover>
                                                     <PopoverTrigger asChild>
                                                         <Button variant="outline" className="w-full justify-between bg-white" disabled={!!invoiceToEdit}>
-                                                            {displayClientName || "Seleccionar Cliente..."}
+                                                            {displayClientName || t('invoicing.form.select_client')}
                                                             <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
                                                         </Button>
                                                     </PopoverTrigger>
                                                     <PopoverContent className="w-[400px] p-0" align="start">
                                                         <Command>
-                                                            <CommandInput placeholder="Buscar cliente..." />
+                                                            <CommandInput placeholder={t('invoicing.form.search_client')} />
                                                             <CommandList>
                                                                 <CommandEmpty>
                                                                     <div className="p-2 text-center text-sm">
-                                                                        <p className="text-gray-500 mb-2">No encontrado.</p>
+                                                                        <p className="text-gray-500 mb-2">{t('invoicing.form.not_found')}</p>
                                                                         <Button
                                                                             variant="outline"
                                                                             size="sm"
@@ -401,7 +403,7 @@ export function CreateInvoiceSheet({
                                                                             onClick={() => router.push('/clients/new')}
                                                                         >
                                                                             <Plus className="h-4 w-4 mr-2" />
-                                                                            Crear Nuevo Cliente
+                                                                            {t('invoicing.form.create_new_client')}
                                                                         </Button>
                                                                     </div>
                                                                 </CommandEmpty>
@@ -422,7 +424,7 @@ export function CreateInvoiceSheet({
                                                                     onClick={() => router.push('/clients/new')}
                                                                 >
                                                                     <Plus className="h-4 w-4 mr-2" />
-                                                                    Crear Cliente
+                                                                    {t('invoicing.form.create_new_client')}
                                                                 </Button>
                                                             </div>
                                                         </Command>
@@ -433,10 +435,10 @@ export function CreateInvoiceSheet({
 
                                         {isEmittersModuleEnabled() && (
                                             <div className="space-y-2">
-                                                <Label className="text-xs uppercase font-bold text-slate-500">Emisor</Label>
+                                                <Label className="text-xs uppercase font-bold text-slate-500">{t('invoicing.form.emitter_label')}</Label>
                                                 <Select value={selectedEmitterId} onValueChange={setSelectedEmitterId} disabled={!!invoiceToEdit}>
                                                     <SelectTrigger className="bg-white">
-                                                        <SelectValue placeholder="Seleccionar empresa emisora" />
+                                                        <SelectValue placeholder={t('invoicing.form.select_emitter')} />
                                                     </SelectTrigger>
                                                     <SelectContent>
                                                         {emitters.map(e => (
@@ -451,11 +453,11 @@ export function CreateInvoiceSheet({
 
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="space-y-2">
-                                                <Label className="text-xs uppercase font-bold text-slate-500">Número</Label>
+                                                <Label className="text-xs uppercase font-bold text-slate-500">{t('invoicing.form.number_label')}</Label>
                                                 <Input value={invoiceNumber} readOnly className="bg-gray-100 font-mono text-sm" />
                                             </div>
                                             <div className="space-y-2">
-                                                <Label className="text-xs uppercase font-bold text-slate-500">Vencimiento</Label>
+                                                <Label className="text-xs uppercase font-bold text-slate-500">{t('invoicing.form.date_label')}</Label>
                                                 <Popover>
                                                     <PopoverTrigger asChild>
                                                         <Button variant="outline" className="w-full justify-start text-left font-normal bg-white border-gray-200">
@@ -479,10 +481,10 @@ export function CreateInvoiceSheet({
                                     {/* Items Section */}
                                     <div className="space-y-4">
                                         <div className="flex items-center justify-between">
-                                            <h3 className="font-semibold text-gray-900">Conceptos</h3>
+                                            <h3 className="font-semibold text-gray-900">{t('invoicing.form.concepts')}</h3>
                                             <Button variant="ghost" size="sm" onClick={addItem} className="text-brand-pink hover:text-brand-pink/80 hover:bg-brand-pink/10">
                                                 <Plus className="h-4 w-4 mr-1" />
-                                                Agregar Ítem
+                                                {t('invoicing.form.add_item')}
                                             </Button>
                                         </div>
 
@@ -490,7 +492,7 @@ export function CreateInvoiceSheet({
                                             {items.map((item, index) => (
                                                 <div key={item.ui_id} className="group relative flex gap-3 items-start bg-white p-3 rounded-xl border border-gray-100 hover:border-gray-200 shadow-sm transition-all">
                                                     <div className="grid gap-1.5 flex-1">
-                                                        <Label className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Descripción</Label>
+                                                        <Label className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">{t('invoicing.form.description')}</Label>
                                                         <Input
                                                             value={item.description}
                                                             onChange={(e) => updateItem(item.ui_id, 'description', e.target.value)}
@@ -499,7 +501,7 @@ export function CreateInvoiceSheet({
                                                         />
                                                     </div>
                                                     <div className="grid gap-1.5 w-20">
-                                                        <Label className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Cant.</Label>
+                                                        <Label className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">{t('invoicing.form.quantity')}</Label>
                                                         <Input
                                                             type="number"
                                                             min="1"
@@ -509,7 +511,7 @@ export function CreateInvoiceSheet({
                                                         />
                                                     </div>
                                                     <div className="grid gap-1.5 w-32">
-                                                        <Label className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Valor Unit.</Label>
+                                                        <Label className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">{t('invoicing.form.price')}</Label>
                                                         <Input
                                                             type="number"
                                                             value={item.price}
@@ -565,7 +567,7 @@ export function CreateInvoiceSheet({
                                             </div>
 
                                             <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
-                                                <p className="text-xs text-gray-400 uppercase tracking-wider font-bold mb-1">Cliente</p>
+                                                <p className="text-xs text-gray-400 uppercase tracking-wider font-bold mb-1">{t('invoicing.form.client_label')}</p>
                                                 <p className="font-bold text-gray-900 text-sm">{displayClientName || "Por definir..."}</p>
                                                 {displayClient?.company_name && <p className="text-gray-500">{displayClient.company_name}</p>}
                                             </div>
@@ -583,10 +585,10 @@ export function CreateInvoiceSheet({
                                                             <tr key={item.ui_id}>
                                                                 <td className="py-2 pr-2">
                                                                     <p className="font-medium text-gray-900">{item.description || "Sin descripción"}</p>
-                                                                    <p className="text-gray-400">{item.quantity} x ${item.price.toLocaleString()}</p>
+                                                                    <p className="text-gray-400">{item.quantity} x ${item.price.toLocaleString(locale === 'en' ? 'en-US' : 'es-MX')}</p>
                                                                 </td>
                                                                 <td className="py-2 text-right font-medium text-gray-900">
-                                                                    ${(item.quantity * item.price).toLocaleString()}
+                                                                    ${(item.quantity * item.price).toLocaleString(locale === 'en' ? 'en-US' : 'es-MX')}
                                                                 </td>
                                                             </tr>
                                                         ))}
@@ -598,19 +600,17 @@ export function CreateInvoiceSheet({
                                         {/* Footer Totals */}
                                         <div className="bg-slate-50 p-6 border-t border-slate-100">
                                             <div className="flex justify-between items-center mb-2">
-                                                <span className="text-gray-500">Subtotal</span>
-                                                <span className="font-medium text-gray-900">${displayValues.subtotal.toLocaleString()}</span>
+                                                <span className="text-gray-500">{t('invoicing.form.subtotal')}</span>
+                                                <span className="font-medium text-gray-900">${displayValues.subtotal.toLocaleString(locale === 'en' ? 'en-US' : 'es-MX')}</span>
                                             </div>
                                             <div className="flex justify-between items-center text-lg font-bold text-brand-pink pt-2 border-t border-slate-200">
-                                                <span>Total</span>
-                                                <span>${displayValues.total.toLocaleString()}</span>
+                                                <span>{t('invoicing.form.total')}</span>
+                                                <span>${displayValues.total.toLocaleString(locale === 'en' ? 'en-US' : 'es-MX')}</span>
                                             </div>
                                         </div>
                                     </div>
 
-                                    <p className="text-xs text-slate-400 mt-4 text-center max-w-xs">
-                                        Vista previa aproximada. El documento PDF final puede variar según la plantilla configurada.
-                                    </p>
+                                    <p className="text-xs text-slate-400 mt-4 text-center max-w-xs">{t('invoicing.form.preview_desc')}</p>
                                 </div>
                             </div>
                         </div>
@@ -618,7 +618,7 @@ export function CreateInvoiceSheet({
                     </div>
 
                     <div className="sticky bottom-0 bg-white/80 backdrop-blur-md p-6 border-t border-gray-100 flex items-center justify-between z-20">
-                        <Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>
+                        <Button variant="ghost" onClick={() => setOpen(false)}>{t('invoicing.form.cancel')}</Button>
                         <Button
                             onClick={handleSave}
                             disabled={loading || displayValues.total === 0 || (validationResult?.riskLevel === 'CRITICAL')}
@@ -630,7 +630,7 @@ export function CreateInvoiceSheet({
                             )}
                         >
                             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            {invoiceToEdit ? 'Actualizar Documento' : 'Emitir Documento'}
+                            {invoiceToEdit ? t('invoicing.form.update_invoice') : t('invoicing.form.create_invoice')}
                         </Button>
                     </div>
                 </div>

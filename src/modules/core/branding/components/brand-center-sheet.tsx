@@ -3,6 +3,7 @@
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet"
 import { BrandCenter } from "./brand-center"
 import { BrandingConfig } from "@/types/branding"
+import { useTranslation } from "@/lib/i18n/use-translation"
 
 interface BrandCenterSheetProps {
     open: boolean
@@ -12,6 +13,7 @@ interface BrandCenterSheetProps {
 }
 
 export function BrandCenterSheet({ open, onOpenChange, settings, tierFeatures }: BrandCenterSheetProps) {
+    const { t } = useTranslation()
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
             <SheetContent
@@ -24,8 +26,8 @@ export function BrandCenterSheet({ open, onOpenChange, settings, tierFeatures }:
                 "
             >
                 <SheetHeader className="sr-only">
-                    <SheetTitle>Centro de Marca</SheetTitle>
-                    <SheetDescription>Configuración de marca</SheetDescription>
+                    <SheetTitle>{t('branding.title' as any)}</SheetTitle>
+                    <SheetDescription>{t('branding.description' as any)}</SheetDescription>
                 </SheetHeader>
 
                 <BrandCenter

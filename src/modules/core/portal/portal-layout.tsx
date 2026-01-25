@@ -63,7 +63,10 @@ function mapModuleToComponent(moduleSlug: string): string {
 
 type TabKey = 'summary' | 'services' | 'billing' | 'explore' | 'insights' | 'hosting'
 
+import { useTranslation } from "@/lib/i18n/use-translation"
+
 export function PortalLayout({ token, client, invoices, quotes, briefings, events, services, hostingAccounts = [], settings, activeModules, onPay, onViewInvoice, onViewQuote, insightsAccess }: PortalLayoutProps) {
+    const { t } = useTranslation()
     // Determine which tabs to show based on active modules (Deduplicated Logic)
     const showServices = activeModules.some(m => ['core_services', 'module_briefings', 'module_projects'].includes(m.slug))
     const showBilling = activeModules.some(m => ['module_invoicing', 'core_billing', 'payments', 'module_payments'].includes(m.slug))
@@ -75,42 +78,42 @@ export function PortalLayout({ token, client, invoices, quotes, briefings, event
         {
             key: 'summary',
             component: 'summary',
-            label: 'Resumen',
+            label: t('portal.nav.summary'),
             icon: LayoutDashboard
         },
         // 2. Services (If any service-related module is active)
         ...(showServices ? [{
             key: 'services',
             component: 'services',
-            label: 'Servicios',
+            label: t('portal.nav.services'),
             icon: Layers
         }] : []),
         // 3. Billing (If invoicing/payments is active)
         ...(showBilling ? [{
             key: 'billing',
             component: 'billing',
-            label: 'Pagos',
+            label: t('portal.nav.billing'),
             icon: CreditCard
         }] : []),
         // 4. Explore/Catalog
         ...(showExplore ? [{
             key: 'explore',
             component: 'explore',
-            label: 'Explorar',
+            label: t('portal.nav.explore'),
             icon: Search
         }] : []),
         // 5. Insights
         ...(showInsights ? [{
             key: 'insights',
             component: 'insights',
-            label: 'Insights',
+            label: t('portal.nav.insights'),
             icon: BarChart3
         }] : []),
         // 6. Hosting (Auto-detected)
         ...(hostingAccounts && hostingAccounts.length > 0 ? [{
             key: 'hosting',
             component: 'hosting',
-            label: 'Hosting',
+            label: t('portal.nav.hosting'),
             icon: Server
         }] : [])
     ]
@@ -242,7 +245,7 @@ export function PortalLayout({ token, client, invoices, quotes, briefings, event
                     <div className="hidden lg:block fixed bottom-8 right-8 z-20">
                         <div className="bg-white rounded-xl shadow-2xl p-6 w-80 border border-gray-100 ring-1 ring-black/5 animate-in slide-in-from-right">
                             <div className="flex justify-between items-start mb-4">
-                                <h4 className="font-bold text-gray-900">Pagos Pendientes</h4>
+                                <h4 className="font-bold text-gray-900">{t('portal.alerts.pending_payments')}</h4>
                                 <Badge className={cn(
                                     "border-0 text-white",
                                     pendingInvoices.some(i => i.status === 'overdue')
@@ -253,7 +256,7 @@ export function PortalLayout({ token, client, invoices, quotes, briefings, event
                             <p className="text-3xl font-bold text-gray-900 mb-2">
                                 {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(totalPending)}
                             </p>
-                            <p className="text-sm text-gray-500 mb-4">Tienes {pendingInvoices.length} documentos por pagar.</p>
+                            <p className="text-sm text-gray-500 mb-4">{t('portal.alerts.pending_docs_msg').replace('{count}', pendingInvoices.length.toString())}</p>
                             <Button
                                 className="w-full text-white bg-black hover:bg-gray-800"
                                 onClick={() => {
@@ -263,7 +266,7 @@ export function PortalLayout({ token, client, invoices, quotes, briefings, event
                                     setShowBillingAlert(false)
                                 }}
                             >
-                                Ir a Pagos
+                                {t('portal.alerts.go_to_payments')}
                             </Button>
                         </div>
                     </div>
@@ -318,6 +321,7 @@ function MobileNavBtn({ active, onClick, icon: Icon, label }: any) {
 }
 
 function NotificationBell({ count, pendingInvoices, openQuotes, pendingBriefings, onViewQuote, onTabChange, onViewBriefing }: any) {
+    const { t } = useTranslation()
     return (
         <Popover>
             <PopoverTrigger asChild>
@@ -330,11 +334,11 @@ function NotificationBell({ count, pendingInvoices, openQuotes, pendingBriefings
             </PopoverTrigger>
             <PopoverContent className="w-80 p-0" align="end">
                 <div className="p-4 border-b">
-                    <h4 className="font-bold">Notificaciones</h4>
+                    <h4 className="font-bold">{t('portal.header.notifications')}</h4>
                 </div>
                 <div className="max-h-[300px] overflow-y-auto">
                     {count === 0 ? (
-                        <div className="p-8 text-center text-gray-500 text-sm">No tienes notificaciones nuevas</div>
+                        <div className="p-8 text-center text-gray-500 text-sm">{t('portal.header.empty_notifs')}</div>
                     ) : (
                         <div className="divide-y">
                             {pendingInvoices.length > 0 && (
@@ -344,8 +348,8 @@ function NotificationBell({ count, pendingInvoices, openQuotes, pendingBriefings
                                             <CreditCard className="h-4 w-4 text-red-600" />
                                         </div>
                                         <div>
-                                            <p className="text-sm font-medium">Documentos Vencidos</p>
-                                            <p className="text-xs text-gray-500">Tienes {pendingInvoices.length} documentos pendientes.</p>
+                                            <p className="text-sm font-medium">{t('portal.header.docs_overdue')}</p>
+                                            <p className="text-xs text-gray-500">{t('portal.header.pending_docs_count').replace('{count}', pendingInvoices.length.toString())}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -357,8 +361,8 @@ function NotificationBell({ count, pendingInvoices, openQuotes, pendingBriefings
                                             <LayoutDashboard className="h-4 w-4 text-purple-600" />
                                         </div>
                                         <div>
-                                            <p className="text-sm font-medium">Nueva Cotización</p>
-                                            <p className="text-xs text-gray-500">Revisar cotización #{q.number}</p>
+                                            <p className="text-sm font-medium">{t('portal.header.new_quote')}</p>
+                                            <p className="text-xs text-gray-500">{t('portal.header.check_quote').replace('{number}', q.number)}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -370,8 +374,8 @@ function NotificationBell({ count, pendingInvoices, openQuotes, pendingBriefings
                                             <Layers className="h-4 w-4 text-brand-pink" />
                                         </div>
                                         <div>
-                                            <p className="text-sm font-medium">Briefing Pendiente</p>
-                                            <p className="text-xs text-gray-500">Requiere información para {b.template?.name}</p>
+                                            <p className="text-sm font-medium">{t('portal.header.pending_briefing')}</p>
+                                            <p className="text-xs text-gray-500">{t('portal.header.briefing_info').replace('{name}', b.template?.name || 'Service')}</p>
                                         </div>
                                     </div>
                                 </div>

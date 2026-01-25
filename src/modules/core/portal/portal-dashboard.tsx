@@ -64,7 +64,10 @@ interface PortalDashboardProps {
     services: Service[]
 }
 
+import { useTranslation } from "@/lib/i18n/use-translation"
+
 export function PortalDashboard({ token, client, invoices, quotes, briefings, events, onPay, onViewInvoice, onViewQuote, settings, services }: PortalDashboardProps) {
+    const { t } = useTranslation()
     console.log('PortalDashboard Rendered', {
         client: client.name,
         servicesCount: services?.length,
@@ -161,8 +164,8 @@ export function PortalDashboard({ token, client, invoices, quotes, briefings, ev
                 {/* Header Centered */}
                 <div className="flex flex-col items-center text-center gap-4 mb-8">
                     <div>
-                        <h1 className="text-3xl font-bold text-gray-900">Hola, {client.name.split(' ')[0]}</h1>
-                        <p className="text-gray-500 mt-1 max-w-lg mx-auto">Te damos la bienvenida a tu portal de cliente.</p>
+                        <h1 className="text-3xl font-bold text-gray-900">{t('portal.dashboard.welcome').replace('{name}', client.name.split(' ')[0])}</h1>
+                        <p className="text-gray-500 mt-1 max-w-lg mx-auto">{t('portal.dashboard.welcome_sub')}</p>
                     </div>
                 </div>
 
@@ -172,7 +175,7 @@ export function PortalDashboard({ token, client, invoices, quotes, briefings, ev
                         <div className="w-64 h-64 md:w-80 md:h-80 relative">
                             <EmptyStateAnimation />
                         </div>
-                        <p className="text-gray-400 font-medium mt-4">Todo está en orden. ¡Disfruta tu día!</p>
+                        <p className="text-gray-400 font-medium mt-4">{t('portal.dashboard.empty_state')}</p>
                     </div>
                 )}
 
@@ -183,7 +186,15 @@ export function PortalDashboard({ token, client, invoices, quotes, briefings, ev
                             <PendingTasksAnimation />
                         </div>
                         <p className="text-gray-500 font-medium mt-4 max-w-md text-center">
-                            ¡Ya casi estamos! Tienes {openQuotes.length > 0 ? "cotizaciones por revisar" : ""} {openQuotes.length > 0 && pendingBriefings.length > 0 ? "y" : ""} {pendingBriefings.length > 0 ? "briefings por completar" : ""} para avanzar con {pendingBriefings.length === 1 ? `tu solicitud de "${pendingBriefings[0].template?.name || 'Servicio'}"` : "tus solicitudes"}.
+                            {t('portal.dashboard.pending_tasks_desc')
+                                .replace('{quotes}', openQuotes.length.toString())
+                                .replace('{connector}', openQuotes.length > 0 && pendingBriefings.length > 0 ? " " + t('portal.dashboard.pending_tasks_connect_and') + " " : "")
+                                .replace('{briefings}', pendingBriefings.length.toString())
+                                .replace('{request_context}', pendingBriefings.length === 1 ?
+                                    t('portal.dashboard.pending_tasks_one_request').replace('{name}', pendingBriefings[0].template?.name || 'Servicio') :
+                                    t('portal.dashboard.pending_tasks_multi_request')
+                                )
+                            }
                         </p>
 
                         {/* Central Action Buttons */}
@@ -195,7 +206,7 @@ export function PortalDashboard({ token, client, invoices, quotes, briefings, ev
                                     onClick={() => onViewQuote(quote)}
                                 >
                                     <FileText className="h-4 w-4 mr-2" />
-                                    Revisar Cotización
+                                    {t('portal.dashboard.buttons.review_quote')}
                                 </Button>
                             ))}
                             {pendingBriefings.map(briefing => (
@@ -205,7 +216,7 @@ export function PortalDashboard({ token, client, invoices, quotes, briefings, ev
                                     onClick={() => handleViewBriefing(briefing.id)}
                                 >
                                     <MessageSquare className="h-4 w-4 mr-2" />
-                                    Completar Briefing
+                                    {t('portal.dashboard.buttons.complete_briefing')}
                                 </Button>
                             ))}
                         </div>
@@ -218,7 +229,7 @@ export function PortalDashboard({ token, client, invoices, quotes, briefings, ev
                         <div className="flex items-center justify-between mb-6">
                             <h2 className="text-xl font-bold flex items-center gap-2">
                                 <Activity className="h-5 w-5 text-gray-400" />
-                                Tus Servicios Activos
+                                {t('portal.dashboard.services_title')}
                             </h2>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -275,7 +286,7 @@ export function PortalDashboard({ token, client, invoices, quotes, briefings, ev
                                 onClick={() => onViewQuote(quote)}
                             >
                                 <FileText className="h-3.5 w-3.5 mr-2" />
-                                Revisar Cotización
+                                {t('portal.dashboard.buttons.review_quote')}
                             </Button>
                         ))}
 
@@ -288,7 +299,7 @@ export function PortalDashboard({ token, client, invoices, quotes, briefings, ev
                                 onClick={() => handleViewBriefing(briefing.id)}
                             >
                                 <MessageSquare className="h-3.5 w-3.5 mr-2" />
-                                Completar Briefing
+                                {t('portal.dashboard.buttons.complete_briefing')}
                             </Button>
                         ))}
                     </div>
@@ -304,12 +315,12 @@ export function PortalDashboard({ token, client, invoices, quotes, briefings, ev
                     <div className="flex-1 text-center">
                         {pendingInvoices.length > 0 ? (
                             <p className="text-sm font-medium text-gray-700">
-                                <span className="font-bold text-gray-900">Pendientes:</span> Tienes {pendingInvoices.length} cuentas de cobro por <span className="text-gray-900 font-bold">{formatCurrency(totalPending)}</span>.
+                                <span className="font-bold text-gray-900">{t('portal.dashboard.status_bar.pending')}:</span> {t('portal.dashboard.status_bar.pending_desc').replace('{count}', pendingInvoices.length.toString()).replace('{amount}', formatCurrency(totalPending).toString())}
                             </p>
                         ) : (
                             <div className="flex items-center justify-center gap-2">
                                 <CheckCircle2 className="h-4 w-4 text-green-500" />
-                                <p className="text-sm font-medium text-gray-600">¡Todo al día! No tienes pagos pendientes.</p>
+                                <p className="text-sm font-medium text-gray-600">{t('portal.dashboard.status_bar.all_clear')}</p>
                             </div>
                         )}
                     </div>
@@ -326,7 +337,7 @@ export function PortalDashboard({ token, client, invoices, quotes, briefings, ev
                                 <DialogHeader>
                                     <DialogTitle className="flex items-center gap-2">
                                         <Clock className="h-5 w-5 text-gray-500" />
-                                        Actividad Reciente
+                                        {t('portal.dashboard.activity_title')}
                                     </DialogTitle>
                                 </DialogHeader>
                                 <div className="mt-4">
@@ -339,7 +350,7 @@ export function PortalDashboard({ token, client, invoices, quotes, briefings, ev
 
                 {/* 3. Bottom Row: Footer (Pointer Events Auto) */}
                 <footer className="pointer-events-auto text-center text-sm text-gray-400">
-                    &copy; 2026 Pixy / private design services. Todos los derechos reservados.
+                    {t('portal.dashboard.footer').replace('{year}', '2026').replace('{agency}', 'Pixy / private design services')}
                 </footer>
             </div>
 
@@ -349,7 +360,7 @@ export function PortalDashboard({ token, client, invoices, quotes, briefings, ev
                     <div className="fixed bottom-0 left-0 right-0 bg-white border-t p-4 shadow-lg z-50 animate-in slide-in-from-bottom">
                         <div className="max-w-4xl mx-auto flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-gray-500">Total a Pagar ({selectedInvoices.length})</p>
+                                <p className="text-sm text-gray-500">{t('portal.dashboard.payment_total').replace('{count}', selectedInvoices.length.toString())}</p>
                                 <p className="text-2xl font-bold text-gray-900">{formatCurrency(totalSelected)}</p>
                             </div>
                             <Button
@@ -359,7 +370,7 @@ export function PortalDashboard({ token, client, invoices, quotes, briefings, ev
                                 onClick={() => onPay(selectedInvoices)}
                             >
                                 <CreditCard className="h-4 w-4 mr-2" />
-                                Pagar Ahora
+                                {t('portal.dashboard.buttons.pay_now')}
                             </Button>
                         </div>
                     </div>

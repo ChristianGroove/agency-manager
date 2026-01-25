@@ -20,7 +20,10 @@ interface PortalInvoiceListProps {
     token?: string
 }
 
+import { useTranslation } from "@/lib/i18n/use-translation"
+
 export function PortalInvoiceList({ invoices, settings = {}, selectedInvoices = [], onToggle, onToggleAll, onView, compact = false, token }: PortalInvoiceListProps) {
+    const { t } = useTranslation()
     const [expandedInvoiceId, setExpandedInvoiceId] = useState<string | null>(null)
 
     const paymentsEnabled = settings?.enable_portal_payments !== false && settings?.portal_modules?.payments !== false
@@ -40,7 +43,7 @@ export function PortalInvoiceList({ invoices, settings = {}, selectedInvoices = 
     return (
         <Card className="border-none shadow-none bg-transparent">
             <CardHeader className="p-0 pb-4">
-                <p className="text-sm text-gray-600 text-center">Selecciona los documentos que deseas pagar</p>
+                <p className="text-sm text-gray-600 text-center">{t('portal.components.invoice_list.select_docs')}</p>
             </CardHeader>
             <CardContent className="px-0">
                 <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
@@ -61,11 +64,11 @@ export function PortalInvoiceList({ invoices, settings = {}, selectedInvoices = 
                                             />
                                         )}
                                     </th>
-                                    <th className="px-6 py-4">Documento</th>
-                                    <th className="px-6 py-4">Fecha</th>
-                                    <th className="px-6 py-4">Estado</th>
-                                    <th className="px-6 py-4 text-right">Monto</th>
-                                    <th className="px-6 py-4 text-right">Acciones</th>
+                                    <th className="px-6 py-4">{t('portal.components.invoice_list.table.document')}</th>
+                                    <th className="px-6 py-4">{t('portal.components.invoice_list.table.date')}</th>
+                                    <th className="px-6 py-4">{t('portal.components.invoice_list.table.status')}</th>
+                                    <th className="px-6 py-4 text-right">{t('portal.components.invoice_list.table.amount')}</th>
+                                    <th className="px-6 py-4 text-right">{t('portal.components.invoice_list.table.actions')}</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
@@ -112,7 +115,7 @@ export function PortalInvoiceList({ invoices, settings = {}, selectedInvoices = 
                                                                 status === 'overdue' ? "text-red-600" : "text-gray-600"
                                                         )}
                                                     >
-                                                        {status === 'paid' ? 'Pagada' : status === 'overdue' ? 'Vencida' : 'Pendiente'}
+                                                        {status === 'paid' ? t('portal.components.invoice_list.status.paid') : status === 'overdue' ? t('portal.components.invoice_list.status.overdue') : t('portal.components.invoice_list.status.pending')}
                                                     </Badge>
                                                 </td>
                                                 <td className="px-6 py-4 text-right font-bold text-gray-900">${invoice.total.toLocaleString()}</td>
@@ -125,11 +128,11 @@ export function PortalInvoiceList({ invoices, settings = {}, selectedInvoices = 
                                                             onClick={() => window.open(`/portal/${token}/invoice/${invoice.id}`, '_blank')}
                                                         >
                                                             <Printer className="h-4 w-4 mr-2" />
-                                                            PDF
+                                                            {t('portal.components.invoice_list.buttons.pdf')}
                                                         </Button>
                                                     ) : (
                                                         <Button variant="ghost" size="sm" onClick={() => onView(invoice)}>
-                                                            Ver Detalle
+                                                            {t('portal.components.invoice_list.buttons.view_detail')}
                                                         </Button>
                                                     )}
                                                 </td>
@@ -142,11 +145,11 @@ export function PortalInvoiceList({ invoices, settings = {}, selectedInvoices = 
                                                             {/* Mini Header Details */}
                                                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 border-b border-gray-50 text-sm bg-gray-50/30">
                                                                 <div>
-                                                                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Emisión</p>
+                                                                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">{t('portal.components.invoice_list.details.emission')}</p>
                                                                     <p className="font-medium flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5 text-gray-400" /> {new Date(invoice.date).toLocaleDateString()}</p>
                                                                 </div>
                                                                 <div>
-                                                                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Vencimiento</p>
+                                                                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">{t('portal.components.invoice_list.details.expiration')}</p>
                                                                     <p className={cn("font-medium flex items-center gap-1.5", status === 'overdue' ? "text-red-600" : "text-gray-900")}>
                                                                         {status === 'overdue' && <AlertTriangle className="h-3.5 w-3.5" />}
                                                                         {invoice.due_date ? new Date(invoice.due_date).toLocaleDateString() : '-'}
@@ -163,7 +166,7 @@ export function PortalInvoiceList({ invoices, settings = {}, selectedInvoices = 
                                                                     <div key={idx} className="flex justify-between items-center p-3 px-4 hover:bg-gray-50 transition-colors">
                                                                         <div className="flex flex-col">
                                                                             <span className="text-sm font-medium text-gray-700">{item.description}</span>
-                                                                            {item.quantity > 1 && <span className="text-xs text-gray-400">Cantidad: {item.quantity}</span>}
+                                                                            {item.quantity > 1 && <span className="text-xs text-gray-400">{t('portal.components.invoice_list.details.quantity')}: {item.quantity}</span>}
                                                                         </div>
                                                                         <span className="text-sm font-medium text-gray-900">${(item.price * item.quantity).toLocaleString()}</span>
                                                                     </div>
@@ -171,7 +174,7 @@ export function PortalInvoiceList({ invoices, settings = {}, selectedInvoices = 
                                                             </div>
                                                             {/* Total Footer */}
                                                             <div className="bg-gray-50 p-3 px-4 flex justify-between items-center border-t border-gray-100">
-                                                                <span className="text-sm font-bold text-gray-600">Total Factura</span>
+                                                                <span className="text-sm font-bold text-gray-600">{t('portal.components.invoice_list.details.total_invoice')}</span>
                                                                 <span className="text-lg font-bold text-[var(--portal-primary)]" style={{ color: settings?.portal_primary_color }}>${invoice.total.toLocaleString()}</span>
                                                             </div>
                                                         </div>
@@ -227,7 +230,7 @@ export function PortalInvoiceList({ invoices, settings = {}, selectedInvoices = 
                                                             status === 'overdue' ? "text-red-600" : "text-gray-600"
                                                     )}
                                                 >
-                                                    {status === 'paid' ? 'Pagada' : status === 'overdue' ? 'Vencida' : 'Pendiente'}
+                                                    {status === 'paid' ? t('portal.components.invoice_list.status.paid') : status === 'overdue' ? t('portal.components.invoice_list.status.overdue') : t('portal.components.invoice_list.status.pending')}
                                                 </Badge>
                                             </div>
                                             <div className="flex justify-between items-end">
@@ -253,7 +256,7 @@ export function PortalInvoiceList({ invoices, settings = {}, selectedInvoices = 
                                                             onClick={() => window.open(`/portal/${token}/invoice/${invoice.id}`, '_blank')}
                                                         >
                                                             <Printer className="h-4 w-4 mr-2" />
-                                                            Descargar PDF
+                                                            {t('portal.components.invoice_list.buttons.download_pdf')}
                                                         </Button>
                                                     )}
                                                 </div>

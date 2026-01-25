@@ -27,12 +27,15 @@ interface CatalogServiceSheetProps {
     onSuccess?: () => void
 }
 
+import { useTranslation } from "@/lib/i18n/use-translation"
+
 export function CatalogServiceSheet({
     open,
     onOpenChange,
     itemToEdit,
     onSuccess
 }: CatalogServiceSheetProps) {
+    const { t } = useTranslation()
     const [loading, setLoading] = useState(false)
     const [categories, setCategories] = useState<ServiceCategory[]>([])
     const [formTemplates, setFormTemplates] = useState<FormTemplate[]>([])
@@ -60,7 +63,7 @@ export function CatalogServiceSheet({
                 setFormTemplates(templates)
             } catch (error) {
                 console.error('Error loading data:', error)
-                toast.error('Error al cargar datos iniciales')
+                toast.error(t('catalog.toasts.loading_error'))
             }
         }
         if (open) {
@@ -91,7 +94,7 @@ export function CatalogServiceSheet({
 
     const handleSubmit = async () => {
         if (!formData.name || !formData.category) {
-            toast.error("Nombre y Categoría son obligatorios")
+            toast.error(t('catalog.toasts.validation_error'))
             return
         }
 
@@ -99,16 +102,16 @@ export function CatalogServiceSheet({
         try {
             if (itemToEdit) {
                 await updateCatalogItem(itemToEdit.id, formData)
-                toast.success("Servicio actualizado")
+                toast.success(t('catalog.toasts.updated'))
             } else {
                 await createCatalogItem(formData)
-                toast.success("Servicio creado")
+                toast.success(t('catalog.toasts.created'))
             }
             onOpenChange(false)
             if (onSuccess) onSuccess()
         } catch (error) {
             console.error(error)
-            toast.error("Error al guardar el servicio")
+            toast.error(t('catalog.toasts.save_error'))
         } finally {
             setLoading(false)
         }
@@ -132,10 +135,10 @@ export function CatalogServiceSheet({
                                 </div>
                                 <div>
                                     <SheetTitle className="text-xl font-semibold text-gray-900">
-                                        {itemToEdit ? "Editar Servicio" : "Nuevo Servicio"}
+                                        {itemToEdit ? t('catalog.sheet_title_edit') : t('catalog.sheet_title_new')}
                                     </SheetTitle>
                                     <p className="text-xs text-muted-foreground mt-0.5">
-                                        Define la oferta de valor
+                                        {t('catalog.sheet_subtitle')}
                                     </p>
                                 </div>
                             </div>
@@ -146,23 +149,23 @@ export function CatalogServiceSheet({
                             {/* Basics */}
                             <div className="space-y-4">
                                 <div className="space-y-2">
-                                    <Label>Nombre del Servicio *</Label>
+                                    <Label>{t('catalog.form.name_label')} *</Label>
                                     <Input
                                         value={formData.name}
                                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                        placeholder="Ej. Diseño Web Corporativo"
+                                        placeholder={t('catalog.form.name_placeholder')}
                                         className="font-medium"
                                     />
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label>Categoría *</Label>
+                                    <Label>{t('catalog.form.category_label')} *</Label>
                                     <Select
                                         value={formData.category}
                                         onValueChange={(val) => setFormData({ ...formData, category: val })}
                                     >
                                         <SelectTrigger>
-                                            <SelectValue placeholder="Seleccionar..." />
+                                            <SelectValue placeholder={t('catalog.form.category_placeholder')} />
                                         </SelectTrigger>
                                         <SelectContent>
                                             {categories.length > 0 ? (
@@ -171,8 +174,8 @@ export function CatalogServiceSheet({
                                                 ))
                                             ) : (
                                                 <div className="px-2 py-6 text-center text-sm text-muted-foreground">
-                                                    <p>No hay categorías</p>
-                                                    <p className="text-xs mt-1">Crea una categoría primero</p>
+                                                    <p>{t('catalog.form.category_empty')}</p>
+                                                    <p className="text-xs mt-1">{t('catalog.form.category_create_hint')}</p>
                                                 </div>
                                             )}
                                         </SelectContent>
@@ -180,11 +183,11 @@ export function CatalogServiceSheet({
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label>Descripción</Label>
+                                    <Label>{t('catalog.form.desc_label')}</Label>
                                     <Textarea
                                         value={formData.description || ""}
                                         onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                        placeholder="¿Qué incluye este servicio?"
+                                        placeholder={t('catalog.form.desc_placeholder')}
                                         rows={4}
                                         className="resize-none"
                                     />
@@ -195,7 +198,7 @@ export function CatalogServiceSheet({
 
                             {/* Briefing / Form Linkage */}
                             <div className="space-y-2">
-                                <Label>Formulario Requerido (Briefing)</Label>
+                                <Label>{t('catalog.form.form_template_label')}</Label>
                                 <Select
                                     value={formData.metadata?.form_template_id || "none"}
                                     onValueChange={(val) => setFormData({
@@ -204,17 +207,17 @@ export function CatalogServiceSheet({
                                     })}
                                 >
                                     <SelectTrigger>
-                                        <SelectValue placeholder="Sin formulario" />
+                                        <SelectValue placeholder={t('catalog.form.form_template_none')} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="none">Ninguno</SelectItem>
+                                        <SelectItem value="none">{t('catalog.form.form_template_none_item')}</SelectItem>
                                         {formTemplates.map(t => (
                                             <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
                                 <p className="text-[10px] text-muted-foreground">
-                                    El cliente deberá llenar este formulario al contratar el servicio.
+                                    {t('catalog.form.form_template_hint')}
                                 </p>
                             </div>
 
@@ -222,36 +225,36 @@ export function CatalogServiceSheet({
 
                             {/* Billing Config */}
                             <div className="space-y-4">
-                                <h3 className="font-semibold text-sm text-gray-900">Configuración de Facturación</h3>
+                                <h3 className="font-semibold text-sm text-gray-900">{t('catalog.section_billing')}</h3>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                        <Label>Tipo de Cobro</Label>
+                                        <Label>{t('catalog.form.billing_type_label')}</Label>
                                         <Select
                                             value={formData.type}
                                             onValueChange={(val: any) => setFormData({ ...formData, type: val })}
                                         >
                                             <SelectTrigger><SelectValue /></SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="recurring">Recurrente</SelectItem>
-                                                <SelectItem value="one_off">Pago Único</SelectItem>
+                                                <SelectItem value="recurring">{t('services.summary.active_subscription')}</SelectItem>
+                                                <SelectItem value="one_off">{t('services.summary.one_time_payment')}</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>
 
                                     {formData.type === 'recurring' && (
                                         <div className="space-y-2">
-                                            <Label>Frecuencia</Label>
+                                            <Label>{t('catalog.form.frequency_label')}</Label>
                                             <Select
                                                 value={formData.frequency}
                                                 onValueChange={(val: any) => setFormData({ ...formData, frequency: val })}
                                             >
                                                 <SelectTrigger><SelectValue /></SelectTrigger>
                                                 <SelectContent>
-                                                    <SelectItem value="monthly">Mensual</SelectItem>
-                                                    <SelectItem value="biweekly">Quincenal</SelectItem>
-                                                    <SelectItem value="quarterly">Trimestral</SelectItem>
-                                                    <SelectItem value="semiannual">Semestral</SelectItem>
-                                                    <SelectItem value="yearly">Anual</SelectItem>
+                                                    <SelectItem value="monthly">{t('quotes.builder.frequency.monthly')}</SelectItem>
+                                                    <SelectItem value="biweekly">{t('quotes.builder.frequency.biweekly')}</SelectItem>
+                                                    <SelectItem value="quarterly">{t('quotes.builder.frequency.quarterly')}</SelectItem>
+                                                    <SelectItem value="semiannual">{t('quotes.builder.frequency.semiannual')}</SelectItem>
+                                                    <SelectItem value="yearly">{t('quotes.builder.frequency.yearly')}</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                         </div>
@@ -259,7 +262,7 @@ export function CatalogServiceSheet({
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label>Precio Base (Referencia)</Label>
+                                    <Label>{t('catalog.form.base_price_label')}</Label>
                                     <div className="relative">
                                         <span className="absolute left-3 top-2.5 text-gray-400">$</span>
                                         <Input
@@ -271,7 +274,7 @@ export function CatalogServiceSheet({
                                         />
                                     </div>
                                     <p className="text-[10px] text-muted-foreground">
-                                        Este precio se usará como sugerencia al crear cotizaciones.
+                                        {t('catalog.form.base_price_hint')}
                                     </p>
                                 </div>
                             </div>
@@ -281,9 +284,9 @@ export function CatalogServiceSheet({
                             {/* Visibility */}
                             <div className="flex items-center justify-between rounded-xl border p-4 bg-gray-50/50">
                                 <div className="space-y-0.5">
-                                    <Label className="text-sm font-semibold">Catálogo Público</Label>
+                                    <Label className="text-sm font-semibold">{t('catalog.form.visibility_title')}</Label>
                                     <div className="text-xs text-muted-foreground">
-                                        Visible en el portal de clientes
+                                        {t('catalog.form.visibility_desc')}
                                     </div>
                                 </div>
                                 <Switch
@@ -301,14 +304,14 @@ export function CatalogServiceSheet({
                                         <Sparkles className="h-4 w-4 text-purple-600" />
                                     </div>
                                     <div>
-                                        <h4 className="text-sm font-bold text-gray-900">Información para Portal del Cliente</h4>
-                                        <p className="text-xs text-gray-500">Detalles que verán al explorar el catálogo</p>
+                                        <h4 className="text-sm font-bold text-gray-900">{t('catalog.section_portal')}</h4>
+                                        <p className="text-xs text-gray-500">{t('catalog.form.portal_desc_title')}</p>
                                     </div>
                                 </div>
 
                                 {/* Descripción Detallada */}
                                 <div className="space-y-2">
-                                    <Label className="text-sm">Descripción Detallada (Reverso de Card)</Label>
+                                    <Label className="text-sm">{t('catalog.form.portal_detailed_label')}</Label>
                                     <Textarea
                                         value={formData.metadata?.portal_card?.detailed_description || ""}
                                         onChange={(e) => setFormData({
@@ -321,16 +324,16 @@ export function CatalogServiceSheet({
                                                 }
                                             }
                                         })}
-                                        placeholder="Descripción extensa que se mostrará al girar la tarjeta..."
+                                        placeholder={t('catalog.form.portal_detailed_placeholder')}
                                         rows={4}
                                         className="resize-none"
                                     />
-                                    <p className="text-xs text-gray-500">Se mostrará en el reverso de la card cuando el cliente la seleccione</p>
+                                    <p className="text-xs text-gray-500">{t('catalog.form.portal_detailed_hint')}</p>
                                 </div>
 
                                 {/* Features */}
                                 <div className="space-y-2">
-                                    <Label className="text-sm">Características</Label>
+                                    <Label className="text-sm">{t('catalog.form.features_label')}</Label>
                                     <div className="space-y-2">
                                         {(formData.metadata?.portal_card?.features || []).map((feature: string, idx: number) => (
                                             <div key={idx} className="flex gap-2">
@@ -350,7 +353,7 @@ export function CatalogServiceSheet({
                                                             }
                                                         })
                                                     }}
-                                                    placeholder="Ej. Soporte 24/7"
+                                                    placeholder={t('catalog.form.features_placeholder' as any) || "Ej. Soporte 24/7"}
                                                     className="text-sm"
                                                 />
                                                 <Button
@@ -393,14 +396,14 @@ export function CatalogServiceSheet({
                                             }}
                                             className="w-full text-xs"
                                         >
-                                            + Agregar característica
+                                            {t('catalog.buttons.add_feature')}
                                         </Button>
                                     </div>
                                 </div>
 
                                 {/* Highlights */}
                                 <div className="space-y-2">
-                                    <Label className="text-sm">Destacados</Label>
+                                    <Label className="text-sm">{t('catalog.form.highlights_label')}</Label>
                                     <div className="space-y-2">
                                         {(formData.metadata?.portal_card?.highlights || []).map((highlight: string, idx: number) => (
                                             <div key={idx} className="flex gap-2">
@@ -420,7 +423,7 @@ export function CatalogServiceSheet({
                                                             }
                                                         })
                                                     }}
-                                                    placeholder="Ej. Más vendido"
+                                                    placeholder={t('catalog.form.highlights_placeholder' as any) || "Ej. Más vendido"}
                                                     className="text-sm"
                                                 />
                                                 <Button
@@ -463,7 +466,7 @@ export function CatalogServiceSheet({
                                             }}
                                             className="w-full text-xs"
                                         >
-                                            + Agregar destacado
+                                            {t('catalog.buttons.add_highlight')}
                                         </Button>
                                     </div>
                                 </div>
@@ -473,7 +476,7 @@ export function CatalogServiceSheet({
                         {/* Footer */}
                         <div className="sticky bottom-0 bg-white border-t border-gray-100 px-8 py-4 flex items-center justify-between mt-auto">
                             <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={loading}>
-                                Cancelar
+                                {t('catalog.buttons.cancel')}
                             </Button>
                             <Button
                                 onClick={handleSubmit}
@@ -481,7 +484,7 @@ export function CatalogServiceSheet({
                                 className="bg-brand-pink hover:bg-brand-pink/90 text-white px-8"
                             >
                                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                {itemToEdit ? "Guardar Cambios" : "Crear Servicio"}
+                                {itemToEdit ? t('catalog.buttons.save') : t('catalog.buttons.create')}
                             </Button>
                         </div>
                     </div>
@@ -491,26 +494,26 @@ export function CatalogServiceSheet({
                         <div className="w-full max-w-md space-y-6">
                             <div className="text-center space-y-2">
                                 <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">
-                                    Vista Previa (Catálogo)
+                                    {t('catalog.preview.title')}
                                 </h3>
-                                <p className="text-sm text-gray-500">Así verán tus clientes este servicio</p>
-                                <p className="text-xs text-purple-600">Click para voltear la card →</p>
+                                <p className="text-sm text-gray-500">{t('catalog.preview.subtitle')}</p>
+                                <p className="text-xs text-purple-600">{t('catalog.preview.flip_hint')}</p>
                             </div>
 
                             {/* Interactive Flip Card Preview */}
                             <CatalogItemFlipCard
                                 item={{
                                     id: 'preview',
-                                    name: formData.name || 'Nombre del Servicio',
-                                    description: formData.description || 'Descripción del servicio...',
-                                    category: formData.category || 'Categoría',
+                                    name: formData.name || t('catalog.preview.default_name'),
+                                    description: formData.description || t('catalog.preview.default_desc'),
+                                    category: formData.category || t('catalog.preview.default_category'),
                                     type: formData.type || 'recurring',
                                     frequency: formData.frequency,
                                     base_price: formData.base_price || 0,
                                     is_visible_in_portal: formData.is_visible_in_portal ?? true,
                                     metadata: {
                                         portal_card: {
-                                            detailed_description: formData.metadata?.portal_card?.detailed_description || 'Agrega una descripción detallada para mostrar aquí...',
+                                            detailed_description: formData.metadata?.portal_card?.detailed_description || t('catalog.preview.default_detailed'),
                                             features: formData.metadata?.portal_card?.features || [],
                                             highlights: formData.metadata?.portal_card?.highlights || []
                                         }
@@ -527,7 +530,7 @@ export function CatalogServiceSheet({
                             {!formData.is_visible_in_portal && (
                                 <div className="flex items-center gap-2 justify-center text-xs text-amber-600 bg-amber-50 p-2 rounded-lg border border-amber-100">
                                     <span className="h-2 w-2 rounded-full bg-amber-500" />
-                                    Oculto en el portal público
+                                    {t('catalog.preview.hidden_badge')}
                                 </div>
                             )}
                         </div>

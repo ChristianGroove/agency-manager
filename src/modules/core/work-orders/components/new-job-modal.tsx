@@ -14,6 +14,8 @@ import {
 } from "@/components/ui/dialog"
 import { JobForm } from "./job-form"
 
+import { useTranslation } from "@/lib/i18n/use-translation"
+
 export interface NewJobModalProps {
     open?: boolean
     onOpenChange?: (open: boolean) => void
@@ -21,6 +23,8 @@ export interface NewJobModalProps {
 }
 
 export function NewJobModal({ open: externalOpen, onOpenChange: externalOnOpenChange, trigger }: NewJobModalProps) {
+    const { t: originalT } = useTranslation()
+    const t = (key: any) => originalT(key)
     const [internalOpen, setInternalOpen] = useState(false)
 
     const isControlled = externalOpen !== undefined
@@ -38,16 +42,16 @@ export function NewJobModal({ open: externalOpen, onOpenChange: externalOnOpenCh
                     <DialogTrigger asChild>
                         <Button>
                             <Sparkles className="w-4 h-4 mr-2" />
-                            Nuevo Trabajo
+                            {t('operations.new_job')}
                         </Button>
                     </DialogTrigger>
                 )
             )}
             <DialogContent className="sm:max-w-[500px]">
                 <DialogHeader>
-                    <DialogTitle>Agendar Trabajo de Limpieza</DialogTitle>
+                    <DialogTitle>{t('operations.schedule_cleaning')}</DialogTitle>
                     <DialogDescription>
-                        Crea un nuevo servicio y asígnalo a un cliente.
+                        {t('operations.schedule_desc')}
                     </DialogDescription>
                 </DialogHeader>
 

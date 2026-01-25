@@ -7,9 +7,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Loader2, Plus, Trash, ArrowLeft, Check, ChevronsUpDown, UserPlus, FileText, RefreshCcw, Building2 } from "lucide-react"
 import { QuoteItem, ServiceCatalogItem, Client, Emitter } from "@/types"
-import { createQuote } from "@/modules/core/quotes/actions"
-
-
+import { createQuote, updateQuote } from "@/modules/core/quotes/actions"
+import { useTranslation } from "@/lib/i18n/use-translation"
 import { quickCreateProspect } from "@/modules/core/clients/actions"
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
@@ -42,37 +41,69 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
+import { addDays } from "date-fns"
 
 interface QuoteBuilderProps {
     onSuccess?: () => void
     mode?: 'page' | 'sheet'
-    emitters?: Emitter[]
+    emitters: Emitter[]
     prefillLeadId?: string // Pre-link quote to a lead
     prefillLeadName?: string
     prefillLeadEmail?: string
     prefillLeadPhone?: string
+    existingQuote?: any // For edit mode
 }
 
-export function QuoteBuilder({ onSuccess, mode = 'page', emitters = [], prefillLeadId, prefillLeadName, prefillLeadEmail, prefillLeadPhone }: QuoteBuilderProps) {
+export function QuoteBuilder({ onSuccess, mode = 'page', emitters, prefillLeadId, prefillLeadName, prefillLeadEmail, prefillLeadPhone, existingQuote }: QuoteBuilderProps) {
+    const { t, locale } = useTranslation()
     const router = useRouter()
-    const [loading, setLoading] = useState(false)
-    const [date, setDate] = useState(new Date().toISOString().split('T')[0])
 
-    // --- Client State ---
+    // Initialize State - Check if we have an existing quote to edit
+    const [step, setStep] = useState(1)
+
+    // Initial Client Logic
+    const initialClientType = existingQuote ? (existingQuote.lead_id ? "lead" : "client") : "client"
+    const [clientType, setClientType] = useState<"client" | "lead">(initialClientType)
+
+    const [selectedClientId, setSelectedClientId] = useState<string>(existingQuote?.client_id || "")
+    const [selectedClient, setSelectedClient] = useState<Client | null>(existingQuote?.client || null)
+
+    // Initial Lead Logic
+    const initialLead = existingQuote?.lead || (prefillLeadId ? { id: prefillLeadId, name: prefillLeadName, email: prefillLeadEmail, phone: prefillLeadPhone } as any : null)
+    const [selectedLead, setSelectedLead] = useState<any | null>(initialLead) // using any for simplicity with complex Lead types here
+
+    // Date Logic - ensure string format YYYY-MM-DD for input[type=date]
+    const initialDate = existingQuote && existingQuote.date ? new Date(existingQuote.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
+    const [date, setDate] = useState<string>(initialDate)
+
+    // Items Logic
+    const [items, setItems] = useState<QuoteItem[]>(existingQuote?.items || [])
+
+    // Emitter Logic
+    const [selectedEmitterId, setSelectedEmitterId] = useState<string>(existingQuote?.emitter_id || "")
+
+    const [expirationDate, setExpirationDate] = useState<Date>(() => {
+        if (existingQuote && existingQuote.valid_until) {
+            const d = new Date(existingQuote.valid_until)
+            if (!isNaN(d.getTime())) return d
+        }
+        return addDays(new Date(), 15)
+    })
+    const [loading, setLoading] = useState(false)
+    const [duplicateWarning, setDuplicateWarning] = useState<(Client & { isLead?: boolean }) | null>(null)
+
+    // --- Client State Helpers ---
     const [clients, setClients] = useState<Client[]>([])
-    const [selectedClientId, setSelectedClientId] = useState<string>("")
     const [clientSearchOpen, setClientSearchOpen] = useState(false)
     const [clientSearchTerm, setClientSearchTerm] = useState("")
 
     // Quick Prospect State
     const [prospectData, setProspectData] = useState({ name: "", email: "", phone: "" })
     const [isProspectDialogOpen, setIsProspectDialogOpen] = useState(false)
-    const [duplicateWarning, setDuplicateWarning] = useState<(Client & { isLead?: boolean }) | null>(null)
-
-    // --- Emitter State ---
-    // Use props.emitters
-    const [selectedEmitterId, setSelectedEmitterId] = useState<string>("")
     const [emitterOpen, setEmitterOpen] = useState(false)
+
+    // Catalog
+    const [catalog, setCatalog] = useState<ServiceCatalogItem[]>([])
 
     // Pre-select if only 1 emitter
     useEffect(() => {
@@ -80,11 +111,6 @@ export function QuoteBuilder({ onSuccess, mode = 'page', emitters = [], prefillL
             setSelectedEmitterId(emitters[0].id)
         }
     }, [emitters])
-
-    // --- Items State ---
-    const [items, setItems] = useState<QuoteItem[]>([])
-    // Catalog
-    const [catalog, setCatalog] = useState<ServiceCatalogItem[]>([])
 
     // --- Data Fetching ---
     useEffect(() => {
@@ -319,42 +345,53 @@ export function QuoteBuilder({ onSuccess, mode = 'page', emitters = [], prefillL
     // --- Save ---
     const handleSave = async (status: 'draft' | 'sent' = 'draft') => {
         // If in lead mode, don't require client. Otherwise require client.
-        if (!isLeadOnlyMode && !selectedClientId) return toast.error("Selecciona un cliente")
-        if (items.length === 0) return toast.error("Agrega al menos un ítem")
+        if (!isLeadOnlyMode && !selectedClientId) return toast.error(t('invoicing.toasts.select_client'))
+        if (items.length === 0) return toast.error(t('quotes.builder.empty_items_message'))
         // if (!selectedEmitterId) return toast.error("Selecciona una identidad de facturación") // Optional check
 
         setLoading(true)
         try {
-            const response = await createQuote({
+            const quoteData = {
                 client_id: selectedClientId || undefined, // Optional when in lead mode
                 emitter_id: selectedEmitterId || undefined,
                 items: items,
                 total: total,
                 date: new Date(date).toISOString(),
                 lead_id: prefillLeadId || undefined, // Link to lead if provided
-                // number is generated by backend
-            })
+                // valid_until: expirationDate.toISOString(), // Column not in DB yet
+            }
+
+            let response;
+            if (existingQuote && existingQuote.id) {
+                response = await updateQuote(existingQuote.id, quoteData)
+            } else {
+                response = await createQuote(quoteData)
+            }
 
             if (!response.success) {
                 throw new Error(response.error)
             }
 
-            const quote = response.data
+            // For create, we get data back. For update, we might not, but success is true.
+            // If update, we use existing ID.
+            const quoteId = existingQuote ? existingQuote.id : (response as any).data?.id
 
-            toast.success("Cotización creada exitosamente")
+            toast.success(existingQuote ? "Cotización actualizada" : t('invoicing.toasts.created_success'))
 
             if (onSuccess) {
                 onSuccess()
             } else {
-                router.push(`/quotes/${quote.id}`)
+                router.push(`/quotes/${quoteId}`)
             }
         } catch (error: any) {
             console.error(error)
-            toast.error("Error al guardar: " + error.message)
+            toast.error((existingQuote ? "Error al actualizar" : t('invoicing.toasts.error_create')) + ": " + error.message)
         } finally {
             setLoading(false)
         }
     }
+
+
 
     const selectedClientName = clients.find(c => c.id === selectedClientId)?.name
 
@@ -374,8 +411,8 @@ export function QuoteBuilder({ onSuccess, mode = 'page', emitters = [], prefillL
                 mode === 'sheet' ? "bg-white/40 backdrop-blur-md border-b border-black/5" : "bg-white/80 border-b"
             )}>
                 <div>
-                    <h2 className="text-xl font-bold text-gray-900 tracking-tight">Nueva Cotización</h2>
-                    <p className="text-xs text-muted-foreground">Detalla los servicios y sus costos.</p>
+                    <h2 className="text-xl font-bold text-gray-900 tracking-tight">{t('quotes.builder.title')}</h2>
+                    <p className="text-xs text-muted-foreground">{t('quotes.builder.subtitle')}</p>
                 </div>
             </div>
 
@@ -390,7 +427,7 @@ export function QuoteBuilder({ onSuccess, mode = 'page', emitters = [], prefillL
                         <div className="flex gap-6">
                             {/* Emitter Selector */}
                             <div className="space-y-3 flex-1">
-                                <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest pl-1">Identidad de Facturación</Label>
+                                <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest pl-1">{t('quotes.builder.emitter_section_label')}</Label>
                                 <Popover open={emitterOpen} onOpenChange={setEmitterOpen}>
                                     <PopoverTrigger asChild>
                                         <Button
@@ -435,7 +472,7 @@ export function QuoteBuilder({ onSuccess, mode = 'page', emitters = [], prefillL
 
                             {/* Date */}
                             <div className="space-y-3 w-[200px]">
-                                <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest pl-1">Fecha de Emisión</Label>
+                                <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest pl-1">{t('quotes.builder.date_section_label')}</Label>
                                 <Input
                                     type="date"
                                     value={date}
@@ -447,7 +484,7 @@ export function QuoteBuilder({ onSuccess, mode = 'page', emitters = [], prefillL
 
                         {/* 1. Client Selection */}
                         <section className="space-y-4">
-                            <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest pl-1">Cliente</Label>
+                            <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest pl-1">{t('quotes.builder.client_section_label')}</Label>
 
                             {isLeadOnlyMode ? (
                                 <div className="bg-blue-50/50 rounded-xl border border-blue-100 p-4 flex items-center space-x-3">
@@ -498,7 +535,7 @@ export function QuoteBuilder({ onSuccess, mode = 'page', emitters = [], prefillL
                                                 <div className="bg-gray-100 p-1.5 rounded-md">
                                                     <UserPlus className="h-4 w-4 text-gray-500" />
                                                 </div>
-                                                Buscar o crear cliente...
+                                                {t('quotes.builder.search_client_placeholder')}
                                             </span>
                                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                         </Button>
@@ -546,7 +583,7 @@ export function QuoteBuilder({ onSuccess, mode = 'page', emitters = [], prefillL
                                                             className="text-indigo-600 font-medium bg-indigo-50/50 py-3 rounded-b-xl"
                                                         >
                                                             <Plus className="mr-2 h-4 w-4" />
-                                                            Crear nuevo prospecto: "{clientSearchTerm}"
+                                                            {t('quotes.builder.create_prospect_label')}: "{clientSearchTerm}"
                                                         </CommandItem>
                                                     </CommandGroup>
                                                 )}
@@ -566,10 +603,10 @@ export function QuoteBuilder({ onSuccess, mode = 'page', emitters = [], prefillL
                             <div className="border border-gray-200/60 rounded-2xl overflow-hidden bg-white/40 shadow-sm ring-1 ring-black/5">
                                 {/* Table Header */}
                                 <div className="grid grid-cols-12 gap-4 px-5 py-3 bg-gray-50/80 border-b border-gray-200/60 text-[10px] font-bold text-gray-500 uppercase tracking-widest">
-                                    <div className="col-span-10 md:col-span-5">Servicio</div>
-                                    <div className="hidden md:block col-span-2">Tipo</div>
-                                    <div className="col-span-2 text-center">Cant.</div>
-                                    <div className="hidden md:block col-span-2 text-right">Unitario</div>
+                                    <div className="col-span-10 md:col-span-5">{t('quotes.builder.item_service_header')}</div>
+                                    <div className="hidden md:block col-span-2">{t('quotes.builder.item_type_header')}</div>
+                                    <div className="col-span-2 text-center">{t('quotes.builder.item_quantity_header')}</div>
+                                    <div className="hidden md:block col-span-2 text-right">{t('quotes.builder.item_price_header')}</div>
                                     <div className="col-span-1 md:col-span-1 text-center"></div>
                                 </div>
 
@@ -642,18 +679,18 @@ export function QuoteBuilder({ onSuccess, mode = 'page', emitters = [], prefillL
                                                             className="scale-75 origin-left"
                                                         />
                                                         <span className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">
-                                                            {item.is_recurring ? 'Recurrente' : 'Único'}
+                                                            {item.is_recurring ? t('quotes.builder.recurring') : t('quotes.builder.one_time')}
                                                         </span>
                                                     </div>
                                                     {item.is_recurring && (
                                                         <Select value={item.frequency || 'monthly'} onValueChange={(v) => updateItem(index, 'frequency', v)}>
                                                             <SelectTrigger className="h-7 text-[10px] bg-indigo-50/50 border-none text-indigo-700 font-medium rounded-lg"><SelectValue /></SelectTrigger>
                                                             <SelectContent>
-                                                                <SelectItem value="biweekly">Quincenal</SelectItem>
-                                                                <SelectItem value="monthly">Mensual</SelectItem>
-                                                                <SelectItem value="quarterly">Trimestral</SelectItem>
-                                                                <SelectItem value="semiannual">Semestral</SelectItem>
-                                                                <SelectItem value="yearly">Anual</SelectItem>
+                                                                <SelectItem value="biweekly">{t('quotes.builder.frequency.biweekly')}</SelectItem>
+                                                                <SelectItem value="monthly">{t('quotes.builder.frequency.monthly')}</SelectItem>
+                                                                <SelectItem value="quarterly">{t('quotes.builder.frequency.quarterly')}</SelectItem>
+                                                                <SelectItem value="semiannual">{t('quotes.builder.frequency.semiannual')}</SelectItem>
+                                                                <SelectItem value="yearly">{t('quotes.builder.frequency.yearly')}</SelectItem>
                                                             </SelectContent>
                                                         </Select>
                                                     )}
@@ -703,7 +740,7 @@ export function QuoteBuilder({ onSuccess, mode = 'page', emitters = [], prefillL
                                         className="w-full py-4 bg-gray-50/30 hover:bg-white border-t border-gray-100 text-xs font-semibold text-gray-500 hover:text-indigo-600 transition-all flex items-center justify-center gap-2 group"
                                     >
                                         <Plus className="h-3 w-3 group-hover:scale-110 transition-transform" />
-                                        AGREGAR ITEM
+                                        {t('quotes.builder.add_item_button')}
                                     </button>
                                 </div>
                             </div>
@@ -719,7 +756,7 @@ export function QuoteBuilder({ onSuccess, mode = 'page', emitters = [], prefillL
                         <div className="flex-1 space-y-8">
                             <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
                                 <FileText className="h-3 w-3" />
-                                Resumen
+                                {t('quotes.builder.summary_title')}
                             </h3>
 
                             {items.length === 0 ? (
@@ -727,7 +764,7 @@ export function QuoteBuilder({ onSuccess, mode = 'page', emitters = [], prefillL
                                     <div className="bg-slate-200/50 h-24 w-24 mx-auto rounded-full flex items-center justify-center mb-4">
                                         <Plus className="h-8 w-8 text-slate-400" />
                                     </div>
-                                    <p className="text-sm font-medium text-slate-500">Agrega items para<br />ver el desglose</p>
+                                    <p className="text-sm font-medium text-slate-500">{t('quotes.builder.empty_items_message')}</p>
                                 </div>
                             ) : (
                                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -746,7 +783,7 @@ export function QuoteBuilder({ onSuccess, mode = 'page', emitters = [], prefillL
                                     {/* 2. Grouped Breakdown */}
                                     <div className="space-y-3">
                                         <div className="flex justify-between text-sm">
-                                            <span className="text-gray-500">Pago Único (Setup)</span>
+                                            <span className="text-gray-500">{t('quotes.builder.setup_label')}</span>
                                             <span className="font-medium text-gray-900">${setupTotal.toLocaleString()}</span>
                                         </div>
 
@@ -762,13 +799,7 @@ export function QuoteBuilder({ onSuccess, mode = 'page', emitters = [], prefillL
                                                     <div className="bg-indigo-100/50 p-1 rounded-full">
                                                         <RefreshCcw className="h-3 w-3" />
                                                     </div>
-                                                    {{
-                                                        'biweekly': 'Quincenal',
-                                                        'monthly': 'Mensual',
-                                                        'quarterly': 'Trimestral',
-                                                        'semiannual': 'Semestral',
-                                                        'yearly': 'Anual'
-                                                    }[freq] || freq}
+                                                    {t(`quotes.builder.frequency.${freq}` as any) || freq}
                                                 </span>
                                                 <span className="font-bold text-gray-900 font-mono text-sm">${amount.toLocaleString()}</span>
                                             </div>
@@ -783,7 +814,7 @@ export function QuoteBuilder({ onSuccess, mode = 'page', emitters = [], prefillL
                             {/* Grand Total */}
                             <div className="mb-6">
                                 <div className="flex justify-between items-baseline mb-2">
-                                    <span className="text-sm font-medium text-gray-500">Total Proyectado</span>
+                                    <span className="text-sm font-medium text-gray-500">{t('quotes.builder.projected_total_label')}</span>
                                 </div>
                                 <div className="text-right flex flex-col items-end">
                                     <span className="text-5xl font-bold text-slate-900 tracking-tighter leading-none">${total.toLocaleString()}</span>
@@ -796,7 +827,7 @@ export function QuoteBuilder({ onSuccess, mode = 'page', emitters = [], prefillL
                                 onClick={() => handleSave('draft')}
                                 disabled={loading}
                             >
-                                {loading ? <Loader2 className="animate-spin mr-2" /> : "Guardar Cotización"}
+                                {loading ? <Loader2 className="animate-spin mr-2" /> : t('quotes.builder.save_draft_button')}
                             </Button>
                         </div>
                     </div>

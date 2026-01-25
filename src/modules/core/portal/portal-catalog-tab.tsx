@@ -11,7 +11,10 @@ import { cn } from "@/lib/utils"
 import { getPortalCatalog, registerServiceInterest } from "@/modules/core/portal/actions"
 import { CatalogItemFlipCard } from "./catalog-item-flip-card"
 
+import { useTranslation } from "@/lib/i18n/use-translation"
+
 export function PortalCatalogTab({ settings, client, token }: { settings: any, client: any, token: string }) {
+    const { t } = useTranslation()
     const [items, setItems] = useState<ServiceCatalogItem[]>([])
     const [loading, setLoading] = useState(true)
     const [searchTerm, setSearchTerm] = useState("")
@@ -39,7 +42,7 @@ export function PortalCatalogTab({ settings, client, token }: { settings: any, c
 
         // 2. Open WhatsApp Immediately
         const phone = settings.agency_phone || '573000000000' // Fallback
-        const message = `Hola, estoy interesado en el servicio *${item.name}* que vi en el portal de clientes. Me gustaría recibir más información.`
+        const message = t('portal.catalog_tab.whatsapp_message').replace('{name}', item.name)
         const whatsappUrl = `https://wa.me/${phone.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`
 
         window.open(whatsappUrl, '_blank')
@@ -62,7 +65,7 @@ export function PortalCatalogTab({ settings, client, token }: { settings: any, c
     })
 
     const formatPrice = (price?: number) => {
-        if (!price) return "Consultar"
+        if (!price) return t('portal.catalog_tab.consult_price')
         return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(price)
     }
 
@@ -71,9 +74,9 @@ export function PortalCatalogTab({ settings, client, token }: { settings: any, c
     return (
         <div className="max-w-6xl mx-auto w-full pb-24 animate-in fade-in duration-500">
             <div className="mb-8 text-center space-y-4">
-                <h2 className="text-3xl font-bold text-gray-900">Explora nuestros servicios</h2>
+                <h2 className="text-3xl font-bold text-gray-900">{t('portal.catalog_tab.title')}</h2>
                 <p className="text-gray-500 max-w-2xl mx-auto">
-                    Descubre cómo podemos ayudarte a seguir creciendo. Solicita información sobre cualquiera de nuestros servicios premium.
+                    {t('portal.catalog_tab.subtitle')}
                 </p>
             </div>
 
@@ -82,7 +85,7 @@ export function PortalCatalogTab({ settings, client, token }: { settings: any, c
                 <div className="relative flex-1">
                     <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
                     <Input
-                        placeholder="Buscar servicios..."
+                        placeholder={t('portal.catalog_tab.search_placeholder')}
                         className="pl-9 bg-white border-gray-200"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
@@ -94,7 +97,7 @@ export function PortalCatalogTab({ settings, client, token }: { settings: any, c
                         onClick={() => setSelectedCategory("all")}
                         className={cn("rounded-full whitespace-nowrap", selectedCategory === "all" ? "bg-black text-white" : "bg-white")}
                     >
-                        Todos
+                        {t('portal.catalog_tab.filter_all')}
                     </Button>
                     {categories.map(cat => (
                         <Button

@@ -32,6 +32,8 @@ import { duplicateQuote, updateQuote } from "@/modules/core/quotes/actions"
 import { convertQuote } from '@/modules/core/quotes/conversion-actions'
 import { getQuotes } from "@/modules/core/quotes/actions"
 import { QuoteShareSheet } from "@/modules/core/quotes/quote-share-sheet"
+import { useTranslation } from "@/lib/i18n/use-translation"
+import { QuoteDetailDialog } from "@/modules/core/quotes/quote-detail-dialog"
 
 interface QuotesViewProps {
     initialQuotes: Quote[]
@@ -39,6 +41,7 @@ interface QuotesViewProps {
 }
 
 export function QuotesView({ initialQuotes, initialEmitters }: QuotesViewProps) {
+    const { t, locale } = useTranslation()
     const router = useRouter()
     const [quotes, setQuotes] = useState<Quote[]>(initialQuotes || [])
     const [loading, setLoading] = useState(false)
@@ -52,10 +55,20 @@ export function QuotesView({ initialQuotes, initialEmitters }: QuotesViewProps) 
     const [isDeleting, setIsDeleting] = useState(false)
     const [shareQuote, setShareQuote] = useState<Quote | null>(null)
 
+    const [selectedDetailQuote, setSelectedDetailQuote] = useState<Quote | null>(null)
+
     const fetchQuotes = async () => {
         try {
             const data = await getQuotes()
             setQuotes(data || [])
+
+            // Sync selectedDetailQuote if open
+            if (selectedDetailQuote && data) {
+                const updated = data.find(q => q.id === selectedDetailQuote.id)
+                if (updated) {
+                    setSelectedDetailQuote(updated)
+                }
+            }
         } catch (error) {
             console.error("Error fetching quotes:", error)
             toast.error("Error al cargar cotizaciones")
@@ -90,7 +103,7 @@ export function QuotesView({ initialQuotes, initialEmitters }: QuotesViewProps) 
             if (res.success && res.data) {
                 toast.success("Cotización duplicada como borrador")
                 fetchQuotes() // Refresh list
-                router.push(`/quotes/${res.data.id}`)
+                setSelectedDetailQuote(res.data) // Open the new draft immediately
             } else {
                 throw new Error(res.error)
             }
@@ -193,12 +206,12 @@ export function QuotesView({ initialQuotes, initialEmitters }: QuotesViewProps) 
     })
 
     const statusConfig = {
-        draft: { label: 'Borrador', color: 'bg-gray-100 text-gray-700 hover:bg-gray-200' },
-        sent: { label: 'Enviada', color: 'bg-blue-50 text-blue-700 hover:bg-blue-100' },
-        accepted: { label: 'Aprobada', color: 'bg-green-50 text-green-700 hover:bg-green-100' },
-        converted: { label: 'Facturada', color: 'bg-purple-50 text-purple-700 hover:bg-purple-100 ring-1 ring-purple-600/20' },
-        rejected: { label: 'Rechazada', color: 'bg-red-50 text-red-700 hover:bg-red-100' },
-        expired: { label: 'Vencida', color: 'bg-orange-50 text-orange-700 hover:bg-orange-100' },
+        draft: { label: t('quotes.status.draft'), color: 'bg-gray-100 text-gray-700 hover:bg-gray-200' },
+        sent: { label: t('quotes.status.sent'), color: 'bg-blue-50 text-blue-700 hover:bg-blue-100' },
+        accepted: { label: t('quotes.status.accepted'), color: 'bg-green-50 text-green-700 hover:bg-green-100' },
+        converted: { label: t('quotes.status.converted'), color: 'bg-purple-50 text-purple-700 hover:bg-purple-100 ring-1 ring-purple-600/20' },
+        rejected: { label: t('quotes.status.rejected'), color: 'bg-red-50 text-red-700 hover:bg-red-100' },
+        expired: { label: t('quotes.status.expired'), color: 'bg-orange-50 text-orange-700 hover:bg-orange-100' },
     }
 
     return (
@@ -206,9 +219,9 @@ export function QuotesView({ initialQuotes, initialEmitters }: QuotesViewProps) 
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
-                        <SplitText>Cotizaciones</SplitText>
+                        <SplitText>{t('quotes.title')}</SplitText>
                     </h2>
-                    <p className="text-muted-foreground mt-1">Gestiona el ciclo de vida de tus propuestas comerciales.</p>
+                    <p className="text-muted-foreground mt-1">{t('quotes.subtitle')}</p>
                 </div>
                 <div className="w-full md:w-auto">
                     <CreateQuoteSheet emitters={emitters} />
@@ -222,7 +235,7 @@ export function QuotesView({ initialQuotes, initialEmitters }: QuotesViewProps) 
                     <div className="relative flex-1 w-full md:w-auto min-w-[200px] flex items-center px-3 gap-2">
                         <Search className="h-4 w-4 text-gray-400 shrink-0" />
                         <Input
-                            placeholder="Buscar por número, cliente o prospecto..."
+                            placeholder={t('quotes.search_placeholder')}
                             className="bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-sm w-full outline-none text-gray-700 dark:text-white placeholder:text-gray-400 h-9 p-0 shadow-none"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
@@ -238,9 +251,9 @@ export function QuotesView({ initialQuotes, initialEmitters }: QuotesViewProps) 
                         showFilters ? "max-w-[800px] opacity-100 ml-2" : "max-w-0 opacity-0 ml-0 p-0 pointer-events-none"
                     )}>
                         <div className="flex items-center gap-1.5 min-w-max">
-                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mr-1 hidden lg:block">Estado</span>
+                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mr-1 hidden lg:block">{t('quotes.table.status')}</span>
                             {[
-                                { id: 'all', label: 'Todos' },
+                                { id: 'all', label: t('quotes.status.all') },
                                 ...Object.entries(statusConfig).map(([key, val]) => ({ id: key, label: val.label }))
                             ].map(filter => (
                                 <button
@@ -294,12 +307,12 @@ export function QuotesView({ initialQuotes, initialEmitters }: QuotesViewProps) 
                                     onCheckedChange={toggleAll}
                                 />
                             </TableHead>
-                            <TableHead className="w-[120px]">Número</TableHead>
-                            <TableHead>Cliente / Prospecto</TableHead>
-                            <TableHead>Fecha</TableHead>
-                            <TableHead>Total & Info</TableHead>
-                            <TableHead>Estado</TableHead>
-                            <TableHead className="text-right">Acciones</TableHead>
+                            <TableHead className="w-[120px]">{t('quotes.table.number')}</TableHead>
+                            <TableHead>{t('quotes.table.client')}</TableHead>
+                            <TableHead>{t('quotes.table.date')}</TableHead>
+                            <TableHead>{t('quotes.table.total')}</TableHead>
+                            <TableHead>{t('quotes.table.status')}</TableHead>
+                            <TableHead className="text-right">{t('quotes.table.actions')}</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -315,7 +328,7 @@ export function QuotesView({ initialQuotes, initialEmitters }: QuotesViewProps) 
                         ) : filteredQuotes.length === 0 ? (
                             <TableRow>
                                 <TableCell colSpan={7} className="h-32 text-center text-muted-foreground">
-                                    No se encontraron cotizaciones.
+                                    {t('quotes.table.empty')}
                                 </TableCell>
                             </TableRow>
                         ) : (
@@ -333,7 +346,9 @@ export function QuotesView({ initialQuotes, initialEmitters }: QuotesViewProps) 
                                                 onCheckedChange={() => toggleSelection(quote.id)}
                                             />
                                         </TableCell>
-                                        <TableCell className="font-medium text-gray-900 dark:text-white">{quote.number}</TableCell>
+                                        <TableCell className="font-medium text-gray-900 dark:text-white cursor-pointer hover:underline" onClick={() => setSelectedDetailQuote(quote)}>
+                                            {quote.number}
+                                        </TableCell>
                                         <TableCell>
                                             <div className="flex flex-col">
                                                 <span className="font-medium text-gray-700 dark:text-gray-300">{entityName}</span>
@@ -341,10 +356,10 @@ export function QuotesView({ initialQuotes, initialEmitters }: QuotesViewProps) 
                                                 {quote.lead_id && <span className="text-[10px] text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full w-fit mt-1 font-medium">Prospecto</span>}
                                             </div>
                                         </TableCell>
-                                        <TableCell className="text-gray-500 text-sm">{new Date(quote.date).toLocaleDateString('es-MX')}</TableCell>
+                                        <TableCell className="text-gray-500 text-sm">{new Date(quote.date).toLocaleDateString(locale === 'en' ? 'en-US' : 'es-MX')}</TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-2">
-                                                <span className="font-bold text-gray-900 dark:text-white">${quote.total.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>
+                                                <span className="font-bold text-gray-900 dark:text-white">${quote.total.toLocaleString(locale === 'en' ? 'en-US' : 'es-MX', { minimumFractionDigits: 2 })}</span>
                                                 {hasRecurring && (
                                                     <span className="bg-indigo-50 text-indigo-600 p-1 rounded-md" title="Incluye items recurrentes (Suscripción)">
                                                         <RefreshCcw className="h-3 w-3" />
@@ -357,7 +372,6 @@ export function QuotesView({ initialQuotes, initialEmitters }: QuotesViewProps) 
                                                 "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold transition-all",
                                                 status.color
                                             )}>
-                                                {/* Status Icon could go here */}
                                                 {quote.status === 'converted' && <CheckCircle className="h-3 w-3" />}
                                                 {status.label}
                                             </div>
@@ -373,7 +387,7 @@ export function QuotesView({ initialQuotes, initialEmitters }: QuotesViewProps) 
                                                             size="icon"
                                                             className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50 opacity-0 group-hover:opacity-100 transition-opacity"
                                                             onClick={() => setShareQuote(quote)}
-                                                            title="Compartir por WhatsApp"
+                                                            title={t('quotes.actions.share_whatsapp')}
                                                         >
                                                             <MessageCircle className="h-4 w-4" />
                                                         </Button>
@@ -381,24 +395,19 @@ export function QuotesView({ initialQuotes, initialEmitters }: QuotesViewProps) 
                                                     <DropdownMenu>
                                                         <DropdownMenuTrigger asChild>
                                                             <Button variant="ghost" size="icon" className="h-8 w-8 p-0 text-gray-400 hover:text-gray-900 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                                <span className="sr-only">Abrir menú</span>
+                                                                <span className="sr-only">{t('sidebar.more')}</span>
                                                                 <MoreVertical className="h-4 w-4" />
                                                             </Button>
                                                         </DropdownMenuTrigger>
                                                         <DropdownMenuContent align="end" className="w-48">
-                                                            <DropdownMenuItem onClick={() => router.push(`/quotes/${quote.id}`)}>
+                                                            <DropdownMenuItem onClick={() => setSelectedDetailQuote(quote)}>
                                                                 <Eye className="mr-2 h-4 w-4 text-gray-400" />
-                                                                <span>Ver Detalle</span>
+                                                                <span>{t('common.actions.view_details')}</span>
                                                             </DropdownMenuItem>
 
                                                             <DropdownMenuItem onClick={() => handleDuplicate(quote)}>
                                                                 <Copy className="mr-2 h-4 w-4 text-gray-400" />
-                                                                <span>Duplicar</span>
-                                                            </DropdownMenuItem>
-
-                                                            <DropdownMenuItem disabled>
-                                                                <Download className="mr-2 h-4 w-4 text-gray-400" />
-                                                                <span>Descargar PDF</span>
+                                                                <span>{t('quotes.actions.duplicate')}</span>
                                                             </DropdownMenuItem>
 
                                                             <DropdownMenuSeparator />
@@ -406,21 +415,21 @@ export function QuotesView({ initialQuotes, initialEmitters }: QuotesViewProps) 
                                                             {quote.status === 'draft' && (
                                                                 <DropdownMenuItem onClick={() => setShareQuote(quote)} className="text-green-600 focus:text-green-700 focus:bg-green-50">
                                                                     <Send className="mr-2 h-4 w-4" />
-                                                                    <span>Compartir WhatsApp</span>
+                                                                    <span>{t('quotes.actions.share_whatsapp')}</span>
                                                                 </DropdownMenuItem>
                                                             )}
 
                                                             {quote.status === 'draft' && (
                                                                 <DropdownMenuItem onClick={() => handleSend(quote)} className="text-blue-600 focus:text-blue-700 focus:bg-blue-50">
                                                                     <FileCheck className="mr-2 h-4 w-4" />
-                                                                    <span>Marcar Enviada (Manual)</span>
+                                                                    <span>{t('quotes.actions.mark_sent')}</span>
                                                                 </DropdownMenuItem>
                                                             )}
 
                                                             {quote.status === 'accepted' && (
                                                                 <DropdownMenuItem onClick={() => handleConvert(quote)} className="text-purple-600 focus:text-purple-700 focus:bg-purple-50 font-medium">
                                                                     <FileCheck className="mr-2 h-4 w-4" />
-                                                                    <span>Convertir a Factura</span>
+                                                                    <span>{t('quotes.actions.convert_invoice')}</span>
                                                                 </DropdownMenuItem>
                                                             )}
 
@@ -432,7 +441,7 @@ export function QuotesView({ initialQuotes, initialEmitters }: QuotesViewProps) 
                                                                         className="text-red-600 focus:text-red-600 focus:bg-red-50"
                                                                     >
                                                                         <Trash className="mr-2 h-4 w-4" />
-                                                                        <span>Eliminar</span>
+                                                                        <span>{t('common.actions.delete')}</span>
                                                                     </DropdownMenuItem>
                                                                 </>
                                                             )}
@@ -448,11 +457,23 @@ export function QuotesView({ initialQuotes, initialEmitters }: QuotesViewProps) 
                     </TableBody>
                 </Table>
             </div>
+
             <QuoteShareSheet
                 quote={shareQuote}
                 open={!!shareQuote}
                 onOpenChange={(open) => !open && setShareQuote(null)}
             />
+
+            {/* Quote Detail Modal */}
+            {selectedDetailQuote && (
+                <QuoteDetailDialog
+                    quote={selectedDetailQuote}
+                    open={!!selectedDetailQuote}
+                    onOpenChange={(open) => !open && setSelectedDetailQuote(null)}
+                    onQuoteUpdated={fetchQuotes}
+                    emitters={emitters}
+                />
+            )}
         </div>
     )
 }

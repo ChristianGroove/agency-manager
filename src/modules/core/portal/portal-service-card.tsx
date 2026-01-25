@@ -16,7 +16,10 @@ interface PortalServiceCardProps {
     onPay?: (serviceId: string) => void // New: for quick payment
 }
 
+import { useTranslation } from "@/lib/i18n/use-translation"
+
 export function PortalServiceCard({ service, pendingInvoicesCount, overdueInvoicesCount, pendingBriefingsCount, onClick, onPay }: PortalServiceCardProps) {
+    const { t } = useTranslation()
     // Determine overall status
     const hasPending = pendingInvoicesCount > 0 || pendingBriefingsCount > 0
 
@@ -74,14 +77,14 @@ export function PortalServiceCard({ service, pendingInvoicesCount, overdueInvoic
 
             <CardContent className="px-5 pb-3 pt-0 space-y-3">
                 <p className="text-sm text-gray-500 line-clamp-2 pl-[48px]">
-                    {service.description || "Servicio activo"}
+                    {service.description || t('portal.components.service_card.active_service')}
                 </p>
 
                 {/* Service Details - Compact */}
                 <div className="flex items-center gap-4 pl-[48px] text-sm">
                     <div className="flex items-center gap-1.5 text-gray-600">
                         <span className="font-semibold">${service.amount?.toLocaleString() || '0'}</span>
-                        <span className="text-gray-400">/ {service.frequency === 'monthly' ? 'mes' : service.frequency === 'yearly' ? 'año' : 'único'}</span>
+                        <span className="text-gray-400">/ {service.frequency === 'monthly' ? t('portal.components.service_card.per_month') : service.frequency === 'yearly' ? t('portal.components.service_card.per_year') : t('portal.components.service_card.one_time')}</span>
                     </div>
                 </div>
             </CardContent>
@@ -97,12 +100,12 @@ export function PortalServiceCard({ service, pendingInvoicesCount, overdueInvoic
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
                             <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-orange-500"></span>
                         </span>
-                        <span className="text-xs font-bold uppercase tracking-wider">Pendiente de Pago</span>
+                        <span className="text-xs font-bold uppercase tracking-wider">{t('portal.components.service_card.status.pending_payment')}</span>
                     </div>
                 ) : (
                     <div className="flex items-center gap-2 text-green-700">
                         <Clock className="h-3.5 w-3.5" />
-                        <span className="text-xs font-bold uppercase tracking-wider">Al día</span>
+                        <span className="text-xs font-bold uppercase tracking-wider">{t('portal.components.service_card.status.up_to_date')}</span>
                     </div>
                 )}
 

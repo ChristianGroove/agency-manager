@@ -15,7 +15,10 @@ interface MobileSidebarProps {
     prefetchedModules?: string[]
 }
 
+import { useTranslation } from "@/lib/i18n/use-translation"
+
 export function MobileSidebar({ currentOrgId, isSuperAdmin, user, prefetchedModules }: MobileSidebarProps) {
+    const { t } = useTranslation()
     const [isMounted, setIsMounted] = useState(false)
     const [open, setOpen] = useState(false)
     const pathname = usePathname()
@@ -47,7 +50,7 @@ export function MobileSidebar({ currentOrgId, isSuperAdmin, user, prefetchedModu
                 className="p-0 border-r border-gray-200 dark:border-white/10 w-[280px] bg-white/90 dark:bg-brand-dark/95 backdrop-blur-xl shadow-2xl transition-all duration-500 ease-out"
             >
                 <div className="absolute inset-0 bg-gradient-to-b from-brand-pink/5 via-transparent to-transparent pointer-events-none opacity-50 dark:opacity-100" />
-                <SheetTitle className="sr-only">Menú de Navegación</SheetTitle>
+                <SheetTitle className="sr-only">{t('sidebar.mobile_menu_title')}</SheetTitle>
                 <SidebarContent
                     currentOrgId={currentOrgId}
                     isSuperAdmin={isSuperAdmin}

@@ -6,11 +6,12 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Edit2, Trash2, Calendar, MapPin, User, Briefcase } from "lucide-react"
 import { format } from "date-fns"
-import { es } from "date-fns/locale"
+import { es, enUS } from "date-fns/locale"
 import { JobForm } from "./job-form"
 import { deleteWorkOrder } from "../actions/work-order-actions"
 import { toast } from "sonner"
 import { WorkOrder } from "@/types"
+import { useTranslation } from "@/lib/i18n/use-translation"
 
 interface JobDetailDialogProps {
     job: WorkOrder | null
@@ -20,6 +21,9 @@ interface JobDetailDialogProps {
 }
 
 export function JobDetailDialog({ job, open, onOpenChange, onUpdate }: JobDetailDialogProps) {
+    const { t: originalT, locale } = useTranslation()
+    const t = (key: any) => originalT(key)
+    const dateLocale = locale === 'es' ? es : enUS
     const [isEditing, setIsEditing] = useState(false)
     const [isDeleting, setIsDeleting] = useState(false)
 
@@ -29,11 +33,11 @@ export function JobDetailDialog({ job, open, onOpenChange, onUpdate }: JobDetail
         setIsDeleting(true)
         try {
             await deleteWorkOrder(job.id)
-            toast.success("Trabajo eliminado")
+            toast.success(t('operations.details.delete_success'))
             onUpdate()
             onOpenChange(false)
         } catch (error) {
-            toast.error("Error al eliminar")
+            toast.error(t('operations.details.delete_error'))
         } finally {
             setIsDeleting(false)
         }
@@ -57,7 +61,7 @@ export function JobDetailDialog({ job, open, onOpenChange, onUpdate }: JobDetail
             <DialogContent className="sm:max-w-[600px]">
                 <DialogHeader>
                     <DialogTitle className="flex items-center justify-between">
-                        <span>{isEditing ? "Editar Trabajo" : "Detalles del Trabajo"}</span>
+                        <span>{isEditing ? t('operations.details.edit_title') : t('operations.details.title')}</span>
                         {!isEditing && (
                             <Badge variant={getStatusVariant(job.status) as any}>
                                 {job.status}

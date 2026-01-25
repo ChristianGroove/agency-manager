@@ -32,47 +32,19 @@ interface CreateLeadSheetProps {
     onSuccess: () => void
 }
 
+import { useTranslation } from "@/lib/i18n/use-translation"
+
 export function CreateLeadSheet({ open, onOpenChange, onSuccess }: CreateLeadSheetProps) {
+    const { t: originalT } = useTranslation()
+    const t = (key: any) => originalT(key)
     const [isLoading, setIsLoading] = useState(false)
     const [duplicateWarning, setDuplicateWarning] = useState<any>(null)
-
-    const checkDuplicatePhone = async (phone: string): Promise<any> => {
-        if (!phone || phone.length < 7) {
-            setDuplicateWarning(null)
-            return null
-        }
-        const clean = phone.replace(/\D/g, '')
-        const orgId = (await import('@/modules/core/organizations/actions').then(m => m.getCurrentOrganizationId()))!
-
-        // Check Leads
-        // Use maybeSingle() to handle 0 or 1 matches gracefully. limit(1) ensures we don't error on multiples.
-        const { data: lead } = await supabase.from('leads').select('*').eq('organization_id', orgId).ilike('phone', `%${clean}%`).limit(1).maybeSingle()
-        if (lead) {
-            const dbClean = lead.phone?.replace(/\D/g, '') || ''
-            if (dbClean.endsWith(clean) || clean.endsWith(dbClean)) {
-                setDuplicateWarning({ ...lead, type: 'lead' })
-                return { ...lead, type: 'lead' }
-            }
-        }
-
-        // Check Clients
-        const { data: client } = await supabase.from('clients').select('*').eq('organization_id', orgId).ilike('phone', `%${clean}%`).limit(1).maybeSingle()
-        if (client) {
-            const dbClean = client.phone?.replace(/\D/g, '') || ''
-            if (dbClean.endsWith(clean) || clean.endsWith(dbClean)) {
-                setDuplicateWarning({ ...client, type: 'client' })
-                return { ...client, type: 'client' }
-            }
-        }
-        setDuplicateWarning(null)
-        return null
-    }
 
     const {
         register,
         handleSubmit,
         formState: { errors },
-        reset,
+        reset
     } = useForm<LeadFormData>({
         resolver: zodResolver(leadSchema),
         defaultValues: {
@@ -80,33 +52,37 @@ export function CreateLeadSheet({ open, onOpenChange, onSuccess }: CreateLeadShe
             company_name: "",
             email: "",
             phone: "",
-            notes: "",
-        },
+            notes: ""
+        }
     })
 
     const onSubmit = async (data: LeadFormData) => {
-        if (data.phone) {
-            const dup = await checkDuplicatePhone(data.phone)
-            if (dup) {
-                toast.warning(`El número ya existe en un ${dup.type === 'lead' ? 'Lead' : 'Cliente'}: ${dup.name}`)
-                return
-            }
-        }
         setIsLoading(true)
         try {
-            const result = await createLead(data)
+            const { getCurrentOrganizationId } = await import('@/modules/core/organizations/actions')
+            const orgId = await getCurrentOrganizationId()
 
-            if (result.success) {
-                toast.success("Lead creado correctamente")
-                reset()
-                onSuccess()
-                onOpenChange(false)
-            } else {
-                toast.error(result.error || "Error al crear lead")
+            if (!orgId) {
+                toast.error(t('crm.leads.toasts.error_org'))
+                return
             }
-        } catch (error) {
+
+            const result = await createLead({
+                ...data
+            })
+
+            if (result?.error) {
+                toast.error(t('crm.leads.toasts.error_create'))
+                return
+            }
+
+            toast.success(t('crm.leads.toasts.created'))
+            reset()
+            onSuccess()
+            onOpenChange(false)
+        } catch (error: any) {
             console.error(error)
-            toast.error("Error inesperado")
+            toast.error(t('crm.leads.toasts.error_generic'))
         } finally {
             setIsLoading(false)
         }
@@ -130,8 +106,8 @@ export function CreateLeadSheet({ open, onOpenChange, onSuccess }: CreateLeadShe
                                 <UserPlus className="h-5 w-5" />
                             </div>
                             <div>
-                                <SheetTitle className="text-xl font-bold text-gray-900 dark:text-white">Nuevo Lead</SheetTitle>
-                                <SheetDescription>Agrega un nuevo prospecto al pipeline</SheetDescription>
+                                <SheetTitle className="text-xl font-bold text-gray-900 dark:text-white">{t('crm.leads.title')}</SheetTitle>
+                                <SheetDescription>{t('crm.leads.desc')}</SheetDescription>
                             </div>
                         </div>
                     </SheetHeader>
@@ -144,7 +120,7 @@ export function CreateLeadSheet({ open, onOpenChange, onSuccess }: CreateLeadShe
                                 <div className="flex items-center gap-2">
                                     <div className="h-px flex-1 bg-gradient-to-r from-gray-200 to-transparent dark:from-zinc-700" />
                                     <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                                        Información del Lead
+                                        {t('crm.leads.section_info')}
                                     </span>
                                     <div className="h-px flex-1 bg-gradient-to-l from-gray-200 to-transparent dark:from-zinc-700" />
                                 </div>
@@ -152,7 +128,7 @@ export function CreateLeadSheet({ open, onOpenChange, onSuccess }: CreateLeadShe
                                 {/* Nombre */}
                                 <div className="space-y-2">
                                     <Label htmlFor="name" className="text-sm font-semibold">
-                                        Nombre del Lead <span className="text-red-500">*</span>
+                                        {t('crm.leads.name_label')} <span className="text-red-500">*</span>
                                     </Label>
                                     <Input
                                         id="name"
@@ -169,7 +145,7 @@ export function CreateLeadSheet({ open, onOpenChange, onSuccess }: CreateLeadShe
                                 <div className="space-y-2">
                                     <Label htmlFor="company_name" className="text-sm font-semibold flex items-center gap-2">
                                         <Building2 className="h-4 w-4 text-gray-400" />
-                                        Empresa
+                                        {t('crm.leads.company_label')}
                                     </Label>
                                     <Input
                                         id="company_name"
@@ -187,7 +163,7 @@ export function CreateLeadSheet({ open, onOpenChange, onSuccess }: CreateLeadShe
                                 <div className="flex items-center gap-2">
                                     <div className="h-px flex-1 bg-gradient-to-r from-gray-200 to-transparent dark:from-zinc-700" />
                                     <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                                        Información de Contacto
+                                        {t('crm.leads.section_contact')}
                                     </span>
                                     <div className="h-px flex-1 bg-gradient-to-l from-gray-200 to-transparent dark:from-zinc-700" />
                                 </div>
@@ -196,7 +172,7 @@ export function CreateLeadSheet({ open, onOpenChange, onSuccess }: CreateLeadShe
                                 <div className="space-y-2">
                                     <Label htmlFor="email" className="text-sm font-semibold flex items-center gap-2">
                                         <Mail className="h-4 w-4 text-gray-400" />
-                                        Email
+                                        {t('crm.leads.email_label')}
                                     </Label>
                                     <Input
                                         id="email"
@@ -214,14 +190,14 @@ export function CreateLeadSheet({ open, onOpenChange, onSuccess }: CreateLeadShe
                                 <div className="space-y-2">
                                     <Label htmlFor="phone" className="text-sm font-semibold flex items-center gap-2">
                                         <Phone className="h-4 w-4 text-gray-400" />
-                                        Teléfono
+                                        {t('crm.leads.phone_label')}
                                     </Label>
                                     <Input
                                         id="phone"
                                         placeholder="+57 300 123 4567"
                                         {...register("phone")}
                                         className="h-11 bg-white dark:bg-zinc-900"
-                                        onBlur={(e) => checkDuplicatePhone(e.target.value)}
+                                    // onBlur={(e) => checkDuplicatePhone(e.target.value)}
                                     />
                                     {duplicateWarning && (
                                         <div className="p-3 bg-amber-50 rounded-lg border border-amber-200 text-sm text-amber-800">
@@ -239,7 +215,7 @@ export function CreateLeadSheet({ open, onOpenChange, onSuccess }: CreateLeadShe
                                 <div className="flex items-center gap-2">
                                     <div className="h-px flex-1 bg-gradient-to-r from-gray-200 to-transparent dark:from-zinc-700" />
                                     <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                                        Notas Adicionales
+                                        {t('crm.leads.section_notes')}
                                     </span>
                                     <div className="h-px flex-1 bg-gradient-to-l from-gray-200 to-transparent dark:from-zinc-700" />
                                 </div>
@@ -248,7 +224,7 @@ export function CreateLeadSheet({ open, onOpenChange, onSuccess }: CreateLeadShe
                                 <div className="space-y-2">
                                     <Label htmlFor="notes" className="text-sm font-semibold flex items-center gap-2">
                                         <FileText className="h-4 w-4 text-gray-400" />
-                                        Observaciones
+                                        {t('crm.leads.notes_label')}
                                     </Label>
                                     <Textarea
                                         id="notes"

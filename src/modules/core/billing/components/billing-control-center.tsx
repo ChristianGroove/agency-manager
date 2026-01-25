@@ -7,17 +7,20 @@ import { PaymentsView } from "./payments-view"
 import { AuditView } from "./audit-view"
 import { Invoice } from "@/types"
 import { FileText, CreditCard, Scale, ShieldCheck } from "lucide-react"
+import { useTranslation } from "@/lib/i18n/use-translation"
 
 interface BillingControlCenterProps {
     initialInvoices: Invoice[]
 }
 
 export function BillingControlCenter({ initialInvoices }: BillingControlCenterProps) {
+    const { t } = useTranslation()
+
     return (
         <div className="space-y-6">
             <div className="flex flex-col gap-2">
-                <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">Centro de Facturación</h1>
-                <p className="text-muted-foreground">Gestión centralizada de documentos, cobros y cumplimiento fiscal.</p>
+                <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">{t('invoicing.title')}</h1>
+                <p className="text-muted-foreground">{t('invoicing.description')}</p>
             </div>
 
             <Tabs defaultValue="documents" className="w-full space-y-6">
@@ -27,28 +30,28 @@ export function BillingControlCenter({ initialInvoices }: BillingControlCenterPr
                         className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-white/10 data-[state=active]:text-primary dark:data-[state=active]:text-white data-[state=active]:shadow-sm rounded-lg py-2.5 transition-all"
                     >
                         <FileText className="h-4 w-4" />
-                        <span>Documentos</span>
+                        <span>{t('invoicing.tabs.documents')}</span>
                     </TabsTrigger>
                     <TabsTrigger
                         value="payments"
                         className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-white/10 data-[state=active]:text-primary dark:data-[state=active]:text-white data-[state=active]:shadow-sm rounded-lg py-2.5 transition-all"
                     >
                         <CreditCard className="h-4 w-4" />
-                        <span>Pagos</span>
+                        <span>{t('invoicing.tabs.payments')}</span>
                     </TabsTrigger>
                     <TabsTrigger
                         value="fiscal"
                         className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-white/10 data-[state=active]:text-primary dark:data-[state=active]:text-white data-[state=active]:shadow-sm rounded-lg py-2.5 transition-all"
                     >
                         <Scale className="h-4 w-4" />
-                        <span>Fiscal</span>
+                        <span>{t('invoicing.tabs.fiscal')}</span>
                     </TabsTrigger>
                     <TabsTrigger
                         value="audit"
                         className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-white/10 data-[state=active]:text-primary dark:data-[state=active]:text-white data-[state=active]:shadow-sm rounded-lg py-2.5 transition-all"
                     >
                         <ShieldCheck className="h-4 w-4" />
-                        <span>Auditoría</span>
+                        <span>{t('invoicing.tabs.audit')}</span>
                     </TabsTrigger>
                 </TabsList>
 

@@ -17,6 +17,8 @@ interface CatalogItemFlipCardProps {
     settings?: { agency_phone?: string }
 }
 
+import { useTranslation } from "@/lib/i18n/use-translation"
+
 export function CatalogItemFlipCard({
     item,
     variant = 'portal',
@@ -26,6 +28,7 @@ export function CatalogItemFlipCard({
     onDelete,
     settings = {}
 }: CatalogItemFlipCardProps) {
+    const { t } = useTranslation()
     const [isFlipped, setIsFlipped] = useState(false)
 
     // Extract metadata for portal display
@@ -36,7 +39,7 @@ export function CatalogItemFlipCard({
     const customFields = portalMeta.custom_fields || {}
 
     const formatPrice = (price?: number) => {
-        if (!price) return "Consultar"
+        if (!price) return t('portal.components.flip_card.consult')
         return new Intl.NumberFormat('es-CO', {
             style: 'currency',
             currency: 'COP',
@@ -89,7 +92,7 @@ export function CatalogItemFlipCard({
                                     variant="outline"
                                     className="text-xs bg-white/90 backdrop-blur border-purple-200 text-purple-700"
                                 >
-                                    Suscripción
+                                    {t('portal.components.flip_card.subscription')}
                                 </Badge>
                             )}
                         </div>
@@ -110,7 +113,7 @@ export function CatalogItemFlipCard({
                             <div className="flex items-baseline justify-between mb-4">
                                 <div>
                                     <span className="text-sm text-gray-500 block mb-1">
-                                        {item.type === 'recurring' ? 'Desde / mes' : 'Precio base'}
+                                        {item.type === 'recurring' ? t('portal.components.flip_card.from_month') : t('portal.components.flip_card.base_price')}
                                     </span>
                                     <span className="text-2xl font-bold text-gray-900">
                                         {formatPrice(item.base_price)}
@@ -127,7 +130,7 @@ export function CatalogItemFlipCard({
                             {/* Tooltip to flip */}
                             <div className="flex items-center justify-center gap-2 text-xs text-gray-400">
                                 <ArrowRight className="h-3 w-3 animate-pulse" />
-                                <span>Toca para ver detalles</span>
+                                <span>{t('portal.components.flip_card.tap_details')}</span>
                             </div>
                         </div>
                     </div>
@@ -154,7 +157,7 @@ export function CatalogItemFlipCard({
                                 <div className="text-right">
                                     <div className="text-sm font-bold">{formatPrice(item.base_price)}</div>
                                     <div className="text-[10px] opacity-80">
-                                        {item.type === 'recurring' ? '/ mes' : 'Pago único'}
+                                        {item.type === 'recurring' ? t('portal.components.flip_card.per_month') : t('portal.components.flip_card.one_time')}
                                     </div>
                                 </div>
                             </div>
@@ -170,7 +173,7 @@ export function CatalogItemFlipCard({
                         {detailedDescription && (
                             <div>
                                 <h4 className="text-xs font-bold uppercase text-gray-500 mb-2">
-                                    Descripción
+                                    {t('portal.components.flip_card.description')}
                                 </h4>
                                 <p className="text-sm text-gray-700 leading-relaxed break-words">
                                     {detailedDescription}
@@ -182,7 +185,7 @@ export function CatalogItemFlipCard({
                         {features.length > 0 && (
                             <div>
                                 <h4 className="text-xs font-bold uppercase text-gray-500 mb-2">
-                                    Características
+                                    {t('portal.components.flip_card.features')}
                                 </h4>
                                 <ul className="space-y-2">
                                     {features.map((feature: string, idx: number) => (
@@ -199,7 +202,7 @@ export function CatalogItemFlipCard({
                         {highlights.length > 0 && (
                             <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
                                 <h4 className="text-xs font-bold uppercase text-amber-700 mb-2">
-                                    ⭐ Destacados
+                                    {t('portal.components.flip_card.highlights')}
                                 </h4>
                                 <ul className="space-y-1">
                                     {highlights.map((highlight: string, idx: number) => (
@@ -215,7 +218,7 @@ export function CatalogItemFlipCard({
                         {Object.keys(customFields).length > 0 && (
                             <div>
                                 <h4 className="text-xs font-bold uppercase text-gray-500 mb-2">
-                                    Información Adicional
+                                    {t('portal.components.flip_card.additional_info')}
                                 </h4>
                                 <dl className="space-y-2">
                                     {Object.entries(customFields).map(([key, value]) => (
@@ -244,7 +247,7 @@ export function CatalogItemFlipCard({
                                     )}
                                 >
                                     <MessageCircle className="h-4 w-4 mr-2" />
-                                    {isRequested ? 'Solicitar nuevamente' : 'Solicitar por WhatsApp'}
+                                    {isRequested ? t('portal.components.flip_card.request_again') : t('portal.components.flip_card.request_whatsapp')}
                                 </Button>
                             </>
                         ) : (
@@ -258,7 +261,7 @@ export function CatalogItemFlipCard({
                                         className="flex-1 bg-brand-pink hover:bg-brand-pink/90 text-white shadow-md"
                                     >
                                         <Pencil className="h-4 w-4 mr-2" />
-                                        Editar
+                                        {t('portal.components.flip_card.edit')}
                                     </Button>
                                     <Button
                                         onClick={(e) => {
@@ -280,7 +283,7 @@ export function CatalogItemFlipCard({
                             className="w-full text-xs text-gray-500 hover:text-gray-700 transition-colors flex items-center justify-center gap-1"
                         >
                             <ArrowRight className="h-3 w-3 rotate-180" />
-                            Volver
+                            {t('portal.components.flip_card.back')}
                         </button>
                     </div>
                 </div>

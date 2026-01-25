@@ -55,6 +55,7 @@ import { PortalGovernanceSheet } from "@/components/sheets/portal-governance-she
 
 // (imports)
 import { useRegisterView } from "@/modules/core/caa/context/view-context"
+import { useTranslation } from "@/lib/i18n/use-translation"
 
 interface ClientsViewProps {
     initialClients: Client[]
@@ -62,12 +63,14 @@ interface ClientsViewProps {
 }
 
 export function ClientsView({ initialClients, initialSettings }: ClientsViewProps) {
+    const { t } = useTranslation()
+
     // Register View Context for Help Assistant
     useRegisterView({
         viewId: "clients",
-        label: "Gestión de Contactos",
+        label: t('clients.title'),
         actions: [
-            { id: "new-client", label: "Nuevo Contacto", type: "modal", target: "create-client", keywords: ["crear", "nuevo", "cliente"] }
+            { id: "new-client", label: t('clients.new_client'), type: "modal", target: "create-client", keywords: ["crear", "nuevo", "cliente"] }
         ],
         topics: ["clients-overview", "contact-card-guide"]
     })
@@ -270,14 +273,16 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
     }
 
     const handleBulkDelete = async () => {
-        if (!confirm(`¿Estás seguro de eliminar ${selectedIds.size} contactos seleccionados?`)) return
+        const confirmMsg = t('clients.toasts.bulk_delete_confirm').replace('{count}', selectedIds.size.toString())
+        if (!confirm(confirmMsg)) return
 
         setIsDeleting(true)
         try {
             const { deleteClients } = await import("@/modules/core/clients/actions")
             const result = await deleteClients(Array.from(selectedIds))
             if (result.success) {
-                toast.success(`${selectedIds.size} contactos eliminados`)
+                const successMsg = t('clients.toasts.bulk_delete_success').replace('{count}', selectedIds.size.toString())
+                toast.success(successMsg)
                 setSelectedIds(new Set())
                 await fetchClients()
             } else {
@@ -285,27 +290,27 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
             }
         } catch (error: any) {
             console.error("Error deleting clients:", error)
-            toast.error("Error al eliminar contactos: " + error.message)
+            toast.error(t('clients.toasts.error_delete') + ": " + error.message)
         } finally {
             setIsDeleting(false)
         }
     }
 
     const handleSingleDelete = async (id: string) => {
-        if (!confirm("ADVERTENCIA: ¿Estás seguro de eliminar este contacto? Se borrarán todos los datos asociados.")) return
+        if (!confirm(t('clients.toasts.delete_confirm'))) return
 
         try {
             const { deleteClients } = await import("@/modules/core/clients/actions")
             const result = await deleteClients([id])
             if (result.success) {
-                toast.success("Contacto eliminado")
+                toast.success(t('clients.toasts.delete_success'))
                 await fetchClients()
             } else {
                 throw new Error(result.error)
             }
         } catch (error: any) {
             console.error("Error deleting client:", error)
-            toast.error("Error al eliminar contacto: " + error.message)
+            toast.error(t('clients.toasts.error_delete') + ": " + error.message)
         }
     }
 
@@ -321,11 +326,11 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
     }
 
     const filterOptions: FilterOption[] = [
-        { id: 'all', label: 'Todos', count: counts.all, color: 'gray' },
-        { id: 'overdue', label: 'Vencidos', count: counts.overdue, color: 'red' },
-        { id: 'urgent', label: 'Por Vencer', count: counts.urgent, color: 'amber' },
-        { id: 'active', label: 'Al día', count: counts.active, color: 'emerald' },
-        { id: 'inactive', label: 'Sin Servicio', count: counts.inactive, color: 'slate' },
+        { id: 'all', label: t('clients.tabs.all'), count: counts.all, color: 'gray' },
+        { id: 'overdue', label: t('clients.tabs.overdue'), count: counts.overdue, color: 'red' },
+        { id: 'urgent', label: t('clients.tabs.urgent'), count: counts.urgent, color: 'amber' },
+        { id: 'active', label: t('clients.tabs.active'), count: counts.active, color: 'emerald' },
+        { id: 'inactive', label: t('clients.tabs.inactive'), count: counts.inactive, color: 'slate' },
     ]
 
     const isCompactView = viewMode === 'compact'
@@ -338,14 +343,14 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
                         <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
-                            <SplitText>Contactos</SplitText>
+                            <SplitText>{t('clients.title')}</SplitText>
                         </h2>
                     </div>
                     <div className="flex items-center gap-3 w-full md:w-auto">
                         <Link href="/debug/tokens">
                             <Button variant="outline" className="h-9 px-4 border-gray-200 text-gray-600 hover:bg-gray-50">
                                 <AlertTriangle className="mr-2 h-4 w-4" />
-                                Tokens
+                                {t('clients.actions.tokens')}
                             </Button>
                         </Link>
 
@@ -358,7 +363,7 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
                     <SearchFilterBar
                         searchTerm={searchTerm}
                         onSearchChange={setSearchTerm}
-                        searchPlaceholder="Buscar contacto rapidísimo..."
+                        searchPlaceholder={t('clients.search_placeholder')}
                         filters={filterOptions}
                         activeFilter={activeFilter}
                         onFilterChange={setActiveFilter}
@@ -388,7 +393,7 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
                                 ))
                             ) : filteredClients.length === 0 ? (
                                 <div className="col-span-full text-center py-12 text-muted-foreground">
-                                    No se encontraron contactos.
+                                    {t('clients.empty')}
                                 </div>
                             ) : (
                                 filteredClients.map((client: any) => {
@@ -422,23 +427,23 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
                                                                 </Button>
                                                             </DropdownMenuTrigger>
                                                             <DropdownMenuContent align="end" className="w-56">
-                                                                <DropdownMenuLabel>Administración</DropdownMenuLabel>
+                                                                <DropdownMenuLabel>{t('clients.actions.administration')}</DropdownMenuLabel>
                                                                 <DropdownMenuSeparator />
                                                                 <DropdownMenuItem onClick={() => { setClientToEdit(client); setEditOpen(true); }}>
-                                                                    <Edit className="mr-2 h-4 w-4" /> Editar Información
+                                                                    <Edit className="mr-2 h-4 w-4" /> {t('clients.actions.edit')}
                                                                 </DropdownMenuItem>
                                                                 <DropdownMenuItem onClick={() => { setClientForConnectivity(client); setConnectivityOpen(true); }}>
-                                                                    <Wifi className="mr-2 h-4 w-4" /> Conectividad
+                                                                    <Wifi className="mr-2 h-4 w-4" /> {t('clients.actions.connectivity')}
                                                                 </DropdownMenuItem>
                                                                 <DropdownMenuItem onClick={() => { setClientForPortal(client); setPortalOpen(true); }}>
-                                                                    <Shield className="mr-2 h-4 w-4" /> Gobernanza del Portal
+                                                                    <Shield className="mr-2 h-4 w-4" /> {t('clients.actions.portal_governance')}
                                                                 </DropdownMenuItem>
                                                                 <DropdownMenuSeparator />
                                                                 <DropdownMenuItem
                                                                     className="text-red-600 focus:text-red-600 focus:bg-red-50"
                                                                     onClick={() => handleSingleDelete(client.id)}
                                                                 >
-                                                                    <Trash2 className="mr-2 h-4 w-4" /> Eliminar Contacto
+                                                                    <Trash2 className="mr-2 h-4 w-4" /> {t('clients.actions.delete')}
                                                                 </DropdownMenuItem>
                                                             </DropdownMenuContent>
                                                         </DropdownMenu>
@@ -496,7 +501,7 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
                                                                     "font-medium uppercase tracking-wide text-sm",
                                                                     debt > 0 ? "text-red-700 dark:text-red-400" : futureDebt > 0 ? "text-amber-700 dark:text-amber-400" : "text-gray-700 dark:text-gray-300"
                                                                 )}>
-                                                                    {debt > 0 ? "Vencido" : futureDebt > 0 ? "Por Vencer" : "Al día"}
+                                                                    {debt > 0 ? t('clients.status.overdue') : futureDebt > 0 ? t('clients.status.urgent') : t('clients.status.active')}
                                                                 </span>
                                                             </div>
 
@@ -536,10 +541,10 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
                                                                             isOverdue ? "text-red-700" : isUrgent ? "text-amber-700" : "text-gray-600"
                                                                         )}>
                                                                             {isOverdue
-                                                                                ? "¡Vencido!"
+                                                                                ? t('clients.next_payment.overdue_badge')
                                                                                 : (daysToPay !== null && daysToPay < 0)
-                                                                                    ? "Pendiente"
-                                                                                    : "Próximo Pago"
+                                                                                    ? t('clients.next_payment.pending_badge')
+                                                                                    : t('clients.next_payment.next_badge')
                                                                             }
                                                                         </span>
                                                                     </div>
@@ -552,8 +557,8 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
                                                                                 : "bg-gray-200 text-gray-700 hover:bg-gray-300"
                                                                     )}>
                                                                         {daysToPay !== null && daysToPay < 0
-                                                                            ? `Hace ${Math.abs(daysToPay!)}d`
-                                                                            : `${daysToPay}d`}
+                                                                            ? t('clients.next_payment.days_ago').replace('{days}', Math.abs(daysToPay!).toString())
+                                                                            : t('clients.next_payment.days_left').replace('{days}', daysToPay?.toString() || '')}
                                                                     </Badge>
                                                                 </div>
                                                                 <p className={cn(
@@ -565,7 +570,7 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
                                                             </div>
                                                         ) : (
                                                             <div className="p-3 rounded-lg border border-dashed border-gray-200 dark:border-white/10 bg-gray-50/50 dark:bg-white/5 text-center h-[74px] flex flex-col justify-center items-center">
-                                                                <p className="text-xs text-gray-400 dark:text-gray-500 font-medium">Sin cobros programados</p>
+                                                                <p className="text-xs text-gray-400 dark:text-gray-500 font-medium">{t('clients.next_payment.no_payment')}</p>
                                                             </div>
                                                         )
                                                     )}
@@ -578,7 +583,7 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
                                                             variant="ghost"
                                                             size="icon"
                                                             className="h-8 w-8 rounded-full bg-gray-50 text-gray-400 hover:bg-white hover:text-green-600 hover:shadow-md hover:-translate-y-0.5 hover:ring-1 hover:ring-green-100 transition-all duration-300"
-                                                            title="Contactar por WhatsApp"
+                                                            title={t('clients.actions.contact_whatsapp')}
                                                             onClick={() => {
                                                                 setSelectedClientForWhatsApp(client)
                                                                 setIsWhatsAppModalOpen(true)
@@ -592,7 +597,7 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
                                                             variant="ghost"
                                                             size="icon"
                                                             className="h-8 w-8 rounded-full bg-gray-50 text-gray-400 hover:bg-white hover:text-blue-600 hover:shadow-md hover:-translate-y-0.5 hover:ring-1 hover:ring-blue-100 transition-all duration-300"
-                                                            title="Documentos Rápidos"
+                                                            title={t('clients.actions.quick_docs')}
                                                             onClick={() => handleOpenInvoices(client)}
                                                         >
                                                             <FileText className="h-4 w-4" />
@@ -605,7 +610,7 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
                                                                     variant="ghost"
                                                                     size="icon"
                                                                     className="h-8 w-8 rounded-full bg-gray-50 text-gray-400 hover:bg-white hover:text-purple-600 hover:shadow-md hover:-translate-y-0.5 hover:ring-1 hover:ring-purple-100 transition-all duration-300"
-                                                                    title="Abrir Portal"
+                                                                    title={t('clients.actions.open_portal')}
                                                                     onClick={() => window.open(getPortalUrl(`/portal/${client.portal_short_token || client.portal_token}`), '_blank')}
                                                                 >
                                                                     <Globe className="h-4 w-4" />
@@ -622,7 +627,7 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
                                                         }}
                                                         className="ml-auto h-8 px-4 text-xs font-semibold rounded-full bg-gray-900 text-white hover:bg-black hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 group"
                                                     >
-                                                        <span>Gestionar</span>
+                                                        <span>{t('clients.actions.manage')}</span>
                                                         <ArrowRight className="h-3 w-3 ml-1.5 transition-transform group-hover:translate-x-1" />
                                                     </Button>
                                                 </CardFooter>
@@ -654,11 +659,11 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
                                                     onCheckedChange={toggleAll}
                                                 />
                                             </TableHead>
-                                            <TableHead>Contacto</TableHead>
-                                            <TableHead className="w-[150px]">Estado</TableHead>
-                                            <TableHead className="w-[150px]">Servicios</TableHead>
-                                            <TableHead className="w-[180px]">Próximo Cobro</TableHead>
-                                            <TableHead className="text-right w-[100px]">Acciones</TableHead>
+                                            <TableHead>{t('clients.table.contact')}</TableHead>
+                                            <TableHead className="w-[150px]">{t('clients.table.status')}</TableHead>
+                                            <TableHead className="w-[150px]">{t('clients.table.services')}</TableHead>
+                                            <TableHead className="w-[180px]">{t('clients.table.next_payment')}</TableHead>
+                                            <TableHead className="text-right w-[100px]">{t('clients.table.actions')}</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                 </Table>
@@ -677,7 +682,7 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
                                         ) : filteredClients.length === 0 ? (
                                             <TableRow>
                                                 <TableCell colSpan={6} className="h-24 text-center text-gray-500">
-                                                    No se encontraron contactos.
+                                                    {t('clients.empty')}
                                                 </TableCell>
                                             </TableRow>
                                         ) : (
@@ -723,7 +728,7 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
                                                                         : futureDebt > 0 ? "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/20"
                                                                             : "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20"
                                                                 )}>
-                                                                    {debt > 0 ? "Vencido" : futureDebt > 0 ? "Por Vencer" : "Al día"}
+                                                                    {debt > 0 ? t('clients.status.overdue') : futureDebt > 0 ? t('clients.status.urgent') : t('clients.status.active')}
                                                                 </Badge>
                                                                 {(debt > 0 || futureDebt > 0) && (
                                                                     <span className={cn(
@@ -738,7 +743,7 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
                                                         <TableCell className="w-[120px]">
                                                             <div className="flex items-center gap-1.5 text-sm text-gray-600">
                                                                 <CreditCard className="h-4 w-4 text-gray-400" />
-                                                                {activeServicesCount} Activos
+                                                                {t('clients.table.active_services').replace('{count}', activeServicesCount.toString())}
                                                             </div>
                                                         </TableCell>
                                                         <TableCell className="w-[180px]">
@@ -778,20 +783,20 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
                                                                         </Button>
                                                                     </DropdownMenuTrigger>
                                                                     <DropdownMenuContent align="end">
-                                                                        <DropdownMenuLabel>Administración</DropdownMenuLabel>
+                                                                        <DropdownMenuLabel>{t('clients.actions.administration')}</DropdownMenuLabel>
                                                                         <DropdownMenuSeparator />
                                                                         <DropdownMenuItem onClick={() => { setSelectedClientForManagement(client); setManagementOpen(true); }}>
-                                                                            <FileText className="mr-2 h-4 w-4" /> Gestionar
+                                                                            <FileText className="mr-2 h-4 w-4" /> {t('clients.actions.manage')}
                                                                         </DropdownMenuItem>
                                                                         <DropdownMenuItem onClick={() => { setClientToEdit(client); setEditOpen(true); }}>
-                                                                            <Edit className="mr-2 h-4 w-4" /> Editar
+                                                                            <Edit className="mr-2 h-4 w-4" /> {t('clients.actions.edit')}
                                                                         </DropdownMenuItem>
                                                                         <DropdownMenuSeparator />
                                                                         <DropdownMenuItem
                                                                             className="text-red-600"
                                                                             onClick={() => handleSingleDelete(client.id)}
                                                                         >
-                                                                            <Trash2 className="mr-2 h-4 w-4" /> Eliminar
+                                                                            <Trash2 className="mr-2 h-4 w-4" /> {t('clients.actions.delete')}
                                                                         </DropdownMenuItem>
                                                                     </DropdownMenuContent>
                                                                 </DropdownMenu>

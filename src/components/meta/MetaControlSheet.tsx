@@ -23,7 +23,10 @@ import FlowsTab from './tabs/FlowsTab';
 import InfraTab from './tabs/InfraTab';
 import AiTab from './tabs/AiTab';
 
+import { useTranslation } from "@/lib/i18n/use-translation";
+
 export default function MetaControlSheet() {
+    const { t } = useTranslation();
     const [open, setOpen] = useState(false);
     const [activeTab, setActiveTab] = useState('calling'); // Default to calling (P0)
 
@@ -36,10 +39,10 @@ export default function MetaControlSheet() {
                     variant="outline"
                     size="icon"
                     className="rounded-full w-8 h-8 shadow-xl backdrop-blur-md bg-background/50 border-input transition-all duration-300 hover:scale-110 hover:bg-background/80"
-                    title="Meta Control Center"
+                    title={t("meta.title")}
                 >
                     <Rocket className="w-4 h-4 text-primary animate-pulse" />
-                    <span className="sr-only">Open Meta Control</span>
+                    <span className="sr-only">{t("meta.title")}</span>
                 </Button>
             </div>
 
@@ -53,9 +56,9 @@ export default function MetaControlSheet() {
                     <div className="sticky top-0 z-10 bg-background border-b px-6 py-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <SheetTitle className="text-2xl">Meta Control Center</SheetTitle>
+                                <SheetTitle className="text-2xl">{t("meta.title")}</SheetTitle>
                                 <SheetDescription>
-                                    Manage WhatsApp Business Platform features
+                                    {t("meta.description")}
                                 </SheetDescription>
                             </div>
                             <Button
@@ -78,42 +81,42 @@ export default function MetaControlSheet() {
                                     className="flex flex-col gap-1 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
                                 >
                                     <Rocket className="w-4 h-4" />
-                                    <span className="text-xs">Infra</span>
+                                    <span className="text-xs">{t("meta.tabs.infra")}</span>
                                 </TabsTrigger>
                                 <TabsTrigger
                                     value="ai"
                                     className="flex flex-col gap-1 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
                                 >
                                     <Bot className="w-4 h-4" />
-                                    <span className="text-xs">AI</span>
+                                    <span className="text-xs">{t("meta.tabs.ai")}</span>
                                 </TabsTrigger>
                                 <TabsTrigger
                                     value="flows"
                                     className="flex flex-col gap-1 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
                                 >
                                     <Smartphone className="w-4 h-4" />
-                                    <span className="text-xs">Flows</span>
+                                    <span className="text-xs">{t("meta.tabs.flows")}</span>
                                 </TabsTrigger>
                                 <TabsTrigger
                                     value="calling"
                                     className="flex flex-col gap-1 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
                                 >
                                     <Phone className="w-4 h-4" />
-                                    <span className="text-xs">Calling</span>
+                                    <span className="text-xs">{t("meta.tabs.calling")}</span>
                                 </TabsTrigger>
                                 <TabsTrigger
                                     value="marketing"
                                     className="flex flex-col gap-1 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
                                 >
                                     <TrendingUp className="w-4 h-4" />
-                                    <span className="text-xs">Marketing</span>
+                                    <span className="text-xs">{t("meta.tabs.marketing")}</span>
                                 </TabsTrigger>
                                 <TabsTrigger
                                     value="review"
                                     className="flex flex-col gap-1 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
                                 >
                                     <CheckCircle className="w-4 h-4" />
-                                    <span className="text-xs">Review</span>
+                                    <span className="text-xs">{t("meta.tabs.review")}</span>
                                 </TabsTrigger>
                             </TabsList>
                         </div>

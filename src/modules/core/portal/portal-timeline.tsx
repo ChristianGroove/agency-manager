@@ -8,7 +8,11 @@ interface PortalTimelineProps {
     events: ClientEvent[]
 }
 
+import { useTranslation } from "@/lib/i18n/use-translation"
+
 export function PortalTimeline({ events }: PortalTimelineProps) {
+    const { t: originalT } = useTranslation()
+    const t = (key: any) => originalT(key)
     const getIcon = (type: string) => {
         switch (type) {
             case 'invoice_created':
@@ -41,7 +45,7 @@ export function PortalTimeline({ events }: PortalTimelineProps) {
     if (events.length === 0) {
         return (
             <div className="text-center py-8 text-gray-500 text-sm">
-                No hay actividad reciente.
+                {t('portal.timeline.no_activity')}
             </div>
         )
     }

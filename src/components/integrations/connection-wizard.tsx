@@ -58,6 +58,16 @@ export function ConnectionWizard({ open, onOpenChange, provider }: ConnectionWiz
                 } else {
                     credentials = { mock_auth: true } // Mock Auth
                 }
+            } else if (provider.key === 'meta_instagram') {
+                if (manualMode) {
+                    credentials = {
+                        assetId: instanceName, // Instagram Business ID
+                        accessToken: apiKey
+                    }
+                    finalConnectionName = `Instagram: ${instanceName}`
+                } else {
+                    credentials = { mock_auth: true }
+                }
             } else {
                 // Default / Generic
                 credentials = { api_key: apiKey }
@@ -154,14 +164,14 @@ export function ConnectionWizard({ open, onOpenChange, provider }: ConnectionWiz
                 return (
                     <div className="space-y-4 py-4">
                         <div className="space-y-2">
-                            <Label>Phone Number ID</Label>
+                            <Label>{provider.key === 'meta_instagram' ? 'Instagram Business ID' : provider.key === 'meta_whatsapp' ? 'Phone Number ID' : 'Page ID'}</Label>
                             <Input
                                 placeholder="1234567890..."
-                                value={instanceName} // Reusing instanceName state for PhoneID
+                                value={instanceName} // Reusing instanceName state for Asset ID
                                 onChange={(e) => setInstanceName(e.target.value)}
                                 className="bg-white/5 border-white/10"
                             />
-                            <p className="text-xs text-muted-foreground">Found in Meta App Dashboard, under WhatsApp &gt; API Setup</p>
+                            <p className="text-xs text-muted-foreground">Found in Meta App Dashboard, usually under {provider.key === 'meta_instagram' ? 'Instagram Graph API' : 'WhatsApp/Messenger'} setup</p>
                         </div>
                         <div className="space-y-2">
                             <Label>Permanent Access Token</Label>

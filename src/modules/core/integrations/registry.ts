@@ -15,7 +15,10 @@ class IntegrationRegistry {
         // this.register(new MockAdapter('meta_instagram')) // Legacy
         // this.register(new MockAdapter('meta_ads')) // Legacy
         // this.register(new MockAdapter('meta_business')) // Unified Omnichannel Provider
-        this.register(new MetaAdapter()) // Handles meta_business (WhatsApp + Messenger + Instagram)
+        this.register(new MetaAdapter('meta_business')) // Unified
+        this.register(new MetaAdapter('meta_whatsapp')) // Specific
+        this.register(new MetaAdapter('meta_instagram')) // Specific
+        this.register(new MetaAdapter('facebook_page')) // Specific
 
         this.register(new MockAdapter('stripe'))
         this.register(new MockAdapter('google_mail'))

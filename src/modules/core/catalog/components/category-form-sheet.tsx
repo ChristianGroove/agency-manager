@@ -38,7 +38,10 @@ const AVAILABLE_COLORS = [
     { name: 'gray', label: 'Gris' },
 ]
 
+import { useTranslation } from "@/lib/i18n/use-translation"
+
 export function CategoryFormSheet({ open, onOpenChange, category, onSuccess }: CategoryFormSheetProps) {
+    const { t } = useTranslation()
     const [name, setName] = useState('')
     const [icon, setIcon] = useState('Folder')
     const [color, setColor] = useState('blue')
@@ -60,7 +63,7 @@ export function CategoryFormSheet({ open, onOpenChange, category, onSuccess }: C
         e.preventDefault()
 
         if (!name.trim()) {
-            toast.error('El nombre es requerido')
+            toast.error(t('catalog.categories.toasts.name_required'))
             return
         }
 
@@ -68,14 +71,14 @@ export function CategoryFormSheet({ open, onOpenChange, category, onSuccess }: C
         try {
             if (category) {
                 await updateCategory(category.id, { name, icon, color })
-                toast.success('Categoría actualizada')
+                toast.success(t('catalog.categories.toasts.update_success'))
             } else {
                 await createCategory({ name, icon, color })
-                toast.success('Categoría creada')
+                toast.success(t('catalog.categories.toasts.create_success'))
             }
             onSuccess()
         } catch (error: any) {
-            toast.error(error.message || 'Error al guardar')
+            toast.error(error.message || t('catalog.categories.toasts.save_error'))
         } finally {
             setLoading(false)
         }
@@ -109,29 +112,29 @@ export function CategoryFormSheet({ open, onOpenChange, category, onSuccess }: C
             <SheetContent>
                 <SheetHeader>
                     <SheetTitle>
-                        {category ? 'Editar Categoría' : 'Nueva Categoría'}
+                        {category ? t('catalog.categories.edit_title') : t('catalog.categories.new_title')}
                     </SheetTitle>
                     <SheetDescription>
-                        Define el nombre, icono y color de tu categoría
+                        {t('catalog.categories.form_desc')}
                     </SheetDescription>
                 </SheetHeader>
 
                 <form onSubmit={handleSubmit} className="mt-6 space-y-4">
                     {/* Name Input */}
                     <div className="space-y-2">
-                        <Label htmlFor="name">Nombre</Label>
+                        <Label htmlFor="name">{t('catalog.categories.form.name_label')}</Label>
                         <Input
                             id="name"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
-                            placeholder="ej: Cortes de Cabello"
+                            placeholder={t('catalog.categories.form.name_placeholder')}
                             required
                         />
                     </div>
 
                     {/* Icon Selector */}
                     <div className="space-y-2">
-                        <Label>Icono</Label>
+                        <Label>{t('catalog.categories.form.icon_label')}</Label>
                         <Select value={icon} onValueChange={setIcon}>
                             <SelectTrigger>
                                 <SelectValue>
@@ -161,7 +164,7 @@ export function CategoryFormSheet({ open, onOpenChange, category, onSuccess }: C
 
                     {/* Color Picker */}
                     <div className="space-y-2">
-                        <Label>Color</Label>
+                        <Label>{t('catalog.categories.form.color_label')}</Label>
                         <div className="grid grid-cols-5 gap-2">
                             {AVAILABLE_COLORS.map((col) => (
                                 <button
@@ -178,19 +181,19 @@ export function CategoryFormSheet({ open, onOpenChange, category, onSuccess }: C
                             ))}
                         </div>
                         <p className="text-xs text-muted-foreground">
-                            Color seleccionado: {AVAILABLE_COLORS.find(c => c.name === color)?.label}
+                            {t('catalog.categories.form.color_selected').replace('{color}', AVAILABLE_COLORS.find(c => c.name === color)?.label || color)}
                         </p>
                     </div>
 
                     {/* Preview */}
                     <div className="p-4 border rounded-lg bg-muted/30">
-                        <Label className="text-xs text-muted-foreground mb-2 block">Vista Previa</Label>
+                        <Label className="text-xs text-muted-foreground mb-2 block">{t('catalog.categories.form.preview_label')}</Label>
                         <div className="flex items-center gap-3">
                             <div className={`p-3 rounded-md ${getColorClass(color).replace('bg-', 'bg-').replace('-500', '-100')}`}>
                                 <SelectedIcon className={`h-6 w-6 ${getColorClass(color).replace('bg-', 'text-')}`} />
                             </div>
                             <div>
-                                <div className="font-medium">{name || 'Nombre de la categoría'}</div>
+                                <div className="font-medium">{name || t('catalog.categories.form.preview_default_name')}</div>
                                 <div className="text-xs text-muted-foreground">{icon} • {AVAILABLE_COLORS.find(c => c.name === color)?.label}</div>
                             </div>
                         </div>
@@ -205,14 +208,14 @@ export function CategoryFormSheet({ open, onOpenChange, category, onSuccess }: C
                             className="flex-1"
                             disabled={loading}
                         >
-                            Cancelar
+                            {t('catalog.buttons.cancel')}
                         </Button>
                         <Button
                             type="submit"
                             className="flex-1"
                             disabled={loading}
                         >
-                            {loading ? 'Guardando...' : category ? 'Actualizar' : 'Crear'}
+                            {loading ? t('common.saving') : category ? t('common.actions.update') : t('common.actions.create')}
                         </Button>
                     </div>
                 </form>

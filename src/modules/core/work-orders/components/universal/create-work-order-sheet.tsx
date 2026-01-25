@@ -13,7 +13,11 @@ import {
 import { JobForm } from "../job-form"
 import { Plus } from "lucide-react"
 
+import { useTranslation } from "@/lib/i18n/use-translation"
+
 export function CreateWorkOrderSheet({ children }: { children: React.ReactNode }) {
+    const { t: originalT } = useTranslation()
+    const t = (key: any) => originalT(key)
     const [open, setOpen] = useState(false)
 
     return (
@@ -23,9 +27,9 @@ export function CreateWorkOrderSheet({ children }: { children: React.ReactNode }
             </SheetTrigger>
             <SheetContent className="sm:max-w-[540px] overflow-y-auto">
                 <SheetHeader className="mb-6">
-                    <SheetTitle>Crear Nueva Orden de Trabajo</SheetTitle>
+                    <SheetTitle>{t('operations.schedule_cleaning')}</SheetTitle>
                     <SheetDescription>
-                        Diligencia los detalles para agendar un nuevo servicio.
+                        {t('operations.schedule_desc')}
                     </SheetDescription>
                 </SheetHeader>
                 <JobForm

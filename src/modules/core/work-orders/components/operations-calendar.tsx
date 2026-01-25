@@ -4,14 +4,17 @@ import { useEffect, useState } from "react"
 import { WorkOrder } from "@/types"
 import { getWorkOrders } from "../actions/work-order-actions"
 import { format, startOfWeek, addDays, eachDayOfInterval, isSameDay, getHours, getMinutes, differenceInMinutes, addHours } from "date-fns"
-import { es } from "date-fns/locale"
+import { es, enUS } from "date-fns/locale"
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 // Reuse the dialog we just built (note: this might still be disabled/placeholder, but we'll import it)
 import { JobDetailDialog } from "./job-detail-dialog"
+import { useTranslation } from "@/lib/i18n/use-translation"
 
 export function OperationsCalendar() {
+    const { t, locale } = useTranslation()
+    const dateLocale = locale === 'es' ? es : enUS
     const [currentDate, setCurrentDate] = useState(new Date())
     const [jobs, setJobs] = useState<WorkOrder[]>([])
     const [isLoading, setIsLoading] = useState(true)
@@ -94,7 +97,7 @@ export function OperationsCalendar() {
                         <ChevronLeft className="h-4 w-4" />
                     </Button>
                     <span className="font-medium capitalize">
-                        {format(weekStart, 'MMMM yyyy', { locale: es })}
+                        {format(weekStart, 'MMMM yyyy', { locale: dateLocale })}
                     </span>
                     <Button variant="outline" size="icon" onClick={() => setCurrentDate(addDays(currentDate, 7))}>
                         <ChevronRight className="h-4 w-4" />
@@ -123,7 +126,7 @@ export function OperationsCalendar() {
                                 "h-10 border-b flex items-center justify-center text-sm font-medium sticky top-0 bg-white z-10",
                                 isSameDay(day, new Date()) && "bg-blue-50 text-blue-600"
                             )}>
-                                {format(day, 'EEE d', { locale: es })}
+                                {format(day, 'EEE d', { locale: dateLocale })}
                             </div>
 
                             {/* Grid Body */}

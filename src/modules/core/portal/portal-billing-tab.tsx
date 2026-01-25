@@ -15,7 +15,10 @@ interface PortalBillingTabProps {
     token: string
 }
 
+import { useTranslation } from "@/lib/i18n/use-translation"
+
 export function PortalBillingTab({ invoices, settings, onPay, onViewInvoice, token }: PortalBillingTabProps) {
+    const { t } = useTranslation()
     const [selectedInvoices, setSelectedInvoices] = useState<string[]>([])
 
     // Calculate Stats
@@ -56,9 +59,9 @@ export function PortalBillingTab({ invoices, settings, onPay, onViewInvoice, tok
             {/* Header - Centered */}
             <div className="text-center mb-8">
                 <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                    <SplitText>Pagos</SplitText>
+                    <SplitText>{t('portal.billing_tab.title')}</SplitText>
                 </h2>
-                <p className="text-gray-500">Gestiona tus documentos y pagos pendientes</p>
+                <p className="text-gray-500">{t('portal.billing_tab.subtitle')}</p>
             </div>
 
             <PortalInvoiceList
@@ -76,7 +79,7 @@ export function PortalBillingTab({ invoices, settings, onPay, onViewInvoice, tok
                 <div className="fixed bottom-[70px] md:bottom-0 left-0 right-0 bg-white border-t p-4 shadow-[0_-5px_20px_rgba(0,0,0,0.1)] z-40 animate-in slide-in-from-bottom">
                     <div className="max-w-4xl mx-auto flex items-center justify-between">
                         <div>
-                            <p className="text-sm text-gray-500">Total seleccionado ({selectedInvoices.length})</p>
+                            <p className="text-sm text-gray-500">{t('portal.billing_tab.total_selected').replace('{count}', selectedInvoices.length.toString())}</p>
                             <p className="text-2xl font-bold text-gray-900">{formatCurrency(totalSelected)}</p>
                         </div>
                         <Button
@@ -86,7 +89,7 @@ export function PortalBillingTab({ invoices, settings, onPay, onViewInvoice, tok
                             onClick={() => onPay(selectedInvoices)}
                         >
                             <CreditCard className="h-4 w-4 mr-2" />
-                            Pagar Ahora
+                            {t('portal.billing_tab.pay_now')}
                         </Button>
                     </div>
                 </div>

@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Loader2, Download, Share2, Mail, ArrowLeft, UserPlus, Edit } from "lucide-react"
-import { supabase } from "@/lib/supabase"
+
 import Link from "next/link"
 import { Quote, Client, Lead } from "@/types"
 import { convertLeadToClient } from "@/modules/core/crm/leads-actions"
@@ -32,22 +32,26 @@ export default function QuoteDetailPage() {
     }, [params.id])
 
     const fetchSettings = async () => {
-        const { data } = await supabase.from('organization_settings').select('*').single()
-        if (data) setSettings(data)
+        try {
+            const { getSettings } = await import("@/modules/core/settings/actions")
+            const settingsData = await getSettings()
+            if (settingsData) setSettings(settingsData)
+        } catch (error) {
+            console.error("Error fetching settings:", error)
+        }
     }
 
     const fetchQuote = async (id: string) => {
         try {
-            const { data, error } = await supabase
-                .from('quotes')
-                .select(`
-          *,
-          client:clients (*),
-          lead:leads (*),
-          emitter:emitters (*)
-        `)
-                .eq('id', id)
-                .single()
+            const { getQuote } = await import("@/modules/core/quotes/actions")
+            const res = await getQuote(id)
+
+            if (res.error || !res.data) {
+                console.error("Error fetching quote:", res.error)
+                return
+            }
+
+            const data = res.data
 
             if (data && !data.emitter) {
                 // Fallback: Safe Default Emitter
@@ -58,8 +62,7 @@ export default function QuoteDetailPage() {
                 }
             }
 
-            if (error) throw error
-            setQuote(data)
+            setQuote(data as Quote)
         } catch (error) {
             console.error("Error fetching quote:", error)
         } finally {

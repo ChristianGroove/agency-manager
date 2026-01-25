@@ -19,7 +19,10 @@ interface PortalServicesTabProps {
     onBriefingClosed?: () => void
 }
 
+import { useTranslation } from "@/lib/i18n/use-translation"
+
 export function PortalServicesTab({ token, services, invoices, briefings, onPay, onViewInvoice, initialBriefingId, onBriefingClosed }: PortalServicesTabProps) {
+    const { t } = useTranslation()
     const [viewServiceId, setViewServiceId] = useState<string | null>(null)
     const [viewBriefingId, setViewBriefingId] = useState<string | null>(initialBriefingId || null)
 
@@ -83,14 +86,14 @@ export function PortalServicesTab({ token, services, invoices, briefings, onPay,
             {/* Header - Centered */}
             <div className="text-center mb-8">
                 <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                    <SplitText>Mis Servicios</SplitText>
+                    <SplitText>{t('portal.services_tab.title')}</SplitText>
                 </h2>
-                <p className="text-gray-500">Servicios activos y proyectos en curso</p>
+                <p className="text-gray-500">{t('portal.services_tab.subtitle')}</p>
             </div>
 
             {services.length === 0 ? (
                 <div className="text-center py-12 bg-white rounded-lg border border-dashed">
-                    <p className="text-gray-500">No tienes servicios activos en este momento.</p>
+                    <p className="text-gray-500">{t('portal.services_tab.empty_state')}</p>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

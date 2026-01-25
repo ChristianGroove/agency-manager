@@ -11,6 +11,10 @@ import { GlobalInboxProvider } from "@/modules/core/messaging/context/global-inb
 import { InboxOverlay } from "@/modules/core/messaging/components/floating-inbox/inbox-overlay"
 import { GlobalMessageListener } from "@/modules/core/messaging/components/floating-inbox/global-message-listener"
 import MetaControlSheet from "@/components/meta/MetaControlSheet"
+import { getSettings } from "@/modules/core/settings/actions"
+import { getDictionary } from "@/lib/i18n/dictionaries"
+import { I18nProvider } from "@/lib/i18n/context"
+import { Locale } from "@/lib/i18n/dictionaries"
 
 export default async function DashboardLayout({
     children,
@@ -20,9 +24,10 @@ export default async function DashboardLayout({
     const supabase = await createClient()
 
     // PERF: Parallel fetch of ALL initial data needed for dashboard
-    const [userResponse, currentOrgId] = await Promise.all([
+    const [userResponse, currentOrgId, settings] = await Promise.all([
         supabase.auth.getUser(),
-        getCurrentOrganizationId()
+        getCurrentOrganizationId(),
+        getSettings()
     ])
 
     const { data: { user }, error: authError } = userResponse
@@ -35,31 +40,44 @@ export default async function DashboardLayout({
         redirect('/login')
     }
 
+    // Determine Language & Load Dictionary
+    // 1. Settings from DB
+    // 2. Default to 'es'
+    const locale = (settings?.default_language as Locale) || 'es'
+    const dictionary = getDictionary(locale)
+
+
     // PERF: Fetch modules and admin status in parallel (after we have user/orgId)
     const [isAdmin, activeModules] = await Promise.all([
         isSuperAdmin(user.id),
         currentOrgId ? getActiveModules(currentOrgId) : Promise.resolve([])
     ])
 
-    // Key forces a complete remount of the shell when organization changes,
-    // solving the "stale UI" issue without needing a full browser reload.
     return (
-        <DashboardShell
-            key={currentOrgId}
-            user={user}
-            currentOrgId={currentOrgId}
-            isSuperAdmin={isAdmin}
-            prefetchedModules={activeModules}
+        // Key forces a complete remount of the shell when organization changes,
+        // solving the "stale UI" issue without needing a full browser reload.
+        // WRAP with I18nProvider
+        < I18nProvider
+            dict={dictionary}
+            locale={locale}
         >
-            <GlobalInboxProvider>
-                <GlobalMessageListener />
-                <InboxOverlay />
-                <MetaControlSheet />
-                <SystemAlertBanner />
-                <Suspense fallback={<GlobalLoader />}>
-                    {children}
-                </Suspense>
-            </GlobalInboxProvider>
-        </DashboardShell>
+            <DashboardShell
+                key={currentOrgId}
+                user={user}
+                currentOrgId={currentOrgId}
+                isSuperAdmin={isAdmin}
+                prefetchedModules={activeModules}
+            >
+                <GlobalInboxProvider>
+                    <GlobalMessageListener />
+                    <InboxOverlay />
+                    <MetaControlSheet />
+                    <SystemAlertBanner />
+                    <Suspense fallback={<GlobalLoader />}>
+                        {children}
+                    </Suspense>
+                </GlobalInboxProvider>
+            </DashboardShell>
+        </I18nProvider >
     )
 }

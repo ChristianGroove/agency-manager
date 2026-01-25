@@ -41,6 +41,7 @@ import { toast } from "sonner"
 import { ServiceCatalogSelector } from "@/modules/core/catalog/components/service-catalog-selector"
 import { logDomainEventAction } from "@/modules/core/logging/actions"
 import { ServiceRetroactiveModal } from "./service-retroactive-modal"
+import { useTranslation } from "@/lib/i18n/use-translation"
 
 interface CreateServiceSheetProps {
     clientId?: string
@@ -53,6 +54,7 @@ interface CreateServiceSheetProps {
 }
 
 export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, open: controlledOpen, onOpenChange: setControlledOpen, serviceToEdit }: CreateServiceSheetProps) {
+    const { t } = useTranslation()
     const [internalOpen, setInternalOpen] = useState(false)
     const isControlled = controlledOpen !== undefined
     const open = isControlled ? controlledOpen : internalOpen
@@ -211,10 +213,10 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
     }
 
     const handleSave = async (strategy: 'RETROACTIVE' | 'IGNORE_PAST' | null = null) => {
-        if (!formData.name) return toast.error("El nombre es requerido")
+        if (!formData.name) return toast.error(t('services.toasts.name_required'))
         const finalClient = clientId || selectedClientId
-        if (!finalClient) return toast.error("Debes seleccionar un cliente")
-        if (!selectedEmitterId) return toast.error("Debes seleccionar un emisor")
+        if (!finalClient) return toast.error(t('services.toasts.client_required'))
+        if (!selectedEmitterId) return toast.error(t('services.toasts.emitter_required'))
 
         // Date Check Interception
         const startDate = formData.service_start_date ? new Date(formData.service_start_date) : new Date()
@@ -233,7 +235,7 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
         const { getCurrentOrganizationId } = await import('@/modules/core/organizations/actions')
         const orgId = await getCurrentOrganizationId()
 
-        if (!orgId) return toast.error('No se encontró contexto de organización')
+        if (!orgId) return toast.error(t('services.toasts.org_not_found'))
 
         setLoading(true)
         try {
@@ -305,7 +307,7 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
 
                 if (error) throw error
                 resultService = data
-                toast.success("Servicio actualizado")
+                toast.success(t('services.toasts.updated'))
             } else {
                 // INSERT
                 const { data, error } = await supabase
@@ -328,7 +330,7 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
                         status: 'pending'
                     })
                 }
-                toast.success("Servicio creado exitosamente")
+                toast.success(t('services.toasts.created'))
             }
 
             await logDomainEventAction({
@@ -344,7 +346,7 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
 
         } catch (error: any) {
             console.error(error)
-            toast.error("Error al guardar: " + error.message)
+            toast.error(t('services.toasts.error_save') + ": " + error.message)
         } finally {
             setLoading(false)
         }
@@ -371,7 +373,7 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
             >
                 <SheetHeader className="hidden">
                     <SheetTitle>
-                        {serviceToEdit ? 'Editar Servicio' : 'Nuevo Servicio'}
+                        {serviceToEdit ? t('services.sheet_title_edit') : t('services.sheet_title_new')}
                     </SheetTitle>
                 </SheetHeader>
                 <div className="flex flex-col h-full bg-white/95 backdrop-blur-xl">
@@ -385,10 +387,10 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
                             )}
                             <div>
                                 <h2 className="text-xl font-bold text-gray-900 tracking-tight">
-                                    {serviceToEdit ? 'Editar Servicio' : 'Nuevo Servicio'}
+                                    {serviceToEdit ? t('services.sheet_title_edit') : t('services.sheet_title_new')}
                                 </h2>
                                 <p className="text-xs text-muted-foreground">
-                                    {step === 'catalog' ? 'Selecciona una plantilla.' : 'Configura los detalles del contrato.'}
+                                    {step === 'catalog' ? t('services.sheet_desc_new') : t('services.sheet_desc_edit')}
                                 </p>
                             </div>
                         </div>
@@ -414,19 +416,19 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
                                             {/* Client Selector (if not fixed) */}
                                             {!clientId && (
                                                 <div className="space-y-2">
-                                                    <Label className="text-xs uppercase font-bold text-slate-500">Cliente</Label>
+                                                    <Label className="text-xs uppercase font-bold text-slate-500">{t('services.form.client_label')}</Label>
                                                     <Popover>
                                                         <PopoverTrigger asChild>
                                                             <Button variant="outline" className="w-full justify-between bg-white" disabled={!!serviceToEdit}>
-                                                                {displayClientName || "Seleccionar Cliente..."}
+                                                                {displayClientName || t('services.form.client_placeholder')}
                                                                 <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
                                                             </Button>
                                                         </PopoverTrigger>
                                                         <PopoverContent className="w-[400px] p-0" align="start">
                                                             <Command>
-                                                                <CommandInput placeholder="Buscar cliente..." />
+                                                                <CommandInput placeholder={t('services.form.client_search_placeholder')} />
                                                                 <CommandList>
-                                                                    <CommandEmpty>No encontrado.</CommandEmpty>
+                                                                    <CommandEmpty>{t('services.form.client_not_found')}</CommandEmpty>
                                                                     <CommandGroup>
                                                                         {clients.map(c => (
                                                                             <CommandItem key={c.id} onSelect={() => setSelectedClientId(c.id)}>
@@ -444,10 +446,10 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
 
                                             {/* Emitter Selector */}
                                             <div className="space-y-2">
-                                                <Label className="text-xs uppercase font-bold text-slate-500">Emisor (Facturación)</Label>
+                                                <Label className="text-xs uppercase font-bold text-slate-500">{t('services.form.emitter_label')}</Label>
                                                 <Select value={selectedEmitterId} onValueChange={setSelectedEmitterId}>
                                                     <SelectTrigger className="bg-white">
-                                                        <SelectValue placeholder="Seleccionar empresa emisora" />
+                                                        <SelectValue placeholder={t('services.form.emitter_placeholder')} />
                                                     </SelectTrigger>
                                                     <SelectContent>
                                                         {emitters.map(e => <SelectItem key={e.id} value={e.id}>{e.display_name}</SelectItem>)}
@@ -457,194 +459,192 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
                                         </div>
 
                                         {/* Service Details */}
-                                        <div className="space-y-6">
+                                        <div className="space-y-2">
+                                            <Label className="font-semibold text-gray-700">{t('services.form.name_label')}</Label>
+                                            <Input
+                                                value={formData.name}
+                                                onChange={e => setFormData({ ...formData, name: e.target.value })}
+                                                className="font-medium text-lg h-12"
+                                                placeholder={t('services.form.name_placeholder')}
+                                            />
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-6">
                                             <div className="space-y-2">
-                                                <Label className="font-semibold text-gray-700">Nombre del Servicio</Label>
-                                                <Input
-                                                    value={formData.name}
-                                                    onChange={e => setFormData({ ...formData, name: e.target.value })}
-                                                    className="font-medium text-lg h-12"
-                                                    placeholder="Ej. Hosting Anual"
+                                                <Label>{t('services.form.type_label')}</Label>
+                                                <Select value={formData.type} onValueChange={(v) => setFormData({ ...formData, type: v })}>
+                                                    <SelectTrigger><SelectValue /></SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="recurring">{t('services.summary.active_subscription')}</SelectItem>
+                                                        <SelectItem value="one_off">{t('services.summary.one_time_payment')}</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                            {formData.type === 'recurring' && (
+                                                <div className="space-y-2">
+                                                    <Label>{t('services.form.frequency_label')}</Label>
+                                                    <Select value={formData.frequency} onValueChange={(v) => setFormData({ ...formData, frequency: v })}>
+                                                        <SelectTrigger><SelectValue /></SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="monthly">{t('quotes.builder.frequency.monthly')}</SelectItem>
+                                                            <SelectItem value="quarterly">{t('quotes.builder.frequency.quarterly')}</SelectItem>
+                                                            <SelectItem value="semiannual">{t('quotes.builder.frequency.semiannual')}</SelectItem>
+                                                            <SelectItem value="yearly">{t('quotes.builder.frequency.yearly')}</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                            )}
+
+                                            <div className="space-y-2 col-span-2">
+                                                <Label>{t('services.form.insights_label')}</Label>
+                                                <Select value={formData.insights_access} onValueChange={(v) => setFormData({ ...formData, insights_access: v })}>
+                                                    <SelectTrigger><SelectValue /></SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="NONE">{t('services.form.access_none')}</SelectItem>
+                                                        <SelectItem value="ORGANIC">{t('services.form.access_organic')}</SelectItem>
+                                                        <SelectItem value="ADS">{t('services.form.access_ads')}</SelectItem>
+                                                        <SelectItem value="ALL">{t('services.form.access_all')}</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                                <p className="text-[10px] text-gray-500">
+                                                    {t('services.form.insights_desc')}
+                                                </p>
+                                            </div>
+                                        </div>
+
+
+
+                                        {/* Pricing Line */}
+                                        <div className="grid grid-cols-12 gap-4 items-end bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                            <div className="col-span-5 space-y-1">
+                                                <Label>{t('services.form.unit_price')}</Label>
+                                                <div className="relative">
+                                                    <span className="absolute left-3 top-2.5 text-gray-400">$</span>
+                                                    <Input type="number" value={unitPrice || ''} onChange={e => setUnitPrice(parseFloat(e.target.value) || 0)} className="pl-7 bg-white" />
+                                                </div>
+                                            </div>
+                                            <div className="col-span-2 text-center pb-2 text-gray-400 font-bold">×</div>
+                                            <div className="col-span-5 space-y-1">
+                                                <Label>{t('services.form.total')}</Label>
+                                                <div className="h-10 px-3 flex items-center justify-end font-bold text-gray-900 bg-gray-100 rounded-md">
+                                                    ${(formData.amount).toLocaleString()}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label>{t('services.form.contract_start')}</Label>
+                                            <Popover>
+                                                <PopoverTrigger asChild>
+                                                    <Button variant="outline" className="w-full justify-start text-left font-normal border-gray-200">
+                                                        <CalendarIcon className="mr-2 h-4 w-4" />
+                                                        {format(new Date(formData.service_start_date), "PPP")}
+                                                    </Button>
+                                                </PopoverTrigger>
+                                                <PopoverContent className="w-auto p-0">
+                                                    <Calendar mode="single" selected={new Date(formData.service_start_date)} onSelect={d => d && setFormData({ ...formData, service_start_date: d.toISOString() })} initialFocus />
+                                                </PopoverContent>
+                                            </Popover>
+                                        </div>
+
+                                        {/* Portal Card Metadata Section */}
+                                        <div className="space-y-4 pt-6 border-t border-gray-200">
+                                            <div className="flex items-center gap-2">
+                                                <div className="h-8 w-8 rounded-lg bg-purple-100 flex items-center justify-center">
+                                                    <Info className="h-4 w-4 text-purple-600" />
+                                                </div>
+                                                <div>
+                                                    <h4 className="text-sm font-bold text-gray-900">{t('services.form.portal_info_title')}</h4>
+                                                    <p className="text-xs text-gray-500">{t('services.form.portal_info_desc')}</p>
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <Label className="text-sm">{t('services.form.portal_detailed_desc')}</Label>
+                                                <textarea
+                                                    value={formData.portal_detailed_description}
+                                                    onChange={(e) => setFormData({ ...formData, portal_detailed_description: e.target.value })}
+                                                    placeholder={t('services.form.portal_detailed_placeholder')}
+                                                    className="w-full min-h-[100px] px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-pink/20 resize-none"
                                                 />
+                                                <p className="text-xs text-gray-500">Se mostrará en el reverso de la card del portal</p>
                                             </div>
 
-                                            <div className="grid grid-cols-2 gap-6">
+                                            <div className="space-y-2">
+                                                <Label className="text-sm">{t('services.form.portal_features')}</Label>
                                                 <div className="space-y-2">
-                                                    <Label>Tipo</Label>
-                                                    <Select value={formData.type} onValueChange={(v) => setFormData({ ...formData, type: v })}>
-                                                        <SelectTrigger><SelectValue /></SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value="recurring">Suscripción (Recurrente)</SelectItem>
-                                                            <SelectItem value="one_off">Pago Único</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-                                                </div>
-                                                {formData.type === 'recurring' && (
-                                                    <div className="space-y-2">
-                                                        <Label>Frecuencia</Label>
-                                                        <Select value={formData.frequency} onValueChange={(v) => setFormData({ ...formData, frequency: v })}>
-                                                            <SelectTrigger><SelectValue /></SelectTrigger>
-                                                            <SelectContent>
-                                                                <SelectItem value="monthly">Mensual</SelectItem>
-                                                                <SelectItem value="quarterly">Trimestral</SelectItem>
-                                                                <SelectItem value="semiannual">Semestral</SelectItem>
-                                                                <SelectItem value="yearly">Anual</SelectItem>
-                                                            </SelectContent>
-                                                        </Select>
-                                                    </div>
-                                                )}
-
-                                                <div className="space-y-2 col-span-2">
-                                                    <Label>Acceso a Insights (Portal)</Label>
-                                                    <Select value={formData.insights_access} onValueChange={(v) => setFormData({ ...formData, insights_access: v })}>
-                                                        <SelectTrigger><SelectValue /></SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value="NONE">Sin Acceso</SelectItem>
-                                                            <SelectItem value="ORGANIC">Solo Orgánico (Redes)</SelectItem>
-                                                            <SelectItem value="ADS">Solo Ads (Publicidad)</SelectItem>
-                                                            <SelectItem value="ALL">Todo (Ads + Orgánico)</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-                                                    <p className="text-[10px] text-gray-500">
-                                                        Activa pestañas automáticamente cuando este servicio está activo.
-                                                    </p>
-                                                </div>
-                                            </div>
-
-
-
-                                            {/* Pricing Line */}
-                                            <div className="grid grid-cols-12 gap-4 items-end bg-slate-50 p-4 rounded-xl border border-slate-100">
-                                                <div className="col-span-5 space-y-1">
-                                                    <Label>Precio Unitario</Label>
-                                                    <div className="relative">
-                                                        <span className="absolute left-3 top-2.5 text-gray-400">$</span>
-                                                        <Input type="number" value={unitPrice || ''} onChange={e => setUnitPrice(parseFloat(e.target.value) || 0)} className="pl-7 bg-white" />
-                                                    </div>
-                                                </div>
-                                                <div className="col-span-2 text-center pb-2 text-gray-400 font-bold">×</div>
-                                                <div className="col-span-5 space-y-1">
-                                                    <Label>Total</Label>
-                                                    <div className="h-10 px-3 flex items-center justify-end font-bold text-gray-900 bg-gray-100 rounded-md">
-                                                        ${(formData.amount).toLocaleString()}
-                                                    </div>
+                                                    {formData.portal_features.map((feature, idx) => (
+                                                        <div key={idx} className="flex gap-2">
+                                                            <Input
+                                                                value={feature}
+                                                                onChange={(e) => {
+                                                                    const newFeatures = [...formData.portal_features]
+                                                                    newFeatures[idx] = e.target.value
+                                                                    setFormData({ ...formData, portal_features: newFeatures })
+                                                                }}
+                                                                placeholder="Ej. Soporte 24/7"
+                                                                className="text-sm"
+                                                            />
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                onClick={() => {
+                                                                    const newFeatures = formData.portal_features.filter((_, i) => i !== idx)
+                                                                    setFormData({ ...formData, portal_features: newFeatures })
+                                                                }}
+                                                                className="shrink-0"
+                                                            >
+                                                                ✕
+                                                            </Button>
+                                                        </div>
+                                                    ))}
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => setFormData({ ...formData, portal_features: [...formData.portal_features, ""] })}
+                                                        className="w-full text-xs"
+                                                    >
+                                                        {t('services.form.portal_features_add')}
+                                                    </Button>
                                                 </div>
                                             </div>
 
                                             <div className="space-y-2">
-                                                <Label>Inicio del Contrato</Label>
-                                                <Popover>
-                                                    <PopoverTrigger asChild>
-                                                        <Button variant="outline" className="w-full justify-start text-left font-normal border-gray-200">
-                                                            <CalendarIcon className="mr-2 h-4 w-4" />
-                                                            {format(new Date(formData.service_start_date), "PPP")}
-                                                        </Button>
-                                                    </PopoverTrigger>
-                                                    <PopoverContent className="w-auto p-0">
-                                                        <Calendar mode="single" selected={new Date(formData.service_start_date)} onSelect={d => d && setFormData({ ...formData, service_start_date: d.toISOString() })} initialFocus />
-                                                    </PopoverContent>
-                                                </Popover>
-                                            </div>
-
-                                            {/* Portal Card Metadata Section */}
-                                            <div className="space-y-4 pt-6 border-t border-gray-200">
-                                                <div className="flex items-center gap-2">
-                                                    <div className="h-8 w-8 rounded-lg bg-purple-100 flex items-center justify-center">
-                                                        <Info className="h-4 w-4 text-purple-600" />
-                                                    </div>
-                                                    <div>
-                                                        <h4 className="text-sm font-bold text-gray-900">Información para Portal del Cliente</h4>
-                                                        <p className="text-xs text-gray-500">Detalles que verán tus clientes en el catálogo</p>
-                                                    </div>
-                                                </div>
-
+                                                <Label className="text-sm">{t('services.form.portal_highlights')}</Label>
                                                 <div className="space-y-2">
-                                                    <Label className="text-sm">Descripción Detallada</Label>
-                                                    <textarea
-                                                        value={formData.portal_detailed_description}
-                                                        onChange={(e) => setFormData({ ...formData, portal_detailed_description: e.target.value })}
-                                                        placeholder="Descripción extensa que se mostrará al girar la tarjeta..."
-                                                        className="w-full min-h-[100px] px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-pink/20 resize-none"
-                                                    />
-                                                    <p className="text-xs text-gray-500">Se mostrará en el reverso de la card del portal</p>
-                                                </div>
-
-                                                <div className="space-y-2">
-                                                    <Label className="text-sm">Características (opcional)</Label>
-                                                    <div className="space-y-2">
-                                                        {formData.portal_features.map((feature, idx) => (
-                                                            <div key={idx} className="flex gap-2">
-                                                                <Input
-                                                                    value={feature}
-                                                                    onChange={(e) => {
-                                                                        const newFeatures = [...formData.portal_features]
-                                                                        newFeatures[idx] = e.target.value
-                                                                        setFormData({ ...formData, portal_features: newFeatures })
-                                                                    }}
-                                                                    placeholder="Ej. Soporte 24/7"
-                                                                    className="text-sm"
-                                                                />
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="sm"
-                                                                    onClick={() => {
-                                                                        const newFeatures = formData.portal_features.filter((_, i) => i !== idx)
-                                                                        setFormData({ ...formData, portal_features: newFeatures })
-                                                                    }}
-                                                                    className="shrink-0"
-                                                                >
-                                                                    ✕
-                                                                </Button>
-                                                            </div>
-                                                        ))}
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            onClick={() => setFormData({ ...formData, portal_features: [...formData.portal_features, ""] })}
-                                                            className="w-full text-xs"
-                                                        >
-                                                            + Agregar característica
-                                                        </Button>
-                                                    </div>
-                                                </div>
-
-                                                <div className="space-y-2">
-                                                    <Label className="text-sm">Destacados (opcional)</Label>
-                                                    <div className="space-y-2">
-                                                        {formData.portal_highlights.map((highlight, idx) => (
-                                                            <div key={idx} className="flex gap-2">
-                                                                <Input
-                                                                    value={highlight}
-                                                                    onChange={(e) => {
-                                                                        const newHighlights = [...formData.portal_highlights]
-                                                                        newHighlights[idx] = e.target.value
-                                                                        setFormData({ ...formData, portal_highlights: newHighlights })
-                                                                    }}
-                                                                    placeholder="Ej. Más vendido"
-                                                                    className="text-sm"
-                                                                />
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="sm"
-                                                                    onClick={() => {
-                                                                        const newHighlights = formData.portal_highlights.filter((_, i) => i !== idx)
-                                                                        setFormData({ ...formData, portal_highlights: newHighlights })
-                                                                    }}
-                                                                    className="shrink-0"
-                                                                >
-                                                                    ✕
-                                                                </Button>
-                                                            </div>
-                                                        ))}
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            onClick={() => setFormData({ ...formData, portal_highlights: [...formData.portal_highlights, ""] })}
-                                                            className="w-full text-xs"
-                                                        >
-                                                            + Agregar destacado
-                                                        </Button>
-                                                    </div>
+                                                    {formData.portal_highlights.map((highlight, idx) => (
+                                                        <div key={idx} className="flex gap-2">
+                                                            <Input
+                                                                value={highlight}
+                                                                onChange={(e) => {
+                                                                    const newHighlights = [...formData.portal_highlights]
+                                                                    newHighlights[idx] = e.target.value
+                                                                    setFormData({ ...formData, portal_highlights: newHighlights })
+                                                                }}
+                                                                placeholder="Ej. Más vendido"
+                                                                className="text-sm"
+                                                            />
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                onClick={() => {
+                                                                    const newHighlights = formData.portal_highlights.filter((_, i) => i !== idx)
+                                                                    setFormData({ ...formData, portal_highlights: newHighlights })
+                                                                }}
+                                                                className="shrink-0"
+                                                            >
+                                                                ✕
+                                                            </Button>
+                                                        </div>
+                                                    ))}
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => setFormData({ ...formData, portal_highlights: [...formData.portal_highlights, ""] })}
+                                                        className="w-full text-xs"
+                                                    >
+                                                        + Agregar destacado
+                                                    </Button>
                                                 </div>
                                             </div>
                                         </div>
@@ -657,8 +657,8 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
                                 <div className="hidden lg:flex lg:col-span-4 bg-slate-100/50 p-6 flex-col border-l border-white">
                                     <div className="space-y-6 animate-in slide-in-from-right-4 duration-500">
                                         <div className="text-center">
-                                            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Resumen del Contrato</h3>
-                                            <p className="text-sm text-slate-500">Vista previa de la facturación</p>
+                                            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">{t('services.summary.title')}</h3>
+                                            <p className="text-sm text-slate-500">{t('services.summary.subtitle')}</p>
                                         </div>
 
                                         <div className="bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100 p-6 relative overflow-hidden">
@@ -668,27 +668,27 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
 
                                             <div className="relative z-10">
                                                 <p className="text-xs font-semibold text-brand-pink uppercase tracking-wide mb-2">
-                                                    {formData.type === 'recurring' ? 'Suscripción Activa' : 'Pago Único'}
+                                                    {formData.type === 'recurring' ? t('services.summary.active_subscription') : t('services.summary.one_time_payment')}
                                                 </p>
                                                 <h2 className="text-3xl font-bold text-gray-900 mb-1">
                                                     ${formData.amount.toLocaleString()}
                                                 </h2>
                                                 <p className="text-sm text-gray-500 mb-6">
-                                                    {formData.type === 'recurring' ? `/ ${formData.frequency === 'monthly' ? 'Mes' : formData.frequency}` : 'Cobro único'}
+                                                    {formData.type === 'recurring' ? `/ ${t(('quotes.builder.frequency.' + formData.frequency) as any) || formData.frequency}` : t('services.summary.one_time_charge')}
                                                 </p>
 
                                                 <div className="space-y-3 pt-4 border-t border-gray-100">
                                                     <div className="flex justify-between text-sm">
-                                                        <span className="text-gray-500">Cliente</span>
+                                                        <span className="text-gray-500">{t('services.form.client_label')}</span>
                                                         <span className="font-medium text-gray-900 truncate max-w-[150px]">{displayClientName || "---"}</span>
                                                     </div>
                                                     <div className="flex justify-between text-sm">
-                                                        <span className="text-gray-500">Inicio</span>
+                                                        <span className="text-gray-500">{t('services.form.contract_start')}</span>
                                                         <span className="font-medium text-gray-900">{format(new Date(formData.service_start_date), "dd MMM yyyy")}</span>
                                                     </div>
                                                     <div className="flex justify-between text-sm">
-                                                        <span className="text-gray-500">Facturación</span>
-                                                        <span className="font-medium text-gray-900">{derivedDocType === 'FACTURA_ELECTRONICA' ? 'Electrónica' : 'Cuenta Cobro'}</span>
+                                                        <span className="text-gray-500">{t('services.summary.billing_label')}</span>
+                                                        <span className="font-medium text-gray-900">{derivedDocType === 'FACTURA_ELECTRONICA' ? t('services.summary.billing_electronic') : t('services.summary.billing_account')}</span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -698,8 +698,8 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
                                             <Info className="w-4 h-4 shrink-0 mt-0.5" />
                                             <p>
                                                 {serviceToEdit
-                                                    ? 'Estás editando un servicio existente. Los cambios afectarán a las futuras facturaciones.'
-                                                    : `Al crear este servicio, se generará ${formData.type === 'recurring' ? 'un ciclo de facturación pendiente' : 'una factura en borrador'} automáticamente.`
+                                                    ? t('services.summary.info_edit')
+                                                    : formData.type === 'recurring' ? t('services.summary.info_new_recurring') : t('services.summary.info_new_oneoff')
                                                 }
                                             </p>
                                         </div>
@@ -711,11 +711,11 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
                     </div>
 
                     <div className="sticky bottom-0 bg-white/80 backdrop-blur-md p-6 border-t border-gray-100 flex items-center justify-between z-20">
-                        <Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>
+                        <Button variant="ghost" onClick={() => setOpen(false)}>{t('services.buttons.cancel')}</Button>
                         {step === 'form' && (
                             <Button onClick={() => handleSave(null)} disabled={loading} className="bg-black text-white px-8 rounded-xl hover:bg-gray-800">
                                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                {serviceToEdit ? 'Guardar Cambios' : 'Confirmar Servicio'}
+                                {serviceToEdit ? t('services.buttons.save_edit') : t('services.buttons.save_new')}
                             </Button>
                         )}
                     </div>
@@ -727,6 +727,6 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
                 startDate={new Date(formData.service_start_date)}
                 onConfirm={handleSave}
             />
-        </Sheet>
+        </Sheet >
     )
 }

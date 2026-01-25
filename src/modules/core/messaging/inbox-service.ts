@@ -113,6 +113,27 @@ export class InboxService {
         });
 
         // ========================================
+        // 0. OPTIMIZATION: Use Pre-Resolved Connection (from Route Handler)
+        // ========================================
+        if (metadata?.connectionId) {
+            console.log(`[InboxService] Verifying pre-resolved connectionId: ${metadata.connectionId}`);
+            const { data: preResolved } = await supabase
+                .from('integration_connections')
+                .select('id, organization_id, credentials, metadata, default_pipeline_stage_id, working_hours, auto_reply_when_offline')
+                .eq('id', metadata.connectionId)
+                .single();
+
+            if (preResolved) {
+                connectionId = preResolved.id;
+                orgId = preResolved.organization_id;
+                matchedConnection = preResolved;
+                console.log('[InboxService] ✅ Validated pre-resolved connection:', { connectionId, orgId });
+            } else {
+                console.warn(`[InboxService] ⚠️ Pre-resolved connection ${metadata.connectionId} not found or invalid`);
+            }
+        }
+
+        // ========================================
         // NEW SIMPLIFIED META MATCHING
         // Uses specific provider_keys and direct asset_id matching
         // ========================================

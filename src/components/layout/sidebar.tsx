@@ -13,6 +13,7 @@ import { SidebarParticles } from "./sidebar-particles"
 import { OrganizationSwitcher } from "@/components/organizations/organization-switcher"
 import { OrganizationCard } from "@/components/organizations/organization-card"
 import { SidebarFloatingActions } from "./sidebar-floating-actions"
+import { useTranslation } from "@/lib/i18n/use-translation"
 import {
     Tooltip,
     TooltipContent,
@@ -125,6 +126,7 @@ function SidebarSection({
 
 export function SidebarContent({ isCollapsed = false, currentOrgId, isSuperAdmin = false, prefetchedModules }: { isCollapsed?: boolean, currentOrgId: string | null, isSuperAdmin?: boolean, prefetchedModules?: string[] }) {
     const pathname = usePathname()
+    const { t } = useTranslation()
     // PERF: Use prefetched modules if available, fall back to hook for client-side updates
     const { modules: hookModules, isLoading: hookLoading, organizationType } = useActiveModules()
 
@@ -165,7 +167,7 @@ export function SidebarContent({ isCollapsed = false, currentOrgId, isSuperAdmin
     if (organizationType === 'reseller' || organizationType === 'platform') {
         const resellerRoute = {
             key: 'reseller_tenants',
-            label: 'Organizaciones',
+            label: t('sidebar.reseller_tenants'),
             href: '/platform/organizations',
             icon: Users,
             category: 'core' as ModuleCategory,
@@ -226,7 +228,7 @@ export function SidebarContent({ isCollapsed = false, currentOrgId, isSuperAdmin
                                         <SidebarItem
                                             key={route.href}
                                             icon={route.icon}
-                                            label={route.label}
+                                            label={t(`sidebar.${route.key}` as any)}
                                             href={route.href}
                                             active={pathname === route.href || pathname?.startsWith(`${route.href}/`) || false}
                                             collapsed={isCollapsed}
@@ -239,7 +241,7 @@ export function SidebarContent({ isCollapsed = false, currentOrgId, isSuperAdmin
                         return (
                             <SidebarSection
                                 key={category}
-                                title={CATEGORY_LABELS[category]}
+                                title={t(`sidebar.cat_${category}` as any)}
                                 icon={CATEGORY_ICONS[category]}
                                 collapsed={isCollapsed}
                                 isExpanded={activeCategories.includes(category)}
@@ -249,7 +251,7 @@ export function SidebarContent({ isCollapsed = false, currentOrgId, isSuperAdmin
                                     <SidebarItem
                                         key={route.href}
                                         icon={route.icon}
-                                        label={route.label}
+                                        label={t(`sidebar.${route.key}` as any)}
                                         href={route.href}
                                         active={pathname === route.href || pathname?.startsWith(`${route.href}/`) || false}
                                         collapsed={isCollapsed}

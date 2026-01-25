@@ -1,5 +1,6 @@
 "use client"
 
+import { useTranslation } from "@/lib/i18n/use-translation"
 import { useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -28,6 +29,7 @@ interface CreateClientSheetProps {
 }
 
 export function CreateClientSheet({ onSuccess, open: controlledOpen, onOpenChange: setControlledOpen, trigger }: CreateClientSheetProps) {
+    const { t } = useTranslation()
     const [internalOpen, setInternalOpen] = useState(false)
     const isControlled = controlledOpen !== undefined
     const open = isControlled ? controlledOpen : internalOpen
@@ -75,8 +77,8 @@ export function CreateClientSheet({ onSuccess, open: controlledOpen, onOpenChang
     }
 
     const handleCreateClient = async () => {
-        if (!newClient.name) return toast.error("El nombre es obligatorio")
-        if (!newClient.email) return toast.error("El email es obligatorio")
+        if (!newClient.name) return toast.error(t('clients.toasts.name_required'))
+        if (!newClient.email) return toast.error(t('clients.toasts.email_required'))
 
         // CRITICAL: Get organization context FIRST
         const { getCurrentOrganizationId } = await import('@/modules/core/organizations/actions')
@@ -118,7 +120,7 @@ export function CreateClientSheet({ onSuccess, open: controlledOpen, onOpenChang
 
             if (error) throw error
 
-            toast.success("Cliente creado exitosamente")
+            toast.success(t('clients.toasts.created_success'))
             setOpen(false)
 
             // Reset form
@@ -133,7 +135,7 @@ export function CreateClientSheet({ onSuccess, open: controlledOpen, onOpenChang
 
         } catch (error: any) {
             console.error(error)
-            toast.error("Error al crear cliente: " + error.message)
+            toast.error(t('clients.toasts.error_create') + ": " + error.message)
         } finally {
             setLoading(false)
         }
@@ -149,7 +151,7 @@ export function CreateClientSheet({ onSuccess, open: controlledOpen, onOpenChang
                 <SheetTrigger asChild>
                     <Button className="h-9 px-4 bg-brand-pink hover:bg-brand-pink/90 shadow-md text-white border-0 transition-all hover:scale-105 active:scale-95">
                         <Plus className="mr-2 h-4 w-4" />
-                        Nuevo Cliente
+                        {t('clients.new_client')}
                     </Button>
                 </SheetTrigger>
             )}
@@ -164,15 +166,15 @@ export function CreateClientSheet({ onSuccess, open: controlledOpen, onOpenChang
                 "
             >
                 <SheetHeader className="hidden">
-                    <SheetTitle>Nuevo Cliente</SheetTitle>
-                    <SheetDescription>Formulario para crear cliente</SheetDescription>
+                    <SheetTitle>{t('clients.form.create_title')}</SheetTitle>
+                    <SheetDescription>{t('clients.form.create_desc')}</SheetDescription>
                 </SheetHeader>
                 <div className="flex flex-col h-full bg-white/95 backdrop-blur-xl">
                     {/* Header */}
                     <div className="sticky top-0 z-20 flex items-center justify-between shrink-0 px-8 py-5 bg-white/40 backdrop-blur-md border-b border-black/5">
                         <div>
-                            <h2 className="text-xl font-bold text-gray-900 tracking-tight">Nuevo Cliente</h2>
-                            <p className="text-xs text-muted-foreground">Registra un nuevo contacto comercial.</p>
+                            <h2 className="text-xl font-bold text-gray-900 tracking-tight">{t('clients.form.create_title')}</h2>
+                            <p className="text-xs text-muted-foreground">{t('clients.form.create_desc')}</p>
                         </div>
                     </div>
 
@@ -184,9 +186,9 @@ export function CreateClientSheet({ onSuccess, open: controlledOpen, onOpenChang
                             <div className="lg:col-span-8 overflow-y-auto p-8 h-full relative scrollbar-thin scrollbar-thumb-gray-200">
                                 <Tabs defaultValue="profile" className="w-full">
                                     <TabsList className="grid w-full grid-cols-3 mb-8 bg-gray-100/50 p-1 rounded-xl">
-                                        <TabsTrigger value="profile" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">Perfil</TabsTrigger>
-                                        <TabsTrigger value="contact" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">Contacto</TabsTrigger>
-                                        <TabsTrigger value="social" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">Redes</TabsTrigger>
+                                        <TabsTrigger value="profile" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">{t('clients.form.tabs.profile')}</TabsTrigger>
+                                        <TabsTrigger value="contact" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">{t('clients.form.tabs.contact')}</TabsTrigger>
+                                        <TabsTrigger value="social" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">{t('clients.form.tabs.social')}</TabsTrigger>
                                     </TabsList>
 
                                     <TabsContent value="profile" className="space-y-6 animate-in slide-in-from-left-2 duration-300">
@@ -219,38 +221,38 @@ export function CreateClientSheet({ onSuccess, open: controlledOpen, onOpenChang
                                             )}
                                             <div className="space-y-1">
                                                 <Label className="text-base font-semibold text-gray-900 cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-                                                    Logo Corporativo
+                                                    {t('clients.form.fields.logo')}
                                                 </Label>
                                                 <p className="text-sm text-gray-500 max-w-xs">
-                                                    Sube una imagen (PNG, JPG) para identificar a tu cliente en la plataforma.
+                                                    {t('clients.form.fields.logo_desc')}
                                                 </p>
                                             </div>
                                         </div>
 
                                         <div className="grid grid-cols-2 gap-6">
                                             <div className="space-y-2 col-span-2 md:col-span-1">
-                                                <Label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Nombre del Cliente <span className="text-red-500">*</span></Label>
+                                                <Label className="text-xs font-bold text-gray-500 uppercase tracking-wider">{t('clients.form.fields.name')} <span className="text-red-500">*</span></Label>
                                                 <div className="relative">
                                                     <User className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-                                                    <Input className="pl-9 bg-gray-50/50 border-gray-200 focus:bg-white transition-all" placeholder="Ej. Juan Pérez" value={newClient.name} onChange={(e) => setNewClient({ ...newClient, name: e.target.value })} />
+                                                    <Input className="pl-9 bg-gray-50/50 border-gray-200 focus:bg-white transition-all" placeholder={t('clients.form.fields.name_placeholder')} value={newClient.name} onChange={(e) => setNewClient({ ...newClient, name: e.target.value })} />
                                                 </div>
                                             </div>
                                             <div className="space-y-2 col-span-2 md:col-span-1">
-                                                <Label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Empresa</Label>
+                                                <Label className="text-xs font-bold text-gray-500 uppercase tracking-wider">{t('clients.form.fields.company')}</Label>
                                                 <div className="relative">
                                                     <Building2 className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-                                                    <Input className="pl-9 bg-gray-50/50 border-gray-200 focus:bg-white transition-all" placeholder="Ej. Agencia S.A.S" value={newClient.company_name} onChange={(e) => setNewClient({ ...newClient, company_name: e.target.value })} />
+                                                    <Input className="pl-9 bg-gray-50/50 border-gray-200 focus:bg-white transition-all" placeholder={t('clients.form.fields.company_placeholder')} value={newClient.company_name} onChange={(e) => setNewClient({ ...newClient, company_name: e.target.value })} />
                                                 </div>
                                             </div>
                                         </div>
 
                                         <div className="grid grid-cols-2 gap-6">
                                             <div className="space-y-2">
-                                                <Label className="text-xs font-bold text-gray-500 uppercase tracking-wider">NIT / ID</Label>
+                                                <Label className="text-xs font-bold text-gray-500 uppercase tracking-wider">{t('clients.form.fields.nit')}</Label>
                                                 <Input className="bg-gray-50/50 border-gray-200 focus:bg-white transition-all" placeholder="900.123.456-7" value={newClient.nit} onChange={(e) => setNewClient({ ...newClient, nit: e.target.value })} />
                                             </div>
                                             <div className="space-y-2">
-                                                <Label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Dirección</Label>
+                                                <Label className="text-xs font-bold text-gray-500 uppercase tracking-wider">{t('clients.form.fields.address')}</Label>
                                                 <Input className="bg-gray-50/50 border-gray-200 focus:bg-white transition-all" placeholder="Calle 123..." value={newClient.address} onChange={(e) => setNewClient({ ...newClient, address: e.target.value })} />
                                             </div>
                                         </div>
@@ -258,14 +260,14 @@ export function CreateClientSheet({ onSuccess, open: controlledOpen, onOpenChang
 
                                     <TabsContent value="contact" className="space-y-6 animate-in slide-in-from-left-2 duration-300">
                                         <div className="space-y-2">
-                                            <Label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Email <span className="text-red-500">*</span></Label>
+                                            <Label className="text-xs font-bold text-gray-500 uppercase tracking-wider">{t('clients.form.fields.email')} <span className="text-red-500">*</span></Label>
                                             <div className="relative">
                                                 <Mail className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
                                                 <Input type="email" className="pl-9 bg-gray-50/50 border-gray-200 focus:bg-white transition-all" placeholder="cliente@empresa.com" value={newClient.email} onChange={(e) => setNewClient({ ...newClient, email: e.target.value })} />
                                             </div>
                                         </div>
                                         <div className="space-y-2">
-                                            <Label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Teléfono / Celular</Label>
+                                            <Label className="text-xs font-bold text-gray-500 uppercase tracking-wider">{t('clients.form.fields.phone')}</Label>
                                             <div className="relative">
                                                 <Phone className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
                                                 <Input className="pl-9 bg-gray-50/50 border-gray-200 focus:bg-white transition-all" placeholder="+57 300..." value={newClient.phone} onChange={(e) => setNewClient({ ...newClient, phone: e.target.value })} />
@@ -275,7 +277,7 @@ export function CreateClientSheet({ onSuccess, open: controlledOpen, onOpenChang
 
                                     <TabsContent value="social" className="space-y-6 animate-in slide-in-from-left-2 duration-300">
                                         <div className="space-y-2">
-                                            <Label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Sitio Web</Label>
+                                            <Label className="text-xs font-bold text-gray-500 uppercase tracking-wider">{t('clients.form.fields.website')}</Label>
                                             <div className="relative">
                                                 <Globe className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
                                                 <Input className="pl-9 bg-gray-50/50 border-gray-200 focus:bg-white transition-all" placeholder="https://..." value={newClient.website} onChange={(e) => setNewClient({ ...newClient, website: e.target.value })} />
@@ -303,8 +305,8 @@ export function CreateClientSheet({ onSuccess, open: controlledOpen, onOpenChang
 
                                 <div className="w-full max-w-sm space-y-6 relative z-10">
                                     <div className="text-center space-y-2">
-                                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Vista Previa</h3>
-                                        <p className="text-sm text-slate-500">Así se verá tu cliente en la plataforma</p>
+                                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">{t('clients.form.preview_title')}</h3>
+                                        <p className="text-sm text-slate-500">{t('clients.form.preview_desc')}</p>
                                     </div>
 
                                     {/* PREVIEW CARD */}
@@ -319,18 +321,18 @@ export function CreateClientSheet({ onSuccess, open: controlledOpen, onOpenChang
                                             <div className="flex-1 min-w-0 space-y-1">
                                                 <div className="h-6 w-3/4 bg-slate-100 rounded animate-pulse hidden" />
                                                 <h3 className="font-bold text-gray-900 text-lg leading-tight truncate">
-                                                    {newClient.name || "Nombre del Cliente"}
+                                                    {newClient.name || t('clients.form.fields.name')}
                                                 </h3>
                                                 <p className="text-sm text-gray-500 truncate">
-                                                    {newClient.company_name || "Nombre de Empresa"}
+                                                    {newClient.company_name || t('clients.form.fields.company')}
                                                 </p>
 
                                                 <div className="flex gap-2 mt-3">
                                                     <span className="inline-flex items-center px-2 py-1 rounded-md bg-emerald-50 text-emerald-700 text-xs font-medium ring-1 ring-inset ring-emerald-600/20">
-                                                        Al día
+                                                        {t('clients.status.active')}
                                                     </span>
                                                     <span className="inline-flex items-center px-2 py-1 rounded-md bg-slate-50 text-slate-600 text-xs font-medium ring-1 ring-inset ring-slate-400/20">
-                                                        0 Servicios
+                                                        0 {t('clients.table.services')}
                                                     </span>
                                                 </div>
                                             </div>
@@ -338,11 +340,11 @@ export function CreateClientSheet({ onSuccess, open: controlledOpen, onOpenChang
 
                                         <div className="bg-slate-50 px-6 py-4 border-t border-slate-100 grid grid-cols-2 gap-4">
                                             <div className="text-xs text-gray-500 flex flex-col gap-1">
-                                                <span className="uppercase tracking-wider font-bold text-[10px] text-slate-400">Email</span>
+                                                <span className="uppercase tracking-wider font-bold text-[10px] text-slate-400">{t('clients.form.fields.email')}</span>
                                                 <span className="truncate">{newClient.email || "—"}</span>
                                             </div>
                                             <div className="text-xs text-gray-500 flex flex-col gap-1">
-                                                <span className="uppercase tracking-wider font-bold text-[10px] text-slate-400">Teléfono</span>
+                                                <span className="uppercase tracking-wider font-bold text-[10px] text-slate-400">{t('clients.form.fields.phone')}</span>
                                                 <span className="truncate">{newClient.phone || "—"}</span>
                                             </div>
                                         </div>
@@ -356,14 +358,14 @@ export function CreateClientSheet({ onSuccess, open: controlledOpen, onOpenChang
                     {/* Footer Actions */}
                     <div className="sticky bottom-0 bg-white/80 backdrop-blur-md p-6 border-t border-gray-100 flex items-center justify-between z-20">
                         <Button variant="ghost" onClick={() => setOpen(false)} className="text-gray-500 hover:text-red-500">
-                            Cancelar
+                            {t('clients.form.buttons.cancel')}
                         </Button>
                         <Button
                             onClick={handleCreateClient}
                             disabled={loading}
                             className="bg-black text-white hover:bg-gray-800 shadow-xl shadow-black/10 px-8 rounded-xl h-11"
                         >
-                            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Guardar Cliente"}
+                            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : t('clients.form.buttons.save')}
                         </Button>
                     </div>
 

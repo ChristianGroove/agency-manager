@@ -23,11 +23,14 @@ interface CreateQuoteSheetProps {
     onSuccess?: () => void
     leadId?: string // Pre-link to lead
     leadName?: string
-    leadEmail?: string
+    leadEmail?: string // Add leadEmail
     leadPhone?: string
+    children?: React.ReactNode // Allow custom trigger
+    mode?: "create" | "sheet" | "edit" // Added 'edit'
+    existingQuote?: any // Typed as any to avoid circular deps if needed, or import Quote
 }
 
-export function CreateQuoteSheet({ emitters = [], open: controlledOpen, onOpenChange: setControlledOpen, trigger, onSuccess, leadId, leadName, leadEmail, leadPhone }: CreateQuoteSheetProps) {
+export function CreateQuoteSheet({ existingQuote, mode = "sheet", emitters = [], open: controlledOpen, onOpenChange: setControlledOpen, trigger, onSuccess, leadId, leadName, leadEmail, leadPhone, children }: CreateQuoteSheetProps) {
     const [internalOpen, setInternalOpen] = useState(false)
     const isControlled = controlledOpen !== undefined
     const open = isControlled ? controlledOpen : internalOpen
@@ -53,10 +56,12 @@ export function CreateQuoteSheet({ emitters = [], open: controlledOpen, onOpenCh
                 </SheetTrigger>
             ) : !isControlled ? (
                 <SheetTrigger asChild>
-                    <Button className="w-full md:w-auto bg-brand-pink hover:bg-brand-pink/90 text-white shadow-md border-0 transition-all hover:scale-105 active:scale-95">
-                        <Plus className="mr-2 h-4 w-4" />
-                        Nueva Cotización
-                    </Button>
+                    {children ? children : (
+                        <Button className="w-full md:w-auto bg-brand-pink hover:bg-brand-pink/90 text-white shadow-md border-0 transition-all hover:scale-105 active:scale-95">
+                            <Plus className="mr-2 h-4 w-4" />
+                            Nueva Cotización
+                        </Button>
+                    )}
                 </SheetTrigger>
             ) : null}
             <SheetContent
@@ -80,6 +85,7 @@ export function CreateQuoteSheet({ emitters = [], open: controlledOpen, onOpenCh
                     prefillLeadName={leadName}
                     prefillLeadEmail={leadEmail}
                     prefillLeadPhone={leadPhone}
+                    existingQuote={existingQuote} // Pass for edit mode
                 />
             </SheetContent>
         </Sheet>

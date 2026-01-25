@@ -1,14 +1,17 @@
 import { IntegrationAdapter, ConnectionCredentials, VerificationResult } from "./types"
 
 export class MetaAdapter implements IntegrationAdapter {
-    key = "meta_business" // Unified Key
+    key: string;
+
+    constructor(key: string = "meta_business") {
+        this.key = key;
+    }
 
     async verifyCredentials(credentials: ConnectionCredentials): Promise<VerificationResult> {
-        // ... (Verification logic can remain or be improved later)
-        const { phoneNumberId, accessToken, pageId } = credentials
+        const { phoneNumberId, accessToken, pageId, assetId, instagramBusinessId } = credentials
 
-        if ((!phoneNumberId && !pageId) || !accessToken) {
-            return { isValid: false, error: "Missing Phone Number ID/Page ID or Access Token" }
+        if ((!phoneNumberId && !pageId && !assetId && !instagramBusinessId) || !accessToken) {
+            return { isValid: false, error: "Missing Asset ID (Phone/Page/IG) or Access Token" }
         }
         return { isValid: true }
     }
@@ -32,7 +35,7 @@ export class MetaAdapter implements IntegrationAdapter {
 
         // Merge passed metadata (context) with credentials defaults
         const phoneNumberId = metadata?.phoneNumberId || creds.phoneNumberId || creds.phone_number_id;
-        const pageId = metadata?.pageId || creds.pageId || creds.page_id;
+        const pageId = metadata?.pageId || creds.pageId || creds.page_id || creds.assetId || creds.instagramBusinessId;
         const accessToken = creds.accessToken || creds.access_token;
 
         if ((!phoneNumberId && !pageId) || !accessToken) throw new Error("Missing Meta credentials (ID or Token)")

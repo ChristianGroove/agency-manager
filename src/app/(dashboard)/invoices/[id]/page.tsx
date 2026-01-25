@@ -111,7 +111,7 @@ export default function InvoicePage() {
         <div className="px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Link href={invoice.client?.id ? `/clients/${invoice.client.id}` : '/clients'}>
+              <Link href="/invoices">
                 <Button
                   variant="ghost"
                   size="sm"

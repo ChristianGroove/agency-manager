@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
+import { useTranslation } from "@/lib/i18n/use-translation"
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -21,6 +22,7 @@ interface EditClientSheetProps {
 }
 
 export function EditClientSheet({ client, open, onOpenChange, onSuccess }: EditClientSheetProps) {
+    const { t } = useTranslation()
     const router = useRouter()
     const fileInputRef = useRef<HTMLInputElement>(null)
     const [loading, setLoading] = useState(false)
@@ -80,7 +82,7 @@ export function EditClientSheet({ client, open, onOpenChange, onSuccess }: EditC
                     .getPublicUrl(filePath)
 
                 setEditForm(prev => ({ ...prev, logo_url: publicUrl }))
-                toast.success("Logo subido correctamente")
+                toast.success(t('clients.toasts.logo_success'))
             } catch (error) {
                 console.error(error)
                 toast.error("Error al subir imagen")
@@ -122,12 +124,12 @@ export function EditClientSheet({ client, open, onOpenChange, onSuccess }: EditC
                 .eq('id', client.id)
 
             if (error) throw error
-            toast.success("Cliente actualizado")
+            toast.success(t('clients.toasts.updated_success'))
             onOpenChange(false)
             onSuccess()
         } catch (error) {
             console.error(error)
-            toast.error("Error al actualizar")
+            toast.error(t('clients.toasts.error_update'))
         } finally {
             setLoading(false)
         }
@@ -146,17 +148,17 @@ export function EditClientSheet({ client, open, onOpenChange, onSuccess }: EditC
             >
                 <div className="flex flex-col h-full relative">
                     <SheetHeader className="px-8 py-5 border-b border-gray-100 dark:border-white/10 bg-white/50 backdrop-blur z-10 flex-none">
-                        <SheetTitle className="text-xl font-bold text-gray-900">Editar Contacto</SheetTitle>
-                        <SheetDescription>Actualiza la información comercial y de contacto.</SheetDescription>
+                        <SheetTitle className="text-xl font-bold text-gray-900">{t('clients.form.edit_title')}</SheetTitle>
+                        <SheetDescription>{t('clients.form.edit_desc')}</SheetDescription>
                     </SheetHeader>
 
                     <form onSubmit={handleUpdateClient} className="flex-1 flex flex-col overflow-hidden">
                         <Tabs defaultValue="profile" className="flex-1 w-full flex flex-col overflow-hidden">
                             <div className="px-8 py-2 bg-gray-50/50 dark:bg-white/5 border-b border-gray-100 flex-none sticky top-0 z-10 backdrop-blur-md">
                                 <TabsList className="bg-transparent p-0 w-full justify-start h-auto gap-6">
-                                    <TabsTrigger value="profile" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-indigo-600 data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 rounded-none px-0 pb-2 text-gray-500 font-medium text-sm">Perfil</TabsTrigger>
-                                    <TabsTrigger value="contact" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-indigo-600 data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 rounded-none px-0 pb-2 text-gray-500 font-medium text-sm">Contacto</TabsTrigger>
-                                    <TabsTrigger value="social" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-indigo-600 data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 rounded-none px-0 pb-2 text-gray-500 font-medium text-sm">Redes</TabsTrigger>
+                                    <TabsTrigger value="profile" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-indigo-600 data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 rounded-none px-0 pb-2 text-gray-500 font-medium text-sm">{t('clients.form.tabs.profile')}</TabsTrigger>
+                                    <TabsTrigger value="contact" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-indigo-600 data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 rounded-none px-0 pb-2 text-gray-500 font-medium text-sm">{t('clients.form.tabs.contact')}</TabsTrigger>
+                                    <TabsTrigger value="social" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-indigo-600 data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 rounded-none px-0 pb-2 text-gray-500 font-medium text-sm">{t('clients.form.tabs.social')}</TabsTrigger>
                                 </TabsList>
                             </div>
 
@@ -189,25 +191,25 @@ export function EditClientSheet({ client, open, onOpenChange, onSuccess }: EditC
                                         </div>
                                         <div className="flex-1">
                                             <Label className="cursor-pointer hover:text-indigo-600 transition-colors font-bold text-gray-900" htmlFor="logo-upload">
-                                                Logo Corporativo
+                                                {t('clients.form.fields.logo')}
                                             </Label>
-                                            <p className="text-xs text-gray-500 mt-1 leading-relaxed">Sube el logo de la empresa para personalizar reportes y el portal.</p>
+                                            <p className="text-xs text-gray-500 mt-1 leading-relaxed">{t('clients.form.fields.logo_edit_desc')}</p>
                                         </div>
                                     </div>
 
                                     <div className="grid grid-cols-1 gap-5">
                                         <div className="space-y-2">
-                                            <Label htmlFor="company_name" className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Empresa</Label>
+                                            <Label htmlFor="company_name" className="text-xs font-semibold text-gray-700 uppercase tracking-wide">{t('clients.form.fields.company')}</Label>
                                             <Input
                                                 id="company_name"
                                                 className="h-10 bg-white border-gray-200 focus:border-indigo-500 transition-all font-medium"
                                                 value={editForm.company_name}
                                                 onChange={(e) => setEditForm({ ...editForm, company_name: e.target.value })}
-                                                placeholder="Ej: Tech Solutions S.A.S"
+                                                placeholder={t('clients.form.fields.company_placeholder')}
                                             />
                                         </div>
                                         <div className="space-y-2">
-                                            <Label htmlFor="nit" className="text-xs font-semibold text-gray-700 uppercase tracking-wide">NIT / ID</Label>
+                                            <Label htmlFor="nit" className="text-xs font-semibold text-gray-700 uppercase tracking-wide">{t('clients.form.fields.nit')}</Label>
                                             <Input
                                                 id="nit"
                                                 className="h-10 bg-white border-gray-200 font-mono text-sm"
@@ -217,7 +219,7 @@ export function EditClientSheet({ client, open, onOpenChange, onSuccess }: EditC
                                             />
                                         </div>
                                         <div className="space-y-2">
-                                            <Label htmlFor="address" className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Dirección Fiscal</Label>
+                                            <Label htmlFor="address" className="text-xs font-semibold text-gray-700 uppercase tracking-wide">{t('clients.form.fields.address_label')}</Label>
                                             <Input
                                                 id="address"
                                                 className="h-10 bg-white border-gray-200"
@@ -231,7 +233,7 @@ export function EditClientSheet({ client, open, onOpenChange, onSuccess }: EditC
 
                                 <TabsContent value="contact" className="p-6 m-0 space-y-5 animate-in fade-in-50">
                                     <div className="space-y-2">
-                                        <Label htmlFor="name" className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Nombre Encargado</Label>
+                                        <Label htmlFor="name" className="text-xs font-semibold text-gray-700 uppercase tracking-wide">{t('clients.form.fields.name_label')}</Label>
                                         <div className="relative">
                                             <FileText className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                                             <Input
@@ -244,7 +246,7 @@ export function EditClientSheet({ client, open, onOpenChange, onSuccess }: EditC
                                         </div>
                                     </div>
                                     <div className="space-y-2">
-                                        <Label htmlFor="email" className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Correo Electrónico</Label>
+                                        <Label htmlFor="email" className="text-xs font-semibold text-gray-700 uppercase tracking-wide">{t('clients.form.fields.email')}</Label>
                                         <div className="relative">
                                             <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                                             <Input
@@ -257,7 +259,7 @@ export function EditClientSheet({ client, open, onOpenChange, onSuccess }: EditC
                                         </div>
                                     </div>
                                     <div className="space-y-2">
-                                        <Label htmlFor="phone" className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Teléfono / WhatsApp</Label>
+                                        <Label htmlFor="phone" className="text-xs font-semibold text-gray-700 uppercase tracking-wide">{t('clients.form.fields.phone')}</Label>
                                         <div className="relative">
                                             <Phone className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                                             <Input
@@ -273,7 +275,7 @@ export function EditClientSheet({ client, open, onOpenChange, onSuccess }: EditC
 
                                 <TabsContent value="social" className="p-6 m-0 space-y-5 animate-in fade-in-50">
                                     <div className="space-y-2">
-                                        <Label htmlFor="website" className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Sitio Web</Label>
+                                        <Label htmlFor="website" className="text-xs font-semibold text-gray-700 uppercase tracking-wide">{t('clients.form.fields.website')}</Label>
                                         <div className="relative">
                                             <Globe className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                                             <Input
@@ -318,9 +320,9 @@ export function EditClientSheet({ client, open, onOpenChange, onSuccess }: EditC
                         </Tabs>
 
                         <div className="p-5 border-t border-gray-100 bg-white/80 backdrop-blur flex items-center justify-end gap-3">
-                            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="h-10 px-4 text-xs font-medium rounded-xl border-gray-200">Cancelar</Button>
+                            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="h-10 px-4 text-xs font-medium rounded-xl border-gray-200">{t('clients.form.buttons.cancel')}</Button>
                             <Button type="submit" disabled={loading} className="h-10 px-6 rounded-xl text-xs font-bold bg-gray-900 text-white hover:bg-black shadow-lg shadow-gray-200">
-                                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Guardar Cambios"}
+                                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : t('clients.form.buttons.update')}
                             </Button>
                         </div>
                     </form>

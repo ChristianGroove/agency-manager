@@ -16,7 +16,11 @@ interface PortalServiceDetailProps {
     onViewBriefing: (briefingId: string) => void
 }
 
+import { useTranslation } from "@/lib/i18n/use-translation"
+
 export function PortalServiceDetail({ service, invoices, briefings, onBack, onPay, onViewInvoice, onViewBriefing }: PortalServiceDetailProps) {
+    const { t: originalT } = useTranslation()
+    const t = (key: any) => originalT(key)
     const formatDate = (dateString: string) => {
         return new Intl.DateTimeFormat('es-CO', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(dateString))
     }
@@ -28,7 +32,7 @@ export function PortalServiceDetail({ service, invoices, briefings, onBack, onPa
                 <div className="space-y-1">
                     <Button variant="ghost" onClick={onBack} className="pl-0 hover:bg-transparent hover:text-brand-pink -ml-2 mb-2">
                         <ArrowLeft className="h-4 w-4 mr-2" />
-                        Volver a Servicios
+                        {t('portal.service_detail.back_to_services')}
                     </Button>
                     <div className="flex items-center gap-3">
                         <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-pink-500/20">
@@ -40,16 +44,16 @@ export function PortalServiceDetail({ service, invoices, briefings, onBack, onPa
                                 {service.created_at && (
                                     <span className="flex items-center">
                                         <Calendar className="h-3 w-3 mr-1" />
-                                        Iniciado el {formatDate(service.created_at)}
+                                        {t('portal.service_detail.started_on').replace('{date}', formatDate(service.created_at))}
                                     </span>
                                 )}
                                 <span className={`px-2 py-0.5 rounded-full text-xs font-medium uppercase tracking-wider ${service.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
                                     }`}>
-                                    {service.status === 'active' ? 'Activo' : service.status}
+                                    {service.status === 'active' ? t('portal.service_detail.status_active') : service.status}
                                 </span>
                                 {(service.quantity || 1) > 1 && (
                                     <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full text-xs font-medium border border-blue-100">
-                                        {service.quantity} Unidades
+                                        {service.quantity} {t('portal.service_detail.units')}
                                     </span>
                                 )}
                             </div>
@@ -68,7 +72,7 @@ export function PortalServiceDetail({ service, invoices, briefings, onBack, onPa
                 {/* Invoices Section */}
                 <section>
                     <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                        Facturación del Servicio
+                        {t('portal.service_detail.billing_section')}
                         <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full text-xs">
                             {invoices.length}
                         </span>
@@ -81,7 +85,7 @@ export function PortalServiceDetail({ service, invoices, briefings, onBack, onPa
                         />
                     ) : (
                         <div className="text-center py-8 bg-gray-50 rounded-lg border border-dashed border-gray-200">
-                            <p className="text-gray-500 text-sm">No hay facturas registradas para este servicio.</p>
+                            <p className="text-gray-500 text-sm">{t('portal.service_detail.no_invoices')}</p>
                         </div>
                     )}
                 </section>
@@ -89,7 +93,7 @@ export function PortalServiceDetail({ service, invoices, briefings, onBack, onPa
                 {/* Briefings Section */}
                 <section>
                     <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                        Briefings y Entregables
+                        {t('portal.service_detail.briefings_section')}
                         <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full text-xs">
                             {briefings.length}
                         </span>
@@ -101,11 +105,11 @@ export function PortalServiceDetail({ service, invoices, briefings, onBack, onPa
                         />
                     ) : (
                         <div className="text-center py-8 bg-gray-50 rounded-lg border border-dashed border-gray-200">
-                            <p className="text-gray-500 text-sm">No hay briefings asociados a este servicio.</p>
+                            <p className="text-gray-500 text-sm">{t('portal.service_detail.no_briefings')}</p>
                         </div>
                     )}
                 </section>
-            </div>
-        </div>
+            </div >
+        </div >
     )
 }

@@ -10,8 +10,10 @@ import { toast } from "sonner"
 import { ServiceCategory, getCategories, deleteCategory } from "@/modules/core/catalog/categories-actions"
 import { CategoryFormSheet } from "./category-form-sheet"
 import * as LucideIcons from "lucide-react"
+import { useTranslation } from "@/lib/i18n/use-translation"
 
 export function CategoryManager() {
+    const { t } = useTranslation()
     const [open, setOpen] = useState(false)
     const [categories, setCategories] = useState<ServiceCategory[]>([])
     const [loading, setLoading] = useState(true)
@@ -25,7 +27,7 @@ export function CategoryManager() {
             setCategories(cats)
         } catch (error) {
             console.error('Error loading categories:', error)
-            toast.error('Error al cargar categorías')
+            toast.error(t('catalog.categories.toasts.load_error'))
         } finally {
             setLoading(false)
         }
@@ -38,16 +40,16 @@ export function CategoryManager() {
     }, [open])
 
     const handleDelete = async (id: string, name: string) => {
-        if (!confirm(`¿Eliminar la categoría "${name}"?\n\nEsto solo es posible si no tiene servicios asignados.`)) {
+        if (!confirm(t('catalog.categories.delete_confirm_title').replace('{name}', name) + '\n\n' + t('catalog.categories.delete_confirm_desc'))) {
             return
         }
 
         try {
             await deleteCategory(id)
-            toast.success('Categoría eliminada')
+            toast.success(t('catalog.categories.toasts.delete_success'))
             loadCategories()
         } catch (error: any) {
-            toast.error(error.message || 'Error al eliminar categoría')
+            toast.error(error.message || t('catalog.categories.toasts.delete_error'))
         }
     }
 
@@ -94,7 +96,7 @@ export function CategoryManager() {
                 <SheetTrigger asChild>
                     <Button variant="outline">
                         <Plus className="h-4 w-4 mr-2" />
-                        Gestionar Categorías
+                        {t('catalog.buttons.manage_categories')}
                     </Button>
                 </SheetTrigger>
                 <SheetContent
@@ -107,8 +109,8 @@ export function CategoryManager() {
                     "
                 >
                     <SheetHeader className="hidden">
-                        <SheetTitle>Categorías de Servicios</SheetTitle>
-                        <SheetDescription>Organiza tu catálogo.</SheetDescription>
+                        <SheetTitle>{t('catalog.categories.sheet_title')}</SheetTitle>
+                        <SheetDescription>{t('catalog.categories.sheet_desc')}</SheetDescription>
                     </SheetHeader>
 
                     <div className="flex flex-col h-full bg-white/95 backdrop-blur-xl">
@@ -119,8 +121,8 @@ export function CategoryManager() {
                                     <LucideIcons.FolderOpen className="h-5 w-5" />
                                 </div>
                                 <div>
-                                    <h2 className="text-xl font-bold text-gray-900 tracking-tight">Categorías</h2>
-                                    <p className="text-xs text-muted-foreground">Organiza tus servicios.</p>
+                                    <h2 className="text-xl font-bold text-gray-900 tracking-tight">{t('catalog.categories.manager_title')}</h2>
+                                    <p className="text-xs text-muted-foreground">{t('catalog.categories.manager_subtitle')}</p>
                                 </div>
                             </div>
                         </div>
@@ -140,13 +142,13 @@ export function CategoryManager() {
                                         <div className="flex flex-col items-center justify-center py-20 px-4 text-center border-2 border-dashed border-gray-100 rounded-2xl bg-gray-50/50">
                                             <LucideIcons.FolderOpen className="h-12 w-12 text-muted-foreground/30 mb-4" />
                                             <p className="text-sm font-medium text-gray-900 mb-1">
-                                                Sin categorías
+                                                {t('catalog.categories.empty_title')}
                                             </p>
                                             <p className="text-xs text-muted-foreground max-w-xs mx-auto mb-6">
-                                                Crea categorías para mantener tu catálogo organizado y fácil de filtrar.
+                                                {t('catalog.categories.empty_desc')}
                                             </p>
                                             <Button onClick={handleCreateNew} variant="outline">
-                                                Crear primera categoría
+                                                {t('catalog.categories.create_first')}
                                             </Button>
                                         </div>
                                     ) : (
@@ -213,14 +215,14 @@ export function CategoryManager() {
 
                         {/* Footer */}
                         <div className="sticky bottom-0 bg-white/80 backdrop-blur-md p-6 border-t border-gray-100 flex items-center justify-between z-20">
-                            <Button variant="ghost" onClick={() => setOpen(false)}>Cerrar</Button>
+                            <Button variant="ghost" onClick={() => setOpen(false)}>{t('common.actions.back')}</Button>
                             <Button
                                 onClick={handleCreateNew}
                                 size="sm"
                                 className="bg-brand-pink text-white hover:bg-brand-pink/90 shadow-lg shadow-gray-200"
                             >
                                 <Plus className="h-4 w-4 mr-2" />
-                                Nueva Categoría
+                                {t('catalog.categories.new_title')}
                             </Button>
                         </div>
                     </div>

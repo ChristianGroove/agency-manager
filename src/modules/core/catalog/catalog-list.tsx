@@ -26,11 +26,14 @@ interface CatalogListProps {
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
+import { useTranslation } from "@/lib/i18n/use-translation"
+
 export function CatalogList({ items, onEdit, onDelete, viewMode }: CatalogListProps) {
+    const { t } = useTranslation()
 
     const renderGrid = (itemsToRender: ServiceCatalogItem[]) => {
         if (itemsToRender.length === 0) {
-            return <EmptyState />
+            return <EmptyState t={t} />
         }
 
         return (
@@ -52,7 +55,7 @@ export function CatalogList({ items, onEdit, onDelete, viewMode }: CatalogListPr
 
     const renderList = (itemsToRender: ServiceCatalogItem[]) => {
         if (itemsToRender.length === 0) {
-            return <EmptyState />
+            return <EmptyState t={t} />
         }
 
         return (
@@ -112,21 +115,22 @@ export function CatalogList({ items, onEdit, onDelete, viewMode }: CatalogListPr
         )
     }
 
-    const categoryShorthand = (type: string) => type === 'recurring' ? 'Suscripción' : 'Pago Único'
+    const categoryShorthand = (type: string) => type === 'recurring' ? t('services.summary.active_subscription') : t('services.summary.one_time_payment')
 
     return viewMode === 'list' ? renderList(items) : renderGrid(items)
 }
 
-function EmptyState() {
+function EmptyState({ t }: { t: any }) {
     return (
         <div className="text-center py-20 bg-gray-50 rounded-xl border border-dashed">
             <Briefcase className="h-12 w-12 mx-auto text-gray-300 mb-3" />
-            <p className="text-gray-500">No se encontraron servicios</p>
+            <p className="text-gray-500">{t('catalog.header.empty_title')}</p>
         </div>
     )
 }
 
 function ActionMenu({ item, onEdit, onDelete }: { item: ServiceCatalogItem, onEdit: (i: ServiceCatalogItem) => void, onDelete: (id: string) => void }) {
+    const { t } = useTranslation()
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -136,10 +140,10 @@ function ActionMenu({ item, onEdit, onDelete }: { item: ServiceCatalogItem, onEd
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => onEdit(item)}>
-                    <Pencil className="mr-2 h-3.5 w-3.5" /> Editar
+                    <Pencil className="mr-2 h-3.5 w-3.5" /> {t('common.actions.edit')}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => onDelete(item.id)} className="text-red-600 focus:text-red-600 focus:bg-red-50">
-                    <Trash2 className="mr-2 h-3.5 w-3.5" /> Eliminar
+                    <Trash2 className="mr-2 h-3.5 w-3.5" /> {t('common.actions.delete')}
                 </DropdownMenuItem>
             </DropdownMenuContent>
         </DropdownMenu>

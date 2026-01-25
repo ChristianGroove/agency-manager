@@ -60,10 +60,12 @@ export const QuoteTemplate = forwardRef<HTMLDivElement, QuoteTemplateProps>(
                             <p className="font-bold text-base text-gray-900 mb-1">{settings?.agency_name || "Pixy Agency"}</p>
 
                             <div className="space-y-0.5 text-sm text-gray-600">
-                                {(settings?.agency_address || settings?.company_address) && <p>{settings?.agency_address || settings?.company_address}</p>}
-                                {(settings?.agency_email || settings?.company_email) && <p>{settings?.agency_email || settings?.company_email}</p>}
-                                {(settings?.agency_phone || settings?.company_phone) && <p className="font-semibold text-gray-900">Cel: {settings?.agency_phone || settings?.company_phone}</p>}
+                                {settings?.agency_address && <p>{settings.agency_address}</p>}
+                                {settings?.agency_email && <p>{settings.agency_email}</p>}
+                                {settings?.agency_phone && <p className="font-semibold text-gray-900">Cel: {settings.agency_phone}</p>}
                                 {settings?.agency_website && <p>{settings.agency_website}</p>}
+
+
                             </div>
                         </div>
 

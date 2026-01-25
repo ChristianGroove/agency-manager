@@ -112,23 +112,14 @@ export function ChannelsList({ channels, pipelineStages, agents }: ChannelsListP
                         Messenger
                     </Button>
 
-                    {/* Instagram Button - Coming Soon */}
-                    <TooltipProvider>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Button
-                                    disabled
-                                    className="bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-sm opacity-60 cursor-not-allowed"
-                                >
-                                    <Instagram className="mr-2 h-4 w-4" />
-                                    Instagram
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                                <p>Próximamente</p>
-                            </TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
+                    {/* Instagram Button */}
+                    <Button
+                        onClick={() => handleMetaConnect('instagram')}
+                        className="bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-sm hover:from-pink-600 hover:to-purple-700"
+                    >
+                        <Instagram className="mr-2 h-4 w-4" />
+                        Instagram
+                    </Button>
 
                     {/* Evolution (QR) - Small Plus Button */}
                     <TooltipProvider>
