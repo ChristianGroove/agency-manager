@@ -11,10 +11,10 @@ import {
     Phone,
     TrendingUp,
     CheckCircle,
-    X
+    X,
+    Settings
 } from 'lucide-react';
 
-// Import tab content components
 // Import tab content components
 import CallingTab from './tabs/CallingTab';
 import AppReviewTab from './tabs/AppReviewTab';
@@ -22,6 +22,7 @@ import MarketingTab from './tabs/MarketingTab';
 import FlowsTab from './tabs/FlowsTab';
 import InfraTab from './tabs/InfraTab';
 import AiTab from './tabs/AiTab';
+import { MasterConfigTab } from './tabs/MasterConfigTab';
 
 import { useTranslation } from "@/lib/i18n/use-translation";
 
@@ -75,7 +76,7 @@ export default function MetaControlSheet() {
                     {/* Tab Navigation */}
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-0">
                         <div className="sticky top-[73px] z-10 bg-background border-b px-6 py-2">
-                            <TabsList className="grid grid-cols-6 w-full h-auto">
+                            <TabsList className="grid grid-cols-7 w-full h-auto">
                                 <TabsTrigger
                                     value="infrastructure"
                                     className="flex flex-col gap-1 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
@@ -118,6 +119,13 @@ export default function MetaControlSheet() {
                                     <CheckCircle className="w-4 h-4" />
                                     <span className="text-xs">{t("meta.tabs.review")}</span>
                                 </TabsTrigger>
+                                <TabsTrigger
+                                    value="config"
+                                    className="flex flex-col gap-1 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                                >
+                                    <Settings className="w-4 h-4" />
+                                    <span className="text-xs">Config</span>
+                                </TabsTrigger>
                             </TabsList>
                         </div>
 
@@ -145,6 +153,10 @@ export default function MetaControlSheet() {
 
                             <TabsContent value="review" className="mt-0">
                                 <AppReviewTab />
+                            </TabsContent>
+
+                            <TabsContent value="config" className="mt-0">
+                                <MasterConfigTab />
                             </TabsContent>
                         </div>
                     </Tabs>

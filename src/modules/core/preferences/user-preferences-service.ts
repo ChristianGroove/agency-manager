@@ -48,7 +48,10 @@ export class UserPreferencesService {
 
     async getPreferences(): Promise<UserPreferences> {
         const { data: { user } } = await this.supabase.auth.getUser();
-        if (!user) throw new Error("No authenticated user");
+        if (!user) {
+            console.warn("UserPreferences: No authenticated user, returning defaults");
+            return DEFAULT_PREFERENCES;
+        }
 
         const { data, error } = await this.supabase
             .from('user_preferences')

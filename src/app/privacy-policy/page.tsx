@@ -15,49 +15,34 @@ export default function PrivacyPolicyPage() {
             </p>
 
             <div className="prose prose-slate dark:prose-invert max-w-none">
-                <h2>Business Solution Data (Meta Requirement)</h2>
+                <h2>Business Solution Data & AI Policy (2026 Compliance)</h2>
 
                 <p>
-                    Pixy acts as a <strong>Data Processor</strong> for WhatsApp Business Solution data. We:
+                    Pixy acts exclusively as a <strong>Data Processor</strong> under the instructions of our Customers (Data Controllers), complying with Meta's January 2026 AI Policy.
                 </p>
 
-                <ul>
-                    <li>Process business messages on behalf of our customers (Data Controllers)</li>
-                    <li>Do NOT use customer data to train AI models</li>
-                    <li>Implement zero data retention with LLM providers</li>
-                    <li>Use encryption at rest and in transit</li>
-                </ul>
+                <h3>AI No-Training Guarantee</h3>
+                <div className="bg-primary/5 p-4 rounded-md border border-primary/20 my-4">
+                    <p className="font-semibold text-primary">Strict Prohibition on Model Training</p>
+                    <p>
+                        PIXY guarantees that <strong>no data</strong> derived from the WhatsApp Business Solution
+                        (including message content, user profiles, or metadata) is used to train, fine-tune,
+                        improve, or feed our own or third-party Foundation Models (LLMs).
+                    </p>
+                </div>
 
-                <h3>Data We Process</h3>
-                <ul>
-                    <li>Business conversation messages</li>
-                    <li>User phone numbers (hashed)</li>
-                    <li>Call metadata (duration, timestamps)</li>
-                    <li>Flow interaction data</li>
-                </ul>
+                <h3>Technical Attribution</h3>
+                <p>
+                    We collect unique identifiers such as <code>ctwa_clid</code> (Click-to-WhatsApp Click ID)
+                    <strong>solely</strong> for the purpose of attribution and optimizing ad conversions
+                    requested by the Data Controller. This data is not used for user profiling across businesses.
+                </p>
 
-                <h3>Data We DO NOT Collect</h3>
+                <h3>AI Usage Limits</h3>
                 <ul>
-                    <li>Message content for training purposes</li>
-                    <li>Personal conversations</li>
-                    <li>User device information beyond what Meta provides</li>
-                </ul>
-
-                <h2>Data Retention</h2>
-                <ul>
-                    <li><strong>Conversations:</strong> 90 days (configurable by customer)</li>
-                    <li><strong>Call logs:</strong> 12 months (compliance requirement)</li>
-                    <li><strong>Analytics:</strong> Aggregated only, no PII</li>
-                    <li><strong>LLM interactions:</strong> 0 days (zero retention policy)</li>
-                </ul>
-
-                <h2>AI Usage</h2>
-                <p>Our AI assistant:</p>
-                <ul>
-                    <li>Processes queries in real-time</li>
-                    <li>Does NOT store conversation history for training</li>
-                    <li>Uses anonymized user identifiers only</li>
-                    <li>Configured with OpenAI zero retention policy</li>
+                    <li>AI processing is stateless with a zero-retention policy at the provider level (OpenAI).</li>
+                    <li>AI is restricted to specific business tasks (appointments, support, queries).</li>
+                    <li>We do not offer "General Purpose" open-domain chatbots.</li>
                 </ul>
 
                 <h2>User Rights</h2>
@@ -106,10 +91,10 @@ export default function PrivacyPolicyPage() {
 
                 <h2>Contact</h2>
                 <p>
-                    <strong>Data Protection Officer:</strong> <a href="mailto:privacy@pixy.com" className="text-primary hover:underline">privacy@pixy.com</a>
+                    <strong>Data Protection Officer:</strong> <a href="mailto:privacidad@pixy.com.co" className="text-primary hover:underline">privacidad@pixy.com.co</a>
                 </p>
                 <p>
-                    <strong>General Inquiries:</strong> <a href="mailto:support@pixy.com" className="text-primary hover:underline">support@pixy.com</a>
+                    <strong>General Inquiries:</strong> <a href="mailto:privacidad@pixy.com.co" className="text-primary hover:underline">privacidad@pixy.com.co</a>
                 </p>
 
                 <div className="mt-12 p-6 bg-muted rounded-lg">

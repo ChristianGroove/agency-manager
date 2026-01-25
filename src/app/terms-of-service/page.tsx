@@ -21,14 +21,21 @@ export default function TermsOfServicePage() {
                     terms and provision of this agreement.
                 </p>
 
-                <h2>2. Acceptable Use</h2>
-                <p>Pixy platform may only be used for:</p>
-                <ul>
-                    <li>Legitimate business communications</li>
-                    <li>Compliant marketing messages (with opt-in consent)</li>
-                    <li>Customer support</li>
-                    <li>Transactional notifications</li>
-                </ul>
+                <h2>2. Acceptable Use & AI Restrictions</h2>
+                <p>Pixy platform may only be used for legitimate business communications.</p>
+
+                <h3>Strict Restriction on General Purpose AI</h3>
+                <p>
+                    <strong>Prohibited:</strong> It is strictly forbidden to use the Pixy platform to distribute
+                    "General Purpose" assistants, open-ended chatbots, or conversational agents without a
+                    defined commercial purpose.
+                </p>
+                <p>
+                    <strong>Mandatory Intent Ratio:</strong> Your AI configuration must demonstrate that
+                    <strong>&gt;90%</strong> of interactions serve a specific business task (e.g., Appointment Booking,
+                    Technical Support, Product Inquiries). Failure to maintain this ratio may result in
+                    immediate service suspension to comply with Meta's Integrity Policy.
+                </p>
 
                 <h3>Prohibited Activities</h3>
                 <p>You may NOT use Pixy for:</p>
@@ -37,7 +44,7 @@ export default function TermsOfServicePage() {
                     <li>Illegal content or activities</li>
                     <li>Harassment or abuse</li>
                     <li>Rate limit circumvention</li>
-                    <li>Violating Meta WhatsApp policies</li>
+                    <li>Training AI models with user data</li>
                 </ul>
 
                 <h2>3. Meta WhatsApp Policies</h2>
@@ -172,7 +179,7 @@ export default function TermsOfServicePage() {
                     For questions about these terms, contact us at:
                 </p>
                 <p>
-                    <strong>Email:</strong> <a href="mailto:legal@pixy.com" className="text-primary hover:underline">legal@pixy.com</a>
+                    <strong>Email:</strong> <a href="mailto:privacidad@pixy.com.co" className="text-primary hover:underline">privacidad@pixy.com.co</a>
                 </p>
 
                 <div className="mt-12 p-6 bg-muted rounded-lg">

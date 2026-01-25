@@ -62,23 +62,23 @@ export default function DataDeletionPage() {
                             <div className="flex-1">
                                 <h3 className="text-lg font-semibold mb-2">Option 2: Via Email</h3>
                                 <p className="text-muted-foreground mb-4">
-                                    Send an email with your deletion request
+                                    Send an email to our Data Protection team.
                                 </p>
 
                                 <div className="bg-muted p-4 rounded-md space-y-2">
                                     <p className="font-mono text-sm">
-                                        <strong>To:</strong> data-deletion@pixy.com
+                                        <strong>To:</strong> privacidad@pixy.com.co
                                     </p>
                                     <p className="font-mono text-sm">
-                                        <strong>Subject:</strong> Data Deletion Request
+                                        <strong>Subject:</strong> DATA DELETION REQUEST
                                     </p>
                                     <p className="font-mono text-sm">
-                                        <strong>Body:</strong> Include your phone number
+                                        <strong>Body:</strong> Please include your registered phone number.
                                     </p>
                                 </div>
 
                                 <p className="mt-4 text-sm">
-                                    <strong>Response time:</strong> Within 48 hours
+                                    <strong>Process:</strong> We will process the total deletion of metadata and records within a maximum of 30 calendar days and notify you via the same channel.
                                 </p>
                             </div>
                         </div>
