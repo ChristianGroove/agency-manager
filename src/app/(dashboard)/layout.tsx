@@ -10,7 +10,7 @@ import { GlobalLoader } from "@/components/ui/global-loader"
 import { GlobalInboxProvider } from "@/modules/core/messaging/context/global-inbox-context"
 import { InboxOverlay } from "@/modules/core/messaging/components/floating-inbox/inbox-overlay"
 import { GlobalMessageListener } from "@/modules/core/messaging/components/floating-inbox/global-message-listener"
-import MetaControlSheet from "@/components/meta/MetaControlSheet"
+import { FabController } from "@/components/layout/fab-controller"
 import { getSettings } from "@/modules/core/settings/actions"
 import { getDictionary } from "@/lib/i18n/dictionaries"
 import { I18nProvider } from "@/lib/i18n/context"
@@ -30,7 +30,7 @@ export default async function DashboardLayout({
     ])
 
     const { data: { user }, error: authError } = userResponse
-    
+
     // Fetch settings separately since it doesn't block auth flow
     const settings = await getSettings()
 
@@ -72,7 +72,7 @@ export default async function DashboardLayout({
                 <GlobalInboxProvider>
                     <GlobalMessageListener />
                     <InboxOverlay />
-                    <MetaControlSheet />
+                    <FabController />
                     <SystemAlertBanner />
                     <Suspense fallback={<GlobalLoader />}>
                         {children}

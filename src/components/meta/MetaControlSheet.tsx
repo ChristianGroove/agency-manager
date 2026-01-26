@@ -26,29 +26,20 @@ import { MasterConfigTab } from './tabs/MasterConfigTab';
 
 import { useTranslation } from "@/lib/i18n/use-translation";
 
-export default function MetaControlSheet() {
+export default function MetaControlSheet({
+    open,
+    onOpenChange
+}: {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+}) {
     const { t } = useTranslation();
-    const [open, setOpen] = useState(false);
     const [activeTab, setActiveTab] = useState('calling'); // Default to calling (P0)
 
     return (
         <>
-            {/* Meta Control Trigger - Centered Bottom Floating Button */}
-            <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[9999]">
-                <Button
-                    onClick={() => setOpen(true)}
-                    variant="outline"
-                    size="icon"
-                    className="rounded-full w-8 h-8 shadow-xl backdrop-blur-md bg-background/50 border-input transition-all duration-300 hover:scale-110 hover:bg-background/80"
-                    title={t("meta.title")}
-                >
-                    <Rocket className="w-4 h-4 text-primary animate-pulse" />
-                    <span className="sr-only">{t("meta.title")}</span>
-                </Button>
-            </div>
-
             {/* Meta Control Sheet */}
-            <Sheet open={open} onOpenChange={setOpen}>
+            <Sheet open={open} onOpenChange={onOpenChange}>
                 <SheetContent
                     side="right"
                     className="w-full sm:max-w-2xl overflow-y-auto p-0"
@@ -65,7 +56,7 @@ export default function MetaControlSheet() {
                             <Button
                                 variant="ghost"
                                 size="icon"
-                                onClick={() => setOpen(false)}
+                                onClick={() => onOpenChange(false)}
                                 className="h-8 w-8"
                             >
                                 <X className="h-4 w-4" />

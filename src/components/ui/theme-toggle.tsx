@@ -30,7 +30,7 @@ export function ThemeToggle() {
             size="icon"
             onClick={toggleTheme}
             className={cn(
-                "fixed bottom-4 right-4 z-[9999] rounded-full w-6 h-6 shadow-xl backdrop-blur-md bg-background/50 border-input transition-all duration-300 hover:scale-105",
+                "fixed bottom-4 right-4 z-[9999] rounded-full w-8 h-8 shadow-xl backdrop-blur-md bg-background/50 border-input transition-all duration-300 hover:scale-105",
                 "dark:bg-zinc-900/50 dark:border-zinc-800"
             )}
             title="Cambiar tema"
