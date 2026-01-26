@@ -48,9 +48,27 @@ export class MetaProvider implements MessagingProvider {
                 activeToken = await this.getPageAccessToken(this.assetId, activeToken);
             }
 
-            const payload = isMessengerOrIg
-                ? { recipient: { id: options.to }, message: { text: (options.content as any).text || '' } }
-                : this.buildPayload(options);
+            let payload: any;
+
+            if (isMessengerOrIg) {
+                // Messenger/Instagram specific payload structure
+                payload = {
+                    recipient: { id: options.to },
+                    message: { text: (options.content as any).text || '' }
+                };
+
+                // Helper: Apply Message Tag if provided (e.g. HUMAN_AGENT)
+                // This is critical for responding outside the 24h window (Policy #10)
+                if (options.metadata?.features && (options.metadata.features as any).tag) {
+                    const tag = (options.metadata.features as any).tag;
+                    payload.messaging_type = "MESSAGE_TAG";
+                    payload.tag = tag;
+                    debugLog(`[MetaProvider] Applied Message Tag: ${tag}`);
+                }
+            } else {
+                // WhatsApp Payload
+                payload = this.buildPayload(options);
+            }
 
             debugLog(`[MetaProvider] Sending Payload: ${JSON.stringify(payload)}`);
 

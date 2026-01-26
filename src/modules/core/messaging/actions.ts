@@ -205,6 +205,15 @@ export async function sendMessage(conversationId: string, payload: string, id?: 
         }
     }
 
+    // POLICY: Inject 'HUMAN_AGENT' tag for manual replies on Messenger/Instagram
+    // This allows replying up to 7 days after user's last message
+    if (channel === 'messenger' || channel === 'instagram') {
+        providerOptions.metadata.features = {
+            tag: 'HUMAN_AGENT'
+        };
+        console.log(`[sendMessage] Injected HUMAN_AGENT tag for ${channel}`);
+    }
+
     // Special handling for legacy MetaProvider compatibility if needed
     // but better to keep it clean and let providers handle their own mapping
     if (channel === 'whatsapp' && (content.type === 'image' || content.type === 'video' || content.type === 'audio')) {
