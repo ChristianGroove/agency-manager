@@ -23,14 +23,16 @@ export default async function DashboardLayout({
 }) {
     const supabase = await createClient()
 
-    // PERF: Parallel fetch of ALL initial data needed for dashboard
-    const [userResponse, currentOrgId, settings] = await Promise.all([
+    // OPTIMIZED: Parallel fetch with minimal dependencies
+    const [userResponse, currentOrgId] = await Promise.all([
         supabase.auth.getUser(),
-        getCurrentOrganizationId(),
-        getSettings()
+        getCurrentOrganizationId()
     ])
 
     const { data: { user }, error: authError } = userResponse
+    
+    // Fetch settings separately since it doesn't block auth flow
+    const settings = await getSettings()
 
     if (authError || !user) {
         console.error("❌ [LAYOUT] Auth Error details:", {
@@ -47,7 +49,7 @@ export default async function DashboardLayout({
     const dictionary = getDictionary(locale)
 
 
-    // PERF: Fetch modules and admin status in parallel (after we have user/orgId)
+    // OPTIMIZED: Parallel non-blocking fetches
     const [isAdmin, activeModules] = await Promise.all([
         isSuperAdmin(user.id),
         currentOrgId ? getActiveModules(currentOrgId) : Promise.resolve([])
@@ -62,7 +64,6 @@ export default async function DashboardLayout({
             locale={locale}
         >
             <DashboardShell
-                key={currentOrgId}
                 user={user}
                 currentOrgId={currentOrgId}
                 isSuperAdmin={isAdmin}

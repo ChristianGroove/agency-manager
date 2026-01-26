@@ -37,6 +37,8 @@ export async function getPipelineStages(): Promise<PipelineStage[]> {
 
         if (error) throw error
 
+        // DEBUG: Check stages
+        console.log("🛤️ Pipeline Stages for Org:", orgId, data?.map(s => `${s.name} (${s.status_key})`))
         return data as PipelineStage[]
     } catch (error: any) {
         console.error("Error fetching pipeline stages:", error)

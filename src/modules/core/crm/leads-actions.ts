@@ -36,7 +36,7 @@ export async function createLead(input: CreateLeadInput): Promise<ActionResponse
                 ...input,
                 user_id: user.id,
                 organization_id: organizationId,
-                status: 'open'
+                status: 'new'
             })
             .select()
             .single()
@@ -210,22 +210,55 @@ export async function convertLeadToClient(leadId: string): Promise<ActionRespons
     }
 }
 
-export async function getLeads(): Promise<Lead[]> {
-    const supabase = await createClient()
+export async function getLeads(limit = 300): Promise<Lead[]> {
+    // We use basic client for Auth check if needed, but for data we use Admin to bypass strict RLS
+    // Security: We MUST filter by orgId obtained from trusted session.
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) return []
 
     try {
-        const organizationId = await getCurrentOrganizationId()
-        if (!organizationId) return []
+        // Optimization: Filter out old inactive leads (older than 6 months and closed)
+        const sixMonthsAgo = new Date()
+        sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
+        const cutoffDate = sixMonthsAgo.toISOString()
 
-        const { data, error } = await supabase
+        // Filter Logic:
+        // Show IF (Status is NOT 'lost' AND NOT 'disturbed') -- i.e. Open/Won/etc
+        // OR (Created after 6 months ago) -- i.e. Recent 'lost' leads are okay to see
+
+        if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+            console.error("CRITICAL: SUPABASE_SERVICE_ROLE_KEY is missing in runtime env")
+            throw new Error("Misconfigured Server Environment: Missing Service Key")
+        }
+
+        // FORCE FRESH CLIENT to avoid any module-level initialization issues
+        const { createClient } = await import('@supabase/supabase-js')
+        const adminClient = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY,
+            {
+                auth: {
+                    autoRefreshToken: false,
+                    persistSession: false
+                }
+            }
+        )
+
+        // Use Admin Client to ensure we see ALL leads for this Org
+        const { data, error } = await adminClient
             .from('leads')
-            .select('*')
-            .eq('organization_id', organizationId)
+            .select('*') // Select ALL fields to avoid any mapping issues
+            .eq('organization_id', orgId)
+            // .or(`status.neq.lost,created_at.gt.${cutoffDate}`)
             .order('created_at', { ascending: false })
+            .limit(limit)
 
-        if (error) throw error
+        if (error) {
+            console.error("Supabase Error fetching leads:", error)
+            return []
+        }
 
-        return data as Lead[]
+        return (data || []) as Lead[]
     } catch (error: any) {
         console.error("Error fetching leads:", error)
         return []

@@ -815,8 +815,40 @@ export const es = {
                 billing_section: "Facturación del Servicio",
                 no_invoices: "No hay facturas registradas para este servicio.",
                 briefings_section: "Briefings y Entregables",
-                no_briefings: "No hay briefings asociados a este servicio."
+                no_briefings: "No hay briefings asociados con este servicio."
             }
+        }
+    },
+    crm: {
+        leads: {
+            title: "Leads",
+            desc: "Gestiona tus oportunidades de venta.",
+            section_info: "Información Básica",
+            section_contact: "Detalles de Contacto",
+            section_notes: "Notas y Contexto",
+            name_label: "Nombre del Lead",
+            company_label: "Empresa",
+            email_label: "Email",
+            phone_label: "Teléfono",
+            notes_label: "Descripción / Notas",
+            toasts: {
+                created: "Lead creado exitosamente",
+                updated: "Lead actualizado",
+                deleted: "Lead eliminado",
+                error: "Error procesando lead"
+            },
+            create_success: "Lead creado exitosamente",
+            update_success: "Lead actualizado",
+            delete_confirm: "¿Eliminar este lead?",
+            empty_pipeline: "No hay leads en esta etapa."
+        },
+        pipeline: {
+            title: "Pipeline",
+            kanban_view: "Tablero",
+            list_view: "Lista",
+            settings: "Configuración",
+            import: "Importar",
+            analytics: "Analítica"
         }
     }
 } as const

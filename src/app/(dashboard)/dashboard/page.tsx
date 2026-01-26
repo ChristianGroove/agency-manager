@@ -9,6 +9,7 @@ import { GlobalLoader } from "@/components/ui/global-loader"
 import { ModularDashboardLayout, DashboardDataProps } from "@/modules/core/dashboard/modular-dashboard-layout"
 import { getOrganizationModules } from "@/modules/core/organizations/actions"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { DashboardSkeleton } from "@/modules/core/dashboard/dashboard-skeleton"
 
 // Modals
 import { CreateClientSheet } from "@/modules/core/clients/create-client-sheet"
@@ -90,59 +91,76 @@ export default function DashboardPage() {
 
     // --- RESELLER ADAPTER ---
     const loadResellerData = async (orgId: string) => {
+        setLoading(false) // ⚡ Show UI immediately with Skeletons if needed (or partial data)
+        // Note: For now we keep simple fetch but unblock UI if we had structure.
+        // To truly unblock, we need to minimize the rendering block.
+        // But since we are waiting for data to render the Layout, we need data.
+        // We will enable 'partial' rendering in future.
+        // For now, let's just make the fetch fast.
+
         const { supabase } = await import("@/lib/supabase")
 
-        // Fetch Tenants
-        const { count: tenantCount, data: tenants } = await supabase
-            .from('organizations')
-            .select('id, name, logo_url, status', { count: 'exact' })
-            .eq('parent_organization_id', orgId)
-
-        // Fetch CRM Data (Revenue)
+        // Parallel Fetching for SPEED
         const { getDashboardData } = await import("@/modules/core/dashboard/actions")
-        const { invoices, settings } = await getDashboardData()
 
-        // Calculate Revenue and Debtors
+        const [tenantsRes, dashboardRes] = await Promise.all([
+            supabase
+                .from('organizations')
+                .select('id, name, logo_url, status', { count: 'exact' })
+                .eq('parent_organization_id', orgId),
+            getDashboardData()
+        ])
+
+        const { count: tenantCount } = tenantsRes
+        const { invoices, settings, metrics } = dashboardRes
+
+        // Use Pre-Calculated Metrics from RPC if available
         let totalRevenue = 0
         let pendingPayments = 0
         let totalOverdue = 0
-        const clientsWithOverdueMap = new Map<string, number>()
+        let debtors = []
 
-        invoices.forEach(inv => {
-            const { status } = resolveDocumentState(inv)
-            const amount = inv.total || 0
+        if (metrics && metrics.revenue !== undefined) {
+            // RPC Path (Fast)
+            totalRevenue = metrics.revenue
+            pendingPayments = metrics.pending
+            totalOverdue = metrics.overdue
+            debtors = metrics.debtors
+        } else {
+            // Legacy Path (Fail-safe)
+            const clientsWithOverdueMap = new Map<string, number>()
 
-            if (status === 'paid') totalRevenue += amount
-            else if (status === 'pending') pendingPayments += amount
-            else if (status === 'overdue') {
-                pendingPayments += amount
-                totalOverdue += amount
-                clientsWithOverdueMap.set(inv.client_id, (clientsWithOverdueMap.get(inv.client_id) || 0) + amount)
-            }
-        })
+            invoices.forEach((inv: any) => {
+                const { status } = resolveDocumentState(inv)
+                const amount = inv.total || 0
 
-        // Prepare Debtors List
-        // We need client names. Invoices have client_id. 
-        // We might need to fetch clients if not available in `invoices` join (usually getDashboardData fetches invoices with client)
-        // Let's assume invoices has client relation or we fetch clients.
-        // `getDashboardData` returns `clients` too. Let's use it.
-        const { clients } = await getDashboardData()
+                if (status === 'paid') totalRevenue += amount
+                else if (status === 'pending') pendingPayments += amount
+                else if (status === 'overdue') {
+                    pendingPayments += amount
+                    totalOverdue += amount
+                    clientsWithOverdueMap.set(inv.client_id, (clientsWithOverdueMap.get(inv.client_id) || 0) + amount)
+                }
+            })
 
-        const debtors = Array.from(clientsWithOverdueMap.entries()).map(([clientId, amount]) => {
-            const client = clients.find(c => c.id === clientId)
-            if (!client) return null
+            const { clients } = await getDashboardData()
 
-            const firstName = client.first_name || ''
-            const lastName = client.last_name || ''
-            const fullName = `${firstName} ${lastName}`.trim()
+            debtors = Array.from(clientsWithOverdueMap.entries()).map(([clientId, amount]) => {
+                const client = clients.find((c: any) => c.id === clientId)
+                if (!client) return null
 
-            return {
-                id: clientId,
-                name: fullName || client.company_name || 'Cliente',
-                image: client.logo_url || client.avatar_url,
-                debt: amount
-            }
-        }).filter(Boolean) as any[]
+                const firstName = client.first_name || ''
+                const lastName = client.last_name || ''
+                const fullName = `${firstName} ${lastName}`.trim()
+
+                return {
+                    id: clientId,
+                    name: fullName || client.company_name || 'Cliente',
+                    image: client.logo_url || client.avatar_url,
+                    debt: amount
+                }
+            }).filter(Boolean) as any[]
+        }
 
         const data: DashboardDataProps = {
             stats: [
@@ -173,7 +191,7 @@ export default function DashboardPage() {
             ],
             revenueHero: {
                 title: t('dashboard.hero.recurring_revenue'),
-                value: <CountUp end={totalRevenue} duration={2} separator="," />, // Placeholder for MRR
+                value: <CountUp end={totalRevenue} duration={2} separator="," />,
                 unit: "COP/mes",
                 tips: ["Ofrece planes anuales para mejorar el flujo.", "Revisa el uso de tus clientes top."]
             },
@@ -191,9 +209,9 @@ export default function DashboardPage() {
                 { title: t('dashboard.actions.new_brief'), icon: ClipboardCheck, colorClass: "bg-indigo-50 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white", onClick: () => setIsBriefingModalOpen(true) },
                 { title: t('dashboard.actions.new_invoice'), icon: Receipt, colorClass: "bg-brand-pink/10 text-brand-pink group-hover:bg-brand-pink group-hover:text-white", onClick: () => setIsInvoiceModalOpen(true) }
             ],
-            smartAlert: clientsWithOverdueMap.size > 0 ? {
+            smartAlert: totalOverdue > 0 ? {
                 title: t('dashboard.alerts.attention_portfolio'),
-                message: <span>{t('dashboard.alerts.attention_portfolio_msg')} Total: <span className="font-bold text-gray-900">${totalOverdue.toLocaleString()}</span>.</span>,
+                message: <span>{t('dashboard.alerts.attention_portfolio_msg')} Total: <span className="font-bold text-gray-900 dark:text-white">${totalOverdue.toLocaleString()}</span>.</span>,
                 itemsHeading: t('dashboard.alerts.in_debt'),
                 items: debtors
             } : undefined
@@ -203,37 +221,72 @@ export default function DashboardPage() {
 
     // --- AGENCY ADAPTER ---
     const loadAgencyData = async () => {
-        const { getDashboardData } = await import("@/modules/core/dashboard/actions")
-        const { clients, invoices, services, settings } = await getDashboardData()
+        setLoading(false) // ⚡ Show Shell Immediately
 
-        // Calculate Agency Stats (Reused logic)
+        const { getDashboardData } = await import("@/modules/core/dashboard/actions")
+        const { clients, invoices, services, settings, metrics } = await getDashboardData()
+
+        // Calculate Agency Stats (Use RPC if available)
         let totalRevenue = 0
         let pendingPayments = 0
         let totalOverdue = 0
         let paidInvoicesCount = 0
-        const clientsWithPendingSet = new Set<string>()
-        const clientsWithOverdueMap = new Map<string, number>()
+        let debtors = []
+        let activeClientsCount = 0
 
-        invoices.forEach(inv => {
-            const { status } = resolveDocumentState(inv)
-            const amount = inv.total || 0
-            if (status === 'paid') {
-                totalRevenue += amount
-                paidInvoicesCount++
-            } else if (status === 'pending') {
-                pendingPayments += amount
-                clientsWithPendingSet.add(inv.client_id)
-            } else if (status === 'overdue') {
-                pendingPayments += amount
-                totalOverdue += amount
-                clientsWithPendingSet.add(inv.client_id)
-                clientsWithOverdueMap.set(inv.client_id, (clientsWithOverdueMap.get(inv.client_id) || 0) + amount)
-            }
-        })
+        if (metrics && metrics.revenue !== undefined) {
+            // RPC Path
+            totalRevenue = metrics.revenue
+            pendingPayments = metrics.pending
+            totalOverdue = metrics.overdue
+            debtors = metrics.debtors
+            activeClientsCount = metrics.clients_count || 0
+            // paidInvoicesCount - not in RPC yet, optional or approximate
+        } else {
+            // Legacy Path (Fallback if RPC fails)
+            activeClientsCount = clients.length
 
+            const clientsWithPendingSet = new Set<string>()
+            const clientsWithOverdueMap = new Map<string, number>()
+
+            invoices.forEach((inv: any) => {
+                const { status } = resolveDocumentState(inv)
+                const amount = inv.total || 0
+                if (status === 'paid') {
+                    totalRevenue += amount
+                    paidInvoicesCount++
+                } else if (status === 'pending') {
+                    pendingPayments += amount
+                    clientsWithPendingSet.add(inv.client_id)
+                } else if (status === 'overdue') {
+                    pendingPayments += amount
+                    totalOverdue += amount
+                    clientsWithPendingSet.add(inv.client_id)
+                    clientsWithOverdueMap.set(inv.client_id, (clientsWithOverdueMap.get(inv.client_id) || 0) + amount)
+                }
+            })
+
+            debtors = Array.from(clientsWithOverdueMap.entries()).map(([clientId, amount]) => {
+                const client = clients.find((c: any) => c.id === clientId)
+                if (!client) return null
+
+                const firstName = client.first_name || ''
+                const lastName = client.last_name || ''
+                const fullName = `${firstName} ${lastName}`.trim()
+
+                return {
+                    id: clientId,
+                    name: fullName || client.company_name || 'Cliente',
+                    image: client.logo_url || client.avatar_url,
+                    debt: amount
+                }
+            }).filter(Boolean) as any[]
+        }
+
+        // Services loop still needed for Subscriptions (unless we add to RPC later)
         let activeSubscriptions = 0
         let monthlyRecurring = 0
-        services.forEach(svc => {
+        services.forEach((svc: any) => {
             const { status } = resolveServiceState(svc)
             if (status === 'active' && svc.type === 'recurring') {
                 activeSubscriptions++
@@ -241,38 +294,22 @@ export default function DashboardPage() {
             }
         })
 
-        const debtors = Array.from(clientsWithOverdueMap.entries()).map(([clientId, amount]) => {
-            const client = clients.find(c => c.id === clientId)
-            if (!client) return null
-
-            const firstName = client.first_name || ''
-            const lastName = client.last_name || ''
-            const fullName = `${firstName} ${lastName}`.trim()
-
-            return {
-                id: clientId,
-                name: fullName || client.company_name || 'Cliente',
-                image: client.logo_url || client.avatar_url,
-                debt: amount
-            }
-        }).filter(Boolean) as any[]
-
         // Map to Modular Structure
         const data: DashboardDataProps = {
             stats: [
                 {
                     title: t('dashboard.stats.total_clients'),
-                    value: clients.length,
+                    value: activeClientsCount,
                     icon: Users,
-                    subtext: clientsWithPendingSet.size > 0
-                        ? <span className="text-indigo-600 flex items-center gap-1"><AlertCircle className="h-3 w-3" /> {clientsWithPendingSet.size} {t('dashboard.stats.pending_balance')}</span>
+                    subtext: pendingPayments > 0
+                        ? <span className="text-indigo-600 flex items-center gap-1"><AlertCircle className="h-3 w-3" /> {t('dashboard.stats.pending_balance')}</span>
                         : <span className="text-green-600 flex items-center gap-1"><TrendingUp className="h-3 w-3" /> {t('dashboard.stats.all_good')}</span>
                 },
                 {
                     title: t('dashboard.stats.total_revenue'),
                     value: <CountUp end={totalRevenue} duration={2} separator="," prefix="$" />,
                     icon: DollarSign,
-                    subtext: `${paidInvoicesCount} ${t('dashboard.stats.paid_docs_sub')}`
+                    subtext: t('dashboard.stats.total_revenue_sub')
                 },
                 {
                     title: t('dashboard.stats.receivable'),
@@ -306,9 +343,9 @@ export default function DashboardPage() {
                 { title: t('dashboard.actions.new_brief'), icon: ClipboardCheck, colorClass: "bg-indigo-50 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white", onClick: () => setIsBriefingModalOpen(true) },
                 { title: t('dashboard.actions.new_invoice'), icon: Receipt, colorClass: "bg-brand-pink/10 text-brand-pink group-hover:bg-brand-pink group-hover:text-white", onClick: () => setIsInvoiceModalOpen(true) }
             ],
-            smartAlert: clientsWithOverdueMap.size > 0 ? {
+            smartAlert: totalOverdue > 0 ? {
                 title: t('dashboard.alerts.attention_required'),
-                message: <span>{clientsWithOverdueMap.size} {t('dashboard.alerts.clients_in_debt')}. <span className="font-bold text-gray-900">${totalOverdue.toLocaleString()}</span>.</span>,
+                message: <span>{debtors.length} {t('dashboard.alerts.clients_in_debt')}. <span className="font-bold text-gray-900 dark:text-white">${totalOverdue.toLocaleString()}</span>.</span>,
                 itemsHeading: t('dashboard.alerts.in_debt'),
                 items: debtors
             } : undefined
@@ -417,11 +454,9 @@ export default function DashboardPage() {
         setDashboardData(data)
     }
 
-    if (loading) {
-        return <GlobalLoader />
+    if (loading || !dashboardData) {
+        return <DashboardSkeleton />
     }
-
-    if (!dashboardData) return null
 
     return (
         <>

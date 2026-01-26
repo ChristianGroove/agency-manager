@@ -818,5 +818,37 @@ export const en = {
                 no_briefings: "No briefings associated with this service."
             }
         }
+    },
+    crm: {
+        leads: {
+            title: "Leads",
+            desc: "Manage your sales opportunities.",
+            section_info: "Basic Information",
+            section_contact: "Contact Details",
+            section_notes: "Notes & Context",
+            name_label: "Lead Name",
+            company_label: "Company",
+            email_label: "Email",
+            phone_label: "Phone",
+            notes_label: "Description / Notes",
+            toasts: {
+                created: "Lead created successfully",
+                updated: "Lead updated",
+                deleted: "Lead deleted",
+                error: "Error processing lead"
+            },
+            create_success: "Lead created successfully",
+            update_success: "Lead updated",
+            delete_confirm: "Delete this lead?",
+            empty_pipeline: "No leads in this stage."
+        },
+        pipeline: {
+            title: "Pipeline",
+            kanban_view: "Kanban",
+            list_view: "List",
+            settings: "Settings",
+            import: "Import",
+            analytics: "Analytics"
+        }
     }
 } as const

@@ -23,9 +23,9 @@ export function useLeadFilters(leads: Lead[]) {
         if (filters.searchText) {
             const search = filters.searchText.toLowerCase()
             result = result.filter(lead =>
-                lead.name.toLowerCase().includes(search) ||
-                lead.company_name?.toLowerCase().includes(search) ||
-                lead.email?.toLowerCase().includes(search)
+                (lead.name || '').toLowerCase().includes(search) ||
+                (lead.company_name || '').toLowerCase().includes(search) ||
+                (lead.email || '').toLowerCase().includes(search)
             )
         }
 

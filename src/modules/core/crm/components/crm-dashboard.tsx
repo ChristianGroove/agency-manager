@@ -263,7 +263,7 @@ export function CRMDashboard() {
     }, [leads, loadData])
 
     const getLeadsByStage = useCallback((statusKey: string) => {
-        return filteredLeads.filter(lead => lead.status === statusKey)
+        return filteredLeads.filter(lead => (lead.status || 'new') === statusKey)
     }, [filteredLeads])
 
     const stats = useMemo(() => ({

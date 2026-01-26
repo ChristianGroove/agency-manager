@@ -55,14 +55,13 @@ export const getCurrentOrganizationId = cache(async () => {
     const orgCookie = cookieStore.get('pixy_org_id')
 
     if (orgCookie?.value) {
-        // SECURITY FIX: Validate that current user is actually a member of this org
-        // Using supabaseAdmin to bypass RLS - this is a security check, not a data fetch
+        // OPTIMIZED: Lightweight membership validation - single field check
         const { data: membership } = await supabaseAdmin
             .from('organization_members')
             .select('organization_id')
             .eq('organization_id', orgCookie.value)
             .eq('user_id', user.id)
-            .single()
+            .maybeSingle()
 
         if (membership) {
             return orgCookie.value // Valid membership confirmed

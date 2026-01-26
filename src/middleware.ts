@@ -123,19 +123,14 @@ export async function middleware(request: NextRequest) {
             !request.nextUrl.pathname.startsWith('/auth') &&
             !request.nextUrl.pathname.startsWith('/api')) {
 
-            // PERF: Run profile and membership checks IN PARALLEL
-            const adminClient = createClient(
-                process.env.NEXT_PUBLIC_SUPABASE_URL!,
-                process.env.SUPABASE_SERVICE_ROLE_KEY!
-            )
-
+            // OPTIMIZED: Minimal profile and membership checks
             const [profileResult, membershipResult] = await Promise.all([
                 supabase
                     .from('profiles')
                     .select('platform_role')
                     .eq('id', user.id)
                     .single(),
-                adminClient
+                supabase
                     .from('organization_members')
                     .select('organization:organizations!inner(status)')
                     .eq('user_id', user.id)
@@ -147,7 +142,6 @@ export async function middleware(request: NextRequest) {
                 const memberships = membershipResult.data
 
                 // Block ONLY if the user has memberships AND NONE of them are active.
-                // If the user has 0 memberships (new user), we don't block (they need to accept invite).
                 if (memberships && memberships.length > 0) {
                     const hasActiveOrg = memberships.some((m: any) => m.organization?.status === 'active')
 

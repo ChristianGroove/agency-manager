@@ -293,16 +293,16 @@ export class InboxService {
         // 2. Find or create Lead by phone (now using correct org)
         let lead = null;
         let existingLead = null;
-        const { data: foundLead } = await supabase
+        const { data: foundLeads } = await supabase
             .from('leads')
             .select('id, phone, name')
             .eq('phone', msg.from)
             .eq('organization_id', orgId)
-            .single();
+            .limit(1);
 
-        if (foundLead) {
-            lead = foundLead;
-            existingLead = foundLead;
+        if (foundLeads && foundLeads.length > 0) {
+            lead = foundLeads[0];
+            existingLead = foundLeads[0];
             console.log('[InboxService] Found existing lead:', lead.id);
 
             // AUTO-HEAL: If name is generic and we have a real one now, update it
@@ -354,7 +354,8 @@ export class InboxService {
         // However, users might migrate. Let's just not filter by connection_id if null, risks merging, but safe for single-account.
         // }
 
-        const { data: existingConv } = await convQuery.limit(1).single();
+        const { data: existingConvs } = await convQuery.limit(1);
+        const existingConv = existingConvs && existingConvs.length > 0 ? existingConvs[0] : null;
 
         if (existingConv) {
             console.log('[InboxService] Found existing conversation:', existingConv.id)
