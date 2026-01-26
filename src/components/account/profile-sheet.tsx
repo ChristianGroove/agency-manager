@@ -11,14 +11,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ProfileForm } from "@/components/account/profile-form"
 import { SecurityForm } from "@/components/account/security-form"
 import { Button } from "@/components/ui/button"
-import Link from "next/link"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useState, useEffect } from "react"
 import { createBrowserClient } from "@supabase/ssr"
 import { Fingerprint, Loader2, Plus, X } from "lucide-react"
 import { usePasskeys } from "@/modules/auth/passkeys/use-passkeys"
-
-import { OrganizationCard } from "@/components/organizations/organization-card"
 
 interface ProfileSheetProps {
     open: boolean
@@ -27,7 +24,7 @@ interface ProfileSheetProps {
     currentOrgId?: string | null
 }
 
-export function ProfileSheet({ open, onOpenChange, user, currentOrgId }: ProfileSheetProps) {
+export function ProfileSheet({ open, onOpenChange, user }: ProfileSheetProps) {
     const [profile, setProfile] = useState<any>(null)
     const [loading, setLoading] = useState(true)
     const [activeTab, setActiveTab] = useState("general")
@@ -100,23 +97,7 @@ export function ProfileSheet({ open, onOpenChange, user, currentOrgId }: Profile
                     {/* Content - Single Column */}
                     <div className="flex-1 overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-gray-200">
 
-                        {/* Organization Context Section */}
-                        {currentOrgId && (
-                            <div className="mb-6 space-y-2">
-                                <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider px-1">
-                                    Organización Actual
-                                </span>
-                                <div className="p-1 rounded-2xl bg-gray-50/80 border border-gray-200/50">
-                                    <Link href="/platform/settings" onClick={() => onOpenChange(false)}>
-                                        <OrganizationCard
-                                            orgId={currentOrgId}
-                                            collapsed={false}
-                                            className="bg-white shadow-sm hover:shadow-md border border-gray-100"
-                                        />
-                                    </Link>
-                                </div>
-                            </div>
-                        )}
+                        {/* Organization Context Removed */}
 
                         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                             <TabsList className="grid w-full grid-cols-2 mb-6 bg-gray-100/50 p-1 rounded-lg">

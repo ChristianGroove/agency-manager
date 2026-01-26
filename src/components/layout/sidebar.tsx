@@ -10,8 +10,6 @@ import { useActiveModules } from "@/hooks/use-active-modules"
 import { MODULE_ROUTES, filterRoutesByModules, CATEGORY_LABELS, CATEGORY_ICONS, ModuleCategory } from "@/lib/module-config"
 import { logout } from "@/modules/core/auth/actions"
 import { SidebarParticles } from "./sidebar-particles"
-import { OrganizationSwitcher } from "@/components/organizations/organization-switcher"
-import { OrganizationCard } from "@/components/organizations/organization-card"
 import { SidebarFloatingActions } from "./sidebar-floating-actions"
 import { useTranslation } from "@/lib/i18n/use-translation"
 import {
@@ -264,13 +262,20 @@ export function SidebarContent({ isCollapsed = false, currentOrgId, isSuperAdmin
             )}
 
 
-            {/* Organization Footer (Switcher + Logout) */}
-            <div className="mt-auto pt-2 border-t border-gray-200 dark:border-white/5">
-                <div className={cn("flex items-center transition-all duration-300 min-h-[40px]", isCollapsed ? "justify-center px-0" : "px-0")}>
-                    <OrganizationSwitcher
-                        trigger={<OrganizationCard orgId={currentOrgId} collapsed={isCollapsed} />}
-                    />
-                </div>
+            {/* Simple Logout Button */}
+            <div className="mt-auto pt-2 border-t border-gray-200 dark:border-white/5 space-y-1">
+                <button
+                    onClick={() => logout()}
+                    className={cn(
+                        "w-full flex items-center gap-x-3 text-sm font-medium rounded-xl py-2 transition-all duration-200 group text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-zinc-400 dark:hover:text-white dark:hover:bg-white/5",
+                        isCollapsed ? "justify-center px-0" : "px-3"
+                    )}
+                >
+                    <LogOut className={cn("h-4 w-4 shrink-0 transition-transform duration-200 group-hover:scale-110", isCollapsed ? "mx-auto" : "")} />
+                    {!isCollapsed && (
+                        <span>{t('auth.logout')}</span>
+                    )}
+                </button>
             </div>
         </div>
     )

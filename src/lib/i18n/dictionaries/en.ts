@@ -24,6 +24,9 @@ export const en = {
             edit: "Edit",
         },
     },
+    auth: {
+        logout: "Logout",
+    },
     sidebar: {
         more: "More",
         mobile_menu_title: "Navigation Menu",

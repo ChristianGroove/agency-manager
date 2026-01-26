@@ -24,6 +24,9 @@ export const es = {
             edit: "Editar",
         },
     },
+    auth: {
+        logout: "Cerrar Sesión",
+    },
     sidebar: {
         more: "Más",
         mobile_menu_title: "Menú de Navegación",
