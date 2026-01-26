@@ -55,25 +55,21 @@ export function OrganizationSwitcher({ trigger }: OrganizationSwitcherProps) {
             // Show loading state
             toast.loading("Cambiando de organización...")
 
-            // Switch organization (sets cookie)
-            await switchOrganization(orgId)
+            // 1. Set Cookie Client-Side (Immediate & Robust)
+            // This prevents race conditions with Server Action responses
+            document.cookie = `pixy_org_id=${orgId}; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax`
 
-            // Close modal immediately
+            // 2. Optional: Notify Server (for audit/verification if needed, but not strictly required for context switch if middleware checks it)
+            // We skip the server action strict call for speed, or we can fire-and-forget
+            // await switchOrganization(orgId) 
+
+            // Close modal
             setIsOpen(false)
 
-            // Small delay to ensure cookie propagation
-            await new Promise(resolve => setTimeout(resolve, 100))
+            // 3. Force Hard Reload to Dashboard
+            // The new cookie will be sent with this request
+            window.location.assign('/dashboard')
 
-            // Navigate to root and force refresh
-            // Using router instead of window.location to preserve session
-            router.push('/')
-            router.refresh()
-
-            // Success toast after navigation
-            setTimeout(() => {
-                toast.dismiss()
-                toast.success("Organización cambiada")
-            }, 300)
         } catch (error) {
             toast.dismiss()
             toast.error("Error cambiando de organización")

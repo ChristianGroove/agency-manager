@@ -7,6 +7,7 @@ import { Header } from "@/components/layout/header"
 import { cn } from "@/lib/utils"
 
 import { BillingAutomator } from "@/modules/core/billing/billing-automator"
+import { TenantContextIndicator } from "@/components/organizations/tenant-context-indicator"
 
 import { User } from "@supabase/supabase-js"
 
@@ -59,6 +60,8 @@ export function DashboardShell({ children, user, currentOrgId, isSuperAdmin = fa
                 <div className="flex-1 p-4 md:p-8 print:p-0">
                     {children}
                 </div>
+
+                <TenantContextIndicator />
             </main>
         </div>
     )
