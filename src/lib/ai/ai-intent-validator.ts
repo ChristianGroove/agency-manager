@@ -374,23 +374,27 @@ export class AIIntentValidator {
         patterns: { keywords: string[]; phrases: string[] }
     ): number {
         let score = 0;
-        const totalPatterns = patterns.keywords.length + patterns.phrases.length;
+
+        // Fixed weights validation
+        const KEYWORD_WEIGHT = 0.25;
+        const PHRASE_WEIGHT = 0.75;
 
         // Check keywords
         for (const keyword of patterns.keywords) {
             if (message.includes(keyword)) {
-                score += 1 / totalPatterns;
+                score += KEYWORD_WEIGHT;
             }
         }
 
-        // Check phrases (weighted higher)
+        // Check phrases (High confidence)
         for (const phrase of patterns.phrases) {
             if (message.includes(phrase)) {
-                score += 2 / totalPatterns;
+                score += PHRASE_WEIGHT;
             }
         }
 
-        return score;
+        // Cap at 1.0
+        return Math.min(score, 1.0);
     }
 
     /**
