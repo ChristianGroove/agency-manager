@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { motion, AnimatePresence } from "framer-motion"
+import { motion, AnimatePresence, Variants } from "framer-motion"
 import { Rocket, Moon, Sun, MessageSquare } from "lucide-react"
 import { useTheme } from "next-themes"
 import Image from "next/image"
@@ -22,7 +22,7 @@ export function UnifiedFloatingFab({ onOpenMeta, onOpenHelp }: UnifiedFloatingFa
     }
 
     // Animation variants
-    const containerVariants = {
+    const containerVariants: Variants = {
         collapsed: {
             transition: { staggerChildren: 0.03, staggerDirection: 1 } // Retract: Top down (Faster)
         },
@@ -31,7 +31,7 @@ export function UnifiedFloatingFab({ onOpenMeta, onOpenHelp }: UnifiedFloatingFa
         }
     }
 
-    const itemVariants = {
+    const itemVariants: Variants = {
         collapsed: { opacity: 0, scale: 0.3, y: 50 }, // Start slightly larger (0.3) to avoid "tiny" look for too long
         expanded: {
             opacity: 1,
@@ -42,7 +42,7 @@ export function UnifiedFloatingFab({ onOpenMeta, onOpenHelp }: UnifiedFloatingFa
     }
 
     // Floating animation for the trigger
-    const triggerVariants = {
+    const triggerVariants: Variants = {
         floating: {
             y: [0, -8, 0],
             rotate: [0, 2, -2, 0],
