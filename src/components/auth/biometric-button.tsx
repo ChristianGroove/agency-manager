@@ -17,18 +17,37 @@ interface BiometricButtonProps {
 }
 
 export function BiometricButton({ className, variant = "cyber", mode = "login", onSuccess, email, iconOnly }: BiometricButtonProps) {
-    const { loginWithPasskey, registerPasskey, loading } = usePasskeys()
-    const [isSupported, setIsSupported] = useState(false)
+    const { loginWithPasskey, registerPasskey, checkPasskeyStatus, loading } = usePasskeys()
+    const [isVisible, setIsVisible] = useState(false)
 
     useEffect(() => {
-        if (typeof window !== 'undefined' && window.PublicKeyCredential) {
-            PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()
-                .then(setIsSupported)
-                .catch(() => setIsSupported(false))
-        }
-    }, [])
+        // 1. Feature Detection (Hardware)
+        if (typeof window === 'undefined' || !window.PublicKeyCredential) return
 
-    if (!isSupported) return null
+        PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()
+            .then(available => {
+                if (!available) return
+
+                // 2. Logic Split
+                if (mode === "register") {
+                    // Always show if hardware supports it (for registration)
+                    setIsVisible(true)
+                } else if (mode === "login" && email) {
+                    // For login, only show if user actually HAS a passkey
+                    // Debounce check to avoid spamming API
+                    const timer = setTimeout(async () => {
+                        const hasPasskeys = await checkPasskeyStatus(email)
+                        setIsVisible(hasPasskeys)
+                    }, 800)
+                    return () => clearTimeout(timer)
+                } else {
+                    setIsVisible(false)
+                }
+            })
+            .catch(() => setIsVisible(false))
+    }, [mode, email])
+
+    if (!isVisible) return null
 
     const handleClick = async () => {
         const success = mode === "login"

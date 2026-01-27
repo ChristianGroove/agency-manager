@@ -163,9 +163,31 @@ export function usePasskeys() {
         }
     }
 
+    /**
+     * Checks if the user has any registered passkeys.
+     */
+    const checkPasskeyStatus = async (email: string) => {
+        try {
+            const res = await fetch('/api/passkeys/check-status', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email }),
+            })
+
+            if (!res.ok) return false
+
+            const data = await res.json()
+            return !!data.hasPasskeys
+        } catch (error) {
+            console.error('Check status failed:', error)
+            return false
+        }
+    }
+
     return {
         registerPasskey,
         loginWithPasskey,
+        checkPasskeyStatus,
         loading
     }
 }
