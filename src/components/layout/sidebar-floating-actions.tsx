@@ -28,7 +28,7 @@ export function SidebarFloatingActions({ isSuperAdmin, user, currentOrgId }: Sid
                         <ActionButton
                             icon={Building2}
                             text="Organizaciones"
-                            color="#64748b" // Neutral Slate
+                            color="var(--primary)" // Brand Color
                         />
                     }
                 />
@@ -41,7 +41,7 @@ export function SidebarFloatingActions({ isSuperAdmin, user, currentOrgId }: Sid
                         <ActionButton
                             icon={Bell}
                             text="Notificaciones"
-                            color="#64748b" // Neutral Slate
+                            color="var(--primary)" // Brand Color
                         />
                     }
                 />
@@ -52,7 +52,7 @@ export function SidebarFloatingActions({ isSuperAdmin, user, currentOrgId }: Sid
                 <ActionButton
                     icon={UserIcon}
                     text="Perfil"
-                    color="#64748b" // Neutral Slate
+                    color="var(--primary)" // Brand Color
                     onClick={() => setIsProfileOpen(true)}
                 />
                 <ProfileSheet open={isProfileOpen} onOpenChange={setIsProfileOpen} user={user} currentOrgId={currentOrgId} />
@@ -67,7 +67,7 @@ export function SidebarFloatingActions({ isSuperAdmin, user, currentOrgId }: Sid
                         href="/platform/admin"
                         icon={LayoutDashboard}
                         text="Admin"
-                        color="#64748b"
+                        color="var(--primary)"
                     />
                 </>
             )}
