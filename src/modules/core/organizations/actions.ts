@@ -120,6 +120,47 @@ export async function getCurrentOrgDetails() {
 }
 
 /**
+ * Get tenant context for the indicator badge.
+ * Logic: Show only if a privileged user (Reseller/Platform) is managing a Client org.
+ */
+export async function getTenantContext() {
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) return null
+
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return null
+
+    // 1. Get Current Org Details & Branding
+    const [orgDetails, branding] = await Promise.all([
+        getCurrentOrgDetails(),
+        getEffectiveBranding(orgId)
+    ])
+
+    if (!orgDetails) return null
+
+    // 2. Check if User is "Privileged" (Reseller or Platform Admin)
+    const memberships = await getUserOrganizations()
+
+    // Check if user has ANY 'reseller' or 'platform' membership with owner/admin role
+    const isPrivileged = memberships.some(m =>
+        (m.organization?.organization_type === 'reseller' || m.organization?.organization_type === 'platform') &&
+        ['owner', 'admin'].includes(m.role)
+    )
+
+    // 3. Determine Visibility
+    const isClientContext = orgDetails.organization_type === 'client'
+    const isVisible = isPrivileged && isClientContext
+
+    if (!isVisible) return null
+
+    return {
+        name: orgDetails.name,
+        color: branding?.colors?.primary || '#F205E2'
+    }
+}
+
+/**
  * Get details for the Sidebar Organization Card (Branding + Subscription)
  */
 export async function getOrganizationCardDetails(orgId: string | null) {
@@ -128,7 +169,6 @@ export async function getOrganizationCardDetails(orgId: string | null) {
     const supabase = await createClient()
 
     // Parallel fetch: Branding + Org Details with Plan
-    // We try to fetch both potential FKs for safety during migration
     const [branding, orgResult] = await Promise.all([
         getEffectiveBranding(orgId),
         supabase
@@ -146,10 +186,10 @@ export async function getOrganizationCardDetails(orgId: string | null) {
     const org = orgResult.data
 
     // Determine Plan Name
-    // Prefer subscription_product (Legacy/Stable) or active_app (New)
     const subProduct = org?.subscription_product as any
     const activeApp = org?.active_app as any
     const subName = Array.isArray(subProduct) ? subProduct[0]?.name : subProduct?.name
+
     const appName = Array.isArray(activeApp) ? activeApp[0]?.name : activeApp?.name
 
     const planName = subName || appName || "Plan Gratuito"
