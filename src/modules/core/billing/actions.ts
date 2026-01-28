@@ -11,6 +11,18 @@ export async function runBillingCycleCheck() {
             revalidatePath('/', 'layout')
         }
 
+        // Fix serialization of Error objects which normally stringify to {}
+        if (!result.success && result.error && result.error instanceof Error) {
+            return {
+                ...result,
+                error: {
+                    message: result.error.message,
+                    name: result.error.name,
+                    cause: (result.error as any).cause
+                }
+            }
+        }
+
         return JSON.parse(JSON.stringify(result))
     } catch (error: any) {
         console.error("Server Action Error (Billing Check):", error)
