@@ -15,7 +15,10 @@
     "flows:publish": "tsx scripts/publish-flows.ts",
     "flows:publish-all": "tsx scripts/publish-flows.ts -- --all",
     "calling:init": "tsx scripts/setup-calling.ts",
-    "calling:status": "tsx scripts/setup-calling.ts -- --status"
+    "calling:status": "tsx scripts/setup-calling.ts -- --status",
+    "env:prod": "node scripts/switch-env.js prod",
+    "env:sandbox": "node scripts/switch-env.js sandbox",
+    "dev:sandbox": "node scripts/switch-env.js sandbox && next dev"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.485.0",

@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useState, useMemo } from "react"
-import { Check, Crown, ExternalLink, Search, Sparkles } from "lucide-react"
+import { Check, Crown, ExternalLink, Search, Sparkles, Puzzle } from "lucide-react"
 import { IntegrationSetupSheet } from "./integration-setup-sheet"
+import { SectionHeader } from "@/components/layout/section-header"
 import { useSearchParams } from "next/navigation"
 
 interface MarketplacePageProps {
@@ -128,23 +129,20 @@ export function MarketplacePage({ providers, installedIntegrations, aiCredential
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold flex items-center gap-2">
-                        <Sparkles className="h-6 w-6 text-amber-500" />
-                        Marketplace de Integraciones
-                    </h1>
-                    <p className="text-muted-foreground mt-1">
-                        Conecta apps y servicios externos para potenciar tu CRM
-                    </p>
-                </div>
-                <div className="flex items-center gap-4">
-                    <div className="text-right">
-                        <p className="text-2xl font-bold">{installedCount}/{totalCount}</p>
-                        <p className="text-xs text-muted-foreground">Instaladas</p>
+            {/* Standardized Header */}
+            <SectionHeader
+                title="Marketplace de Integraciones"
+                subtitle="Conecta apps y servicios externos para potenciar tu CRM"
+                icon={Puzzle}
+                action={
+                    <div className="flex items-center gap-4">
+                        <div className="text-right">
+                            <p className="text-2xl font-bold">{installedCount}/{totalCount}</p>
+                            <p className="text-xs text-muted-foreground">Instaladas</p>
+                        </div>
                     </div>
-                </div>
-            </div>
+                }
+            />
 
             {/* Search & Filters */}
             <div className="flex flex-col gap-4 md:flex-row md:items-center">

@@ -38,6 +38,7 @@ import { toast } from "sonner"
 import { format } from "date-fns"
 import { SearchFilterBar, FilterOption } from "@/components/shared/search-filter-bar"
 import { CreateHostingSheet } from "@/modules/core/hosting/components/create-hosting-sheet"
+import { SectionHeader } from "@/components/layout/section-header"
 
 export default function HostingPage() {
     const [accounts, setAccounts] = useState<any[]>([])
@@ -102,16 +103,18 @@ export default function HostingPage() {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">Hosting Web</h2>
-                    <p className="text-muted-foreground mt-1">Gestión técnica de servidores y dominios.</p>
-                </div>
-                <Button onClick={() => { setSelectedAccount(null); setIsCreateOpen(true); }} className="bg-brand-pink text-white hover:bg-brand-pink/90">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Nuevo Hosting
-                </Button>
-            </div>
+            {/* Standardized Header */}
+            <SectionHeader
+                title="Hosting Web"
+                subtitle="Gestión técnica de servidores y dominios."
+                icon={Server}
+                action={
+                    <Button onClick={() => { setSelectedAccount(null); setIsCreateOpen(true); }} className="bg-brand-pink text-white hover:bg-brand-pink/90">
+                        <Plus className="mr-2 h-4 w-4" />
+                        Nuevo Hosting
+                    </Button>
+                }
+            />
 
             <SearchFilterBar
                 searchTerm={searchTerm}

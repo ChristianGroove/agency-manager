@@ -66,6 +66,9 @@ export async function middleware(request: NextRequest) {
     // Apply WAF Headers
     applySecurityHeaders(response.headers)
 
+    const isSandboxRegPatt = /uqnsdylhyenfmfkxmkrn/
+    console.log(`[MIDDLEWARE] Env: ${process.env.NEXT_PUBLIC_SUPABASE_URL?.match(isSandboxRegPatt) ? 'SANDBOX' : 'PRODUCTION'}`);
+
     const supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -75,21 +78,23 @@ export async function middleware(request: NextRequest) {
                     return request.cookies.get(name)?.value
                 },
                 set(name: string, value: string, options: CookieOptions) {
-                    request.cookies.set({
-                        name,
-                        value,
-                        ...options,
-                    })
+                    const secure = process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('localhost') ? false : options.secure;
+                    // Request cookies only need name/value
+                    request.cookies.set(name, value)
+
                     response = NextResponse.next({
                         request: {
                             headers: request.headers,
                         },
                     })
-                    applySecurityHeaders(response.headers) // Re-apply on refresh
+                    applySecurityHeaders(response.headers)
+
+                    // Response cookies need full options
                     response.cookies.set({
                         name,
                         value,
                         ...options,
+                        secure
                     })
                 },
                 remove(name: string, options: CookieOptions) {

@@ -23,6 +23,8 @@ import { UsageStatusCard } from "@/modules/core/billing/components/usage-status-
 import { COMMUNICATION_VARIABLES, DEFAULT_TEMPLATES } from "@/lib/communication-utils"
 import { useEffect } from "react"
 import { SplitText } from "@/components/ui/split-text"
+import { SectionHeader } from "@/components/layout/section-header"
+import { Settings } from "lucide-react"
 import { getSettings, updateSettings } from "@/modules/core/settings/actions"
 import { BrandingConfig } from "@/types/branding"
 import { BrandCenterSheet } from "@/modules/core/branding/components/brand-center-sheet"
@@ -327,20 +329,18 @@ export function SettingsForm({
                     tierFeatures={tierFeatures}
                 />
             )}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
-                        <SplitText>{t('settings.title')}</SplitText>
-                    </h2>
-                    <p className="text-muted-foreground">{t('settings.description')}</p>
-                </div>
-                {userRole !== 'member' && (
+            {/* Standardized Header */}
+            <SectionHeader
+                title={t('settings.title')}
+                subtitle={t('settings.description')}
+                icon={Settings}
+                action={userRole !== 'member' && (
                     <Button onClick={handleSubmit} disabled={isLoading} className="bg-brand-pink hover:bg-brand-pink/90">
                         {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                         {t('common.save')}
                     </Button>
                 )}
-            </div>
+            />
 
             <Tabs defaultValue={visibleTabs[0]?.id || 'general'} className="w-full" suppressHydrationWarning>
                 <TabsList

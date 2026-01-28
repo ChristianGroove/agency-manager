@@ -20,6 +20,7 @@ import { SplitText } from "@/components/ui/split-text"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
+import { SectionHeader } from "@/components/layout/section-header"
 
 export default function PlatformOrganizationsPage() {
     const [orgs, setOrgs] = useState<Organization[]>([])
@@ -168,30 +169,30 @@ export default function PlatformOrganizationsPage() {
     const treeData = flattenTree(rootOrgs)
 
     return (
-        <div className="space-y-8 bg-gray-50/50 dark:bg-transparent min-h-screen">
+        <div className="space-y-6 bg-gray-50/50 dark:bg-transparent min-h-screen">
             <SetPasswordModal />
 
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
-                        <SplitText>Organizaciones</SplitText>
-                    </h2>
-                    <p className="text-muted-foreground mt-1">Gestión global de organizaciones.</p>
-                </div>
-                <div className="flex items-center gap-3 w-full md:w-auto">
-                    <Button
-                        variant={showAnalytics ? "default" : "outline"}
-                        onClick={() => setShowAnalytics(!showAnalytics)}
-                        className={showAnalytics ? "bg-purple-600 hover:bg-purple-700" : ""}
-                    >
-                        <BarChart3 className="mr-2 h-4 w-4" />
-                        {showAnalytics ? "Ocultar Analytics" : "Ver Analytics"}
-                    </Button>
-                    <Button onClick={() => setIsCreateOpen(true)} className="bg-brand-pink hover:bg-brand-pink/90 text-white">
-                        <Plus className="mr-2 h-4 w-4" /> Nueva Organización
-                    </Button>
-                </div>
-            </div>
+            {/* Standardized Header */}
+            <SectionHeader
+                title="Organizaciones"
+                subtitle="Gestión global de organizaciones."
+                icon={Building2}
+                action={
+                    <div className="flex items-center gap-3 w-full md:w-auto">
+                        <Button
+                            variant={showAnalytics ? "default" : "outline"}
+                            onClick={() => setShowAnalytics(!showAnalytics)}
+                            className={showAnalytics ? "bg-purple-600 hover:bg-purple-700" : ""}
+                        >
+                            <BarChart3 className="mr-2 h-4 w-4" />
+                            {showAnalytics ? "Ocultar Analytics" : "Ver Analytics"}
+                        </Button>
+                        <Button onClick={() => setIsCreateOpen(true)} className="bg-brand-pink hover:bg-brand-pink/90 text-white">
+                            <Plus className="mr-2 h-4 w-4" /> Nueva Organización
+                        </Button>
+                    </div>
+                }
+            />
 
             {/* Unified Control Block */}
             <div className="flex flex-col md:flex-row gap-3 sticky top-4 z-30">

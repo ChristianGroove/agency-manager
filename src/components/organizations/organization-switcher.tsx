@@ -59,9 +59,8 @@ export function OrganizationSwitcher({ trigger }: OrganizationSwitcherProps) {
             // This prevents race conditions with Server Action responses
             document.cookie = `pixy_org_id=${orgId}; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax`
 
-            // 2. Optional: Notify Server (for audit/verification if needed, but not strictly required for context switch if middleware checks it)
-            // We skip the server action strict call for speed, or we can fire-and-forget
-            // await switchOrganization(orgId) 
+            // 2. Notify Server (Essential for server-side context consistency)
+            await switchOrganization(orgId)
 
             // Close modal
             setIsOpen(false)

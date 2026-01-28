@@ -36,9 +36,11 @@ import {
     MessageCircle,
     Globe,
     Edit,
-    MoreVertical
+    MoreVertical,
+    Workflow as WorkflowIcon
 } from 'lucide-react';
 import { TemplatesSheet } from './templates-sheet';
+import { SectionHeader } from "@/components/layout/section-header"
 import { ActivitySheet } from './activity-sheet';
 import { cn } from '@/lib/utils';
 import {
@@ -169,57 +171,55 @@ export function AutomationsView({
     };
 
     return (
-        <div className="space-y-4 h-[calc(100vh-2rem)] flex flex-col bg-slate-50/50 dark:bg-transparent">
+        <div className="space-y-6 h-[calc(100vh-2rem)] flex flex-col bg-slate-50/50 dark:bg-transparent">
             <TemplatesSheet open={templatesOpen} onOpenChange={setTemplatesOpen} />
             <ActivitySheet open={activityOpen} onOpenChange={setActivityOpen} executions={recentExecutions} />
 
             <div className="flex-none space-y-6">
-                {/* Unified Header */}
-                <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
-                    <div>
-                        <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100">
-                            <SplitText>Automatizaciones</SplitText>
-                        </h2>
-                        <p className="text-muted-foreground mt-1">Flujos de trabajo automatizados</p>
-                    </div>
-
-                    <div className="flex flex-col sm:flex-row gap-3">
-                        <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                            <Input
-                                placeholder="Buscar workflow..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-9 w-full sm:w-[250px] bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:ring-purple-500/20"
-                            />
-                        </div>
-                        <div className="flex gap-2">
-                            <Button
-                                variant="outline"
-                                onClick={() => setTemplatesOpen(true)}
-                                className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
-                            >
-                                <Sparkles className="h-4 w-4 text-purple-500 mr-2" />
-                                Plantillas
-                            </Button>
-                            <Button
-                                variant="outline"
-                                size="icon"
-                                onClick={() => setActivityOpen(true)}
-                                className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
-                                title="Actividad reciente"
-                            >
-                                <History className="h-4 w-4 text-slate-500" />
-                            </Button>
-                            <Link href="/crm/automations/new">
-                                <Button className="bg-pink-600 hover:bg-pink-700 text-white shadow-lg shadow-pink-500/20">
-                                    <Plus className="h-4 w-4 mr-2" />
-                                    Crear
+                {/* Standardized Header */}
+                <SectionHeader
+                    title="Automatizaciones"
+                    subtitle="Flujos de trabajo automatizados"
+                    icon={WorkflowIcon}
+                    action={
+                        <div className="flex flex-col sm:flex-row gap-3">
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                                <Input
+                                    placeholder="Buscar workflow..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="pl-9 w-full sm:w-[250px] bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:ring-purple-500/20"
+                                />
+                            </div>
+                            <div className="flex gap-2">
+                                <Button
+                                    variant="outline"
+                                    onClick={() => setTemplatesOpen(true)}
+                                    className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+                                >
+                                    <Sparkles className="h-4 w-4 text-purple-500 mr-2" />
+                                    Plantillas
                                 </Button>
-                            </Link>
+                                <Button
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={() => setActivityOpen(true)}
+                                    className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+                                    title="Actividad reciente"
+                                >
+                                    <History className="h-4 w-4 text-slate-500" />
+                                </Button>
+                                <Link href="/crm/automations/new">
+                                    <Button className="bg-pink-600 hover:bg-pink-700 text-white shadow-lg shadow-pink-500/20">
+                                        <Plus className="h-4 w-4 mr-2" />
+                                        Crear
+                                    </Button>
+                                </Link>
+                            </div>
                         </div>
-                    </div>
-                </div>
+                    }
+                />
 
                 {/* Main Scrollable Content Area */}
                 <div className="flex-1 overflow-y-auto min-h-0 scrollbar-modern">

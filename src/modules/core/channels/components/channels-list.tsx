@@ -29,6 +29,8 @@ interface ChannelsListProps {
     agents: any[]
 }
 
+import { SectionHeader } from "@/components/layout/section-header"
+
 export function ChannelsList({ channels, pipelineStages, agents }: ChannelsListProps) {
     const [isEvolutionOpen, setIsEvolutionOpen] = useState(false)
     const router = useRouter()
@@ -80,67 +82,65 @@ export function ChannelsList({ channels, pipelineStages, agents }: ChannelsListP
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between flex-wrap gap-4">
-                <div>
-                    <h2 className="text-lg font-medium">Canales de Mensajería</h2>
-                    <p className="text-sm text-muted-foreground">
-                        Conecta tus cuentas para gestionar conversaciones.
-                    </p>
-                </div>
+            <SectionHeader
+                title="Canales de Mensajería"
+                subtitle="Conecta tus cuentas para gestionar conversaciones."
+                titleClassName="text-2xl"
+                action={
+                    <div className="flex items-center gap-2 flex-wrap">
+                        {/* Marketplace Link */}
+                        <Button variant="ghost" onClick={() => router.push('/platform/integrations')}>
+                            <Store className="mr-2 h-4 w-4" /> Marketplace
+                        </Button>
 
-                <div className="flex items-center gap-2 flex-wrap">
-                    {/* Marketplace Link */}
-                    <Button variant="ghost" onClick={() => router.push('/platform/integrations')}>
-                        <Store className="mr-2 h-4 w-4" /> Marketplace
-                    </Button>
+                        {/* WhatsApp Button - Official Meta API */}
+                        <Button
+                            onClick={() => handleMetaConnect('whatsapp')}
+                            className="bg-[#25D366] hover:bg-[#128C7E] text-white shadow-sm"
+                        >
+                            <MessageCircle className="mr-2 h-4 w-4" />
+                            WhatsApp
+                        </Button>
 
-                    {/* WhatsApp Button - Official Meta API */}
-                    <Button
-                        onClick={() => handleMetaConnect('whatsapp')}
-                        className="bg-[#25D366] hover:bg-[#128C7E] text-white shadow-sm"
-                    >
-                        <MessageCircle className="mr-2 h-4 w-4" />
-                        WhatsApp
-                    </Button>
+                        {/* Messenger Button */}
+                        <Button
+                            onClick={() => handleMetaConnect('messenger')}
+                            className="bg-[#1877F2] hover:bg-[#166FE5] text-white shadow-sm"
+                        >
+                            <FacebookIcon className="mr-2 h-4 w-4" />
+                            Messenger
+                        </Button>
 
-                    {/* Messenger Button */}
-                    <Button
-                        onClick={() => handleMetaConnect('messenger')}
-                        className="bg-[#1877F2] hover:bg-[#166FE5] text-white shadow-sm"
-                    >
-                        <FacebookIcon className="mr-2 h-4 w-4" />
-                        Messenger
-                    </Button>
+                        {/* Instagram Button */}
+                        <Button
+                            onClick={() => handleMetaConnect('instagram')}
+                            className="bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-sm hover:from-pink-600 hover:to-purple-700"
+                        >
+                            <Instagram className="mr-2 h-4 w-4" />
+                            Instagram
+                        </Button>
 
-                    {/* Instagram Button */}
-                    <Button
-                        onClick={() => handleMetaConnect('instagram')}
-                        className="bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-sm hover:from-pink-600 hover:to-purple-700"
-                    >
-                        <Instagram className="mr-2 h-4 w-4" />
-                        Instagram
-                    </Button>
-
-                    {/* Evolution (QR) - Small Plus Button */}
-                    <TooltipProvider>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Button
-                                    onClick={() => setIsEvolutionOpen(true)}
-                                    variant="outline"
-                                    size="icon"
-                                    className="border-green-500 text-green-600 hover:bg-green-50 dark:hover:bg-green-950/30 dark:border-green-600 dark:text-green-500"
-                                >
-                                    <Plus className="h-4 w-4" />
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                                <p>Conectar con QR (Legacy)</p>
-                            </TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
-                </div>
-            </div>
+                        {/* Evolution (QR) - Small Plus Button */}
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button
+                                        onClick={() => setIsEvolutionOpen(true)}
+                                        variant="outline"
+                                        size="icon"
+                                        className="border-green-500 text-green-600 hover:bg-green-50 dark:hover:bg-green-950/30 dark:border-green-600 dark:text-green-500"
+                                    >
+                                        <Plus className="h-4 w-4" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>Conectar con QR (Legacy)</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                    </div>
+                }
+            />
 
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {displayChannels.map((channel) => (
@@ -163,20 +163,6 @@ export function ChannelsList({ channels, pipelineStages, agents }: ChannelsListP
                             <p className="text-sm text-muted-foreground">
                                 Conecta WhatsApp, Messenger o Instagram para centralizar tus conversaciones.
                             </p>
-                        </div>
-                        <div className="flex gap-3 flex-wrap justify-center mt-4">
-                            <Button
-                                onClick={() => handleMetaConnect('whatsapp')}
-                                className="bg-[#25D366] hover:bg-[#128C7E] text-white"
-                            >
-                                <MessageCircle className="mr-2 h-4 w-4" /> WhatsApp
-                            </Button>
-                            <Button
-                                onClick={() => handleMetaConnect('messenger')}
-                                className="bg-[#1877F2] hover:bg-[#166FE5] text-white"
-                            >
-                                <FacebookIcon className="mr-2 h-4 w-4" /> Messenger
-                            </Button>
                         </div>
                     </div>
                 )}

@@ -34,6 +34,8 @@ import { getQuotes } from "@/modules/core/quotes/actions"
 import { QuoteShareSheet } from "@/modules/core/quotes/quote-share-sheet"
 import { useTranslation } from "@/lib/i18n/use-translation"
 import { QuoteDetailDialog } from "@/modules/core/quotes/quote-detail-dialog"
+import { SectionHeader } from "@/components/layout/section-header"
+import { FileText } from "lucide-react"
 
 interface QuotesViewProps {
     initialQuotes: Quote[]
@@ -215,18 +217,14 @@ export function QuotesView({ initialQuotes, initialEmitters }: QuotesViewProps) 
     }
 
     return (
-        <div className="space-y-8">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
-                        <SplitText>{t('quotes.title')}</SplitText>
-                    </h2>
-                    <p className="text-muted-foreground mt-1">{t('quotes.subtitle')}</p>
-                </div>
-                <div className="w-full md:w-auto">
-                    <CreateQuoteSheet emitters={emitters} />
-                </div>
-            </div>
+        <div className="space-y-6">
+            {/* Standardized Header */}
+            <SectionHeader
+                title={t('quotes.title')}
+                subtitle={t('quotes.subtitle')}
+                icon={FileText}
+                action={<CreateQuoteSheet emitters={emitters} />}
+            />
 
             {/* Unified Control Block */}
             <div className="flex flex-col md:flex-row gap-3 sticky top-4 z-30">

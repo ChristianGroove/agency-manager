@@ -12,6 +12,7 @@ import { Switch } from "@/components/ui/switch"
 import { Plus, Trash2, Edit, GripVertical, Save, X, Lock, Unlock } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
+import { SectionHeader } from "@/components/layout/section-header"
 
 const COLOR_OPTIONS = [
     { value: 'bg-blue-500', label: 'Azul' },
@@ -144,14 +145,12 @@ export function PipelineStagesManager() {
     return (
         <div className="flex-1 space-y-6">
             {/* Page Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h2 className="text-3xl font-bold tracking-tight dark:text-white">Configuración del Pipeline</h2>
-                    <p className="text-muted-foreground">
-                        Gestiona las reglas y etapas de tu proceso de ventas
-                    </p>
-                </div>
-            </div>
+            {/* Page Header */}
+            <SectionHeader
+                title="Configuración del Pipeline"
+                subtitle="Gestiona las reglas y etapas de tu proceso de ventas"
+                titleClassName="text-2xl"
+            />
 
             {/* Strict Mode Toggle Card */}
             <Card className="p-6 border-l-4 border-l-primary bg-background shadow-sm">

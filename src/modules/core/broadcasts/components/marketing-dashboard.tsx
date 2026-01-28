@@ -23,6 +23,7 @@ import { CreateBroadcastSheet } from './create-broadcast-sheet'
 import { BroadcastsView } from './broadcasts-view'
 import { CampaignsList } from './campaigns-list'
 import { getMarketingStats } from '../marketing-actions'
+import { SectionHeader } from "@/components/layout/section-header"
 
 export function MarketingDashboard() {
     const router = useRouter()
@@ -72,41 +73,39 @@ export function MarketingDashboard() {
     }
 
     return (
-        <div className="space-y-8 min-h-screen pb-20">
+        <div className="space-y-6 min-h-screen pb-20">
             {/* Header Section */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                <div>
-                    <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
-                        <SplitText>Marketing Center</SplitText>
-                    </h2>
-                    <p className="text-muted-foreground mt-1 max-w-2xl">
-                        Gestiona campañas, automatizaciones y envíos masivos para impulsar el crecimiento de tu negocio.
-                    </p>
-                </div>
-                <div className="flex gap-3">
-                    <Button
-                        onClick={handleRunCycle}
-                        variant="ghost"
-                        className="text-muted-foreground hover:text-brand-pink"
-                        title="Forzar ciclo de ejecución (Debug)"
-                    >
-                        <Workflow className="h-4 w-4 mr-2" />
-                        Run Cycle
-                    </Button>
-                    <Button
-                        onClick={() => router.push('/crm/marketing/new')}
-                        variant="outline"
-                        className="hidden md:flex border-dashed border-gray-300 dark:border-zinc-700"
-                    >
-                        <Megaphone className="h-4 w-4 mr-2" />
-                        Nueva Campaña
-                    </Button>
-                    <Button onClick={() => setCreateBroadcastOpen(true)} className="bg-brand-pink hover:bg-brand-pink/90 text-white shadow-lg shadow-pink-500/20">
-                        <Radio className="h-4 w-4 mr-2" />
-                        Broadcast Rápido
-                    </Button>
-                </div>
-            </div>
+            {/* Header Section */}
+            <SectionHeader
+                title="Marketing Masivo"
+                subtitle="Gestiona campañas, automatizaciones y envíos masivos"
+                icon={Megaphone}
+                action={
+                    <div className="flex gap-3">
+                        <Button
+                            onClick={handleRunCycle}
+                            variant="ghost"
+                            className="text-muted-foreground hover:text-brand-pink"
+                            title="Forzar ciclo de ejecución (Debug)"
+                        >
+                            <Workflow className="h-4 w-4 mr-2" />
+                            Run Cycle
+                        </Button>
+                        <Button
+                            onClick={() => router.push('/crm/marketing/new')}
+                            variant="outline"
+                            className="hidden md:flex border-dashed border-gray-300 dark:border-zinc-700"
+                        >
+                            <Megaphone className="h-4 w-4 mr-2" />
+                            Nueva Campaña
+                        </Button>
+                        <Button onClick={() => setCreateBroadcastOpen(true)} className="bg-brand-pink hover:bg-brand-pink/90 text-white shadow-lg shadow-pink-500/20">
+                            <Radio className="h-4 w-4 mr-2" />
+                            Broadcast Rápido
+                        </Button>
+                    </div>
+                }
+            />
 
             {/* KPI Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

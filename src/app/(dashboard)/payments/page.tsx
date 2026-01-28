@@ -4,7 +4,8 @@ import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Loader2, Eye, Search, ListFilter } from "lucide-react"
+import { Loader2, Eye, Search, ListFilter, CreditCard } from "lucide-react"
+import { SectionHeader } from "@/components/layout/section-header"
 import { Input } from "@/components/ui/input"
 import {
     Table,
@@ -94,14 +95,12 @@ export default function PaymentsPage() {
 
     return (
         <div className="space-y-8">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
-                        <SplitText>Historial de Pagos</SplitText>
-                    </h2>
-                    <p className="text-muted-foreground mt-1">Gestiona y visualiza todas las transacciones recibidas.</p>
-                </div>
-            </div>
+            {/* Standardized Header */}
+            <SectionHeader
+                title="Historial de Pagos"
+                subtitle="Gestiona y visualiza todas las transacciones recibidas."
+                icon={CreditCard}
+            />
 
             {/* Unified Control Block */}
             <div className="flex flex-col md:flex-row gap-3 sticky top-4 z-30">

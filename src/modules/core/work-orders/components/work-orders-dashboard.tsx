@@ -11,6 +11,7 @@ import { OperationsCalendar } from "./operations-calendar"
 import { PayrollStaffGrid } from "./payroll/payroll-staff-grid"
 import { NewJobModal } from "./new-job-modal"
 import { Sparkles, Users, Calendar, List, Columns, DollarSign } from "lucide-react"
+import { SectionHeader } from "@/components/layout/section-header"
 
 // Dynamic Dashboard Imports REMOVED
 // import { DashboardEngine } from "@/modules/core/dashboard/engine"
@@ -40,16 +41,14 @@ export function WorkOrdersDashboard() {
     return (
         <div className="h-full flex flex-col">
             {/* Header */}
+            {/* Standardized Header */}
             <div className="shrink-0 space-y-1 mb-6">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-3xl font-bold tracking-tight">Vertical de Limpieza</h1>
-                        <p className="text-muted-foreground">
-                            Gestiona operaciones, personal y nómina desde un solo lugar.
-                        </p>
-                    </div>
-                    <NewJobModal />
-                </div>
+                <SectionHeader
+                    title="Vertical de Limpieza"
+                    subtitle="Gestiona operaciones, personal y nómina desde un solo lugar."
+                    icon={Sparkles}
+                    action={<NewJobModal />}
+                />
             </div>
 
             {/* Tabs and Content */}

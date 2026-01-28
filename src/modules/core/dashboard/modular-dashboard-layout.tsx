@@ -7,6 +7,8 @@ import { QuickAction, QuickActionProps } from "@/modules/core/dashboard/widgets/
 import { SmartAlert, SmartAlertProps } from "@/modules/core/dashboard/widgets/smart-cards/smart-alert"
 import { SocialGlassWidget, SocialGlassWidgetProps } from "@/modules/core/dashboard/widgets/smart-cards/social-glass-widget"
 import { SplitText } from "@/components/ui/split-text"
+import { SectionHeader } from "@/components/layout/section-header"
+import { LayoutDashboard } from "lucide-react"
 
 export interface DashboardDataProps {
     stats: MagicStatCardProps[]
@@ -18,14 +20,14 @@ export interface DashboardDataProps {
 
 export function ModularDashboardLayout({ data }: { data: DashboardDataProps }) {
     return (
-        <div className="space-y-8">
+        <div className="space-y-6">
             {/* Header - Could be dynamic later */}
-            <div>
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                    <SplitText>Dashboard</SplitText>
-                </h1>
-                <p className="text-muted-foreground mt-1">Resumen en tiempo real de tu negocio</p>
-            </div>
+            {/* Standardized Header */}
+            <SectionHeader
+                title="Dashboard"
+                subtitle="Resumen en tiempo real de tu negocio"
+                icon={LayoutDashboard}
+            />
 
             {/* 1. Stats Grid (Dynamic) */}
             <div className={`grid gap-8 grid-cols-1 md:grid-cols-2 lg:grid-cols-${Math.min(data.stats.length, 4)}`}>

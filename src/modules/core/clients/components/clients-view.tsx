@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Plus, Phone, ArrowRight, AlertTriangle, CheckCircle2, Clock, CreditCard, FileText, Globe, MoreVertical, Edit, Wifi, Shield, Trash2, Copy } from "lucide-react"
+import { Plus, Phone, ArrowRight, AlertTriangle, CheckCircle2, Clock, CreditCard, FileText, Globe, MoreVertical, Edit, Wifi, Shield, Trash2, Copy, Users } from "lucide-react"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -56,6 +56,7 @@ import { PortalGovernanceSheet } from "@/components/sheets/portal-governance-she
 // (imports)
 import { useRegisterView } from "@/modules/core/caa/context/view-context"
 import { useTranslation } from "@/lib/i18n/use-translation"
+import { SectionHeader } from "@/components/layout/section-header"
 
 interface ClientsViewProps {
     initialClients: Client[]
@@ -340,23 +341,21 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
         <div className="space-y-4 h-[calc(100vh-2rem)] flex flex-col bg-gray-50/50 dark:bg-transparent">
             {/* Header Section - Fixed */}
             <div className="flex-none space-y-4 pr-1">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div>
-                        <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
-                            <SplitText>{t('clients.title')}</SplitText>
-                        </h2>
-                    </div>
-                    <div className="flex items-center gap-3 w-full md:w-auto">
-                        <Link href="/debug/tokens">
-                            <Button variant="outline" className="h-9 px-4 border-gray-200 text-gray-600 hover:bg-gray-50">
-                                <AlertTriangle className="mr-2 h-4 w-4" />
-                                {t('clients.actions.tokens')}
-                            </Button>
-                        </Link>
-
-                        <CreateClientSheet onSuccess={fetchClients} />
-                    </div>
-                </div>
+                <SectionHeader
+                    title={t('clients.title')}
+                    icon={Users}
+                    action={
+                        <div className="flex items-center gap-3 w-full md:w-auto">
+                            <Link href="/debug/tokens">
+                                <Button variant="outline" className="h-9 px-4 border-gray-200 text-gray-600 hover:bg-gray-50">
+                                    <AlertTriangle className="mr-2 h-4 w-4" />
+                                    {t('clients.actions.tokens')}
+                                </Button>
+                            </Link>
+                            <CreateClientSheet onSuccess={fetchClients} />
+                        </div>
+                    }
+                />
 
                 {/* Unified Control Block & View Toggle */}
                 <div className="flex flex-col md:flex-row gap-3 z-30">

@@ -11,6 +11,7 @@ import { TemplateBuilderSheet } from "@/modules/core/messaging/components/templa
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
+import { SectionHeader } from "@/components/layout/section-header"
 
 export default function TemplatesPage() {
     const [templates, setTemplates] = useState<MessageTemplate[]>([])
@@ -65,24 +66,29 @@ export default function TemplatesPage() {
     return (
         <div className="space-y-6 h-full flex flex-col">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                    <h3 className="text-2xl font-bold tracking-tight">Plantillas de Mensajes</h3>
-                    <p className="text-sm text-muted-foreground">Gestiona tus respuestas y mensajes automáticos aprobados por Meta.</p>
-                </div>
-                <div className="flex gap-2">
-                    <div className="relative w-full sm:w-64">
-                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input
-                            placeholder="Buscar plantilla..."
-                            className="pl-9"
-                            value={filter}
-                            onChange={(e) => setFilter(e.target.value)}
-                        />
-                    </div>
-                    <Button onClick={handleNew} className="bg-[#25D366] hover:bg-[#128C7E] text-white font-semibold">
-                        <Plus className="mr-2 h-4 w-4" />
-                        Nueva Plantilla
-                    </Button>
+                <div className="w-full">
+                    <SectionHeader
+                        title="Plantillas de Mensajes"
+                        subtitle="Gestiona tus respuestas y mensajes automáticos aprobados por Meta."
+                        titleClassName="text-2xl"
+                        action={
+                            <div className="flex gap-2">
+                                <div className="relative w-full sm:w-64">
+                                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                                    <Input
+                                        placeholder="Buscar plantilla..."
+                                        className="pl-9"
+                                        value={filter}
+                                        onChange={(e) => setFilter(e.target.value)}
+                                    />
+                                </div>
+                                <Button onClick={handleNew} className="bg-[#25D366] hover:bg-[#128C7E] text-white font-semibold">
+                                    <Plus className="mr-2 h-4 w-4" />
+                                    Nueva Plantilla
+                                </Button>
+                            </div>
+                        }
+                    />
                 </div>
             </div>
 

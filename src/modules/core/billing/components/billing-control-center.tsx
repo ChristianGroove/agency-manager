@@ -13,15 +13,18 @@ interface BillingControlCenterProps {
     initialInvoices: Invoice[]
 }
 
+import { SectionHeader } from "@/components/layout/section-header"
+
 export function BillingControlCenter({ initialInvoices }: BillingControlCenterProps) {
     const { t } = useTranslation()
 
     return (
         <div className="space-y-6">
-            <div className="flex flex-col gap-2">
-                <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">{t('invoicing.title')}</h1>
-                <p className="text-muted-foreground">{t('invoicing.description')}</p>
-            </div>
+            <SectionHeader
+                title={t('invoicing.title')}
+                subtitle={t('invoicing.description')}
+                icon={FileText}
+            />
 
             <Tabs defaultValue="documents" className="w-full space-y-6">
                 <TabsList className="grid w-full grid-cols-4 lg:w-[600px] h-auto p-1 bg-gray-100/50 dark:bg-white/5 backdrop-blur-sm border border-gray-200/50 dark:border-white/10 rounded-xl">

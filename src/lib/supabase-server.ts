@@ -1,9 +1,13 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
-// Fallback values from src/lib/supabase.ts if env vars are missing
-const SUPABASE_URL = "https://amwlwmkejdjskukdfwut.supabase.co"
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFtd2x3bWtlamRqc2t1a2Rmd3V0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU4NDg2OTUsImV4cCI6MjA4MTQyNDY5NX0.X7zYfWR9J83sXnYCEfvB7u_tNTupHqd5GQC82gOO__E"
+// ⚠️ Environment variables are strictly enforced. NO HARDCODED FALLBACKS to prevent Production leaks.
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    console.error('❌ CRITICAL: Supabase environment variables are missing.')
+}
 
 export async function createClient() {
     const cookieStore = await cookies()
@@ -14,11 +18,16 @@ export async function createClient() {
         {
             cookies: {
                 get(name: string) {
-                    return cookieStore.get(name)?.value
+                    const value = cookieStore.get(name)?.value;
+                    if (name.includes('verifier')) console.log(`[AUTH] GET Cookie ${name}: ${value ? 'FOUND' : 'MISSING'}`);
+                    return value
                 },
                 set(name: string, value: string, options: CookieOptions) {
                     try {
-                        cookieStore.set({ name, value, ...options })
+                        if (name.includes('verifier')) console.log(`[AUTH] SET Cookie ${name}`);
+                        // Force secure: false on localhost to prevent PKCE errors
+                        const secure = SUPABASE_URL.includes('localhost') ? false : options.secure;
+                        cookieStore.set({ name, value, ...options, secure })
                     } catch (error) {
                         // The `set` method was called from a Server Component.
                         // This can be ignored if you have middleware refreshing

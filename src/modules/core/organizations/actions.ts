@@ -64,11 +64,11 @@ export const getCurrentOrganizationId = cache(async () => {
             .maybeSingle()
 
         if (membership) {
+            console.log(`[ORG_CONTEXT] ✅ Switch to ${orgCookie.value} for User ${user.id}`);
             return orgCookie.value // Valid membership confirmed
         }
 
-        // Cookie points to an org user doesn't belong to - log and fall through
-        console.warn(`[getCurrentOrganizationId] User ${user.id} tried to access org ${orgCookie.value} without membership. Falling back to first valid org.`)
+        console.warn(`[ORG_CONTEXT] ❌ Security check failed for ${orgCookie.value} (User ${user.id}). Reverting to default.`);
     }
 
     // 2. Fallback: Fetch first organization from DB

@@ -19,6 +19,8 @@ import {
     type CRMStats, type LeadsBySource, type LeadsByStatus, type RecentActivity, type AgentPerformance
 } from '@/modules/core/crm/analytics-actions'
 
+import { SectionHeader } from "@/components/layout/section-header"
+
 export default function ReportsPage() {
     const [loading, setLoading] = useState(true)
     const [timeRange, setTimeRange] = useState('30')
@@ -76,32 +78,31 @@ export default function ReportsPage() {
     }
 
     return (
-        <div className="h-full p-8 space-y-8 overflow-auto">
+        <div className="h-full space-y-6 overflow-auto">
             {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400">
-                        Analytics Hub
-                    </h1>
-                    <p className="text-muted-foreground mt-2">Centro de inteligencia y métricas de crecimiento</p>
-                </div>
-                <div className="flex items-center gap-3">
-                    <Select value={timeRange} onValueChange={setTimeRange}>
-                        <SelectTrigger className="w-[140px]">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="7">Últimos 7 días</SelectItem>
-                            <SelectItem value="30">Últimos 30 días</SelectItem>
-                            <SelectItem value="90">Últimos 90 días</SelectItem>
-                            <SelectItem value="365">Este año</SelectItem>
-                        </SelectContent>
-                    </Select>
-                    <Button variant="outline" size="icon" onClick={loadData} disabled={loading}>
-                        <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
-                    </Button>
-                </div>
-            </div>
+            <SectionHeader
+                title="Analytics Hub"
+                subtitle="Centro de inteligencia y métricas de crecimiento"
+                icon={BarChart3}
+                action={
+                    <div className="flex items-center gap-3">
+                        <Select value={timeRange} onValueChange={setTimeRange}>
+                            <SelectTrigger className="w-[140px]">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="7">Últimos 7 días</SelectItem>
+                                <SelectItem value="30">Últimos 30 días</SelectItem>
+                                <SelectItem value="90">Últimos 90 días</SelectItem>
+                                <SelectItem value="365">Este año</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <Button variant="outline" size="icon" onClick={loadData} disabled={loading}>
+                            <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
+                        </Button>
+                    </div>
+                }
+            />
 
             {/* KPI Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

@@ -10,7 +10,8 @@ import {
     Settings,
     Layout
 } from "lucide-react"
-import { Separator } from "@/components/ui/separator"
+
+import { SectionHeader } from "@/components/layout/section-header"
 
 interface SettingsLayoutProps {
     children: React.ReactNode
@@ -48,22 +49,19 @@ export default function SettingsLayout({ children }: SettingsLayoutProps) {
     ]
 
     return (
-        <div className="space-y-6 pt-2 pb-16">
-            {/* Standard Module Header */}
-            <div className="space-y-0.5 px-6 pt-6">
-                <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-                    <Settings className="h-6 w-6 text-primary" /> Configuración CRM
-                </h2>
-                <p className="text-muted-foreground">
-                    Administra las preferencias generales de tu sistema de relaciones con clientes.
-                </p>
-            </div>
+        <div className="h-full space-y-6">
+            {/* Standardized Module Header */}
+            <SectionHeader
+                title="Configuración CRM"
+                subtitle="Administra las preferencias generales de tu sistema de relaciones con clientes."
+                icon={Settings}
+            />
 
-            <Separator />
+
 
             {/* Horizontal Navigation Tabs */}
-            <div className="flex flex-col space-y-8 px-6">
-                <div className="flex items-center space-x-1 border-b overflow-x-auto pb-px">
+            <div className="flex flex-col space-y-6">
+                <div className="grid w-full grid-cols-2 lg:grid-cols-4 lg:w-[800px] gap-2 p-1 bg-gray-100/50 dark:bg-white/5 backdrop-blur-sm border border-gray-200/50 dark:border-white/10 rounded-xl">
                     {items.map((item) => {
                         const isActive = pathname === item.href
 
@@ -72,24 +70,21 @@ export default function SettingsLayout({ children }: SettingsLayoutProps) {
                                 key={item.href}
                                 href={item.href}
                                 className={cn(
-                                    "flex items-center gap-2 px-4 py-3 text-sm font-medium transition-all border-b-2 whitespace-nowrap",
+                                    "flex items-center justify-center gap-2 rounded-lg py-2.5 px-3 text-sm font-medium transition-all",
                                     isActive
-                                        ? "border-primary text-primary bg-primary/5"
-                                        : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                                        ? "bg-white dark:bg-white/10 text-primary dark:text-white shadow-sm"
+                                        : "text-muted-foreground hover:bg-gray-200/50 dark:hover:bg-white/5 hover:text-foreground"
                                 )}
                             >
-                                <item.icon className={cn("h-4 w-4", isActive ? "text-primary" : "text-muted-foreground")} />
-                                <div>
-                                    <span>{item.title}</span>
-                                    {/* Optional: Show description only on desktop/large screens if needed, but keeping it clean for tabs is better */}
-                                </div>
+                                <item.icon className={cn("h-4 w-4", isActive ? "text-primary dark:text-white" : "text-muted-foreground")} />
+                                <span className="truncate">{item.title}</span>
                             </Link>
                         )
                     })}
                 </div>
 
                 {/* Content Area */}
-                <div className="flex-1 lg:max-w-7xl mx-auto w-full min-h-[500px]">
+                <div className="flex-1 w-full min-h-[500px]">
                     {children}
                 </div>
             </div>

@@ -1,21 +1,19 @@
 import React from 'react';
 import { FlowsGallery } from '@/modules/flows/components/flows-gallery';
 
+import { SectionHeader } from "@/components/layout/section-header"
+import { Sparkles } from "lucide-react"
+
 export default function FlowsPage() {
     return (
         <div className="flex flex-col gap-8 p-8 max-w-7xl mx-auto">
 
-            {/* HEADER: Narrative & Welcoming */}
-            <div className="space-y-2">
-                <h1 className="text-3xl font-bold tracking-tight text-white">
-                    ¿Qué te gustaría delegar hoy?
-                </h1>
-                <p className="text-gray-400 text-lg">
-                    Selecciona una tarea y Pixy se encargará de ella automáticamente.
-                    <br />
-                    <span className="text-sm opacity-70">Tu empleado virtual trabaja 24/7 sin descanso.</span>
-                </p>
-            </div>
+            {/* HEADER: Standardized */}
+            <SectionHeader
+                title="Pixy Flows"
+                subtitle="Selecciona una tarea y Pixy se encargará de ella automáticamente."
+                icon={Sparkles}
+            />
 
             {/* THE MENU: Results Gallery */}
             <section>

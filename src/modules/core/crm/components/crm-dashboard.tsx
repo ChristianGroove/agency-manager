@@ -9,9 +9,8 @@ import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { TagsManagerSheet } from "./tags/tags-manager-sheet"
-import { Plus, Users, XCircle, Settings, Trophy, BarChart3, Upload, TrendingUp, CheckCircle2, ZoomIn, ZoomOut, Mail, Tag, Wrench, Database } from "lucide-react"
-
-// ... imports ...
+import { Plus, Users, XCircle, Settings, Trophy, BarChart3, Upload, TrendingUp, CheckCircle2, ZoomIn, ZoomOut, Mail, Tag, Wrench, Database, Kanban } from "lucide-react"
+import { SectionHeader } from "@/components/layout/section-header"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { CreateLeadSheet } from "./create-lead-sheet"
@@ -309,64 +308,62 @@ export function CRMDashboard() {
         >
             <div className="h-full flex flex-col max-h-full">
                 {/* Compact Header */}
-                <div className="shrink-0 mb-8 space-y-8">
-                    {/* Top Row: Title + Mini Stats + Actions */}
-                    <div className="flex items-center justify-between gap-4">
-                        <div className="flex items-center gap-4">
-                            <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
-                                <SplitText>Pipeline</SplitText>
-                            </h2>
+                <div className="shrink-0 mb-6 space-y-6">
+                    {/* Standardized Header */}
+                    <SectionHeader
+                        title="Pipeline"
+                        subtitle="Gestión de prospectos y ciclo de ventas"
+                        icon={Kanban}
+                        action={
+                            <div className="flex items-center gap-2">
+                                {/* Inline Mini Stats - Preserved in Action Area for now */}
+                                <div className="hidden xl:flex items-center gap-2 mr-4 border-r border-border pr-4">
+                                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-white/5 border border-transparent dark:border-white/10">
+                                        <Database className="h-3.5 w-3.5 text-blue-500 dark:text-blue-400" />
+                                        <span className="font-semibold text-sm text-slate-700 dark:text-slate-200">{totalLeadsCount} Total</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-white/5 border border-transparent dark:border-white/10">
+                                        <Users className="h-3.5 w-3.5 text-slate-500 dark:text-slate-400" />
+                                        <span className="font-semibold text-sm text-slate-700 dark:text-slate-200">{stats.total} en Vista</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-100 dark:bg-green-500/10 border border-transparent dark:border-green-500/20">
+                                        <Trophy className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+                                        <span className="font-semibold text-sm text-green-700 dark:text-green-400">{stats.won}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-100 dark:bg-red-500/10 border border-transparent dark:border-red-500/20">
+                                        <XCircle className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
+                                        <span className="font-semibold text-sm text-red-700 dark:text-red-400">{stats.lost}</span>
+                                    </div>
+                                </div>
 
-                            {/* Inline Mini Stats */}
-                            <div className="hidden sm:flex items-center gap-2">
-                                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-white/5 border border-transparent dark:border-white/10">
-                                    <Database className="h-3.5 w-3.5 text-blue-500 dark:text-blue-400" />
-                                    <span className="font-semibold text-sm text-slate-700 dark:text-slate-200">{totalLeadsCount} Total</span>
-                                </div>
-                                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-white/5 border border-transparent dark:border-white/10">
-                                    <Users className="h-3.5 w-3.5 text-slate-500 dark:text-slate-400" />
-                                    <span className="font-semibold text-sm text-slate-700 dark:text-slate-200">{stats.total} en Vista</span>
-                                </div>
-                                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-100 dark:bg-green-500/10 border border-transparent dark:border-green-500/20">
-                                    <Trophy className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
-                                    <span className="font-semibold text-sm text-green-700 dark:text-green-400">{stats.won}</span>
-                                </div>
-                                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-100 dark:bg-red-500/10 border border-transparent dark:border-red-500/20">
-                                    <XCircle className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
-                                    <span className="font-semibold text-sm text-red-700 dark:text-red-400">{stats.lost}</span>
-                                </div>
+                                <Button
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={() => setAnalyticsSheetOpen(true)}
+                                    title="Ver Analítica"
+                                    className="h-9 w-9"
+                                >
+                                    <BarChart3 className="h-4 w-4" />
+                                </Button>
+                                <Button variant="outline" size="icon" onClick={() => setImportSheetOpen(true)} title="Importar Leads" className="h-9 w-9">
+                                    <Upload className="h-4 w-4" />
+                                </Button>
+                                <Button variant="outline" size="icon" onClick={() => setTagsSheetOpen(true)} title="Gestionar Etiquetas" className="h-9 w-9">
+                                    <Tag className="h-4 w-4" />
+                                </Button>
+                                <Button variant="outline" size="icon" onClick={() => setSettingsSheetOpen(true)} title="Configurar Pipeline" className="h-9 w-9">
+                                    <Settings className="h-4 w-4" />
+                                </Button>
+                                <Button variant="outline" size="icon" onClick={() => setManageSheetOpen(true)} title="Gestión de Leads" className="h-9 w-9 text-slate-600 dark:text-slate-300">
+                                    <Wrench className="h-4 w-4" />
+                                </Button>
+                                <Button onClick={() => setCreateSheetOpen(true)} size="sm" className="h-9 bg-brand-pink hover:bg-brand-pink/90 text-white shadow-md shadow-pink-500/20">
+                                    <Plus className="mr-1.5 h-4 w-4" />
+                                    Nuevo Lead
+                                </Button>
                             </div>
-                        </div>
-
-                        {/* Actions */}
-                        <div className="flex items-center gap-2">
-                            <Button
-                                variant="outline"
-                                size="icon"
-                                onClick={() => setAnalyticsSheetOpen(true)}
-                                title="Ver Analítica"
-                                className="h-9 w-9"
-                            >
-                                <BarChart3 className="h-4 w-4" />
-                            </Button>
-                            <Button variant="outline" size="icon" onClick={() => setImportSheetOpen(true)} title="Importar Leads" className="h-9 w-9">
-                                <Upload className="h-4 w-4" />
-                            </Button>
-                            <Button variant="outline" size="icon" onClick={() => setTagsSheetOpen(true)} title="Gestionar Etiquetas" className="h-9 w-9">
-                                <Tag className="h-4 w-4" />
-                            </Button>
-                            <Button variant="outline" size="icon" onClick={() => setSettingsSheetOpen(true)} title="Configurar Pipeline" className="h-9 w-9">
-                                <Settings className="h-4 w-4" />
-                            </Button>
-                            <Button variant="outline" size="icon" onClick={() => setManageSheetOpen(true)} title="Gestión de Leads" className="h-9 w-9 text-slate-600 dark:text-slate-300">
-                                <Wrench className="h-4 w-4" />
-                            </Button>
-                            <Button onClick={() => setCreateSheetOpen(true)} size="sm" className="h-9">
-                                <Plus className="mr-1.5 h-4 w-4" />
-                                Nuevo Lead
-                            </Button>
-                        </div>
-                    </div>
+                        }
+                    />
 
                     {/* Filters Row */}
                     <LeadFilters

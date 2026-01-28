@@ -48,7 +48,9 @@ function SidebarItem({ icon: Icon, label, href, active, collapsed, isSuperAdminR
                     className={cn(
                         "h-4 w-4 shrink-0 transition-transform duration-200",
                         active ? "scale-110" : "group-hover:scale-105",
-                        isSuperAdminRoute && active ? "text-purple-300" : ""
+                        isSuperAdminRoute
+                            ? (active ? "text-purple-300" : "text-purple-400/80 group-hover:text-purple-400")
+                            : "text-[var(--brand-pink)]"
                     )}
                 />
                 {!collapsed && (

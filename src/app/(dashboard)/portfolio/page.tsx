@@ -9,7 +9,8 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Plus } from "lucide-react"
+import { Plus, Store } from "lucide-react"
+import { SectionHeader } from "@/components/layout/section-header"
 import { CatalogList } from "@/modules/core/catalog/catalog-list"
 import { CatalogServiceSheet } from "@/modules/core/catalog/catalog-service-sheet"
 import { CategoryManager } from "@/modules/core/catalog/components/category-manager"
@@ -106,28 +107,24 @@ export default function PortfolioPage() {
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             {/* Title Row with Actions */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
-                        <SplitText>Catálogo</SplitText>
-                    </h1>
-                    <p className="text-muted-foreground mt-1">
-                        Servicios y productos que ofrece tu negocio.
-                    </p>
-                </div>
-
-                {/* Right: Actions */}
-                <div className="flex items-center gap-2 w-full md:w-auto">
-                    <TemplateImporter onSuccess={fetchServices} />
-                    <CategoryManager />
-                    <Button
-                        onClick={handleCreateService}
-                        className="bg-brand-pink hover:bg-brand-pink/90 text-white shadow-lg shadow-gray-200"
-                    >
-                        <Plus className="mr-2 h-4 w-4" /> Nuevo Servicio
-                    </Button>
-                </div>
-            </div>
+            {/* Standardized Header */}
+            <SectionHeader
+                title="Catálogo"
+                subtitle="Servicios y productos que ofrece tu negocio."
+                icon={Store}
+                action={
+                    <div className="flex items-center gap-2 w-full md:w-auto">
+                        <TemplateImporter onSuccess={fetchServices} />
+                        <CategoryManager />
+                        <Button
+                            onClick={handleCreateService}
+                            className="bg-brand-pink hover:bg-brand-pink/90 text-white shadow-lg shadow-gray-200"
+                        >
+                            <Plus className="mr-2 h-4 w-4" /> Nuevo Servicio
+                        </Button>
+                    </div>
+                }
+            />
 
             {/* Filter & View Bar */}
             <div className="space-y-4 sticky top-4 z-30 bg-gray-50/95 dark:bg-black/40 backdrop-blur-sm py-2">
