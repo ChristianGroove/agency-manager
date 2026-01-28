@@ -50,7 +50,11 @@ function SidebarItem({ icon: Icon, label, href, active, collapsed, isSuperAdminR
                         active ? "scale-110" : "group-hover:scale-105",
                         isSuperAdminRoute
                             ? (active ? "text-purple-300" : "text-purple-400/80 group-hover:text-purple-400")
-                            : "text-[var(--brand-pink)]"
+                            : collapsed
+                                ? "text-[var(--brand-pink)]"
+                                : cn(
+                                    active ? "text-gray-900 dark:text-white" : "text-gray-400 dark:text-zinc-500 group-hover:text-gray-600 dark:group-hover:text-zinc-300"
+                                )
                     )}
                 />
                 {!collapsed && (
