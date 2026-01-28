@@ -62,32 +62,29 @@ export function FlowsGallery() {
 
     return (
         <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
                 {MASTER_TEMPLATES.map((template) => (
                     <button
                         key={template.id}
-                        className="group text-left h-full transition-all hover:-translate-y-1"
                         onClick={() => setSelectedTemplateId(template.id)}
+                        className="group text-left h-[140px] w-full"
                     >
-                        <div className="h-full bg-gray-900 border border-gray-800 rounded-xl p-6 hover:border-gray-600 hover:shadow-xl transition-colors">
+                        <div className="h-full w-full bg-white dark:bg-card/50 border border-gray-200 dark:border-white/10 rounded-xl p-4 hover:border-brand-pink/50 dark:hover:border-brand-pink/50 hover:shadow-lg hover:shadow-brand-pink/5 dark:hover:shadow-brand-pink/10 transition-all duration-300 group-hover:-translate-y-1 flex flex-col">
 
-                            {/* ICON HEADER */}
-                            <div className={`w-12 h-12 rounded-lg flex items-center justify-center mb-4 ${template.bgColor}`}>
-                                <template.icon className={`w-6 h-6 ${template.color}`} />
+                            {/* HEADER: INLINE ICON + TITLE */}
+                            <div className="flex items-center gap-3 mb-2">
+                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${template.bgColor} border border-white/5`}>
+                                    <template.icon className={`w-4 h-4 ${template.color}`} />
+                                </div>
+                                <h3 className="text-sm font-semibold text-gray-900 dark:text-white leading-tight group-hover:text-brand-pink transition-colors line-clamp-2">
+                                    {template.title}
+                                </h3>
                             </div>
 
-                            {/* CONTENT */}
-                            <h3 className="text-lg font-semibold text-white mb-2 group-hover:text-blue-400 transition-colors">
-                                {template.title}
-                            </h3>
-                            <p className="text-sm text-gray-400 leading-relaxed">
+                            {/* DESCRIPTION */}
+                            <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-3">
                                 {template.description}
                             </p>
-
-                            {/* CTA (Invisible until hover implied) */}
-                            <div className="mt-6 flex items-center text-xs font-medium text-gray-500 group-hover:text-white transition-colors">
-                                Configurar en 2 minutos &rarr;
-                            </div>
                         </div>
                     </button>
                 ))}

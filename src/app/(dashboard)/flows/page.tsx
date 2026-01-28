@@ -6,7 +6,7 @@ import { Sparkles } from "lucide-react"
 
 export default function FlowsPage() {
     return (
-        <div className="flex flex-col gap-8 p-8 max-w-7xl mx-auto">
+        <div className="space-y-6">
 
             {/* HEADER: Standardized */}
             <SectionHeader
@@ -21,9 +21,9 @@ export default function FlowsPage() {
             </section>
 
             {/* ACTIVE ROUTINES (If any) - Placeholder for MVP */}
-            <section className="pt-8 border-t border-gray-800">
-                <h2 className="text-xl font-semibold mb-4 text-white">Tus Rutinas Activas</h2>
-                <div className="p-12 border border-dashed border-gray-700 rounded-lg text-center text-gray-500">
+            <section>
+                <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Tus Rutinas Activas</h2>
+                <div className="p-12 border border-dashed border-gray-300 dark:border-gray-700 rounded-lg text-center text-gray-500 dark:text-zinc-500">
                     Aún no tienes rutinas activas. Empieza seleccionando una arriba.
                 </div>
             </section>
