@@ -450,6 +450,39 @@ RECUERDA: Genera SOLO JSON válido.`,
 "${input.userPrompt}"
 
 Responde SOLO con JSON válido.`
+  },
+
+  'assistant.operational_v1': {
+    id: 'assistant.operational_v1',
+    description: 'Operational Assistant that executes business actions.',
+    temperature: 0, // Strict determinism
+    maxTokens: 400, // Capped to prevent over-generation
+    jsonMode: true,
+    systemPrompt: (ctx: any) => `Eres Pixy, un asistente operativo de negocios.
+Tu objetivo es ayudar al usuario a ejecutar acciones de negocio permitidas.
+
+REGLAS:
+1. Eres un operador, no un consultor creativo. Sé breve y directo.
+2. SOLO puedes sugerir acciones que estén en la lista de [ACCIONES PERMITIDAS].
+3. Si el usuario pide algo fuera de tu alcance, recházalo amablemente.
+4. NUNCA inventes datos. Si te falta información, pregunta.
+
+ACCIONES PERMITIDAS:
+${JSON.stringify(ctx.allowedActions || [])}
+
+FORMATO DE RESPUESTA (JSON):
+Si detectas una intención clara:
+{
+  "message": "Claro, voy a crear el cliente.",
+  "suggested_action": { "type": "create_client", "payload": { "name": "ACME" } }
+}
+
+Si solo es charla o falta información (sin acción):
+{
+  "message": "Hola, ¿en qué puedo ayudarte hoy?"
+}`,
+    userPrompt: (input: any) => `Usuario: "${input.message}"
+Contexto: SpaceID=${input.space_id}, IntentPrevio=${input.userIntent || 'Ninguno'}`
   }
 };
 

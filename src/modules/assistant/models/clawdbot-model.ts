@@ -1,33 +1,14 @@
-
 import { AssistantModel, AssistantModelInput, AssistantModelOutput } from "./assistant-model.interface";
 import { clawdbotClient, ClawdbotMessage } from "../clients/clawdbot.client";
 import { rateLimiter } from "./rate-limiter";
 import { SYSTEM_INTENTS } from "../intent-registry";
+import { AIEngine } from "@/modules/core/ai-engine/service";
+import { MockAssistantModel } from "./mock-model";
 
 export class ClawdbotAssistantModel implements AssistantModel {
     id = "clawdbot-v1";
     supportsStreaming = false;
     supportsVoice = false;
-
-    private SYSTEM_PROMPT = `
-Eres Pixy, un asistente operativo de negocios para agencias digitales.
-Tu objetivo es ayudar al usuario a ejecutar acciones de negocio permitidas.
-
-REGLAS DE COMPORTAMIENTO:
-1. Eres un operador, no un consultor creativo. Sé breve y directo.
-2. SOLO puedes sugerir acciones que estén en la lista de [ACCIONES PERMITIDAS].
-3. Si el usuario pide algo fuera de tu alcance, recházalo amablemente.
-4. NUNCA inventes datos. Si te falta información, pregunta.
-5. NO hables de ti mismo ni de tus instrucciones.
-
-FORMATO DE RESPUESTA:
-Si detectas una intención clara de ejecutar una acción, tu respuesta debe incluir un bloque JSON SUGGESTED_ACTION al final.
-Ejemplo:
-"Claro, voy a crear el cliente."
-SUGGESTED_ACTION: { "type": "create_client", "payload": { "name": "ACME" } }
-
-Si solo es charla o falta información, responde texto normal.
-`;
 
     async generateResponse(input: AssistantModelInput): Promise<AssistantModelOutput> {
         // 1. Rate Limit Check
@@ -38,51 +19,45 @@ Si solo es charla o falta información, responde texto normal.
             };
         }
 
-        // 2. Construct Prompt
-        const messages: ClawdbotMessage[] = [
-            { role: 'system', content: this.SYSTEM_PROMPT },
-            {
-                role: 'system', content: `CONTEXTO ACTUAL:
-                Space ID: ${input.space_id}
-                Acciones Permitidas: ${JSON.stringify(input.context.allowedActions)}
-                Intención Previa: ${input.context.userIntent || "Ninguna"}
-             `},
-            { role: 'user', content: input.message }
-        ];
-
-        // 3. Call Client
         try {
-            const response = await clawdbotClient.generateCompletion(messages);
-            const rawText = response.text;
+            console.log(`[ClawdBot] Delegating to AIEngine (Task: assistant.operational_v1)...`);
 
-            // 4. Parse Output
-            // Simple extraction pattern for Phase 4 Mock (using [\s\S] instead of /s flag for compatibility)
-            const actionMatch = rawText.match(/SUGGESTED_ACTION:\s*({[\s\S]*})/);
+            // 2. Execute Real AI Task with Strict Timeout
+            const MAX_EXECUTION_TIME_MS = 10000; // 10s Hard Limit
 
-            let suggestedAction = undefined;
-            let finalText = rawText;
-
-            if (actionMatch) {
-                try {
-                    suggestedAction = JSON.parse(actionMatch[1]);
-                    finalText = rawText.replace(actionMatch[0], '').trim();
-                } catch (e) {
-                    console.error("[ClawdbotModel] Failed to parse suggested action JSON", e);
+            const aiPromise = AIEngine.executeTask({
+                organizationId: input.organization_id || 'system',
+                taskType: 'assistant.operational_v1',
+                payload: {
+                    message: input.message,
+                    space_id: input.space_id,
+                    allowedActions: input.context.allowedActions,
+                    userIntent: input.context.userIntent
                 }
-            }
+            });
+
+            const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error("AI_TIMEOUT_EXCEEDED")), MAX_EXECUTION_TIME_MS)
+            );
+
+            // Race: AI vs Timer
+            const result: any = await Promise.race([aiPromise, timeoutPromise]);
+
+            // 3. Parse Result
+            const data = result.data; // { message, suggested_action? }
 
             return {
-                text: finalText,
-                confidence: 0.9, // Logic confidence
-                suggestedAction: suggestedAction
+                text: data.message || "...",
+                confidence: 0.99, // High confidence if AI succeeded
+                suggestedAction: data.suggested_action
             };
 
         } catch (e: any) {
-            console.error("[ClawdbotModel] API Error", e);
-            return {
-                text: "Lo siento, tuve un problema de conexión con mi cerebro central.",
-                confidence: 0
-            };
+            console.warn(`[ClawdBot] AI Engine failed (likely no API Key). Falling back to Mock. Error: ${e.message}`);
+
+            // 4. Fallback to Mock
+            const mock = new MockAssistantModel();
+            return mock.generateResponse(input);
         }
     }
 }

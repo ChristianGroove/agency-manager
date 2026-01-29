@@ -19,124 +19,124 @@ import { AiConfigService, AiAnalyticsService } from "./services";
 
 export async function processAssistantRequest(input: AssistantInput): Promise<AssistantResult> {
 
-    // 1. Context Security
-    const context = await resolveAssistantContext();
-    if (!context) {
-        return { success: false, narrative_log: "⚠️ Sesión inválida." };
-    }
-
-    // ~~~ PHASE 9: KILLSWITCH CHECK ~~~
-    const settings = await AiConfigService.getEffectiveSettings(context.tenant_id, context.space_id);
-
-    // Global Voice/AI Check
-    if (!settings.is_voice_enabled) {
-        // Log the blocked attempt
-        await AiAnalyticsService.logInteraction({
-            tenant_id: context.tenant_id,
-            space_id: context.space_id,
-            user_id: context.user_id,
-            interaction_type: 'chat_text',
-            model_id: 'system',
-            status: 'rate_limited',
-            error_message: 'Killswitch Active'
-        });
-
-        return { success: false, narrative_log: "🔒 El servicio de IA está desactivado temporalmente por el administrador." };
-    }
-
-    // Check Token Limit (Simple daily estimated check could go here)
-    // ...
-
-
-    // 2. Normalization
-    const normalizedText = InputNormalizer.normalize(input.text);
-    console.log(`[Assistant] Turn: Raw="${input.text}" -> Normalized="${normalizedText}"`);
-
-    // 3. Interaction Logic (Interrupts check)
-    const state = await ConversationStore.get(context.user_id, context.space_id);
-
-    // INTERRUPT HANDLING (Same as Phase 3)
-    if (state && state.status === 'waiting_confirmation') {
-        if (['sí', 'si', 'confirmar', 'hazlo', 'ok', 'dale', 'simón', 'adelante'].includes(normalizedText.toLowerCase())) {
-            return executeIntent(state, context);
+    try {
+        // 1. Context Security
+        const resolution = await resolveAssistantContext();
+        if (!resolution || !resolution.context) {
+            return { success: false, narrative_log: "⚠️ Sesión inválida." };
         }
-        if (['no', 'cancelar', 'cancela', 'olvídalo', 'déjalo', 'abortar', 'basta'].includes(normalizedText.toLowerCase())) {
+        const { context } = resolution;
+
+        // ~~~ PHASE 9: KILLSWITCH CHECK ~~~
+        const settings = await AiConfigService.getEffectiveSettings(context.tenant_id, context.space_id);
+
+        // Global Voice/AI Check
+        const isVoiceInput = input.input_mode === 'voice';
+        const isServiceEnabled = isVoiceInput ? settings.is_voice_enabled : settings.is_clawdbot_enabled;
+
+        if (!isServiceEnabled) {
+            // Log the blocked attempt
+            await AiAnalyticsService.logInteraction({
+                tenant_id: context.tenant_id,
+                space_id: context.space_id,
+                user_id: context.user_id,
+                interaction_type: isVoiceInput ? 'voice_command' : 'chat_text',
+                model_id: 'system',
+                status: 'rate_limited',
+                error_message: `Killswitch Active (Voice: ${settings.is_voice_enabled}, Text: ${settings.is_clawdbot_enabled})`
+            });
+
+            return { success: false, narrative_log: "🔒 El servicio de IA está desactivado temporalmente por el administrador." };
+        }
+
+        // 2. Normalization
+        const normalizedText = InputNormalizer.normalize(input.text);
+        console.log(`[Assistant] Turn: Raw="${input.text}" -> Normalized="${normalizedText}"`);
+
+        // 3. Interaction Logic (Interrupts check)
+        const state = await ConversationStore.get(context.user_id, context.space_id);
+
+        // INTERRUPT HANDLING (Same as Phase 3)
+        if (state && state.status === 'waiting_confirmation') {
+            if (['sí', 'si', 'confirmar', 'hazlo', 'ok', 'dale', 'simón', 'adelante'].includes(normalizedText.toLowerCase())) {
+                return executeIntent(state, context);
+            }
+            if (['no', 'cancelar', 'cancela', 'olvídalo', 'déjalo', 'abortar', 'basta'].includes(normalizedText.toLowerCase())) {
+                await ConversationStore.delete(context.user_id, context.space_id);
+                return { success: true, narrative_log: "🚫 Operación cancelada." };
+            }
+
+            // CORRECTION / NEW INTENT OVERRIDE
+            console.log("[Assistant] Detected potential interruption/correction.");
+            state.status = 'collecting_params';
+        }
+
+        // 4. Handle Cancellation (Global Check)
+        if (state && ['cancelar', 'cancela', 'olvídalo'].includes(normalizedText.toLowerCase())) {
             await ConversationStore.delete(context.user_id, context.space_id);
-            return { success: true, narrative_log: "🚫 Operación cancelada." };
+            return { success: true, narrative_log: "🚫 Cancelado." };
         }
 
-        // CORRECTION / NEW INTENT OVERRIDE
-        console.log("[Assistant] Detected potential interruption/correction.");
-        state.status = 'collecting_params';
-    }
-
-    // 4. Handle Cancellation (Global Check)
-    if (state && ['cancelar', 'cancela', 'olvídalo'].includes(normalizedText.toLowerCase())) {
-        await ConversationStore.delete(context.user_id, context.space_id);
-        return { success: true, narrative_log: "🚫 Cancelado." };
-    }
-
-    // 5. Handle Active State (Multi-turn parameter collection)
-    if (state) {
-        return handleActiveConversation(state, normalizedText, context);
-    }
-
-    // 6. NEW INTENT DETECTION (Via Model Adapter)
-    // ---------------------------------------------------------
-
-    // Phase 5 Logic: Input Mode determines Model Preference
-    let modelId = 'mock';
-    if (input.input_mode === 'voice') {
-        modelId = 'personaplex';
-    } else if (input.input_mode === 'text' && context.space_id === 's1') { // Example logic
-        modelId = 'clawdbot';
-    }
-
-    const model = getModel(modelId, context.space_id);
-
-    const modelInput: AssistantModelInput = {
-        message: normalizedText,
-        space_id: context.space_id,
-        organization_id: context.tenant_id,
-        context: {
-            allowedActions: context.allowed_actions,
-            userIntent: VoiceContextManager.get(context.user_id, context.space_id)?.last_intent
+        // 5. Handle Active State (Multi-turn parameter collection)
+        if (state) {
+            return handleActiveConversation(state, normalizedText, context);
         }
-    };
 
-    console.log(`[Assistant] Asking Model (${model.id}) [Mode: ${input.input_mode || 'text'}]...`);
-    const modelOutput = await model.generateResponse(modelInput);
+        // 6. NEW INTENT DETECTION (Via Model Adapter)
+        let modelId = 'mock'; // Default fallback
 
-    // Voice Optimization: If using Voice, we might want to store TTS friendly text?
-    // For now, we just pass the text through.
+        if (input.input_mode === 'voice') {
+            modelId = settings.is_personaplex_enabled ? 'personaplex' : 'mock';
+        } else {
+            modelId = settings.is_clawdbot_enabled ? 'clawdbot' : 'mock';
+        }
 
-    // If Model suggests an action, we treat it as a Detected Intent
-    if (modelOutput.suggestedAction) {
-        const action = modelOutput.suggestedAction;
-        const intentName = action.type;
-        const params = action.payload;
+        const model = getModel(modelId, context.space_id);
 
-        console.log(`[Assistant] Model suggested: ${intentName}`);
-
-        // Initialize State
-        const newState: ConversationState = {
+        const modelInput: AssistantModelInput = {
+            message: normalizedText,
             space_id: context.space_id,
-            user_id: context.user_id,
-            active_intent: intentName,
-            pending_parameters: params || {},
-            missing_parameters: [],
-            status: 'collecting_params',
-            expires_at: Date.now() + 300000,
-            last_interaction_at: Date.now()
+            organization_id: context.tenant_id,
+            context: {
+                allowedActions: context.allowed_actions,
+                userIntent: VoiceContextManager.get(context.user_id, context.space_id)?.last_intent
+            }
         };
 
-        VoiceContextManager.set(context.user_id, context.space_id, { last_intent: intentName });
+        console.log(`[Assistant] Asking Model (${model.id}) [Mode: ${input.input_mode || 'text'}]...`);
+        const modelOutput = await model.generateResponse(modelInput);
 
-        return processStateTransition(newState, context);
+        // If Model suggests an action, we treat it as a Detected Intent
+        if (modelOutput.suggestedAction) {
+            const action = modelOutput.suggestedAction;
+            const intentName = action.type;
+            const params = action.payload;
+
+            console.log(`[Assistant] Model suggested: ${intentName}`);
+
+            // Initialize State
+            const newState: ConversationState = {
+                space_id: context.space_id,
+                user_id: context.user_id,
+                active_intent: intentName,
+                pending_parameters: params || {},
+                missing_parameters: [],
+                status: 'collecting_params',
+                expires_at: Date.now() + 300000,
+                last_interaction_at: Date.now()
+            };
+
+            VoiceContextManager.set(context.user_id, context.space_id, { last_intent: intentName });
+
+            return processStateTransition(newState, context);
+        }
+
+        // Fallback if model says nothing actionable
+        return { success: false, narrative_log: modelOutput.text || "🤔 No entendí." };
+    } catch (e: any) {
+        console.error("[AssistantEngine] Fatal Error:", e);
+        return { success: false, narrative_log: "⚠️ Error interno del asistente." };
     }
-
-    // Fallback if model says nothing actionable
-    return { success: false, narrative_log: modelOutput.text || "🤔 No entendí." };
 }
 
 // Internal State Handler (Unchanged from Phase 3)

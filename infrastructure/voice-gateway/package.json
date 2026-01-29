@@ -1,0 +1,12 @@
+{
+    "name": "pixy-voice-gateway",
+    "version": "1.0.0",
+    "description": "Voice Runtime Gateway for Pixy",
+    "main": "index.js",
+    "dependencies": {
+        "jsonwebtoken": "^9.0.0"
+    },
+    "scripts": {
+        "start": "node index.js"
+    }
+}

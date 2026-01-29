@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  voice_gateway:
+    build: ./voice-gateway
+    container_name: pixy-voice-runtime
+    restart: always
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - PORT=8080
+    networks:
+      - pixy-net
+
+networks:
+  pixy-net:
+    driver: bridge

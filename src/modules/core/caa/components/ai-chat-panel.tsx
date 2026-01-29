@@ -141,8 +141,8 @@ export function AIChatPanel({ initialQuery, onBack, className }: AIChatPanelProp
                         <div className={cn(
                             "max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed",
                             message.role === "user"
-                                ? "bg-gradient-to-r from-primary/10 to-fuchsia-500/10 dark:from-cyan-500/20 dark:to-primary/20 text-zinc-900 dark:text-white rounded-br-md border border-primary/20 dark:border-cyan-400/30"
-                                : "bg-zinc-100 dark:bg-white/5 text-zinc-700 dark:text-white/90 rounded-bl-md border border-zinc-200 dark:border-white/10"
+                                ? "bg-zinc-100 dark:bg-white/5 text-zinc-700 dark:text-white/90 rounded-bl-md border border-zinc-200 dark:border-white/10 break-words whitespace-pre-wrap"
+                                : "bg-zinc-100 dark:bg-white/5 text-zinc-700 dark:text-white/90 rounded-bl-md border border-zinc-200 dark:border-white/10 break-words whitespace-pre-wrap"
                         )}>
                             {message.content}
                         </div>

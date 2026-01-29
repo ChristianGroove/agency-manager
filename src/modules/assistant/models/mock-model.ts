@@ -13,7 +13,7 @@ export class MockAssistantModel implements AssistantModel {
         // --- Migrated Regex Logic ---
 
         // 1. Create Brief
-        if (text.includes("crear brief") || text.includes("nuevo brief")) {
+        if (/crear.*brief/i.test(text) || text.includes("nuevo brief")) {
             return {
                 text: "Entendido, puedo ayudarte a crear un brief.",
                 confidence: 0.9,

@@ -42,7 +42,7 @@ export class ClawdbotClient {
         if (lastMsg.includes("crear cotización") && lastMsg.includes("web")) {
             responseText = `Entendido. Propongo crear una cotización para Desarrollo Web.
             SUGGESTED_ACTION: { "type": "create_quote", "payload": { "items": [{"description": "Desarrollo Web", "price": 0}] } }`;
-        } else if (lastMsg.includes("crear brief")) {
+        } else if (/crear.*brief/i.test(lastMsg)) {
             responseText = `Puedo ayudarte con eso. ¿Para qué cliente es el brief?
             SUGGESTED_ACTION: { "type": "create_brief", "payload": { "template_id": "standard" } }`;
         } else if (lastMsg.includes("hola")) {

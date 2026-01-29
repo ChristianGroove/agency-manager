@@ -79,7 +79,7 @@ export class AiConfigService {
     private static getDefaultSettings(): AiSettings {
         return {
             is_voice_enabled: false, // Default off for safety
-            is_clawdbot_enabled: false,
+            is_clawdbot_enabled: true, // AUTO-ENABLE TEXT MODE
             is_personaplex_enabled: false,
             daily_token_limit: 1000,
             monthly_budget_usd: 0,

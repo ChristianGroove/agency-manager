@@ -1,6 +1,6 @@
 
 import { AssistantContext, AssistantAction } from "./types";
-import { INTENT_REGISTRY, SystemIntent } from "./intent-registry";
+import { INTENT_REGISTRY, SYSTEM_INTENTS } from "./intent-registry";
 
 export class PermissionGuard {
     /**
@@ -8,8 +8,13 @@ export class PermissionGuard {
      */
     static check(context: AssistantContext, action: AssistantAction, intentName?: string): { allowed: boolean; reason?: string } {
         // 1. Check Space/Tenant Isolation (Sanity Check)
+        // 1. Check Space/Tenant Isolation (Sanity Check)
         if (!context.space_id || !context.tenant_id) {
-            return { allowed: false, reason: "Contexto de espacio inválido (Space Integrity Breach)" };
+            // Friendly error for Global Context actions
+            return {
+                allowed: false,
+                reason: "Esta acción requiere contexto de Espacio. Por favor entra a una Organización o Proyecto específico."
+            };
         }
 
         // 2. Check Space Vertical/Type Logic (Phase 1 Requirement)

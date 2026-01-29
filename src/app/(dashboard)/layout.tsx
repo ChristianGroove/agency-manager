@@ -11,6 +11,7 @@ import { GlobalInboxProvider } from "@/modules/core/messaging/context/global-inb
 import { InboxOverlay } from "@/modules/core/messaging/components/floating-inbox/inbox-overlay"
 import { GlobalMessageListener } from "@/modules/core/messaging/components/floating-inbox/global-message-listener"
 import { FabController } from "@/components/layout/fab-controller"
+import { AssistantOverlay } from "@/components/assistant/AssistantOverlay"
 import { getSettings } from "@/modules/core/settings/actions"
 import { getDictionary } from "@/lib/i18n/dictionaries"
 import { I18nProvider } from "@/lib/i18n/context"
@@ -73,6 +74,7 @@ export default async function DashboardLayout({
                     <GlobalMessageListener />
                     <InboxOverlay />
                     <FabController />
+                    <AssistantOverlay />
                     <SystemAlertBanner />
                     <Suspense fallback={<GlobalLoader />}>
                         {children}

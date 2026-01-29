@@ -7,13 +7,17 @@ import { IntentDefinition } from "./types";
 
 export const SYSTEM_INTENTS = {
     CREATE_BRIEF: 'create_brief',
+    CREATE_QUOTE: 'create_quote',
+    CREATE_CLIENT: 'create_client',
     SEND_PAYMENT_REMINDER: 'send_payment_reminder',
     LIST_PENDING_PAYMENTS: 'list_pending_payments',
     CREATE_CLIENT_NOTE: 'create_client_note',
     PAUSE_FLOW: 'pause_flow',
     ACTIVATE_FLOW: 'activate_flow',
     RUN_FLOW_ONCE: 'run_flow_once',
-    LIST_ACTIVE_FLOWS: 'list_active_flows'
+    LIST_ACTIVE_FLOWS: 'list_active_flows',
+    CREATE_FLOW_FROM_TEMPLATE: 'create_flow_from_template',
+    LIST_PENDING_ACTIONS: 'list_pending_actions'
 } as const;
 
 export const INTENT_REGISTRY: Record<string, IntentDefinition> = {

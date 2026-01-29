@@ -1,5 +1,5 @@
 
-import { INTENT_REGISTRY, SystemIntent } from "../intent-registry";
+import { INTENT_REGISTRY, SYSTEM_INTENTS } from "../intent-registry";
 import { ConversationState } from "./types";
 
 export type ResolutionResult = {
@@ -71,7 +71,15 @@ export class IntentResolver {
     private static generateConfirmation(intent: string, params: any): string {
         // Basic confirmation messages
         // In Phase 3, these can be richer templates
-        const json = JSON.stringify(params);
-        return `Entendido. Voy a ejecutar '${intent}' con estos datos: ${json}. ¿Confirmas? (Responde 'Sí' o 'Cancelar')`;
+        // Human-friendly confirmation
+        if (intent === 'create_brief') {
+            return `Entendido. Prepararé un *brief* para el cliente **${params.client_id || 'nuevo'}** usando la plantilla **${params.template_id || 'estándar'}**. ¿Confirmas?`;
+        }
+        if (intent === 'pause_flow') {
+            return `Entendido. Pausaré el flujo **#${params.flow_id}**. ¿Estás seguro?`;
+        }
+
+        // Fallback for generic intents
+        return `Entendido. Voy a ejecutar **${intent}** con los datos proporcionados. ¿Confirmas?`;
     }
 }

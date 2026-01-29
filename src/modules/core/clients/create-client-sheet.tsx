@@ -115,7 +115,11 @@ export function CreateClientSheet({ onSuccess, open: controlledOpen, onOpenChang
                 ...newClient,
                 organization_id: orgId, // CRITICAL FIX
                 logo_url: finalLogoUrl,
-                user_id: user.id
+                user_id: user.id,
+                // Generate Portal Tokens
+                portal_token: crypto.randomUUID(),
+                portal_short_token: Math.random().toString(36).substring(2, 8).toUpperCase(),
+                portal_token_never_expires: true
             })
 
             if (error) throw error
