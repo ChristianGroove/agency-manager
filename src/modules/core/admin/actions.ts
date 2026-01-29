@@ -334,3 +334,53 @@ export async function getOrgManagerData(orgId: string) {
         users: users
     }
 }
+
+export async function syncClientSocialMetrics(clientId: string) {
+    if (!clientId) return { success: false, error: "Client ID required" }
+
+    try {
+        // 1. Get Config
+        const { data: config } = await supabaseAdmin
+            .from("integration_configs")
+            .select("*")
+            .eq("client_id", clientId)
+            .eq("platform", "meta")
+            .single()
+
+        if (!config || !config.access_token || !config.page_id) {
+            return { success: false, error: "Faltan credenciales (Token o Page ID)" }
+        }
+
+        // 2. Dynamic Import services
+        const { MetaConnector } = await import('@/lib/integrations/meta/connector')
+        const { SocialService } = await import('@/lib/integrations/meta/social-service')
+
+        const connector = new MetaConnector(config.access_token)
+        const service = new SocialService(connector)
+
+        // 3. Fetch from Meta
+        const metrics = await service.getMetrics(config.page_id)
+
+        // 4. Save to DB Cache
+        const { error } = await supabaseAdmin
+            .from("meta_social_metrics")
+            .upsert({
+                client_id: clientId,
+                snapshot_date: new Date().toISOString(), // Use current time as snapshot ID for simplicity, or day. Usually we want latest.
+                facebook_data: metrics.facebook,
+                instagram_data: metrics.instagram
+            }, { onConflict: 'client_id' }) // Just keep latest per client for the "dashboard" view
+
+        if (error) {
+            console.error("DB Save Error:", error)
+            return { success: false, error: "Error guardando métricas en base de datos" }
+        }
+
+        revalidatePath(`/clients/${clientId}`)
+        return { success: true }
+
+    } catch (e: any) {
+        console.error("Sync Error:", e)
+        return { success: false, error: e.message || "Error de sincronización con Meta" }
+    }
+}

@@ -13,7 +13,7 @@ import { Loader2, Zap, CheckCircle2, LayoutGrid, BarChart3, Globe, Smartphone, A
 import { cn } from "@/lib/utils"
 import { MobilePreview } from "@/components/marketing/mobile-preview"
 import { InsightsTab } from "@/modules/core/portal/insights/insights-tab"
-import { getMetaConfig, saveMetaConfig } from "@/modules/core/admin/actions"
+import { getMetaConfig, saveMetaConfig, syncClientSocialMetrics } from "@/modules/core/admin/actions"
 import { supabase } from "@/lib/supabase"
 
 interface ConnectivitySheetProps {
@@ -36,6 +36,7 @@ export function ConnectivitySheet({ client, services, trigger, open: controlledO
     const [activeTab, setActiveTab] = useState("meta")
     const [loadingConfig, setLoadingConfig] = useState(false)
     const [metaConfig, setMetaConfig] = useState<any>(null)
+    const [refreshKey, setRefreshKey] = useState(0) // Forces InsightsTab reload
 
     // Portal Settings
     const portalSettings = client.portal_insights_settings || { override: null, access_level: 'NONE' }
@@ -62,7 +63,17 @@ export function ConnectivitySheet({ client, services, trigger, open: controlledO
     const handleSaveMetaConnection = async (formData: FormData) => {
         const result = await saveMetaConfig(client.id, formData)
         if (result.success) {
-            toast.success("Conexión guardada")
+            toast.success("Conexión guardada. Sincronizando datos...")
+
+            // Trigger Sync immediately
+            const syncResult = await syncClientSocialMetrics(client.id)
+            if (syncResult.success) {
+                toast.success("Datos de Meta actualizados correctamente")
+                setRefreshKey(prev => prev + 1) // Force UI Refresh
+            } else {
+                toast.warning("Conexión guardada pero falló la sincronización: " + syncResult.error)
+            }
+
             loadMetaConfig()
         } else {
             toast.error(result.error || "Error al guardar")
@@ -181,7 +192,7 @@ export function ConnectivitySheet({ client, services, trigger, open: controlledO
                                                             </div>
                                                             <div className="flex justify-end pt-2">
                                                                 <Button type="submit" size="sm" className="bg-gray-900 text-white h-8 text-xs font-medium hover:bg-black transition-all shadow-lg shadow-gray-200">
-                                                                    Guardar Credenciales
+                                                                    Guardar y Sincronizar
                                                                 </Button>
                                                             </div>
                                                         </form>
@@ -274,6 +285,7 @@ export function ConnectivitySheet({ client, services, trigger, open: controlledO
                                     {/* Scaling Wrapper: Simulates Samsung S25 Ultra / Large Android (412px width) scaled down to fit 300px container */}
                                     <div className="w-[412px] h-[915px] origin-top-left scale-[0.728] bg-white pt-2 px-2">
                                         <InsightsTab
+                                            key={refreshKey} // Forces re-mount on sync
                                             client={client}
                                             services={services}
                                             token={client.portal_short_token}
