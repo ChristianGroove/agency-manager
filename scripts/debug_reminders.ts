@@ -39,6 +39,7 @@ async function run() {
     if (client) clientId = client.id;
     else {
         const { data: newClient } = await supabase.from('clients').insert({ name: 'Reminder Test Client', organization_id: org.id }).select('id').single();
+        if (!newClient) throw new Error("Failed to create test client");
         clientId = newClient.id;
     }
 
@@ -62,6 +63,7 @@ async function run() {
     try {
         const { sendPaymentReminderAction } = await import('../src/modules/assistant/actions/sendPaymentReminder.action');
 
+        if (!member) throw new Error("No organization member found");
         const context = {
             tenant_id: org.id,
             user_id: member.user_id,

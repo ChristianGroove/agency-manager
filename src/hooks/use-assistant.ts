@@ -71,7 +71,7 @@ export function useAssistant() {
     const toggleVoice = () => {
         if (status === 'listening') {
             // Stop listening -> Send
-            clearTimeout(listeningTimeout.current);
+            if (listeningTimeout.current) clearTimeout(listeningTimeout.current);
             setStatus('thinking');
             // Mock input
             submitMessage("Crear brief para cliente demo", 'voice');

@@ -10,13 +10,12 @@ async function getFlowTemplate(id: string): Promise<FlowTemplate | null> {
     if (id === 'tpl_onboarding_v1') {
         return {
             id: 'tpl_onboarding_v1',
+            key: 'onboarding_standard',
             name: 'Onboarding Nuevo Cliente',
             description: 'Secuencia estándar de bienvenida',
-            version: 1,
-            definition: { steps: [] }, // Empty def for mock
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            tags: ['onboarding']
+            icon: 'Rocket',
+            category: 'sales',
+            definition: { steps: [] }
         };
     }
     return null;
