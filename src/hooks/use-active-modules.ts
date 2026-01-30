@@ -12,6 +12,7 @@ interface UseActiveModulesReturn {
     refresh: () => Promise<void>
     userRole: string | null
     organizationType?: 'platform' | 'reseller' | 'client'
+    vertical?: string
 }
 
 // Map between module_config keys and permission module keys
@@ -55,6 +56,7 @@ export function useActiveModules(): UseActiveModulesReturn {
     const [error, setError] = useState<Error | null>(null)
     const [userRole, setUserRole] = useState<string | null>(null)
     const [organizationType, setOrganizationType] = useState<'platform' | 'reseller' | 'client'>('client')
+    const [vertical, setVertical] = useState<string | undefined>()
 
     const fetchModules = useCallback(async () => {
         setIsLoading(true)
@@ -74,6 +76,9 @@ export function useActiveModules(): UseActiveModulesReturn {
             setUserRole(userPerms?.role || null)
             if (orgDetails?.organization_type) {
                 setOrganizationType(orgDetails.organization_type as any)
+            }
+            if (orgDetails?.vertical_key) {
+                setVertical(orgDetails.vertical_key)
             }
 
             // If user has permissions, filter org modules by their access
@@ -136,6 +141,7 @@ export function useActiveModules(): UseActiveModulesReturn {
         hasModule,
         refresh,
         userRole,
-        organizationType
+        organizationType,
+        vertical
     }
 }

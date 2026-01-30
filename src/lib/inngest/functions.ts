@@ -144,6 +144,84 @@ export const runWorkflow = inngest.createFunction(
     }
 );
 
+export const contractOrchestrator = inngest.createFunction(
+    { name: "Contract Life-cycle Orchestrator", id: "contract-orchestrator" },
+    { event: "contract.generated" },
+    async ({ event, step }) => {
+        const { contractId, organizationId, clientId, usage } = event.data;
+
+        // 1. Meter AI Usage
+        if (usage) {
+            await step.run("meter-ai-usage", async () => {
+                const { trackUsage } = await import("@/modules/core/billing/usage-tracker");
+
+                // Track AI Messages (1 per generation)
+                await trackUsage({
+                    organizationId,
+                    engine: 'ai',
+                    action: 'contract.generation',
+                    quantity: 1,
+                    metadata: { contractId }
+                });
+
+                // Track AI Tokens
+                await trackUsage({
+                    organizationId,
+                    engine: 'ai',
+                    action: 'contract.tokens',
+                    quantity: usage.input_tokens + usage.output_tokens,
+                    metadata: { contractId, ...usage }
+                });
+            });
+        }
+
+        // 2. Background Processing (Simulation of Render -> Vault)
+        // In a real environment, we would use a headless browser or a service to render HTML to PDF
+        // For now, we update the status and log the step.
+        await step.run("update-crm-status-sent", async () => {
+            const supabase = createClient(
+                process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                process.env.SUPABASE_SERVICE_ROLE_KEY!
+            );
+
+            await supabase.from('contracts')
+                .update({ status: 'sent', updated_at: new Date().toISOString() })
+                .eq('id', contractId);
+        });
+
+        // 3. Send Branded Email
+        await step.run("send-delivery-email", async () => {
+            const { emailService } = await import("@/modules/core/communication/email-service");
+            const supabase = createClient(
+                process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                process.env.SUPABASE_SERVICE_ROLE_KEY!
+            );
+
+            // Fetch Client & Org details for branding
+            const { data: contract } = await supabase
+                .from('contracts')
+                .select('*, client:clients(name, email), organization:organizations(name)')
+                .eq('id', contractId)
+                .single();
+
+            if (contract?.client?.email) {
+                await emailService.sendEmail(
+                    contract.client.email,
+                    'contract_delivery',
+                    {
+                        client_name: contract.client.name,
+                        agency_name: contract.organization.name,
+                        contract_number: contract.number || 'N/A'
+                    },
+                    { organizationId }
+                );
+            }
+        });
+
+        return { success: true };
+    }
+);
+
 import { vaultSnapshotScheduler } from "@/modules/core/data-vault/scheduler"
 
-export const functions = [runWorkflow, vaultSnapshotScheduler];
+export const functions = [runWorkflow, vaultSnapshotScheduler, contractOrchestrator];

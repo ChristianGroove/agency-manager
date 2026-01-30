@@ -24,12 +24,15 @@ export const AIEngine = {
         const taskDef = getTaskDefinition(taskType);
 
         // 2. CHECK CACHE FIRST (Cost Optimization)
-        if (!bypassCache) {
+        const isContractGen = taskType === 'contract.generate_v1';
+        if (!bypassCache && !isContractGen) {
             const cached = getCachedResponse(taskType, payload);
             if (cached) {
+                console.log(`[AIEngine] 📦 Cache HIT for ${taskType}`);
                 return { success: true, data: cached, provider: 'cache' };
             }
         }
+        if (isContractGen) console.log(`[AIEngine] ⚡ Bypassing cache for ${taskType}`);
 
         // 4. Resolve Credentials (Active & Priority)
         // CRITICAL: Use internal fetch to avoid masking (getAICredentials returns masked keys for UI)
@@ -135,7 +138,20 @@ export const AIEngine = {
                 // LOG USAGE (Async - Fire & Forget)
                 logUsage(organizationId, cred.id, cred.provider_id, response, taskType).catch(console.error);
 
-                const parsedData = taskDef.jsonMode ? JSON.parse(response.content || '{}') : response.content;
+                let parsedData;
+                if (taskDef.jsonMode) {
+                    console.log(`[AIEngine] 🔍 JSON Mode - Raw content:`, response.content?.substring(0, 200) + '...')
+                    try {
+                        parsedData = JSON.parse(response.content || '{}');
+                        console.log(`[AIEngine] ✅ JSON Parse Success - Keys:`, Object.keys(parsedData || {}))
+                    } catch (parseErr: any) {
+                        console.error(`[AIEngine] ❌ JSON Parse Error:`, parseErr.message)
+                        console.error(`[AIEngine] ❌ Raw content was:`, response.content)
+                        throw new Error(`JSON parsing failed: ${parseErr.message}`)
+                    }
+                } else {
+                    parsedData = response.content;
+                }
 
                 // CACHE RESULT for future requests
                 setCachedResponse(taskType, payload, parsedData);
@@ -159,6 +175,7 @@ export const AIEngine = {
             }
         }
 
+        console.error(`[AIEngine] ❌ All AI credentials failed for ${taskType}. Final Error:`, lastError?.message);
         throw lastError || new Error('All AI credentials failed.');
     }
 }

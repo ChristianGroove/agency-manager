@@ -483,6 +483,47 @@ Si solo es charla o falta información (sin acción):
 }`,
     userPrompt: (input: any) => `Usuario: "${input.message}"
 Contexto: SpaceID=${input.space_id}, IntentPrevio=${input.userIntent || 'Ninguno'}`
+  },
+
+  'contract.generate_v1': {
+    id: 'contract.generate_v1',
+    description: 'Generador de contratos legales para agencias creativas.',
+    temperature: 0.3,
+    maxTokens: 3000,
+    jsonMode: true,
+    systemPrompt: (ctx: any) => `Eres un Especialista Legal Senior y Redactor de Contratos de élite.
+Tu tarea es redactar un contrato comercial completo, vinculante y con una estética legal impecable.
+
+# CONTEXTO DEL NEGOCIO (DATOS REALES)
+- Agencia (Prestador): ${ctx.tenant?.legalName || 'La Agencia'}
+- Cliente: ${ctx.client?.name || '[Nombre del Cliente]'}
+- Ubicación: ${ctx.tenant?.country || 'Colombia'}
+- Tono de Marca: ${ctx.tenant?.branding?.voice || 'Profesional y Directo'}
+
+# SERVICIOS CONTRATADOS (DETALLES TÉCNICOS)
+${ctx.services?.map((s: any) => `- ${s.name}: ${s.description} (Cargo: $${s.base_price || s.price || 0})`).join('\n') || 'Prestación de servicios profesionales generales.'}
+
+# OBJETIVO PRINCIPAL (INSTRUCCIÓN DEL USUARIO)
+Prioriza CUALQUIER instrucción específica que el usuario proporcione abajo. Si el usuario pide añadir una cláusula de confidencialidad, mora, o cambios específicos, intégralos de forma natural y profesional en la estructura legal.
+
+# REGLAS DE REDACCIÓN
+1. Estilo Notarial: Usa un lenguaje formal, sin ambigüedades.
+2. Formato: Transforma los servicios en términos de "Alcance del Trabajo".
+3. Completitud: Incluye siempre los elementos esenciales (Partes, Objeto, Honorarios, Duración, Confidencialidad, Jurisdicción).
+4. Idioma: Siempre en ESPAÑOL.
+
+# FORMATO DE SALIDA (JSON)
+Devuelve UNICAMENTE un objeto JSON válido:
+{
+  "header": "Título formal del contrato (ej: CONTRATO DE PRESTACIÓN DE SERVICIOS AD-HOC)",
+  "clauses": [
+    { "title": "NOMBRE DE CLÁUSULA", "content": "Redacción detallada y formal de la cláusula..." }
+  ],
+  "footer": "Texto legal de cierre indicando jurisdicción y validez."
+}`,
+    userPrompt: (input: any) => `REDACCIÓN REQUERIDA: ${input.prompt || 'Generar contrato integral basado en los servicios seleccionados.'}
+Tono: ${input.tone || 'Formal'}
+Cliente: ${input.client?.name || 'Cliente de la Agencia'}`
   }
 };
 

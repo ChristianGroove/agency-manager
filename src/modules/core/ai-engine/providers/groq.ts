@@ -5,7 +5,7 @@ import { AIMessage, AIResponse } from '../types';
 export class GroqProvider extends BaseAIProvider {
     id = 'groq';
     models = [
-        'llama-3.1-70b-versatile',
+        'llama-3.3-70b-versatile',
         'llama-3.1-8b-instant',
         'llama3-70b-8192',
         'llama3-8b-8192',
@@ -31,7 +31,7 @@ export class GroqProvider extends BaseAIProvider {
             const toolChoice = tools ? (options.tool_choice || 'auto') : undefined;
 
             const completion = await client.chat.completions.create({
-                model: model || 'llama3-70b-8192',
+                model: model || 'llama-3.3-70b-versatile',
                 messages: messages as any[],
                 temperature: options?.temperature || 0.7,
                 max_tokens: options?.maxTokens,

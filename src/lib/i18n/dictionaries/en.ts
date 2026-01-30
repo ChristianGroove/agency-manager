@@ -54,6 +54,7 @@ export const en = {
         module_invoicing: "Invoicing",
         module_payments: "Payments",
         core_apps: "App Store",
+        module_contract_generator: "Contract Generator",
         core_settings: "Settings",
         reseller_tenants: "Organizations",
         // Categories
@@ -61,6 +62,7 @@ export const en = {
         cat_crm: "CRM",
         cat_operations: "Operations",
         cat_finance: "Finance",
+        cat_tools: "Tools",
         cat_config: "Platform",
     },
     settings: {

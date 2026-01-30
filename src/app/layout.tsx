@@ -47,6 +47,7 @@ import { ThemeProvider } from "@/components/providers/theme-provider";
 
 import { ViewContextProvider } from "@/modules/core/caa/context/view-context";
 import { ClientInit } from "@/modules/core/caa/client-init";
+import StyledJsxRegistry from "@/components/providers/styled-jsx-registry";
 
 export default async function RootLayout({
   children,
@@ -63,21 +64,23 @@ export default async function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         suppressHydrationWarning
       >
-        <BrandingProvider initialBranding={branding}>
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="system"
-            enableSystem
-            disableTransitionOnChange
-          >
-            <ViewContextProvider>
-              <ClientInit />
-              {children}
-            </ViewContextProvider>
-            <TrashBinModal shortcut={settings?.trash_shortcut} />
-            <Toaster />
-          </ThemeProvider>
-        </BrandingProvider>
+        <StyledJsxRegistry>
+          <BrandingProvider initialBranding={branding}>
+            <ThemeProvider
+              attribute="class"
+              defaultTheme="system"
+              enableSystem
+              disableTransitionOnChange
+            >
+              <ViewContextProvider>
+                <ClientInit />
+                {children}
+              </ViewContextProvider>
+              <TrashBinModal shortcut={settings?.trash_shortcut} />
+              <Toaster />
+            </ThemeProvider>
+          </BrandingProvider>
+        </StyledJsxRegistry>
       </body>
 
     </html>

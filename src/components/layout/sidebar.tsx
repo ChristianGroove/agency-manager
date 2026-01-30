@@ -132,14 +132,14 @@ export function SidebarContent({ isCollapsed = false, currentOrgId, isSuperAdmin
     const pathname = usePathname()
     const { t } = useTranslation()
     // PERF: Use prefetched modules if available, fall back to hook for client-side updates
-    const { modules: hookModules, isLoading: hookLoading, organizationType } = useActiveModules()
+    const { modules: hookModules, isLoading: hookLoading, organizationType, vertical } = useActiveModules()
 
     // Use prefetched data immediately, no loading state
     const modules = prefetchedModules && prefetchedModules.length > 0 ? prefetchedModules : hookModules
     const isLoading = prefetchedModules && prefetchedModules.length > 0 ? false : hookLoading
 
     // Track which categories are expanded - default to core and crm
-    const [activeCategories, setActiveCategories] = useState<string[]>(['core', 'crm'])
+    const [activeCategories, setActiveCategories] = useState<string[]>(['core', 'crm', 'tools'])
 
     // Initial state might need to be derived from Module Config but strictly user requested 2 max.
     // 'core' is always expanded usually but let's treat it as a category.
@@ -193,7 +193,7 @@ export function SidebarContent({ isCollapsed = false, currentOrgId, isSuperAdmin
     }, {} as Record<string, typeof availableRoutes>)
 
     // Order of categories
-    const categoryOrder: ModuleCategory[] = ['core', 'crm', 'operations', 'finance', 'config']
+    const categoryOrder: ModuleCategory[] = ['core', 'crm', 'operations', 'tools', 'finance', 'config']
 
     return (
         <div className="px-4 py-6 flex-1 flex flex-col h-full overflow-hidden relative z-10">
@@ -221,6 +221,9 @@ export function SidebarContent({ isCollapsed = false, currentOrgId, isSuperAdmin
                     isCollapsed ? "no-scrollbar" : "scrollbar-modern"
                 )}>
                     {categoryOrder.map(category => {
+                        // Adaptive Visibility: Tools only for Agency
+                        if (category === 'tools' && vertical !== 'agency') return null
+
                         const routes = groupedRoutes[category]
                         if (!routes || routes.length === 0) return null
 

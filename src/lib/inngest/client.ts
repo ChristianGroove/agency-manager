@@ -12,8 +12,22 @@ type AutomationExecuteEvent = {
     };
 };
 
+type ContractGeneratedEvent = {
+    name: "contract.generated";
+    data: {
+        contractId: string;
+        organizationId: string;
+        clientId?: string;
+        usage?: {
+            input_tokens: number;
+            output_tokens: number;
+        };
+    };
+};
+
 type Events = {
     "automation.execute": AutomationExecuteEvent;
+    "contract.generated": ContractGeneratedEvent;
 };
 
 // 2. Create Client

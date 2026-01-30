@@ -28,7 +28,7 @@ import {
     BarChart3
 } from 'lucide-react'
 
-export type ModuleCategory = 'core' | 'crm' | 'operations' | 'finance' | 'config';
+export type ModuleCategory = 'core' | 'crm' | 'operations' | 'tools' | 'finance' | 'config';
 
 export interface ModuleRoute {
     key: string
@@ -186,6 +186,16 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         category: 'config'
     },
 
+    // --- HERRAMIENTAS ---
+    {
+        key: 'module_contract_generator',
+        label: 'Generador de Contratos',
+        href: '/tools/contract-generator',
+        icon: Sparkles, // Or custom icon
+        category: 'tools',
+        isCore: true
+    },
+
     // --- FINANZAS ---
     {
         key: 'module_invoicing',
@@ -235,6 +245,7 @@ export const CATEGORY_LABELS: Record<ModuleCategory, string> = {
     core: 'Principal',
     crm: 'CRM',
     operations: 'Operaciones',
+    tools: 'Herramientas',
     finance: 'Finanzas',
     config: 'Plataforma'
 };
@@ -243,6 +254,7 @@ export const CATEGORY_ICONS: Record<ModuleCategory, any> = {
     core: LayoutDashboard,
     crm: Users,
     operations: Briefcase,
+    tools: Sparkles, // Use Wrench if available, Sparkles for now
     finance: CreditCard,
     config: Settings
 };

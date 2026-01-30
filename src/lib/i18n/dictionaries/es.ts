@@ -55,12 +55,14 @@ export const es = {
         module_payments: "Pagos",
         core_apps: "App Store",
         core_settings: "Configuración",
+        module_contract_generator: "Generador de Contratos",
         reseller_tenants: "Organizaciones",
         // Categories
         cat_core: "Principal",
         cat_crm: "CRM",
         cat_operations: "Operaciones",
         cat_finance: "Finanzas",
+        cat_tools: "Herramientas",
         cat_config: "Plataforma",
     },
     settings: {
