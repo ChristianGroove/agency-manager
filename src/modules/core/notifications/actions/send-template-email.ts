@@ -23,19 +23,31 @@ export async function sendTemplateEmail({ clientId, templateKey, contextId, cust
     // 1. Fetch Client
     const { data: client } = await supabase
         .from('clients')
-        .select('name, email, phone')
+        .select('name, email, phone, portal_short_token, portal_token')
         .eq('id', clientId)
         .single()
 
     // Also try fetch lead if client not found? (For CRM)
-    let recipient = client
+    let recipient: any = client
+    let portalToken = client?.portal_short_token || client?.portal_token
+
     if (!recipient) {
         const { data: lead } = await supabase.from('leads').select('name, email, phone').eq('id', clientId).single()
         recipient = lead
+        // Leads might not have portal access yet? 
+        // If it's a lead, we might not have a token. 
+        // But send-template-email is mostly for CLIENTS.
     }
 
     if (!recipient || !recipient.email) {
         return { success: false, error: "Client not found or missing email" }
+    }
+
+    // Ensure we have a token if we are sending portal links
+    if (!portalToken && templateKey !== 'briefing_submission') {
+        // Try to use ID as fallback only if likely to fail later? 
+        // Better to warn. For now let's not block, but link will 404/401.
+        console.warn("Client has no portal token", clientId)
     }
 
     // 2. Fetch Context Data (Invoice or Quote)
@@ -52,7 +64,7 @@ export async function sendTemplateEmail({ clientId, templateKey, contextId, cust
                 due_date: new Date(invoice.due_date || invoice.date).toLocaleDateString(),
                 date: new Date(invoice.date).toLocaleDateString(),
                 concept: invoice.description || "Servicios Profesionales",
-                link_url: getPortalUrl(`/portal/${orgId}/invoice/${invoice.id}`),
+                link_url: getPortalUrl(`/portal/${portalToken}/invoice/${invoice.id}`),
                 document_type: 'invoice'
             }
         } else {
@@ -64,21 +76,59 @@ export async function sendTemplateEmail({ clientId, templateKey, contextId, cust
                     price: quote.price, // Adapt based on actual quote schema
                     formatted_amount: `$${(quote.price || 0).toLocaleString()}`,
                     concept: quote.title,
-                    link_url: getPortalUrl(`/portal/${orgId}/quote/${quote.id}`),
+                    link_url: getPortalUrl(`/portal/${portalToken}/quote/${quote.id}`),
                     document_type: 'quote'
                 }
             }
+        }
+    } else if (templateKey === 'invoice_summary' && clientId) {
+        // Special Case: Account Summary
+        const { data: pendingInvoices } = await supabase
+            .from('invoices')
+            .select('id, total')
+            .eq('client_id', clientId)
+            .or('status.eq.pending,status.eq.overdue')
+
+        const count = pendingInvoices?.length || 0
+        const total = pendingInvoices?.reduce((sum, inv) => sum + inv.total, 0) || 0
+
+        contextData = {
+            ...contextData,
+            total_amount: `$${total.toLocaleString()}`,
+            count: count,
+            link_url: getPortalUrl(`/portal/${portalToken}/billing`),
+            document_type: 'summary'
+        }
+    } else if (templateKey === 'portal_invite' && clientId) {
+        contextData = {
+            ...contextData,
+            link_url: getPortalUrl(`/portal/${portalToken}`),
+            document_type: 'portal_invite'
         }
     }
 
     // 3. Prepare Template Variables
     const brandingConfig = await getEffectiveBranding(orgId)
 
+    // Resolve optimal logo for email (Light background)
+    let logoToUse = brandingConfig.logos.main_light || brandingConfig.logos.main || ""
+
+    // Ensure absolute URL
+    if (logoToUse && logoToUse.startsWith('/')) {
+        logoToUse = getPortalUrl(logoToUse)
+    }
+
+    console.log('--- DEBUG EMAIL LOGO ---')
+    console.log('Original Main:', brandingConfig.logos.main)
+    console.log('Original Light:', brandingConfig.logos.main_light)
+    console.log('Resolved Logo:', logoToUse)
+    console.log('------------------------')
+
     const templateVars = {
         agency_name: brandingConfig.name,
         primary_color: brandingConfig.colors.primary,
         secondary_color: brandingConfig.colors.secondary,
-        logo_url: brandingConfig.logos.main || "",
+        logo_url: logoToUse,
         website_url: brandingConfig.website || "#",
         client_name: recipient.name,
         year: new Date().getFullYear(),

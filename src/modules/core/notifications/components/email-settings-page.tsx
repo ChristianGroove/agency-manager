@@ -1,16 +1,17 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { EmailTemplate, setActiveTemplate } from "@/modules/core/notifications/actions"
+import { SmtpConfigFull } from "@/modules/core/notifications/actions/smtp-actions"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { ArrowLeft, Check, Layout, Monitor, Smartphone, Sparkles, Info } from "lucide-react"
+import { ArrowLeft, Check, Layout, Sparkles, Mail, Eye, Info } from "lucide-react"
 import { cn } from "@/lib/utils"
-// New imports
+// Import Template Generators directly for real-time preview (since DB might have empty HTML for hybrid styles)
+import { getInvoiceEmailHtml, getQuoteEmailHtml, getBriefingSubmissionEmailHtml, getPortalInviteEmailHtml, EmailStyle } from "@/lib/email-templates"
 import { SmtpConnectionTab } from "./smtp-connection-tab"
-import { SmtpConfigFull } from "@/modules/core/notifications/actions/smtp-actions"
 
 interface EmailSettingsPageProps {
     templates: EmailTemplate[]
@@ -20,258 +21,236 @@ interface EmailSettingsPageProps {
 
 export function EmailSettingsPage({ templates, organizationId, smtpConfig }: EmailSettingsPageProps) {
     const router = useRouter()
-    const [selectedType, setSelectedType] = useState<string>("invoice_new")
-    const [viewMode, setViewMode] = useState<"desktop" | "mobile">("desktop")
+    const [activeTab, setActiveTab] = useState("invoices")
+    const [selectedStyle, setSelectedStyle] = useState<EmailStyle>("minimal")
 
-    // Group templates by key (Invoice vs Quote) and then by variant logic
-    const processedTemplates = useMemo(() => {
-        const groups: Record<string, EmailTemplate[]> = {}
+    // --- TEMPLATE LOGIC ---
+    // We group by "Type" first (Invoice, Quote, etc) but actually our templating system is Key-based.
+    // However, the User UI wants "Categories" (Tabs).
+    // Let's deduce the Active Style from the DB for the current Tab.
 
-        // Strategy: We want one card per "Style" (variant).
-        // If the org has a custom version of "Bold", show that.
-        // If not, show the System "Bold".
+    // Helper: Find which style is currently ACTIVE in DB for a given Key
+    const getActiveStyleForKey = (key: string): EmailStyle => {
+        const found = templates.find(t => t.template_key === key && t.is_active)
+        return (found?.variant_name as EmailStyle) || "minimal"
+    }
 
-        const systemVariants: Record<string, Record<string, EmailTemplate>> = {}
-        const orgVariants: Record<string, Record<string, EmailTemplate>> = {}
+    // When Tab changes, sync local 'selectedStyle' to what is live in DB
+    useEffect(() => {
+        let key = 'invoice_new'
+        if (activeTab === 'quotes') key = 'quote_new'
+        if (activeTab === 'briefs') key = 'briefing_submission' // or briefing_reminder
+        if (activeTab === 'portal') key = 'portal_invite'
 
-        templates.forEach(t => {
-            const scope = t.organization_id ? orgVariants : systemVariants
-            if (!scope[t.template_key]) scope[t.template_key] = {}
-            scope[t.template_key][t.variant_name] = t
-        })
+        setSelectedStyle(getActiveStyleForKey(key))
+    }, [activeTab, templates])
 
-        // Merge: Keys present in System
-        Object.keys(systemVariants).forEach(key => {
-            groups[key] = []
-            const variants = systemVariants[key]
-            Object.keys(variants).forEach(varName => {
-                // Use Org version if exists, else System
-                const templateToShow = orgVariants[key]?.[varName] || variants[varName]
-                groups[key].push(templateToShow)
-            })
-        })
 
-        return groups
-    }, [templates])
-
-    const currentVariants = processedTemplates[selectedType] || []
-
-    // Determine which one is active
-    const activeTemplate = currentVariants.find(t => t.is_active) || currentVariants[0] // Fallback
-
-    const handleActivate = async (template: EmailTemplate) => {
+    const handleActivateStyle = async () => {
         try {
-            await setActiveTemplate(template.template_key, template.id)
-            router.refresh()
+            // Determine which Template ID corresponds to this Style + Key
+            // If it doesn't exist (e.g. system system), we might need to "create" or "find" the row.
+            // Current 'setActiveTemplate' expects a Template ID.
+            // We need to find the template object that matches this variant + key.
+
+            let key = 'invoice_new'
+            if (activeTab === 'quotes') key = 'quote_new'
+            if (activeTab === 'briefs') key = 'briefing_submission'
+            if (activeTab === 'portal') key = 'portal_invite'
+
+            const targetTemplate = templates.find(t => t.template_key === key && t.variant_name === selectedStyle)
+
+            if (targetTemplate) {
+                await setActiveTemplate(key, targetTemplate.id)
+                router.refresh()
+            } else {
+                alert("Este estilo no está disponible para este tipo de correo aún.")
+            }
         } catch (e) {
             console.error(e)
-            alert("Error activating template")
+            alert("Error al activar plantilla")
         }
     }
 
+    // --- PREVIEW GENERATION ---
+    const previewHtml = useMemo(() => {
+        // Mock Data
+        const branding = {
+            agency_name: "Pixy Digital Agency",
+            primary_color: "#4F46E5",
+            secondary_color: "#EC4899",
+            logo_url: "https://ui.shadcn.com/avatars/02.png", // Mock
+            website_url: "https://pixy.com.co"
+        }
+
+        switch (activeTab) {
+            case 'invoices':
+                return getInvoiceEmailHtml(
+                    "Juan Pérez", "INV-2024-001", "$4,500,000 COP", "30 Ene 2026", "Desarrollo de Software a Medida",
+                    branding, selectedStyle
+                )
+            case 'quotes':
+                return getQuoteEmailHtml(
+                    "Juan Pérez", "COT-098", "$12,300,000 COP", "15 Ene 2026",
+                    branding, selectedStyle
+                )
+            case 'briefs':
+                return getBriefingSubmissionEmailHtml(
+                    "María García", "Brief de Branding", "https://pixy.portal.com/brief/123",
+                    branding, selectedStyle
+                )
+            case 'portal':
+                return getPortalInviteEmailHtml(
+                    "Juan Pérez", "https://portal.pixy.com/login",
+                    branding, selectedStyle
+                )
+            default:
+                return "<div style='padding:50px; text-align:center;'>Selecciona una categoría</div>"
+        }
+    }, [activeTab, selectedStyle])
+
+    const isActive = (style: string) => {
+        let key = 'invoice_new'
+        if (activeTab === 'quotes') key = 'quote_new'
+        if (activeTab === 'briefs') key = 'briefing_submission'
+        if (activeTab === 'portal') key = 'portal_invite'
+        return getActiveStyleForKey(key) === style
+    }
+
+    const availableStyles = [
+        { id: 'minimal', name: 'Minimal', desc: 'Limpio y directo. Sin distracciones.' },
+        { id: 'corporate', name: 'Corporate', desc: 'Formal, gris y estructurado.' },
+        { id: 'bold', name: 'Bold', desc: 'Alto impacto con tu color primario.' },
+        { id: 'neo', name: 'Neo', desc: 'Glassmorphism, gradientes y sombras suaves.' },
+        { id: 'swiss', name: 'Swiss', desc: 'Tipografía Helvética, alto contraste y grillas.' },
+    ]
+
     return (
-        <div className="space-y-8 animate-in fade-in duration-500">
-            <div className="flex items-center gap-4">
-                <Button variant="ghost" size="icon" onClick={() => router.back()}>
-                    <ArrowLeft className="w-4 h-4" />
+        <div className="space-y-6 animate-in fade-in duration-500 pb-20">
+            {/* Header */}
+            <div className="flex items-center gap-4 border-b pb-6 px-1">
+                <Button variant="ghost" size="icon" onClick={() => router.back()} className="rounded-full">
+                    <ArrowLeft className="w-5 h-5" />
                 </Button>
                 <div>
-                    <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Motor de Correos</h1>
-                    <p className="text-muted-foreground">Gestiona la identidad visual y técnica de tus notificaciones</p>
+                    <h1 className="text-2xl font-bold tracking-tight">Motor de Correos</h1>
+                    <p className="text-muted-foreground text-sm">Diseña la experiencia de comunicación de tu agencia</p>
                 </div>
             </div>
 
-            <Tabs value={selectedType} onValueChange={setSelectedType} className="space-y-8">
-                <TabsList className="bg-transparent border-b border-gray-200 dark:border-white/10 w-full justify-start rounded-none p-0 h-auto gap-6 overscroll-x-auto">
-                    <TabsTrigger
-                        value="invoice_new"
-                        className="rounded-none border-b-2 border-transparent data-[state=active]:border-brand-pink data-[state=active]:bg-transparent px-0 py-2 pb-4 font-medium"
-                    >
-                        Facturación
-                    </TabsTrigger>
-                    <TabsTrigger
-                        value="quote_new"
-                        className="rounded-none border-b-2 border-transparent data-[state=active]:border-brand-pink data-[state=active]:bg-transparent px-0 py-2 pb-4 font-medium"
-                    >
-                        Cotizaciones
-                    </TabsTrigger>
-                    <TabsTrigger
-                        value="payment_reminder"
-                        className="rounded-none border-b-2 border-transparent data-[state=active]:border-brand-pink data-[state=active]:bg-transparent px-0 py-2 pb-4 font-medium"
-                    >
-                        Recordatorios
-                    </TabsTrigger>
-                    <div className="w-px h-6 bg-gray-200 dark:bg-white/10 mx-2" />
-                    <TabsTrigger
-                        value="connection"
-                        className="rounded-none border-b-2 border-transparent data-[state=active]:border-purple-500 data-[state=active]:text-purple-600 data-[state=active]:bg-transparent px-0 py-2 pb-4 font-medium"
-                    >
-                        Conexión SMTP
-                    </TabsTrigger>
-                </TabsList>
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+                <div className="sticky top-0 z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 py-2 border-b">
+                    <TabsList className="bg-transparent w-full justify-start gap-8 px-2 overflow-x-auto h-auto p-0">
+                        {['invoices', 'quotes', 'briefs', 'portal', 'settings'].map(tab => (
+                            <TabsTrigger
+                                key={tab}
+                                value={tab}
+                                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary px-1 py-3 text-sm font-medium transition-all hover:text-primary/80 data-[state=active]:shadow-none bg-transparent"
+                            >
+                                {tab === 'invoices' && 'Facturación'}
+                                {tab === 'quotes' && 'Cotizaciones'}
+                                {tab === 'briefs' && 'Briefs & Forms'}
+                                {tab === 'portal' && 'Portal & Accesos'}
+                                {tab === 'settings' && 'Conexión SMTP'}
+                            </TabsTrigger>
+                        ))}
+                    </TabsList>
+                </div>
 
-                {/* VISUAL STUDIO TABS */}
-                {selectedType !== 'connection' && (
-                    <div className="space-y-8">
-                        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 flex gap-3 text-sm text-blue-800 dark:text-blue-300">
-                            <Info className="w-5 h-5 shrink-0" />
-                            <div>
-                                <h4 className="font-semibold mb-1">¿Cómo funciona el Motor de Diseños?</h4>
-                                <p>
-                                    Selecciona un estilo visual (ej: "Bold" o "Corporate") y haz clic en <strong>Activar</strong>.
-                                    A partir de ese momento, todas las notificaciones que envíe el sistema (Facturas, Cotizaciones) usarán automáticamente ese diseño.
-                                </p>
+                {activeTab !== 'settings' ? (
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 pt-4">
+
+                        {/* LEFT: Style Selector */}
+                        <div className="lg:col-span-3 space-y-6">
+                            <div className="space-y-1 px-1">
+                                <h3 className="font-semibold text-lg">Estilo Visual</h3>
+                                <p className="text-xs text-muted-foreground">Elige la identidad para {
+                                    activeTab === 'invoices' ? 'tus facturas' :
+                                        activeTab === 'quotes' ? 'tus cotizaciones' :
+                                            activeTab === 'portal' ? 'tus accesos' : 'tus notificaciones de forms'
+                                }</p>
+                            </div>
+
+                            <div className="space-y-3">
+                                {availableStyles.map((style) => (
+                                    <div
+                                        key={style.id}
+                                        onClick={() => setSelectedStyle(style.id as EmailStyle)}
+                                        className={cn(
+                                            "group flex items-start gap-3 p-3 rounded-xl border transition-all cursor-pointer relative overflow-hidden",
+                                            selectedStyle === style.id
+                                                ? "border-primary bg-primary/5 shadow-sm ring-1 ring-primary/20"
+                                                : "border-transparent hover:bg-slate-50 dark:hover:bg-slate-800"
+                                        )}
+                                    >
+                                        <div className={cn(
+                                            "w-4 h-4 rounded-full border flex items-center justify-center mt-0.5 shrink-0 transition-colors",
+                                            selectedStyle === style.id ? "border-primary bg-primary" : "border-muted-foreground/30"
+                                        )}>
+                                            {selectedStyle === style.id && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center gap-2">
+                                                <h4 className={cn("font-medium text-sm", selectedStyle === style.id ? "text-primary" : "text-foreground")}>
+                                                    {style.name}
+                                                </h4>
+                                                {isActive(style.id) && (
+                                                    <Badge variant="secondary" className="text-[10px] h-4 px-1 bg-green-100 text-green-700 hover:bg-green-100">
+                                                        Activo
+                                                    </Badge>
+                                                )}
+                                            </div>
+                                            <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{style.desc}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div className="pt-4 border-t px-1">
+                                <Button
+                                    className="w-full gap-2 shadow-lg shadow-primary/20"
+                                    disabled={isActive(selectedStyle)}
+                                    onClick={handleActivateStyle}
+                                >
+                                    {isActive(selectedStyle) ? (
+                                        <><Check className="w-4 h-4" /> Estilo Activo</>
+                                    ) : (
+                                        <><Sparkles className="w-4 h-4" /> Activar {availableStyles.find(s => s.id === selectedStyle)?.name}</>
+                                    )}
+                                </Button>
+                                {!isActive(selectedStyle) && (
+                                    <p className="text-[10px] text-center text-muted-foreground mt-3">
+                                        Se aplicará a todos los correos de esta categoría.
+                                    </p>
+                                )}
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                            {/* Left: Template Bank */}
-                            <div className="lg:col-span-4 space-y-6">
-                                <div className="flex items-center justify-between">
-                                    <h3 className="text-lg font-semibold flex items-center gap-2">
-                                        <Layout className="w-5 h-5 text-brand-pink" />
-                                        Banco de Diseños
-                                    </h3>
-                                    <Badge variant="outline" className="border-brand-pink/20 text-brand-pink bg-brand-pink/5">
-                                        {currentVariants.length} Estilos
+                        {/* RIGHT: Real Preview */}
+                        <div className="lg:col-span-9">
+                            <div className="bg-slate-100 dark:bg-slate-900/50 rounded-2xl border p-2 h-[800px] flex flex-col relative group">
+                                <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <Badge variant="outline" className="bg-background/50 backdrop-blur">
+                                        <Eye className="w-3 h-3 mr-1" /> Vista Previa Real (HTML)
                                     </Badge>
                                 </div>
 
-                                <div className="space-y-4">
-                                    {currentVariants.map((template) => {
-                                        const isActive = template.is_active || (activeTemplate?.id === template.id && currentVariants.length === 1)
-                                        return (
-                                            <div
-                                                key={template.id}
-                                                className={cn(
-                                                    "group relative overflow-hidden rounded-xl border-2 transition-all duration-300 cursor-pointer hover:shadow-lg",
-                                                    isActive
-                                                        ? "border-brand-pink bg-brand-pink/5 shadow-md"
-                                                        : "border-gray-100 dark:border-white/10 bg-white dark:bg-white/5 hover:border-brand-pink/50"
-                                                )}
-                                                onClick={() => activeTemplate?.id !== template.id && handleActivate(template)}
-                                            >
-                                                <div className="p-4">
-                                                    <div className="flex justify-between items-start mb-2">
-                                                        <span className={cn(
-                                                            "text-sm font-bold uppercase tracking-wider",
-                                                            isActive ? "text-brand-pink" : "text-gray-600 dark:text-gray-300"
-                                                        )}>
-                                                            {template.variant_name}
-                                                        </span>
-                                                        {isActive && (
-                                                            <div className="bg-brand-pink text-white rounded-full p-1">
-                                                                <Check className="w-3 h-3" />
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                    <h4 className="font-semibold text-lg mb-1">{template.name}</h4>
-                                                    <p className="text-xs text-muted-foreground line-clamp-2 mb-4">
-                                                        {template.subject_template}
-                                                    </p>
-
-                                                    <div className="flex gap-2">
-                                                        {!isActive && (
-                                                            <Button size="sm" variant="secondary" className="w-full h-8 text-xs font-medium bg-white shadow-sm border" onClick={(e) => {
-                                                                e.stopPropagation()
-                                                                handleActivate(template)
-                                                            }}>
-                                                                Activar
-                                                            </Button>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )
-                                    })}
-                                </div>
-                            </div>
-
-                            {/* Right: Live Preview */}
-                            <div className="lg:col-span-8">
-                                <div className="sticky top-6">
-                                    <div className="bg-gray-900 rounded-3xl p-4 shadow-2xl border border-gray-800">
-                                        <div className="flex items-center justify-between mb-4 px-4 text-gray-400">
-                                            <div className="text-xs font-mono flex items-center gap-2">
-                                                <span className="w-3 h-3 rounded-full bg-red-500" />
-                                                <span className="w-3 h-3 rounded-full bg-yellow-500" />
-                                                <span className="w-3 h-3 rounded-full bg-green-500" />
-                                                <span className="ml-4">preview.html</span>
-                                            </div>
-                                            <div className="flex gap-2 bg-gray-800 rounded-lg p-1">
-                                                <Button
-                                                    size="icon"
-                                                    variant="ghost"
-                                                    className={cn("h-6 w-6 rounded hover:bg-gray-700", viewMode === 'desktop' && "bg-gray-700 text-white")}
-                                                    onClick={() => setViewMode('desktop')}
-                                                >
-                                                    <Monitor className="w-3 h-3" />
-                                                </Button>
-                                                <Button
-                                                    size="icon"
-                                                    variant="ghost"
-                                                    className={cn("h-6 w-6 rounded hover:bg-gray-700", viewMode === 'mobile' && "bg-gray-700 text-white")}
-                                                    onClick={() => setViewMode('mobile')}
-                                                >
-                                                    <Smartphone className="w-3 h-3" />
-                                                </Button>
-                                            </div>
-                                        </div>
-
-                                        <div className={cn(
-                                            "bg-white rounded-xl overflow-hidden transition-all duration-500 mx-auto border-4 border-gray-800",
-                                            viewMode === 'mobile' ? "w-[375px] h-[667px]" : "w-full aspect-[16/10]"
-                                        )}>
-                                            {activeTemplate ? (
-                                                <iframe
-                                                    srcDoc={renderPreview(activeTemplate.body_html)}
-                                                    className="w-full h-full border-0"
-                                                    title="Email Preview"
-                                                />
-                                            ) : (
-                                                <div className="flex flex-col items-center justify-center h-full text-gray-400 gap-4">
-                                                    <Sparkles className="w-12 h-12 opacity-20" />
-                                                    <p>Selecciona una plantilla para previsualizar</p>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
+                                <iframe
+                                    className="w-full h-full rounded-xl bg-white shadow-sm border-0"
+                                    srcDoc={previewHtml}
+                                    title="Live Preview"
+                                    sandbox="allow-same-origin"
+                                />
                             </div>
                         </div>
                     </div>
+                ) : (
+                    /* SMTP SETTINGS */
+                    <div className="max-w-3xl mx-auto py-8">
+                        <SmtpConnectionTab organizationId={organizationId} initialConfig={smtpConfig} />
+                    </div>
                 )}
-
-                {/* SMTP CONNECTION TAB */}
-                <TabsContent value="connection" className="mt-0">
-                    <SmtpConnectionTab organizationId={organizationId} initialConfig={smtpConfig} />
-                </TabsContent>
             </Tabs>
         </div>
     )
-}
-
-function renderPreview(html: string) {
-    let preview = html
-        .replace(/{{agency_name}}/g, "Pixy Digital Agency")
-        .replace(/{{client_name}}/g, "Juan Pérez")
-        .replace(/{{invoice_number}}/g, "INV-001")
-        .replace(/{{concept}}/g, "Desarrollo de Software")
-        .replace(/{{formatted_amount}}/g, "$ 4,500,000 COP")
-        .replace(/{{due_date}}/g, "30 Ene 2026")
-        .replace(/{{date}}/g, "15 Ene 2026")
-        .replace(/{{link_url}}/g, "#")
-        .replace(/{{website_url}}/g, "www.pixy.com.co")
-        .replace(/{{year}}/g, "2026")
-        .replace(/{{logo_url}}/g, "https://ui.shadcn.com/avatars/02.png") // Mock Logo
-        .replace(/{{primary_color}}/g, "#4F46E5")
-        .replace(/{{secondary_color}}/g, "#EC4899")
-
-    // Clean Handlebars Conditionals
-    // Remove the opening/closing tags but keep content if simple
-    preview = preview.replace(/{{#if\s+\w+}}/g, "")
-    preview = preview.replace(/{{\/if}}/g, "")
-    preview = preview.replace(/{{else}}/g, "")
-
-    return preview
 }

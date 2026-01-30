@@ -9,11 +9,13 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { MessageSquare, Mail, Send, FileText, CheckCircle2, Loader2, Sparkles, Globe, Briefcase, FileSignature, Wallet, ArrowRight, Phone } from "lucide-react"
+import { Checkbox } from "@/components/ui/checkbox"
+import { MessageSquare, Mail, Send, FileText, CheckCircle2, Loader2, Sparkles, Globe, Briefcase, FileSignature, Wallet, Archive } from "lucide-react"
 import { getWhatsAppLink } from "@/lib/communication-utils"
 import { sendTemplateEmail } from "@/modules/core/notifications/actions/send-template-email"
 import { toast } from "sonner"
 import { cn, getPortalShortUrl } from "@/lib/utils"
+import { ScrollArea } from "@/components/ui/scroll-area"
 
 interface UnifiedCommunicationModalProps {
     isOpen: boolean
@@ -39,13 +41,12 @@ interface UnifiedCommunicationModalProps {
 type CommunicationIntent = 'chat' | 'invoice' | 'quote' | 'portal' | 'brief'
 
 export function UnifiedCommunicationModal({ isOpen, onOpenChange, client, context, settings }: UnifiedCommunicationModalProps) {
-    const [activeTab, setActiveTab] = useState("whatsapp")
     const [intent, setIntent] = useState<CommunicationIntent>('chat')
     const [loading, setLoading] = useState(false)
 
     // Selection State
-    const [selectedInvoiceId, setSelectedInvoiceId] = useState<string>("all")
-    const [selectedQuoteId, setSelectedQuoteId] = useState<string>("")
+    const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | undefined>(undefined)
+    const [selectedQuoteId, setSelectedQuoteId] = useState<string | undefined>(undefined)
     const [shareAllInvoices, setShareAllInvoices] = useState(false)
 
     // WA State
@@ -79,15 +80,26 @@ export function UnifiedCommunicationModal({ isOpen, onOpenChange, client, contex
             // Set Intent based on Context
             if (context?.type === 'invoice') {
                 setIntent('invoice')
-                setSelectedInvoiceId(context.data?.id || "")
+                setSelectedInvoiceId(context.data?.id)
             } else if (context?.type === 'quote') {
                 setIntent('quote')
-                setSelectedQuoteId(context.data?.id || "")
+                setSelectedQuoteId(context.data?.id)
             } else {
                 setIntent('chat')
             }
         }
     }, [isOpen, context])
+
+    // Auto-select first item if list available and nothing selected
+    useEffect(() => {
+        if (isOpen && intent === 'invoice' && !selectedInvoiceId && !shareAllInvoices && pendingInvoices.length > 0) {
+            setSelectedInvoiceId(pendingInvoices[0].id)
+        }
+        if (isOpen && intent === 'quote' && !selectedQuoteId && quotes.length > 0) {
+            setSelectedQuoteId(quotes[0].id)
+        }
+    }, [isOpen, intent, pendingInvoices, quotes, selectedInvoiceId, selectedQuoteId, shareAllInvoices])
+
 
     // --- SYNC MESSAGES ---
 
@@ -151,7 +163,7 @@ export function UnifiedCommunicationModal({ isOpen, onOpenChange, client, contex
         setWaMessage(waText)
         setEmailSubject(mailSub)
 
-    }, [intent, selectedInvoiceId, selectedQuoteId, shareAllInvoices, client, settings, portalLink, isOpen])
+    }, [intent, selectedInvoiceId, selectedQuoteId, shareAllInvoices, client, settings, portalLink, isOpen, pendingInvoices])
 
 
     // --- HANDLERS ---
@@ -175,17 +187,24 @@ export function UnifiedCommunicationModal({ isOpen, onOpenChange, client, contex
         setLoading(true)
         try {
             // Determine Context ID
-            let contextId = undefined
+            let contextId: string | undefined = undefined
             let templateKey = 'custom'
 
             if (intent === 'invoice') {
-                templateKey = 'invoice_new'
-                // If sharing all, maybe we send a special summary email?
-                // For now, if sharing single invoice, send ID.
-                if (!shareAllInvoices) contextId = selectedInvoiceId
+                if (shareAllInvoices) {
+                    templateKey = 'invoice_summary'
+                    // Pass client ID as context for summary
+                    contextId = client.id
+                } else {
+                    templateKey = 'invoice_new'
+                    contextId = selectedInvoiceId
+                }
             } else if (intent === 'quote') {
                 templateKey = 'quote_new'
                 contextId = selectedQuoteId
+            } else if (intent === 'portal') {
+                templateKey = 'portal_invite'
+                // client.id is passed implicitly as clientId in payload
             }
 
             const result = await sendTemplateEmail({
@@ -215,243 +234,255 @@ export function UnifiedCommunicationModal({ isOpen, onOpenChange, client, contex
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[650px] p-0 gap-0 bg-white dark:bg-slate-950 border-0 shadow-2xl rounded-2xl overflow-hidden transition-all duration-300">
+            <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden bg-background">
+                <DialogHeader className="px-6 py-4 border-b shrink-0">
+                    <DialogTitle>Centro de Comunicaciones</DialogTitle>
+                    <DialogDescription className="flex items-center gap-2">
+                        Gestionando para <span className="font-medium text-foreground">{client.name}</span>
+                        {client.company_name && <span className="opacity-70">• {client.company_name}</span>}
+                    </DialogDescription>
+                </DialogHeader>
 
-                {/* Header with Tabs wrapped in */}
-                <div className="bg-slate-50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800">
-                    <div className="p-6 pb-4">
-                        <DialogTitle className="text-xl font-bold flex items-center gap-2">
-                            {/* Dynamic Icon based on Intent */}
-                            <div className={cn("p-2 rounded-lg transition-colors duration-300",
-                                intent === 'chat' ? "bg-green-100 text-green-600" :
-                                    intent === 'invoice' ? "bg-blue-100 text-blue-600" :
-                                        intent === 'quote' ? "bg-purple-100 text-purple-600" :
-                                            intent === 'portal' ? "bg-orange-100 text-orange-600" : "bg-gray-100 text-gray-600"
-                            )}>
-                                {intent === 'chat' && <MessageSquare className="h-5 w-5" />}
-                                {intent === 'invoice' && <FileText className="h-5 w-5" />}
-                                {intent === 'quote' && <Sparkles className="h-5 w-5" />}
-                                {intent === 'portal' && <Globe className="h-5 w-5" />}
-                                {intent === 'brief' && <Briefcase className="h-5 w-5" />}
-                            </div>
-                            <span>
-                                {intent === 'chat' ? 'Iniciar Conversación' :
-                                    intent === 'invoice' ? 'Compartir Facturación' :
-                                        intent === 'quote' ? 'Enviar Cotización' :
-                                            intent === 'portal' ? 'Compartir Acceso' : 'Solicitar Briefing'}
-                            </span>
-                        </DialogTitle>
-                        <DialogDescription className="mt-1 flex items-center gap-2">
-                            <span className="font-medium text-slate-700 dark:text-slate-300">{client.name}</span>
-                            {client.company_name && <span className="text-slate-400">• {client.company_name}</span>}
-                        </DialogDescription>
-                    </div>
+                <div className="flex-1 flex flex-col min-h-0">
+                    <Tabs value={intent} onValueChange={(val) => setIntent(val as CommunicationIntent)} className="flex-1 flex flex-col min-h-0">
 
-                    {/* INTENT SELECTOR PILLS */}
-                    <div className="px-6 pb-0 flex gap-1 overflow-x-auto scrollbar-hide">
-                        {[
-                            { id: 'chat', label: 'Chat', icon: MessageSquare },
-                            { id: 'invoice', label: 'Facturas', icon: FileText },
-                            { id: 'quote', label: 'Cotizaciones', icon: FileSignature },
-                            { id: 'portal', label: 'Portal', icon: Globe },
-                            { id: 'brief', label: 'Briefing', icon: Briefcase },
-                        ].map((item) => (
-                            <button
-                                key={item.id}
-                                onClick={() => setIntent(item.id as CommunicationIntent)}
-                                className={cn(
-                                    "flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-all duration-200 outline-none hover:bg-slate-100/50 dark:hover:bg-slate-800 rounded-t-lg",
-                                    intent === item.id
-                                        ? "border-slate-900 text-slate-900 dark:border-white dark:text-white"
-                                        : "border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400"
-                                )}
-                            >
-                                <item.icon className="h-4 w-4" />
-                                {item.label}
-                            </button>
-                        ))}
-                    </div>
-                </div>
+                        <div className="px-6 py-3 bg-muted/30 border-b shrink-0">
+                            <TabsList className="grid grid-cols-5 w-full max-w-2xl bg-muted/50">
+                                <TabsTrigger value="chat" className="gap-2"><MessageSquare className="w-4 h-4" /> Chat</TabsTrigger>
+                                <TabsTrigger value="invoice" className="gap-2"><FileText className="w-4 h-4" /> Facturación</TabsTrigger>
+                                <TabsTrigger value="quote" className="gap-2"><Sparkles className="w-4 h-4" /> Cotización</TabsTrigger>
+                                <TabsTrigger value="portal" className="gap-2"><Globe className="w-4 h-4" /> Portal</TabsTrigger>
+                                <TabsTrigger value="brief" className="gap-2"><Briefcase className="w-4 h-4" /> Briefs</TabsTrigger>
+                            </TabsList>
+                        </div>
 
-                <div className="flex flex-col md:flex-row h-[500px]">
-                    {/* LEFT: Configuration & Context */}
-                    <div className="flex-1 p-6 border-r border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-950 overflow-y-auto">
+                        <div className="flex-1 p-0 overflow-y-auto bg-slate-50/50 dark:bg-slate-900/20">
+                            <div className="max-w-5xl mx-auto h-full p-6">
 
-                        {/* DYNAMIC CONTENT SELECTORS */}
-                        <div className="space-y-6">
-
-                            {/* INVOICE SELECTOR */}
-                            {intent === 'invoice' && (
-                                <div className="space-y-4 animate-in slide-in-from-left-2 duration-300">
-                                    <div
-                                        onClick={() => setShareAllInvoices(!shareAllInvoices)}
-                                        className={cn("p-4 rounded-xl border-2 cursor-pointer transition-all flex items-center gap-3 group",
-                                            shareAllInvoices ? "border-blue-500 bg-blue-50/50" : "border-slate-100 hover:border-blue-200"
-                                        )}
-                                    >
-                                        <div className={cn("h-5 w-5 rounded-full border flex items-center justify-center transition-colors", shareAllInvoices ? "bg-blue-500 border-blue-500" : "border-slate-300 bg-white")}>
-                                            {shareAllInvoices && <CheckCircle2 className="h-3 w-3 text-white" />}
+                                {/* CHAT TAB */}
+                                <TabsContent value="chat" className="h-full mt-0">
+                                    <div className="flex flex-col h-full gap-4">
+                                        <div className="flex-1 border rounded-xl bg-background p-4 shadow-sm flex flex-col">
+                                            <Label className="mb-2">Mensaje de WhatsApp</Label>
+                                            <Textarea
+                                                value={waMessage}
+                                                onChange={(e) => setWaMessage(e.target.value)}
+                                                className="flex-1 min-h-[150px] resize-none border-0 focus-visible:ring-0 p-0 text-base"
+                                                placeholder="Escribe tu mensaje aquí..."
+                                            />
+                                            <div className="mt-4 flex justify-between items-center pt-4 border-t">
+                                                <span className="text-xs text-muted-foreground">{waMessage.length} caracteres</span>
+                                                <Button onClick={handleSendWhatsApp} className="gap-2 bg-[#25D366] hover:bg-[#128C7E] text-white">
+                                                    <Send className="w-4 h-4" /> Enviar WhatsApp
+                                                </Button>
+                                            </div>
                                         </div>
-                                        <div className="flex-1">
-                                            <p className="font-semibold text-sm text-slate-900">Resumen de Cuenta</p>
-                                            <p className="text-xs text-slate-500">Enviar total pendiente (${pendingInvoices.reduce((a, b) => a + b.total, 0).toLocaleString()})</p>
-                                        </div>
-                                        <Wallet className={cn("h-5 w-5", shareAllInvoices ? "text-blue-500" : "text-slate-300")} />
                                     </div>
+                                </TabsContent>
 
-                                    {!shareAllInvoices && (
-                                        <div className="space-y-2">
-                                            <Label>Seleccionar Factura</Label>
-                                            {pendingInvoices.length > 0 ? (
-                                                <Select value={selectedInvoiceId} onValueChange={setSelectedInvoiceId}>
-                                                    <SelectTrigger className="w-full h-11">
-                                                        <SelectValue placeholder="Elige una factura..." />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        {pendingInvoices.map((inv: any) => (
-                                                            <SelectItem key={inv.id} value={inv.id}>
-                                                                #{inv.number} - ${inv.total.toLocaleString()}
-                                                            </SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
+                                {/* INVOICE TAB */}
+                                <TabsContent value="invoice" className="h-full mt-0">
+                                    <div className="grid md:grid-cols-2 gap-6 h-full">
+                                        <div className="flex flex-col gap-4 min-h-0">
+                                            <div className="flex items-center justify-between">
+                                                <Label className="text-base font-medium">Facturas Pendientes</Label>
+                                                <div className="flex items-center gap-2">
+                                                    <Checkbox
+                                                        id="share-all"
+                                                        checked={shareAllInvoices}
+                                                        onCheckedChange={(checked) => {
+                                                            setShareAllInvoices(checked as boolean)
+                                                            if (checked) setSelectedInvoiceId(undefined)
+                                                        }}
+                                                    />
+                                                    <Label htmlFor="share-all" className="font-normal cursor-pointer text-sm">
+                                                        Compartir Todo
+                                                    </Label>
+                                                </div>
+                                            </div>
+
+                                            {!shareAllInvoices ? (
+                                                <ScrollArea className="flex-1 border rounded-xl bg-background p-2">
+                                                    {pendingInvoices.length > 0 ? (
+                                                        <div className="space-y-2">
+                                                            {pendingInvoices.map((inv: any) => (
+                                                                <div
+                                                                    key={inv.id}
+                                                                    onClick={() => setSelectedInvoiceId(inv.id)}
+                                                                    className={cn("p-3 rounded-lg border cursor-pointer transition-all hover:bg-muted/50 flex justify-between items-center group",
+                                                                        selectedInvoiceId === inv.id ? "bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800 ring-1 ring-blue-200" : ""
+                                                                    )}
+                                                                >
+                                                                    <div>
+                                                                        <div className="font-medium">#{inv.number}</div>
+                                                                        <div className="text-xs text-muted-foreground">{new Date(inv.date).toLocaleDateString()}</div>
+                                                                    </div>
+                                                                    <div className="text-right">
+                                                                        <div className="font-mono font-medium">${inv.total.toLocaleString()}</div>
+                                                                        <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-700 border-amber-200">Pendiente</Badge>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    ) : (
+                                                        <div className="h-full flex flex-col items-center justify-center text-muted-foreground p-8 text-center">
+                                                            <CheckCircle2 className="w-8 h-8 opacity-20 mb-2" />
+                                                            <p>No hay facturas pendientes</p>
+                                                        </div>
+                                                    )}
+                                                </ScrollArea>
                                             ) : (
-                                                <div className="text-sm text-amber-600 bg-amber-50 p-3 rounded-lg border border-amber-100">
-                                                    No hay facturas pendientes.
+                                                <div className="flex-1 border rounded-xl bg-blue-50/50 dark:bg-blue-900/10 border-blue-100 flex flex-col items-center justify-center text-center p-6">
+                                                    <div className="bg-blue-100 dark:bg-blue-900/30 p-4 rounded-full mb-4">
+                                                        <Wallet className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+                                                    </div>
+                                                    <h3 className="font-medium text-lg text-blue-900 dark:text-blue-300">Resumen de Cuenta</h3>
+                                                    <p className="text-sm text-blue-700 dark:text-blue-400 max-w-[200px] mb-2">
+                                                        Se enviará un resumen con {pendingInvoices.length} facturas pendientes.
+                                                    </p>
+                                                    <div className="text-2xl font-bold text-blue-700 dark:text-blue-300">
+                                                        ${pendingInvoices.reduce((acc, curr) => acc + curr.total, 0).toLocaleString()}
+                                                    </div>
                                                 </div>
                                             )}
                                         </div>
-                                    )}
-                                </div>
-                            )}
 
-                            {/* QUOTE SELECTOR */}
-                            {intent === 'quote' && (
-                                <div className="space-y-4 animate-in slide-in-from-left-2 duration-300">
-                                    <div className="space-y-2">
-                                        <Label>Seleccionar Cotización</Label>
-                                        {quotes.length > 0 ? (
-                                            <Select value={selectedQuoteId} onValueChange={setSelectedQuoteId}>
-                                                <SelectTrigger className="w-full h-11">
-                                                    <SelectValue placeholder="Elige una cotización..." />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {quotes.map((q: any) => (
-                                                        <SelectItem key={q.id} value={q.id}>
-                                                            #{q.number} {q.title ? `- ${q.title}` : ''} (${q.total.toLocaleString()})
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                        ) : (
-                                            <div className="text-sm text-slate-500 italic p-2 border rounded-lg bg-slate-50">
-                                                No hay cotizaciones activas.
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* PORTAL INFO */}
-                            {intent === 'portal' && (
-                                <div className="p-4 bg-orange-50 rounded-xl border border-orange-100 text-orange-800 text-sm animate-in slide-in-from-left-2 duration-300">
-                                    <p className="font-semibold mb-1">Enlace Seguro</p>
-                                    <p className="opacity-80 break-all text-xs">{portalLink}</p>
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="mt-8 pt-8 border-t border-slate-100 dark:border-slate-800">
-                            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Canal de Envío</h4>
-                            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                                <TabsList className="grid w-full grid-cols-2 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
-                                    <TabsTrigger value="whatsapp" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                                        <MessageSquare className="h-4 w-4 mr-2" /> WhatsApp
-                                    </TabsTrigger>
-                                    <TabsTrigger value="email" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                                        <Mail className="h-4 w-4 mr-2" /> Email
-                                    </TabsTrigger>
-                                </TabsList>
-                            </Tabs>
-                        </div>
-                    </div>
-
-                    {/* RIGHT: Preview & Action */}
-                    <div className="flex-1 bg-slate-50/50 dark:bg-slate-900/50 flex flex-col p-6 relative">
-                        {/* Watermark */}
-                        <div className="absolute inset-0 flex items-center justify-center opacity-[0.03] pointer-events-none">
-                            {activeTab === 'whatsapp' ? <MessageSquare className="h-48 w-48" /> : <Mail className="h-48 w-48" />}
-                        </div>
-
-                        <div className="flex-1 flex flex-col z-10">
-                            <Label className="mb-3 text-xs uppercase tracking-wider text-slate-400 font-bold">Vista Previa</Label>
-
-                            {activeTab === 'whatsapp' ? (
-                                <div className="flex-1 flex flex-col animate-in fade-in-50 duration-300">
-                                    <div className="flex-1 bg-white dark:bg-slate-800 border rounded-xl p-4 shadow-sm relative group mb-4">
-                                        <Textarea
-                                            value={waMessage}
-                                            onChange={(e) => setWaMessage(e.target.value)}
-                                            className="w-full h-full min-h-[150px] border-none focus-visible:ring-0 p-0 text-sm resize-none bg-transparent"
-                                            placeholder="Escribe tu mensaje..."
-                                        />
-                                        <div className="absolute bottom-2 right-2 text-[10px] text-slate-400 bg-white/80 dark:bg-slate-800/80 px-2 py-1 rounded-full border opacity-0 group-hover:opacity-100 transition-opacity">
-                                            {waMessage.length} caracteres
-                                        </div>
-                                    </div>
-                                    <Button
-                                        size="lg" // Larger button
-                                        className="w-full bg-[#25D366] hover:bg-[#128C7E] text-white font-bold h-12 rounded-xl shadow-lg shadow-green-500/20 active:scale-[0.98] transition-all"
-                                        onClick={handleSendWhatsApp}
-                                    >
-                                        <Send className="h-5 w-5 mr-2" /> Abrir WhatsApp
-                                    </Button>
-                                    <p className="text-[10px] text-center text-slate-400 mt-2">Se abrirá WhatsApp {client.phone ? '' : '(Sin teléfono)'} en una pestaña nueva.</p>
-                                </div>
-                            ) : (
-                                <div className="flex-1 flex flex-col animate-in fade-in-50 duration-300">
-                                    {/* Email Preview Card */}
-                                    {emailSent ? (
-                                        <div className="flex-1 flex flex-col items-center justify-center text-center space-y-4">
-                                            <div className="h-16 w-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mb-2">
-                                                <CheckCircle2 className="h-8 w-8" />
-                                            </div>
-                                            <h3 className="font-bold text-slate-900">¡Enviado!</h3>
-                                            <p className="text-sm text-slate-500">Revisa la bandeja de salida.</p>
-                                        </div>
-                                    ) : (
-                                        <>
-                                            <div className="bg-white dark:bg-slate-800 border rounded-xl p-4 shadow-sm mb-4 space-y-3">
+                                        <div className="flex flex-col gap-4 border rounded-xl bg-background p-4 shadow-sm">
+                                            <h3 className="font-medium flex items-center gap-2">
+                                                <Mail className="w-4 h-4" /> Vista Previa Correo
+                                            </h3>
+                                            <div className="space-y-3 flex-1">
                                                 <div className="space-y-1">
-                                                    <Label className="text-[10px] uppercase text-slate-400">Asunto</Label>
-                                                    <Input
-                                                        value={emailSubject}
-                                                        onChange={e => setEmailSubject(e.target.value)}
-                                                        className="h-9 font-medium text-sm border-0 bg-slate-50 dark:bg-slate-700/50 focus-visible:ring-0 px-2"
-                                                    />
+                                                    <Label className="text-xs text-muted-foreground">Asunto</Label>
+                                                    <Input value={emailSubject} onChange={(e) => setEmailSubject(e.target.value)} />
                                                 </div>
-                                                <div className="h-px bg-slate-100 dark:bg-slate-700" />
-                                                <div className="bg-slate-50 dark:bg-slate-900/50 rounded-lg p-3 border border-dashed border-slate-200 dark:border-slate-700 h-32 flex flex-col items-center justify-center text-slate-400 gap-2">
-                                                    <Mail className="h-6 w-6 opacity-20" />
-                                                    <span className="text-xs">Plantilla HTML: {intent === 'chat' ? 'Layout General' : intent === 'invoice' ? 'Factura Corporativa' : 'Cotización Premium'}</span>
+                                                <div className="flex-1 bg-muted/10 rounded border border-dashed flex items-center justify-center p-8 text-center text-xs text-muted-foreground">
+                                                    El contenido se generará usando la plantilla: <br />
+                                                    <strong className="text-foreground mt-1 block font-mono bg-muted px-2 py-1 rounded inline-block">
+                                                        {shareAllInvoices ? 'Estado de Cuenta (Neo)' : 'Factura (Suma)'}
+                                                    </strong>
                                                 </div>
                                             </div>
+                                            <div className="flex gap-2 pt-4 border-t">
+                                                <Button variant="outline" className="flex-1 gap-2" onClick={handleSendWhatsApp}>
+                                                    <MessageSquare className="w-4 h-4 text-green-600" /> WhatsApp
+                                                </Button>
+                                                <Button className="flex-1 gap-2" onClick={handleSendEmail} disabled={loading || (!shareAllInvoices && !selectedInvoiceId)}>
+                                                    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                                                    Enviar Email
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </TabsContent>
 
-                                            <Button
-                                                size="lg"
-                                                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold h-12 rounded-xl shadow-lg shadow-blue-500/20 active:scale-[0.98] transition-all"
-                                                onClick={handleSendEmail}
-                                                disabled={loading}
-                                            >
-                                                {loading ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <Mail className="h-5 w-5 mr-2" />}
-                                                {loading ? "Enviando..." : "Enviar Email"}
+                                {/* QUOTE TAB */}
+                                <TabsContent value="quote" className="h-full mt-0">
+                                    <div className="grid md:grid-cols-2 gap-6 h-full">
+                                        <div className="flex flex-col gap-4 min-h-0">
+                                            <Label className="text-base font-medium">Cotizaciones Activas</Label>
+                                            <ScrollArea className="flex-1 border rounded-xl bg-background p-2">
+                                                {quotes.length > 0 ? (
+                                                    <div className="space-y-2">
+                                                        {quotes.map((q: any) => (
+                                                            <div
+                                                                key={q.id}
+                                                                onClick={() => setSelectedQuoteId(q.id)}
+                                                                className={cn("p-3 rounded-lg border cursor-pointer transition-all hover:bg-muted/50 flex justify-between items-center group",
+                                                                    selectedQuoteId === q.id ? "bg-purple-50 border-purple-200 dark:bg-purple-900/20 dark:border-purple-800 ring-1 ring-purple-200" : ""
+                                                                )}
+                                                            >
+                                                                <div className="flex-1 min-w-0 pr-4">
+                                                                    <div className="font-medium truncate">{q.title || "Cotización sin título"}</div>
+                                                                    <div className="text-xs text-muted-foreground flex gap-2">
+                                                                        <span>#{q.number}</span>
+                                                                        <span>•</span>
+                                                                        <span>{new Date(q.created_at || Date.now()).toLocaleDateString()}</span>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="text-right">
+                                                                    <div className="font-mono font-medium">${(q.price || 0).toLocaleString()}</div>
+                                                                    <Badge variant="outline" className={cn("text-[10px]", q.status === 'accepted' ? "bg-green-50 text-green-700" : "bg-blue-50 text-blue-700")}>
+                                                                        {q.status === 'accepted' ? 'Aceptada' : 'Borrador'}
+                                                                    </Badge>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <div className="h-full flex flex-col items-center justify-center text-muted-foreground p-8 text-center">
+                                                        <Archive className="w-8 h-8 opacity-20 mb-2" />
+                                                        <p>No hay cotizaciones disponibles</p>
+                                                    </div>
+                                                )}
+                                            </ScrollArea>
+                                        </div>
+
+                                        <div className="flex flex-col gap-4 border rounded-xl bg-background p-4 shadow-sm">
+                                            <h3 className="font-medium flex items-center gap-2">
+                                                <Mail className="w-4 h-4" /> Enviar Propuesta
+                                            </h3>
+                                            <div className="space-y-3 flex-1">
+                                                <div className="space-y-1">
+                                                    <Label className="text-xs text-muted-foreground">Asunto</Label>
+                                                    <Input value={emailSubject} onChange={(e) => setEmailSubject(e.target.value)} />
+                                                </div>
+                                                <div className="flex-1 bg-muted/10 rounded border border-dashed flex items-center justify-center p-8 text-center text-xs text-muted-foreground">
+                                                    El contenido se generará usando la plantilla: <br />
+                                                    <strong className="text-foreground mt-1 block font-mono bg-muted px-2 py-1 rounded inline-block">
+                                                        Cotización (Neo/Swiss)
+                                                    </strong>
+                                                </div>
+                                            </div>
+                                            <div className="flex gap-2 pt-4 border-t">
+                                                <Button variant="outline" className="flex-1 gap-2" onClick={handleSendWhatsApp}>
+                                                    <MessageSquare className="w-4 h-4 text-green-600" /> WhatsApp
+                                                </Button>
+                                                <Button className="flex-1 gap-2" onClick={handleSendEmail} disabled={loading || !selectedQuoteId}>
+                                                    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                                                    Enviar Email
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </TabsContent>
+
+                                {/* PORTAL TAB */}
+                                <TabsContent value="portal" className="h-full mt-0">
+                                    <div className="flex flex-col items-center justify-center h-full p-8 text-center space-y-8 bg-background border rounded-xl shadow-sm">
+
+                                        <div className="max-w-md space-y-2">
+                                            <h3 className="text-2xl font-bold text-foreground">Acceso al Portal</h3>
+                                            <p className="text-muted-foreground">
+                                                Envía un enlace de acceso directo (Magic Link) para que <strong>{client.name}</strong> pueda gestionar sus facturas y proyectos sin contraseñas.
+                                            </p>
+                                        </div>
+                                        <div className="flex flex-col sm:flex-row gap-4 w-full max-w-sm">
+                                            <Button size="lg" variant="outline" className="flex-1 gap-2 border-green-200 hover:bg-green-50 hover:text-green-700 hover:border-green-300 transition-all font-semibold" onClick={handleSendWhatsApp}>
+                                                <MessageSquare className="w-5 h-5 text-green-600" /> WhatsApp
                                             </Button>
-                                        </>
-                                    )}
-                                </div>
-                            )}
+                                            <Button size="lg" className="flex-1 gap-2 font-semibold shadow-lg shadow-primary/20" onClick={handleSendEmail} disabled={loading}>
+                                                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Mail className="w-5 h-5" />}
+                                                Enviar Email
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </TabsContent>
+
+                                {/* BRIEF TAB */}
+                                <TabsContent value="brief" className="h-full mt-0">
+                                    <div className="flex flex-col items-center justify-center h-full p-8 text-center space-y-6 bg-background border rounded-xl shadow-sm opacity-60">
+                                        <Briefcase className="w-16 h-16 opacity-20" />
+                                        <div className="max-w-md space-y-2">
+                                            <h3 className="text-lg font-medium">Gestión de Briefings</h3>
+                                            <p className="text-muted-foreground text-sm">Próximamente podrás enviar recordatorios de briefs desde este panel.</p>
+                                        </div>
+                                    </div>
+                                </TabsContent>
+
+                            </div>
                         </div>
-                    </div>
+                    </Tabs>
                 </div>
             </DialogContent>
         </Dialog>
