@@ -1,10 +1,11 @@
 const { Client } = require('pg');
+require('dotenv').config({ path: '.env.local' });
 
 async function recoverBriefings() {
     // Credentials from seed_operational_tables.js
-    const pid = 'uqnsdylhyenfmfkxmkrn';
-    const pass = 'Valentinfer1987*';
-    const r = 'us-west-2';
+    // const pid = removed;
+    // const pass = removed;
+    // const r = removed;
 
     process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 

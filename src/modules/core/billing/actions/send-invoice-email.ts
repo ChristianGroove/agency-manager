@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase-server"
 import { EmailService } from "@/modules/core/notifications/email.service"
-import { getInvoiceEmailHtml } from "@/lib/email-templates"
+import { TemplateEngine } from "@/modules/core/notifications/template-engine"
 import { getEffectiveBranding } from "@/modules/core/branding/actions"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
 
@@ -49,20 +49,33 @@ export async function sendInvoiceEmail(invoiceId: string) {
         footer_text: `© ${new Date().getFullYear()} ${brandingConfig.name}. Todos los derechos reservados.`
     }
 
-    // 4. Generate HTML
-    const emailHtml = getInvoiceEmailHtml(
-        invoice.client.name,
-        invoice.number,
-        `$${invoice.total.toLocaleString()}`,
-        new Date(invoice.due_date || invoice.date).toLocaleDateString(),
-        "Servicios Profesionales",
-        emailBranding
+    // 4. Generate HTML using Database Template Engine
+    const templateVars = {
+        agency_name: brandingConfig.name,
+        primary_color: brandingConfig.colors.primary,
+        secondary_color: brandingConfig.colors.secondary,
+        logo_url: brandingConfig.logos.main || "", // Empty string for if check
+        website_url: brandingConfig.website || "#",
+        client_name: invoice.client.name,
+        invoice_number: invoice.number,
+        formatted_amount: `$${invoice.total.toLocaleString()}`,
+        due_date: new Date(invoice.due_date || invoice.date).toLocaleDateString(),
+        date: new Date(invoice.date).toLocaleDateString(),
+        concept: "Servicios Profesionales", // Could be dynamic from items
+        link_url: `https://app.pixy.com.co/portal/${orgId}/invoice/${invoice.id}`, // Example link
+        year: new Date().getFullYear()
+    }
+
+    const { html: emailHtml, subject: emailSubject } = await TemplateEngine.render(
+        orgId,
+        'invoice_new',
+        templateVars
     )
 
     // 5. Send Email
     const result = await EmailService.send({
         to: invoice.client.email,
-        subject: `Nuevo Documento de Cobro #${invoice.number} - ${brandingConfig.name}`,
+        subject: emailSubject, // Use dynamic subject
         html: emailHtml,
         organizationId: orgId,
         tags: [

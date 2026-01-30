@@ -24,6 +24,7 @@ import { useLeadInspector } from "./lead-inspector-context"
 import { AssignLeadSheet } from "./assign-lead-sheet"
 import { ImportLeadsSheet } from "./import-leads-sheet"
 import { getLeadsCount } from "../lead-management-actions"
+import { UnifiedCommunicationModal } from "@/modules/core/communication/components/unified-communication-modal"
 import { useRouter } from "next/navigation"
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, PointerSensor, useSensor, useSensors, closestCorners } from "@dnd-kit/core"
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable"
@@ -74,6 +75,10 @@ export function CRMDashboard() {
 
     // Quote Sharing
     const [shareQuoteId, setShareQuoteId] = useState<string | null>(null)
+
+    // Communication Modal
+    const [comModalOpen, setComModalOpen] = useState(false)
+    const [comLead, setComLead] = useState<Lead | null>(null)
 
     const router = useRouter()
     const { openInspector } = useLeadInspector()
@@ -173,14 +178,9 @@ export function CRMDashboard() {
     }, [])
 
     const handleMessageLead = useCallback((lead: Lead) => {
-        // Navigate to inbox with lead's phone or email
-        const contact = lead.phone || lead.email
-        if (contact) {
-            router.push(`/crm/inbox?contact=${encodeURIComponent(contact)}`)
-        } else {
-            toast.error('Este lead no tiene teléfono ni email')
-        }
-    }, [router])
+        setComLead(lead)
+        setComModalOpen(true)
+    }, [])
 
     const handleQuoteLead = useCallback((lead: Lead) => {
         // Open quote builder sheet pre-filled with lead info
@@ -571,6 +571,26 @@ export function CRMDashboard() {
                     stages={stages}
                     onSuccess={loadData}
                 />
+
+                {comLead && (
+                    <UnifiedCommunicationModal
+                        isOpen={comModalOpen}
+                        onOpenChange={setComModalOpen}
+                        client={{
+                            id: comLead.id,
+                            name: comLead.name,
+                            email: comLead.email || undefined,
+                            phone: comLead.phone || undefined,
+                            company_name: comLead.company_name || undefined
+                        }}
+                        context={{ type: 'general' }}
+                    // We need to pass settings if we want the agency name, but we don't have it in state here easily without context.
+                    // However, the modal falls back to 'Agencia' gracefully.
+                    // Ideally we fetch settings in loadData or use a context.
+                    // For now we rely on the component's internal fallback or props if we had them.
+                    // Note: The original `ClientManagementSheet` fetched settings. We might want to fetch them here too.
+                    />
+                )}
             </div>
         </DndContext >
     )

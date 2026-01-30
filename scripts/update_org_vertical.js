@@ -1,9 +1,10 @@
 const { Client } = require('pg');
+require('dotenv').config({ path: '.env.local' });
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
 async function updateVertical() {
     const client = new Client({
-        connectionString: 'postgresql://postgres.uqnsdylhyenfmfkxmkrn:Valentinfer1987*@aws-0-us-west-2.pooler.supabase.com:5432/postgres?sslmode=require'
+        connectionString: process.env.DATABASE_URL
     });
 
     try {

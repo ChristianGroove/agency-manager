@@ -1,13 +1,14 @@
 
 const { Client } = require('pg');
+require('dotenv').config({ path: '.env.local' });
 
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
 const pid = 'uqnsdylhyenfmfkxmkrn';
-const pass = 'Valentinfer1987*';
+// const pass = removed;
 const r = 'us-west-2';
 
-const connectionString = 'postgresql://postgres.' + pid + ':' + pass + '@aws-0-' + r + '.pooler.supabase.com:5432/postgres?sslmode=require';
+const connectionString = process.env.DATABASE_URL;
 
 const client = new Client({ connectionString });
 

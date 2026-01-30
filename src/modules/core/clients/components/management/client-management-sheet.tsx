@@ -27,7 +27,8 @@ import { ClientTimeline } from "@/modules/core/clients/client-timeline"
 import { CreateServiceSheet } from "@/modules/core/billing/components/create-service-sheet"
 import { CreateInvoiceSheet } from "@/modules/core/billing/create-invoice-sheet"
 import { ServiceDetailModal } from "@/modules/core/billing/components/service-detail-modal"
-import { ShareInvoiceModal } from "@/modules/core/billing/share-invoice-modal"
+// import { ShareInvoiceModal } from "@/modules/core/billing/share-invoice-modal" // REPLACED
+import { UnifiedCommunicationModal } from "@/modules/core/communication/components/unified-communication-modal" // NEW
 import { CreateHostingSheet } from "@/modules/core/hosting/components/create-hosting-sheet"
 import { NotesModal } from "@/modules/core/clients/notes-modal"
 
@@ -56,8 +57,10 @@ export function ClientManagementSheet({ clientId, open, onOpenChange, initialDat
     const [selectedService, setSelectedService] = useState<any>(null)
     const [isServiceDetailOpen, setIsServiceDetailOpen] = useState(false)
 
+    // Communication State
     const [selectedInvoice, setSelectedInvoice] = useState<any>(null)
-    const [isShareInvoiceOpen, setIsShareInvoiceOpen] = useState(false)
+    const [isCommunicationModalOpen, setIsCommunicationModalOpen] = useState(false)
+    const [communicationContext, setCommunicationContext] = useState<{ type: 'invoice' | 'quote' | 'general', data?: any } | undefined>(undefined)
 
     const [hostingToEdit, setHostingToEdit] = useState<any>(null)
 
@@ -72,6 +75,7 @@ export function ClientManagementSheet({ clientId, open, onOpenChange, initialDat
                     *,
                     services:services(*),
                     invoices:invoices(*),
+                    quotes:quotes(*),
                     subscriptions:subscriptions(*),
                     hosting_accounts:hosting_accounts(*)
                 `)
@@ -121,6 +125,7 @@ export function ClientManagementSheet({ clientId, open, onOpenChange, initialDat
                 .from('services')
                 .update({ status: 'cancelled', next_billing_date: null })
                 .eq('id', serviceId)
+                .single() // error check
 
             if (error) throw error
             toast.success("Servicio pausado")
@@ -161,6 +166,13 @@ export function ClientManagementSheet({ clientId, open, onOpenChange, initialDat
         } catch (error) {
             toast.error("Error al actualizar factura")
         }
+    }
+
+    // New Handler for Sharing Invoice
+    const handleShareInvoice = (inv: any) => {
+        setSelectedInvoice(inv)
+        setCommunicationContext({ type: 'invoice', data: inv })
+        setIsCommunicationModalOpen(true)
     }
 
     if (!client && loading) {
@@ -278,6 +290,20 @@ export function ClientManagementSheet({ clientId, open, onOpenChange, initialDat
                                                     <a href={`https://wa.me/${client.phone?.replace(/\D/g, '')}`} target="_blank" className="text-sm font-medium text-gray-900 hover:text-indigo-600 hover:underline">
                                                         {client.phone || '--'}
                                                     </a>
+                                                    {/* QUICK WHATSAPP BUTTON */}
+                                                    {client.phone && (
+                                                        <Button
+                                                            variant="link"
+                                                            size="sm"
+                                                            className="p-0 h-auto text-xs text-emerald-600 ml-2"
+                                                            onClick={() => {
+                                                                setCommunicationContext({ type: 'general' })
+                                                                setIsCommunicationModalOpen(true)
+                                                            }}
+                                                        >
+                                                            Chat
+                                                        </Button>
+                                                    )}
                                                 </div>
                                             </div>
 
@@ -360,7 +386,7 @@ export function ClientManagementSheet({ clientId, open, onOpenChange, initialDat
                                     <ClientInvoicesList
                                         invoices={client.invoices || []}
                                         onMarkPaid={handleMarkInvoicePaid}
-                                        onShare={(inv) => { setSelectedInvoice(inv); setIsShareInvoiceOpen(true); }}
+                                        onShare={handleShareInvoice}
                                     />
                                 </TabsContent>
 
@@ -488,11 +514,21 @@ export function ClientManagementSheet({ clientId, open, onOpenChange, initialDat
                             onOpenChange={setIsServiceDetailOpen}
                             service={selectedService}
                         />
-                        <ShareInvoiceModal
-                            isOpen={isShareInvoiceOpen}
-                            onOpenChange={setIsShareInvoiceOpen}
-                            invoice={selectedInvoice}
-                            client={client}
+                        <UnifiedCommunicationModal
+                            isOpen={isCommunicationModalOpen}
+                            onOpenChange={setIsCommunicationModalOpen}
+                            client={{
+                                id: client.id,
+                                name: client.name,
+                                email: client.email || undefined,
+                                phone: client.phone || undefined,
+                                company_name: client.company_name || undefined,
+                                invoices: client.invoices,
+                                quotes: client.quotes,
+                                portal_token: client.portal_token,
+                                portal_short_token: client.portal_short_token
+                            }}
+                            context={communicationContext}
                             settings={settings}
                         />
                         <NotesModal

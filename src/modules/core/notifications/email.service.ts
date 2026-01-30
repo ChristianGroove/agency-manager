@@ -2,6 +2,8 @@ import { Resend } from 'resend';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { getEffectiveBranding } from '@/modules/core/branding/actions';
 import { EmailBranding } from '@/lib/email-templates';
+import nodemailer from 'nodemailer';
+import { decrypt } from '@/lib/encryption';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -26,40 +28,86 @@ export class EmailService {
         const { to, subject, html, organizationId, userId, attachments, tags } = options;
 
         try {
-            // 1. Resolve Branding
+            // 1. Resolve Branding & Identity
             const { senderName, replyTo, branding } = await this.getSenderIdentity(organizationId);
 
-            // Default "From" address (Must be verified in Resend dashboard)
-            // For true white-labeling, we would check organization.custom_domain here
-            const fromEmail = 'notifications@pixy.com.co'; // Or similar verified domain
-            const from = `"${senderName}" <${fromEmail}>`;
+            // 2. Determine Transport Strategy (SMTP vs System/Resend)
+            const smtpConfig = await this.getSmtpConfig(organizationId);
 
-            // 2. Send via Resend
-            const { data, error } = await resend.emails.send({
-                from,
-                to,
-                replyTo: replyTo || undefined,
-                subject,
-                html,
-                attachments,
-                tags: [
-                    ...(tags || []),
-                    { name: 'organization_id', value: organizationId }
-                ]
-            });
+            let messageId: string | undefined;
 
-            if (error) {
-                console.error('[EmailService] Resend Error:', error);
-                await this.logEmail({
-                    organizationId,
-                    userId,
-                    recipient: Array.isArray(to) ? to.join(', ') : to,
+            if (smtpConfig && smtpConfig.is_verified) {
+                // === A. CUSTOM SMTP STRATEGY ===
+                try {
+                    const decryptedPass = decrypt(smtpConfig.password_encrypted, smtpConfig.iv);
+                    const transporter = nodemailer.createTransport({
+                        host: smtpConfig.host,
+                        port: smtpConfig.port,
+                        secure: smtpConfig.port === 465,
+                        auth: {
+                            user: smtpConfig.user_email,
+                            pass: decryptedPass
+                        }
+                    });
+
+                    const fromName = smtpConfig.from_name || senderName;
+                    const fromEmail = smtpConfig.from_email || smtpConfig.user_email;
+
+                    const info = await transporter.sendMail({
+                        from: `"${fromName}" <${fromEmail}>`,
+                        to: Array.isArray(to) ? to.join(', ') : to,
+                        replyTo,
+                        subject,
+                        html,
+                        attachments: attachments as any
+                    });
+
+                    messageId = info.messageId;
+
+                } catch (smtpError: any) {
+                    console.error('[EmailService] SMTP Custom Error:', smtpError);
+                    // Decide if we want to fallback or fail. 
+                    // Usually if they configured SMTP, they WANT it to fail if it breaks, not fallback silently to System.
+                    throw new Error(`Error enviando por SMTP personalizado: ${smtpError.message}`);
+                }
+
+            } else {
+                // === B. SYSTEM DEFAULT (RESEND) ===
+                let fromEmail = process.env.RESEND_FROM_EMAIL || 'notifications@pixy.com.co';
+
+                // Domain is verified! We can use it in Dev too.
+
+                const from = `"${senderName}" <${fromEmail}>`;
+
+                const { data, error } = await resend.emails.send({
+                    from,
+                    to,
+                    replyTo: replyTo || undefined,
                     subject,
-                    status: 'failed',
-                    errorMessage: error.message,
-                    metadata: { error }
+                    html,
+                    attachments,
+                    tags: [
+                        ...(tags || []),
+                        { name: 'organization_id', value: organizationId }
+                    ]
                 });
-                return { success: false, error };
+
+                if (error) {
+                    // Resend specific error handling
+                    console.error('[EmailService] Resend Error:', error);
+                    await this.logEmail({
+                        organizationId,
+                        userId,
+                        recipient: Array.isArray(to) ? to.join(', ') : to,
+                        subject,
+                        status: 'failed',
+                        errorMessage: error.message,
+                        metadata: { error }
+                    });
+                    return { success: false, error };
+                }
+
+                messageId = data?.id;
             }
 
             // 3. Log Success
@@ -69,11 +117,14 @@ export class EmailService {
                 recipient: Array.isArray(to) ? to.join(', ') : to,
                 subject,
                 status: 'sent',
-                providerId: data?.id,
-                metadata: { resendId: data?.id }
+                providerId: messageId,
+                metadata: {
+                    provider: smtpConfig ? 'custom_smtp' : 'resend',
+                    provider_host: smtpConfig?.host
+                }
             });
 
-            return { success: true, data };
+            return { success: true, data: { id: messageId } };
 
         } catch (err: any) {
             console.error('[EmailService] Unexpected Error:', err);
@@ -88,6 +139,19 @@ export class EmailService {
             });
             return { success: false, error: err };
         }
+    }
+
+    /**
+     * Fetch encrypted SMTP config for org (internal use)
+     */
+    private static async getSmtpConfig(organizationId: string) {
+        const { data } = await supabaseAdmin
+            .from('organization_smtp_configs')
+            .select('*')
+            .eq('organization_id', organizationId)
+            .eq('is_verified', true)
+            .single();
+        return data;
     }
 
     /**

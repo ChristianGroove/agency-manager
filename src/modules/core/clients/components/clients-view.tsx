@@ -33,7 +33,7 @@ import {
 import { supabase } from "@/lib/supabase"
 import { cn, getPortalUrl, getPortalShortUrl } from "@/lib/utils"
 import { getWhatsAppLink } from "@/lib/communication-utils"
-import { WhatsAppActionsModal } from "@/modules/core/clients/whatsapp-modal"
+import { UnifiedCommunicationModal } from "@/modules/core/communication/components/unified-communication-modal"
 import { SplitText } from "@/components/ui/split-text"
 import { Client } from "@/types"
 import { CreateClientSheet } from "@/modules/core/clients/create-client-sheet"
@@ -89,9 +89,9 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
     const [isInvoicesModalOpen, setIsInvoicesModalOpen] = useState(false)
     const [selectedClientForInvoices, setSelectedClientForInvoices] = useState<Client | null>(null)
 
-    // WhatsApp Actions Modal
-    const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false)
-    const [selectedClientForWhatsApp, setSelectedClientForWhatsApp] = useState<Client | null>(null)
+    // Unified Communication Modal
+    const [isComModalOpen, setIsComModalOpen] = useState(false)
+    const [selectedClientForCom, setSelectedClientForCom] = useState<Client | null>(null)
 
     // --- NEW SHEETS STATE ---
     const [managementOpen, setManagementOpen] = useState(false)
@@ -582,10 +582,10 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
                                                             variant="ghost"
                                                             size="icon"
                                                             className="h-8 w-8 rounded-full bg-gray-50 text-gray-400 hover:bg-white hover:text-green-600 hover:shadow-md hover:-translate-y-0.5 hover:ring-1 hover:ring-green-100 transition-all duration-300"
-                                                            title={t('clients.actions.contact_whatsapp')}
+                                                            title="Comunicación"
                                                             onClick={() => {
-                                                                setSelectedClientForWhatsApp(client)
-                                                                setIsWhatsAppModalOpen(true)
+                                                                setSelectedClientForCom(client)
+                                                                setIsComModalOpen(true)
                                                             }}
                                                         >
                                                             <Phone className="h-4 w-4" />
@@ -766,9 +766,10 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
                                                                     variant="ghost"
                                                                     size="icon"
                                                                     className="h-8 w-8 text-gray-400 hover:text-green-600"
+                                                                    title="Comunicación"
                                                                     onClick={() => {
-                                                                        setSelectedClientForWhatsApp(client)
-                                                                        setIsWhatsAppModalOpen(true)
+                                                                        setSelectedClientForCom(client)
+                                                                        setIsComModalOpen(true)
                                                                     }}
                                                                 >
                                                                     <Phone className="h-4 w-4" />
@@ -870,14 +871,26 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
                 </DialogContent>
             </Dialog >
 
-            {/* WhatsApp Actions Modal */}
-            < WhatsAppActionsModal
-                isOpen={isWhatsAppModalOpen}
-                onOpenChange={setIsWhatsAppModalOpen}
-                client={selectedClientForWhatsApp}
-                settings={settings}
-                templates={templates}
-            />
+            {/* Unified Communication Modal */}
+            {selectedClientForCom && (
+                <UnifiedCommunicationModal
+                    isOpen={isComModalOpen}
+                    onOpenChange={setIsComModalOpen}
+                    client={{
+                        id: selectedClientForCom.id,
+                        name: selectedClientForCom.name,
+                        email: selectedClientForCom.email || undefined,
+                        phone: selectedClientForCom.phone || undefined,
+                        company_name: selectedClientForCom.company_name || undefined,
+                        invoices: selectedClientForCom.invoices,
+                        quotes: selectedClientForCom.quotes,
+                        portal_token: selectedClientForCom.portal_token,
+                        portal_short_token: selectedClientForCom.portal_short_token
+                    }}
+                    context={{ type: 'general' }}
+                    settings={settings}
+                />
+            )}
 
             {/* --- NEW MANAGEMENT SHEETS --- */}
 

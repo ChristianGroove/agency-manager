@@ -569,6 +569,16 @@ export function SettingsForm({
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="p-4 border border-dashed border-gray-200 dark:border-white/10 rounded-lg flex flex-col justify-center items-center text-center gap-2 bg-gray-50/50 dark:bg-white/5">
+                                    <div className="h-10 w-10 rounded-full bg-brand-pink/10 flex items-center justify-center text-brand-pink">
+                                        <Palette className="w-5 h-5" />
+                                    </div>
+                                    <h3 className="font-medium">Diseño y Plantillas</h3>
+                                    <p className="text-xs text-muted-foreground mb-2">Personaliza el aspecto de tus correos (Facturas, Cotizaciones).</p>
+                                    <Button variant="outline" size="sm" onClick={() => router.push('/platform/settings/email')}>
+                                        Gestionar Plantillas
+                                    </Button>
+                                </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="email_sender_name">Nombre del Remitente</Label>
                                     <Input
