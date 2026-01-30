@@ -43,7 +43,12 @@ export function PortalInvoiceList({ invoices, settings = {}, selectedInvoices = 
     return (
         <Card className="border-none shadow-none bg-transparent">
             <CardHeader className="p-0 pb-4">
-                <p className="text-sm text-gray-600 text-center">{t('portal.components.invoice_list.select_docs')}</p>
+                <p
+                    className="text-sm font-medium"
+                    style={{ color: settings?.portal_primary_color || '#F205E2' }}
+                >
+                    {t('portal.components.invoice_list.select_docs')}
+                </p>
             </CardHeader>
             <CardContent className="px-0">
                 <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
@@ -190,6 +195,27 @@ export function PortalInvoiceList({ invoices, settings = {}, selectedInvoices = 
 
                     {/* Mobile List */}
                     <div className="md:hidden divide-y divide-gray-100">
+                        {/* Mobile Select All Header */}
+                        {!compact && paymentsEnabled && settings?.enable_multi_invoice_payment !== false && onToggleAll && pendingInvoices.length > 0 && (
+                            <div
+                                className="p-4 bg-gray-50/50 flex items-center gap-4 cursor-pointer hover:bg-gray-50 transition-colors"
+                                onClick={onToggleAll}
+                            >
+                                <input
+                                    type="checkbox"
+                                    className="h-5 w-5 rounded border-gray-300 text-[var(--portal-primary)] focus:ring-[var(--portal-primary)] cursor-pointer"
+                                    checked={selectedInvoices.length === pendingInvoices.length}
+                                    onChange={(e) => {
+                                        e.stopPropagation()
+                                        onToggleAll()
+                                    }}
+                                    style={{ color: settings?.portal_primary_color }}
+                                />
+                                <span className="text-sm font-medium text-gray-600">
+                                    {selectedInvoices.length === pendingInvoices.length ? "Desmarcar todos" : "Seleccionar todos"}
+                                </span>
+                            </div>
+                        )}
                         {displayInvoices.map((invoice, index) => {
                             const status = getInvoiceStatus(invoice)
                             const isExpanded = expandedInvoiceId === invoice.id
@@ -205,27 +231,29 @@ export function PortalInvoiceList({ invoices, settings = {}, selectedInvoices = 
                                         onClick={() => setExpandedInvoiceId(prev => prev === invoice.id ? null : invoice.id)}
                                     >
                                         {status !== 'paid' && paymentsEnabled && onToggle && (
-                                            <input
-                                                type="checkbox"
-                                                className="h-5 w-5 rounded border-gray-300 text-[var(--portal-primary)] focus:ring-[var(--portal-primary)]"
-                                                checked={selectedInvoices.includes(invoice.id)}
-                                                onChange={(e) => {
-                                                    e.stopPropagation()
-                                                    onToggle(invoice.id)
-                                                }}
-                                                style={{ color: settings.portal_primary_color }}
-                                            />
+                                            <div
+                                                className="p-1 -ml-1 flex items-center justify-center"
+                                                onClick={(e) => e.stopPropagation()}
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    className="h-5 w-5 rounded border-gray-300 text-[var(--portal-primary)] focus:ring-[var(--portal-primary)] cursor-pointer"
+                                                    checked={selectedInvoices.includes(invoice.id)}
+                                                    onChange={() => onToggle(invoice.id)}
+                                                    style={{ color: settings.portal_primary_color }}
+                                                />
+                                            </div>
                                         )}
                                         <div className="flex-1">
                                             <div className="flex justify-between items-start mb-1">
-                                                <span className="font-bold text-gray-900 flex items-center gap-1">
+                                                <span className="text-sm font-bold text-gray-900 flex items-center gap-1">
                                                     #{invoice.number}
-                                                    {isExpanded ? <ChevronDown className="h-4 w-4 text-gray-400" /> : <ChevronRight className="h-4 w-4 text-gray-400" />}
+                                                    {isExpanded ? <ChevronDown className="h-3 w-3 text-gray-400" /> : <ChevronRight className="h-3 w-3 text-gray-400" />}
                                                 </span>
                                                 <Badge
                                                     variant="outline"
                                                     className={cn(
-                                                        "w-24 justify-center border-0",
+                                                        "w-20 justify-center border-0 text-[10px] h-5 px-1",
                                                         status === 'paid' ? "text-green-600" :
                                                             status === 'overdue' ? "text-red-600" : "text-gray-600"
                                                     )}
@@ -236,7 +264,7 @@ export function PortalInvoiceList({ invoices, settings = {}, selectedInvoices = 
                                             <div className="flex justify-between items-end">
                                                 <span className="text-xs text-gray-500">{new Date(invoice.date).toLocaleDateString()}</span>
                                                 <div className="flex items-center gap-3">
-                                                    <span className="font-bold text-gray-900">${invoice.total.toLocaleString()}</span>
+                                                    <span className="text-sm font-bold text-gray-900">${invoice.total.toLocaleString()}</span>
                                                 </div>
                                             </div>
                                         </div>

@@ -99,7 +99,10 @@ export class SocialService {
                 full_picture: p.full_picture,
                 created_time: p.created_time,
                 permalink_url: p.permalink_url,
-                insights: { reach: 0, engagement: 0 } // Basic fetch has no insights for now due to error
+                insights: {
+                    reach: (p.insights?.data?.find((m: any) => m.name === 'post_impressions_unique')?.values?.[0]?.value) || 0,
+                    engagement: (p.insights?.data?.find((m: any) => m.name === 'post_engaged_users')?.values?.[0]?.value) || 0
+                }
             }))
         } catch (error) {
             console.warn(`[SocialService] Failed to fetch FB posts`, error)

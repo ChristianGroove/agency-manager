@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { ExternalLink, Globe, Copy, Eye, EyeOff, Server, Terminal, Lock } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
+import { PortalHeader } from "./portal-header"
 
 import { useTranslation } from "@/lib/i18n/use-translation"
 
@@ -31,13 +32,17 @@ export function PortalHostingTab({ hostingAccounts }: PortalHostingTabProps) {
     }
 
     return (
-        <div className="space-y-6 animate-in fade-in-50 slide-in-from-bottom-2 duration-500">
-            <div className="border-b pb-4">
-                <h2 className="text-2xl font-bold text-gray-900 tracking-tight">{t('portal.hosting_tab.title')}</h2>
-                <p className="text-gray-500 mt-1">{t('portal.hosting_tab.subtitle')}</p>
-            </div>
+        <div className="max-w-4xl mx-auto w-full pb-16 space-y-8 animate-in fade-in duration-500">
+            <PortalHeader
+                title={t('portal.hosting_tab.title')}
+                subtitle={t('portal.hosting_tab.subtitle')}
+                centered={true}
+            />
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className={cn(
+                "grid grid-cols-1 gap-6",
+                hostingAccounts.length === 1 ? "max-w-2xl mx-auto" : "lg:grid-cols-2"
+            )}>
                 {hostingAccounts.map((account) => (
                     <HostingAccountCard key={account.id} account={account} />
                 ))}

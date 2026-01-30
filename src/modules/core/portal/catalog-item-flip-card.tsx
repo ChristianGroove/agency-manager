@@ -72,65 +72,72 @@ export function CatalogItemFlipCard({
                 {/* FRONT FACE */}
                 <div className={cn(
                     "absolute inset-0 backface-hidden",
-                    "bg-white/80 backdrop-blur-xl border border-gray-200/50",
+                    "bg-white backdrop-blur-xl border border-gray-200/50",
                     "rounded-2xl shadow-lg overflow-hidden",
                     "hover:shadow-2xl hover:-translate-y-1 transition-all duration-300",
-                    "flex flex-col"
-                )}>
-                    {/* Gradient Header */}
-                    <div className="h-32 bg-gradient-to-br from-brand-pink/10 via-purple-50 to-blue-50 relative overflow-hidden">
-                        <div className="absolute inset-0 bg-grid-pattern opacity-10" />
-                        <div className="absolute top-4 left-4 right-4 flex justify-between items-start z-10">
-                            <Badge
-                                variant="secondary"
-                                className="capitalize bg-white/90 backdrop-blur text-gray-700 shadow-sm border-0"
-                            >
-                                {item.category}
-                            </Badge>
-                            {item.type === 'recurring' && (
-                                <Badge
-                                    variant="outline"
-                                    className="text-xs bg-white/90 backdrop-blur border-purple-200 text-purple-700"
-                                >
-                                    {t('portal.components.flip_card.subscription')}
-                                </Badge>
-                            )}
+                    "flex flex-col",
+                    "z-10" // Force front face order
+                )} style={{ transform: 'translateZ(1px)' }}>
+                    {/* 80% Image Area */}
+                    <div className="h-[80%] relative overflow-hidden bg-gray-100">
+                        {item.image_url ? (
+                            <img
+                                src={item.image_url}
+                                alt={item.name}
+                                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                            />
+                        ) : (
+                            <div className="w-full h-full bg-gradient-to-br from-brand-pink/20 via-purple-100 to-blue-100 flex items-center justify-center relative">
+                                <div className="absolute inset-0 bg-grid-pattern opacity-20" />
+                                <div className="text-brand-pink/40 animate-pulse text-xs font-bold uppercase tracking-widest">
+                                    {t('portal.components.flip_card.no_image')}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Minimalist Integrated Header */}
+                        <div className="absolute top-0 left-0 right-0 p-3 bg-gradient-to-b from-black/20 to-transparent z-10 flex cursor-default pointer-events-none">
+                            <div className="flex gap-1.5 items-center">
+                                <span className="text-[10px] font-bold text-white uppercase tracking-wider drop-shadow-sm">
+                                    {item.category}
+                                </span>
+                                {item.type === 'recurring' && (
+                                    <>
+                                        <span className="w-1 h-1 rounded-full bg-white/40" />
+                                        <span className="text-[9px] font-medium text-white/80 uppercase tracking-tight">
+                                            {t('portal.components.flip_card.subscription')}
+                                        </span>
+                                    </>
+                                )}
+                            </div>
                         </div>
                     </div>
 
-                    {/* Content */}
-                    <div className="flex-1 p-6 pt-4 flex flex-col">
-                        <h3 className="text-xl font-bold text-gray-900 mb-2 line-clamp-2 min-h-[3.5rem]">
-                            {item.name}
-                        </h3>
+                    {/* 20% Content Area */}
+                    <div className="h-[20%] p-3.5 flex flex-col justify-between bg-white">
+                        <div className="flex justify-between items-start gap-2">
+                            <h3 className="text-sm font-bold text-gray-900 line-clamp-1 leading-tight">
+                                {item.name}
+                            </h3>
+                        </div>
 
-                        <p className="text-sm text-gray-500 line-clamp-3 mb-4 flex-1">
-                            {item.description}
-                        </p>
-
-                        {/* Price Section */}
-                        <div className="mt-auto pt-4 border-t border-gray-100">
-                            <div className="flex items-baseline justify-between mb-4">
-                                <div>
-                                    <span className="text-sm text-gray-500 block mb-1">
-                                        {item.type === 'recurring' ? t('portal.components.flip_card.from_month') : t('portal.components.flip_card.base_price')}
-                                    </span>
-                                    <span className="text-2xl font-bold text-gray-900">
-                                        {formatPrice(item.base_price)}
-                                    </span>
-                                </div>
-                                <button
-                                    className="text-brand-pink hover:text-brand-pink/80 transition-colors p-2 rounded-full hover:bg-brand-pink/10"
-                                    onClick={handleFlip}
-                                >
-                                    <Info className="h-5 w-5" />
-                                </button>
+                        <div className="flex items-end justify-between mt-auto">
+                            <div className="flex items-center gap-1.5 text-[9px] text-gray-400 font-semibold pb-0.5">
+                                <ArrowRight className="h-2 w-2" />
+                                <span>{t('portal.components.flip_card.tap_details')}</span>
                             </div>
 
-                            {/* Tooltip to flip */}
-                            <div className="flex items-center justify-center gap-2 text-xs text-gray-400">
-                                <ArrowRight className="h-3 w-3 animate-pulse" />
-                                <span>{t('portal.components.flip_card.tap_details')}</span>
+                            <div className="flex flex-col items-end">
+                                <span className="text-[8px] text-gray-400 uppercase font-bold tracking-tighter mb-0.5 opacity-70">
+                                    {item.price_label_type === 'from'
+                                        ? t('portal.components.flip_card.from')
+                                        : item.price_label_type === 'price'
+                                            ? t('portal.components.flip_card.price')
+                                            : t('portal.components.flip_card.base_price')}
+                                </span>
+                                <span className="text-lg font-extrabold text-gray-900 leading-none">
+                                    {formatPrice(item.base_price)}
+                                </span>
                             </div>
                         </div>
                     </div>
@@ -142,28 +149,18 @@ export function CatalogItemFlipCard({
                     "bg-gradient-to-br from-gray-50 to-white",
                     "border border-gray-200 rounded-2xl shadow-xl overflow-hidden",
                     "flex flex-col"
-                )}>
-                    {/* Header with compact price */}
-                    <div className="bg-gradient-to-r from-brand-pink to-purple-600 p-5 text-white relative overflow-hidden">
-                        <div className="absolute inset-0 bg-black/10" />
-                        <div className="relative z-10">
-                            <div className="flex items-start justify-between gap-3 mb-2">
-                                <Badge
-                                    variant="outline"
-                                    className="bg-white/20 border-white/40 text-white backdrop-blur text-xs"
-                                >
-                                    {item.category}
-                                </Badge>
-                                <div className="text-right">
-                                    <div className="text-sm font-bold">{formatPrice(item.base_price)}</div>
-                                    <div className="text-[10px] opacity-80">
-                                        {item.type === 'recurring' ? t('portal.components.flip_card.per_month') : t('portal.components.flip_card.one_time')}
-                                    </div>
-                                </div>
+                )} style={{ transform: 'rotateY(180deg) translateZ(1px)' }}>
+                    {/* Ultra-compact Header */}
+                    <div className="bg-gray-900 p-3.5 text-white relative overflow-hidden shrink-0">
+                        <div className="relative z-10 flex items-center justify-between gap-4">
+                            <div className="flex-1 min-w-0">
+                                <h3 className="text-sm font-bold truncate uppercase tracking-tight">
+                                    {item.name}
+                                </h3>
                             </div>
-                            <h3 className="text-base font-bold line-clamp-2">
-                                {item.name}
-                            </h3>
+                            <div className="text-right shrink-0">
+                                <div className="text-base font-extrabold leading-none">{formatPrice(item.base_price)}</div>
+                            </div>
                         </div>
                     </div>
 
@@ -234,71 +231,70 @@ export function CatalogItemFlipCard({
                     </div>
 
                     {/* Action Footer */}
-                    <div className="p-6 pt-4 border-t border-gray-200 bg-white space-y-3">
+                    <div className="p-4 border-t border-gray-100 bg-white">
                         {variant === 'portal' ? (
-                            <>
-                                <Button
-                                    onClick={handleRequest}
-                                    className={cn(
-                                        "w-full transition-all shadow-md",
-                                        isRequested
-                                            ? "bg-gray-600 hover:bg-gray-700 text-white"
-                                            : "bg-gray-800 hover:bg-gray-900 text-white"
-                                    )}
-                                >
-                                    <MessageCircle className="h-4 w-4 mr-2" />
-                                    {isRequested ? t('portal.components.flip_card.request_again') : t('portal.components.flip_card.request_whatsapp')}
-                                </Button>
-                            </>
+                            <Button
+                                onClick={handleRequest}
+                                className={cn(
+                                    "w-full transition-all shadow-md font-bold uppercase tracking-wide text-xs h-10",
+                                    isRequested
+                                        ? "bg-gray-200 text-gray-600 hover:bg-gray-300"
+                                        : "bg-[var(--brand-pink,#F205E2)] hover:opacity-90 text-white"
+                                )}
+                                style={!isRequested ? { backgroundColor: 'var(--brand-pink, #F205E2)' } : {}}
+                            >
+                                {item.cta_type === 'buy' && t('portal.components.flip_card.cta_buy')}
+                                {item.cta_type === 'info' && t('portal.components.flip_card.cta_info')}
+                                {item.cta_type === 'quote' && t('portal.components.flip_card.cta_quote')}
+                                {item.cta_type === 'appointment' && t('portal.components.flip_card.cta_appointment')}
+                                {item.cta_type === 'portfolio' && t('portal.components.flip_card.cta_details')}                                {(!item.cta_type || item.cta_type === 'whatsapp') && (
+                                    <>
+                                        <MessageCircle className="h-4 w-4 mr-2" />
+                                        {isRequested ? t('portal.components.flip_card.request_again') : t('portal.components.flip_card.request_whatsapp')}
+                                    </>
+                                )}
+                            </Button>
                         ) : (
-                            <>
-                                <div className="flex gap-2">
-                                    <Button
-                                        onClick={(e) => {
-                                            e.stopPropagation()
-                                            onEdit?.(item)
-                                        }}
-                                        className="flex-1 bg-brand-pink hover:bg-brand-pink/90 text-white shadow-md"
-                                    >
-                                        <Pencil className="h-4 w-4 mr-2" />
-                                        {t('portal.components.flip_card.edit')}
-                                    </Button>
-                                    <Button
-                                        onClick={(e) => {
-                                            e.stopPropagation()
-                                            onDelete?.(item.id)
-                                        }}
-                                        variant="ghost"
-                                        className="hover:bg-red-50 hover:text-red-600 text-gray-500"
-                                        size="icon"
-                                    >
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                </div>
-                            </>
+                            <div className="flex gap-2">
+                                <Button
+                                    onClick={(e) => {
+                                        e.stopPropagation()
+                                        onEdit?.(item)
+                                    }}
+                                    className="flex-1 bg-brand-pink hover:bg-brand-pink/90 text-white shadow-md font-bold text-xs h-9"
+                                >
+                                    <Pencil className="h-3.5 w-3.5 mr-2" />
+                                    {t('portal.components.flip_card.edit')}
+                                </Button>
+                                <Button
+                                    onClick={(e) => {
+                                        e.stopPropagation()
+                                        onDelete?.(item.id)
+                                    }}
+                                    variant="ghost"
+                                    className="hover:bg-red-50 hover:text-red-600 text-gray-400 h-9 w-9"
+                                    size="icon"
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                            </div>
                         )}
-
-                        <button
-                            onClick={handleFlip}
-                            className="w-full text-xs text-gray-500 hover:text-gray-700 transition-colors flex items-center justify-center gap-1"
-                        >
-                            <ArrowRight className="h-3 w-3 rotate-180" />
-                            {t('portal.components.flip_card.back')}
-                        </button>
                     </div>
                 </div>
             </div>
 
             <style jsx>{`
                 .perspective-1000 {
-                    perspective: 1000px;
+                    perspective: 1200px;
                 }
                 .transform-style-3d {
                     transform-style: preserve-3d;
+                    will-change: transform;
                 }
                 .backface-hidden {
                     backface-visibility: hidden;
                     -webkit-backface-visibility: hidden;
+                    -moz-backface-visibility: hidden;
                 }
                 .rotate-y-180 {
                     transform: rotateY(180deg);

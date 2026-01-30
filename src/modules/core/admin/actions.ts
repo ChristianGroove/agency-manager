@@ -335,6 +335,42 @@ export async function getOrgManagerData(orgId: string) {
     }
 }
 
+export async function syncClientAdsMetrics(clientId: string) {
+    if (!clientId) return { success: false, error: "Client ID required" }
+
+    try {
+        const { data: config } = await supabaseAdmin.from("integration_configs").select("*").eq("client_id", clientId).eq("platform", "meta").single()
+        if (!config || !config.access_token || !config.ad_account_id) return { success: false, error: "Faltan credenciales (Token o Ad Account)" }
+
+        const { MetaConnector } = await import('@/lib/integrations/meta/connector')
+        const { AdsService } = await import('@/lib/integrations/meta/ads-service')
+
+        const connector = new MetaConnector(config.access_token)
+        const service = new AdsService(connector)
+
+        // Sync multiple ranges? Ideally just 'last_30d' for the dashboard for now.
+        const metrics = await service.getMetrics(config.ad_account_id, 'last_30d')
+
+        const { error } = await supabaseAdmin.from("meta_ads_metrics").upsert({
+            client_id: clientId,
+            snapshot_date: new Date().toISOString(),
+            spend: String(metrics.spend),
+            impressions: String(metrics.impressions),
+            clicks: String(metrics.clicks),
+            cpc: String(metrics.cpc),
+            ctr: String(metrics.ctr),
+            roas: String(metrics.roas),
+            campaigns: metrics.campaigns
+        }, { onConflict: 'client_id' })
+
+        if (error) throw error
+        return { success: true }
+    } catch (e: any) {
+        console.error("Ads Sync Error:", e)
+        return { success: false, error: e.message }
+    }
+}
+
 export async function syncClientSocialMetrics(clientId: string) {
     if (!clientId) return { success: false, error: "Client ID required" }
 

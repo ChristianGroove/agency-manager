@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import { AdsDashboard } from "./ads-dashboard"
+import { PortalHeader } from "../portal-header"
 
 // Import specific icons used in SocialDashboard
 import {
@@ -109,13 +110,12 @@ export function InsightsTab({ client, services, token, insightsAccess }: Insight
     }
 
     return (
-        <div className="space-y-6">
-            <div className="flex flex-col gap-2">
-                <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent w-fit">
-                    Meta Insights
-                </h2>
-                <p className="text-gray-500">Métricas clave de rendimiento de tus campañas y redes sociales.</p>
-            </div>
+        <div className="max-w-4xl mx-auto w-full pb-16 space-y-8 animate-in fade-in duration-500">
+            <PortalHeader
+                title="Meta Insights"
+                subtitle="Métricas clave de rendimiento de tus campañas y redes sociales."
+                centered={true}
+            />
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="grid w-full md:w-[400px] grid-cols-2">

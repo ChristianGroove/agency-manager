@@ -8,6 +8,7 @@ import { useEffect, useState } from "react"
 import { PortalTimeline } from "./portal-timeline"
 import { ClientEvent } from "@/types"
 import { SplitText } from "@/components/ui/split-text"
+import { PortalHeader } from "./portal-header"
 
 // Animations (Moved locally to avoid duplication if we want, or keep separate)
 function EmptyStateAnimation() {
@@ -53,16 +54,13 @@ export function PortalSummaryTab({ client, invoices, quotes, briefings, events, 
     const hasPending = pendingInvoices.length > 0 || openQuotes.length > 0 || pendingBriefings.length > 0
 
     return (
-        <div className="max-w-4xl mx-auto w-full pb-24 space-y-8 animate-in fade-in duration-500">
+        <div className="max-w-4xl mx-auto w-full pb-16 space-y-8 animate-in fade-in duration-500">
 
             {/* Header Greeting */}
-            <div className="text-center space-y-2 mt-8">
-                <h1 className="text-3xl font-bold text-gray-900">
-                    <SplitText>{`${t('portal.dashboard.welcome').replace('{name}', (client.name?.trim() || client.company_name?.trim() || 'Cliente').split(' ')[0])} 👋`}</SplitText>
-                </h1>
-
-                <p className="text-gray-500">{t('portal.summary.subtitle')}</p>
-            </div>
+            <PortalHeader
+                title={`${t('portal.dashboard.welcome').replace('{name}', (client.name?.trim() || client.company_name?.trim() || 'Cliente').split(' ')[0])} 👋`}
+                subtitle={t('portal.summary.subtitle')}
+            />
 
             {/* Priority Actions Card */}
             {

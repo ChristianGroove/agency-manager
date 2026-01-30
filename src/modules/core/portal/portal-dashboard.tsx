@@ -341,7 +341,7 @@ export function PortalDashboard({ token, client, invoices, quotes, briefings, ev
                                     </DialogTitle>
                                 </DialogHeader>
                                 <div className="mt-4">
-                                    <PortalTimeline events={events} />
+                                    <PortalTimeline events={events.slice(0, 5)} />
                                 </div>
                             </DialogContent>
                         </Dialog>

@@ -642,9 +642,9 @@ export const es = {
     portal: {
         nav: {
             summary: "Resumen",
-            services: "Servicios",
+            services: "Contratos",
             billing: "Pagos",
-            explore: "Explorar",
+            explore: "Servicios",
             insights: "Insights",
             hosting: "Hosting"
         },
@@ -664,9 +664,9 @@ export const es = {
             no_activity: "No hay actividad reciente."
         },
         services_tab: {
-            title: "Mis Servicios",
-            subtitle: "Servicios activos y proyectos en curso",
-            empty_state: "No tienes servicios activos en este momento."
+            title: "Contratos",
+            subtitle: "Contratos activos y proyectos en curso",
+            empty_state: "No tienes contratos activos en este momento."
         },
         billing_tab: {
             title: "Pagos",
@@ -700,8 +700,8 @@ export const es = {
             }
         },
         catalog_tab: {
-            title: "Explora nuestros servicios",
-            subtitle: "Descubre cómo podemos ayudarte a seguir creciendo. Solicita información sobre cualquiera de nuestros servicios premium.",
+            title: "Servicios",
+            subtitle: "Descubre soluciones premium para potenciar tu crecimiento.",
             search_placeholder: "Buscar servicios...",
             filter_all: "Todos",
             consult_price: "Consultar",
@@ -731,7 +731,7 @@ export const es = {
                 complete_briefing: "Completar Briefing",
                 pay_now: "Pagar Ahora"
             },
-            services_title: "Tus Servicios Activos",
+            services_title: "Tus Contratos Activos",
             status_bar: {
                 pending: "Pendientes",
                 pending_desc: "Tienes {count} cuentas de cobro por {amount}.",
@@ -785,6 +785,8 @@ export const es = {
             },
             flip_card: {
                 subscription: "Suscripción",
+                price: "Precio",
+                from: "Desde",
                 from_month: "Desde / mes",
                 base_price: "Precio base",
                 tap_details: "Toca para ver detalles",
@@ -796,9 +798,15 @@ export const es = {
                 additional_info: "Información Adicional",
                 request_again: "Solicitar nuevamente",
                 request_whatsapp: "Solicitar por WhatsApp",
+                cta_buy: "Comprar ahora",
+                cta_info: "Más información",
+                cta_quote: "Solicitar cotización",
+                cta_appointment: "Agendar cita",
+                cta_details: "Ver detalles",
                 edit: "Editar",
                 back: "Volver",
-                consult: "Consultar"
+                consult: "Consultar",
+                no_image: "Sin imagen"
             },
             timeline: {
                 no_activity: "No hay actividad reciente."

@@ -13,7 +13,7 @@ import { Loader2, Zap, CheckCircle2, LayoutGrid, BarChart3, Globe, Smartphone, A
 import { cn } from "@/lib/utils"
 import { MobilePreview } from "@/components/marketing/mobile-preview"
 import { InsightsTab } from "@/modules/core/portal/insights/insights-tab"
-import { getMetaConfig, saveMetaConfig, syncClientSocialMetrics } from "@/modules/core/admin/actions"
+import { getMetaConfig, saveMetaConfig, syncClientSocialMetrics, syncClientAdsMetrics } from "@/modules/core/admin/actions"
 import { supabase } from "@/lib/supabase"
 
 interface ConnectivitySheetProps {
@@ -65,13 +65,20 @@ export function ConnectivitySheet({ client, services, trigger, open: controlledO
         if (result.success) {
             toast.success("Conexión guardada. Sincronizando datos...")
 
-            // Trigger Sync immediately
-            const syncResult = await syncClientSocialMetrics(client.id)
-            if (syncResult.success) {
-                toast.success("Datos de Meta actualizados correctamente")
+            // Trigger Sync immediately (Parallel)
+            const [syncSocial, syncAds] = await Promise.all([
+                syncClientSocialMetrics(client.id),
+                syncClientAdsMetrics(client.id)
+            ])
+
+            if (syncSocial.success && syncAds.success) {
+                toast.success("Métricas de Social y Ads actualizadas correctamente")
                 setRefreshKey(prev => prev + 1) // Force UI Refresh
             } else {
-                toast.warning("Conexión guardada pero falló la sincronización: " + syncResult.error)
+                if (!syncSocial.success) toast.warning("Social Sync Falló: " + syncSocial.error)
+                if (!syncAds.success) toast.warning("Ads Sync Falló: " + syncAds.error)
+                // Still refresh if at least one worked? Yes.
+                setRefreshKey(prev => prev + 1)
             }
 
             loadMetaConfig()

@@ -224,6 +224,10 @@ export type ServiceCatalogItem<TMetadata = Record<string, any>> = {
     briefing_template_id?: string // Deprecated: Use metadata.briefing_template_id
     metadata?: TMetadata
     is_system_template?: boolean
+    image_url?: string
+    ai_generated_image?: boolean
+    cta_type?: 'whatsapp' | 'buy' | 'info' | 'quote' | 'appointment' | 'portfolio'
+    price_label_type?: 'price' | 'base_price' | 'from'
     organization_id: string
 }
 

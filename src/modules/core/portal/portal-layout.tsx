@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { Client, Invoice, Quote, Briefing, ClientEvent, Service } from "@/types"
 import { Button } from "@/components/ui/button"
-import { LayoutDashboard, Layers, CreditCard, Search, Bell, LogOut, Menu, BarChart3, Server } from "lucide-react"
+import { LayoutDashboard, Layers, CreditCard, Search, Bell, LogOut, Menu, BarChart3, Server, X } from "lucide-react"
 import { isFeatureEnabled } from "@/lib/features"
 import { cn } from "@/lib/utils"
 import { PortalSummaryTab } from "./portal-summary-tab"
@@ -212,7 +212,7 @@ export function PortalLayout({ token, client, invoices, quotes, briefings, event
                 </header>
 
                 {/* Content Scrollable */}
-                <div className="flex-1 overflow-y-auto p-4 md:p-8 pb-32 md:pb-8">
+                <div className="flex-1 overflow-y-auto p-4 md:p-6 md:pt-4 pb-32 md:pb-8">
                     {/* Find the current tab's component */}
                     {dynamicTabs.find(t => t.key === activeTab)?.component === 'summary' && (
                         <PortalSummaryTab
@@ -245,13 +245,23 @@ export function PortalLayout({ token, client, invoices, quotes, briefings, event
                     <div className="hidden lg:block fixed bottom-8 right-8 z-20">
                         <div className="bg-white rounded-xl shadow-2xl p-6 w-80 border border-gray-100 ring-1 ring-black/5 animate-in slide-in-from-right">
                             <div className="flex justify-between items-start mb-4">
-                                <h4 className="font-bold text-gray-900">{t('portal.alerts.pending_payments')}</h4>
-                                <Badge className={cn(
-                                    "border-0 text-white",
-                                    pendingInvoices.some(i => i.status === 'overdue')
-                                        ? "bg-red-600 hover:bg-red-700"
-                                        : "bg-orange-500 hover:bg-orange-600"
-                                )}>{pendingInvoices.length}</Badge>
+                                <div className="flex items-center gap-3">
+                                    <h4 className="font-bold text-gray-900">{t('portal.alerts.pending_payments')}</h4>
+                                    <Badge className={cn(
+                                        "border-0 text-white",
+                                        pendingInvoices.some(i => i.status === 'overdue')
+                                            ? "bg-red-600 hover:bg-red-700"
+                                            : "bg-orange-500 hover:bg-orange-600"
+                                    )}>{pendingInvoices.length}</Badge>
+                                </div>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+                                    onClick={() => setShowBillingAlert(false)}
+                                >
+                                    <X className="h-4 w-4" />
+                                </Button>
                             </div>
                             <p className="text-3xl font-bold text-gray-900 mb-2">
                                 {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(totalPending)}

@@ -7,6 +7,7 @@ import { PortalServiceDetail } from "./portal-service-detail"
 import { PortalBriefingView } from "./portal-briefing-view"
 import { Activity } from "lucide-react"
 import { SplitText } from "@/components/ui/split-text"
+import { PortalHeader } from "./portal-header"
 
 interface PortalServicesTabProps {
     token: string // Add token
@@ -82,14 +83,12 @@ export function PortalServicesTab({ token, services, invoices, briefings, onPay,
 
     // 3. Service List View
     return (
-        <div className="max-w-5xl mx-auto w-full mb-12 space-y-6 animate-in fade-in duration-500">
+        <div className="max-w-4xl mx-auto w-full mb-12 space-y-6 animate-in fade-in duration-500">
             {/* Header - Centered */}
-            <div className="text-center mb-8">
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                    <SplitText>{t('portal.services_tab.title')}</SplitText>
-                </h2>
-                <p className="text-gray-500">{t('portal.services_tab.subtitle')}</p>
-            </div>
+            <PortalHeader
+                title={t('portal.services_tab.title')}
+                subtitle={t('portal.services_tab.subtitle')}
+            />
 
             {services.length === 0 ? (
                 <div className="text-center py-12 bg-white rounded-lg border border-dashed">

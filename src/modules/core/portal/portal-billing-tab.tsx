@@ -6,6 +6,7 @@ import { PortalInvoiceList } from "./portal-invoice-list"
 import { Button } from "@/components/ui/button"
 import { CreditCard } from "lucide-react"
 import { SplitText } from "@/components/ui/split-text"
+import { PortalHeader } from "./portal-header"
 
 interface PortalBillingTabProps {
     invoices: Invoice[]
@@ -55,14 +56,12 @@ export function PortalBillingTab({ invoices, settings, onPay, onViewInvoice, tok
     const paymentsEnabled = settings.enable_portal_payments !== false && settings.portal_modules?.payments !== false
 
     return (
-        <div className="max-w-5xl mx-auto w-full pb-32 animate-in fade-in duration-500">
+        <div className="max-w-4xl mx-auto w-full pb-20 animate-in fade-in duration-500">
             {/* Header - Centered */}
-            <div className="text-center mb-8">
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                    <SplitText>{t('portal.billing_tab.title')}</SplitText>
-                </h2>
-                <p className="text-gray-500">{t('portal.billing_tab.subtitle')}</p>
-            </div>
+            <PortalHeader
+                title={t('portal.billing_tab.title')}
+                subtitle={t('portal.billing_tab.subtitle')}
+            />
 
             <PortalInvoiceList
                 invoices={invoices}

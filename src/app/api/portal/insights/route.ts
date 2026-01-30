@@ -70,6 +70,7 @@ export async function GET(req: Request) {
         }
 
         // 3. Get Social Data (Latest)
+        // 3. Get Social Data (Latest)
         const { data: socialMetrics, error: socialError } = await supabaseAdmin
             .from('meta_social_metrics')
             .select('*')
@@ -81,7 +82,7 @@ export async function GET(req: Request) {
         if (socialError && socialError.code !== 'PGRST116') {
             console.error("[PortalAPI] Social Fetch Error", socialError)
         } else if (socialMetrics) {
-            console.log("[PortalAPI] Social Data found for:", socialMetrics.snapshot_date)
+            // Data found
         }
 
         return NextResponse.json({

@@ -642,9 +642,9 @@ export const en = {
     portal: {
         nav: {
             summary: "Summary",
-            services: "Services",
+            services: "Contracts",
             billing: "Billing",
-            explore: "Explore",
+            explore: "Services",
             insights: "Insights",
             hosting: "Hosting"
         },
@@ -664,9 +664,9 @@ export const en = {
             no_activity: "No recent activity."
         },
         services_tab: {
-            title: "My Services",
-            subtitle: "Active services and ongoing projects",
-            empty_state: "You don't have active services at the moment."
+            title: "Contracts",
+            subtitle: "Active contracts and ongoing projects",
+            empty_state: "You have no active contracts at the moment."
         },
         billing_tab: {
             title: "Billing",
@@ -700,8 +700,8 @@ export const en = {
             }
         },
         catalog_tab: {
-            title: "Explore our services",
-            subtitle: "Discover how we can help you grow. Request information about any of our premium services.",
+            title: "Services",
+            subtitle: "Discover premium solutions to power your growth.",
             search_placeholder: "Search services...",
             filter_all: "All",
             consult_price: "Contact us",
@@ -731,7 +731,7 @@ export const en = {
                 complete_briefing: "Complete Briefing",
                 pay_now: "Pay Now"
             },
-            services_title: "Your Active Services",
+            services_title: "Your Active Contracts",
             status_bar: {
                 pending: "Pending",
                 pending_desc: "You have {count} invoices for {amount}.",
@@ -785,6 +785,8 @@ export const en = {
             },
             flip_card: {
                 subscription: "Subscription",
+                price: "Price",
+                from: "From",
                 from_month: "From / mo",
                 base_price: "Base price",
                 tap_details: "Tap for details",
@@ -796,9 +798,15 @@ export const en = {
                 additional_info: "Additional Information",
                 request_again: "Request again",
                 request_whatsapp: "Request via WhatsApp",
+                cta_buy: "Buy now",
+                cta_info: "More info",
+                cta_quote: "Request quote",
+                cta_appointment: "Schedule appointment",
+                cta_details: "View details",
                 edit: "Edit",
                 back: "Back",
-                consult: "Contact us"
+                consult: "Contact us",
+                no_image: "No image"
             },
             timeline: {
                 no_activity: "No recent activity."
