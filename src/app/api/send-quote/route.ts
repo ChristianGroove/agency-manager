@@ -30,7 +30,8 @@ export async function POST(request: Request) {
 
         // Convert base64 to buffer
         const pdfBuffer = Buffer.from(pdfBase64.split(',')[1], 'base64');
-        const emailHtml = getQuoteEmailHtml(clientName, quoteNumber, total || '$0', date || 'N/A', emailBranding);
+        const linkUrl = brandingData.website || 'https://pixy.com.co'; // Fallback link
+        const emailHtml = getQuoteEmailHtml(clientName, quoteNumber, total || '$0', date || 'N/A', linkUrl, emailBranding);
 
         const result = await EmailService.send({
             to: email,

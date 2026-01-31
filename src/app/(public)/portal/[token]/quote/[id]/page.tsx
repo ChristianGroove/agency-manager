@@ -53,6 +53,15 @@ document.getElementById('print-btn').addEventListener('click', () => window.prin
         )
     } catch (error) {
         console.error("Error loading quote:", error)
-        return notFound()
+        // User Request: If quote fails to load, redirect to client portal home
+        // This handles cases where the quote might belong to a potential lead or there's a permission mismatch
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gray-50 flex-col gap-4">
+                <p className="text-muted-foreground">Redirigiendo al portal...</p>
+                <script dangerouslySetInnerHTML={{
+                    __html: `window.location.href = "/portal/${token}";`
+                }} />
+            </div>
+        )
     }
 }

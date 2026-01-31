@@ -91,7 +91,7 @@ export function EmailSettingsPage({ templates, organizationId, smtpConfig }: Ema
                 )
             case 'quotes':
                 return getQuoteEmailHtml(
-                    "Juan Pérez", "COT-098", "$12,300,000 COP", "15 Ene 2026",
+                    "Juan Pérez", "COT-098", "$12,300,000 COP", "15 Ene 2026", "https://pixy.com.co/quote/123",
                     branding, selectedStyle
                 )
             case 'briefs':

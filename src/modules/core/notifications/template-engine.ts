@@ -82,6 +82,7 @@ export class TemplateEngine {
                         variables.number || '000',
                         variables.formatted_amount,
                         new Date().toLocaleDateString(),
+                        variables.link_url || '#',
                         branding,
                         style
                     )

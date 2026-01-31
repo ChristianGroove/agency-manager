@@ -50,61 +50,106 @@ export async function sendTemplateEmail({ clientId, templateKey, contextId, cust
         console.warn("Client has no portal token", clientId)
     }
 
+    // Normalize key
+    const normalizedKey = templateKey.trim().toLowerCase()
+    console.log(`[SendEmail] Starting. Key: '${normalizedKey}', Client: ${clientId}`)
+
     // 2. Fetch Context Data (Invoice or Quote)
     let contextData: any = {}
 
-    if (contextId) {
-        // Try Invoice
-        const { data: invoice } = await supabase.from('invoices').select('*').eq('id', contextId).single()
-        if (invoice) {
-            contextData = {
-                ...contextData,
-                invoice_number: invoice.number,
-                formatted_amount: `$${invoice.total.toLocaleString()}`,
-                due_date: new Date(invoice.due_date || invoice.date).toLocaleDateString(),
-                date: new Date(invoice.date).toLocaleDateString(),
-                concept: invoice.description || "Servicios Profesionales",
-                link_url: getPortalUrl(`/portal/${portalToken}/invoice/${invoice.id}`),
-                document_type: 'invoice'
-            }
-        } else {
-            // Try Quote
-            const { data: quote } = await supabase.from('quotes').select('*').eq('id', contextId).single()
-            if (quote) {
+    try {
+        if (contextId) {
+            console.log(`[SendEmail] Fetching Context ID: ${contextId}`)
+            // Try Invoice
+            const { data: invoice } = await supabase.from('invoices').select('*').eq('id', contextId).single()
+            if (invoice) {
+                console.log(`[SendEmail] Found Invoice: ${invoice.number}`)
                 contextData = {
                     ...contextData,
-                    price: quote.price, // Adapt based on actual quote schema
-                    formatted_amount: `$${(quote.price || 0).toLocaleString()}`,
-                    concept: quote.title,
-                    link_url: getPortalUrl(`/portal/${portalToken}/quote/${quote.id}`),
-                    document_type: 'quote'
+                    invoice_number: invoice.number,
+                    formatted_amount: `$${invoice.total.toLocaleString()}`,
+                    due_date: new Date(invoice.due_date || invoice.date).toLocaleDateString(),
+                    date: new Date(invoice.date).toLocaleDateString(),
+                    concept: invoice.description || "Servicios Profesionales",
+                    link_url: getPortalUrl(`/portal/${portalToken}/invoice/${invoice.id}`),
+                    document_type: 'invoice'
+                }
+            } else {
+                // Try Quote
+                console.log(`[SendEmail] Invoice not found. Trying Quote...`)
+                const { data: quote } = await supabase.from('quotes').select('*').eq('id', contextId).single()
+                if (quote) {
+                    console.log(`[SendEmail] Found Quote: ${quote.number}`)
+
+                    // Fix: Use 'total' instead of 'price' (which might be null/deprecated)
+                    const amount = quote.total || 0
+
+                    // Fix: Robust Link Generation
+                    // If client has portal access, send them there. Otherwise, public link.
+                    const linkUrl = portalToken
+                        ? getPortalUrl(`/portal/${portalToken}/quote/${quote.id}`)
+                        : getPortalUrl(`/quote/${quote.id}`)
+
+                    contextData = {
+                        ...contextData,
+                        number: quote.number,
+                        price: amount, // Keep for backward compat if template uses it
+                        formatted_amount: `$${amount.toLocaleString()}`,
+                        concept: quote.title,
+                        link_url: linkUrl,
+                        document_type: 'quote'
+                    }
+                } else {
+                    console.warn(`[SendEmail] Context ID ${contextId} not found in Invoices or Quotes.`)
                 }
             }
         }
-    } else if (templateKey === 'invoice_summary' && clientId) {
-        // Special Case: Account Summary
-        const { data: pendingInvoices } = await supabase
-            .from('invoices')
-            .select('id, total')
-            .eq('client_id', clientId)
-            .or('status.eq.pending,status.eq.overdue')
+        if ((normalizedKey === 'invoice_summary' || normalizedKey.includes('summary') || normalizedKey.includes('estado')) && clientId) {
+            console.log(`[SendEmail] Generating Invoice Summary...`)
+            // Special Case: Account Summary
+            const { data: pendingInvoices, error: invError } = await supabase
+                .from('invoices')
+                .select('id, total')
+                .eq('client_id', clientId)
+                .or('status.eq.pending,status.eq.overdue')
 
-        const count = pendingInvoices?.length || 0
-        const total = pendingInvoices?.reduce((sum, inv) => sum + inv.total, 0) || 0
+            if (invError) console.error('[SendEmail] Error fetching pending invoices:', invError)
 
-        contextData = {
-            ...contextData,
-            total_amount: `$${total.toLocaleString()}`,
-            count: count,
-            link_url: getPortalUrl(`/portal/${portalToken}/billing`),
-            document_type: 'summary'
+            const count = pendingInvoices?.length || 0
+            const total = pendingInvoices?.reduce((sum, inv) => sum + (inv.total || 0), 0) || 0
+
+            console.log(`[SendEmail] Summary Data - Count: ${count}, Total: ${total}`)
+
+            // Safety checks
+            const totalStr = !isNaN(total) ? `$${total.toLocaleString()}` : '$0';
+
+            // Ensure token exists or fallback safely
+            // If no token, we might point to login or home, but here we try our best.
+            const safeToken = portalToken || 'login'
+            const linkUrl = getPortalUrl(portalToken ? `/portal/${portalToken}?tab=billing` : `/login?email=${encodeURIComponent(recipient.email)}`)
+
+            contextData = {
+                ...contextData,
+                total_amount: totalStr,
+                count: count,
+                link_url: linkUrl,
+                document_type: 'summary'
+            }
         }
-    } else if (templateKey === 'portal_invite' && clientId) {
-        contextData = {
-            ...contextData,
-            link_url: getPortalUrl(`/portal/${portalToken}`),
-            document_type: 'portal_invite'
+        else if (normalizedKey === 'portal_invite' && clientId) {
+            console.log(`[SendEmail] Portal Invite.`)
+            const linkUrl = getPortalUrl(portalToken ? `/portal/${portalToken}` : `/login?email=${encodeURIComponent(recipient.email)}`)
+            contextData = {
+                ...contextData,
+                link_url: linkUrl,
+                document_type: 'portal_invite'
+            }
         }
+        else {
+            console.log(`[SendEmail] No specific context logic matched. Key: ${normalizedKey}`)
+        }
+    } catch (err) {
+        console.error("[SendEmail] Error loading context data:", err)
     }
 
     // 3. Prepare Template Variables
@@ -122,6 +167,8 @@ export async function sendTemplateEmail({ clientId, templateKey, contextId, cust
     console.log('Original Main:', brandingConfig.logos.main)
     console.log('Original Light:', brandingConfig.logos.main_light)
     console.log('Resolved Logo:', logoToUse)
+    console.log('Template Key:', templateKey)
+    console.log('Context Data:', JSON.stringify(contextData, null, 2))
     console.log('------------------------')
 
     const templateVars = {

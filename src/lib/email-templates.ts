@@ -234,7 +234,7 @@ export function getInvoiceSummaryEmailHtml(clientName: string, totalAmount: stri
     return getBaseHtml(`Estado de Cuenta`, content, branding, style)
 }
 
-export function getQuoteEmailHtml(clientName: string, quoteNumber: string, amount: string, date: string, branding: EmailBranding, style: EmailStyle = 'minimal'): string {
+export function getQuoteEmailHtml(clientName: string, quoteNumber: string, amount: string, date: string, linkUrl: string, branding: EmailBranding, style: EmailStyle = 'minimal'): string {
     const isSwiss = style === 'swiss';
     const isNeo = style === 'neo';
 
@@ -260,7 +260,7 @@ export function getQuoteEmailHtml(clientName: string, quoteNumber: string, amoun
         <p>Esta propuesta incluye el detalle completo de los servicios y condiciones. Quedamos atentos a tus comentarios.</p>
 
         <div style="margin-top: 32px; text-align: ${isSwiss ? 'left' : 'center'};">
-             <a href="{{link_url}}" style="${isSwiss ? 'background:#000; color:#fff; padding:16px 32px; text-decoration:none; font-weight:bold; display:inline-block;' : `background-color: ${branding.primary_color}; color: #ffffff; padding: 14px 28px; border-radius: ${isNeo ? '50px' : '6px'}; text-decoration: none; font-weight: 600; display: inline-block; box-shadow: ${isNeo ? '0 10px 20px -5px ' + branding.primary_color + '66' : '0 2px 4px rgba(0,0,0,0.1)'};`}">
+             <a href="${linkUrl}" style="${isSwiss ? 'background:#000; color:#fff; padding:16px 32px; text-decoration:none; font-weight:bold; display:inline-block;' : `background-color: ${branding.primary_color}; color: #ffffff; padding: 14px 28px; border-radius: ${isNeo ? '50px' : '6px'}; text-decoration: none; font-weight: 600; display: inline-block; box-shadow: ${isNeo ? '0 10px 20px -5px ' + branding.primary_color + '66' : '0 2px 4px rgba(0,0,0,0.1)'};`}">
                 Ver Propuesta Completa
             </a>
         </div>
