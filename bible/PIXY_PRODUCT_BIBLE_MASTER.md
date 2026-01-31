@@ -1,4 +1,4 @@
-# ðŸ“• PIXY PRODUCT BIBLE - MASTER EDITION
+ï»¿# ðŸ“• PIXY PRODUCT BIBLE - MASTER EDITION
 **Ecosistema Universal de GestiÃ³n Empresarial: EspecificaciÃ³n Completa y Definitiva**
 
 > **Fuente de Verdad Ãšnica**: Este documento fusiona todas las versiones previas de la documentaciÃ³n de Pixy sin omitir un solo detalle tÃ©cnico o funcional. Es la referencia absoluta para cualquier desarrollo, integraciÃ³n o decisiÃ³n estratÃ©gica del producto.
@@ -82,7 +82,9 @@ El White Label no es un simple interruptor, sino un sistema de **Branding Tiers*
 
 - **Basic (Heredado)**: Muestra la marca Pixy global (Logos, colores e isotipos predeterminados de la plataforma).
 - **Pro Branding**: Permite configurar `custom_logo` y `custom_colors` (paleta primaria/secundaria).
-- **Full Agency (Marca Blanca Total)**: 
+- **Full Agency (Marca Blanca Total)**:
+    - Activa emove_pixy_branding, eliminando watermarks en documentos PDF y referencias en el footer.
+    - **Branding Total (Upgrade Directo)**: Los clientes pueden adquirir el tier White Label pagando a Pixy vÃ­a Wompi (Checkout Directo). Activation automÃ¡tica vÃ­a webhook. 
     - Activa `remove_pixy_branding`, eliminando watermarks en documentos PDF y referencias en el footer de la UI.
     - El cliente final jamÃ¡s ve la marca Pixy.
 - **Enterprise**: 
@@ -202,7 +204,11 @@ El CAA se alimenta de dos fuentes de datos estructuradas:
 - **Respuestas Contextuales**: El usuario puede preguntar "Â¿CÃ³mo configuro WhatsApp?" y el asistente responde usando la base de conocimientos, sin que el usuario tenga que navegar por manuales.
 - **Modo Copiloto**: En ciertas vistas, el asistente puede sugerir acciones proactivas ("Tienes 3 facturas vencidas, Â¿quieres enviar recordatorios?").
 
-### E. Comunicaciones & Notificaciones
+### E. Comunicaciones & Notificaciones (Omnichannel & SMTP Overhaul)
+
+#### 1. Motores de EnvÃ­o
+- **Global**: Resend.
+- **Tenant-Specific (SMTP Overhaul)**: Cada organizaciÃ³n puede configurar sus propias credenciales SMTP (SendGrid, Resend, etc.) para correos transaccionales.
 
 Pixy gestiona mÃºltiples capas de comunicaciÃ³n tanto internas (notificaciones in-app) como externas (email, WhatsApp).
 
@@ -300,7 +306,13 @@ Pixy trabaja con tres arquetipos organizacionales que determinan capacidades, pe
 - **Capacidades**:
     - **Sub-account Provisioning**: Flujo automatizado para crear clientes finales e invitarlos por email con branding personalizado de la agencia.
     - **Usage Enforcement**: Control granular de lÃ­mites (`usage_limits`) por motor (Automation, Messaging, AI) para cada sub-cuenta.
-    - **Revenue Sharing**: Seguimiento automatizado de la cadena de adquisiciÃ³n y comisiones generadas por cada cliente (ver secciÃ³n de Revenue Sharing).
+    - **Revenue Sharing (V1 Architecture)**:
+- **CÃ¡lculo por Fases**:
+    - **Activation (Mes 0-6)**: 25% de comisiÃ³n. Incluye servicios base.
+    - **Retention (Mes 7-12)**: 15% de comisiÃ³n. Requiere log de actividad del reseller.
+    - **Stable (Mes 13+)**: 10% de comisiÃ³n vitalicia sobre add-ons.
+- **Billable Events**: Motor inmutable que registra transacciones y calcula comisiones automÃ¡ticamente.
+- **Stripe Connect**: LiquidaciÃ³n a cuentas Express de resellers previa aprobaciÃ³n administrativa. Seguimiento automatizado de la cadena de adquisiciÃ³n y comisiones generadas por cada cliente (ver secciÃ³n de Revenue Sharing).
     - **White Label**: Capacidad de aplicar su propia marca sobre Pixy para ofrecerlo como producto propio.
 
 #### 3. Client (Inquilino Final)
@@ -341,7 +353,13 @@ Pixy cuenta con dashboards especializados segÃºn el nivel de privilegios adminis
 - Vista de consumo en tiempo real de todos sus clientes.
 - Alertas cuando un cliente estÃ¡ cerca del lÃ­mite (para ofrecer upgrade proactivamente).
 
-**Revenue Sharing**:
+**Revenue Sharing (V1 Architecture)**:
+- **CÃ¡lculo por Fases**:
+    - **Activation (Mes 0-6)**: 25% de comisiÃ³n. Incluye servicios base.
+    - **Retention (Mes 7-12)**: 15% de comisiÃ³n. Requiere log de actividad del reseller.
+    - **Stable (Mes 13+)**: 10% de comisiÃ³n vitalicia sobre add-ons.
+- **Billable Events**: Motor inmutable que registra transacciones y calcula comisiones automÃ¡ticamente.
+- **Stripe Connect**: LiquidaciÃ³n a cuentas Express de resellers previa aprobaciÃ³n administrativa.
 - Dashboard de comisiones ganadas.
 - SegregaciÃ³n por fases (Activation, Retention, Stable).
 - Historial de liquidaciones pagadas vÃ­a Stripe Connect.
@@ -1679,45 +1697,64 @@ El modelo de "Capas y Spaces" garantiza que Pixy puede expandirse infinitamente 
 ## 11. Meta Validation Kit & Control Center (Fase 6)
 
 ### A. Meta Control Sheet (The Reviewer's Cockpit)
-Interfaz centralizada diseñada para controlar granularmente la integración con Meta, facilitando la auditoría y los screencasts de validación.
+Interfaz centralizada diseï¿½ada para controlar granularmente la integraciï¿½n con Meta, facilitando la auditorï¿½a y los screencasts de validaciï¿½n.
 
-**Ubicación**: /admin/meta-control (Acceso vía botón de cohete o menú de configuración)
+**Ubicaciï¿½n**: /admin/meta-control (Acceso vï¿½a botï¿½n de cohete o menï¿½ de configuraciï¿½n)
 
 #### 1. Tabs Funcionales
 - **Calling (P0)**:
-    - **Toggle de Activación**: Interruptor maestro que se comunica con la API real (POST /whatsapp_business_calling_settings).
-    - **Feedback Visual**: Confirma si la API de Meta respondió 'ENABLED' o 'DISABLED' en tiempo real.
-    - **Icon Visibility**: Control de permiso de visualización del ícono de llamada.
+    - **Toggle de Activaciï¿½n**: Interruptor maestro que se comunica con la API real (POST /whatsapp_business_calling_settings).
+    - **Feedback Visual**: Confirma si la API de Meta respondiï¿½ 'ENABLED' o 'DISABLED' en tiempo real.
+    - **Icon Visibility**: Control de permiso de visualizaciï¿½n del ï¿½cono de llamada.
 
 - **Flows (P0)**:
-    - **Gestión de Versiones**: Publicación directa de esquemas v5.0 a Meta Sandbox.
-    - **One-Click Publish**: Botón que envía el JSON del flow a /api/meta/flows para su validación inmediata.
+    - **Gestiï¿½n de Versiones**: Publicaciï¿½n directa de esquemas v5.0 a Meta Sandbox.
+    - **One-Click Publish**: Botï¿½n que envï¿½a el JSON del flow a /api/meta/flows para su validaciï¿½n inmediata.
 
 - **Review (Credentials)**:
-    - **Modo Seguro**: Visualización ofuscada de tokens y IDs en uso.
-    - **Copy-Paste**: Facilita la extracción de credenciales para debugging.
+    - **Modo Seguro**: Visualizaciï¿½n ofuscada de tokens y IDs en uso.
+    - **Copy-Paste**: Facilita la extracciï¿½n de credenciales para debugging.
 
 - **Infra & AI**:
-    - Visores de estado del sistema, métricas de latencia simuladas y configuración de modelos de IA (temperatura, modelo).
+    - Visores de estado del sistema, mï¿½tricas de latencia simuladas y configuraciï¿½n de modelos de IA (temperatura, modelo).
 
 ### B. Reviewer Mode & Wiring (Real Sandwich)
-Configuración especial para superar el Meta App Review sin tener acceso Tier 2 de producción.
+Configuraciï¿½n especial para superar el Meta App Review sin tener acceso Tier 2 de producciï¿½n.
 
 #### 1. Estrategia de 'Cableado Real'
-A diferencia de un mock total, Pixy conecta (wires) los controles críticos de la UI a endpoints reales de Meta Sandbox/Test Numbers.
+A diferencia de un mock total, Pixy conecta (wires) los controles crï¿½ticos de la UI a endpoints reales de Meta Sandbox/Test Numbers.
 
-- **Conector Extendido**: MetaConnector ahora soporta métodos nativos de WABA Management.
-- **API Routes**: /api/meta/calling y /api/meta/flows actúan como proxys seguros.
-- **Beneficio**: El revisor de Meta ve un cambio real en el cliente de WhatsApp (ícono aparece/desaparece) al interactuar con el dashboard de Pixy.
+- **Conector Extendido**: MetaConnector ahora soporta mï¿½todos nativos de WABA Management.
+- **API Routes**: /api/meta/calling y /api/meta/flows actï¿½an como proxys seguros.
+- **Beneficio**: El revisor de Meta ve un cambio real en el cliente de WhatsApp (ï¿½cono aparece/desaparece) al interactuar con el dashboard de Pixy.
 
 #### 2. Webhook 'Anti-Shadow'
-Endpoint oculto (/api/meta/webhook/subscribe) que fuerza la suscripción a eventos messages y calls para evitar que las notificaciones caigan en el limbo ('shadow delivery') durante las pruebas.
+Endpoint oculto (/api/meta/webhook/subscribe) que fuerza la suscripciï¿½n a eventos messages y calls para evitar que las notificaciones caigan en el limbo ('shadow delivery') durante las pruebas.
 
 ### C. Legal & Compliance Bundle
-Kit documental listo para despliegue público requerido por Meta.
+Kit documental listo para despliegue pï¿½blico requerido por Meta.
 
-1.  **Privacy Policy**: Cláusulas específicas sobre 'Zero Data Retention' y tratamiento de datos de usuarios de WhatsApp.
-2.  **Terms of Service**: Definición de uso aceptable de la IA.
-3.  **Data Deletion Instructions**: Guía paso a paso para que un usuario solicite el borrado de sus datos (requisito GDPR/CCPA).
-4.  **Reviewer Instructions**: Guía markdown con credenciales de prueba y pasos de reproducción para el auditor de Meta.
+1.  **Privacy Policy**: Clï¿½usulas especï¿½ficas sobre 'Zero Data Retention' y tratamiento de datos de usuarios de WhatsApp.
+2.  **Terms of Service**: Definiciï¿½n de uso aceptable de la IA.
+3.  **Data Deletion Instructions**: Guï¿½a paso a paso para que un usuario solicite el borrado de sus datos (requisito GDPR/CCPA).
+4.  **Reviewer Instructions**: Guï¿½a markdown con credenciales de prueba y pasos de reproducciï¿½n para el auditor de Meta.
 
+
+---
+
+## 12. SEGURIDAD Y MULTITENENCIA V2 (SIDEBAR & FILTROS)
+
+### A. LÃ³gica de NavegaciÃ³n Condicional
+El sistema utiliza ilterRoutesByModules para determinar quÃ© secciones ve cada usuario en funciÃ³n de:
+- **orgType**: (platform, reseller, client). Los clientes nunca ven herramientas de administraciÃ³n de red.
+- **userRole**: (owner, admin, member).
+- **ertical**: (agency, industries). Ajusta dinÃ¡micamente el vocabulario y mÃ³dulos operativos.
+
+### B. Aislamiento de Datos
+- **RLS (Row Level Security)**: Reforzado para asegurar que un 'Client' solo acceda a sus propios illable_events y configuraciones, incluso en flujos disparados por el sistema.
+
+## 13. GENERACIÃ“N DE DOCUMENTOS (CONTRACT ORCHESTRATION)
+
+### A. Contratos DinÃ¡micos
+- GeneraciÃ³n automatizada de contratos de servicio con almacenamiento seguro en Supabase Storage.
+- OrquestaciÃ³n de firma y validaciÃ³n de documentos.
