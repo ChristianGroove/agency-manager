@@ -15,6 +15,7 @@ import { IdentityTab } from "./identity-tab"
 import { PortalTab } from "./portal-tab"
 import { DocumentsTab } from "./documents-tab"
 import { DomainsTab } from "./domains-tab"
+import { DirectUpgradeButton } from "./direct-upgrade-button"
 
 interface BrandCenterProps {
     initialSettings: BrandingConfig
@@ -97,11 +98,11 @@ export function BrandCenter({ initialSettings, tierFeatures, variant = 'page' }:
                                             Portal Branding es una función Pro
                                         </CardTitle>
                                         <CardDescription className="text-yellow-700">
-                                            Actualiza a White Label para personalizar el portal.
+                                            Actualiza a Branding Total para personalizar el portal, colores y remover la marca de Pixy de tus documentos.
                                         </CardDescription>
                                     </CardHeader>
                                     <CardContent>
-                                        <Button className="bg-yellow-600 hover:bg-yellow-700 text-white">Desbloquear</Button>
+                                        <DirectUpgradeButton />
                                     </CardContent>
                                 </Card>
                             )}
@@ -121,7 +122,13 @@ export function BrandCenter({ initialSettings, tierFeatures, variant = 'page' }:
                                             <Lock className="h-5 w-5" />
                                             Dominios Personalizados es una función Pro
                                         </CardTitle>
+                                        <CardDescription className="text-yellow-700">
+                                            Utiliza tu propio dominio (ej: portal.tu-agencia.com) con el Tier de Branding Total.
+                                        </CardDescription>
                                     </CardHeader>
+                                    <CardContent>
+                                        <DirectUpgradeButton />
+                                    </CardContent>
                                 </Card>
                             )}
                         </TabsContent>

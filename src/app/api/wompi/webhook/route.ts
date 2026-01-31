@@ -95,6 +95,38 @@ export async function POST(request: Request) {
 
                 // 3. Update All Linked Invoices
                 const invoiceIds = paymentTx.invoice_ids
+
+                // --- NEW: DIRECT BRANDING UPGRADE LOGIC ---
+                if (paymentTx.metadata?.type === 'branding_upgrade' && paymentTx.organization_id) {
+                    console.log(`[Webhook] Processing Branding Upgrade for Org: ${paymentTx.organization_id}`)
+
+                    const { performBrandingUpgrade } = await import('@/modules/core/branding/tier-actions')
+                    const upgradeResult = await performBrandingUpgrade({
+                        organization_id: paymentTx.organization_id,
+                        new_tier_id: paymentTx.metadata.target_tier || 'whitelabel'
+                    })
+
+                    if (upgradeResult.success) {
+                        console.log(`[Webhook] ✅ Successfully upgraded Org ${paymentTx.organization_id} to White Label (Direct Payment)`)
+
+                        // Register Billable Event for Revenue/Commissions
+                        const { registerBillableEvent } = await import('@/modules/core/revenue/actions')
+                        await registerBillableEvent({
+                            organization_id: paymentTx.organization_id,
+                            event_type: 'addon',
+                            amount: paymentTx.amount_in_cents / 100,
+                            description: `Upgrade Directo: Branding Total (Ref: ${reference})`,
+                            currency: paymentTx.currency
+                        })
+                    } else {
+                        console.error(`[Webhook] ❌ Failed to upgrade branding:`, upgradeResult.error)
+                    }
+
+                    // After processing upgrade, we don't need to check for invoices
+                    return NextResponse.json({ success: true }, { status: 200 })
+                }
+                // ------------------------------------------
+
                 if (invoiceIds && Array.isArray(invoiceIds) && invoiceIds.length > 0) {
                     // ... (existing invoice update logic) ...
 

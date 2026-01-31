@@ -39,6 +39,14 @@ export interface ModuleRoute {
     isCore?: boolean
     category: ModuleCategory
     description?: string
+    access?: {
+        allowedRoles?: string[] // e.g. ['owner', 'admin']
+        excludedRoles?: string[]
+        allowedOrgTypes?: ('platform' | 'reseller' | 'client')[]
+        excludedOrgTypes?: ('platform' | 'reseller' | 'client')[]
+        allowedSpaces?: string[] // e.g. ['agency', 'medical']
+        excludedSpaces?: string[]
+    }
 }
 
 /**
@@ -53,7 +61,11 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         href: '/dashboard',
         icon: LayoutDashboard,
         isCore: true,
-        category: 'core'
+        category: 'core',
+        access: {
+            allowedRoles: ['owner', 'admin'],
+            excludedOrgTypes: ['client', 'reseller']
+        }
     },
 
     // --- CRM ECOSYSTEM (Individual Routes) ---
@@ -112,7 +124,10 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         href: '/crm/settings',
         icon: Settings,
         isCore: true,
-        category: 'crm'
+        category: 'crm',
+        access: {
+            allowedRoles: ['owner', 'admin']
+        }
     },
 
 
@@ -140,61 +155,90 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         label: 'Briefings',
         href: '/briefings',
         icon: Briefcase,
-        category: 'operations'
+        category: 'operations',
+        isCore: true
     },
     {
         key: 'module_catalog',
         label: 'Catálogo',
         href: '/portfolio',
         icon: Store,
-        category: 'operations'
+        category: 'operations',
+        isCore: true
     },
+    // HIDDEN FOR REGULAR USERS
     {
         key: 'module_contracts',
         label: 'Contratos',
         href: '/hosting',
         icon: FileText,
-        category: 'operations'
+        category: 'operations',
+        access: {
+            allowedRoles: ['owner', 'admin']
+        }
     },
+    // HIDDEN FOR REGULAR USERS
     {
         key: 'module_hosting',
         label: 'Hosting Web',
         href: '/platform/hosting-accounts',
         icon: Server,
-        category: 'operations'
+        category: 'operations',
+        access: {
+            allowedRoles: ['owner', 'admin']
+        }
     },
+    // EXCLUDED FROM AGENCY SPACE
     {
         key: 'module_cleaning',
         label: 'Limpieza (Ops)',
         href: '/cleaning',
         icon: Sparkles,
-        category: 'operations'
+        category: 'operations',
+        access: {
+            excludedSpaces: ['agency']
+        }
     },
+    // HIDDEN FOR REGULAR USERS
     {
         key: 'core_knowledge',
         label: 'Base de Conocimiento',
         href: '/platform/knowledge',
         icon: BrainCircuit,
         isCore: true,
-        category: 'config'
+        category: 'config',
+        access: {
+            allowedRoles: ['owner', 'admin'],
+            excludedOrgTypes: ['client', 'reseller']
+        }
     },
+    // HIDDEN FOR REGULAR USERS
     {
         key: 'core_integrations',
         label: 'Integraciones',
         href: '/platform/integrations',
         icon: Link2,
         isCore: true,
-        category: 'config'
+        category: 'config',
+        access: {
+            allowedRoles: ['owner', 'admin'],
+            excludedOrgTypes: ['client', 'reseller']
+        }
     },
 
     // --- HERRAMIENTAS ---
+    // HIDDEN FOR REGULAR USERS
     {
         key: 'module_contract_generator',
         label: 'Generador de Contratos',
         href: '/tools/contract-generator',
         icon: Sparkles, // Or custom icon
         category: 'tools',
-        isCore: true
+        isCore: true,
+        access: {
+            allowedRoles: ['owner', 'admin'],
+            excludedOrgTypes: ['client', 'reseller']
+        }
     },
 
     // --- FINANZAS ---
@@ -203,40 +247,62 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         label: 'Centro de Facturación',
         href: '/invoices',
         icon: FileText,
-        category: 'finance'
+        category: 'finance',
+        access: {
+            allowedRoles: ['owner', 'admin'],
+            excludedOrgTypes: ['client', 'reseller']
+        }
     },
     {
         key: 'module_payments',
         label: 'Pagos',
         href: '/payments',
         icon: CreditCard,
-        category: 'finance'
+        category: 'finance',
+        access: {
+            allowedRoles: ['owner', 'admin'],
+            excludedOrgTypes: ['client', 'reseller']
+        }
     },
 
     // --- CONFIGURACIÓN ---
+    // HIDDEN FOR REGULAR USERS
     {
         key: 'core_adn',
         label: 'ADN del Negocio',
         href: '/platform/identity',
         icon: ScanFace,
         isCore: true,
-        category: 'config'
+        category: 'config',
+        access: {
+            allowedRoles: ['owner', 'admin'],
+            excludedOrgTypes: ['client', 'reseller']
+        }
     },
+    // HIDDEN FOR REGULAR USERS
     {
         key: 'core_apps',
         label: 'Store',
         href: '/platform/apps',
         icon: Grid,
         isCore: true,
-        category: 'config'
+        category: 'config',
+        access: {
+            allowedRoles: ['owner', 'admin'],
+            excludedOrgTypes: ['client', 'reseller']
+        }
     },
+    // HIDDEN FOR REGULAR USERS
     {
         key: 'core_settings',
         label: 'Configuración',
         href: '/platform/settings',
         icon: Settings,
         isCore: true,
-        category: 'config'
+        category: 'config',
+        access: {
+            allowedRoles: ['owner', 'admin']
+        }
     },
     // --- RESELLER MANAGEMENT ---
     // Invisible for normal clients, visible for Resellers via sidebar logic
@@ -246,7 +312,10 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         href: '/platform/organizations',
         icon: Users, // Using Users icon
         category: 'core', // Put in core to appear at top
-        isCore: false // Not core for everyone, logic will handle visibility
+        isCore: false, // Not core for everyone, logic will handle visibility
+        access: {
+            excludedOrgTypes: ['client']
+        }
     }
 ]
 
@@ -271,11 +340,40 @@ export const CATEGORY_ICONS: Record<ModuleCategory, any> = {
 /**
  * Filter routes based on active modules
  */
-export function filterRoutesByModules(activeModules: string[]): ModuleRoute[] {
+export function filterRoutesByModules(
+    activeModules: string[],
+    userRole?: string | null,
+    orgType?: 'platform' | 'reseller' | 'client',
+    vertical?: string
+): ModuleRoute[] {
     return MODULE_ROUTES.filter(route => {
+        // 1. Access Control (Role & Org Type & Space)
+        if (route.access) {
+            // Check Org Type exclusion
+            if (orgType && route.access.excludedOrgTypes?.includes(orgType)) return false
+            // Check Org Type inclusion (strict)
+            if (orgType && route.access.allowedOrgTypes && !route.access.allowedOrgTypes.includes(orgType)) return false
+
+            // Check Space/Limit exclusion
+            if (vertical && route.access.excludedSpaces?.includes(vertical)) return false
+            if (vertical && route.access.allowedSpaces && !route.access.allowedSpaces.includes(vertical)) return false
+
+            // Check User Role (if userRole provided)
+            if (route.access.allowedRoles && userRole) {
+                if (!route.access.allowedRoles.includes(userRole)) return false
+            } else if (route.access.allowedRoles && !userRole) {
+                // If role required but unknown, hide it for safety
+                return false
+            }
+        }
+
+        // 2. Vertical-based "Auto-Core" logic
+        // If vertical is agency, show all operations (except limpieza)
+        if (vertical === 'agency' && route.category === 'operations' && route.key !== 'module_cleaning') return true
+
         if (route.isCore) return true
-        // If activeModules is empty/null, maybe default to showing everything? 
-        // Or respect the strict check. For now strict.
+
+        // 3. Module subscription
         return activeModules.includes(route.key)
     })
 }

@@ -128,11 +128,11 @@ function SidebarSection({
     )
 }
 
-export function SidebarContent({ isCollapsed = false, currentOrgId, isSuperAdmin = false, prefetchedModules }: { isCollapsed?: boolean, currentOrgId: string | null, isSuperAdmin?: boolean, prefetchedModules?: string[] }) {
+export function SidebarContent({ isCollapsed = false, currentOrgId, isSuperAdmin = false, prefetchedModules, user }: { isCollapsed?: boolean, currentOrgId: string | null, isSuperAdmin?: boolean, prefetchedModules?: string[], user?: any }) {
     const pathname = usePathname()
     const { t } = useTranslation()
     // PERF: Use prefetched modules if available, fall back to hook for client-side updates
-    const { modules: hookModules, isLoading: hookLoading, organizationType, vertical } = useActiveModules()
+    const { modules: hookModules, isLoading: hookLoading, organizationType, vertical, userRole } = useActiveModules()
 
     // Use prefetched data immediately, no loading state
     const modules = prefetchedModules && prefetchedModules.length > 0 ? prefetchedModules : hookModules
@@ -164,8 +164,10 @@ export function SidebarContent({ isCollapsed = false, currentOrgId, isSuperAdmin
         })
     }
 
-    // Filter routes based on active modules
-    const availableRoutes = filterRoutesByModules(modules)
+    // Filter routes based on active modules and access context
+    // Use role from hook (validated against org members) or fall back to user prop if needed
+    const effectiveRole = userRole || (user as any)?.role
+    const availableRoutes = filterRoutesByModules(modules, effectiveRole, organizationType, vertical)
 
     // INJECT RESELLER ROUTES
     if (organizationType === 'reseller' || organizationType === 'platform') {
@@ -295,6 +297,9 @@ import { useTheme } from "next-themes"
 
 export function Sidebar({ isCollapsed, toggleCollapse, currentOrgId, isSuperAdmin = false, user, prefetchedModules }: SidebarProps) {
     const { resolvedTheme } = useTheme()
+    // Fetch org type for floating actions visibility
+    const { organizationType } = useActiveModules()
+
     // PERF: Removed redundant branding fetch. Use CSS variable or default pink.
     const brandingColor = "242, 5, 226" // brand-pink RGB
 
@@ -365,10 +370,11 @@ export function Sidebar({ isCollapsed, toggleCollapse, currentOrgId, isSuperAdmi
                         isSuperAdmin={isSuperAdmin}
                         user={user}
                         currentOrgId={currentOrgId}
+                        organizationType={organizationType}
                     />
                 </div>
 
-                <SidebarContent isCollapsed={isCollapsed} currentOrgId={currentOrgId} isSuperAdmin={isSuperAdmin} prefetchedModules={prefetchedModules} />
+                <SidebarContent isCollapsed={isCollapsed} currentOrgId={currentOrgId} isSuperAdmin={isSuperAdmin} prefetchedModules={prefetchedModules} user={user} />
             </div>
         </TooltipProvider>
     )

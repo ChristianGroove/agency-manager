@@ -11,10 +11,14 @@ interface SidebarFloatingActionsProps {
     isSuperAdmin?: boolean
     user?: any
     currentOrgId: string | null
+    organizationType?: 'platform' | 'reseller' | 'client'
 }
 
-export function SidebarFloatingActions({ isSuperAdmin, user, currentOrgId }: SidebarFloatingActionsProps) {
+export function SidebarFloatingActions({ isSuperAdmin, user, currentOrgId, organizationType }: SidebarFloatingActionsProps) {
     const [isProfileOpen, setIsProfileOpen] = useState(false)
+
+    // Hide Org Switcher for Clients (they can't create or manage orgs)
+    const showOrgSwitcher = organizationType !== 'client'
 
     return (
         <div className="flex flex-col gap-3 items-end">
@@ -22,17 +26,19 @@ export function SidebarFloatingActions({ isSuperAdmin, user, currentOrgId }: Sid
 
             {/* Organization Switcher - Only show if Reseller/Admin or if multiple orgs exist (context switching) */}
             {/* Ideally we hide the 'Manage' intent but keep 'Switch'. But user asked to hide it if client can't do anything. */}
-            <div className="relative">
-                <OrganizationSwitcher
-                    trigger={
-                        <ActionButton
-                            icon={Building2}
-                            text="Organizaciones"
-                            color="var(--primary)" // Brand Color
-                        />
-                    }
-                />
-            </div>
+            {showOrgSwitcher && (
+                <div className="relative">
+                    <OrganizationSwitcher
+                        trigger={
+                            <ActionButton
+                                icon={Building2}
+                                text="Organizaciones"
+                                color="var(--primary)" // Brand Color
+                            />
+                        }
+                    />
+                </div>
+            )}
 
             {/* Notifications */}
             <div className="relative">

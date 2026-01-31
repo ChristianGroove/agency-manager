@@ -134,14 +134,13 @@ export async function getOrganizationAddOns(
 // ============================================
 
 /**
- * Super Admin: Upgrade organization's branding tier
+ * Internal: The actual upgrade logic without RBAC check.
+ * Used by super admin actions AND system webhooks.
  */
-export async function upgradeBrandingTier(input: {
+export async function performBrandingUpgrade(input: {
     organization_id: string
     new_tier_id: string
 }) {
-    await requireSuperAdmin()
-
     try {
         // Validate tier exists
         const { data: tier } = await supabaseAdmin
@@ -175,6 +174,7 @@ export async function upgradeBrandingTier(input: {
 
         revalidatePath(`/platform/admin/organizations/${input.organization_id}`)
         revalidatePath('/platform/admin/branding')
+        revalidatePath('/platform/settings')
 
         return {
             success: true,
@@ -182,12 +182,23 @@ export async function upgradeBrandingTier(input: {
         }
 
     } catch (error: any) {
-        console.error('Error in upgradeBrandingTier:', error)
+        console.error('Error in performBrandingUpgrade:', error)
         return {
             success: false,
             error: error.message || 'Failed to upgrade tier'
         }
     }
+}
+
+/**
+ * Super Admin: Upgrade organization's branding tier
+ */
+export async function upgradeBrandingTier(input: {
+    organization_id: string
+    new_tier_id: string
+}) {
+    await requireSuperAdmin()
+    return performBrandingUpgrade(input)
 }
 
 /**

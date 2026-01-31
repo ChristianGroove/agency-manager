@@ -131,6 +131,7 @@ export async function upsertRevenueShareRule(rule: Partial<RevenueShareRule> & {
 /**
  * Registrar un evento facturable
  * Esta función captura la cadena de reseller automáticamente
+ * Usa supabaseAdmin para permitir que el sistema registre eventos sin sesión de usuario (ej: webhooks)
  */
 export async function registerBillableEvent(params: {
     organization_id: string
@@ -141,7 +142,8 @@ export async function registerBillableEvent(params: {
     invoice_id?: string
     stripe_payment_intent_id?: string
 }): Promise<{ success: boolean; error?: string; event_id?: string }> {
-    const supabase = await createClient()
+    const { supabaseAdmin } = await import("@/lib/supabase-admin")
+    const supabase = supabaseAdmin
 
     // 1. Obtener info del cliente para calcular cadena y antigüedad
     const { data: org, error: orgError } = await supabase
