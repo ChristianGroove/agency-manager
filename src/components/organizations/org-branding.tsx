@@ -17,17 +17,16 @@ export function OrgBranding({ orgId, collapsed = false }: { orgId: string | null
     useEffect(() => {
         setMounted(true)
 
-        // If we have cached data, don't re-fetch unless force refresh needed
-        if (brandingCache.has(orgId || 'platform')) {
-            setBranding(brandingCache.get(orgId || 'platform'))
-            setLoading(false)
-            return
-        }
+        const fetchBranding = async (force = false) => {
+            // Check cache unless forced
+            if (!force && brandingCache.has(orgId || 'platform')) {
+                setBranding(brandingCache.get(orgId || 'platform'))
+                setLoading(false)
+                return
+            }
 
-        const fetchBranding = async () => {
             setLoading(true)
             try {
-                // If orgId is null, it returns Platform branding automatically
                 const data = await getEffectiveBranding(orgId)
                 brandingCache.set(orgId || 'platform', data)
                 setBranding(data)
@@ -39,6 +38,15 @@ export function OrgBranding({ orgId, collapsed = false }: { orgId: string | null
         }
 
         fetchBranding()
+
+        // Listener for updates
+        const handleUpdate = () => {
+            brandingCache.delete(orgId || 'platform')
+            fetchBranding(true)
+        }
+
+        window.addEventListener('branding-updated', handleUpdate)
+        return () => window.removeEventListener('branding-updated', handleUpdate)
     }, [orgId])
 
     if (loading) {

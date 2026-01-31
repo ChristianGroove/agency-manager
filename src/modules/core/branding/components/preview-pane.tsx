@@ -37,8 +37,12 @@ export function PreviewPane({ settings, mode = 'dashboard' }: PreviewPaneProps) 
             >
                 <div className="w-full max-w-[320px] bg-white rounded-xl shadow-2xl p-6 space-y-6 animate-in zoom-in-95 duration-300">
                     <div className="flex justify-center">
-                        {settings.logos.main ? (
-                            <img src={settings.logos.main} alt="Logo" className="h-8 object-contain" />
+                        {settings.logos.main_light || settings.logos.main ? (
+                            <img
+                                src={settings.logos.main_light || settings.logos.main || ''}
+                                alt="Logo"
+                                className="h-8 object-contain"
+                            />
                         ) : (
                             <div className="h-8 w-24 bg-gray-200 rounded animate-pulse" />
                         )}
@@ -76,8 +80,12 @@ export function PreviewPane({ settings, mode = 'dashboard' }: PreviewPaneProps) 
             {/* Sidebar Mock */}
             <div className="w-1/4 bg-white border-r flex flex-col p-4">
                 <div className="mb-6">
-                    {settings.logos.main ? (
-                        <img src={settings.logos.main} alt="Logo" className="h-5 object-contain" />
+                    {settings.logos.main_light || settings.logos.main ? (
+                        <img
+                            src={settings.logos.main_light || settings.logos.main || ''}
+                            alt="Logo"
+                            className="h-5 object-contain"
+                        />
                     ) : (
                         <div className="h-5 w-16 bg-gray-200 rounded animate-pulse" />
                     )}

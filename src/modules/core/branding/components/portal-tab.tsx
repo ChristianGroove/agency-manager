@@ -15,6 +15,7 @@ import { SocialPreview } from "./social-preview"
 interface PortalTabProps {
     settings: BrandingConfig
     onChange: (newSettings: BrandingConfig) => void
+    tierFeatures?: any
 }
 
 const FONTS = [
@@ -56,7 +57,7 @@ export function PortalTab({ settings, onChange }: PortalTabProps) {
                         <CardDescription>Colores y fuentes usadas en el Portal de Clientes.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div className="space-y-2">
                                 <Label>Color Primario</Label>
                                 <div className="flex gap-2">
@@ -64,12 +65,12 @@ export function PortalTab({ settings, onChange }: PortalTabProps) {
                                         type="color"
                                         value={settings.colors?.primary || '#000000'}
                                         onChange={(e) => onChange({ ...settings, colors: { ...settings.colors, primary: e.target.value } })}
-                                        className="w-12 h-10 p-1"
+                                        className="w-10 h-9 p-1 shrink-0"
                                     />
                                     <Input
                                         value={settings.colors?.primary || ''}
                                         onChange={(e) => onChange({ ...settings, colors: { ...settings.colors, primary: e.target.value } })}
-                                        className="uppercase"
+                                        className="uppercase h-9 font-mono text-xs"
                                     />
                                 </div>
                             </div>
@@ -80,34 +81,33 @@ export function PortalTab({ settings, onChange }: PortalTabProps) {
                                         type="color"
                                         value={settings.colors?.secondary || '#000000'}
                                         onChange={(e) => onChange({ ...settings, colors: { ...settings.colors, secondary: e.target.value } })}
-                                        className="w-12 h-10 p-1"
+                                        className="w-10 h-9 p-1 shrink-0"
                                     />
                                     <Input
                                         value={settings.colors?.secondary || ''}
                                         onChange={(e) => onChange({ ...settings, colors: { ...settings.colors, secondary: e.target.value } })}
-                                        className="uppercase"
+                                        className="uppercase h-9 font-mono text-xs"
                                     />
                                 </div>
                             </div>
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label>Fuente</Label>
-                            <Select
-                                value={settings.font_family || FONTS[0].value}
-                                onValueChange={(val) => onChange({ ...settings, font_family: val })}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Seleccionar fuente" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {FONTS.map(f => (
-                                        <SelectItem key={f.value} value={f.value}>
-                                            <span style={{ fontFamily: f.value }}>{f.label}</span>
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <div className="space-y-2">
+                                <Label>Fuente</Label>
+                                <Select
+                                    value={settings.font_family || FONTS[0].value}
+                                    onValueChange={(val) => onChange({ ...settings, font_family: val })}
+                                >
+                                    <SelectTrigger className="h-9">
+                                        <SelectValue placeholder="Seleccionar fuente" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {FONTS.map(f => (
+                                            <SelectItem key={f.value} value={f.value}>
+                                                <span style={{ fontFamily: f.value }}>{f.label}</span>
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         </div>
                     </CardContent>
                 </Card>

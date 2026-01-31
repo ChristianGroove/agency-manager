@@ -2,6 +2,10 @@
 
 import { createClient } from "@/lib/supabase-server"
 import { supabaseAdmin } from "@/lib/supabase-admin"
+
+function debugLog(step: string, data: any) {
+    console.log(`[BRANDING_DEBUG] ${step}:`, JSON.stringify(data, null, 2))
+}
 import { revalidatePath } from "next/cache"
 // import { getActiveModules } from "@/modules/core/saas/actions"
 import { requireOrgRole } from "@/lib/auth/org-roles"
@@ -137,28 +141,7 @@ export async function getEffectiveBranding(orgId?: string | null): Promise<Brand
             .single(),
         supabaseAdmin
             .from("organization_settings")
-            .select(`
-                agency_name,
-                agency_website,
-                main_logo_url,
-                main_logo_light_url,
-                portal_logo_url,
-                isotipo_url,
-                portal_primary_color,
-                portal_secondary_color,
-                portal_login_background_url,
-                brand_font_family,
-                portal_login_background_color,
-                social_facebook,
-                social_instagram,
-                social_twitter,
-                social_linkedin,
-                social_youtube,
-                custom_domain,
-                invoice_footer,
-                document_logo_size,
-                document_show_watermark
-            `)
+            .select("*")
             .eq("organization_id", orgId)
             .single()
     ])
@@ -167,10 +150,17 @@ export async function getEffectiveBranding(orgId?: string | null): Promise<Brand
     const { data: tenantSettings } = tenantSettingsResult
 
     // Get tier features - default to basic (all false) if no tier
+    // Get tier features - default to basic (all false) if no tier
+    // FIX: Relaxed check for boolean or string "true", and fallback for White Label permissions if DB join fails (Safety)
     const tierFeatures = (org?.branding_tier as any)?.features || {}
-    const canCustomizeLogo = tierFeatures.custom_logo === true
-    const canCustomizeColors = tierFeatures.custom_colors === true
-    const canRemoveBranding = tierFeatures.remove_pixy_branding === true
+
+    // Safety Force: If ID implies premium tier but features missing (join fail), unlock capabilities
+    const tierId = org?.branding_tier_id || ''
+    const isPremiumTier = tierId.includes('whitelabel') || tierId.includes('custom')
+
+    const canCustomizeLogo = !!tierFeatures.custom_logo || (isPremiumTier && tierId.includes('whitelabel')) || (isPremiumTier && tierId.includes('custom'))
+    const canCustomizeColors = !!tierFeatures.custom_colors || (isPremiumTier && tierId.includes('whitelabel')) || (isPremiumTier && tierId.includes('custom'))
+    const canRemoveBranding = !!tierFeatures.remove_pixy_branding || (isPremiumTier && tierId.includes('whitelabel'))
 
     if (!tenantSettings) return platformBranding
 
@@ -193,12 +183,18 @@ export async function getEffectiveBranding(orgId?: string | null): Promise<Brand
             secondary: pickColor(tenantSettings.portal_secondary_color, platformBranding.colors.secondary)
         },
         website: pickGeneral(tenantSettings.agency_website, platformBranding.website),
+        email: tenantSettings.agency_email,
+        phone: tenantSettings.agency_phone,
+        address: tenantSettings.agency_address,
         font_family: pickGeneral(tenantSettings.brand_font_family, platformBranding.font_family),
         login_bg_color: pickColor(tenantSettings.portal_login_background_color, platformBranding.login_bg_color),
         custom_domain: tenantSettings.custom_domain || null,
         invoice_footer: tenantSettings.invoice_footer || null,
         document_logo_size: tenantSettings.document_logo_size || 'medium',
         document_show_watermark: tenantSettings.document_show_watermark ?? true,
+        document_header_text_color: tenantSettings.document_header_text_color,
+        document_footer_text_color: tenantSettings.document_footer_text_color,
+        document_font_family: tenantSettings.document_font_family,
 
         socials: {
             facebook: pickGeneral(tenantSettings.social_facebook, platformBranding.socials.facebook),
@@ -206,7 +202,16 @@ export async function getEffectiveBranding(orgId?: string | null): Promise<Brand
             twitter: pickGeneral(tenantSettings.social_twitter, platformBranding.socials.twitter),
             linkedin: pickGeneral(tenantSettings.social_linkedin, platformBranding.socials.linkedin),
             youtube: pickGeneral(tenantSettings.social_youtube, platformBranding.socials.youtube),
-        }
+        },
+
+        // Operations
+        country: tenantSettings.agency_country,
+        currency: tenantSettings.agency_currency,
+        timezone: tenantSettings.agency_timezone,
+        language: tenantSettings.default_language,
+        portal_language: tenantSettings.portal_language,
+        date_format: tenantSettings.date_format,
+        currency_format: tenantSettings.currency_format
     }
 }
 
@@ -249,7 +254,9 @@ export async function uploadBrandingAsset(formData: FormData) {
 
     // 3. Upload to Storage
     const fileExt = file.name.split(".").pop()
-    const fileName = `${user.id}/${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${fileExt}`
+    // Use Organization ID for isolation if available, otherwise User ID (e.g. for Platform Admins)
+    const storagePrefix = orgId || user.id
+    const fileName = `${storagePrefix}/${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${fileExt}`
 
     // Ensure bucket exists or handle error (Assuming 'branding' bucket is public)
     const { error: uploadError } = await supabase.storage
@@ -304,6 +311,9 @@ export async function updateOrganizationBranding(settings: BrandingConfig) {
         // Identity
         agency_name: settings.name,
         agency_website: settings.website,
+        agency_email: settings.email,
+        agency_phone: settings.phone,
+        agency_address: settings.address,
         main_logo_url: settings.logos.main,
         main_logo_light_url: settings.logos.main_light,
         portal_logo_url: settings.logos.portal,
@@ -328,6 +338,18 @@ export async function updateOrganizationBranding(settings: BrandingConfig) {
         invoice_footer: settings.invoice_footer,
         document_logo_size: settings.document_logo_size,
         document_show_watermark: settings.document_show_watermark,
+        document_header_text_color: settings.document_header_text_color,
+        document_footer_text_color: settings.document_footer_text_color,
+        document_font_family: settings.document_font_family,
+
+        // Operations
+        agency_country: settings.country,
+        agency_currency: settings.currency,
+        agency_timezone: settings.timezone,
+        default_language: settings.language,
+        portal_language: settings.portal_language,
+        date_format: settings.date_format,
+        currency_format: settings.currency_format,
     }
 
     // Remove undefined values to avoid overwriting with null if we want partial updates?
@@ -336,15 +358,42 @@ export async function updateOrganizationBranding(settings: BrandingConfig) {
     // Let's clean payload.
     Object.keys(payload).forEach(key => payload[key] === undefined && delete payload[key])
 
-    const { error } = await supabase
-        .from("organization_settings")
-        .upsert(payload, { onConflict: "organization_id" })
+    debugLog('Saving Branding Payload', payload)
 
-    if (error) {
-        throw new Error("Failed to save branding: " + error.message)
+    // SELF-HEALING: Check for existing settings (including duplicates)
+    const { data: existingSettings } = await supabaseAdmin
+        .from("organization_settings")
+        .select("id")
+        .eq("organization_id", orgId)
+        .order('updated_at', { ascending: false }) // Newest first
+
+    if (existingSettings && existingSettings.length > 0) {
+        // We have at least one. If multiple, delete the older ones!
+        const [primary, ...duplicates] = existingSettings
+
+        if (duplicates.length > 0) {
+            console.warn(`[BRANDING_FIX] Found duplicates for org ${orgId}. Deleting ${duplicates.length} extra rows.`)
+            await supabaseAdmin.from("organization_settings").delete().in('id', duplicates.map(d => d.id))
+        }
+
+        // Update the primary one
+        const { error } = await supabaseAdmin
+            .from("organization_settings")
+            .update({ ...payload, updated_at: new Date().toISOString() })
+            .eq('id', primary.id)
+
+        if (error) throw new Error("Failed to update branding: " + error.message)
+    } else {
+        // Create new
+        const { error } = await supabaseAdmin
+            .from("organization_settings")
+            .insert(payload)
+
+        if (error) throw new Error("Failed to create branding: " + error.message)
     }
 
     revalidatePath("/platform/settings/branding")
     revalidatePath("/platform/settings")
+    revalidatePath("/platform/identity") // FIX: Ensure this specific route is revalidated
     return { success: true }
 }

@@ -52,7 +52,8 @@ export async function getPortalData(token: string) {
             const settings = {
                 ...(rawSettings || {}),
                 agency_name: branding.name,
-                portal_logo_url: branding.logos.portal,
+                // Fix: Prefer Secondary (Light) logo for Portal (White Sidebar), then Main, then specific Portal logo
+                portal_logo_url: branding.logos.main_light || branding.logos.main || branding.logos.portal,
                 isotipo_url: branding.logos.favicon,
                 portal_login_background_url: branding.logos.login_bg,
                 // Map colors if used by portal (portal-layout.tsx might use inline styles or css vars, checking...)

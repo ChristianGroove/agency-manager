@@ -393,25 +393,14 @@ export function SettingsForm({
                             <div className="space-y-4">
                                 <div className="flex items-center justify-between">
                                     <h3 className="text-lg font-medium">{t('settings.general.brand_identity')}</h3>
-                                    {userRole !== 'member' && (
-                                        <Button
-                                            variant="outline"
-                                            className="border-blue-200 text-blue-700 hover:bg-blue-100"
-                                            onClick={() => setShowBrandCenter(true)}
-                                        >
-                                            {t('settings.general.open_brand_center')}
-                                        </Button>
-                                    )}
+                                    {/* Brand Center button removed - Data consolidated in ADN */}
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <Label className="text-muted-foreground">{t('settings.general.agency_name')}</Label>
                                         <Input value={formData.agency_name || ''} disabled className="bg-muted" />
                                     </div>
-                                    <div className="space-y-2">
-                                        <Label className="text-muted-foreground">{t('settings.general.website')}</Label>
-                                        <Input value={formData.agency_website || ''} disabled className="bg-muted" />
-                                    </div>
+                                    {/* Website moved to ADN */}
                                 </div>
                                 <p className="text-xs text-muted-foreground bg-blue-50/50 dark:bg-blue-500/10 p-2 rounded border border-blue-100/50 dark:border-blue-500/20">
                                     <Building2 className="inline h-3 w-3 mr-1 text-blue-600 dark:text-blue-400" />
@@ -421,108 +410,13 @@ export function SettingsForm({
 
                             <div className="h-px bg-border my-2" />
 
-                            {/* Contact Info */}
-                            <div className="space-y-4">
-                                <h3 className="text-lg font-medium">{t('settings.general.contact_info')}</h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="agency_email">{t('settings.general.admin_email')}</Label>
-                                        <Input id="agency_email" name="agency_email" value={formData.agency_email || ''} onChange={handleChange} placeholder="contacto@tuempresa.com" />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="agency_phone">{t('settings.general.phone')}</Label>
-                                        <Input id="agency_phone" name="agency_phone" value={formData.agency_phone || ''} onChange={handleChange} placeholder="+57 300 123 4567" />
-                                    </div>
-                                </div>
-                            </div>
+                            {/* Contact Info moved to Project ADN */}
+
+                            {/* Regional Settings moved to Project ADN (Operations) */}
 
                             <div className="h-px bg-border my-2" />
 
-                            {/* Regional Settings */}
-                            <div className="space-y-4">
-                                <h3 className="text-lg font-medium">{t('settings.general.regional_settings')}</h3>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="agency_country">{t('settings.general.country')}</Label>
-                                        <Input id="agency_country" name="agency_country" value={formData.agency_country || ''} onChange={handleChange} />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="agency_currency">{t('settings.general.currency')}</Label>
-                                        <Select name="agency_currency" value={formData.agency_currency || 'COP'} onValueChange={(val) => handleSelectChange('agency_currency', val)}>
-                                            <SelectTrigger suppressHydrationWarning>
-                                                <SelectValue placeholder="Seleccionar" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="COP">COP (Peso Colombiano)</SelectItem>
-                                                <SelectItem value="USD">USD (Dólar Americano)</SelectItem>
-                                                <SelectItem value="EUR">EUR (Euro)</SelectItem>
-                                                <SelectItem value="MXN">MXN (Peso Mexicano)</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="agency_timezone">{t('settings.general.timezone')}</Label>
-                                        <Input id="agency_timezone" name="agency_timezone" value={formData.agency_timezone || ''} onChange={handleChange} />
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="h-px bg-border my-2" />
-
-                            <h3 className="text-lg font-medium">{t('settings.general.system_preferences')}</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="default_language">{t('settings.general.app_language')}</Label>
-                                    <Select name="default_language" value={formData.default_language || 'es'} onValueChange={(val) => handleSelectChange('default_language', val)}>
-                                        <SelectTrigger suppressHydrationWarning>
-                                            <SelectValue placeholder="Seleccionar" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="es">Español</SelectItem>
-                                            <SelectItem value="en">English</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="portal_language">{t('settings.general.portal_language')}</Label>
-                                    <Select name="portal_language" value={formData.portal_language || 'es'} onValueChange={(val) => handleSelectChange('portal_language', val)}>
-                                        <SelectTrigger suppressHydrationWarning>
-                                            <SelectValue placeholder="Seleccionar" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="es">Español</SelectItem>
-                                            <SelectItem value="en">English</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="date_format">{t('settings.general.date_format')}</Label>
-                                    <Select name="date_format" value={formData.date_format || 'DD/MM/YYYY'} onValueChange={(val) => handleSelectChange('date_format', val)}>
-                                        <SelectTrigger suppressHydrationWarning>
-                                            <SelectValue placeholder="Seleccionar" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="DD/MM/YYYY">DD/MM/YYYY (31/12/2024)</SelectItem>
-                                            <SelectItem value="MM/DD/YYYY">MM/DD/YYYY (12/31/2024)</SelectItem>
-                                            <SelectItem value="YYYY-MM-DD">YYYY-MM-DD (2024-12-31)</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="currency_format">{t('settings.general.currency_format')}</Label>
-                                    <Select name="currency_format" value={formData.currency_format || 'es-CO'} onValueChange={(val) => handleSelectChange('currency_format', val)}>
-                                        <SelectTrigger suppressHydrationWarning>
-                                            <SelectValue placeholder="Seleccionar" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="es-CO">Colombia ($ 1.000.000)</SelectItem>
-                                            <SelectItem value="en-US">USA ($1,000,000.00)</SelectItem>
-                                            <SelectItem value="es-MX">México ($ 1,000,000.00)</SelectItem>
-                                            <SelectItem value="de-DE">Europa (1.000.000,00 €)</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
+                            {/* System Preferences moved to Project ADN (Operations) */}
                             <div className="space-y-2">
                                 <Label htmlFor="legal_text">{t('settings.general.legal_text')}</Label>
                                 <Textarea

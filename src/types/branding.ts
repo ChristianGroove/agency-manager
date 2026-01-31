@@ -22,6 +22,14 @@ export interface BrandingConfig {
     // Document Specifics
     document_logo_size?: 'small' | 'medium' | 'large'
     document_show_watermark?: boolean
+    document_header_text_color?: string | null
+    document_footer_text_color?: string | null
+    document_font_family?: string | null
+
+    // Contact Information (New for ADN)
+    email?: string | null
+    phone?: string | null
+    address?: string | null
 
     socials: {
         facebook?: string
@@ -30,4 +38,13 @@ export interface BrandingConfig {
         linkedin?: string
         youtube?: string
     }
+
+    // Operations (Regional & System) - ADN Phase 2
+    country?: string | null
+    currency?: string | null
+    timezone?: string | null
+    language?: string | null // App language
+    portal_language?: string | null
+    date_format?: string | null
+    currency_format?: string | null
 }

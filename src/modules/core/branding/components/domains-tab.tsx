@@ -10,14 +10,31 @@ import { Globe, ShieldCheck, AlertTriangle } from "lucide-react"
 interface DomainsTabProps {
     settings: BrandingConfig
     onChange: (newSettings: BrandingConfig) => void
+    tierFeatures?: any
 }
 
-export function DomainsTab({ settings, onChange }: DomainsTabProps) {
+export function DomainsTab({ settings, onChange, tierFeatures }: DomainsTabProps) {
     const hasDomain = !!settings.custom_domain
+    const isLocked = tierFeatures?.custom_domain !== true
 
     return (
         <div className="max-w-3xl space-y-6">
-            <Card>
+            <Card className="relative overflow-hidden">
+                {isLocked && (
+                    <div className="absolute inset-0 bg-white/50 dark:bg-black/50 backdrop-blur-sm z-10 flex items-center justify-center">
+                        <div className="bg-white dark:bg-zinc-900 p-6 rounded-xl shadow-xl border text-center max-w-sm">
+                            <ShieldCheck className="w-10 h-10 text-indigo-500 mx-auto mb-3" />
+                            <h3 className="font-bold text-lg mb-1">Función Premium</h3>
+                            <p className="text-sm text-muted-foreground mb-4">
+                                El dominio personalizado está disponible exclusivamente en planes White Label.
+                            </p>
+                            <Button className="w-full bg-gradient-to-r from-indigo-500 to-pink-500 text-white border-0">
+                                Mejorar Plan
+                            </Button>
+                        </div>
+                    </div>
+                )}
+
                 <CardHeader>
                     <CardTitle>Dominio Personalizado</CardTitle>
                     <CardDescription>
@@ -33,8 +50,9 @@ export function DomainsTab({ settings, onChange }: DomainsTabProps) {
                                 placeholder="portal.miagencia.com"
                                 value={settings.custom_domain || ''}
                                 onChange={(e) => onChange({ ...settings, custom_domain: e.target.value })}
+                                disabled={isLocked}
                             />
-                            {hasDomain && (
+                            {hasDomain && !isLocked && (
                                 <Button variant="outline" className="border-yellow-500 text-yellow-600 bg-yellow-50">
                                     Verificación Pendiente
                                 </Button>
@@ -45,7 +63,7 @@ export function DomainsTab({ settings, onChange }: DomainsTabProps) {
                         </p>
                     </div>
 
-                    {hasDomain && (
+                    {hasDomain && !isLocked && (
                         <div className="bg-gray-50 rounded-lg p-4 space-y-4 border">
                             <h4 className="font-semibold text-sm">Configuración DNS</h4>
                             <p className="text-sm text-gray-500">
@@ -63,7 +81,7 @@ export function DomainsTab({ settings, onChange }: DomainsTabProps) {
                                 </div>
                                 <div className="p-3 bg-white border rounded md:col-span-2">
                                     <span className="block font-medium mb-1">Valor / Destino</span>
-                                    <code className="bg-gray-100 px-2 py-0.5 rounded w-full block mt-1">cname.pixy.com.co</code>
+                                    <code className="bg-gray-100 px-2 py-0.5 rounded w-full block mt-1">portal.pixy.com.co</code>
                                 </div>
                             </div>
 

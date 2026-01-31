@@ -25,7 +25,8 @@ import {
     Inbox,
     UserSquare,
     BrainCircuit,
-    BarChart3
+    BarChart3,
+    ScanFace
 } from 'lucide-react'
 
 export type ModuleCategory = 'core' | 'crm' | 'operations' | 'tools' | 'finance' | 'config';
@@ -213,6 +214,14 @@ export const MODULE_ROUTES: ModuleRoute[] = [
     },
 
     // --- CONFIGURACIÓN ---
+    {
+        key: 'core_adn',
+        label: 'ADN del Negocio',
+        href: '/platform/identity',
+        icon: ScanFace,
+        isCore: true,
+        category: 'config'
+    },
     {
         key: 'core_apps',
         label: 'Store',

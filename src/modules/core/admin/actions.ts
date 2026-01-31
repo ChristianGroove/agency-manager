@@ -420,3 +420,57 @@ export async function syncClientSocialMetrics(clientId: string) {
         return { success: false, error: e.message || "Error de sincronización con Meta" }
     }
 }
+
+export async function getBrandingTiers() {
+    await requireSuperAdmin()
+    const { data, error } = await supabaseAdmin
+        .from('branding_tiers')
+        .select('*')
+        .eq('is_active', true)
+        .order('sort_order')
+
+    if (error) return []
+    return data
+}
+
+export async function updateOrganizationTier(orgId: string, tierId: string) {
+    await requireSuperAdmin()
+
+    // 1. Verify Tier Exists
+    const { data: tier, error: tierError } = await supabaseAdmin
+        .from('branding_tiers')
+        .select('*')
+        .eq('id', tierId)
+        .single()
+
+    if (tierError || !tier) {
+        throw new Error("Tier inválido o no encontrado")
+    }
+
+    // 2. Direct Update
+    const { error } = await supabaseAdmin
+        .from('organizations')
+        .update({
+            branding_tier_id: tierId,
+            branding_tier_activated_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        })
+        .eq('id', orgId)
+
+    if (error) throw error
+
+    // 3. Upsert Add-on Subscription
+    await supabaseAdmin
+        .from('organization_add_ons')
+        .upsert({
+            organization_id: orgId,
+            add_on_type: 'branding',
+            tier_id: tierId,
+            status: 'active',
+            price_monthly: tier.price_monthly,
+            updated_at: new Date().toISOString()
+        }, { onConflict: 'organization_id, add_on_type' })
+
+    revalidatePath(`/platform/admin/organizations/${orgId}`)
+    return { success: true }
+}

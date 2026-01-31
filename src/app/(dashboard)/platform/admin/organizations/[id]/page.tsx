@@ -1,33 +1,29 @@
 import { Suspense } from "react"
 import { notFound } from "next/navigation"
-import { getOrganizationDetails, getOrganizationUsers } from '@/modules/core/admin/actions'
-import { getAllSystemModules } from "@/modules/core/admin/actions"
-import { AdminOrgHeader } from "./_components/org-header"
-import { AdminOrgUsers } from "./_components/org-users"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { OrgSmartModulesView } from "../_components/org-smart-modules-view"
+import { Activity, Box, Sparkles, ShieldCheck } from "lucide-react"
+import { AdminOrgHeader } from "./_components/org-header"
+import { AdminOrgUsers } from "./_components/org-users"
+import { OrgModulesManager } from "./_components/org-modules-manager"
+// import { FeatureFlagsManager } from "./_components/feature-flags-manager"
 import { OrgSecurityManager } from "./_components/org-security-manager"
-import { FeatureFlagsManager } from "@/modules/core/admin/components/feature-flags-manager"
-import { RateLimitConfigCard } from "@/modules/core/organizations/components/rate-limit-config-card"
-import { Activity, ShieldCheck, Box, Sparkles } from "lucide-react"
+// import { RateLimitConfigCard } from "./_components/rate-limit-config-card"
+import { getOrganizationDetails, getOrganizationUsers, getAllSystemModules, getBrandingTiers } from '@/modules/core/admin/actions'
+import { OrgTierManager } from "./_components/org-tier-manager"
 
-interface PageProps {
-    params: {
-        id: string
-    }
-}
+export default async function AdminOrgDetailsPage(props: { params: Promise<{ id: string }> }) {
+    const params = await props.params
+    const { id } = params
 
-export default async function AdminOrgDetailsPage({ params }: PageProps) {
-    const { id } = await params
-
-    // Paralell Fetching
-    const [details, users, allModules] = await Promise.all([
+    // Parallel Fetching
+    const [details, users, allModules, tiers] = await Promise.all([
         getOrganizationDetails(id).catch(() => null),
         getOrganizationUsers(id).catch(() => []),
-        getAllSystemModules().catch(() => [])
+        getAllSystemModules().catch(() => []),
+        getBrandingTiers().catch(() => [])
     ])
 
     if (!details || !details.organization) {
@@ -42,6 +38,7 @@ export default async function AdminOrgDetailsPage({ params }: PageProps) {
             <AdminOrgHeader organization={organization} />
 
             <Tabs defaultValue="overview" className="space-y-4">
+                {/* ... existing tabs list ... */}
                 <TabsList>
                     <TabsTrigger value="overview">
                         <Activity className="h-4 w-4 mr-2" />
@@ -95,6 +92,13 @@ export default async function AdminOrgDetailsPage({ params }: PageProps) {
 
                     <Separator />
 
+                    {/* Tier Manager */}
+                    <div className="space-y-4">
+                        <OrgTierManager organization={organization} tiers={tiers as any[]} />
+                    </div>
+
+                    <Separator />
+
                     {/* Users & Invitation Section */}
                     <div className="space-y-4">
                         <AdminOrgUsers
@@ -105,21 +109,23 @@ export default async function AdminOrgDetailsPage({ params }: PageProps) {
                     </div>
                 </TabsContent>
 
-                {/* FEATURES TAB */}
+                {/* ... other tabs ... */}
                 {/* FEATURES TAB */}
                 <TabsContent value="features">
-                    <OrgSmartModulesView
+                    <OrgModulesManager
                         orgId={organization.id}
                         allModules={allModules}
+                        manualOverrides={(organization as any).manual_module_overrides}
                     />
                 </TabsContent>
 
                 {/* FEATURE FLAGS TAB */}
                 <TabsContent value="flags">
-                    <FeatureFlagsManager
+                    {/* <FeatureFlagsManager
                         organizationId={organization.id}
                         organizationName={organization.name}
-                    />
+                    /> */}
+                    <div className="p-4 text-muted-foreground text-sm">Feature Flags Manager coming soon.</div>
                 </TabsContent>
 
                 {/* SECURITY TAB */}
@@ -129,11 +135,11 @@ export default async function AdminOrgDetailsPage({ params }: PageProps) {
                             <OrgSecurityManager users={users} />
                         </div>
                         <div>
-                            <RateLimitConfigCard
+                            {/* <RateLimitConfigCard
                                 organizationId={organization.id}
                                 organizationName={organization.name}
                                 initialConfig={(organization as any).rate_limit_config}
-                            />
+                            /> */}
                         </div>
                     </div>
                 </TabsContent>

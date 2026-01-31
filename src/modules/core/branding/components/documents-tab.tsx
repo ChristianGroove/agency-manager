@@ -12,11 +12,12 @@ import { DocumentPreview } from "./document-preview"
 interface DocumentsTabProps {
     settings: BrandingConfig
     onChange: (newSettings: BrandingConfig) => void
+    tierFeatures?: any
 }
 
 
 
-export function DocumentsTab({ settings, onChange }: DocumentsTabProps) {
+export function DocumentsTab({ settings, onChange, tierFeatures }: DocumentsTabProps) {
     return (
         <div className="flex flex-col h-full space-y-6">
 
@@ -26,64 +27,114 @@ export function DocumentsTab({ settings, onChange }: DocumentsTabProps) {
                     <h3 className="text-sm font-bold uppercase tracking-wider text-gray-500">Configuración</h3>
                 </div>
 
-                <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm grid grid-cols-1 md:grid-cols-3 gap-8 items-end">
-
-                    {/* Color Settings */}
-                    <div className="space-y-2">
-                        <Label className="text-xs font-bold text-gray-700 uppercase tracking-wide">Acento</Label>
-                        <div className="flex items-center gap-3">
-                            <div className="relative shrink-0 group">
-                                <div
-                                    className="w-10 h-10 rounded-full shadow-sm ring-1 ring-black/5 hover:scale-110 transition-transform"
-                                    style={{ backgroundColor: settings.colors?.primary || '#000000' }}
-                                />
-                                <Input
-                                    type="color"
-                                    value={settings.colors?.primary || '#000000'}
-                                    onChange={(e) => onChange({ ...settings, colors: { ...settings.colors, primary: e.target.value } })}
-                                    className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-                                />
+                <Card className="border-gray-200 shadow-sm">
+                    <CardHeader className="pb-4 border-b border-gray-50">
+                        <CardTitle className="text-sm font-bold uppercase tracking-wider text-gray-500">Estilos del Documento</CardTitle>
+                        <CardDescription className="text-xs">Personaliza la apariencia de tus cotizaciones y propuestas.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {/* Row 1: Colors */}
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-gray-700">Color de Acento</Label>
+                                <div className="flex items-center gap-3">
+                                    <Input
+                                        type="color"
+                                        value={settings.colors?.primary || '#000000'}
+                                        onChange={(e) => onChange({ ...settings, colors: { ...settings.colors, primary: e.target.value } })}
+                                        className="w-10 h-10 p-1 shrink-0 rounded-full cursor-pointer"
+                                    />
+                                    <Input
+                                        value={settings.colors?.primary || '#000000'}
+                                        onChange={(e) => onChange({ ...settings, colors: { ...settings.colors, primary: e.target.value } })}
+                                        className="h-9 font-mono text-xs uppercase"
+                                    />
+                                </div>
                             </div>
-                            <div className="flex-1">
-                                <Input
-                                    value={settings.colors?.primary || '#000000'}
-                                    onChange={(e) => onChange({ ...settings, colors: { ...settings.colors, primary: e.target.value } })}
-                                    className="h-9 font-mono text-xs uppercase bg-gray-50 border-gray-200"
-                                />
+
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-gray-700">Color Encabezados</Label>
+                                <div className="flex items-center gap-3">
+                                    <Input
+                                        type="color"
+                                        value={settings.document_header_text_color || '#1F2937'}
+                                        onChange={(e) => onChange({ ...settings, document_header_text_color: e.target.value })}
+                                        className="w-10 h-10 p-1 shrink-0 rounded-full cursor-pointer"
+                                    />
+                                    <Input
+                                        value={settings.document_header_text_color || ''}
+                                        onChange={(e) => onChange({ ...settings, document_header_text_color: e.target.value })}
+                                        className="h-9 font-mono text-xs uppercase"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-gray-700">Color Pie de Página</Label>
+                                <div className="flex items-center gap-3">
+                                    <Input
+                                        type="color"
+                                        value={settings.document_footer_text_color || '#6B7280'}
+                                        onChange={(e) => onChange({ ...settings, document_footer_text_color: e.target.value })}
+                                        className="w-10 h-10 p-1 shrink-0 rounded-full cursor-pointer"
+                                    />
+                                    <Input
+                                        value={settings.document_footer_text_color || ''}
+                                        onChange={(e) => onChange({ ...settings, document_footer_text_color: e.target.value })}
+                                        className="h-9 font-mono text-xs uppercase"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Row 2: Typography & Assets */}
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-gray-700">Tipografía</Label>
+                                <Select
+                                    value={settings.document_font_family || 'Inter'}
+                                    onValueChange={(val) => onChange({ ...settings, document_font_family: val })}
+                                >
+                                    <SelectTrigger className="h-10 text-xs">
+                                        <SelectValue placeholder="Seleccionar fuente" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Inter">Inter (Sans)</SelectItem>
+                                        <SelectItem value="Roboto">Roboto (Sans)</SelectItem>
+                                        <SelectItem value="Open Sans">Open Sans (Sans)</SelectItem>
+                                        <SelectItem value="Playfair Display">Playfair (Serif)</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-gray-700">Tamaño del Logo</Label>
+                                <Select
+                                    value={settings.document_logo_size || 'medium'}
+                                    onValueChange={(val: any) => onChange({ ...settings, document_logo_size: val })}
+                                >
+                                    <SelectTrigger className="h-10 text-xs">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="small">Pequeño (80px)</SelectItem>
+                                        <SelectItem value="medium">Mediano (120px)</SelectItem>
+                                        <SelectItem value="large">Grande (160px)</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-gray-700">Marca de Agua</Label>
+                                <div className="flex items-center justify-between h-10 px-3 border rounded-md bg-gray-50/50">
+                                    <span className="text-xs text-muted-foreground">Mostrar logo de fondo</span>
+                                    <Switch
+                                        checked={settings.document_show_watermark !== false}
+                                        onCheckedChange={(checked) => onChange({ ...settings, document_show_watermark: checked })}
+                                    />
+                                </div>
                             </div>
                         </div>
-                    </div>
-
-                    {/* Size Settings */}
-                    <div className="space-y-2">
-                        <Label className="text-xs font-bold text-gray-700 uppercase tracking-wide">Tamaño Logo</Label>
-                        <Select
-                            value={settings.document_logo_size || 'medium'}
-                            onValueChange={(val: any) => onChange({ ...settings, document_logo_size: val })}
-                        >
-                            <SelectTrigger className="h-10 text-xs bg-gray-50 border-gray-200">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="small" className="text-xs">Pequeño (80px)</SelectItem>
-                                <SelectItem value="medium" className="text-xs">Mediano (120px)</SelectItem>
-                                <SelectItem value="large" className="text-xs">Grande (160px)</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-
-                    {/* Watermark Toggle */}
-                    <div className="flex items-center justify-between gap-4 h-10 px-1">
-                        <div className="space-y-0.5">
-                            <Label className="text-xs font-bold text-gray-700 uppercase tracking-wide block">Marca de Agua</Label>
-                            <p className="text-[10px] text-muted-foreground leading-none">Logo de fondo</p>
-                        </div>
-                        <Switch
-                            checked={settings.document_show_watermark !== false}
-                            onCheckedChange={(checked) => onChange({ ...settings, document_show_watermark: checked })}
-                        />
-                    </div>
-                </div>
+                    </CardContent>
+                </Card>
 
                 <div className="hidden sm:flex items-center gap-2 px-1 text-[10px] text-muted-foreground">
                     <Info className="h-3 w-3" />
