@@ -163,15 +163,30 @@ export async function inviteMember(email: string, roleOrRoleId: string = 'member
             .upsert({
                 organization_id: orgId,
                 user_id: userId,
-                // Check if it's a UUID (Role ID) or a legacy enum string
-                role_id: roleOrRoleId.length > 20 ? roleOrRoleId : null, // Simple heuristic for UUID
-                role: roleOrRoleId.length > 20 ? 'member' : roleOrRoleId, // Fallback for legacy column
+                role_id: roleOrRoleId.length > 20 ? roleOrRoleId : null,
+                role: roleOrRoleId.length > 20 ? 'member' : roleOrRoleId,
             }, { onConflict: 'organization_id,user_id' })
 
         if (memberError) {
             console.error('[inviteMember] Membership Error:', memberError)
             return { success: false, error: "Usuario creado pero falló asignación: " + memberError.message }
         }
+
+        // 4. Send Invite Email (Custom SMTP / Resend)
+        // Dynamically import to avoid top-level circular deps if any
+        const { EmailService } = await import('@/modules/core/notifications/email.service')
+
+        await EmailService.send({
+            to: email,
+            subject: 'Invitación a unirse al equipo',
+            html: `
+                <h1>Has sido invitado</h1>
+                <p>Te han invitado a unirte a una organización en Pixy.</p>
+                <p>Haz clic abajo para aceptar:</p>
+                <p><a href="${inviteLink}" style="padding: 10px 20px; background-color: #000; color: #fff; text-decoration: none; border-radius: 4px;">Unirse Ahora</a></p>
+            `,
+            organizationId: orgId
+        })
 
         revalidatePath('/settings')
         return { success: true, inviteLink }

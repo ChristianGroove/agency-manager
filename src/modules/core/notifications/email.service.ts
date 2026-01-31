@@ -73,7 +73,9 @@ export class EmailService {
 
             } else {
                 // === B. SYSTEM DEFAULT (RESEND) ===
-                let fromEmail = process.env.RESEND_FROM_EMAIL || "";
+                // If Platform Context, usage specific From Email, otherwise env var
+                const identity = await this.getSenderIdentity(organizationId);
+                let fromEmail = identity.fromEmail || process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev"; // Fallback to dev if needed
 
                 if (!fromEmail) {
                     throw new Error("Resend from address is not configured");
@@ -163,7 +165,25 @@ export class EmailService {
         senderName: string;
         replyTo: string | undefined;
         branding: EmailBranding;
+        fromEmail?: string;
     }> {
+        // === PLATFORM CONTEXT ===
+        if (organizationId === 'PLATFORM') {
+            return {
+                senderName: 'Pixy Platform',
+                replyTo: 'contact@pixy.com.co',
+                fromEmail: 'contact@pixy.com.co',
+                branding: {
+                    agency_name: 'Pixy',
+                    primary_color: '#000000', // Black for Pixy
+                    secondary_color: '#F205E2', // Neon Pink (if needed)
+                    logo_url: 'https://pixy.com.co/logo.png', // Fallback or real URL
+                    website_url: 'https://pixy.com.co',
+                    footer_text: `© ${new Date().getFullYear()} Pixy. Todos los derechos reservados.`
+                }
+            };
+        }
+
         try {
             // Get effective branding (handles both Platform and Tenant White Label Logic)
             const brandingData = await getEffectiveBranding(organizationId);

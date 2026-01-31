@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase-admin"
 import { requireSuperAdmin } from "@/lib/auth/platform-roles"
 import { revalidatePath } from "next/cache"
 import { headers } from "next/headers"
+import { EmailService } from "@/modules/core/notifications/email.service"
 
 /**
  * =======================
@@ -55,6 +56,22 @@ export async function inviteOrgOwner(email: string, orgId: string) {
     }
     const userId = user.id
     const inviteLink = (linkData as any).properties?.action_link
+
+    // Send Invite Email via Platform SMTP
+    if (inviteLink) {
+        await EmailService.send({
+            to: email,
+            subject: 'Invitación a Pixy - Configura tu Agencia',
+            html: `
+                <h1>Bienvenido a Pixy</h1>
+                <p>Has sido invitado a gestionar una nueva organización.</p>
+                <p>Haz clic en el siguiente enlace para aceptar la invitación y configurar tu cuenta:</p>
+                <p><a href="${inviteLink}" style="padding: 12px 24px; background-color: #000; color: #fff; text-decoration: none; border-radius: 6px; display: inline-block;">Aceptar Invitación</a></p>
+                <p style="font-size: 12px; color: #666; margin-top: 24px;">Si no esperabas esta invitación, puedes ignorar este correo.</p>
+            `,
+            organizationId: 'PLATFORM'
+        })
+    }
 
     await supabaseAdmin.from('profiles').upsert({
         id: userId,

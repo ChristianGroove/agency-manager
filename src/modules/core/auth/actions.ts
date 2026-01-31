@@ -162,11 +162,19 @@ export async function resetPasswordRequest(formData: FormData) {
 
     try {
         // 2. Send Email (Custom Service)
-        const { emailService } = await import('@/modules/core/communication/email-service')
+        const { EmailService } = await import('@/modules/core/notifications/email.service')
 
-        const sendResult = await emailService.sendEmail(email, 'password-reset', {
-            agency_name: 'Agencia OS',
-            link: actionLink
+        const sendResult = await EmailService.send({
+            to: email,
+            subject: 'Restablecer Contraseña - Pixy',
+            html: `
+                <h1>Solicitud de Restablecimiento</h1>
+                <p>Has solicitado restablecer tu contraseña en Pixy.</p>
+                <p>Haz clic en el siguiente enlace para continuar:</p>
+                <p><a href="${actionLink}" style="color: #F205E2; font-weight: bold;">Restablecer Contraseña</a></p>
+                <p>Si no solicitaste esto, ignora este mensaje.</p>
+            `,
+            organizationId: 'PLATFORM' // Password reset is a global/platform action
         })
 
         if (!sendResult.success) {
