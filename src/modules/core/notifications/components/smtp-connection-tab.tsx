@@ -148,7 +148,7 @@ export function SmtpConnectionTab({ organizationId, initialConfig }: SmtpConnect
                         <p className="text-sm text-muted-foreground">
                             {config.is_verified
                                 ? `Conectado via ${config.host} como ${config.user_email}`
-                                : "Usando sistema de envío por defecto (Pixy)"}
+                                : "Sistema de envío predeterminado de la plataforma"}
                         </p>
                     </div>
                 </div>

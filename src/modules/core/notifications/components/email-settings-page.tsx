@@ -74,13 +74,13 @@ export function EmailSettingsPage({ templates, organizationId, smtpConfig }: Ema
 
     // --- PREVIEW GENERATION ---
     const previewHtml = useMemo(() => {
-        // Mock Data
+        // Mock Data for Preview
         const branding = {
-            agency_name: "Pixy Digital Agency",
+            agency_name: "Tu Agencia Digital",
             primary_color: "#4F46E5",
             secondary_color: "#EC4899",
-            logo_url: "https://ui.shadcn.com/avatars/02.png", // Mock
-            website_url: "https://pixy.com.co"
+            logo_url: "https://api.dicebear.com/7.x/initials/svg?seed=AD", // Neutral avatar
+            website_url: "https://tuagencia.com"
         }
 
         switch (activeTab) {

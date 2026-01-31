@@ -73,9 +73,11 @@ export class EmailService {
 
             } else {
                 // === B. SYSTEM DEFAULT (RESEND) ===
-                let fromEmail = process.env.RESEND_FROM_EMAIL || 'notifications@pixy.com.co';
+                let fromEmail = process.env.RESEND_FROM_EMAIL || "";
 
-                // Domain is verified! We can use it in Dev too.
+                if (!fromEmail) {
+                    throw new Error("Resend from address is not configured");
+                }
 
                 const from = `"${senderName}" <${fromEmail}>`;
 
@@ -179,7 +181,7 @@ export class EmailService {
                 primary_color: brandingData.colors.primary,
                 secondary_color: brandingData.colors.secondary,
                 logo_url: brandingData.logos.main || undefined, // Emails look better with Main logo than Icon
-                website_url: brandingData.website || 'https://www.pixy.com.co',
+                website_url: brandingData.website || '',
                 footer_text: `© ${new Date().getFullYear()} ${brandingData.name}. Todos los derechos reservados.`
             };
 
@@ -190,15 +192,15 @@ export class EmailService {
             };
         } catch (error) {
             console.warn('[EmailService] Error resolving branding, using defaults:', error);
-            // Fallback
+            // Fallback to neutral platform identity
             return {
-                senderName: 'Pixy',
+                senderName: 'Notificaciones',
                 replyTo: undefined,
                 branding: {
-                    agency_name: 'Pixy',
+                    agency_name: 'Plataforma',
                     primary_color: '#4F46E5',
                     secondary_color: '#EC4899',
-                    website_url: 'https://www.pixy.com.co'
+                    website_url: ''
                 }
             };
         }

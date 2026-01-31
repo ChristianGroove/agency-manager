@@ -129,7 +129,22 @@ export async function getSmtpConfig(organizationId: string): Promise<SmtpConfigF
  */
 export async function deleteSmtpConfig(organizationId: string) {
     const supabase = await createClient()
-    await supabase.from('organization_smtp_configs').delete().eq('organization_id', organizationId)
+
+    // Auth check
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) throw new Error("Unauthorized")
+
+    // Explicit delete with org filter to prevent any cross-tenant accidents
+    const { error } = await supabase
+        .from('organization_smtp_configs')
+        .delete()
+        .eq('organization_id', organizationId)
+
+    if (error) {
+        console.error("Delete Error:", error)
+        throw new Error("Error al eliminar la configuración")
+    }
+
     revalidatePath('/platform/settings/email')
     return { success: true }
 }

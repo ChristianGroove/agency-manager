@@ -21,10 +21,11 @@ export async function getEmailTemplates() {
     if (!orgId) throw new Error("Unauthorized")
 
     // Fetch org specific templates + system templates (where org_id is null)
-    // RLS policy handles the "view own + null" logic, but let's be explicit in sorting
+    // Added explicit filter for defense in depth
     const { data, error } = await supabase
         .from("email_templates")
         .select("*")
+        .or(`organization_id.eq.${orgId},organization_id.is.null`)
         .order("created_at", { ascending: false })
 
     if (error) {

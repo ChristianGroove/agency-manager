@@ -1,12 +1,12 @@
 import nodemailer from 'nodemailer';
 
-const SMTP_HOST = process.env.SMTP_HOST || 'smtp.hostinger.com';
-const SMTP_PORT = parseInt(process.env.SMTP_PORT || '465');
-const SMTP_USER = process.env.SMTP_USER || 'support@pixy.com.co';
+const SMTP_HOST = process.env.SMTP_HOST || "";
+const SMTP_PORT = parseInt(process.env.SMTP_PORT || "465");
+const SMTP_USER = process.env.SMTP_USER || "";
 const SMTP_PASS = process.env.SMTP_PASS;
 
-if (!SMTP_PASS) {
-    console.warn('⚠️ SMTP_PASS is missing. Email sending will fail.');
+if (!SMTP_PASS || !SMTP_HOST || !SMTP_USER) {
+    console.warn("⚠️ SMTP configuration is incomplete. Email sending may fail.");
 }
 
 export const transporter = nodemailer.createTransport({
@@ -23,4 +23,4 @@ export const transporter = nodemailer.createTransport({
     socketTimeout: 10000,
 });
 
-export const SENDER_EMAIL = `"${process.env.SMTP_SENDER_NAME || 'Soporte Pixy'}" <${SMTP_USER}>`;
+export const SENDER_EMAIL = `"${process.env.SMTP_SENDER_NAME || "Platform Support"}" <${SMTP_USER}>`;
