@@ -154,6 +154,25 @@ export async function getTenantContext() {
 
     if (!isVisible) return null
 
+    // 4. Automated Activity Logging
+    // This credits the reseller for their attention/support to the client
+    if (isVisible) {
+        const resellerMember = memberships.find(m => m.organization?.organization_type === 'reseller')
+        const resellerOrgId = resellerMember?.organization_id
+
+        if (resellerOrgId) {
+            // Import dynamically to avoid circular dependencies
+            import("@/modules/core/revenue/actions").then(({ registerResellerActivity }) => {
+                registerResellerActivity({
+                    reseller_org_id: resellerOrgId,
+                    client_org_id: orgId,
+                    activity_type: 'support_session',
+                    description: 'Sesión de soporte/seguimiento automática detectada vía Dashboard Switcher'
+                })
+            }).catch(err => console.error("Failed to log reseller activity:", err))
+        }
+    }
+
     return {
         name: orgDetails.name,
         color: branding?.colors?.primary || '#F205E2'
@@ -176,6 +195,7 @@ export async function getOrganizationCardDetails(orgId: string | null) {
             .select(`
                 organization_type,
                 subscription_status,
+                allow_direct_billing,
                 subscription_product:saas_products!subscription_product_id (name),
                 active_app:saas_apps!active_app_id (name)
             `)
@@ -212,7 +232,8 @@ export async function getOrganizationCardDetails(orgId: string | null) {
             status: org?.subscription_status,
             statusLabel
         },
-        type: org?.organization_type || 'client'
+        type: org?.organization_type || 'client',
+        allowDirectBilling: org?.allow_direct_billing
     }
 }
 

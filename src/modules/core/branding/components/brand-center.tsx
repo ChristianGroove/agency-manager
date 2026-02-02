@@ -21,9 +21,10 @@ interface BrandCenterProps {
     initialSettings: BrandingConfig
     tierFeatures: Record<string, any>
     variant?: 'page' | 'sheet'
+    allowDirectBilling?: boolean
 }
 
-export function BrandCenter({ initialSettings, tierFeatures, variant = 'page' }: BrandCenterProps) {
+export function BrandCenter({ initialSettings, tierFeatures, variant = 'page', allowDirectBilling = true }: BrandCenterProps) {
     const [settings, setSettings] = useState<BrandingConfig>(initialSettings)
     const [saving, setSaving] = useState(false)
 
@@ -102,7 +103,7 @@ export function BrandCenter({ initialSettings, tierFeatures, variant = 'page' }:
                                         </CardDescription>
                                     </CardHeader>
                                     <CardContent>
-                                        <DirectUpgradeButton />
+                                        <DirectUpgradeButton allowDirectBilling={allowDirectBilling} />
                                     </CardContent>
                                 </Card>
                             )}

@@ -18,6 +18,7 @@ export interface BrandingTier {
     description: string
     features: Record<string, any>
     restrictions: Record<string, any>
+    capabilities: Record<string, boolean>
     sort_order: number
     is_active: boolean
 }
@@ -76,12 +77,14 @@ export async function getBrandingTiers(): Promise<BrandingTier[]> {
 export async function getCurrentBrandingTier(): Promise<{
     tier: BrandingTier | null
     custom_config: BrandingCustomConfig
+    allow_direct_billing?: boolean
+    capabilities: Record<string, boolean>
 }> {
     const supabase = await createClient()
     const orgId = await getCurrentOrganizationId()
 
     if (!orgId) {
-        return { tier: null, custom_config: {} }
+        return { tier: null, custom_config: {}, capabilities: {} }
     }
 
     const { data: org } = await supabase
@@ -89,18 +92,28 @@ export async function getCurrentBrandingTier(): Promise<{
         .select(`
             branding_tier_id,
             branding_custom_config,
+            allow_direct_billing,
+            capabilities,
             branding_tier:branding_tiers(*)
         `)
         .eq('id', orgId)
         .single()
 
     if (!org) {
-        return { tier: null, custom_config: {} }
+        return { tier: null, custom_config: {}, capabilities: {} }
     }
 
+    // Merge capabilities (Org overrides Tier)
+    const tier = (org.branding_tier as any) || null
+    const tierCaps = tier?.capabilities || {}
+    const orgCaps = org.capabilities || {}
+    const mergedCapabilities = { ...tierCaps, ...orgCaps }
+
     return {
-        tier: (org.branding_tier as any) || null,
-        custom_config: (org.branding_custom_config as BrandingCustomConfig) || {}
+        tier,
+        custom_config: (org.branding_custom_config as BrandingCustomConfig) || {},
+        allow_direct_billing: org.allow_direct_billing,
+        capabilities: mergedCapabilities
     }
 }
 

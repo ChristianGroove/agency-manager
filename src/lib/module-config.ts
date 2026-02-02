@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Module Configuration
  * Central mapping of modules to routes and metadata
  */
@@ -46,6 +46,7 @@ export interface ModuleRoute {
         excludedOrgTypes?: ('platform' | 'reseller' | 'client')[]
         allowedSpaces?: string[] // e.g. ['agency', 'medical']
         excludedSpaces?: string[]
+        requiredCapabilities?: string[] // New: e.g. ['CAN_MANAGE_CLIENTS']
     }
 }
 
@@ -160,7 +161,7 @@ export const MODULE_ROUTES: ModuleRoute[] = [
     },
     {
         key: 'module_catalog',
-        label: 'Catálogo',
+        label: 'CatÃ¡logo',
         href: '/portfolio',
         icon: Store,
         category: 'operations',
@@ -244,7 +245,7 @@ export const MODULE_ROUTES: ModuleRoute[] = [
     // --- FINANZAS ---
     {
         key: 'module_invoicing',
-        label: 'Centro de Facturación',
+        label: 'Centro de FacturaciÃ³n',
         href: '/invoices',
         icon: FileText,
         category: 'finance',
@@ -265,12 +266,12 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         }
     },
 
-    // --- CONFIGURACIÓN ---
+    // --- CONFIGURACIÃ“N ---
     // HIDDEN FOR REGULAR USERS
     {
         key: 'core_adn',
         label: 'ADN del Negocio',
-        href: '/platform/identity',
+        href: '/platform/adn',
         icon: ScanFace,
         isCore: true,
         category: 'config',
@@ -295,7 +296,7 @@ export const MODULE_ROUTES: ModuleRoute[] = [
     // HIDDEN FOR REGULAR USERS
     {
         key: 'core_settings',
-        label: 'Configuración',
+        label: 'ConfiguraciÃ³n',
         href: '/platform/settings',
         icon: Settings,
         isCore: true,
@@ -338,25 +339,32 @@ export const CATEGORY_ICONS: Record<ModuleCategory, any> = {
 };
 
 /**
- * Filter routes based on active modules
+ * Filter routes based on active modules and capabilities
  */
 export function filterRoutesByModules(
     activeModules: string[],
     userRole?: string | null,
     orgType?: 'platform' | 'reseller' | 'client',
-    vertical?: string
+    vertical?: string,
+    capabilities: Record<string, boolean> = {}
 ): ModuleRoute[] {
     return MODULE_ROUTES.filter(route => {
-        // 1. Access Control (Role & Org Type & Space)
+        // 1. Access Control (Role & Org Type & Space & Capabilities)
         if (route.access) {
             // Check Org Type exclusion
             if (orgType && route.access.excludedOrgTypes?.includes(orgType)) return false
             // Check Org Type inclusion (strict)
             if (orgType && route.access.allowedOrgTypes && !route.access.allowedOrgTypes.includes(orgType)) return false
 
-            // Check Space/Limit exclusion
+            // Check Space/Limit exclusion (Legacy Vertical Logic)
             if (vertical && route.access.excludedSpaces?.includes(vertical)) return false
             if (vertical && route.access.allowedSpaces && !route.access.allowedSpaces.includes(vertical)) return false
+
+            // Check Required Capabilities (New V2 Logic)
+            if (route.access.requiredCapabilities) {
+                const hasAllRequired = route.access.requiredCapabilities.every((cap: string) => capabilities[cap] === true)
+                if (!hasAllRequired) return false
+            }
 
             // Check User Role (if userRole provided)
             if (route.access.allowedRoles && userRole) {
@@ -367,13 +375,15 @@ export function filterRoutesByModules(
             }
         }
 
-        // 2. Vertical-based "Auto-Core" logic
-        // If vertical is agency, show all operations (except limpieza)
+        // 2. Vertical-based "Auto-Core" logic (Legacy support)
         if (vertical === 'agency' && route.category === 'operations' && route.key !== 'module_cleaning') return true
+
+        // 3. Capability-based "Auto-Core" logic (Agnostic future)
+        if (capabilities['CAN_MANAGE_CLIENTS'] && route.key === 'reseller_tenants') return true
 
         if (route.isCore) return true
 
-        // 3. Module subscription
+        // 4. Module subscription
         return activeModules.includes(route.key)
     })
 }

@@ -141,54 +141,58 @@ export class MetaAdapter implements IntegrationAdapter {
 
         console.log(`[MetaAdapter] Sending to ${url} | Payload:`, JSON.stringify(payload));
 
-        const makeRequest = async (p: any) => {
-            const resp = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${effectiveToken}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(p)
-            })
-            return resp
-        }
+        const { globalCircuitBreaker } = await import('@/lib/integrations/circuit-breaker');
 
-        let response = await makeRequest(payload)
-
-        // Fallback for Buttons: If failed, try basic text
-        if (!response.ok && buttons.length > 0) {
-            const err = await response.clone().json().catch(() => ({}))
-            console.warn(`[MetaAdapter] Button send failed (${response.status}). Retrying with text only. Error:`, err);
-
-            // Construct text-only payload
-            if (isMessenger) {
-                payload = {
-                    recipient: { id: recipient },
-                    message: { text: textBody },
-                    messaging_type: "RESPONSE"
-                };
-            } else {
-                payload = {
-                    messaging_product: "whatsapp",
-                    recipient_type: "individual",
-                    to: recipient,
-                    type: "text",
-                    text: { body: textBody }
-                };
+        return await globalCircuitBreaker.execute('meta_api', async () => {
+            const makeRequest = async (p: any) => {
+                const resp = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${effectiveToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(p)
+                })
+                return resp
             }
-            response = await makeRequest(payload)
-        }
 
-        if (!response.ok) {
-            const err = await response.json()
-            console.error('[MetaAdapter] Send Error:', err);
-            throw new Error(`Meta Send Failed: ${err.error?.message || response.statusText}`)
-        }
+            let response = await makeRequest(payload)
 
-        const data = await response.json()
-        return {
-            messageId: data.messages?.[0]?.id || data.message_id || Date.now().toString(),
-            metadata: data
-        }
+            // Fallback for Buttons: If failed, try basic text
+            if (!response.ok && buttons.length > 0) {
+                const err = await response.clone().json().catch(() => ({}))
+                console.warn(`[MetaAdapter] Button send failed (${response.status}). Retrying with text only. Error:`, err);
+
+                // Construct text-only payload
+                if (isMessenger) {
+                    payload = {
+                        recipient: { id: recipient },
+                        message: { text: textBody },
+                        messaging_type: "RESPONSE"
+                    };
+                } else {
+                    payload = {
+                        messaging_product: "whatsapp",
+                        recipient_type: "individual",
+                        to: recipient,
+                        type: "text",
+                        text: { body: textBody }
+                    };
+                }
+                response = await makeRequest(payload)
+            }
+
+            if (!response.ok) {
+                const err = await response.json()
+                console.error('[MetaAdapter] Send Error:', err);
+                throw new Error(`Meta Send Failed: ${err.error?.message || response.statusText}`)
+            }
+
+            const data = await response.json()
+            return {
+                messageId: data.messages?.[0]?.id || data.message_id || Date.now().toString(),
+                metadata: data
+            }
+        });
     }
 }

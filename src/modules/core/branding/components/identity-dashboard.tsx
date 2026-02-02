@@ -8,6 +8,9 @@ import { Button } from "@/components/ui/button"
 import { Loader2, Save, ScanFace, Palette, Globe, Layout, FileText, CheckCircle2 } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { useRouter } from "next/navigation"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Lock } from "lucide-react"
+import { DirectUpgradeButton } from "./direct-upgrade-button"
 
 // Tabs
 import { IdentityTab } from "./identity-tab"
@@ -154,11 +157,28 @@ export function IdentityDashboard({ initialSettings, tierFeatures }: IdentityDas
                         </TabsContent>
 
                         <TabsContent value="portal" className="mt-0">
-                            <PortalTab
-                                settings={settings}
-                                onChange={setSettings}
-                                tierFeatures={tierFeatures}
-                            />
+                            {tierFeatures?.custom_colors || tierFeatures?.remove_pixy_branding ? (
+                                <PortalTab
+                                    settings={settings}
+                                    onChange={setSettings}
+                                    tierFeatures={tierFeatures}
+                                />
+                            ) : (
+                                <Card className="border-yellow-200 bg-yellow-50 dark:bg-yellow-900/10">
+                                    <CardHeader>
+                                        <CardTitle className=" flex items-center gap-2 text-yellow-800 dark:text-yellow-500">
+                                            <Lock className="h-5 w-5" />
+                                            Portal Branding es una función Pro
+                                        </CardTitle>
+                                        <CardDescription className="text-yellow-700">
+                                            Actualiza a Branding Total para personalizar el portal, colores y remover la marca de Pixy de tus documentos.
+                                        </CardDescription>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <DirectUpgradeButton />
+                                    </CardContent>
+                                </Card>
+                            )}
                         </TabsContent>
 
                         <TabsContent value="documents" className="mt-0">

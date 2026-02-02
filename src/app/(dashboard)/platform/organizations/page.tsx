@@ -9,7 +9,8 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { CreateOrganizationSheet } from "@/components/organizations/create-organization-sheet"
 import { EditLimitsModal } from "@/components/organizations/edit-limits-modal"
-import { Plus, Building2, Settings2, ArrowRight, BarChart3 } from "lucide-react"
+import { TenantConfigurationSheet } from "@/components/organizations/tenant-configuration-sheet"
+import { Plus, Building2, Settings2, ArrowRight, BarChart3, Shield } from "lucide-react"
 import { HierarchyAnalytics } from "@/modules/core/organizations/components/hierarchy-analytics"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
@@ -31,6 +32,10 @@ export default function PlatformOrganizationsPage() {
     // Limits Modal State
     const [isLimitsOpen, setIsLimitsOpen] = useState(false)
     const [selectedOrgForLimits, setSelectedOrgForLimits] = useState<{ id: string, name: string } | null>(null)
+
+    // Config Sheet State
+    const [isConfigOpen, setIsConfigOpen] = useState(false)
+    const [selectedOrgForConfig, setSelectedOrgForConfig] = useState<{ id: string, name: string } | null>(null)
 
     // View & Filter State
     // Default to 'list' as requested
@@ -87,6 +92,11 @@ export default function PlatformOrganizationsPage() {
     const handleOpenLimits = (org: Organization) => {
         setSelectedOrgForLimits({ id: org.id, name: org.name })
         setIsLimitsOpen(true)
+    }
+
+    const handleOpenConfig = (org: Organization) => {
+        setSelectedOrgForConfig({ id: org.id, name: org.name })
+        setIsConfigOpen(true)
     }
 
     const toggleExpand = (orgId: string) => {
@@ -311,6 +321,15 @@ export default function PlatformOrganizationsPage() {
                                                     <Button
                                                         variant="ghost"
                                                         size="sm"
+                                                        onClick={() => handleOpenConfig(org)}
+                                                        title="Configuración Avanzada"
+                                                        className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                                    >
+                                                        <Shield className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
                                                         onClick={() => handleOpenLimits(org)}
                                                         title="Gestionar Límites"
                                                         className="h-8 w-8 p-0"
@@ -385,14 +404,26 @@ export default function PlatformOrganizationsPage() {
                                         </div>
                                     </CardContent>
                                     <CardFooter className="px-5 py-3 bg-gray-50/50 dark:bg-white/5 flex justify-between items-center">
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => handleOpenLimits(org)}
-                                            className="text-gray-500 hover:text-brand-pink"
-                                        >
-                                            <Settings2 className="h-4 w-4 mr-2" /> Límites
-                                        </Button>
+                                        <div className="flex gap-2">
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => handleOpenConfig(org)}
+                                                className="text-gray-500 hover:text-blue-600 px-2"
+                                                title="Configurar"
+                                            >
+                                                <Shield className="h-4 w-4" />
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => handleOpenLimits(org)}
+                                                className="text-gray-500 hover:text-brand-pink px-2"
+                                                title="Límites"
+                                            >
+                                                <Settings2 className="h-4 w-4" />
+                                            </Button>
+                                        </div>
                                         <Button size="sm" variant="default" className="bg-gray-900 text-white hover:bg-black h-8 px-4 rounded-full text-xs">
                                             Gestionar <ArrowRight className="ml-1.5 h-3 w-3" />
                                         </Button>
@@ -416,6 +447,15 @@ export default function PlatformOrganizationsPage() {
                     onOpenChange={setIsLimitsOpen}
                     organizationId={selectedOrgForLimits.id}
                     organizationName={selectedOrgForLimits.name}
+                />
+            )}
+
+            {selectedOrgForConfig && (
+                <TenantConfigurationSheet
+                    open={isConfigOpen}
+                    onOpenChange={setIsConfigOpen}
+                    organizationId={selectedOrgForConfig.id}
+                    organizationName={selectedOrgForConfig.name}
                 />
             )}
         </div>

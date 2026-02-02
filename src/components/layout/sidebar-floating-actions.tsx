@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState } from 'react'
-import { LayoutDashboard, Shield, Package, Building2, Bell, User as UserIcon } from 'lucide-react'
+import { LayoutDashboard, Shield, Package, Building2, Bell, User as UserIcon, Trash2 } from 'lucide-react'
 import { ActionButton } from './action-button'
 import { OrganizationSwitcher } from '@/components/organizations/organization-switcher'
 import { NotificationBell } from './notification-bell'
@@ -62,6 +62,16 @@ export function SidebarFloatingActions({ isSuperAdmin, user, currentOrgId, organ
                     onClick={() => setIsProfileOpen(true)}
                 />
                 <ProfileSheet open={isProfileOpen} onOpenChange={setIsProfileOpen} user={user} currentOrgId={currentOrgId} />
+            </div>
+
+            {/* Trash Bin (Quick Access) */}
+            <div className="relative">
+                <ActionButton
+                    icon={Trash2}
+                    text="Papelera"
+                    color="var(--primary)"
+                    onClick={() => window.dispatchEvent(new Event('pixy:open-trash'))}
+                />
             </div>
 
             {/* --- Super Admin Actions --- */}

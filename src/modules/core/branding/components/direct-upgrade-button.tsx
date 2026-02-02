@@ -2,13 +2,14 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Loader2, Sparkles } from "lucide-react"
+import { Loader2, Sparkles, Lock } from "lucide-react"
 import { createBrandingUpgradeTransaction } from "../billing-actions"
 import { toast } from "sonner"
 
 interface DirectUpgradeButtonProps {
     className?: string
     variant?: "default" | "outline" | "secondary" | "ghost" | "link" | "destructive"
+    allowDirectBilling?: boolean
 }
 
 declare global {
@@ -17,7 +18,11 @@ declare global {
     }
 }
 
-export function DirectUpgradeButton({ className, variant = "default" }: DirectUpgradeButtonProps) {
+export function DirectUpgradeButton({
+    className,
+    variant = "default",
+    allowDirectBilling = true
+}: DirectUpgradeButtonProps) {
     const [loading, setLoading] = useState(false)
 
     const handleUpgrade = async () => {
@@ -60,6 +65,19 @@ export function DirectUpgradeButton({ className, variant = "default" }: DirectUp
         } finally {
             setLoading(false)
         }
+    }
+
+    if (!allowDirectBilling) {
+        return (
+            <Button
+                onClick={() => toast.info("Por favor contacta a tu proveedor para activar esta función.")}
+                className={`bg-gray-100 hover:bg-gray-200 text-gray-700 gap-2 border border-gray-200 shadow-none ${className}`}
+                variant="outline"
+            >
+                <Lock className="h-4 w-4" />
+                Contactar Administrador
+            </Button>
+        )
     }
 
     return (

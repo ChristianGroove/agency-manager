@@ -9,6 +9,7 @@ import { TrashItem, getTrashItems, restoreItem, permanentlyDeleteItem } from "@/
 import { Loader2, RefreshCw, Trash2, AlertTriangle, Search, Archive } from "lucide-react"
 import { toast } from "sonner"
 import { useHotkeys } from "react-hotkeys-hook"
+import { useActiveModules } from "@/hooks/use-active-modules"
 
 export function TrashBinModal({ shortcut = 'ctrl+alt+p' }: { shortcut?: string }) {
     const [open, setOpen] = useState(false)
@@ -17,6 +18,7 @@ export function TrashBinModal({ shortcut = 'ctrl+alt+p' }: { shortcut?: string }
     const [activeTab, setActiveTab] = useState<string>("clients")
     const [processingId, setProcessingId] = useState<string | null>(null)
     const [searchTerm, setSearchTerm] = useState("")
+    const { organizationType } = useActiveModules()
 
     // Toggle with shortcut
     useHotkeys(shortcut, () => setOpen(prev => !prev), { preventDefault: true })
@@ -26,6 +28,13 @@ export function TrashBinModal({ shortcut = 'ctrl+alt+p' }: { shortcut?: string }
             fetchTrash()
         }
     }, [open])
+
+    // Listen for custom event trigger (e.g. from Sidebar)
+    useEffect(() => {
+        const handleOpen = () => setOpen(true)
+        window.addEventListener('pixy:open-trash', handleOpen)
+        return () => window.removeEventListener('pixy:open-trash', handleOpen)
+    }, [])
 
     const fetchTrash = async () => {
         setLoading(true)
@@ -43,7 +52,7 @@ export function TrashBinModal({ shortcut = 'ctrl+alt+p' }: { shortcut?: string }
     const handleRestore = async (item: TrashItem) => {
         setProcessingId(item.id)
         try {
-            const res = await restoreItem(item.type, item.id)
+            const res = await restoreItem(item.id, item.type)
             if (res.success) {
                 toast.success("Elemento restaurado")
                 setItems(items.filter(i => i.id !== item.id))
@@ -62,7 +71,7 @@ export function TrashBinModal({ shortcut = 'ctrl+alt+p' }: { shortcut?: string }
 
         setProcessingId(item.id)
         try {
-            const res = await permanentlyDeleteItem(item.type, item.id)
+            const res = await permanentlyDeleteItem(item.id, item.type)
             if (res.success) {
                 toast.success("Elemento eliminado permanentemente")
                 setItems(items.filter(i => i.id !== item.id))
@@ -85,6 +94,7 @@ export function TrashBinModal({ shortcut = 'ctrl+alt+p' }: { shortcut?: string }
         if (activeTab === 'briefings') return item.type === 'briefing'
         if (activeTab === 'quotes') return item.type === 'quote'
         if (activeTab === 'invoices') return item.type === 'invoice'
+        if (activeTab === 'organizations') return item.type === 'organization'
         return true
     })
 
@@ -99,9 +109,9 @@ export function TrashBinModal({ shortcut = 'ctrl+alt+p' }: { shortcut?: string }
                             <Trash2 className="h-5 w-5 text-red-600" />
                         </div>
                         <div>
-                            <DialogTitle className="text-xl">Papelera de Reciclaje</DialogTitle>
+                            <DialogTitle className="text-xl">Recycle Bin (Papelera)</DialogTitle>
                             <DialogDescription>
-                                Gestiona los elementos eliminados. Puedes restaurarlos o eliminarlos permanentemente.
+                                Los elementos eliminados se conservan por 30 días antes de ser purgados permanentemente.
                             </DialogDescription>
                         </div>
                     </div>
@@ -112,6 +122,9 @@ export function TrashBinModal({ shortcut = 'ctrl+alt+p' }: { shortcut?: string }
                         <div className="flex items-center justify-between px-6 py-3 border-b border-gray-100">
                             <TabsList className="bg-gray-100 p-1">
                                 <TabsTrigger value="clients">Clientes ({getCount('client')})</TabsTrigger>
+                                {organizationType !== 'client' && (
+                                    <TabsTrigger value="organizations">Organizaciones ({getCount('organization')})</TabsTrigger>
+                                )}
                                 <TabsTrigger value="briefings">Briefings ({getCount('briefing')})</TabsTrigger>
                                 <TabsTrigger value="quotes">Cotizaciones ({getCount('quote')})</TabsTrigger>
                                 <TabsTrigger value="invoices">Facturas ({getCount('invoice')})</TabsTrigger>
@@ -144,11 +157,14 @@ export function TrashBinModal({ shortcut = 'ctrl+alt+p' }: { shortcut?: string }
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center gap-2 mb-1">
                                                     <h4 className="font-semibold text-gray-900 truncate">{item.name || "Sin Nombre"}</h4>
-                                                    <Badge variant="outline" className="text-[10px] text-gray-500">
-                                                        {new Date(item.deleted_at).toLocaleDateString()}
+                                                    <Badge
+                                                        variant={item.days_left < 5 ? "destructive" : "outline"}
+                                                        className="text-[10px] whitespace-nowrap"
+                                                    >
+                                                        {item.days_left} días restantes
                                                     </Badge>
                                                 </div>
-                                                <p className="text-sm text-gray-500 truncate">{item.type} • {item.original_table}</p>
+                                                <p className="text-sm text-gray-500 truncate capitalize">{item.type} • {item.original_table}</p>
                                             </div>
 
                                             <div className="flex items-center gap-2 pl-4 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">

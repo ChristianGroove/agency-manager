@@ -13,6 +13,7 @@ interface UseActiveModulesReturn {
     userRole: string | null
     organizationType?: 'platform' | 'reseller' | 'client'
     vertical?: string
+    capabilities: Record<string, boolean>
 }
 
 // Map between module_config keys and permission module keys
@@ -57,6 +58,7 @@ export function useActiveModules(): UseActiveModulesReturn {
     const [userRole, setUserRole] = useState<string | null>(null)
     const [organizationType, setOrganizationType] = useState<'platform' | 'reseller' | 'client'>('client')
     const [vertical, setVertical] = useState<string | undefined>()
+    const [capabilities, setCapabilities] = useState<Record<string, boolean>>({})
 
     const fetchModules = useCallback(async () => {
         setIsLoading(true)
@@ -66,11 +68,13 @@ export function useActiveModules(): UseActiveModulesReturn {
             // Fetch org modules, user permissions, AND org details in parallel
             // We import getCurrentOrgDetails dynamically to avoid cycles if any
             const { getCurrentOrgDetails } = await import('@/modules/core/organizations/actions')
+            const { getCurrentBrandingTier } = await import('@/modules/core/branding/tier-actions')
 
-            const [orgModules, userPerms, orgDetails] = await Promise.all([
+            const [orgModules, userPerms, orgDetails, brandingData] = await Promise.all([
                 getActiveModules(),
                 getCurrentUserPermissions(),
-                getCurrentOrgDetails()
+                getCurrentOrgDetails(),
+                getCurrentBrandingTier()
             ])
 
             setUserRole(userPerms?.role || null)
@@ -80,6 +84,9 @@ export function useActiveModules(): UseActiveModulesReturn {
             if (orgDetails?.vertical_key) {
                 setVertical(orgDetails.vertical_key)
             }
+
+            // Set specific merged capabilities
+            setCapabilities(brandingData?.capabilities || {})
 
             // If user has permissions, filter org modules by their access
             if (userPerms?.permissions?.modules) {
@@ -142,6 +149,7 @@ export function useActiveModules(): UseActiveModulesReturn {
         refresh,
         userRole,
         organizationType,
-        vertical
+        vertical,
+        capabilities
     }
 }

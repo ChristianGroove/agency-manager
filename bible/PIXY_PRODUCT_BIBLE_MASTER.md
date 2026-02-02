@@ -1742,18 +1742,32 @@ Kit documental listo para despliegue p�blico requerido por Meta.
 
 ---
 
-## 12. SEGURIDAD Y MULTITENENCIA V2 (SIDEBAR & FILTROS)
+## 12. ABSTRACCIÓN POR CAPACIDADES (THE AGNOSTIC CORE)
 
-### A. Lógica de Navegación Condicional
-El sistema utiliza ilterRoutesByModules para determinar qué secciones ve cada usuario en función de:
-- **orgType**: (platform, reseller, client). Los clientes nunca ven herramientas de administración de red.
-- **userRole**: (owner, admin, member).
-- **ertical**: (agency, industries). Ajusta dinámicamente el vocabulario y módulos operativos.
+### A. De Verticales a Capacidades
+Pixy evoluciona de un modelo basado en 'Nombres de Verticales' (Agency, Industries) a un modelo de **Capacidades (Capabilities)**. Esto permite pivotar el producto a cualquier mercado sin cambiar el código core.
 
-### B. Aislamiento de Datos
-- **RLS (Row Level Security)**: Reforzado para asegurar que un 'Client' solo acceda a sus propios illable_events y configuraciones, incluso en flujos disparados por el sistema.
+- **Definición**: Una Capacidad es un flag booleano que activa rutas, componentes y lógica específica.
+- **Registro de Capacidades**:
+    - CAN_MANAGE_CLIENTS: Habilita módulos de red y revenue share.
+    - CAN_CUSTOMIZE_BRANDING: Habilita el BrandCenter avanzado.
+    - HAS_ADVANCED_CRM: Activa procesos de pipeline y automatización.
+    - HAS_OMNICHANNEL: Habilita el Inbox universal.
+- **Ventaja**: El Sidebar y los permisos se resuelven mediante el cruce de capabilities del plan actual + overrides de la organización.
 
-## 13. GENERACIÓN DE DOCUMENTOS (CONTRACT ORCHESTRATION)
+## 13. RESILIENCIA Y GOBERNANZA DE DATOS (RECYCLE BIN)
+
+### A. El B2B Recycle Bin (Soft-Delete Grace Period)
+Para prevenir pérdida catastrófica de datos por error humano o sabotaje, Pixy implementa una red de seguridad de 30 días.
+
+- **Flujo de Borrado**:
+    1. El usuario ejecuta 'Eliminar'.
+    2. El item se marca como deleted_at = current_timestamp y desaparece de las vistas normales.
+    3. El item permanece en un estado transitorio restaurable por 30 días naturales.
+    4. Tras 30 días, un worker de background ejecuta la purga física definitiva.
+- **Exclusión**: Los items con estado soft-deleted no computan para límites de consumo ni facturación.
+
+## 14. GENERACIÓN DE DOCUMENTOS (CONTRACT ORCHESTRATION)
 
 ### A. Contratos Dinámicos
 - Generación automatizada de contratos de servicio con almacenamiento seguro en Supabase Storage.

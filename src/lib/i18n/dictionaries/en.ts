@@ -56,6 +56,7 @@ export const en = {
         core_apps: "App Store",
         module_contract_generator: "Contract Generator",
         core_settings: "Settings",
+        core_adn: "Business DNA",
         reseller_tenants: "Organizations",
         // Categories
         cat_core: "Main",

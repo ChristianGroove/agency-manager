@@ -125,6 +125,35 @@ export async function POST(request: Request) {
                     // After processing upgrade, we don't need to check for invoices
                     return NextResponse.json({ success: true }, { status: 200 })
                 }
+
+                // --- NEW: SUBSCRIPTION PAYMENT LOGIC ---
+                if (paymentTx.metadata?.type === 'subscription_payment' && paymentTx.organization_id) {
+                    console.log(`[Webhook] Processing Subscription Payment for Org: ${paymentTx.organization_id}`)
+
+                    // Register Billable Event (This is the revenue)
+                    const { registerBillableEvent } = await import('@/modules/core/revenue/actions')
+                    await registerBillableEvent({
+                        organization_id: paymentTx.organization_id,
+                        event_type: 'subscription',
+                        amount: paymentTx.amount_in_cents / 100,
+                        description: `Pago Suscripción: Agency OS (Ref: ${reference})`,
+                        currency: paymentTx.currency
+                    })
+
+                    // TODO: Update organization.subscription_valid_until if we enforce hard blocks
+                    // For now, we assume payment keeps them active. Use Audit Logs.
+
+                    // Send Notification
+                    await supabaseAdmin.from('notifications').insert({
+                        organization_id: paymentTx.organization_id,
+                        type: 'system',
+                        title: '✅ Pago de Suscripción Recibido',
+                        message: `Hemos recibido tu pago de $${(paymentTx.amount_in_cents / 100).toFixed(2)}. Tu plan sigue activo.`,
+                        read: false
+                    })
+
+                    return NextResponse.json({ success: true }, { status: 200 })
+                }
                 // ------------------------------------------
 
                 if (invoiceIds && Array.isArray(invoiceIds) && invoiceIds.length > 0) {

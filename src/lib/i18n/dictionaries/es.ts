@@ -55,6 +55,7 @@ export const es = {
         module_payments: "Pagos",
         core_apps: "App Store",
         core_settings: "Configuración",
+        core_adn: "ADN de Negocio",
         module_contract_generator: "Generador de Contratos",
         reseller_tenants: "Organizaciones",
         // Categories

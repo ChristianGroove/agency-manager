@@ -11,24 +11,27 @@ export class OpenAIAdapter implements IntegrationAdapter {
         }
 
         try {
-            // Real verification simple call
-            const response = await fetch("https://api.openai.com/v1/models", {
-                headers: {
-                    "Authorization": `Bearer ${apiKey}`
-                }
-            })
+            const { globalCircuitBreaker } = await import('@/lib/integrations/circuit-breaker');
 
-            if (response.ok) {
-                return { isValid: true }
-            } else {
-                const errorData = await response.json().catch(() => ({}))
-                return {
-                    isValid: false,
-                    error: errorData.error?.message || `OpenAI Verification Failed: ${response.statusText}`
+            return await globalCircuitBreaker.execute('openai_api', async () => {
+                const response = await fetch("https://api.openai.com/v1/models", {
+                    headers: {
+                        "Authorization": `Bearer ${apiKey}`
+                    }
+                })
+
+                if (response.ok) {
+                    return { isValid: true }
+                } else {
+                    const errorData = await response.json().catch(() => ({}))
+                    return {
+                        isValid: false,
+                        error: errorData.error?.message || `OpenAI Verification Failed: ${response.statusText}`
+                    }
                 }
-            }
+            });
         } catch (err: any) {
-            return { isValid: false, error: `Network error: ${err.message}` }
+            return { isValid: false, error: err.message || "Circuit Breaker: Service unavailable" }
         }
     }
 }

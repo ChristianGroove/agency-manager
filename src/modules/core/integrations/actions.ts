@@ -147,13 +147,31 @@ export async function createConnection(params: CreateConnectionParams) {
 
 export async function deleteConnection(connectionId: string) {
     const supabase = await createClient()
-    const { error } = await supabase
+    const { data: deletedConn, error } = await supabase
         .from('integration_connections')
         .delete()
         .eq('id', connectionId)
+        .select('organization_id, provider_key')
+        .single()
 
     if (error) {
         return { error: "Failed to delete connection" }
+    }
+
+    // Security Log
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user && deletedConn) {
+        const { SecurityLogger, SecurityAction } = await import('@/lib/security-logger')
+        await SecurityLogger.log({
+            organizationId: deletedConn.organization_id,
+            actorId: user.id,
+            action: SecurityAction.INTEGRATION_DISCONNECTED,
+            resourceEntity: 'integration_connections',
+            resourceId: connectionId,
+            metadata: {
+                provider_key: deletedConn.provider_key
+            }
+        })
     }
 
     revalidatePath('/platform/integrations')

@@ -4,33 +4,21 @@ import { createClient } from "@/lib/supabase-server"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
 import { revalidatePath } from "next/cache"
 import { ServiceCatalogItem } from "@/types"
-import { SaasApp } from "@/modules/core/saas/app-management-actions"
+import { getCurrentOrganizationApp, SaasApp } from "@/modules/core/saas/app-management-actions"
 
-// ... existing imports
+// ... existing code ...
 
 export async function getSubscriptionApp() {
-    const supabase = await createClient()
-    const orgId = await getCurrentOrganizationId()
-    if (!orgId) return null
+    // Delegate to the robust logic in saas/app-management-actions
+    const currentApp = await getCurrentOrganizationApp()
 
-    // Fetch organization's active app
-    const { data: org, error } = await supabase
-        .from('organizations')
-        .select(`
-            active_app_id,
-            saas_apps!active_app_id (
-                *
-            )
-        `)
-        .eq('id', orgId)
-        .single()
-
-    if (error || !org?.saas_apps) {
-        // It's possible they don't have an active app set yet (legacy or new org)
-        return null
+    if (currentApp?.app) {
+        return currentApp.app
     }
 
-    return org.saas_apps as unknown as SaasApp
+    // Fallback: Check direct DB link if the above failed (though getCurrentOrganizationApp should cover it if extended properly)
+    // For now we trust getCurrentOrganizationApp as the source of truth for "Plan"
+    return null
 }
 
 export async function getCatalogItem(id: string) {

@@ -205,7 +205,15 @@ export async function getCurrentOrganizationApp() {
                 icon: 'Box',
                 color: '#64748b',
                 created_at: new Date().toISOString(),
-                status: 'published'
+                status: 'published',
+                price_monthly: 0,
+                trial_days: 0,
+                is_active: true,
+                is_featured: false,
+                sort_order: 0,
+                vertical_compatibility: [],
+                description: 'Legacy Workspace',
+                slug: 'legacy'
             } as SaasApp,
             activated_at: new Date().toISOString(),
             metadata: {}
@@ -228,7 +236,7 @@ export async function getCurrentOrganizationApp() {
                 icon: 'Briefcase',
                 color: '#ec4899', // Pink brand
                 vertical_compatibility: ['agency'],
-                price_monthly: 0,
+                price_monthly: 29,
                 trial_days: 0,
                 is_active: true,
                 is_featured: true,

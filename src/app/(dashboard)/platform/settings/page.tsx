@@ -52,6 +52,9 @@ export default async function SettingsPage() {
                     vaultConfig={vaultConfig || { enabled: false, frequency: 'weekly' }}
                     organizationId={orgId}
                     isReseller={isReseller}
+                    billingStatus={{
+                        allowDirectBilling: organization?.allowDirectBilling
+                    }}
                 />
             </Suspense>
         </div>

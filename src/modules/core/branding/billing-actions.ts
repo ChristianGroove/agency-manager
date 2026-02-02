@@ -15,12 +15,16 @@ export async function createBrandingUpgradeTransaction() {
 
     if (!orgId) throw new Error("No organization context")
 
-    // 1. Verify current tier
+    // 1. Verify current tier and direct billing permission
     const { data: org } = await supabaseAdmin
         .from('organizations')
-        .select('branding_tier_id, name')
+        .select('branding_tier_id, name, allow_direct_billing')
         .eq('id', orgId)
         .single()
+
+    if (org?.allow_direct_billing === false) {
+        throw new Error("El cobro directo está deshabilitado para esta organización. Por favor contacta a tu proveedor.")
+    }
 
     if (org?.branding_tier_id === 'whitelabel') {
         throw new Error("La organización ya cuenta con Branding Total.")
