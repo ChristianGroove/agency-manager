@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { motion, AnimatePresence, Variants } from "framer-motion"
-import { Rocket, Moon, Sun, MessageSquare } from "lucide-react"
+import { Rocket, Moon, Sun, MessageSquare, Sparkles } from "lucide-react"
 import { useTheme } from "next-themes"
 import Image from "next/image"
 import { cn } from "@/lib/utils"
@@ -11,9 +11,10 @@ import { cn } from "@/lib/utils"
 interface UnifiedFloatingFabProps {
     onOpenMeta: () => void
     onOpenHelp: () => void
+    onOpenAssistant: () => void
 }
 
-export function UnifiedFloatingFab({ onOpenMeta, onOpenHelp }: UnifiedFloatingFabProps) {
+export function UnifiedFloatingFab({ onOpenMeta, onOpenHelp, onOpenAssistant }: UnifiedFloatingFabProps) {
     const [isExpanded, setIsExpanded] = useState(false)
     const { theme, setTheme } = useTheme()
 
@@ -80,7 +81,28 @@ export function UnifiedFloatingFab({ onOpenMeta, onOpenHelp }: UnifiedFloatingFa
                             exit="collapsed"
                             variants={containerVariants}
                         >
-                            {/* 3. HELP (Top) */}
+
+                            {/* 4. PIXY ASSISTANT (Top) */}
+                            <motion.button
+                                variants={itemVariants}
+                                onClick={() => {
+                                    onOpenAssistant()
+                                    setIsExpanded(false)
+                                }}
+                                className={cn(
+                                    "relative group flex items-center justify-center w-10 h-10 rounded-full",
+                                    "bg-gradient-to-tr from-pink-500 to-indigo-600 text-white shadow-lg",
+                                    "hover:scale-110 transition-transform hover:shadow-[0_0_20px_rgba(236,72,153,0.5)]"
+                                )}
+                            >
+                                <Sparkles className="w-5 h-5" />
+                                {/* Label */}
+                                <span className="absolute right-12 px-3 py-1.5 bg-background/80 backdrop-blur-md text-foreground text-xs font-medium rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none custom-shadow border border-border/50">
+                                    Pixy Assistant
+                                </span>
+                            </motion.button>
+
+                            {/* 3. HELP */}
                             <motion.button
                                 variants={itemVariants}
                                 onClick={() => {
@@ -89,19 +111,18 @@ export function UnifiedFloatingFab({ onOpenMeta, onOpenHelp }: UnifiedFloatingFa
                                 }}
                                 className={cn(
                                     "relative group flex items-center justify-center w-10 h-10 rounded-full",
-                                    "bg-white dark:bg-zinc-800 shadow-lg border border-gray-200 dark:border-zinc-700",
-                                    "hover:scale-110 transition-transform"
+                                    "bg-white/80 dark:bg-black/80 backdrop-blur-md shadow-lg border border-white/20 dark:border-white/10",
+                                    "hover:bg-gradient-to-br hover:from-cyan-500 hover:to-blue-600 hover:text-white hover:border-transparent",
+                                    "hover:scale-110 transition-all duration-300"
                                 )}
-                                title="Asistente IA"
                             >
-                                <MessageSquare className="w-5 h-5 text-primary" />
-                                {/* Tooltip */}
-                                <span className="absolute right-12 px-2 py-1 bg-black/80 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap backdrop-blur-sm pointer-events-none">
-                                    Chat Asistente
+                                <MessageSquare className="w-5 h-5" />
+                                <span className="absolute right-12 px-3 py-1.5 bg-background/80 backdrop-blur-md text-foreground text-xs font-medium rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none custom-shadow border border-border/50">
+                                    Centro de Ayuda
                                 </span>
                             </motion.button>
 
-                            {/* 2. META (Middle) */}
+                            {/* 2. META */}
                             <motion.button
                                 variants={itemVariants}
                                 onClick={() => {
@@ -110,31 +131,31 @@ export function UnifiedFloatingFab({ onOpenMeta, onOpenHelp }: UnifiedFloatingFa
                                 }}
                                 className={cn(
                                     "relative group flex items-center justify-center w-10 h-10 rounded-full",
-                                    "bg-white dark:bg-zinc-800 shadow-lg border border-gray-200 dark:border-zinc-700",
-                                    "hover:scale-110 transition-transform"
+                                    "bg-white/80 dark:bg-black/80 backdrop-blur-md shadow-lg border border-white/20 dark:border-white/10",
+                                    "hover:bg-gradient-to-br hover:from-emerald-400 hover:to-teal-600 hover:text-white hover:border-transparent",
+                                    "hover:scale-110 transition-all duration-300"
                                 )}
-                                title="Meta Control"
                             >
-                                <Rocket className="w-5 h-5 text-primary" />
-                                <span className="absolute right-12 px-2 py-1 bg-black/80 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap backdrop-blur-sm pointer-events-none">
+                                <Rocket className="w-5 h-5" />
+                                <span className="absolute right-12 px-3 py-1.5 bg-background/80 backdrop-blur-md text-foreground text-xs font-medium rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none custom-shadow border border-border/50">
                                     Meta Control
                                 </span>
                             </motion.button>
 
-                            {/* 1. THEME (Bottom) */}
+                            {/* 1. THEME */}
                             <motion.button
                                 variants={itemVariants}
                                 onClick={toggleTheme}
                                 className={cn(
                                     "relative group flex items-center justify-center w-10 h-10 rounded-full",
-                                    "bg-white dark:bg-zinc-800 shadow-lg border border-gray-200 dark:border-zinc-700",
-                                    "hover:scale-110 transition-transform"
+                                    "bg-white/80 dark:bg-black/80 backdrop-blur-md shadow-lg border border-white/20 dark:border-white/10",
+                                    "hover:bg-gradient-to-br hover:from-amber-400 hover:to-orange-500 hover:text-white hover:border-transparent",
+                                    "hover:scale-110 transition-all duration-300"
                                 )}
-                                title="Cambiar Tema"
                             >
-                                <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0 text-primary" />
-                                <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100 text-primary" />
-                                <span className="absolute right-12 px-2 py-1 bg-black/80 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap backdrop-blur-sm pointer-events-none">
+                                <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+                                <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                                <span className="absolute right-12 px-3 py-1.5 bg-background/80 backdrop-blur-md text-foreground text-xs font-medium rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none custom-shadow border border-border/50">
                                     Tema {theme === 'dark' ? 'Claro' : 'Oscuro'}
                                 </span>
                             </motion.button>

@@ -213,7 +213,7 @@ export async function getCurrentOrganizationApp() {
                 sort_order: 0,
                 vertical_compatibility: [],
                 description: 'Legacy Workspace',
-                slug: 'legacy'
+
             } as SaasApp,
             activated_at: new Date().toISOString(),
             metadata: {}

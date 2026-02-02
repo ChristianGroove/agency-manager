@@ -26,7 +26,8 @@ import {
     UserSquare,
     BrainCircuit,
     BarChart3,
-    ScanFace
+    ScanFace,
+    Mail
 } from 'lucide-react'
 
 export type ModuleCategory = 'core' | 'crm' | 'operations' | 'tools' | 'finance' | 'config';
@@ -241,6 +242,18 @@ export const MODULE_ROUTES: ModuleRoute[] = [
             excludedOrgTypes: ['client', 'reseller']
         }
     },
+    {
+        key: 'tool_email_engine',
+        label: 'Motor de Correos',
+        href: '/tools/email-engine',
+        icon: Mail,
+        category: 'tools',
+        isCore: true,
+        access: {
+            allowedRoles: ['owner', 'admin'],
+            excludedOrgTypes: ['client', 'reseller']
+        }
+    },
 
     // --- FINANZAS ---
     {
@@ -273,19 +286,6 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         label: 'ADN del Negocio',
         href: '/platform/adn',
         icon: ScanFace,
-        isCore: true,
-        category: 'config',
-        access: {
-            allowedRoles: ['owner', 'admin'],
-            excludedOrgTypes: ['client', 'reseller']
-        }
-    },
-    // HIDDEN FOR REGULAR USERS
-    {
-        key: 'core_apps',
-        label: 'Store',
-        href: '/platform/apps',
-        icon: Grid,
         isCore: true,
         category: 'config',
         access: {

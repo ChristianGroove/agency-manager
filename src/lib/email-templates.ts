@@ -9,6 +9,13 @@ export interface EmailBranding {
     website_url?: string
     footer_text?: string
     legal_footer?: string
+    text_overrides?: {
+        greeting?: string; // "Hola {{name}},"
+        intro_text?: string; // "Adjunto encontrarás..."
+        cta_text?: string; // "Ver Factura"
+        footer_text?: string; // Overrides branding.footer_text
+        legal_text?: string; // Overrides branding.legal_footer
+    }
 }
 
 /**
@@ -18,9 +25,9 @@ function getBaseHtml(title: string, content: string, branding: EmailBranding, st
     const primary = branding.primary_color || '#000000'
     const secondary = branding.secondary_color || '#666666'
 
-    // Default Footer Logic
-    const footerContent = branding.footer_text || `© ${new Date().getFullYear()} ${branding.agency_name}.`
-    const legalContent = branding.legal_footer ||
+    // Default Footer Logic (Override > Branding > Default)
+    const footerContent = branding.text_overrides?.footer_text || branding.footer_text || `© ${new Date().getFullYear()} ${branding.agency_name}.`
+    const legalContent = branding.text_overrides?.legal_text || branding.legal_footer ||
         "Este mensaje y sus archivos adjuntos son confidenciales y están dirigidos exclusivamente a su destinatario. " +
         "Si usted ha recibido este correo por error, por favor notifíquelo inmediatamente y elimínelo de su sistema. " +
         "Consulte nuestra Política de Tratamiento de Datos en nuestro portal."
@@ -170,9 +177,13 @@ export function getInvoiceEmailHtml(clientName: string, invoiceNumber: string, a
         `display: inline-block; background: #000; color: #fff; padding: 20px 40px; text-decoration: none; font-weight: bold; font-size: 16px; margin-top: 30px;` :
         `display: inline-block; background: ${branding.primary_color}; color: #ffffff; padding: 16px 32px; border-radius: ${isNeo ? '50px' : '6px'}; text-decoration: none; font-weight: 600; margin-top: 24px; box-shadow: ${isNeo ? '0 10px 20px -5px ' + branding.primary_color + '66' : 'none'};`;
 
+    const greeting = branding.text_overrides?.greeting?.replace('{{name}}', clientName) || `Hola <strong>${clientName}</strong>,`;
+    const intro = branding.text_overrides?.intro_text?.replace('{{number}}', invoiceNumber) || `Adjunto encontrarás tu nueva factura <strong>#${invoiceNumber}</strong>.`;
+    const cta = branding.text_overrides?.cta_text || "Pagar Factura";
+
     const content = `
-        <p style="margin-bottom: 24px;">Hola <strong>${clientName}</strong>,</p>
-        <p style="margin-bottom: 24px;">Adjunto encontrarás tu nueva factura <strong>#${invoiceNumber}</strong>.</p>
+        <p style="margin-bottom: 24px;">${greeting}</p>
+        <p style="margin-bottom: 24px;">${intro}</p>
         
         <div style="background: ${isSwiss ? '#ffffff' : (isNeo ? 'rgba(255,255,255,0.7)' : '#f8fafc')}; border: ${isSwiss ? '2px solid #000' : 'none'}; padding: ${isSwiss ? '30px' : '24px'}; border-radius: ${isNeo ? '16px' : (isSwiss ? '0' : '8px')}; margin-bottom: 30px;">
             <p style="margin: 0; font-size: 12px; color: ${isSwiss ? '#000' : '#64748b'}; text-transform: uppercase; letter-spacing: 1px;">Total a Pagar</p>
@@ -192,7 +203,7 @@ export function getInvoiceEmailHtml(clientName: string, invoiceNumber: string, a
 
         <div style="text-align: center;">
             <a href="{{link_url}}" style="${buttonStyle}">
-                Pagar Factura
+                ${cta}
             </a>
             <p style="margin-top: 16px; font-size: 12px; color: #94a3b8;">
                 O copia este link: <a href="{{link_url}}" style="color: ${branding.primary_color};">{{link_url}}</a>

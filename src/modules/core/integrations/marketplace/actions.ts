@@ -309,6 +309,9 @@ export async function getMetaAuthUrl(channelType?: 'whatsapp' | 'messenger' | 'i
     const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     const REDIRECT_URI = `${BASE_URL}/api/integrations/meta/callback`;
 
+    console.log('[Meta OAuth] Generating URL with Redirect URI:', REDIRECT_URI);
+    console.log('[Meta OAuth] BASE_URL resolved to:', BASE_URL);
+
     // Scopes based on channel type
     // For granular connections, request only the necessary scopes
     let scopes: string[];
@@ -353,6 +356,10 @@ export async function getMetaAuthUrl(channelType?: 'whatsapp' | 'messenger' | 'i
             ];
     }
 
-    return `https://www.facebook.com/v19.0/dialog/oauth?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&state=${state}&scope=${scopes.join(',')}&response_type=code`;
+    const finalUrl = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&state=${state}&scope=${scopes.join(',')}&response_type=code`;
+
+    console.log('[Meta OAuth] Final URL:', finalUrl);
+
+    return finalUrl;
 }
 

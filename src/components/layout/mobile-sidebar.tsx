@@ -12,12 +12,12 @@ interface MobileSidebarProps {
     currentOrgId: string | null
     isSuperAdmin?: boolean
     user?: User
-    prefetchedModules?: string[]
+    sidebarContext?: any
 }
 
 import { useTranslation } from "@/lib/i18n/use-translation"
 
-export function MobileSidebar({ currentOrgId, isSuperAdmin, user, prefetchedModules }: MobileSidebarProps) {
+export function MobileSidebar({ currentOrgId, isSuperAdmin, user, sidebarContext }: MobileSidebarProps) {
     const { t } = useTranslation()
     const [isMounted, setIsMounted] = useState(false)
     const [open, setOpen] = useState(false)
@@ -54,7 +54,7 @@ export function MobileSidebar({ currentOrgId, isSuperAdmin, user, prefetchedModu
                 <SidebarContent
                     currentOrgId={currentOrgId}
                     isSuperAdmin={isSuperAdmin}
-                    prefetchedModules={prefetchedModules}
+                    sidebarContext={sidebarContext}
                 />
             </SheetContent>
         </Sheet>

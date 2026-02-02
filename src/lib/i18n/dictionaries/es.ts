@@ -58,6 +58,7 @@ export const es = {
         core_adn: "ADN de Negocio",
         module_contract_generator: "Generador de Contratos",
         reseller_tenants: "Organizaciones",
+        tool_email_engine: "Motor de Correos",
         // Categories
         cat_core: "Principal",
         cat_crm: "CRM",

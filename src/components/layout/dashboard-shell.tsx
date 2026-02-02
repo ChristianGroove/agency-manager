@@ -16,10 +16,10 @@ interface DashboardShellProps {
     user: User
     currentOrgId: string | null
     isSuperAdmin?: boolean
-    prefetchedModules?: string[]
+    sidebarContext?: any
 }
 
-export function DashboardShell({ children, user, currentOrgId, isSuperAdmin = false, prefetchedModules }: DashboardShellProps) {
+export function DashboardShell({ children, user, currentOrgId, isSuperAdmin = false, sidebarContext }: DashboardShellProps) {
     const [isCollapsed, setIsCollapsed] = useState(false)
 
     return (
@@ -33,7 +33,7 @@ export function DashboardShell({ children, user, currentOrgId, isSuperAdmin = fa
                     currentOrgId={currentOrgId}
                     isSuperAdmin={isSuperAdmin}
                     user={user}
-                    prefetchedModules={prefetchedModules}
+                    sidebarContext={sidebarContext}
                 />
             </div>
 
@@ -50,7 +50,7 @@ export function DashboardShell({ children, user, currentOrgId, isSuperAdmin = fa
                         user={user}
                         currentOrgId={currentOrgId}
                         isSuperAdmin={isSuperAdmin}
-                        prefetchedModules={prefetchedModules}
+                        sidebarContext={sidebarContext}
                     />
                     <span className="font-semibold text-lg bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 bg-clip-text text-transparent ml-2">
                         Agency Manager

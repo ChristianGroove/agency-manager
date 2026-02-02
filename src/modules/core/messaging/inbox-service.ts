@@ -54,14 +54,20 @@ export class InboxService {
         }
 
         // 3. Insert Message
+        const isOutbound = msg.origin === 'outbound';
+        const direction = isOutbound ? 'outbound' : 'inbound';
+        const status = isOutbound ? 'sent' : 'delivered';
+        // For outbound echoes, sender should not be the client phone (msg.from)
+        const sender = isOutbound ? 'Agent (Mobile)' : msg.from;
+
         const { error: msgError } = await supabase.from('messages').insert({
             conversation_id: conversation.id,
-            direction: 'inbound',
+            direction: direction,
             channel: msg.channel,
             content: msg.content,
-            status: 'delivered',
+            status: status,
             external_id: msg.externalId,
-            sender: msg.from,
+            sender: sender,
             metadata: msg,
             created_at: msg.timestamp ? new Date(msg.timestamp).toISOString() : new Date().toISOString()
         })
@@ -73,9 +79,14 @@ export class InboxService {
 
         // 4. Update triggers automatically via DB
         // The DB trigger 'update_conversation_last_message' handles unread_count increment and last_message update.
-        console.log(`[InboxService] Message saved.About to trigger automation...`)
+        console.log(`[InboxService] Message saved. Direction: ${direction}`)
 
-        // 5. Trigger Automation
+        if (isOutbound) {
+            console.log('[InboxService] Skipping automation for outbound message.')
+            return { success: true, conversationId: conversation.id }
+        }
+
+        // 5. Trigger Automation (Inbound Only)
         try {
             const { automationTrigger } = await import("../automation/automation-trigger.service")
             // Fire and forget - don't block the webhook response

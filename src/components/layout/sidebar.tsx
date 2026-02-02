@@ -25,7 +25,7 @@ interface SidebarProps {
     currentOrgId: string | null;
     isSuperAdmin?: boolean;
     user?: any
-    prefetchedModules?: string[]
+    sidebarContext?: any
 }
 
 function SidebarItem({ icon: Icon, label, href, active, collapsed, isSuperAdminRoute = false }: { icon: any, label: string, href: string, active: boolean, collapsed: boolean, isSuperAdminRoute?: boolean }) {
@@ -128,15 +128,20 @@ function SidebarSection({
     )
 }
 
-export function SidebarContent({ isCollapsed = false, currentOrgId, isSuperAdmin = false, prefetchedModules, user }: { isCollapsed?: boolean, currentOrgId: string | null, isSuperAdmin?: boolean, prefetchedModules?: string[], user?: any }) {
+export function SidebarContent({ isCollapsed = false, currentOrgId, isSuperAdmin = false, sidebarContext, user }: { isCollapsed?: boolean, currentOrgId: string | null, isSuperAdmin?: boolean, sidebarContext?: any, user?: any }) {
     const pathname = usePathname()
     const { t } = useTranslation()
-    // PERF: Use prefetched modules if available, fall back to hook for client-side updates
-    const { modules: hookModules, isLoading: hookLoading, organizationType, vertical, userRole, capabilities } = useActiveModules()
 
-    // Use prefetched data immediately, no loading state
-    const modules = prefetchedModules && prefetchedModules.length > 0 ? prefetchedModules : hookModules
-    const isLoading = prefetchedModules && prefetchedModules.length > 0 ? false : hookLoading
+    // PERF: Use prefetched context if available, fall back to hook for client-side updates (e.g. org switch)
+    const hookData = useActiveModules()
+
+    // Priority: Server Context > Hook Data (if context is missing, wait for hook)
+    const modules = sidebarContext?.modules || hookData.modules
+    const organizationType = sidebarContext?.organizationType || hookData.organizationType
+    const vertical = sidebarContext?.vertical || hookData.vertical
+    const capabilities = sidebarContext?.capabilities || hookData.capabilities
+    const userRole = sidebarContext?.userRole || hookData.userRole
+    const isLoading = sidebarContext ? false : hookData.isLoading
 
     // Track which categories are expanded - default to core and crm
     const [activeCategories, setActiveCategories] = useState<string[]>(['core', 'crm', 'tools'])
@@ -295,7 +300,7 @@ export function SidebarContent({ isCollapsed = false, currentOrgId, isSuperAdmin
 import { getEffectiveBranding } from "@/modules/core/branding/actions"
 import { useTheme } from "next-themes"
 
-export function Sidebar({ isCollapsed, toggleCollapse, currentOrgId, isSuperAdmin = false, user, prefetchedModules }: SidebarProps) {
+export function Sidebar({ isCollapsed, toggleCollapse, currentOrgId, isSuperAdmin = false, user, sidebarContext }: SidebarProps) {
     const { resolvedTheme } = useTheme()
     // Fetch org type for floating actions visibility
     const { organizationType } = useActiveModules()
@@ -374,7 +379,7 @@ export function Sidebar({ isCollapsed, toggleCollapse, currentOrgId, isSuperAdmi
                     />
                 </div>
 
-                <SidebarContent isCollapsed={isCollapsed} currentOrgId={currentOrgId} isSuperAdmin={isSuperAdmin} prefetchedModules={prefetchedModules} user={user} />
+                <SidebarContent isCollapsed={isCollapsed} currentOrgId={currentOrgId} isSuperAdmin={isSuperAdmin} sidebarContext={sidebarContext} user={user} />
             </div>
         </TooltipProvider>
     )

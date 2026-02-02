@@ -6,10 +6,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { TrashItem, getTrashItems, restoreItem, permanentlyDeleteItem } from "@/modules/core/trash/actions"
-import { Loader2, RefreshCw, Trash2, AlertTriangle, Search, Archive } from "lucide-react"
+import { Loader2, RefreshCw, Trash2, AlertTriangle, Search, Archive, Settings } from "lucide-react"
 import { toast } from "sonner"
 import { useHotkeys } from "react-hotkeys-hook"
 import { useActiveModules } from "@/hooks/use-active-modules"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { updateSettings } from "@/modules/core/settings/actions"
 
 export function TrashBinModal({ shortcut = 'ctrl+alt+p' }: { shortcut?: string }) {
     const [open, setOpen] = useState(false)
@@ -197,9 +201,43 @@ export function TrashBinModal({ shortcut = 'ctrl+alt+p' }: { shortcut?: string }
                     </Tabs>
                 </div>
 
-                <div className="px-6 py-3 bg-gray-50 border-t border-gray-200 text-xs text-gray-400 flex justify-between">
-                    <span>Presiona ESC para cerrar</span>
-                    <span className="flex items-center gap-1"><AlertTriangle className="h-3 w-3" /> Los elementos restaurados volverán a su ubicación original</span>
+                <div className="bg-white dark:bg-zinc-950 px-6 py-3 border-t border-gray-200 dark:border-zinc-800 text-xs text-gray-400 dark:text-zinc-500 flex justify-between items-center">
+                    <span>ESC para cerrar</span>
+                    <div className="flex items-center gap-4">
+                        <span className="flex items-center gap-1"><AlertTriangle className="h-3 w-3" /> Restaurar devuelve a ubicación original</span>
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <Button variant="ghost" size="sm" className="h-6 gap-1 text-xs text-muted-foreground hover:text-foreground">
+                                    <Settings className="h-3 w-3" />
+                                    {shortcut}
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-80" align="end">
+                                <div className="space-y-4">
+                                    <h4 className="font-medium leading-none">Configuración de Papelera</h4>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="shortcut">Atajo de Teclado</Label>
+                                        <div className="flex gap-2">
+                                            <Input
+                                                id="shortcut"
+                                                defaultValue={shortcut}
+                                                className="h-8"
+                                                onKeyDown={async (e) => {
+                                                    if (e.key === 'Enter') {
+                                                        const val = e.currentTarget.value
+                                                        await updateSettings({ trash_shortcut: val })
+                                                        toast.success("Atajo actualizado")
+                                                        window.location.reload()
+                                                    }
+                                                }}
+                                            />
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">Presiona Enter para guardar y recargar.</p>
+                                    </div>
+                                </div>
+                            </PopoverContent>
+                        </Popover>
+                    </div>
                 </div>
             </DialogContent >
         </Dialog >

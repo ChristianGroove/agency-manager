@@ -7,8 +7,24 @@ import { Visualizer } from './Visualizer';
 import { ChatMessage } from './ChatMessage';
 import { Mic, Send, X, Sparkles, MessageSquare } from 'lucide-react';
 
-export function AssistantOverlay() {
-    const { messages, status, isOpen, setIsOpen, submitMessage, toggleVoice } = useAssistant();
+
+export interface AssistantOverlayProps {
+    messages: any[];
+    status: 'idle' | 'listening' | 'thinking' | 'speaking';
+    isOpen: boolean;
+    setIsOpen: (open: boolean) => void;
+    submitMessage: (text: string, mode?: 'text' | 'voice') => void;
+    toggleVoice: () => void;
+}
+
+export function AssistantOverlay({
+    messages,
+    status,
+    isOpen,
+    setIsOpen,
+    submitMessage,
+    toggleVoice
+}: AssistantOverlayProps) {
     const inputRef = useRef<HTMLInputElement>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -22,7 +38,7 @@ export function AssistantOverlay() {
         const handleKeyDown = (e: KeyboardEvent) => {
             if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
                 e.preventDefault();
-                setIsOpen(prev => !prev);
+                setIsOpen(!isOpen);
                 setTimeout(() => inputRef.current?.focus(), 100);
             }
             if (e.key === 'Escape' && isOpen) {
@@ -44,14 +60,7 @@ export function AssistantOverlay() {
         if (e.key === 'Enter') handleSend();
     };
 
-    if (!isOpen) return (
-        <button
-            onClick={() => setIsOpen(true)}
-            className="fixed bottom-6 right-6 z-50 w-14 h-14 bg-gradient-to-tr from-pink-500 to-indigo-600 text-white rounded-full shadow-lg flex items-center justify-center hover:scale-105 transition-transform active:scale-95"
-        >
-            <Sparkles className="w-6 h-6 animate-pulse" />
-        </button>
-    );
+    if (!isOpen) return null;
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center sm:items-end sm:justify-end sm:p-6 bg-black/20 backdrop-blur-sm animate-in fade-in duration-200">

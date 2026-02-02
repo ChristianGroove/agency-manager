@@ -172,18 +172,29 @@ export class MetaProvider implements MessagingProvider {
 
                                 debugLog(`WA Msg Parsed: From=${msg.from}, ContentType=${content.type}, Metadata=${JSON.stringify(change.value.metadata)}`);
 
+                                // Detect Echo (Outbound Message from App)
+                                const isEcho = change.value.metadata?.phone_number_id === msg.from;
+                                const origin = isEcho ? 'outbound' : 'inbound';
+                                const conversationPartner = isEcho ? msg.to : msg.from;
+
+                                if (isEcho) {
+                                    debugLog(`[MetaProvider] Detected ECHO from ${msg.from} to ${msg.to}`);
+                                }
+
                                 messages.push({
                                     id: msg.id,
                                     externalId: msg.id,
                                     channel: 'whatsapp',
-                                    from: msg.from,
+                                    from: conversationPartner, // Usage of 'from' here implies "Conversation Identifier"
+                                    origin: origin,
                                     senderName: contact?.profile?.name || 'Unknown',
                                     timestamp: new Date(parseInt(msg.timestamp) * 1000),
                                     content: content,
                                     buttonId: buttonId, // Populate buttonId
                                     metadata: {
                                         phoneNumberId: change.value.metadata?.phone_number_id,
-                                        displayPhoneNumber: change.value.metadata?.display_phone_number
+                                        displayPhoneNumber: change.value.metadata?.display_phone_number,
+                                        isEcho: isEcho
                                     }
                                 });
                             }

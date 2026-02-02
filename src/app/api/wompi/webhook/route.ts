@@ -134,10 +134,10 @@ export async function POST(request: Request) {
                     const { registerBillableEvent } = await import('@/modules/core/revenue/actions')
                     await registerBillableEvent({
                         organization_id: paymentTx.organization_id,
-                        event_type: 'subscription',
+                        event_type: 'subscription_base',
                         amount: paymentTx.amount_in_cents / 100,
                         description: `Pago Suscripción: Agency OS (Ref: ${reference})`,
-                        currency: paymentTx.currency
+                        currency: paymentTx.currency as any
                     })
 
                     // TODO: Update organization.subscription_valid_until if we enforce hard blocks

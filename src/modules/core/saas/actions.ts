@@ -251,10 +251,6 @@ export async function verifyModuleAccess(moduleKey: string, orgId?: string): Pro
  * Gets detailed module information for the organization
  * Includes module metadata like name, category, icon, etc.
  */
-/**
- * Gets detailed module information for the organization
- * Includes module metadata like name, category, icon, etc.
- */
 export async function getActiveModulesDetailed(orgId?: string) {
     try {
         const supabase = await createClient()
@@ -294,5 +290,72 @@ export async function getActiveModulesDetailed(orgId?: string) {
     } catch (error) {
         console.error('Unexpected error in getActiveModulesDetailed:', error)
         return []
+    }
+}
+
+/**
+ * Aggregated fetch for Sidebar to reduce network waterfalls and flickering
+ * Returns everything needed to render the sidebar in one go
+ */
+export async function getSidebarContext(orgId?: string) {
+    try {
+        const organizationId = orgId || await getCurrentOrganizationId()
+        if (!organizationId) {
+            return {
+                modules: ['core_clients', 'core_settings'],
+                userRole: null,
+                organizationType: 'client' as const,
+                vertical: undefined,
+                capabilities: {}
+            }
+        }
+
+        // Fetch everything in parallel
+        // Dynamically import to avoid potential circular dependencies with team-actions / organizations
+        const { getCurrentUserPermissions } = await import('@/modules/core/settings/actions/team-actions')
+        const { getCurrentOrgDetails } = await import('@/modules/core/organizations/actions')
+        const { getCurrentBrandingTier } = await import('@/modules/core/branding/tier-actions')
+
+        const [modules, userPerms, orgDetails, brandingData] = await Promise.all([
+            getActiveModules(organizationId),
+            getCurrentUserPermissions(), // Handles its own orgId check
+            getCurrentOrgDetails(organizationId),
+            getCurrentBrandingTier()
+        ])
+
+        // Filter modules based on permissions
+        let finalModules = modules
+        if (userPerms?.permissions?.modules) {
+            // Re-map logic here or just rely on the pre-existing logic if simple
+            // We need the Permission Map but it is in the client hook. 
+            // Let's just return the raw modules and permissions and let client filter?
+            // BETTER: Filter here to save client payload size.
+            // We need to duplicate the map key or move it to a shared constant.
+            // For now, let's keep it simple and filter on client if complex, 
+            // BUT the performance gain is avoiding requests.
+            // Let's return raw data and let the hook doing the filtering to keep logic in one place
+            // OR move filtering here. 
+            // To be safe and speed up, let's return everything and let the hook process the filtering logic
+            // which it already has.
+        }
+
+        return {
+            modules: modules,
+            userRole: userPerms?.role || null,
+            userPermissions: userPerms?.permissions || null, // Pass full permissions to client
+            organizationType: (orgDetails?.organization_type || 'client') as 'platform' | 'reseller' | 'client',
+            vertical: orgDetails?.vertical_key,
+            capabilities: brandingData?.capabilities || {}
+        }
+
+    } catch (error) {
+        console.error("Error in getSidebarContext:", error)
+        return {
+            modules: ['core_clients', 'core_settings'],
+            userRole: null,
+            organizationType: 'client' as const,
+            vertical: undefined,
+            capabilities: {}
+        }
     }
 }

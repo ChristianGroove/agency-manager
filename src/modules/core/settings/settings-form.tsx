@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, Save, CreditCard, FileText, Building2, Globe, Layout, Palette, Eye, MessageSquare, LayoutTemplate, Users, AlertTriangle, Lock, Shield, DollarSign, ShieldAlert, Bell, Bot, Settings } from "lucide-react"
+import { Loader2, Save, CreditCard, FileText, Layout, Palette, Eye, MessageSquare, Users, AlertTriangle, Lock, Shield, DollarSign, ShieldAlert, Bell, Bot, Settings, Globe } from "lucide-react"
 
 import { PaymentMethodsManager } from "./payment-methods-manager"
 import { EmittersSettings } from "./emitters-settings"
@@ -196,14 +196,6 @@ export function SettingsForm({
             minRole: 'admin'
         },
         {
-            id: 'general',
-            label: t('settings.tabs.general'),
-            icon: Globe,
-            requiredModule: null,
-            isCore: true,
-            minRole: 'member'
-        },
-        {
             id: 'notifications',
             label: t('settings.tabs.notifications'),
             icon: Bell,
@@ -239,13 +231,6 @@ export function SettingsForm({
             icon: MessageSquare,
             requiredModules: ['module_communications', 'module_invoicing'],
             matchAny: true
-        },
-        {
-            id: 'interface',
-            label: t('settings.tabs.interface'),
-            icon: LayoutTemplate,
-            requiredModule: null,
-            isCore: true
         },
         {
             id: 'revenue',
@@ -301,7 +286,7 @@ export function SettingsForm({
                 )}
             />
 
-            <Tabs defaultValue={visibleTabs[0]?.id || 'general'} className="w-full" suppressHydrationWarning>
+            <Tabs defaultValue={visibleTabs[0]?.id || 'team'} className="w-full" suppressHydrationWarning>
                 <TabsList
                     className="flex w-full overflow-x-auto bg-gray-100/50 dark:bg-white/5 p-1 backdrop-blur-sm border border-gray-200/50 dark:border-white/10 no-scrollbar"
                     suppressHydrationWarning
@@ -348,60 +333,6 @@ export function SettingsForm({
                     <TeamSettingsTab />
                 </TabsContent>
 
-                <TabsContent value="general" className="space-y-4 mt-4" suppressHydrationWarning>
-                    <Card className="bg-white dark:bg-white/5 border-gray-100 dark:border-white/10 shadow-sm backdrop-blur-md">
-                        <CardHeader>
-                            <CardTitle>{t('settings.general.title')}</CardTitle>
-                            <CardDescription>{t('settings.general.description')}</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-6">
-                            <div className="space-y-4">
-                                <div className="flex items-center justify-between">
-                                    <h3 className="text-lg font-medium">{t('settings.general.brand_identity')}</h3>
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label className="text-muted-foreground">{t('settings.general.agency_name')}</Label>
-                                        <Input value={formData.agency_name || ''} disabled className="bg-muted" />
-                                    </div>
-                                </div>
-                                <p className="text-xs text-muted-foreground bg-blue-50/50 dark:bg-blue-500/10 p-2 rounded border border-blue-100/50 dark:border-blue-500/20">
-                                    <Building2 className="inline h-3 w-3 mr-1 text-blue-600 dark:text-blue-400" />
-                                    Estos datos se sincronizan automáticamente con el Centro de Marca.
-                                </p>
-                            </div>
-                            <div className="h-px bg-border my-2" />
-                            <div className="space-y-2">
-                                <Label htmlFor="legal_text">{t('settings.general.legal_text')}</Label>
-                                <Textarea
-                                    id="legal_text"
-                                    name="legal_text"
-                                    value={formData.legal_text || ''}
-                                    onChange={handleChange}
-                                    placeholder="Términos y condiciones..."
-                                    className="min-h-[100px]"
-                                />
-                            </div>
-                            <div className="space-y-2 pt-4 border-t dark:border-white/10">
-                                <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-2">{t('settings.general.accessibility')}</h4>
-                                <div className="space-y-2">
-                                    <Label htmlFor="trash_shortcut">{t('settings.general.trash_shortcut')}</Label>
-                                    <div className="flex items-center gap-2">
-                                        <Input
-                                            id="trash_shortcut"
-                                            name="trash_shortcut"
-                                            value={formData.trash_shortcut || 'ctrl+alt+p'}
-                                            onChange={handleChange}
-                                            placeholder="ej: ctrl+alt+p"
-                                            className="max-w-[200px]"
-                                        />
-                                        <p className="text-xs text-muted-foreground">Combinación de teclas para abrir la papelera.</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </TabsContent>
 
                 <TabsContent value="notifications" className="space-y-4 mt-4" suppressHydrationWarning>
                     <Card className="bg-white dark:bg-white/5 border-gray-100 dark:border-white/10 shadow-sm backdrop-blur-md">
@@ -662,28 +593,6 @@ export function SettingsForm({
                     </div>
                 </TabsContent>
 
-                <TabsContent value="interface" className="space-y-4 mt-4" suppressHydrationWarning>
-                    <Card className="bg-white dark:bg-white/5 border-gray-100 dark:border-white/10 shadow-sm backdrop-blur-md">
-                        <CardHeader>
-                            <CardTitle>Personalización de Interfaz</CardTitle>
-                            <CardDescription>Ajusta la apariencia del dashboard.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-6">
-                            <div className="flex items-center justify-between">
-                                <div className="space-y-0.5">
-                                    <Label className="text-base">Marquesina de Herramientas</Label>
-                                    <p className="text-sm text-muted-foreground">
-                                        Muestra una barra de herramientas flotante en la parte inferior.
-                                    </p>
-                                </div>
-                                <Switch
-                                    checked={showMarqueeLocal}
-                                    onCheckedChange={handleMarqueeChange}
-                                />
-                            </div>
-                        </CardContent>
-                    </Card>
-                </TabsContent>
 
                 {isReseller && (
                     <TabsContent value="revenue" className="space-y-6 mt-4" suppressHydrationWarning>

@@ -139,6 +139,7 @@ export interface IncomingMessage {
     };
     timestamp: Date;
     metadata?: Record<string, unknown>;
+    origin?: 'inbound' | 'outbound';
 }
 
 export interface MessagingProvider {

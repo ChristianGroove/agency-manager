@@ -58,6 +58,7 @@ export const en = {
         core_settings: "Settings",
         core_adn: "Business DNA",
         reseller_tenants: "Organizations",
+        tool_email_engine: "Email Engine",
         // Categories
         cat_core: "Main",
         cat_crm: "CRM",

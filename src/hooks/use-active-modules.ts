@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { getActiveModules } from '@/modules/core/saas/actions'
 import { getCurrentUserPermissions } from '@/modules/core/settings/actions/team-actions'
 
@@ -60,47 +60,54 @@ export function useActiveModules(): UseActiveModulesReturn {
     const [vertical, setVertical] = useState<string | undefined>()
     const [capabilities, setCapabilities] = useState<Record<string, boolean>>({})
 
+    // Use a ref to track the last fetched organization ID to avoid redundant fetches
+    const lastOrgIdRef = React.useRef<string | null>(null)
+
     const fetchModules = useCallback(async () => {
+        // Simple check: cookies are readable on client
+        const cookies = document.cookie.split(';')
+        const orgCookie = cookies.find(c => c.trim().startsWith('pixy_org_id='))
+        const currentOrgId = orgCookie?.split('=')[1] || null
+
+        // Deduplication: If we already fetched for this ID (and not explicitly refreshing), skip
+        // BUT for initial load we might need to run even if ID is same if state is empty?
+        // Actually the hook is mounted once per layout usually.
+        // Let's rely on standard useEffect deps.
+
         setIsLoading(true)
         setError(null)
 
         try {
-            // Fetch org modules, user permissions, AND org details in parallel
-            // We import getCurrentOrgDetails dynamically to avoid cycles if any
-            const { getCurrentOrgDetails } = await import('@/modules/core/organizations/actions')
-            const { getCurrentBrandingTier } = await import('@/modules/core/branding/tier-actions')
+            // Import dynamically to ensure we get the server action
+            const { getSidebarContext } = await import('@/modules/core/saas/actions')
 
-            const [orgModules, userPerms, orgDetails, brandingData] = await Promise.all([
-                getActiveModules(),
-                getCurrentUserPermissions(),
-                getCurrentOrgDetails(),
-                getCurrentBrandingTier()
-            ])
+            // Single aggregated network call
+            const data = await getSidebarContext()
 
-            setUserRole(userPerms?.role || null)
-            if (orgDetails?.organization_type) {
-                setOrganizationType(orgDetails.organization_type as any)
-            }
-            if (orgDetails?.vertical_key) {
-                setVertical(orgDetails.vertical_key)
-            }
+            setUserRole(data.userRole)
+            setOrganizationType(data.organizationType)
+            setVertical(data.vertical)
+            setCapabilities(data.capabilities)
 
-            // Set specific merged capabilities
-            setCapabilities(brandingData?.capabilities || {})
+            // Permissions filtering Logic
+            const rawModules = data.modules
+            const permissions = data.userPermissions as Record<string, any> | null
 
-            // If user has permissions, filter org modules by their access
-            if (userPerms?.permissions?.modules) {
-                const filteredModules = orgModules.filter(orgModule => {
+            if (permissions?.modules) {
+                const filteredModules = rawModules.filter(orgModule => {
                     const permKey = MODULE_PERMISSION_MAP[orgModule]
                     if (!permKey) return true
-                    const modules = userPerms.permissions.modules as Record<string, boolean> | undefined
-                    const hasAccess = modules?.[permKey]
+                    const hasAccess = permissions.modules[permKey]
                     return hasAccess !== false
                 })
                 setModules(filteredModules)
             } else {
-                setModules(orgModules)
+                setModules(rawModules)
             }
+
+            // Update ref
+            lastOrgIdRef.current = currentOrgId
+
         } catch (err) {
             console.error('Error fetching modules:', err)
             setError(err as Error)
@@ -112,25 +119,7 @@ export function useActiveModules(): UseActiveModulesReturn {
 
     useEffect(() => {
         fetchModules()
-
-        // Listen for organization changes via cookie
-        const checkOrgChange = () => {
-            const cookies = document.cookie.split(';')
-            const orgCookie = cookies.find(c => c.trim().startsWith('pixy_org_id='))
-            return orgCookie?.split('=')[1] || null
-        }
-
-        let lastOrgId = checkOrgChange()
-
-        const interval = setInterval(() => {
-            const currentOrgId = checkOrgChange()
-            if (currentOrgId !== lastOrgId) {
-                lastOrgId = currentOrgId
-                fetchModules()
-            }
-        }, 1000) // Check every second
-
-        return () => clearInterval(interval)
+        // Removed polling setInterval to improve performance
     }, [fetchModules])
 
     const hasModule = useCallback((moduleKey: string): boolean => {
