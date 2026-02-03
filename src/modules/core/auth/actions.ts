@@ -70,39 +70,152 @@ export async function signup(formData: FormData) {
         }
     }
 
-    // 1. Sign Up
-    const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-            data: {
-                full_name: fullName,
-                // Default metadata
-                onboarding_completed: false
-            },
-            // Redirect to onboarding after email confirmation (if enabled)
-            // Redirect to onboarding after email confirmation (if enabled)
-            emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/callback?next=/onboarding`
-        }
-    })
+    // 1. Sign Up (Custom Flow using Admin to bypass Native SMTP limits & enforce branding)
+    const { supabaseAdmin } = await import('@/lib/supabase-admin')
 
-    if (error) {
-        if (error.message.includes('User already registered') || error.message.includes('weak_password')) {
-            return { error: "Este correo ya está registrado o la contraseña es muy débil." }
-        }
-        return { error: error.message }
+    // NUCLEAR OPTION: Force production URL
+    let redirectBase = 'https://app.pixy.com.co'
+    if (process.env.NEXT_PUBLIC_APP_URL && !process.env.NEXT_PUBLIC_APP_URL.includes('localhost')) {
+        redirectBase = process.env.NEXT_PUBLIC_APP_URL.startsWith('http')
+            ? process.env.NEXT_PUBLIC_APP_URL
+            : `https://${process.env.NEXT_PUBLIC_APP_URL}`
     }
+    const redirectUrl = `${redirectBase}/auth/callback?next=/onboarding`
 
-    // 2. Check if session was created immediately (Email Confirm Disabled)
-    if (data.session) {
-        revalidatePath('/', 'layout')
-        redirect('/onboarding')
+    try {
+        // Generate Signup Link (Creates user if not exists + returns link)
+        const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+            type: 'signup',
+            email,
+            password,
+            options: {
+                redirectTo: redirectUrl,
+                data: {
+                    full_name: fullName,
+                    onboarding_completed: false
+                }
+            }
+        })
+
+        if (linkError) {
+            if (linkError.message.includes('already registered')) {
+                return { error: "Este correo ya está registrado." }
+            }
+            if (linkError.message.includes('weak_password')) {
+                return { error: "La contraseña es muy débil." }
+            }
+            console.error("Signup Link Gen Error:", linkError)
+            return { error: linkError.message }
+        }
+
+        let actionLink = linkData.properties?.action_link
+        if (!actionLink) return { error: "Error generando enlace de confirmación" }
+
+        // SANITIZATION
+        if (actionLink.includes('localhost')) {
+            actionLink = actionLink.replace('http://localhost:3000', 'https://app.pixy.com.co')
+            actionLink = actionLink.replace('http://127.0.0.1:3000', 'https://app.pixy.com.co')
+            actionLink = actionLink.replace('redirect_to=http%3A%2F%2Flocalhost%3A3000', 'redirect_to=https%3A%2F%2Fapp.pixy.com.co')
+        }
+
+        // 2. Send Custom Confirmation Email
+        const { EmailService } = await import('@/modules/core/notifications/email.service')
+
+        await EmailService.send({
+            to: email,
+            subject: 'Confirma tu cuenta en Pixy',
+            html: `
+                <h1>¡Bienvenido a Pixy!</h1>
+                <p>Gracias por registrarte. Para comenzar, por favor confirma tu correo electrónico.</p>
+                <p><a href="${actionLink}" style="padding: 12px 24px; background-color: #000; color: #fff; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; margin-top: 10px;">Confirmar Cuenta</a></p>
+                <p>O copia y pega este enlace: <br/> <span style="font-size: 10px; color: #666;">${actionLink}</span></p>
+            `,
+            organizationId: 'PLATFORM'
+        })
+
+        return {
+            success: true,
+            message: "Cuenta creada. Por favor revisa tu correo para confirmarla."
+        }
+
+    } catch (e: any) {
+        console.error("Signup Error:", e)
+        return { error: e.message || "Error al registrar usuario" }
     }
+}
 
-    // 3. Email Confirmation Required
-    return {
-        success: true,
-        message: "Por favor revisa tu correo para confirmar tu cuenta."
+/**
+ * Send Magic Link for Passwordless Login
+ */
+export async function sendMagicLink(formData: FormData) {
+    const email = formData.get('email') as string
+    if (!email) return { error: "Email requerido" }
+
+    // 1. Generate Link using Admin API (to get the URL)
+    // We reuse the logic from resetPasswordRequest/inviteMember to ensure custom branding
+    const { supabaseAdmin } = await import('@/lib/supabase-admin')
+
+    // NUCLEAR OPTION: Force production URL logic strictly
+    let redirectBase = 'https://app.pixy.com.co'
+    if (process.env.NEXT_PUBLIC_APP_URL && !process.env.NEXT_PUBLIC_APP_URL.includes('localhost')) {
+        redirectBase = process.env.NEXT_PUBLIC_APP_URL.startsWith('http')
+            ? process.env.NEXT_PUBLIC_APP_URL
+            : `https://${process.env.NEXT_PUBLIC_APP_URL}`
+    }
+    const redirectUrl = `${redirectBase}/auth/callback?next=/dashboard`
+
+    try {
+        const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+            type: 'magiclink',
+            email,
+            options: {
+                redirectTo: redirectUrl
+            }
+        })
+
+        if (linkError) {
+            // If user not found, we should probably not reveal it? 
+            // But for UX, if it says "User not found", user knows to register.
+            // Supabase returns specific error instructions. 
+            // If it fails, standard error.
+            return { error: linkError.message }
+        }
+
+        let actionLink = linkData.properties?.action_link
+        if (!actionLink) return { error: "Error generando enlace" }
+
+        // SANITIZATION: If Supabase returns localhost (due to config), force overwrite it to production
+        if (actionLink.includes('localhost')) {
+            actionLink = actionLink.replace('http://localhost:3000', 'https://app.pixy.com.co')
+            actionLink = actionLink.replace('http://127.0.0.1:3000', 'https://app.pixy.com.co')
+            actionLink = actionLink.replace('redirect_to=http%3A%2F%2Flocalhost%3A3000', 'redirect_to=https%3A%2F%2Fapp.pixy.com.co')
+        }
+
+        // 2. Send Custom Email
+        const { EmailService } = await import('@/modules/core/notifications/email.service')
+
+        // We use organizationId='PLATFORM' for generic login, OR try to find user's org?
+        // Let's use 'PLATFORM' unless we want to look up their main org. 
+        // Simpler is better for Login.
+
+        await EmailService.send({
+            to: email,
+            subject: 'Ingresa a Pixy (Magic Link)',
+            html: `
+                <h1>Acceso Rápido</h1>
+                <p>Has solicitado ingresar a Pixy sin contraseña.</p>
+                <p>Haz clic en el siguiente enlace para entrar:</p>
+                <p><a href="${actionLink}" style="padding: 12px 24px; background-color: #000; color: #fff; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; margin-top: 10px;">Ingresar Ahora</a></p>
+                <p>Si no solicitaste esto, ignora este mensaje.</p>
+            `,
+            organizationId: 'PLATFORM'
+        })
+
+        return { success: true, message: "Enlace enviado. Revisa tu correo." }
+
+    } catch (e: any) {
+        console.error("Magic Link Error:", e)
+        return { error: e.message || "Error inesperado" }
     }
 }
 

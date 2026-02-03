@@ -121,12 +121,30 @@ export async function middleware(request: NextRequest) {
 
     const { data: { user } } = await supabase.auth.getUser()
 
+
     // 2. Custom Security Checks (Only for authenticated users)
     if (user) {
-        // Exclude specific paths from checks
+        // A. Enforce Onboarding
+        // If user hasn't completed onboarding, force them there.
+        // Exclude /auth (logout), /onboarding itself, and /api
+        const isExemptFromOnboarding =
+            request.nextUrl.pathname.startsWith('/onboarding') ||
+            request.nextUrl.pathname.startsWith('/auth') ||
+            request.nextUrl.pathname.startsWith('/api') ||
+            request.nextUrl.pathname.startsWith('/_next');
+
+        if (user.user_metadata?.onboarding_completed === false && !isExemptFromOnboarding) {
+            const url = request.nextUrl.clone()
+            url.pathname = '/onboarding'
+            return NextResponse.redirect(url)
+        }
+
+        // Exclude specific paths from further checks
         if (!request.nextUrl.pathname.startsWith('/suspended') &&
             !request.nextUrl.pathname.startsWith('/auth') &&
-            !request.nextUrl.pathname.startsWith('/api')) {
+            !request.nextUrl.pathname.startsWith('/api') &&
+            !request.nextUrl.pathname.startsWith('/onboarding') // Don't block onboarding with Org checks
+        ) {
 
             // OPTIMIZED: Minimal profile and membership checks
             const [profileResult, membershipResult] = await Promise.all([

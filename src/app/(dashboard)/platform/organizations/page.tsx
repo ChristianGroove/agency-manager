@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button"
 import { CreateOrganizationSheet } from "@/components/organizations/create-organization-sheet"
 import { EditLimitsModal } from "@/components/organizations/edit-limits-modal"
 import { TenantConfigurationSheet } from "@/components/organizations/tenant-configuration-sheet"
-import { Plus, Building2, Settings2, ArrowRight, BarChart3, Shield } from "lucide-react"
+import { Plus, Building2, Settings2, ArrowRight, BarChart3, Shield, Trash } from "lucide-react"
 import { HierarchyAnalytics } from "@/modules/core/organizations/components/hierarchy-analytics"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
@@ -22,6 +22,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { SectionHeader } from "@/components/layout/section-header"
+import { Checkbox } from "@/components/ui/checkbox"
+import { BulkActionsFloatingBar } from "@/components/shared/bulk-actions-floating-bar"
+import { toast } from "sonner"
 
 export default function PlatformOrganizationsPage() {
     const [orgs, setOrgs] = useState<Organization[]>([])
@@ -47,6 +50,10 @@ export default function PlatformOrganizationsPage() {
 
     // Analytics Toggle
     const [showAnalytics, setShowAnalytics] = useState(false)
+
+    // Bulk Actions State
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+    const [isDeleting, setIsDeleting] = useState(false)
 
     useEffect(() => {
         fetchOrgs()
@@ -107,6 +114,47 @@ export default function PlatformOrganizationsPage() {
             newExpanded.add(orgId)
         }
         setExpandedOrgs(newExpanded)
+    }
+
+    const toggleSelection = (id: string) => {
+        const newSelection = new Set(selectedIds)
+        if (newSelection.has(id)) {
+            newSelection.delete(id)
+        } else {
+            newSelection.add(id)
+        }
+        setSelectedIds(newSelection)
+    }
+
+    const toggleAll = () => {
+        if (selectedIds.size === filteredOrgs.length) {
+            setSelectedIds(new Set())
+        } else {
+            setSelectedIds(new Set(filteredOrgs.map(o => o.id)))
+        }
+    }
+
+    const handleBulkDelete = async () => {
+        if (!confirm(`¿Estás seguro de eliminar ${selectedIds.size} organizaciones seleccionadas? Esta acción no se puede deshacer.`)) return
+
+        setIsDeleting(true)
+        try {
+            const { deleteOrganizations } = await import("@/modules/core/organizations/actions")
+            const result = await deleteOrganizations(Array.from(selectedIds))
+
+            if (result.success) {
+                toast.success(`${selectedIds.size} organizaciones eliminadas`)
+                setSelectedIds(new Set())
+                await fetchOrgs()
+            } else {
+                toast.error(result.error || "Error al eliminar organizaciones")
+            }
+        } catch (error) {
+            console.error("Error deleting organizations:", error)
+            toast.error("Error al eliminar organizaciones")
+        } finally {
+            setIsDeleting(false)
+        }
     }
 
     const counts = {
@@ -228,12 +276,25 @@ export default function PlatformOrganizationsPage() {
                 </div>
             )}
 
+            <BulkActionsFloatingBar
+                selectedCount={selectedIds.size}
+                onDelete={handleBulkDelete}
+                onClearSelection={() => setSelectedIds(new Set())}
+                isDeleting={isDeleting}
+            />
+
             {viewMode === 'list' ? (
                 <Card className="border-gray-200 dark:border-white/10 shadow-sm bg-white dark:bg-white/5 backdrop-blur-md">
                     <CardContent className="p-0">
                         <Table>
                             <TableHeader>
                                 <TableRow>
+                                    <TableHead className="w-[50px]">
+                                        <Checkbox
+                                            checked={filteredOrgs.length > 0 && selectedIds.size === filteredOrgs.length}
+                                            onCheckedChange={toggleAll}
+                                        />
+                                    </TableHead>
                                     <TableHead className="pl-6 w-[400px]">Identidad / Jerarquía</TableHead>
                                     <TableHead>Tipo</TableHead>
                                     <TableHead>Estado</TableHead>
@@ -244,19 +305,25 @@ export default function PlatformOrganizationsPage() {
                             <TableBody>
                                 {isLoading ? (
                                     <TableRow>
-                                        <TableCell colSpan={5} className="h-24 text-center">
+                                        <TableCell colSpan={6} className="h-24 text-center">
                                             Cargando...
                                         </TableCell>
                                     </TableRow>
                                 ) : treeData.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={5} className="h-24 text-center text-gray-500">
+                                        <TableCell colSpan={6} className="h-24 text-center text-gray-500">
                                             No se encontraron organizaciones.
                                         </TableCell>
                                     </TableRow>
                                 ) : (
                                     treeData.map(({ org, depth, hasChildren }) => (
                                         <TableRow key={org.id} className="group hover:bg-gray-50/50 dark:hover:bg-white/5 border-gray-100 dark:border-white/5">
+                                            <TableCell>
+                                                <Checkbox
+                                                    checked={selectedIds.has(org.id)}
+                                                    onCheckedChange={() => toggleSelection(org.id)}
+                                                />
+                                            </TableCell>
                                             <TableCell className="pl-6">
                                                 <div
                                                     className="flex items-center gap-3"
@@ -335,6 +402,36 @@ export default function PlatformOrganizationsPage() {
                                                         className="h-8 w-8 p-0"
                                                     >
                                                         <Settings2 className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => {
+                                                            if (confirm('¿Eliminar esta organización?')) {
+                                                                setSelectedIds(new Set([org.id]))
+                                                                // Short timeout to let state update then delete, or call direct
+                                                                // Better to call standard delete handler
+                                                                // But simpler: just select and existing handler? No, single delete needs separate or reuse.
+                                                                // Let's just trigger bulk delete logic for single item if clicked.
+                                                                // Or add Trash icon specific calling generic delete.
+                                                                const singleSet = new Set([org.id]);
+                                                                (async () => {
+                                                                    setIsDeleting(true)
+                                                                    try {
+                                                                        const { deleteOrganizations } = await import("@/modules/core/organizations/actions")
+                                                                        await deleteOrganizations(Array.from(singleSet))
+                                                                        toast.success("Organización eliminada")
+                                                                        await fetchOrgs()
+                                                                    } finally {
+                                                                        setIsDeleting(false)
+                                                                    }
+                                                                })()
+                                                            }
+                                                        }}
+                                                        title="Eliminar"
+                                                        className="h-8 w-8 p-0 text-red-500 hover:text-red-600 hover:bg-red-50"
+                                                    >
+                                                        <Trash className="h-4 w-4" />
                                                     </Button>
                                                 </div>
                                             </TableCell>

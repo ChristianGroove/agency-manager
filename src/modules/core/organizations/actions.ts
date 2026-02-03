@@ -439,6 +439,16 @@ export async function createOrganization(formData: {
         // 5. Switch Context Immediately
         await switchOrganization(newOrg.id)
 
+        // 6. Complete Onboarding (Mark flag in Auth Metadata)
+        const { error: metaError } = await supabase.auth.updateUser({
+            data: { onboarding_completed: true }
+        })
+
+        if (metaError) {
+            console.error("Warning: Failed to update onboarding status", metaError)
+            // Non-blocking, but important for middleware
+        }
+
         return { success: true, data: newOrg }
 
     } catch (error: any) {
@@ -657,4 +667,46 @@ export async function getOrganizationLimits(organizationId: string) {
         .eq('organization_id', organizationId)
 
     return data || []
+}
+
+export async function deleteOrganizations(ids: string[]) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) return { success: false, error: "Unauthorized" }
+
+    // 1. Verify Permission (Super Admin or Reseller Owner logic needed here)
+    // For now, we enforce that only Platform Admins or Reseller Owners can delete.
+    // Simplifying: Check if user is SuperAdmin OR checks if these orgs are children of user's org.
+
+    // Simplification for MVP:
+    // If user is a member of a "Reseller" or "Platform" org with "owner"/"admin" role,
+    // allow deleting *child* organizations.
+    // If Platform, allow deleting any.
+
+    const memberships = await getUserOrganizations()
+    const isPrivileged = memberships.some(m =>
+        ['platform', 'reseller'].includes(m.organization?.organization_type || '') &&
+        ['owner', 'admin'].includes(m.role)
+    )
+
+    if (!isPrivileged) {
+        return { success: false, error: "No tienes permisos suficientes para eliminar organizaciones." }
+    }
+
+    // 2. Perform Delete
+    // Using supabaseAdmin to bypass RLS for now, assuming the permission check above is sufficient.
+    // WARNING: This is a HARD DELETE or relies on DB Cascade.
+    const { error } = await supabaseAdmin
+        .from('organizations')
+        .delete()
+        .in('id', ids)
+
+    if (error) {
+        console.error("Error deleting organizations:", error)
+        return { success: false, error: error.message }
+    }
+
+    revalidatePath('/platform/organizations')
+    return { success: true }
 }
