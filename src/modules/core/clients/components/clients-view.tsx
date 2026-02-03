@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Plus, Phone, ArrowRight, AlertTriangle, CheckCircle2, Clock, CreditCard, FileText, Globe, MoreVertical, Edit, Wifi, Shield, Trash2, Copy, Users } from "lucide-react"
+import { Plus, Phone, ArrowRight, AlertTriangle, CheckCircle2, Clock, CreditCard, FileText, Globe, MoreVertical, Wifi, Shield, Trash2, Copy, Users } from "lucide-react"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -49,7 +49,6 @@ import { toast } from "sonner"
 
 // New Management Sheets
 import { ClientManagementSheet } from "@/modules/core/clients/components/management/client-management-sheet"
-import { EditClientSheet } from "@/modules/core/clients/components/detail/edit-client-sheet"
 import { ConnectivitySheet } from "@/components/sheets/connectivity-sheet"
 import { PortalGovernanceSheet } from "@/components/sheets/portal-governance-sheet"
 
@@ -96,9 +95,7 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
     // --- NEW SHEETS STATE ---
     const [managementOpen, setManagementOpen] = useState(false)
     const [selectedClientForManagement, setSelectedClientForManagement] = useState<Client | null>(null)
-
-    const [editOpen, setEditOpen] = useState(false)
-    const [clientToEdit, setClientToEdit] = useState<Client | null>(null)
+    const [managementInitialTab, setManagementInitialTab] = useState("overview")
 
     const [connectivityOpen, setConnectivityOpen] = useState(false)
     const [clientForConnectivity, setClientForConnectivity] = useState<Client | null>(null)
@@ -428,9 +425,6 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
                                                             <DropdownMenuContent align="end" className="w-56">
                                                                 <DropdownMenuLabel>{t('clients.actions.administration')}</DropdownMenuLabel>
                                                                 <DropdownMenuSeparator />
-                                                                <DropdownMenuItem onClick={() => { setClientToEdit(client); setEditOpen(true); }}>
-                                                                    <Edit className="mr-2 h-4 w-4" /> {t('clients.actions.edit')}
-                                                                </DropdownMenuItem>
                                                                 <DropdownMenuItem onClick={() => { setClientForConnectivity(client); setConnectivityOpen(true); }}>
                                                                     <Wifi className="mr-2 h-4 w-4" /> {t('clients.actions.connectivity')}
                                                                 </DropdownMenuItem>
@@ -622,6 +616,7 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
                                                         size="sm"
                                                         onClick={() => {
                                                             setSelectedClientForManagement(client)
+                                                            setManagementInitialTab("activity")
                                                             setManagementOpen(true)
                                                         }}
                                                         className="ml-auto h-8 px-4 text-xs font-semibold rounded-full bg-gray-900 text-white hover:bg-black hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 group"
@@ -788,9 +783,6 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
                                                                         <DropdownMenuItem onClick={() => { setSelectedClientForManagement(client); setManagementOpen(true); }}>
                                                                             <FileText className="mr-2 h-4 w-4" /> {t('clients.actions.manage')}
                                                                         </DropdownMenuItem>
-                                                                        <DropdownMenuItem onClick={() => { setClientToEdit(client); setEditOpen(true); }}>
-                                                                            <Edit className="mr-2 h-4 w-4" /> {t('clients.actions.edit')}
-                                                                        </DropdownMenuItem>
                                                                         <DropdownMenuSeparator />
                                                                         <DropdownMenuItem
                                                                             className="text-red-600"
@@ -899,16 +891,8 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
                 open={managementOpen}
                 onOpenChange={setManagementOpen}
                 initialData={selectedClientForManagement || undefined}
+                initialTab={managementInitialTab}
             />
-
-            {clientToEdit && (
-                <EditClientSheet
-                    client={clientToEdit}
-                    open={editOpen}
-                    onOpenChange={setEditOpen}
-                    onSuccess={fetchClients}
-                />
-            )}
 
             {clientForConnectivity && (
                 <ConnectivitySheet

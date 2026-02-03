@@ -199,13 +199,18 @@ export function CatalogServiceSheet({
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
             <SheetContent
-                className="w-full sm:max-w-5xl p-0 gap-0 border-none shadow-2xl m-4 rounded-3xl overflow-hidden bg-white"
+                className="
+                    w-full sm:max-w-5xl p-0 gap-0 border-none shadow-2xl
+                    mr-4 my-4 h-[calc(100vh-2rem)] rounded-3xl overflow-hidden
+                    data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:mr-6
+                    bg-transparent
+                "
                 side="right"
             >
                 {/* Grid Container */}
-                <div className="grid grid-cols-12 h-[calc(100vh-2rem)]">
+                <div className="grid grid-cols-12 h-full bg-white rounded-3xl overflow-hidden">
                     {/* LEFT PANEL: Configuration (60%) */}
-                    <div className="col-span-12 md:col-span-7 flex flex-col h-full bg-white border-r border-slate-100 overflow-y-auto">
+                    <div className="col-span-12 md:col-span-7 flex flex-col h-full bg-white border-r border-slate-100 overflow-y-auto relative">
                         {/* Header */}
                         <div className="sticky top-0 z-20 bg-white border-b border-gray-100 px-8 py-5">
                             <div className="flex items-center gap-3">

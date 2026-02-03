@@ -19,6 +19,8 @@ export type Client = {
     tiktok?: string
     website?: string
     linkedin?: string
+    youtube?: string
+    twitter?: string
     notes?: string
     status?: string
     metadata?: any

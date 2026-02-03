@@ -25,9 +25,11 @@ import { SearchFilterBar, FilterOption } from "@/components/shared/search-filter
 import { ViewToggle, ViewMode } from "@/components/shared/view-toggle"
 import { CategorySelector } from "@/modules/core/catalog/category-selector"
 import { TemplateImporter } from "@/modules/core/catalog/template-importer"
+import { useTranslation } from "@/lib/i18n/use-translation"
 
 
 export default function PortfolioPage() {
+    const { t } = useTranslation()
     const [activeTab, setActiveTab] = useState<string>("services")
 
     // Services state

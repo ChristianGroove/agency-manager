@@ -53,6 +53,9 @@ export function CreateClientSheet({ onSuccess, open: controlledOpen, onOpenChang
         facebook: "",
         instagram: "",
         tiktok: "",
+        linkedin: "",
+        youtube: "",
+        twitter: "",
         website: ""
     })
 
@@ -130,7 +133,7 @@ export function CreateClientSheet({ onSuccess, open: controlledOpen, onOpenChang
             // Reset form
             setNewClient({
                 name: "", company_name: "", nit: "", email: "", phone: "", address: "",
-                logo_url: "", facebook: "", instagram: "", tiktok: "", website: ""
+                logo_url: "", facebook: "", instagram: "", tiktok: "", linkedin: "", youtube: "", twitter: "", website: ""
             })
             removeFile()
 
@@ -163,7 +166,7 @@ export function CreateClientSheet({ onSuccess, open: controlledOpen, onOpenChang
             <SheetContent
                 side="right"
                 className="
-                    sm:max-w-[1000px] w-full p-0 gap-0 border-none shadow-2xl
+                    sm:max-w-[700px] w-full p-0 gap-0 border-none shadow-2xl
                     mr-4 my-4 h-[calc(100vh-2rem)] rounded-3xl overflow-hidden
                     data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:mr-6
                     bg-transparent
@@ -183,180 +186,134 @@ export function CreateClientSheet({ onSuccess, open: controlledOpen, onOpenChang
                     </div>
 
                     {/* Split View */}
-                    <div className="flex-1 overflow-hidden">
-                        <div className="h-full grid grid-cols-1 lg:grid-cols-12 divide-x divide-gray-100/50">
+                    <div className="flex-1 overflow-y-auto p-8 h-full relative scrollbar-thin scrollbar-thumb-gray-200">
+                        <Tabs defaultValue="profile" className="w-full">
+                            <TabsList className="grid w-full grid-cols-3 mb-8 bg-gray-100/50 p-1 rounded-xl">
+                                <TabsTrigger value="profile" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">{t('clients.form.tabs.profile')}</TabsTrigger>
+                                <TabsTrigger value="contact" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">{t('clients.form.tabs.contact')}</TabsTrigger>
+                                <TabsTrigger value="social" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">{t('clients.form.tabs.social')}</TabsTrigger>
+                            </TabsList>
 
-                            {/* LEFT: FORM Form (2/3) */}
-                            <div className="lg:col-span-8 overflow-y-auto p-8 h-full relative scrollbar-thin scrollbar-thumb-gray-200">
-                                <Tabs defaultValue="profile" className="w-full">
-                                    <TabsList className="grid w-full grid-cols-3 mb-8 bg-gray-100/50 p-1 rounded-xl">
-                                        <TabsTrigger value="profile" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">{t('clients.form.tabs.profile')}</TabsTrigger>
-                                        <TabsTrigger value="contact" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">{t('clients.form.tabs.contact')}</TabsTrigger>
-                                        <TabsTrigger value="social" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">{t('clients.form.tabs.social')}</TabsTrigger>
-                                    </TabsList>
-
-                                    <TabsContent value="profile" className="space-y-6 animate-in slide-in-from-left-2 duration-300">
-                                        {/* Logo Upload */}
-                                        <div className="flex items-center gap-6 border border-dashed border-gray-200 p-6 rounded-2xl bg-gray-50/30 hover:bg-gray-50/80 transition-colors">
-                                            {!previewUrl ? (
-                                                <div
-                                                    className={cn(
-                                                        "h-20 w-20 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-all bg-white shadow-sm shrink-0",
-                                                        isDragging ? "border-indigo-500 bg-indigo-50" : "border-gray-200 hover:border-indigo-400 hover:text-indigo-600"
-                                                    )}
-                                                    onClick={() => fileInputRef.current?.click()}
-                                                >
-                                                    <Upload className="h-6 w-6 text-gray-400" />
-                                                    <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileSelect} />
-                                                </div>
-                                            ) : (
-                                                <div className="relative h-20 w-20 shrink-0 group">
-                                                    <Avatar className="h-20 w-20 rounded-2xl border-2 border-white shadow-md">
-                                                        <AvatarImage src={previewUrl} className="object-cover" />
-                                                        <AvatarFallback>CL</AvatarFallback>
-                                                    </Avatar>
-                                                    <button
-                                                        onClick={(e) => { e.stopPropagation(); removeFile(); }}
-                                                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-sm hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                    >
-                                                        <X className="h-3 w-3" />
-                                                    </button>
-                                                </div>
+                            <TabsContent value="profile" className="space-y-6 animate-in slide-in-from-left-2 duration-300">
+                                {/* Logo Upload */}
+                                <div className="flex items-center gap-6 border border-dashed border-gray-200 p-6 rounded-2xl bg-gray-50/30 hover:bg-gray-50/80 transition-colors">
+                                    {!previewUrl ? (
+                                        <div
+                                            className={cn(
+                                                "h-20 w-20 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-all bg-white shadow-sm shrink-0",
+                                                isDragging ? "border-indigo-500 bg-indigo-50" : "border-gray-200 hover:border-indigo-400 hover:text-indigo-600"
                                             )}
-                                            <div className="space-y-1">
-                                                <Label className="text-base font-semibold text-gray-900 cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-                                                    {t('clients.form.fields.logo')}
-                                                </Label>
-                                                <p className="text-sm text-gray-500 max-w-xs">
-                                                    {t('clients.form.fields.logo_desc')}
-                                                </p>
-                                            </div>
+                                            onClick={() => fileInputRef.current?.click()}
+                                        >
+                                            <Upload className="h-6 w-6 text-gray-400" />
+                                            <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileSelect} />
                                         </div>
-
-                                        <div className="grid grid-cols-2 gap-6">
-                                            <div className="space-y-2 col-span-2 md:col-span-1">
-                                                <Label className="text-xs font-bold text-gray-500 uppercase tracking-wider">{t('clients.form.fields.name')} <span className="text-red-500">*</span></Label>
-                                                <div className="relative">
-                                                    <User className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-                                                    <Input className="pl-9 bg-gray-50/50 border-gray-200 focus:bg-white transition-all" placeholder={t('clients.form.fields.name_placeholder')} value={newClient.name} onChange={(e) => setNewClient({ ...newClient, name: e.target.value })} />
-                                                </div>
-                                            </div>
-                                            <div className="space-y-2 col-span-2 md:col-span-1">
-                                                <Label className="text-xs font-bold text-gray-500 uppercase tracking-wider">{t('clients.form.fields.company')}</Label>
-                                                <div className="relative">
-                                                    <Building2 className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-                                                    <Input className="pl-9 bg-gray-50/50 border-gray-200 focus:bg-white transition-all" placeholder={t('clients.form.fields.company_placeholder')} value={newClient.company_name} onChange={(e) => setNewClient({ ...newClient, company_name: e.target.value })} />
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="grid grid-cols-2 gap-6">
-                                            <div className="space-y-2">
-                                                <Label className="text-xs font-bold text-gray-500 uppercase tracking-wider">{t('clients.form.fields.nit')}</Label>
-                                                <Input className="bg-gray-50/50 border-gray-200 focus:bg-white transition-all" placeholder="900.123.456-7" value={newClient.nit} onChange={(e) => setNewClient({ ...newClient, nit: e.target.value })} />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label className="text-xs font-bold text-gray-500 uppercase tracking-wider">{t('clients.form.fields.address')}</Label>
-                                                <Input className="bg-gray-50/50 border-gray-200 focus:bg-white transition-all" placeholder="Calle 123..." value={newClient.address} onChange={(e) => setNewClient({ ...newClient, address: e.target.value })} />
-                                            </div>
-                                        </div>
-                                    </TabsContent>
-
-                                    <TabsContent value="contact" className="space-y-6 animate-in slide-in-from-left-2 duration-300">
-                                        <div className="space-y-2">
-                                            <Label className="text-xs font-bold text-gray-500 uppercase tracking-wider">{t('clients.form.fields.email')} <span className="text-red-500">*</span></Label>
-                                            <div className="relative">
-                                                <Mail className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-                                                <Input type="email" className="pl-9 bg-gray-50/50 border-gray-200 focus:bg-white transition-all" placeholder="cliente@empresa.com" value={newClient.email} onChange={(e) => setNewClient({ ...newClient, email: e.target.value })} />
-                                            </div>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label className="text-xs font-bold text-gray-500 uppercase tracking-wider">{t('clients.form.fields.phone')}</Label>
-                                            <div className="relative">
-                                                <Phone className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-                                                <Input className="pl-9 bg-gray-50/50 border-gray-200 focus:bg-white transition-all" placeholder="+57 300..." value={newClient.phone} onChange={(e) => setNewClient({ ...newClient, phone: e.target.value })} />
-                                            </div>
-                                        </div>
-                                    </TabsContent>
-
-                                    <TabsContent value="social" className="space-y-6 animate-in slide-in-from-left-2 duration-300">
-                                        <div className="space-y-2">
-                                            <Label className="text-xs font-bold text-gray-500 uppercase tracking-wider">{t('clients.form.fields.website')}</Label>
-                                            <div className="relative">
-                                                <Globe className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-                                                <Input className="pl-9 bg-gray-50/50 border-gray-200 focus:bg-white transition-all" placeholder="https://..." value={newClient.website} onChange={(e) => setNewClient({ ...newClient, website: e.target.value })} />
-                                            </div>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-6">
-                                            <div className="space-y-2">
-                                                <Label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Instagram</Label>
-                                                <Input className="bg-gray-50/50 border-gray-200 focus:bg-white transition-all" placeholder="@usuario" value={newClient.instagram} onChange={(e) => setNewClient({ ...newClient, instagram: e.target.value })} />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Facebook</Label>
-                                                <Input className="bg-gray-50/50 border-gray-200 focus:bg-white transition-all" placeholder="usuario" value={newClient.facebook} onChange={(e) => setNewClient({ ...newClient, facebook: e.target.value })} />
-                                            </div>
-                                        </div>
-                                    </TabsContent>
-                                </Tabs>
-
-                                <div className="h-24"></div> {/* Spacer */}
-                            </div>
-
-                            {/* RIGHT: PREVIEW (1/3) */}
-                            <div className="hidden lg:flex lg:col-span-4 bg-slate-100/50 p-8 flex-col justify-center items-center relative overflow-hidden">
-                                <div className="absolute inset-0 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:16px_16px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-50 pointer-events-none" />
-
-                                <div className="w-full max-w-sm space-y-6 relative z-10">
-                                    <div className="text-center space-y-2">
-                                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">{t('clients.form.preview_title')}</h3>
-                                        <p className="text-sm text-slate-500">{t('clients.form.preview_desc')}</p>
-                                    </div>
-
-                                    {/* PREVIEW CARD */}
-                                    <div className="bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden transform transition-all duration-500 hover:scale-[1.02]">
-                                        <div className="p-6 flex items-start gap-4">
-                                            <Avatar className="h-16 w-16 rounded-xl border-2 border-white shadow-md bg-slate-50">
-                                                <AvatarImage src={previewUrl || ""} className="object-cover" />
-                                                <AvatarFallback className="bg-slate-100 text-slate-400 text-xl font-bold rounded-xl">
-                                                    {(newClient.name?.[0] || "C").toUpperCase()}
-                                                </AvatarFallback>
+                                    ) : (
+                                        <div className="relative h-20 w-20 shrink-0 group">
+                                            <Avatar className="h-20 w-20 rounded-2xl border-2 border-white shadow-md">
+                                                <AvatarImage src={previewUrl} className="object-cover" />
+                                                <AvatarFallback>CL</AvatarFallback>
                                             </Avatar>
-                                            <div className="flex-1 min-w-0 space-y-1">
-                                                <div className="h-6 w-3/4 bg-slate-100 rounded animate-pulse hidden" />
-                                                <h3 className="font-bold text-gray-900 text-lg leading-tight truncate">
-                                                    {newClient.name || t('clients.form.fields.name')}
-                                                </h3>
-                                                <p className="text-sm text-gray-500 truncate">
-                                                    {newClient.company_name || t('clients.form.fields.company')}
-                                                </p>
-
-                                                <div className="flex gap-2 mt-3">
-                                                    <span className="inline-flex items-center px-2 py-1 rounded-md bg-emerald-50 text-emerald-700 text-xs font-medium ring-1 ring-inset ring-emerald-600/20">
-                                                        {t('clients.status.active')}
-                                                    </span>
-                                                    <span className="inline-flex items-center px-2 py-1 rounded-md bg-slate-50 text-slate-600 text-xs font-medium ring-1 ring-inset ring-slate-400/20">
-                                                        0 {t('clients.table.services')}
-                                                    </span>
-                                                </div>
-                                            </div>
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); removeFile(); }}
+                                                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-sm hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                                            >
+                                                <X className="h-3 w-3" />
+                                            </button>
                                         </div>
+                                    )}
+                                    <div className="space-y-1">
+                                        <Label className="text-base font-semibold text-gray-900 cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+                                            {t('clients.form.fields.logo')}
+                                        </Label>
+                                        <p className="text-sm text-gray-500 max-w-xs">
+                                            {t('clients.form.fields.logo_desc')}
+                                        </p>
+                                    </div>
+                                </div>
 
-                                        <div className="bg-slate-50 px-6 py-4 border-t border-slate-100 grid grid-cols-2 gap-4">
-                                            <div className="text-xs text-gray-500 flex flex-col gap-1">
-                                                <span className="uppercase tracking-wider font-bold text-[10px] text-slate-400">{t('clients.form.fields.email')}</span>
-                                                <span className="truncate">{newClient.email || "—"}</span>
-                                            </div>
-                                            <div className="text-xs text-gray-500 flex flex-col gap-1">
-                                                <span className="uppercase tracking-wider font-bold text-[10px] text-slate-400">{t('clients.form.fields.phone')}</span>
-                                                <span className="truncate">{newClient.phone || "—"}</span>
-                                            </div>
+                                <div className="grid grid-cols-2 gap-6">
+                                    <div className="space-y-2 col-span-2 md:col-span-1">
+                                        <Label className="text-xs font-bold text-gray-500 uppercase tracking-wider">{t('clients.form.fields.name')} <span className="text-red-500">*</span></Label>
+                                        <div className="relative">
+                                            <User className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                                            <Input className="pl-9 bg-gray-50/50 border-gray-200 focus:bg-white transition-all" placeholder={t('clients.form.fields.name_placeholder')} value={newClient.name} onChange={(e) => setNewClient({ ...newClient, name: e.target.value })} />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2 col-span-2 md:col-span-1">
+                                        <Label className="text-xs font-bold text-gray-500 uppercase tracking-wider">{t('clients.form.fields.company')}</Label>
+                                        <div className="relative">
+                                            <Building2 className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                                            <Input className="pl-9 bg-gray-50/50 border-gray-200 focus:bg-white transition-all" placeholder={t('clients.form.fields.company_placeholder')} value={newClient.company_name} onChange={(e) => setNewClient({ ...newClient, company_name: e.target.value })} />
                                         </div>
                                     </div>
                                 </div>
-                            </div>
 
-                        </div>
+                                <div className="grid grid-cols-2 gap-6">
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-bold text-gray-500 uppercase tracking-wider">{t('clients.form.fields.nit')}</Label>
+                                        <Input className="bg-gray-50/50 border-gray-200 focus:bg-white transition-all" placeholder="900.123.456-7" value={newClient.nit} onChange={(e) => setNewClient({ ...newClient, nit: e.target.value })} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-bold text-gray-500 uppercase tracking-wider">{t('clients.form.fields.address')}</Label>
+                                        <Input className="bg-gray-50/50 border-gray-200 focus:bg-white transition-all" placeholder="Calle 123..." value={newClient.address} onChange={(e) => setNewClient({ ...newClient, address: e.target.value })} />
+                                    </div>
+                                </div>
+                            </TabsContent>
+
+                            <TabsContent value="contact" className="space-y-6 animate-in slide-in-from-left-2 duration-300">
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-bold text-gray-500 uppercase tracking-wider">{t('clients.form.fields.email')} <span className="text-red-500">*</span></Label>
+                                    <div className="relative">
+                                        <Mail className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                                        <Input type="email" className="pl-9 bg-gray-50/50 border-gray-200 focus:bg-white transition-all" placeholder="cliente@empresa.com" value={newClient.email} onChange={(e) => setNewClient({ ...newClient, email: e.target.value })} />
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-bold text-gray-500 uppercase tracking-wider">{t('clients.form.fields.phone')}</Label>
+                                    <div className="relative">
+                                        <Phone className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                                        <Input className="pl-9 bg-gray-50/50 border-gray-200 focus:bg-white transition-all" placeholder="+57 300..." value={newClient.phone} onChange={(e) => setNewClient({ ...newClient, phone: e.target.value })} />
+                                    </div>
+                                </div>
+                            </TabsContent>
+
+                            <TabsContent value="social" className="space-y-6 animate-in slide-in-from-left-2 duration-300">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-bold text-gray-500 uppercase tracking-wider">{t('clients.form.fields.website')}</Label>
+                                        <div className="relative">
+                                            <Globe className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                                            <Input className="pl-9 bg-gray-50/50 border-gray-200 focus:bg-white transition-all" placeholder="https://..." value={newClient.website} onChange={(e) => setNewClient({ ...newClient, website: e.target.value })} />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Instagram</Label>
+                                        <Input className="bg-gray-50/50 border-gray-200 focus:bg-white transition-all" placeholder="@usuario" value={newClient.instagram} onChange={(e) => setNewClient({ ...newClient, instagram: e.target.value })} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Facebook</Label>
+                                        <Input className="bg-gray-50/50 border-gray-200 focus:bg-white transition-all" placeholder="usuario" value={newClient.facebook} onChange={(e) => setNewClient({ ...newClient, facebook: e.target.value })} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-bold text-gray-500 uppercase tracking-wider">TikTok</Label>
+                                        <Input className="bg-gray-50/50 border-gray-200 focus:bg-white transition-all" placeholder="@usuario" value={newClient.tiktok} onChange={(e) => setNewClient({ ...newClient, tiktok: e.target.value })} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-bold text-gray-500 uppercase tracking-wider">LinkedIn</Label>
+                                        <Input className="bg-gray-50/50 border-gray-200 focus:bg-white transition-all" placeholder="URL perfil" value={newClient.linkedin} onChange={(e) => setNewClient({ ...newClient, linkedin: e.target.value })} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-bold text-gray-500 uppercase tracking-wider">YouTube</Label>
+                                        <Input className="bg-gray-50/50 border-gray-200 focus:bg-white transition-all" placeholder="Canal" value={newClient.youtube} onChange={(e) => setNewClient({ ...newClient, youtube: e.target.value })} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-bold text-gray-500 uppercase tracking-wider">X (Twitter)</Label>
+                                        <Input className="bg-gray-50/50 border-gray-200 focus:bg-white transition-all" placeholder="@usuario" value={newClient.twitter} onChange={(e) => setNewClient({ ...newClient, twitter: e.target.value })} />
+                                    </div>
+                                </div>
+                            </TabsContent>
+                        </Tabs>
                     </div>
 
                     {/* Footer Actions */}
@@ -375,6 +332,6 @@ export function CreateClientSheet({ onSuccess, open: controlledOpen, onOpenChang
 
                 </div>
             </SheetContent>
-        </Sheet>
+        </Sheet >
     )
 }

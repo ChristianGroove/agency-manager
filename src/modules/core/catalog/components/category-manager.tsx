@@ -95,7 +95,6 @@ export function CategoryManager() {
             <Sheet open={open} onOpenChange={setOpen}>
                 <SheetTrigger asChild>
                     <Button variant="outline">
-                        <Plus className="h-4 w-4 mr-2" />
                         {t('catalog.buttons.manage_categories')}
                     </Button>
                 </SheetTrigger>
