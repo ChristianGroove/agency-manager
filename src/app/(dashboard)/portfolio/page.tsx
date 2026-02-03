@@ -120,7 +120,7 @@ export default function PortfolioPage() {
                             onClick={handleCreateService}
                             className="bg-brand-pink hover:bg-brand-pink/90 text-white shadow-lg shadow-gray-200"
                         >
-                            <Plus className="mr-2 h-4 w-4" /> Nuevo Servicio
+                            <Plus className="mr-2 h-4 w-4" /> {t('catalog.buttons.new_service')}
                         </Button>
                     </div>
                 }

@@ -600,8 +600,8 @@ export const es = {
             add_feature: "+ Agregar característica",
             add_highlight: "+ Agregar destacado",
             import_template: "Importar Plantilla",
-            manage_categories: "+ Gestionar Categorías",
-            new_service: "+ Nuevo Servicio"
+            manage_categories: "Gestionar Categorías",
+            new_service: "Nuevo Servicio"
         },
         header: {
             title: "Catálogo",

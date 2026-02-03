@@ -600,8 +600,8 @@ export const en = {
             add_feature: "+ Add feature",
             add_highlight: "+ Add highlight",
             import_template: "Import Template",
-            manage_categories: "+ Manage Categories",
-            new_service: "+ New Service"
+            manage_categories: "Manage Categories",
+            new_service: "New Service"
         },
         header: {
             title: "Catalog",
