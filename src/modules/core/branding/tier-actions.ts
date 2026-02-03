@@ -74,14 +74,14 @@ export async function getBrandingTiers(): Promise<BrandingTier[]> {
 /**
  * Get current organization's branding tier
  */
-export async function getCurrentBrandingTier(): Promise<{
+export async function getCurrentBrandingTier(organizationId?: string): Promise<{
     tier: BrandingTier | null
     custom_config: BrandingCustomConfig
     allow_direct_billing?: boolean
     capabilities: Record<string, boolean>
 }> {
     const supabase = await createClient()
-    const orgId = await getCurrentOrganizationId()
+    const orgId = organizationId || await getCurrentOrganizationId()
 
     if (!orgId) {
         return { tier: null, custom_config: {}, capabilities: {} }

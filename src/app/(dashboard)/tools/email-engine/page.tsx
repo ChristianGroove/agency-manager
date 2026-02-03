@@ -1,5 +1,5 @@
 import { Suspense } from "react"
-import { getEmailTemplates } from "@/modules/core/notifications/actions"
+import { getEmailTemplates } from "@/modules/core/notifications/actions/template-actions"
 import { getSmtpConfig } from "@/modules/core/notifications/actions/smtp-actions"
 import { EmailSettingsPage } from "@/modules/core/notifications/components/email-settings-page"
 import { Loader2 } from "lucide-react"

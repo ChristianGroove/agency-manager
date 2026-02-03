@@ -60,10 +60,9 @@ export function EmailSettingsPage({ templates, organizationId, smtpConfig }: Ema
         if (activeTab === 'portal') key = 'portal_invite'
 
         // Priority: active organization template > system template of this variant
-        // HOTFIX: Commented out to unblock build
-        // const target = templates.find(t => t.template_key === key && t.variant_name === selectedStyle && t.organization_id)
-        //    || templates.find(t => t.template_key === key && t.variant_name === selectedStyle)
-        const target = undefined;
+        const target = templates.find((t: EmailTemplate) => t.template_key === key && t.variant_name === selectedStyle && t.organization_id)
+            || templates.find((t: EmailTemplate) => t.template_key === key && t.variant_name === selectedStyle)
+        // const target = undefined;
 
         // Default Branding (Safe Fallback)
         const baseBranding: EmailBranding = {
@@ -325,7 +324,13 @@ export function EmailSettingsPage({ templates, organizationId, smtpConfig }: Ema
                                         <h3 className="font-semibold text-lg leading-none mt-1">Editor de Contenido</h3>
                                     </div>
                                     <TemplateTextEditor
-                                        initialBranding={customBranding || {}}
+                                        initialBranding={customBranding || {
+                                            agency_name: "Tu Agencia Demo",
+                                            primary_color: "#4F46E5",
+                                            secondary_color: "#EC4899",
+                                            logo_url: "",
+                                            website_url: ""
+                                        }}
                                         onSave={handleSaveCustomization}
                                         isSaving={isSaving}
                                     />

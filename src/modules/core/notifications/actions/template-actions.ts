@@ -12,6 +12,7 @@ export type EmailTemplate = {
     body_html: string
     design_config: any
     is_active: boolean
+    organization_id: string | null
 }
 
 export async function getEmailTemplates() {

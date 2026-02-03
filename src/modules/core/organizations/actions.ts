@@ -105,15 +105,15 @@ export async function getCurrentOrgName() {
 /**
  * Get full details of current organization
  */
-export async function getCurrentOrgDetails() {
-    const orgId = await getCurrentOrganizationId()
-    if (!orgId) return null
+export async function getCurrentOrgDetails(orgId?: string) {
+    const activeOrgId = orgId || await getCurrentOrganizationId()
+    if (!activeOrgId) return null
 
     const supabase = await createClient()
     const { data } = await supabase
         .from('organizations')
         .select('*')
-        .eq('id', orgId)
+        .eq('id', activeOrgId)
         .single()
 
     return data
