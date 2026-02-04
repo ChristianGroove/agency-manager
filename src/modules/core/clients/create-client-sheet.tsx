@@ -114,8 +114,11 @@ export function CreateClientSheet({ onSuccess, open: controlledOpen, onOpenChang
                 finalLogoUrl = publicUrl
             }
 
+            // Destructure to exclude fields not in schema
+            const { linkedin, ...validClientData } = newClient
+
             const { error } = await supabase.from('clients').insert({
-                ...newClient,
+                ...validClientData,
                 organization_id: orgId, // CRITICAL FIX
                 logo_url: finalLogoUrl,
                 user_id: user.id,
