@@ -268,6 +268,12 @@ export async function createOrganization(formData: {
 
     if (!user) return { success: false, error: "Unauthorized" }
 
+    // Get creator's current organization ID for email sending  
+    const creatorOrgId = await getCurrentOrganizationId()
+    if (!creatorOrgId) {
+        return { success: false, error: 'No se pudo determinar la organización del creador' }
+    }
+
     try {
         // V2: Verify Parent Permission
         if (formData.parent_organization_id) {
@@ -373,57 +379,79 @@ export async function createOrganization(formData: {
         }
 
         // 2b. [New] Automated Onboarding: Invite Admin
+        let invitationSent = false
+        let invitationError: string | undefined
+
         if (formData.admin_email) {
             try {
-                // Check if user exists
-                const { data: existingUser } = await supabaseAdmin
-                    .from('profiles') // Assuming profiles holds email mapping or user_id
-                    .select('id, email') // We might need to check auth.users actually, but admin client usually has access
-                // Wait, profiles is public. auth.users is protected.
-                // supabaseAdmin CAN access auth.admin.
-                // Let's use auth admin to check/invite
-                // BUT: supabaseAdmin in this codebase is createClient(service_role).
+                // Validate email format
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+                if (!emailRegex.test(formData.admin_email)) {
+                    invitationError = 'Formato de email inválido'
+                } else {
+                    // Invite user via Supabase Auth
+                    const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(
+                        formData.admin_email,
+                        {
+                            data: {
+                                full_name: 'Admin',
+                                invited_org_id: newOrg.id
+                            },
+                            redirectTo: `https://${process.env.NEXT_PUBLIC_APP_DOMAIN}/auth/callback`
+                        }
+                    )
 
-                // Actually, let's just use the inviteUserByEmail or similar logic
-                // If user does not exist, we create/invite them.
+                    if (inviteError) {
+                        invitationError = inviteError.message
+                    } else if (inviteData?.user) {
+                        // Add user to organization
+                        await supabaseAdmin.from('organization_members').insert({
+                            organization_id: newOrg.id,
+                            user_id: inviteData.user.id,
+                            role: 'admin'
+                        })
 
-                // Simplified flow:
-                // 1. Invite user (If exists, sends magic link to app. If not, sends invite)
-                // Authorization: generateLink is better for custom branding.
-
-                const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(formData.admin_email, {
-                    data: {
-                        full_name: 'Admin',
-                        // You could store temp org_id here or handle via link
-                    },
-                    redirectTo: `https://${process.env.NEXT_PUBLIC_APP_DOMAIN}/auth/callback`
-                })
-
-                if (inviteData?.user) {
-                    // Add to Org
-                    await supabaseAdmin.from('organization_members').insert({
-                        organization_id: newOrg.id,
-                        user_id: inviteData.user.id,
-                        role: 'admin'
-                    })
-
-                    // Send Custom Welcome Email (Better than Supabase Default)
-                    // We import dynamically to avoid circular deps if any
-                    const { EmailService } = await import('@/modules/core/notifications/email.service')
-                    await EmailService.send({
-                        to: formData.admin_email,
-                        subject: `Bienvenido a ${formData.name}`,
-                        html: `
-                                <h1>¡Tu Espacio está listo!</h1>
-                                <p>Has sido invitado a administrar <strong>${formData.name}</strong>.</p>
-                                <p>Ingresa aquí: <a href="https://${formData.slug}.${process.env.NEXT_PUBLIC_APP_DOMAIN_BASE || 'pixy.com.co'}">Acceder al Panel</a></p>
+                        // Send custom welcome email using CREATOR's SMTP
+                        const { EmailService } = await import('@/modules/core/notifications/email.service')
+                        const emailResult = await EmailService.send({
+                            to: formData.admin_email,
+                            subject: `Invitación a ${formData.name}`,
+                            html: `
+                                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                                    <h1 style="color: #F205E2;">¡Bienvenido a ${formData.name}!</h1>
+                                    <p>Has sido invitado como administrador de esta organización.</p>
+                                    <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                                        <strong>Nombre de la organización:</strong> ${formData.name}<br>
+                                        <strong>URL:</strong> <a href="https://${formData.slug}.pixy.com.co">https://${formData.slug}.pixy.com.co</a>
+                                    </div>
+                                    <p>
+                                        <a href="https://${process.env.NEXT_PUBLIC_APP_DOMAIN}/auth/callback" 
+                                           style="background: #F205E2; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">
+                                            Acceder a mi Panel
+                                        </a>
+                                    </p>
+                                    <p style="color: #666; font-size: 14px;">Si no solicitaste este acceso, puedes ignorar este correo.</p>
+                                </div>
                             `,
-                        organizationId: newOrg.id // Shows Invited Org branding
-                    })
+                            organizationId: creatorOrgId, // ✅ Use CREATOR's org for SMTP
+                            tags: [
+                                { name: 'type', value: 'organization_invitation' },
+                                { name: 'new_org_id', value: newOrg.id }
+                            ]
+                        })
+
+                        if (emailResult.success) {
+                            invitationSent = true
+                        } else {
+                            console.warn('Email send failed but org created:', emailResult.error)
+                            invitationError = 'Email no pudo ser enviado'
+                        }
+                    }
                 }
-            } catch (inviteErr) {
+            } catch (inviteErr: any) {
                 console.error("Error inviting admin:", inviteErr)
-                // Non-blocking
+                invitationError = inviteErr.message || 'Error desconocido al enviar invitación'
+                // Non-blocking - org creation succeeds even if email fails
             }
         }
 
@@ -460,7 +488,14 @@ export async function createOrganization(formData: {
             // Non-blocking, but important for middleware
         }
 
-        return { success: true, data: newOrg }
+        return {
+            success: true,
+            data: {
+                ...newOrg,
+                invitation_sent: invitationSent,
+                invitation_error: invitationError
+            }
+        }
 
     } catch (error: any) {
         console.error("Error creating organization:", error)
