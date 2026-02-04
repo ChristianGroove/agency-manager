@@ -465,7 +465,7 @@ export async function createOrganization(formData: {
                                     <p style="color: #666; font-size: 14px;">Si no solicitaste este acceso, puedes ignorar este correo.</p>
                                 </div>
                             `,
-                            organizationId: creatorOrgId, // ✅ Use CREATOR's org for SMTP
+                            organizationId: creatorOrgId || 'PLATFORM', // ✅ Fallback to platform SMTP if creator has none
                             tags: [
                                 { name: 'type', value: 'organization_invitation' },
                                 { name: 'new_org_id', value: newOrg.id }
