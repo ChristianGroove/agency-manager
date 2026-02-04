@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { supabase } from "@/lib/supabase"
 import { Organization } from "@/types/organization"
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -77,7 +76,10 @@ export default function PlatformOrganizationsPage() {
             return
         }
 
-        let query = supabase
+        // Use supabaseAdmin to bypass RLS for platform/reseller admins
+        const { supabaseAdmin } = await import('@/lib/supabase-admin')
+
+        let query = supabaseAdmin
             .from('organizations')
             .select(`
                 *,
@@ -85,7 +87,7 @@ export default function PlatformOrganizationsPage() {
             `)
             .order('created_at', { ascending: false })
 
-        // 2. Apply Reseller Filter (Fail-safe for RLS)
+        // 2. Apply Reseller Filter (Even though using admin, we still filter for security)
         if (currentOrg?.organization_type === 'reseller') {
             query = query.eq('parent_organization_id', currentOrg.id)
         }
