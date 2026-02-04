@@ -52,10 +52,6 @@ export function CreateClientSheet({ onSuccess, open: controlledOpen, onOpenChang
         logo_url: "",
         facebook: "",
         instagram: "",
-        tiktok: "",
-        linkedin: "",
-        youtube: "",
-        twitter: "",
         website: ""
     })
 
@@ -114,12 +110,9 @@ export function CreateClientSheet({ onSuccess, open: controlledOpen, onOpenChang
                 finalLogoUrl = publicUrl
             }
 
-            // Destructure to exclude fields not in schema
-            const { linkedin, ...validClientData } = newClient
-
             const { error } = await supabase.from('clients').insert({
-                ...validClientData,
-                organization_id: orgId, // CRITICAL FIX
+                ...newClient, // Only includes fields that exist in schema
+                organization_id: orgId,
                 logo_url: finalLogoUrl,
                 user_id: user.id,
                 // Generate Portal Tokens
@@ -136,7 +129,7 @@ export function CreateClientSheet({ onSuccess, open: controlledOpen, onOpenChang
             // Reset form
             setNewClient({
                 name: "", company_name: "", nit: "", email: "", phone: "", address: "",
-                logo_url: "", facebook: "", instagram: "", tiktok: "", linkedin: "", youtube: "", twitter: "", website: ""
+                logo_url: "", facebook: "", instagram: "", website: ""
             })
             removeFile()
 
@@ -297,22 +290,6 @@ export function CreateClientSheet({ onSuccess, open: controlledOpen, onOpenChang
                                     <div className="space-y-2">
                                         <Label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Facebook</Label>
                                         <Input className="bg-gray-50/50 border-gray-200 focus:bg-white transition-all" placeholder="usuario" value={newClient.facebook} onChange={(e) => setNewClient({ ...newClient, facebook: e.target.value })} />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label className="text-xs font-bold text-gray-500 uppercase tracking-wider">TikTok</Label>
-                                        <Input className="bg-gray-50/50 border-gray-200 focus:bg-white transition-all" placeholder="@usuario" value={newClient.tiktok} onChange={(e) => setNewClient({ ...newClient, tiktok: e.target.value })} />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label className="text-xs font-bold text-gray-500 uppercase tracking-wider">LinkedIn</Label>
-                                        <Input className="bg-gray-50/50 border-gray-200 focus:bg-white transition-all" placeholder="URL perfil" value={newClient.linkedin} onChange={(e) => setNewClient({ ...newClient, linkedin: e.target.value })} />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label className="text-xs font-bold text-gray-500 uppercase tracking-wider">YouTube</Label>
-                                        <Input className="bg-gray-50/50 border-gray-200 focus:bg-white transition-all" placeholder="Canal" value={newClient.youtube} onChange={(e) => setNewClient({ ...newClient, youtube: e.target.value })} />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label className="text-xs font-bold text-gray-500 uppercase tracking-wider">X (Twitter)</Label>
-                                        <Input className="bg-gray-50/50 border-gray-200 focus:bg-white transition-all" placeholder="@usuario" value={newClient.twitter} onChange={(e) => setNewClient({ ...newClient, twitter: e.target.value })} />
                                     </div>
                                 </div>
                             </TabsContent>
