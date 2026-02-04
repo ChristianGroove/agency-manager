@@ -54,13 +54,13 @@ export function ClientManagementSheet({ clientId, open, onOpenChange, initialDat
     const [loading, setLoading] = useState(false)
     const [saving, setSaving] = useState(false)
     const [settings, setSettings] = useState<any>(null)
-    const [activeTab, setActiveTab] = useState(initialTab === 'overview' ? 'info' : initialTab)
+    const [activeTab, setActiveTab] = useState('info')
 
     useEffect(() => {
-        if (open && initialTab) {
-            setActiveTab(initialTab === 'overview' ? 'info' : initialTab)
+        if (open) {
+            setActiveTab('info') // Always open in Perfil tab
         }
-    }, [open, initialTab])
+    }, [open])
 
     // Form State (Unified from EditClientSheet)
     const [editForm, setEditForm] = useState({
@@ -329,12 +329,6 @@ export function ClientManagementSheet({ clientId, open, onOpenChange, initialDat
                     </SheetHeader>
                     {/* Header */}
                     <div className="bg-white border-b border-gray-100 px-8 py-6 flex items-start gap-6 flex-none z-10">
-                        <Avatar className="h-20 w-20 rounded-2xl border-4 border-white shadow-xl ring-1 ring-gray-100/50">
-                            <AvatarImage src={client.logo_url || undefined} className="object-cover" />
-                            <AvatarFallback className="bg-slate-100 text-slate-400 text-2xl font-bold">
-                                {client.name.substring(0, 2).toUpperCase()}
-                            </AvatarFallback>
-                        </Avatar>
                         <div className="flex-1 pt-1 min-w-0">
                             <div className="flex items-center justify-between mb-2">
                                 <h2 className="text-2xl font-black text-gray-900 truncate" aria-hidden="true">{client.name}</h2>
