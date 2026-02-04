@@ -333,6 +333,38 @@ export async function createOrganization(formData: {
         // Usually, provisioning is a protected action or we use a function.
         // For now, we use supabaseAdmin to ensure creation succeeds and we can set the owner.
 
+        // Determine parent_organization_id based on creator type and hierarchy rules
+        let computedParentId: string | null = null
+
+        if (formData.parent_organization_id) {
+            // Explicit parent provided (API usage or special cases)
+            computedParentId = formData.parent_organization_id
+        } else {
+            // Auto-compute based on creator type
+            const { data: creatorOrg } = await supabaseAdmin
+                .from('organizations')
+                .select('organization_type')
+                .eq('id', creatorOrgId)
+                .single()
+
+            const creatorType = creatorOrg?.organization_type
+            const newOrgType = formData.organization_type || 'client'
+
+            // HIERARCHY RULES:
+            // - Platform creates Reseller → parent = platform
+            // - Platform creates Client → parent = platform  
+            // - Reseller creates Client → parent = reseller
+            // - Autoregistro (no creator context) → parent = NULL
+            if (creatorType === 'platform') {
+                // Platform is parent for everything it creates
+                computedParentId = creatorOrgId
+            } else if (creatorType === 'reseller' && newOrgType === 'client') {
+                // Reseller is parent for clients it creates
+                computedParentId = creatorOrgId
+            }
+            // Else: NULL (autoregistro or independent org)
+        }
+
         const { data: newOrg, error: orgError } = await supabaseAdmin
             .from('organizations')
             .insert({
@@ -343,7 +375,7 @@ export async function createOrganization(formData: {
                 app_activated_at: new Date().toISOString(),
                 subscription_status: 'active', // Trial/Active by default
                 // V2 Fields
-                parent_organization_id: formData.parent_organization_id || null,
+                parent_organization_id: computedParentId, // ✅ Use computed value
                 organization_type: formData.organization_type || 'client',
                 status: 'active',
                 // Revenue Sharing: Track acquisition
