@@ -126,16 +126,21 @@ export function CreateOrganizationSheet({ open, onOpenChange, onSuccess, initial
             })
 
             if (result.success) {
-                toast.success(`Organización "${name}" creada correctamente`)
+                // Success feedback with invitation status
+                if (result.data?.invitation_sent) {
+                    toast.success(`Organización creada exitosamente. Invitación enviada a ${adminEmail}`)
+                } else if (result.data?.invitation_error) {
+                    toast.success('Organización creada exitosamente')
+                    toast.warning(`No se pudo enviar la invitación: ${result.data.invitation_error}`)
+                } else {
+                    toast.success('Organización creada exitosamente')
+                }
+
                 onSuccess?.()
                 onOpenChange(false)
 
-                // Small delay to ensure cookie propagation
-                await new Promise(resolve => setTimeout(resolve, 100))
-
-                // Navigate using router to preserve session
-                router.push('/')
-                router.refresh()
+                // Refresh the organizations list
+                window.location.reload()
             } else {
                 toast.error(result.error || "Error al crear la organización")
                 setIsLoading(false)

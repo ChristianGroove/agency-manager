@@ -148,15 +148,26 @@ export async function getTenantContext() {
         ['owner', 'admin'].includes(m.role)
     )
 
-    // 3. Determine Visibility
-    const isClientContext = orgDetails.organization_type === 'client'
-    const isVisible = isPrivileged && isClientContext
+    // Check if user is specifically a Platform admin
+    const isPlatformAdmin = memberships.some(m =>
+        m.organization?.organization_type === 'platform' &&
+        ['owner', 'admin'].includes(m.role)
+    )
 
-    if (!isVisible) return null
+    // 3. Determine Visibility
+    // Show badge when:
+    // - Platform admin managing a Reseller OR Client
+    // - Reseller admin managing a Client
+    const currentOrgType = orgDetails.organization_type
+    const isManagingDifferentContext =
+        (isPlatformAdmin && (currentOrgType === 'reseller' || currentOrgType === 'client')) ||
+        (isPrivileged && !isPlatformAdmin && currentOrgType === 'client')
+
+    if (!isManagingDifferentContext) return null
 
     // 4. Automated Activity Logging
     // This credits the reseller for their attention/support to the client
-    if (isVisible) {
+    if (isManagingDifferentContext && currentOrgType === 'client') {
         const resellerMember = memberships.find(m => m.organization?.organization_type === 'reseller')
         const resellerOrgId = resellerMember?.organization_id
 
