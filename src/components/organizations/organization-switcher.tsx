@@ -17,6 +17,7 @@ import { OrganizationMember } from "@/types/organization"
 import { getUserOrganizations, switchOrganization, getCurrentOrgName, getCurrentOrganizationId } from "@/modules/core/organizations/actions"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
+import { cn } from "@/lib/utils"
 
 interface OrganizationSwitcherProps {
     trigger?: React.ReactNode
@@ -26,7 +27,7 @@ export function OrganizationSwitcher({ trigger }: OrganizationSwitcherProps) {
     const router = useRouter()
     const [organizations, setOrganizations] = useState<OrganizationMember[]>([])
     const [currentOrgId, setCurrentOrgId] = useState<string | null>(null)
-    const [isLoading, setIsLoading] = useState(true)
+    const [isLoading, setIsLoading] = useState(false) // ⚡ Changed to false for instant render
 
     const [isOpen, setIsOpen] = useState(false)
     const [isCreateOpen, setIsCreateOpen] = useState(false) // Restored for admin sheet
@@ -37,6 +38,7 @@ export function OrganizationSwitcher({ trigger }: OrganizationSwitcherProps) {
     }, [])
 
     const loadData = async () => {
+        setIsLoading(true) // Show loading after mount
         try {
             const orgs = await getUserOrganizations()
             setOrganizations(orgs)
@@ -76,14 +78,8 @@ export function OrganizationSwitcher({ trigger }: OrganizationSwitcherProps) {
         }
     }
 
-    // Always show to allow creation of new organizations
-    if (!isLoading && organizations.length === 0) {
-        return null // Only hide if 0? Or maybe show empty state? usually > 0 if logged in.
-    }
-
-    if (isLoading) {
-        return <div className="h-9 w-9 bg-gray-100 rounded-md animate-pulse" />
-    }
+    // ⚡ PERFORMANCE: Always show button, even while loading
+    // No more hiding button until data loads
 
     return (
         <>
@@ -97,8 +93,9 @@ export function OrganizationSwitcher({ trigger }: OrganizationSwitcherProps) {
                     size="icon"
                     onClick={() => setIsOpen(true)}
                     className="text-gray-500 hover:text-indigo-600 hover:bg-indigo-50"
+                    disabled={isLoading && organizations.length === 0}
                 >
-                    <Building2 className="h-5 w-5" />
+                    <Building2 className={cn("h-5 w-5", isLoading && "animate-pulse")} />
                 </Button>
             )}
 

@@ -24,6 +24,8 @@ import { SectionHeader } from "@/components/layout/section-header"
 import { Checkbox } from "@/components/ui/checkbox"
 import { BulkActionsFloatingBar } from "@/components/shared/bulk-actions-floating-bar"
 import { toast } from "sonner"
+import { getCurrentOrgDetails } from "@/modules/core/organizations/actions"
+import { supabaseAdmin } from "@/lib/supabase-admin"
 
 export default function PlatformOrganizationsPage() {
     const [orgs, setOrgs] = useState<Organization[]>([])
@@ -61,41 +63,43 @@ export default function PlatformOrganizationsPage() {
     const fetchOrgs = async () => {
         setIsLoading(true)
 
-        // 1. Get Context
-        const { getCurrentOrgDetails } = await import('@/modules/core/organizations/actions')
-        const currentOrg = await getCurrentOrgDetails()
+        try {
+            // ⚡ PERFORMANCE: No dynamic imports
+            const currentOrg = await getCurrentOrgDetails()
 
-        // SECURITY CHECK: Strict Role Enforcement
-        // Only Resellers and Platform Admins can view this page.
-        if (currentOrg?.organization_type === 'client') {
-            const { redirect } = await import('next/navigation')
-            // Client-side redirect not ideal inside async fn, but useEffect handles it via router usually.
-            // Better: use window.location or router.push
-            // Since we are inside a client component:
-            window.location.href = '/' // Hard redirect to dashboard
-            return
+            // SECURITY CHECK
+            if (currentOrg?.organization_type === 'client') {
+                window.location.href = '/'
+                return
+            }
+
+            // ⚡ PERFORMANCE: Simplified query (no JOIN)
+            let query = supabaseAdmin
+                .from('organizations')
+                .select('*')
+                .order('created_at', { ascending: false })
+
+            // Apply Reseller Filter
+            if (currentOrg?.organization_type === 'reseller') {
+                query = query.eq('parent_organization_id', currentOrg.id)
+            }
+
+            const { data, error } = await query
+
+            if (error) {
+                console.error('Failed to load organizations:', error)
+                toast.error('Error cargando organizaciones')
+                return
+            }
+
+            if (data) setOrgs(data as any)
+
+        } catch (error) {
+            console.error('Unexpected error:', error)
+            toast.error('Error inesperado')
+        } finally {
+            setIsLoading(false)
         }
-
-        // Use supabaseAdmin to bypass RLS for platform/reseller admins
-        const { supabaseAdmin } = await import('@/lib/supabase-admin')
-
-        let query = supabaseAdmin
-            .from('organizations')
-            .select(`
-                *,
-                parent_organization:organizations!parent_organization_id(name)
-            `)
-            .order('created_at', { ascending: false })
-
-        // 2. Apply Reseller Filter (Even though using admin, we still filter for security)
-        if (currentOrg?.organization_type === 'reseller') {
-            query = query.eq('parent_organization_id', currentOrg.id)
-        }
-
-        const { data, error } = await query
-
-        if (data) setOrgs(data as any)
-        setIsLoading(false)
     }
 
     const handleOpenLimits = (org: Organization) => {
