@@ -352,7 +352,7 @@ export async function simulateInboundMessage(fromPhone: string = '555001122', me
     }
 }
 
-export async function sendOutboundMessage(conversationId: string, content: any, channel: string = 'whatsapp') {
+export async function sendOutboundMessage(conversationId: string, content: any, channel: string = 'whatsapp', connectionId?: string) {
     // Wrapper for automation to use the existing logic or simplified logic
     // We need to robustly handle the context where there might not be an active user session (automation)
 
@@ -385,12 +385,15 @@ export async function sendOutboundMessage(conversationId: string, content: any, 
     const providerKey = (channel === 'messenger' || channel === 'instagram') ? 'meta_business' : (channel === 'evolution' ? 'evolution_api' : 'meta_whatsapp');
 
     // Try bound connection first
+    // Try bound connection first, or explicit override
     let connection: any = null
-    if ((conversation as any).connection_id) {
+    const targetConnectionId = connectionId || (conversation as any).connection_id
+
+    if (targetConnectionId) {
         const { data: boundConn } = await supabase
             .from('integration_connections')
             .select('*')
-            .eq('id', (conversation as any).connection_id)
+            .eq('id', targetConnectionId)
             .single()
         connection = boundConn
     }
@@ -495,6 +498,21 @@ export async function sendOutboundMessage(conversationId: string, content: any, 
             undefined,
             channel
         )
+
+        // 5. Sync Conversation Markers (Session Logic)
+        // CRITICAL: This prevents the bot from looping on the same session
+        const lastMessageText = typeof content === 'string' ? content : (content.text || content.body || 'Nuevo mensaje del bot');
+
+        await supabase
+            .from('conversations')
+            .update({
+                last_auto_reply_at: new Date().toISOString(),
+                last_message: lastMessageText,
+                last_message_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                status: 'open' // Re-open if it was closed
+            })
+            .eq('id', conversationId);
 
         return { success: true, externalId: messageId }
 

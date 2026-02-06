@@ -66,10 +66,32 @@ export class AutomationTriggerService {
             else if (parsed.caption) actualText = parsed.caption
         } catch (e) { }
 
+        const metadata = conversation.metadata as any || {}
+        const lastAutoReply = conversation.last_auto_reply_at ? new Date(conversation.last_auto_reply_at).getTime() : 0
+        const resolvedAt = metadata.resolved_at ? new Date(metadata.resolved_at).getTime() : 0
+        const now = Date.now()
+
+        // A session is considered "Expired" or "Reset" if:
+        // 1. Bot never replied before (lastAutoReply === 0)
+        // 2. Human explicitly resolved the chat AFTER the bot last spoke (resolvedAt > lastAutoReply)
+        // 3. More than 12 hours have passed since the last bot interaction (Cooldown)
+        const isSessionExpired = lastAutoReply === 0 ||
+            resolvedAt > lastAutoReply ||
+            (now - lastAutoReply) > (12 * 60 * 60 * 1000);
+
+        // Safety: Ignore messages that arrived within 2 seconds of a bot reply 
+        // to prevent potential echo loops (some providers echo sent messages back)
+        const isEcho = lastAutoReply > 0 && (now - lastAutoReply) < 2000;
+
         for (const wf of workflows) {
             const config = wf.trigger_config as any
             let match = false
             let skipReason = ''
+
+            if (isEcho) {
+                fileLogger.log(`[AutomationTrigger] Potential echo detected for workflow ${wf.id}. Skipping.`)
+                continue;
+            }
 
             // 1. Keyword Trigger
             if (wf.trigger_type === 'keyword' && config.keyword) {
@@ -86,46 +108,33 @@ export class AutomationTriggerService {
                     }
                     if (!match) skipReason = `Keyword mismatch (Wanted: ${keyword}, Got: ${text})`
                 } else {
-                    // Empty keyword acts like "Any Message" fallback
-                    match = true
+                    // Empty keyword acts like "Any Message", but we apply session restriction
+                    match = isSessionExpired;
+                    if (!match) skipReason = `Session still active (Rate limiting "Any Message" keyword)`
                 }
             }
 
             // 2. Generic "Message Received" OR "Webhook" (Legacy/Any)
-            // Fix: Treat 'webhook' without specific keyword as "Any Message"
             else if (wf.trigger_type === 'message_received' || wf.trigger_type === 'webhook') {
                 if (wf.trigger_type === 'webhook' && config.keyword && config.keyword.trim() !== '') {
-                    // It's actually a keyword trigger disguised as webhook
                     const keyword = config.keyword.toLowerCase()
                     const text = actualText.toLowerCase()
                     match = text.includes(keyword)
                     if (!match) skipReason = `Webhook keyword mismatch`
                 } else {
-                    match = true
+                    // It's a "Catch All" trigger. Apply session logic to avoid infinite loops.
+                    match = isSessionExpired;
+                    if (!match) skipReason = `Session still active (Rate limiting catch-all ${wf.trigger_type})`
                 }
             }
 
-            // 3. "First Contact" (Session-based v2)
+            // 3. "First Contact"
             else if (wf.trigger_type === 'first_contact') {
-                const metadata = conversation.metadata as any || {}
-                const lastAutoReply = conversation.last_auto_reply_at ? new Date(conversation.last_auto_reply_at).getTime() : 0
-                const resolvedAt = metadata.resolved_at ? new Date(metadata.resolved_at).getTime() : 0
-                const now = Date.now()
-
-                // A session is considered "Expired" or "Reset" if:
-                // 1. Bot never replied before (lastAutoReply === 0)
-                // 2. Human explicitly resolved the chat AFTER the bot last spoke (resolvedAt > lastAutoReply)
-                // 3. More than 12 hours have passed since the last bot interaction (Cooldown)
-
-                const isSessionExpired = lastAutoReply === 0 ||
-                    resolvedAt > lastAutoReply ||
-                    (now - lastAutoReply) > (12 * 60 * 60 * 1000);
-
-                if (isSessionExpired) {
-                    fileLogger.log(`[AutomationTrigger] New session detected for lead: ${leadId} (Resolved: ${resolvedAt > lastAutoReply}, Cooldown: ${(now - lastAutoReply) > (12 * 60 * 60 * 1000)})`)
-                    match = true
-                } else {
+                match = isSessionExpired;
+                if (!match) {
                     skipReason = `Already in an active session (Last reply: ${new Date(lastAutoReply).toISOString()})`
+                } else {
+                    fileLogger.log(`[AutomationTrigger] New session detected for lead: ${leadId} (Resolved: ${resolvedAt > lastAutoReply}, Cooldown: ${(now - lastAutoReply) > (12 * 60 * 60 * 1000)})`)
                 }
             }
 
