@@ -216,3 +216,57 @@ export async function togglePipelineStrictMode(pipelineId: string, enabled: bool
         return { success: false, error: error.message }
     }
 }
+
+// --- Optimized Data Fetching (Phase 9) ---
+import { unstable_cache } from "next/cache"
+import { Lead, Emitter } from "@/types"
+import { supabaseAdmin } from "@/lib/supabase-admin"
+
+/**
+ * Cached version of getPipelineStages (1 hour TTL)
+ * Stages rarely change.
+ */
+export const getCachedPipelineStages = unstable_cache(
+    async (orgId: string) => {
+        // Use Admin Client to bypass cookies() requirement in cache scope
+        const { data, error } = await supabaseAdmin
+            .from('pipeline_stages')
+            .select('*')
+            .eq('organization_id', orgId)
+            .eq('is_active', true)
+            .order('display_order', { ascending: true })
+
+        if (error) return []
+        return data as PipelineStage[]
+    },
+    ['pipeline-stages'],
+    { revalidate: 3600, tags: ['pipeline'] }
+)
+
+/**
+ * Aggregated server action to fetch all CRM data in parallel.
+ * Reduces 4+ roundtrips to 1.
+ */
+export async function getPipelineData() {
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) return null
+
+    // Parallel Fetching
+    const { getLeads } = await import('./leads-actions')
+    const { getEmitters } = await import('@/modules/core/settings/emitters-actions')
+    const { getLeadsCount } = await import('./lead-management-actions')
+
+    const [stages, leads, emitters, totalCount] = await Promise.all([
+        getCachedPipelineStages(orgId),
+        getLeads(300), // Existing limit
+        getEmitters(),
+        getLeadsCount()
+    ])
+
+    return {
+        stages,
+        leads,
+        emitters: emitters || [],
+        totalCount
+    }
+}

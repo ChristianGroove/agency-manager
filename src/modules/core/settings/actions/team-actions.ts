@@ -352,19 +352,16 @@ export async function getMemberPermissions(userId: string) {
  * Get current logged-in user's permissions for the active organization
  * Used by client hooks to filter UI based on permissions
  */
-export async function getCurrentUserPermissions() {
-    const supabase = await createClient()
-    const orgId = await getCurrentOrganizationId()
+import { unstable_cache } from "next/cache"
 
-    if (!orgId) return null
-
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return null
-
+/**
+ * Internal: Fetch user permissions using admin client (Cacheable)
+ */
+async function _getUserPermissionsInternal(userId: string, orgId: string) {
     const { data: member } = await supabaseAdmin
         .from('organization_members')
         .select('role, permissions')
-        .match({ organization_id: orgId, user_id: user.id })
+        .match({ organization_id: orgId, user_id: userId })
         .single()
 
     if (!member) return null
@@ -375,4 +372,34 @@ export async function getCurrentUserPermissions() {
         role: member.role as string,
         permissions: getEffectivePermissions(member.role, member.permissions)
     }
+}
+
+/**
+ * PERF: Cached version of permissions fetch (1 minute TTL)
+ */
+export const getCachedUserPermissions = unstable_cache(
+    async (userId: string, orgId: string) => _getUserPermissionsInternal(userId, orgId),
+    ['user-permissions'],
+    {
+        revalidate: 60,
+        tags: ['permissions']
+    }
+)
+
+/**
+ * Get current logged-in user's permissions for the active organization
+ * Used by client hooks to filter UI based on permissions
+ */
+export async function getCurrentUserPermissions() {
+    const supabase = await createClient()
+    // Optimization: Check cookie manually or use cached getter
+    const orgId = await getCurrentOrganizationId()
+
+    if (!orgId) return null
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return null
+
+    // Use cached version
+    return getCachedUserPermissions(user.id, orgId)
 }

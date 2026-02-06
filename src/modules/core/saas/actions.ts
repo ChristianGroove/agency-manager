@@ -297,7 +297,15 @@ export async function getActiveModulesDetailed(orgId?: string) {
  * Aggregated fetch for Sidebar to reduce network waterfalls and flickering
  * Returns everything needed to render the sidebar in one go
  */
-export async function getSidebarContext(orgId?: string) {
+/**
+ * Aggregated fetch for Sidebar to reduce network waterfalls and flickering
+ * Returns everything needed to render the sidebar in one go
+ */
+import { User } from "@supabase/supabase-js"
+import { getCachedOrgDetails } from "@/modules/core/organizations/actions"
+import { getCachedUserPermissions } from "@/modules/core/settings/actions/team-actions"
+
+export async function getSidebarContext(orgId?: string, user?: User | null) {
     try {
         const organizationId = orgId || await getCurrentOrganizationId()
         if (!organizationId) {
@@ -311,41 +319,49 @@ export async function getSidebarContext(orgId?: string) {
         }
 
         // Fetch everything in parallel
-        // Dynamically import to avoid potential circular dependencies with team-actions / organizations
-        const { getCurrentUserPermissions } = await import('@/modules/core/settings/actions/team-actions')
-        const { getCurrentOrgDetails } = await import('@/modules/core/organizations/actions')
         const { getCurrentBrandingTier } = await import('@/modules/core/branding/tier-actions')
 
-        const [modules, userPerms, orgDetails, brandingData] = await Promise.all([
-            getActiveModules(organizationId),
-            getCurrentUserPermissions(), // Handles its own orgId check
-            getCurrentOrgDetails(organizationId),
-            getCurrentBrandingTier()
-        ])
+        // Prepare Promises
+        // 1. Modules (Use Cache)
+        const modulesPromise = getActiveModules(organizationId)
 
-        // Filter modules based on permissions
-        let finalModules = modules
-        if (userPerms?.permissions?.modules) {
-            // Re-map logic here or just rely on the pre-existing logic if simple
-            // We need the Permission Map but it is in the client hook. 
-            // Let's just return the raw modules and permissions and let client filter?
-            // BETTER: Filter here to save client payload size.
-            // We need to duplicate the map key or move it to a shared constant.
-            // For now, let's keep it simple and filter on client if complex, 
-            // BUT the performance gain is avoiding requests.
-            // Let's return raw data and let the hook doing the filtering to keep logic in one place
-            // OR move filtering here. 
-            // To be safe and speed up, let's return everything and let the hook process the filtering logic
-            // which it already has.
+        // 2. Org Details (Use Cache)
+        const orgDetailsPromise = getCachedOrgDetails(organizationId)
+
+        // 3. Branding (Keep as is for now, or cache later if needed)
+        const brandingPromise = getCurrentBrandingTier()
+        // Phase 10: Also fetch Visual Branding (Logo/Colors) for instant render
+        const { getEffectiveBranding } = await import('@/modules/core/branding/actions')
+        const visualBrandingPromise = getEffectiveBranding(organizationId)
+
+        // 4. Permissions (Use Cache if User available)
+        let permsPromise: Promise<any> | null = null
+        if (user) {
+            permsPromise = getCachedUserPermissions(user.id, organizationId)
+        } else {
+            // Fallback to slow legacy fetch if no user passed (shouldn't happen in optimized flow)
+            const { getCurrentUserPermissions } = await import('@/modules/core/settings/actions/team-actions')
+            permsPromise = getCurrentUserPermissions()
         }
+
+        const [modules, userPerms, orgDetails, brandingData, visualBranding] = await Promise.all([
+            modulesPromise,
+            permsPromise,
+            orgDetailsPromise,
+            brandingPromise,
+            visualBrandingPromise
+        ])
 
         return {
             modules: modules,
             userRole: userPerms?.role || null,
-            userPermissions: userPerms?.permissions || null, // Pass full permissions to client
+            userPermissions: userPerms?.permissions || null,
             organizationType: (orgDetails?.organization_type || 'client') as 'platform' | 'reseller' | 'client',
             vertical: orgDetails?.vertical_key,
-            capabilities: brandingData?.capabilities || {}
+            capabilities: brandingData?.capabilities || {},
+            // Optimization Props
+            branding: visualBranding,
+            orgDetails: orgDetails
         }
 
     } catch (error) {
@@ -355,7 +371,9 @@ export async function getSidebarContext(orgId?: string) {
             userRole: null,
             organizationType: 'client' as const,
             vertical: undefined,
-            capabilities: {}
+            capabilities: {},
+            branding: null,
+            orgDetails: null
         }
     }
 }

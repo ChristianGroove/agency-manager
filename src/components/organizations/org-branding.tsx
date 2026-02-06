@@ -8,8 +8,12 @@ import { useTheme } from "next-themes"
 
 const brandingCache = new Map<string, any>()
 
-export function OrgBranding({ orgId, collapsed = false }: { orgId: string | null, collapsed?: boolean }) {
-    const [branding, setBranding] = useState<any>(brandingCache.get(orgId || 'platform') || null)
+export function OrgBranding({ orgId, collapsed = false, initialBranding }: { orgId: string | null, collapsed?: boolean, initialBranding?: any }) {
+    // Priority: Initial Prop > Cache > Null
+    const [branding, setBranding] = useState<any>(
+        initialBranding || brandingCache.get(orgId || 'platform') || null
+    )
+    // If we have initial data, we are NOT loading
     const [loading, setLoading] = useState(!branding)
     const { resolvedTheme } = useTheme()
     const [mounted, setMounted] = useState(false)
@@ -18,6 +22,11 @@ export function OrgBranding({ orgId, collapsed = false }: { orgId: string | null
         setMounted(true)
 
         const fetchBranding = async (force = false) => {
+            // Check if we already have valid data from props or cache
+            if (!force && branding) {
+                setLoading(false)
+                return
+            }
             // Check cache unless forced
             if (!force && brandingCache.has(orgId || 'platform')) {
                 setBranding(brandingCache.get(orgId || 'platform'))

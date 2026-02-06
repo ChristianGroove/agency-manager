@@ -10,6 +10,81 @@ import { isSuperAdmin } from "@/lib/auth/platform-roles"
 import { cache } from "react"
 
 /**
+ * Fetch organizations with Server-Side Pagination & Search
+ * Optimized for large datasets.
+ */
+export async function getOrganizationsPaginated(params: {
+    page?: number,
+    limit?: number,
+    search?: string,
+    type?: string,
+    parentId?: string
+}) {
+    // 1. Auth & Context
+    const supabase = await createClient()
+    const currentOrgId = await getCurrentOrganizationId()
+
+    if (!currentOrgId) return { data: [], count: 0 }
+
+    // Check Role (Must be Reseller or Platform to list orgs generally)
+    // We reuse existing getUserOrganizations to check privileges or just enforce via query
+    // Optimally: Check if currentOrg is Reseller/Platform
+    const { data: currentOrg } = await supabaseAdmin
+        .from('organizations')
+        .select('organization_type')
+        .eq('id', currentOrgId)
+        .single()
+
+    const isPlatform = currentOrg?.organization_type === 'platform'
+    const isReseller = currentOrg?.organization_type === 'reseller'
+
+    if (!isPlatform && !isReseller) {
+        return { data: [], count: 0, error: "Unauthorized" }
+    }
+
+    // 2. Build Query
+    const page = params.page || 1
+    const limit = params.limit || 50
+    const from = (page - 1) * limit
+    const to = from + limit - 1
+
+    let query = supabaseAdmin
+        .from('organizations')
+        .select(`
+            *,
+            parent_organization:organizations!parent_organization_id(name)
+        `, { count: 'exact' })
+        .order('created_at', { ascending: false })
+
+    // 3. Filters
+    if (params.search) {
+        query = query.or(`name.ilike.%${params.search}%,slug.ilike.%${params.search}%`)
+    }
+
+    if (params.type && params.type !== 'all') {
+        query = query.eq('organization_type', params.type)
+    }
+
+    // Reseller Constraint: Only show own children
+    if (isReseller) {
+        query = query.eq('parent_organization_id', currentOrgId)
+    } else if (params.parentId) {
+        // Platform can filter by parent
+        query = query.eq('parent_organization_id', params.parentId)
+    }
+
+    // 4. Execute
+    const { data, count, error } = await query.range(from, to)
+
+    if (error) {
+        console.error("Error fetching organizations:", error)
+        return { data: [], count: 0, error: error.message }
+    }
+
+    return { data, count }
+}
+
+/**
  * Fetch all organizations the current user belongs to.
  */
 export async function getUserOrganizations() {
@@ -105,18 +180,41 @@ export async function getCurrentOrgName() {
 /**
  * Get full details of current organization
  */
+import { unstable_cache } from "next/cache"
+
+/**
+ * Internal: Fetch org details using admin client (Cacheable)
+ */
+async function _getOrgDetailsInternal(orgId: string) {
+    const { data } = await supabaseAdmin
+        .from('organizations')
+        .select('*')
+        .eq('id', orgId)
+        .single()
+    return data
+}
+
+/**
+ * PERF: Cached version of Org Details (5 minutes TTL)
+ */
+export const getCachedOrgDetails = unstable_cache(
+    async (orgId: string) => _getOrgDetailsInternal(orgId),
+    ['org-details'],
+    {
+        revalidate: 300,
+        tags: ['organization']
+    }
+)
+
+/**
+ * Get full details of current organization
+ */
 export async function getCurrentOrgDetails(orgId?: string) {
     const activeOrgId = orgId || await getCurrentOrganizationId()
     if (!activeOrgId) return null
 
-    const supabase = await createClient()
-    const { data } = await supabase
-        .from('organizations')
-        .select('*')
-        .eq('id', activeOrgId)
-        .single()
-
-    return data
+    // Use cached version
+    return getCachedOrgDetails(activeOrgId)
 }
 
 /**

@@ -45,11 +45,36 @@ const ICON_MAP: Record<string, any> = {
     'x-circle': XCircle,
 }
 
-export function CRMDashboard() {
+// ... imports
+
+interface CRMDashboardProps {
+    initialLeads: Lead[]
+    initialStages: PipelineStage[]
+    initialEmitters: Emitter[]
+    initialCount: number
+}
+
+export function CRMDashboard({
+    initialLeads,
+    initialStages,
+    initialEmitters,
+    initialCount
+}: CRMDashboardProps) {
     const [tagsSheetOpen, setTagsSheetOpen] = useState(false)
-    const [leads, setLeads] = useState<Lead[]>([])
-    const [stages, setStages] = useState<PipelineStage[]>([])
-    const [isLoading, setIsLoading] = useState(true)
+
+    // Initialize from Server Props
+    const [leads, setLeads] = useState<Lead[]>(initialLeads)
+    const [stages, setStages] = useState<PipelineStage[]>(initialStages)
+    // const [isLoading, setIsLoading] = useState(true) // No longer needed
+
+    // Sync with Server Refresh (e.g. router.refresh())
+    useEffect(() => {
+        setLeads(initialLeads)
+        setStages(initialStages)
+        setEmitters(initialEmitters)
+        setTotalLeadsCount(initialCount)
+    }, [initialLeads, initialStages, initialEmitters, initialCount])
+
     const [createSheetOpen, setCreateSheetOpen] = useState(false)
     const [editSheetOpen, setEditSheetOpen] = useState(false)
     const [editingLead, setEditingLead] = useState<Lead | null>(null)
@@ -61,10 +86,10 @@ export function CRMDashboard() {
     const [assigningLeadId, setAssigningLeadId] = useState<string | null>(null)
     const [importSheetOpen, setImportSheetOpen] = useState(false)
     const [settingsSheetOpen, setSettingsSheetOpen] = useState(false)
-    const [columnZoom, setColumnZoom] = useState(100) // 50-150 percent
-    const [emitters, setEmitters] = useState<Emitter[]>([])
+    const [columnZoom, setColumnZoom] = useState(100)
+    const [emitters, setEmitters] = useState<Emitter[]>(initialEmitters)
     const [manageSheetOpen, setManageSheetOpen] = useState(false)
-    const [totalLeadsCount, setTotalLeadsCount] = useState(0)
+    const [totalLeadsCount, setTotalLeadsCount] = useState(initialCount)
 
     // Quote creation from lead
     const [quoteSheetOpen, setQuoteSheetOpen] = useState(false)
@@ -91,26 +116,11 @@ export function CRMDashboard() {
         })
     )
 
+    // Legacy loadData -> Now just refreshes via Router
     const loadData = useCallback(async () => {
-        // Don't set loading to true to avoid full re-render on updates
-        try {
-            const [leadsData, stagesData, emittersData, countData] = await Promise.all([
-                getLeads(),
-                getPipelineStages(),
-                getEmitters(),
-                getLeadsCount()
-            ])
-            setLeads(leadsData)
-            setStages(stagesData)
-            setEmitters(emittersData || [])
-            setTotalLeadsCount(countData)
-        } catch (error) {
-            console.error(error)
-            toast.error("Error cargando CRM")
-        } finally {
-            setIsLoading(false)
-        }
-    }, [])
+        console.log("Refetching via Router...")
+        router.refresh()
+    }, [router])
 
     const handleShareQuote = useCallback((lead: Lead) => {
         // Find the most recent active quote
@@ -123,9 +133,8 @@ export function CRMDashboard() {
         }
     }, [])
 
-    useEffect(() => {
-        loadData()
-    }, [loadData])
+    // Removed initial load useEffect
+
 
     // Use filters hook
     const {
@@ -276,9 +285,9 @@ export function CRMDashboard() {
         activeId ? leads.find(l => l.id === activeId) : null
         , [activeId, leads])
 
-    if (isLoading) {
-        return <div className="h-full flex items-center justify-center text-muted-foreground animate-pulse">Cargando pipeline...</div>
-    }
+    // if (isLoading) {
+    //    return <div className="h-full flex items-center justify-center text-muted-foreground animate-pulse">Cargando pipeline...</div>
+    // }
 
     if (stages.length === 0) {
         return (

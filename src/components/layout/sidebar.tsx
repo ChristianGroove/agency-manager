@@ -20,8 +20,7 @@ import {
 } from "@/components/ui/tooltip"
 
 interface SidebarProps {
-    isCollapsed: boolean;
-    toggleCollapse: () => void;
+    // isCollapsed & toggleCollapse moved to Context
     currentOrgId: string | null;
     isSuperAdmin?: boolean;
     user?: any
@@ -207,7 +206,11 @@ export function SidebarContent({ isCollapsed = false, currentOrgId, isSuperAdmin
 
             {/* Header Logo */}
             <div className={cn("flex items-center mb-6 pl-2 transition-all duration-300 min-h-[40px]", isCollapsed ? "justify-center px-0" : "")}>
-                <OrgBranding orgId={currentOrgId} collapsed={isCollapsed} />
+                <OrgBranding
+                    orgId={currentOrgId}
+                    collapsed={isCollapsed}
+                    initialBranding={sidebarContext?.branding}
+                />
             </div>
 
             {/* Show loading skeleton while fetching modules */}
@@ -300,7 +303,10 @@ export function SidebarContent({ isCollapsed = false, currentOrgId, isSuperAdmin
 import { getEffectiveBranding } from "@/modules/core/branding/actions"
 import { useTheme } from "next-themes"
 
-export function Sidebar({ isCollapsed, toggleCollapse, currentOrgId, isSuperAdmin = false, user, sidebarContext }: SidebarProps) {
+import { useSidebar } from "./sidebar-provider"
+
+export function Sidebar({ currentOrgId, isSuperAdmin = false, user, sidebarContext }: Omit<SidebarProps, 'isCollapsed' | 'toggleCollapse'>) {
+    const { isCollapsed, toggleCollapse } = useSidebar()
     const { resolvedTheme } = useTheme()
     // Fetch org type for floating actions visibility
     const { organizationType } = useActiveModules()
@@ -376,6 +382,7 @@ export function Sidebar({ isCollapsed, toggleCollapse, currentOrgId, isSuperAdmi
                         user={user}
                         currentOrgId={currentOrgId}
                         organizationType={organizationType}
+                        initialOrgDetails={sidebarContext?.orgDetails}
                     />
                 </div>
 

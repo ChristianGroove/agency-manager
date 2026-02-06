@@ -20,13 +20,21 @@ import { useRouter } from "next/navigation"
 
 interface OrganizationSwitcherProps {
     trigger?: React.ReactNode
+    initialOrgDetails?: any
 }
 
-export function OrganizationSwitcher({ trigger }: OrganizationSwitcherProps) {
+export function OrganizationSwitcher({ trigger, initialOrgDetails }: OrganizationSwitcherProps) {
     const router = useRouter()
+
+    // Defer loading list until open or strictly needed? 
+    // For now we just use the ID to show the component, rendering the list in background is okay.
+    // However, the check `organizations.length === 0` hides the component if not loaded.
+    // We need to bypass that if we have `initialOrgDetails` (knowing at least 1 org exists).
+
     const [organizations, setOrganizations] = useState<OrganizationMember[]>([])
-    const [currentOrgId, setCurrentOrgId] = useState<string | null>(null)
-    const [isLoading, setIsLoading] = useState(true)
+    const [currentOrgId, setCurrentOrgId] = useState<string | null>(initialOrgDetails?.id || null)
+    // Use true loading only if we don't have initial details AND no organizations
+    const [isLoading, setIsLoading] = useState(!initialOrgDetails && organizations.length === 0)
 
     const [isOpen, setIsOpen] = useState(false)
     const [isCreateOpen, setIsCreateOpen] = useState(false) // Restored for admin sheet
@@ -38,6 +46,7 @@ export function OrganizationSwitcher({ trigger }: OrganizationSwitcherProps) {
 
     const loadData = async () => {
         try {
+            // Background fetch if we already have context
             const orgs = await getUserOrganizations()
             setOrganizations(orgs)
 
@@ -81,7 +90,7 @@ export function OrganizationSwitcher({ trigger }: OrganizationSwitcherProps) {
     }
 
     // Always show to allow creation of new organizations
-    if (!isLoading && organizations.length === 0) {
+    if (!isLoading && organizations.length === 0 && !initialOrgDetails) {
         return null // Only hide if 0? Or maybe show empty state? usually > 0 if logged in.
     }
 

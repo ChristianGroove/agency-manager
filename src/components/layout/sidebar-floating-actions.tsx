@@ -12,9 +12,10 @@ interface SidebarFloatingActionsProps {
     user?: any
     currentOrgId: string | null
     organizationType?: 'platform' | 'reseller' | 'client'
+    initialOrgDetails?: any
 }
 
-export function SidebarFloatingActions({ isSuperAdmin, user, currentOrgId, organizationType }: SidebarFloatingActionsProps) {
+export function SidebarFloatingActions({ isSuperAdmin, user, currentOrgId, organizationType, initialOrgDetails }: SidebarFloatingActionsProps) {
     const [isProfileOpen, setIsProfileOpen] = useState(false)
 
     // CRITICAL FIX: Always show Org Switcher button
@@ -32,6 +33,7 @@ export function SidebarFloatingActions({ isSuperAdmin, user, currentOrgId, organ
             {showOrgSwitcher && (
                 <div className="relative">
                     <OrganizationSwitcher
+                        initialOrgDetails={initialOrgDetails}
                         trigger={
                             <ActionButton
                                 icon={Building2}
