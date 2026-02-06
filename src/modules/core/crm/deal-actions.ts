@@ -266,7 +266,7 @@ export async function sendInteractiveQuote(cartId: string, conversationId: strin
                 .from('integration_connections')
                 .select('*')
                 .eq('organization_id', cart.organization_id)
-                .in('provider_key', ['meta_whatsapp', 'evolution_api'])
+                .in('provider_key', ['meta_whatsapp', 'whatsapp_cloud', 'evolution_api'])
                 .eq('status', 'active')
                 .order('created_at', { ascending: false })
                 .limit(1)
@@ -293,10 +293,10 @@ export async function sendInteractiveQuote(cartId: string, conversationId: strin
         let finalCreds = decryptObject(creds)
 
         const token = finalCreds.accessToken || finalCreds.apiToken || finalCreds.access_token
-        const phoneId = finalCreds.phoneNumberId || finalCreds.phone_number_id
+        const phoneId = finalCreds.phoneNumberId || finalCreds.phone_number_id || connection.metadata?.asset_id || connection.metadata?.phone_number_id
 
         if (!token || !phoneId) {
-            throw new Error("Credenciales de Meta incompletas.")
+            throw new Error(`Credenciales de Meta incompletas. Token: ${!!token}, PhoneId: ${!!phoneId}`)
         }
 
         provider = new MetaProvider(token, phoneId, finalCreds.verifyToken || '')

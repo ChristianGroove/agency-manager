@@ -176,7 +176,7 @@ export async function handleQuoteRejection(context: QuoteResponseContext) {
         // Try direct lookup first
         const { data: directConn } = await supabaseAdmin
             .from('integration_connections')
-            .select('credentials')
+            .select('*, credentials')
             .eq('id', connectionId)
             .single()
 
@@ -187,8 +187,8 @@ export async function handleQuoteRejection(context: QuoteResponseContext) {
 
             const { data: fallbackConns, error: fallbackError } = await supabaseAdmin
                 .from('integration_connections')
-                .select('credentials')
-                .eq('provider_key', 'meta_whatsapp')
+                .select('*, credentials')
+                .in('provider_key', ['meta_whatsapp', 'whatsapp_cloud'])
                 .eq('status', 'active')
                 .limit(1)
 
@@ -215,7 +215,7 @@ export async function handleQuoteRejection(context: QuoteResponseContext) {
         creds = decryptObject(creds)
 
         const accessToken = creds.accessToken || creds.apiToken || creds.access_token || ''
-        const phoneNumberId = creds.phoneNumberId || creds.phone_number_id || ''
+        const phoneNumberId = creds.phoneNumberId || creds.phone_number_id || connection.metadata?.asset_id || connection.metadata?.phone_number_id || ''
 
 
 
@@ -326,8 +326,8 @@ export async function handleRejectionReasonSelected(
         // 4. Get connection to send via WhatsApp
         const { data: connections } = await supabaseAdmin
             .from('integration_connections')
-            .select('credentials')
-            .eq('provider_key', 'meta_whatsapp')
+            .select('*, credentials')
+            .in('provider_key', ['meta_whatsapp', 'whatsapp_cloud'])
             .eq('status', 'active')
             .limit(1)
 
@@ -341,7 +341,7 @@ export async function handleRejectionReasonSelected(
             creds = decryptObject(creds)
 
             const accessToken = creds.accessToken || creds.apiToken || ''
-            const phoneNumberId = creds.phoneNumberId || creds.phone_number_id || ''
+            const phoneNumberId = creds.phoneNumberId || creds.phone_number_id || (connection as any).metadata?.asset_id || (connection as any).metadata?.phone_number_id || ''
 
             if (accessToken && phoneNumberId) {
                 const provider = new MetaProvider(accessToken, phoneNumberId, '')
