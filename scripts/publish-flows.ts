@@ -8,10 +8,14 @@
 
 import fs from 'fs/promises';
 import path from 'path';
+import dotenv from 'dotenv';
+
+// Load env vars
+dotenv.config({ path: '.env.local' });
 
 const META_API_VERSION = 'v24.0';
-const WABA_ID = process.env.WABA_ID;
-const ACCESS_TOKEN = process.env.META_ACCESS_TOKEN;
+const WABA_ID = process.env.WABA_ID || process.env.WHATSAPP_BUSINESS_ACCOUNT_ID;
+const ACCESS_TOKEN = process.env.META_ACCESS_TOKEN || process.env.META_PERMANENT_ACCESS_TOKEN;
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://your-app.com';
 
 interface FlowConfig {
@@ -58,6 +62,9 @@ async function publishFlow(flowName: string) {
     try {
         // Step 1: Load Flow JSON
         console.log('📄 Loading Flow JSON...');
+
+        let flowId = process.env[`${flowName.toUpperCase()}_FLOW_ID`];
+
         const flowPath = path.join(
             process.cwd(),
             'src/lib/meta/flows/schemas',
@@ -68,31 +75,36 @@ async function publishFlow(flowName: string) {
 
         console.log(`   ✓ Loaded ${flowName}.json (v${flowData.version})`);
 
-        // Step 2: Create Flow
-        console.log('\n🚀 Creating Flow on Meta...');
-        const createResponse = await fetch(
-            `https://graph.facebook.com/${META_API_VERSION}/${WABA_ID}/flows`,
-            {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${ACCESS_TOKEN}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    name: config.name,
-                    categories: config.categories,
-                    endpoint_uri: config.endpoint_uri
-                })
+        // Step 2: Create Flow (if not exists)
+        if (!flowId) {
+            console.log('\n🚀 Creating Flow on Meta...');
+            const createResponse = await fetch(
+                `https://graph.facebook.com/${META_API_VERSION}/${WABA_ID}/flows`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${ACCESS_TOKEN}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        name: config.name,
+                        categories: config.categories,
+                        endpoint_uri: config.endpoint_uri
+                    })
+                }
+            );
+
+            if (!createResponse.ok) {
+                const error = await createResponse.json();
+                throw new Error(`Failed to create flow: ${JSON.stringify(error)}`);
             }
-        );
 
-        if (!createResponse.ok) {
-            const error = await createResponse.json();
-            throw new Error(`Failed to create flow: ${JSON.stringify(error)}`);
+            const { id } = await createResponse.json();
+            flowId = id;
+            console.log(`   ✓ Flow created with ID: ${flowId}`);
+        } else {
+            console.log(`   ✓ Using existing Flow ID: ${flowId}`);
         }
-
-        const { id: flowId } = await createResponse.json();
-        console.log(`   ✓ Flow created with ID: ${flowId}`);
 
         // Step 3: Upload Flow JSON as asset
         console.log('\n📤 Uploading Flow JSON...');
@@ -114,6 +126,7 @@ async function publishFlow(flowName: string) {
 
         if (!uploadResponse.ok) {
             const error = await uploadResponse.json();
+            console.error('Full Error:', JSON.stringify(error, null, 2));
             throw new Error(`Failed to upload JSON: ${JSON.stringify(error)}`);
         }
 

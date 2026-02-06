@@ -55,19 +55,23 @@ export function OrganizationSwitcher({ trigger }: OrganizationSwitcherProps) {
             // Show loading state
             toast.loading("Cambiando de organización...")
 
-            // 1. Set Cookie Client-Side (Immediate & Robust)
-            // This prevents race conditions with Server Action responses
-            document.cookie = `pixy_org_id=${orgId}; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax`
+            // 1. Force Clear existing cookie first (to remove conflicting domain/path overrides)
+            document.cookie = 'pixy_org_id=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;'
 
-            // 2. Notify Server (Essential for server-side context consistency)
+            // 2. Set Cookie Client-Side (Robust)
+            // Use same settings as Server Action
+            const isSecure = window.location.protocol === 'https:';
+            document.cookie = `pixy_org_id=${orgId}; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax${isSecure ? '; Secure' : ''}`
+
+            // 3. Notify Server (Essential for server-side context consistency)
             await switchOrganization(orgId)
 
             // Close modal
             setIsOpen(false)
 
-            // 3. Force Hard Reload to Dashboard
+            // 4. Force Hard Reload to Dashboard with cache busting
             // The new cookie will be sent with this request
-            window.location.assign('/dashboard')
+            window.location.assign(`/dashboard?refresh=${Date.now()}`)
 
         } catch (error) {
             toast.dismiss()

@@ -3,8 +3,9 @@
 import { createClient } from "@/lib/supabase-server"
 import { ChannelType, MessageContentType } from "@/types/messaging"
 import { WorkflowEngine, WorkflowDefinition } from "@/modules/core/automation/engine"
-import { MessagingProvider, IncomingMessage } from "./providers/types"
+import { MessagingProvider, IncomingMessage, IncomingCall } from "./providers/types"
 import { inboxService } from "./inbox-service"
+import { callingSignalingHandler } from "@/lib/meta/calling/calling-signaling-handler"
 
 export class WebhookManager {
     private providers: Record<string, MessagingProvider> = {}
@@ -64,7 +65,7 @@ export class WebhookManager {
 
             // 3. Process Normalized Messages
             for (const msg of messages) {
-                await this.processMessage(msg)
+                await this.processMessage(msg, channel)
             }
 
             return { success: true }
@@ -97,7 +98,7 @@ export class WebhookManager {
 
             // Process all messages
             for (const msg of messages) {
-                await this.processMessage(msg)
+                await this.processMessage(msg, channel)
             }
 
             return { success: true }
@@ -108,8 +109,40 @@ export class WebhookManager {
         }
     }
 
-    private async processMessage(msg: IncomingMessage) {
+    private async processMessage(inputMsg: IncomingMessage | IncomingCall, channel: ChannelType) {
 
+        // 0. HANDLE CALL SIGNALING (WebRTC)
+        if ('type' in inputMsg && inputMsg.type === 'call_signaling') {
+            const msg = inputMsg as IncomingCall;
+            console.log(`[WebhookManager] 📞 Processing Call Signaling: ${msg.id} (${msg.event})`);
+
+            if (msg.event === 'offer') {
+                try {
+                    // 1. Process Offer via Signaling Handler (Generates Answer)
+                    const { sdpAnswer, callSetup } = await callingSignalingHandler.processOffer({
+                        callId: msg.call_id,
+                        fromPhoneNumber: msg.from,
+                        sdpOffer: msg.payload || ''
+                    });
+
+                    // 2. Send SDP Answer back to Meta via Provider
+                    const provider = this.providers[channel];
+                    if (provider && 'sendSignalingMessage' in provider) {
+                        // Cast to MetaProvider-like interface or check method existence
+                        await (provider as any).sendSignalingMessage(msg.from, sdpAnswer, msg.call_id);
+                        console.log(`[WebhookManager] ✅ SDP Answer sent for call ${msg.call_id}`);
+                    } else {
+                        console.warn('[WebhookManager] Provider does not support signaling messages');
+                    }
+
+                } catch (error: any) {
+                    console.error('[WebhookManager] ❌ Call Signaling Error:', error.message);
+                }
+            }
+            return; // Stop processing (do not save to inbox generic messages for now)
+        }
+
+        const msg = inputMsg as IncomingMessage;
 
         // 1. SAVE TO INBOX
         const result = await inboxService.handleIncomingMessage(msg)

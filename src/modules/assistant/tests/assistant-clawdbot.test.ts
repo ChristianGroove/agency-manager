@@ -1,7 +1,7 @@
 
 import { processAssistantRequest } from "../assistant-engine";
-import { rateLimiter } from "./rate-limiter";
-import { getModel } from "./model-registry";
+import { rateLimiter } from "../models/rate-limiter";
+import { getModel } from "../models/model-registry";
 
 async function runClawdbotTests() {
     console.log("=== STARTING PHASE 4 CLAWDBOT TEST ===");

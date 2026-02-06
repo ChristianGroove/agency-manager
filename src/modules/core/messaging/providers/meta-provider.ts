@@ -1,4 +1,4 @@
-import { IncomingMessage, MessagingProvider, SendMessageOptions, WebhookValidationResult } from './types';
+import { IncomingMessage, IncomingCall, MessagingProvider, SendMessageOptions, WebhookValidationResult } from './types';
 import * as fs from 'fs';
 import * as path from 'path';
 import { supabaseAdmin } from "@/lib/supabase-admin"
@@ -142,8 +142,8 @@ export class MetaProvider implements MessagingProvider {
     /**
      * Parse webhook payload into normalized IncomingMessage
      */
-    async parseWebhook(payload: any): Promise<IncomingMessage[]> {
-        const messages: IncomingMessage[] = [];
+    async parseWebhook(payload: any): Promise<(IncomingMessage | IncomingCall)[]> {
+        const messages: (IncomingMessage | IncomingCall)[] = [];
 
         try {
             if (payload.object === 'whatsapp_business_account') {
@@ -151,6 +151,8 @@ export class MetaProvider implements MessagingProvider {
                     debugLog(`Processing WA entry: ${entry.id}`);
                     for (const change of entry.changes || []) {
                         debugLog(`Change field: ${change.field}`);
+
+                        // 1. Handle Messages & Echoes
                         const messagesInChange = change.value?.messages || change.value?.smb_message_echoes;
                         if (messagesInChange) {
                             debugLog(`Found ${messagesInChange.length} WA messages/echoes`);
@@ -196,6 +198,34 @@ export class MetaProvider implements MessagingProvider {
                                         phoneNumberId: change.value.metadata?.phone_number_id,
                                         displayPhoneNumber: change.value.metadata?.display_phone_number,
                                         isEcho: isEcho
+                                    },
+                                    referral: msg.referral ? {
+                                        source_type: msg.referral.source_type,
+                                        source_id: msg.referral.source_id,
+                                        source_url: msg.referral.source_url,
+                                        ctwa_clid: msg.referral.ctwa_clid
+                                    } : undefined
+                                });
+                            }
+                        }
+
+                        // 2. Handle Calls (WebRTC Signaling)
+                        const callsInChange = change.value?.calls;
+                        if (callsInChange) {
+                            debugLog(`Found ${callsInChange.length} WA calls`);
+                            for (const call of callsInChange) {
+                                debugLog(`Processing WA call: ${call.id}`);
+                                messages.push({
+                                    type: 'call_signaling',
+                                    id: call.id,
+                                    from: call.from,
+                                    timestamp: new Date(parseInt(call.timestamp) * 1000),
+                                    call_id: call.call_id || call.id,
+                                    event: call.data?.event || 'offer', // Default to offer if parsing simplistically
+                                    payload: call.data?.payload, // SDP
+                                    metadata: {
+                                        phoneNumberId: change.value.metadata?.phone_number_id,
+                                        displayPhoneNumber: change.value.metadata?.display_phone_number
                                     }
                                 });
                             }
@@ -249,6 +279,42 @@ export class MetaProvider implements MessagingProvider {
         }
 
         return messages;
+    }
+
+    /**
+     * Send WebRTC Signaling Message (SDP Answer)
+     */
+    async sendSignalingMessage(to: string, sdp: string, callId: string): Promise<boolean> {
+        try {
+            // Use the standard messages endpoint but with 'peer_to_peer_signal' or similar type?
+            // Actually, for Calling API, we typically reply to the call_id logic.
+            // Assuming usage of /messages with specific payload for now.
+
+            // NOTE: This payload is hypothetical based on standard patterns as Calling API specs vary.
+            // We will refine this once we have the exact spec confirmation.
+            const payload = {
+                messaging_product: 'whatsapp',
+                recipient_type: 'individual',
+                to: to,
+                type: 'text', // Placeholder: Signaling usually travels via specialized message type or separate endpoint
+                text: {
+                    body: JSON.stringify({ type: 'sdp_answer', sdp, call_id: callId })
+                }
+                // In a real implementation with known spec, we would use:
+                // type: 'signal', signal: { ... }
+            };
+
+            // Using standard sendMessage logic for transport
+            const res = await this.sendMessage({
+                to,
+                content: { type: 'text', text: payload.text.body }
+            });
+
+            return res.success;
+        } catch (e) {
+            console.error('[MetaProvider] Failed to send signaling:', e);
+            return false;
+        }
     }
 
     /**
@@ -571,6 +637,10 @@ export class MetaProvider implements MessagingProvider {
                     language: { code: content.templateLanguage || 'en_US' },
                     components: []
                 };
+                // Support for Authentication/Utility templates with TTL or ROI tracking via opaque data
+                if (content.time_to_live) {
+                    (payload.template as any).time_to_live = content.time_to_live;
+                }
                 break;
 
             case 'image':

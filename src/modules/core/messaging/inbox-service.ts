@@ -446,7 +446,13 @@ export class InboxService {
         const newConvMetadata = {
             ...(metadata?.phoneNumberId && { phoneNumberId: metadata.phoneNumberId }),
             ...(metadata?.pageId && { pageId: metadata.pageId }),
-            ...(metadata?.instagramBusinessId && { instagramBusinessId: metadata.instagramBusinessId })
+            ...(metadata?.instagramBusinessId && { instagramBusinessId: metadata.instagramBusinessId }),
+            // CTWA Detection: 72h Free Window
+            ...(msg.referral?.ctwa_clid && {
+                ctwa_clid: msg.referral.ctwa_clid,
+                referral_source: msg.referral.source_url,
+                free_tier_expires_at: new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString()
+            })
         };
         const insertPayload = {
             organization_id: orgId,

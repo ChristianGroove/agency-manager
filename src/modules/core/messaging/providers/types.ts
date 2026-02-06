@@ -68,6 +68,7 @@ export interface TemplateContent {
     templateName: string
     templateLanguage?: string
     templateVariables?: Record<string, string>
+    time_to_live?: number // Added for ROI Audit (MM API)
 }
 
 // WhatsApp Interactive: Reply Buttons (max 3 buttons)
@@ -139,6 +140,12 @@ export interface IncomingMessage {
     };
     timestamp: Date;
     metadata?: Record<string, unknown>;
+    referral?: {
+        source_type: string;
+        source_id: string;
+        source_url: string;
+        ctwa_clid: string; // Click-to-WhatsApp Click ID
+    };
     origin?: 'inbound' | 'outbound';
 }
 
@@ -158,5 +165,16 @@ export interface MessagingProvider {
     /**
      * Parse a webhook payload into normalized messages
      */
-    parseWebhook(payload: unknown): Promise<IncomingMessage[]>;
+    parseWebhook(payload: unknown): Promise<(IncomingMessage | IncomingCall)[]>;
+}
+
+export interface IncomingCall {
+    type: 'call_signaling';
+    id: string;
+    from: string;
+    timestamp: Date;
+    call_id: string;
+    event: 'offer' | 'relay_latency' | 'unknown';
+    payload?: string; // SDP for offer
+    metadata?: Record<string, unknown>;
 }

@@ -31,30 +31,22 @@ export interface DeflectionResponse {
  */
 const DEFLECTION_TEMPLATES: Record<OffTopicIntent, DeflectionResponse> = {
     [OffTopicIntent.GENERAL_KNOWLEDGE]: {
-        message: `Lo siento, mi función es asistirte exclusivamente con la integración técnica de WhatsApp Business API en Pixy. No puedo responder a consultas de conocimiento general.
+        message: `Soy un asistente especializado para la integración técnica de Pixy. No puedo responder a esa consulta.
 
-¿En qué tema técnico de la API puedo ayudarte? Por ejemplo:
-• Diagnóstico de errores de entrega
-• Estado de plantillas HSM
-• Quality rating y límites de cuenta
-• Implementación de Flows o botones interactivos`,
+¿En qué tema técnico de la API puedo ayudarte?`,
         type: 'redirect',
         suggestedActions: [
             'Diagnóstico de errores',
             'Plantillas HSM',
-            'Quality rating',
-            'Funciones avanzadas'
+            'Quality rating'
         ],
         shouldHandoff: false
     },
 
     [OffTopicIntent.CREATIVE_WRITING]: {
-        message: `Lo siento, mi función es asistirte exclusivamente con la integración técnica de WhatsApp Business API en Pixy. No puedo realizar tareas de escritura creativa.
+        message: `Soy un asistente especializado para la integración técnica de Pixy. No puedo responder a esa consulta.
 
-¿Necesitas ayuda con algún aspecto técnico de tu integración? Por ejemplo:
-• Configuración de plantillas de mensajes
-• Implementación de respuestas automáticas
-• Creación de flujos de conversación técnicos`,
+¿Necesitas ayuda con algún aspecto técnico de tu integración?`,
         type: 'redirect',
         suggestedActions: [
             'Plantillas de mensajes',
@@ -65,9 +57,7 @@ const DEFLECTION_TEMPLATES: Record<OffTopicIntent, DeflectionResponse> = {
     },
 
     [OffTopicIntent.PERSONAL_ADVICE]: {
-        message: `Lo siento, mi especialidad es asistir con cuestiones técnicas de WhatsApp Business API en Pixy. No puedo proporcionar consejos personales.
-
-¿Hay algún tema técnico de la plataforma en el que pueda ayudarte?`,
+        message: `Soy un asistente especializado para la integración técnica de Pixy. No puedo responder a esa consulta.`,
         type: 'close',
         shouldHandoff: false
     },
