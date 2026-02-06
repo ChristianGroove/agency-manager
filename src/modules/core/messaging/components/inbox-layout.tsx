@@ -53,7 +53,7 @@ export function InboxLayout({ initialConversationId }: InboxLayoutProps) {
         let actionLabel = ''
 
         if (targetZone === 'resolved') {
-            updates = { state: 'archived', status: 'resolved' }
+            updates = { state: 'archived', status: 'closed' }
             actionLabel = 'resuelta'
         } else if (targetZone === 'archived') {
             updates = { state: 'archived', status: 'archived' }

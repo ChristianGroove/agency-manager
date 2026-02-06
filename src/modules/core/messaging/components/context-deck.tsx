@@ -20,6 +20,7 @@ import { QuickAssignPanel } from "./quick-assign-panel"
 import { SmartRepliesPanel } from "./smart-replies-panel"
 import { DealBuilder } from "../../crm/components/deal-builder"
 import { getAgentsWorkload } from "../assignment-actions"
+import { archiveConversation, snoozeConversation, completeConversation } from "../conversation-actions"
 import { toast } from "sonner"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -174,9 +175,39 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
 
                 {/* 2. Sleek Action Bar */}
                 <div className="mt-4 grid grid-cols-4 gap-2">
-                    <ActionBtn icon={CheckCircle2} label="Completar" onClick={() => { }} color="text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20" />
-                    <ActionBtn icon={CalendarClock} label="Posponer" onClick={() => { }} color="text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20" />
-                    <ActionBtn icon={Archive} label="Archivar" onClick={() => { }} color="text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800" />
+                    <ActionBtn
+                        icon={CheckCircle2}
+                        label="Resolver"
+                        onClick={async () => {
+                            const res = await completeConversation(conversationId)
+                            if (res.success) toast.success("Conversación resuelta")
+                            else toast.error("Error al resolver")
+                        }}
+                        color="text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20"
+                    />
+                    <ActionBtn
+                        icon={CalendarClock}
+                        label="Posponer"
+                        onClick={() => {
+                            // Show snooze options or just snooze for 24h as default for now
+                            const tomorrow = new Date()
+                            tomorrow.setDate(tomorrow.getDate() + 1)
+                            snoozeConversation(conversationId, tomorrow).then(res => {
+                                if (res.success) toast.success("Pospuesto hasta mañana")
+                            })
+                        }}
+                        color="text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20"
+                    />
+                    <ActionBtn
+                        icon={Archive}
+                        label="Archivar"
+                        onClick={async () => {
+                            const res = await archiveConversation(conversationId)
+                            if (res.success) toast.success("Conversación archivada")
+                            else toast.error("Error al archivar")
+                        }}
+                        color="text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                    />
                     <TooltipProvider>
                         <Tooltip>
                             <TooltipTrigger asChild>

@@ -158,3 +158,39 @@ export async function getLeadConversationPreview(leadId: string, limit: number =
     // Return reversed so they appear chronologically if needed
     return { success: true, messages: messages.reverse(), conversationId: conversation.id }
 }
+/**
+ * Resolve and close a conversation
+ */
+export async function completeConversation(conversationId: string) {
+    const supabase = await createClient()
+
+    // Fetch current metadata to preserve it
+    const { data: conv } = await supabase
+        .from('conversations')
+        .select('metadata')
+        .eq('id', conversationId)
+        .single()
+
+    const newMetadata = {
+        ...(conv?.metadata || {}),
+        resolved_at: new Date().toISOString()
+    }
+
+    const { error } = await supabase
+        .from('conversations')
+        .update({
+            status: 'closed',
+            state: 'archived',
+            metadata: newMetadata,
+            updated_at: new Date().toISOString()
+        })
+        .eq('id', conversationId)
+
+    if (error) {
+        console.error('[ConversationActions] Failed to resolve:', error)
+        return { success: false, error: error.message }
+    }
+
+    revalidatePath('/inbox')
+    return { success: true }
+}

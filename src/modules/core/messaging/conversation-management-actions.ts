@@ -40,6 +40,21 @@ export async function updateConversationState(
     // 'status' might not exist in all schemas
     const safeUpdates: any = { updated_at: new Date().toISOString() }
     if (updates.state) safeUpdates.state = updates.state
+    if (updates.status) safeUpdates.status = updates.status
+
+    // If resolution is happening, inject the timestamp marker
+    if (updates.status === 'closed') {
+        const { data: current } = await supabaseAdmin
+            .from('conversations')
+            .select('metadata')
+            .eq('id', conversationId)
+            .single()
+
+        safeUpdates.metadata = {
+            ...(current?.metadata || {}),
+            resolved_at: new Date().toISOString()
+        }
+    }
 
     console.log('[updateConversationState] Applying update:', safeUpdates)
 

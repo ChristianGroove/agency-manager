@@ -17,8 +17,8 @@ export class AutomationTriggerService {
      * @param channel The channel (whatsapp, etc)
      * @param sender The phone number or sender ID
      */
-    async evaluateInput(messageContent: string, conversationId: string, channel: string, sender: string, leadId: string, connectionId?: string) {
-        fileLogger.log(`[AutomationTrigger] Evaluating input: "${messageContent}" for conv: ${conversationId}`)
+    async evaluateInput(messageContent: string, conversationId: string, channel: string, sender: string, leadId: string, connectionId?: string, messageId?: string) {
+        fileLogger.log(`[AutomationTrigger] Evaluating input: "${messageContent}" (ID: ${messageId}) for conv: ${conversationId}`)
 
         // 1. Fetch Active Workflows with 'keyword' or 'message_received' triggers
         // We filter in memory for now if trigger_config is JSONB, or use simple query if optimized
@@ -30,7 +30,7 @@ export class AutomationTriggerService {
         // Let's first get the conversation to know the Org
         const { data: conversation } = await supabaseAdmin
             .from('conversations')
-            .select('organization_id, connection_id') // Fetch connection_id if not passed
+            .select('organization_id, connection_id, last_auto_reply_at, metadata') // Fetch markers
             .eq('id', conversationId)
             .single()
 
@@ -57,75 +57,102 @@ export class AutomationTriggerService {
 
         fileLogger.log(`[AutomationTrigger] Found ${workflows.length} active message workflows. Checking conditions...`)
 
+        // Attempt to parse text if messageContent is a JSON string (from InboxService)
+        let actualText = messageContent
+        try {
+            const parsed = JSON.parse(messageContent)
+            if (parsed.text) actualText = parsed.text
+            else if (parsed.body) actualText = parsed.body
+            else if (parsed.caption) actualText = parsed.caption
+        } catch (e) { }
+
         for (const wf of workflows) {
             const config = wf.trigger_config as any
             let match = false
+            let skipReason = ''
 
-            // Check Keyword Trigger
+            // 1. Keyword Trigger
             if (wf.trigger_type === 'keyword' && config.keyword) {
-                const keyword = config.keyword.toLowerCase()
-                const text = messageContent.toLowerCase()
+                if (config.keyword && config.keyword.trim() !== '') {
+                    const keyword = config.keyword.toLowerCase()
+                    const text = actualText.toLowerCase()
 
-                if (config.matchType === 'exact') {
-                    match = text === keyword
-                } else if (config.matchType === 'contains') {
-                    match = text.includes(keyword)
+                    if (config.matchType === 'exact') {
+                        match = text === keyword
+                    } else if (config.matchType === 'contains') {
+                        match = text.includes(keyword)
+                    } else {
+                        match = text.includes(keyword)
+                    }
+                    if (!match) skipReason = `Keyword mismatch (Wanted: ${keyword}, Got: ${text})`
                 } else {
-                    // Default to contains
-                    match = text.includes(keyword)
+                    // Empty keyword acts like "Any Message" fallback
+                    match = true
                 }
             }
 
-            // Check Generic "Message Received" (All messages)
-            if (wf.trigger_type === 'message_received') {
-                match = true // Triggers on ANY message
+            // 2. Generic "Message Received" OR "Webhook" (Legacy/Any)
+            // Fix: Treat 'webhook' without specific keyword as "Any Message"
+            else if (wf.trigger_type === 'message_received' || wf.trigger_type === 'webhook') {
+                if (wf.trigger_type === 'webhook' && config.keyword && config.keyword.trim() !== '') {
+                    // It's actually a keyword trigger disguised as webhook
+                    const keyword = config.keyword.toLowerCase()
+                    const text = actualText.toLowerCase()
+                    match = text.includes(keyword)
+                    if (!match) skipReason = `Webhook keyword mismatch`
+                } else {
+                    match = true
+                }
             }
 
-            // Check "First Contact" - Only NEW leads
-            if (wf.trigger_type === 'first_contact') {
-                // Check if this lead has any PRIOR conversations (before this one)
-                const { count: priorConvCount } = await supabaseAdmin
-                    .from('conversations')
-                    .select('id', { count: 'exact', head: true })
-                    .eq('lead_id', leadId)
-                    .neq('id', conversationId) // Exclude current conversation
+            // 3. "First Contact" (Session-based v2)
+            else if (wf.trigger_type === 'first_contact') {
+                const metadata = conversation.metadata as any || {}
+                const lastAutoReply = conversation.last_auto_reply_at ? new Date(conversation.last_auto_reply_at).getTime() : 0
+                const resolvedAt = metadata.resolved_at ? new Date(metadata.resolved_at).getTime() : 0
+                const now = Date.now()
 
-                if (priorConvCount === 0) {
-                    fileLogger.log(`[AutomationTrigger] First contact detected for lead: ${leadId}`)
+                // A session is considered "Expired" or "Reset" if:
+                // 1. Bot never replied before (lastAutoReply === 0)
+                // 2. Human explicitly resolved the chat AFTER the bot last spoke (resolvedAt > lastAutoReply)
+                // 3. More than 12 hours have passed since the last bot interaction (Cooldown)
+
+                const isSessionExpired = lastAutoReply === 0 ||
+                    resolvedAt > lastAutoReply ||
+                    (now - lastAutoReply) > (12 * 60 * 60 * 1000);
+
+                if (isSessionExpired) {
+                    fileLogger.log(`[AutomationTrigger] New session detected for lead: ${leadId} (Resolved: ${resolvedAt > lastAutoReply}, Cooldown: ${(now - lastAutoReply) > (12 * 60 * 60 * 1000)})`)
                     match = true
                 } else {
-                    fileLogger.log(`[AutomationTrigger] Lead ${leadId} has ${priorConvCount} prior conversations, skipping first_contact trigger`)
+                    skipReason = `Already in an active session (Last reply: ${new Date(lastAutoReply).toISOString()})`
                 }
             }
 
-            // Check "Business Hours" - Only during open hours
-            if (wf.trigger_type === 'business_hours') {
+            // 4. "Business Hours"
+            else if (wf.trigger_type === 'business_hours') {
                 const now = new Date()
                 const currentHour = now.getHours()
-                const currentDay = now.getDay() // 0=Sunday, 6=Saturday
-
-                // Default: Mon-Fri 9AM-6PM (can be customized via config)
+                const currentDay = now.getDay()
                 const startHour = config.start_hour ?? 9
                 const endHour = config.end_hour ?? 18
-                const workDays = config.work_days ?? [1, 2, 3, 4, 5] // Mon-Fri
+                const workDays = config.work_days ?? [1, 2, 3, 4, 5]
 
                 const isWorkDay = workDays.includes(currentDay)
                 const isWorkHour = currentHour >= startHour && currentHour < endHour
 
                 if (isWorkDay && isWorkHour) {
-                    fileLogger.log(`[AutomationTrigger] Within business hours (${startHour}:00 - ${endHour}:00)`)
                     match = true
                 } else {
-                    fileLogger.log(`[AutomationTrigger] Outside business hours, skipping trigger`)
+                    skipReason = 'Outside business hours'
                 }
             }
 
-            // Check "Outside Hours" - Only outside business hours (for auto-replies)
-            if (wf.trigger_type === 'outside_hours') {
+            // 5. "Outside Hours"
+            else if (wf.trigger_type === 'outside_hours') {
                 const now = new Date()
                 const currentHour = now.getHours()
                 const currentDay = now.getDay()
-
                 const startHour = config.start_hour ?? 9
                 const endHour = config.end_hour ?? 18
                 const workDays = config.work_days ?? [1, 2, 3, 4, 5]
@@ -134,53 +161,69 @@ export class AutomationTriggerService {
                 const isWorkHour = currentHour >= startHour && currentHour < endHour
 
                 if (!isWorkDay || !isWorkHour) {
-                    fileLogger.log(`[AutomationTrigger] Outside business hours - triggering auto-reply`)
                     match = true
+                } else {
+                    skipReason = 'Inside business hours'
                 }
             }
 
-            // Check "Media Received" - Triggers on images, videos, audio, documents
-            if (wf.trigger_type === 'media_received') {
-                // Parse message content to detect media type
+            // 6. "Media Received"
+            else if (wf.trigger_type === 'media_received') {
                 let msgData: any = {}
                 try {
                     msgData = typeof messageContent === 'string' ? JSON.parse(messageContent) : messageContent
-                } catch (e) {
-                    // Not JSON, treat as plain text
-                }
+                } catch (e) { }
 
                 const mediaTypes = ['image', 'video', 'audio', 'document', 'sticker', 'location']
                 const detectedType = msgData.type || 'text'
 
                 if (mediaTypes.includes(detectedType)) {
-                    fileLogger.log(`[AutomationTrigger] Media detected: ${detectedType}`)
-
-                    // If config specifies allowed types, check
                     const allowedTypes = config.media_types || mediaTypes
                     if (allowedTypes.includes(detectedType)) {
                         match = true
+                    } else {
+                        skipReason = `Media Not Allowed: ${detectedType}`
+                    }
+                } else {
+                    skipReason = 'Not Media'
+                }
+            }
+
+            if (!match && !skipReason) {
+                skipReason = `Type ${wf.trigger_type} not handled or condition failed`
+            }
+
+            // Logs for matching or skipping
+            if (!match) {
+                fileLogger.log(`[AutomationTrigger]   ❌ SKIPPED Workflow: ${wf.id} (${wf.name}). Reason: ${skipReason}`)
+            }
+
+
+            // CHANNEL CHECK
+            if (match && config.channels && Array.isArray(config.channels) && config.channels.length > 0) {
+                if (finalConnectionId) {
+                    const allowedChannels = config.channels
+                    // Check if current connection is in allowed list (handling "connId" or "connId:assetId")
+                    if (!allowedChannels.includes('all')) {
+                        const isAllowed = allowedChannels.some((ch: string) => {
+                            if (ch === finalConnectionId) return true
+                            if (ch.includes(':') && ch.startsWith(finalConnectionId + ':')) return true
+                            return false
+                        })
+
+                        if (!isAllowed) {
+                            match = false
+                            skipReason = `Channel mismatch (${finalConnectionId})`
+                            fileLogger.log(`[AutomationTrigger]   ❌ SKIPPED Workflow: ${wf.id}. Reason: ${skipReason}`)
+                        }
                     }
                 }
             }
 
-            // Check "Webhook" (Legacy/Fallback)
-            if (wf.trigger_type === 'webhook') {
-                // If config has keyword, treat as keyword trigger
-                if (config.keyword && config.keyword.trim() !== '') {
-                    const keyword = config.keyword.toLowerCase()
-                    const text = messageContent.toLowerCase()
-                    match = text.includes(keyword)
-                } else {
-                    // Otherwise, treat as "Any Message"
-                    match = true;
-                }
-            }
-
-            // COOLDOWN CHECK - Prevent spam triggers
+            // COOLDOWN CHECK
             if (match && config.cooldown_minutes && config.cooldown_minutes > 0) {
                 const cooldownMs = config.cooldown_minutes * 60 * 1000
                 const cutoffTime = new Date(Date.now() - cooldownMs).toISOString()
-
                 const { count: recentExecCount } = await supabaseAdmin
                     .from('workflow_executions')
                     .select('id', { count: 'exact', head: true })
@@ -189,23 +232,32 @@ export class AutomationTriggerService {
                     .contains('context', { lead: { id: leadId } })
 
                 if (recentExecCount && recentExecCount > 0) {
-                    fileLogger.log(`[AutomationTrigger] Cooldown active for workflow ${wf.id}, lead ${leadId}. Skipping.`)
                     match = false
+                    skipReason = `Cooldown active`
+                    fileLogger.log(`[AutomationTrigger]   ❌ SKIPPED Workflow: ${wf.id}. Reason: ${skipReason}`)
                 }
             }
 
             if (match) {
-                // DEDUPLICATION CHECK: Check if this message (by WAMID) has already triggered a workflow
-                const messageId = (messageContent as any).id || (typeof messageContent === 'object' ? (messageContent as any).id : null);
+                // Fetch lead details for richer context (e.g. {{lead.name}})
+                const { data: fullLead } = await supabaseAdmin
+                    .from('leads')
+                    .select('*')
+                    .eq('id', leadId)
+                    .single()
 
-                if (messageId) {
+                // DEDUPLICATION
+                const finalMessageId = messageId || (messageContent as any).id || (typeof messageContent === 'object' ? (messageContent as any).id : `auto_${Date.now()}`);
+
+                if (finalMessageId) {
                     const { count } = await supabaseAdmin
                         .from('workflow_executions')
                         .select('id', { count: 'exact', head: true })
-                        .contains('context', { message: { id: messageId } })
+                        .contains('context', { message: { id: finalMessageId } })
+                        .eq('workflow_id', wf.id) // Scope to flow
 
                     if (count && count > 0) {
-                        fileLogger.log(`[AutomationTrigger] Duplicate trigger for message ${messageId}. Skipping.`)
+                        fileLogger.log(`[AutomationTrigger] Duplicate trigger for ${finalMessageId} on ${wf.id}. Skipping.`)
                         continue;
                     }
                 }
@@ -214,10 +266,13 @@ export class AutomationTriggerService {
                 this.executeWorkflow(wf, {
                     organization_id: orgId,
                     conversation: { id: conversationId, channel },
-                    message: { content: messageContent, sender, id: messageId || `msg_${Date.now()}` }, // Ensure ID
-                    lead: { id: leadId },
-                    connection_id: finalConnectionId // PASS CONNECTION ID
+                    message: { content: messageContent, sender, id: finalMessageId },
+                    lead: fullLead || { id: leadId },
+                    connection_id: finalConnectionId
                 })
+            } else {
+                // verbose debug only
+                // fileLogger.log(`[AutomationTrigger] Skipped ${wf.id}: ${skipReason}`)
             }
         }
     }
