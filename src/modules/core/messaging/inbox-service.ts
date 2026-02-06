@@ -154,6 +154,10 @@ export class InboxService {
             const phoneNumberId = metadata?.phoneNumberId || metadata?.phone_number_id;
             console.log(`[InboxService] WhatsApp - Looking for phoneNumberId: ${phoneNumberId}`);
 
+            if (phoneNumberId === '123456123') {
+                console.error('[InboxService] 🧪 META TEST SIGNAL DETECTED. Webhook configuration is valid, but ignoring test payload for database safety.');
+            }
+
             // Search for new whatsapp_cloud channels (primary method)
             const { data: newChannels } = await supabase
                 .from('integration_connections')

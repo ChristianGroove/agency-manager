@@ -305,7 +305,7 @@ export async function getMetaAuthUrl(channelType?: 'whatsapp' | 'messenger' | 'i
     // Format: "orgId" or "orgId:channelType"
     const state = channelType ? `${orgId}:${channelType}` : orgId;
 
-    const CLIENT_ID = process.env.NEXT_PUBLIC_META_APP_ID || '25468410932828305';
+    const CLIENT_ID = process.env.NEXT_PUBLIC_META_APP_ID || process.env.META_APP_ID || '25468410932828305';
     const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     const REDIRECT_URI = `${BASE_URL}/api/integrations/meta/callback`;
 

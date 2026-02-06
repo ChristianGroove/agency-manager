@@ -85,21 +85,24 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-    console.error('========================================');
-    console.error('🚨 WEBHOOK POST RECEIVED - FORCED LOG');
-    console.error('Time:', new Date().toISOString());
-    console.error('URL:', req.url);
-    console.error('========================================');
+    const requestId = Math.random().toString(36).substring(7);
+    console.error(`\n[Webhook ${requestId}] 📥 RECEIVED POST`);
+    console.error(`[Webhook ${requestId}] URL:`, req.url);
+    console.error(`[Webhook ${requestId}] Headers:`, JSON.stringify(Object.fromEntries(req.headers.entries())));
 
     try {
-        console.log('\n========== WEBHOOK POST RECEIVED ==========')
-        const channel = req.nextUrl.searchParams.get('channel') as ChannelType || 'whatsapp'
-        console.log(`Channel: ${channel}`)
+        const rawBody = await req.text();
+        console.error(`[Webhook ${requestId}] 📦 RAW BODY:`, rawBody);
 
-        // Log the raw body
-        const body = await req.json()
-        console.error('📦 BODY RECEIVED:', JSON.stringify(body, null, 2));
-        console.log('[Webhook POST] Body:', JSON.stringify(body, null, 2))
+        let body;
+        try {
+            body = JSON.parse(rawBody);
+        } catch (e) {
+            console.error(`[Webhook ${requestId}] ❌ JSON PARSE FAILED`);
+            return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+        }
+        const channel = req.nextUrl.searchParams.get('channel') as ChannelType || 'whatsapp';
+        console.error(`[Webhook ${requestId}] Channel: ${channel}`);
 
         // Dynamically load manager to handle the heavy lifting
         console.log('[Webhook POST] Loading webhook manager...')

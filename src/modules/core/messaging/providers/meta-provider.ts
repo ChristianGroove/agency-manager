@@ -151,9 +151,10 @@ export class MetaProvider implements MessagingProvider {
                     debugLog(`Processing WA entry: ${entry.id}`);
                     for (const change of entry.changes || []) {
                         debugLog(`Change field: ${change.field}`);
-                        if (change.value?.messages) {
-                            debugLog(`Found ${change.value.messages.length} WA messages`);
-                            for (const msg of change.value.messages) {
+                        const messagesInChange = change.value?.messages || change.value?.smb_message_echoes;
+                        if (messagesInChange) {
+                            debugLog(`Found ${messagesInChange.length} WA messages/echoes`);
+                            for (const msg of messagesInChange) {
                                 debugLog(`Processing WA msg: ${msg.id}`);
                                 // Extract sender info
                                 const contact = change.value.contacts?.find((c: any) => c.wa_id === msg.from);
@@ -172,13 +173,13 @@ export class MetaProvider implements MessagingProvider {
 
                                 debugLog(`WA Msg Parsed: From=${msg.from}, ContentType=${content.type}, Metadata=${JSON.stringify(change.value.metadata)}`);
 
-                                // Detect Echo (Outbound Message from App)
-                                const isEcho = change.value.metadata?.phone_number_id === msg.from;
+                                // Detect Echo (Outbound Message from App or SMB)
+                                const isEcho = change.value.metadata?.phone_number_id === msg.from || msg.is_echo === true;
                                 const origin = isEcho ? 'outbound' : 'inbound';
-                                const conversationPartner = isEcho ? msg.to : msg.from;
+                                const conversationPartner = isEcho ? (msg.to || change.value.metadata?.display_phone_number) : msg.from;
 
                                 if (isEcho) {
-                                    debugLog(`[MetaProvider] Detected ECHO from ${msg.from} to ${msg.to}`);
+                                    debugLog(`[MetaProvider] Detected ECHO/SMB from ${msg.from} to ${msg.to || 'Unknown'}`);
                                 }
 
                                 messages.push({
