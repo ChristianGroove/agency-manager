@@ -231,8 +231,8 @@ export function SidebarContent({ isCollapsed = false, currentOrgId, isSuperAdmin
                     isCollapsed ? "no-scrollbar" : "scrollbar-modern"
                 )}>
                     {categoryOrder.map(category => {
-                        // Adaptive Visibility: Tools only for Agency
-                        if (category === 'tools' && vertical !== 'agency') return null
+                        // Adaptive Visibility: Tools enabled for all
+                        // if (category === 'tools' && vertical !== 'agency') return null
 
                         const routes = groupedRoutes[category]
                         if (!routes || routes.length === 0) return null

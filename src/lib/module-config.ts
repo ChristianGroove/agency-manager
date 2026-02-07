@@ -210,8 +210,7 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         isCore: true,
         category: 'config',
         access: {
-            allowedRoles: ['owner', 'admin'],
-            excludedOrgTypes: ['client', 'reseller']
+            allowedRoles: ['owner', 'admin']
         }
     },
     // HIDDEN FOR REGULAR USERS
@@ -223,8 +222,7 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         isCore: true,
         category: 'config',
         access: {
-            allowedRoles: ['owner', 'admin'],
-            excludedOrgTypes: ['client', 'reseller']
+            allowedRoles: ['owner', 'admin']
         }
     },
 
@@ -238,8 +236,7 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         category: 'tools',
         isCore: true,
         access: {
-            allowedRoles: ['owner', 'admin'],
-            excludedOrgTypes: ['client', 'reseller']
+            allowedRoles: ['owner', 'admin']
         }
     },
     {
@@ -250,8 +247,7 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         category: 'tools',
         isCore: true,
         access: {
-            allowedRoles: ['owner', 'admin'],
-            excludedOrgTypes: ['client', 'reseller']
+            allowedRoles: ['owner', 'admin']
         }
     },
 
@@ -263,8 +259,7 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         icon: FileText,
         category: 'finance',
         access: {
-            allowedRoles: ['owner', 'admin'],
-            excludedOrgTypes: ['client', 'reseller']
+            allowedRoles: ['owner', 'admin']
         }
     },
     {
@@ -274,8 +269,7 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         icon: CreditCard,
         category: 'finance',
         access: {
-            allowedRoles: ['owner', 'admin'],
-            excludedOrgTypes: ['client', 'reseller']
+            allowedRoles: ['owner', 'admin']
         }
     },
 
@@ -289,8 +283,7 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         isCore: true,
         category: 'config',
         access: {
-            allowedRoles: ['owner', 'admin'],
-            excludedOrgTypes: ['client', 'reseller']
+            allowedRoles: ['owner', 'admin']
         }
     },
     // HIDDEN FOR REGULAR USERS
