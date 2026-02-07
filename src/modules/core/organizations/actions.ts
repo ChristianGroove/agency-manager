@@ -470,27 +470,58 @@ export async function createOrganization(formData: {
             // Else: NULL (autoregistro or independent org)
         }
 
-        const { data: newOrg, error: orgError } = await supabaseAdmin
-            .from('organizations')
-            .insert({
-                name: formData.name,
-                slug: formData.slug,
-                logo_url: formData.logo_url,
-                active_app_id: formData.app_id, // Changed to active_app_id
-                app_activated_at: new Date().toISOString(),
-                subscription_status: 'active', // Trial/Active by default
-                // V2 Fields
-                parent_organization_id: computedParentId, // ✅ Use computed value
-                organization_type: formData.organization_type || 'client',
-                status: 'active',
-                // Revenue Sharing: Track acquisition
-                acquired_by_reseller_id: formData.acquired_by_reseller_id || null,
-                acquisition_date: formData.acquired_by_reseller_id ? new Date().toISOString() : null
-            })
-            .select()
-            .single()
+        // SMART SLUG: Auto-retry mechanism for unique constraint violations
+        let attempts = 0;
+        const maxAttempts = 5;
+        let finalSlug = formData.slug;
+        let newOrg = null;
+        let orgError = null;
 
-        if (orgError) throw orgError
+        while (attempts < maxAttempts) {
+            const { data, error } = await supabaseAdmin
+                .from('organizations')
+                .insert({
+                    name: formData.name,
+                    slug: finalSlug, // Uses retry slug
+                    logo_url: formData.logo_url,
+                    active_app_id: formData.app_id,
+                    app_activated_at: new Date().toISOString(),
+                    subscription_status: 'active',
+                    // V2 Fields
+                    parent_organization_id: computedParentId,
+                    organization_type: formData.organization_type || 'client',
+                    status: 'active',
+                    // Revenue Sharing: Track acquisition
+                    acquired_by_reseller_id: formData.acquired_by_reseller_id || null,
+                    acquisition_date: formData.acquired_by_reseller_id ? new Date().toISOString() : null
+                })
+                .select()
+                .single()
+
+            if (error) {
+                // Check for Unique Violation (Postgres Error Code 23505) on 'slug' constraint
+                if (error.code === '23505' && error.message.includes('slug')) {
+                    console.warn(`[OrgCreation] Slug collision for '${finalSlug}'. Retrying...`);
+                    attempts++;
+                    // Generate new slug with random suffix to minimize collision probability
+                    // e.g. "pixy-a1b2"
+                    const suffix = Math.random().toString(36).substring(2, 6);
+                    finalSlug = `${formData.slug}-${suffix}`;
+                    continue; // Retry loop
+                } else {
+                    // Other error, abort
+                    orgError = error;
+                    break;
+                }
+            } else {
+                // Success
+                newOrg = data;
+                break;
+            }
+        }
+
+        if (orgError) throw orgError;
+        if (!newOrg) throw new Error("No se pudo generar un slug único para la organización tras varios intentos.");
 
         // 2. Add Creator as Owner
         const { error: memberError } = await supabaseAdmin
