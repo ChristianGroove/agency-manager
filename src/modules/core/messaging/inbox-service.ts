@@ -44,7 +44,8 @@ export class InboxService {
                         msg.channel,
                         msg.from,
                         conversation.lead_id,
-                        connectionId || conversation.connection_id
+                        connectionId || conversation.connection_id,
+                        msg.id || msg.externalId
                     ).catch(err => console.log('[InboxService] Automation Trigger Error on duplicate:', err))
                 } catch (e) {
                     console.log('[InboxService] Failed to load automation service on duplicate:', e)
@@ -96,7 +97,8 @@ export class InboxService {
                 msg.channel,
                 msg.from,
                 conversation.lead_id, // Using conversation's lead reference
-                connectionId || conversation.connection_id // Include resolved connection ID
+                connectionId || conversation.connection_id, // Include resolved connection ID
+                msg.id || msg.externalId
             ).catch(err => console.log('[InboxService] Automation Trigger Error:', err))
         } catch (e) {
             console.log('[InboxService] Failed to load automation service:', e)

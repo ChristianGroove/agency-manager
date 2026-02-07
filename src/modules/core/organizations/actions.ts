@@ -367,8 +367,11 @@ export async function createOrganization(formData: {
     if (!user) return { success: false, error: "Unauthorized" }
 
     // Get creator's current organization ID for email sending  
+    // Get creator's current organization ID (Optional for new clients / Onboarding)
     const creatorOrgId = await getCurrentOrganizationId()
-    if (!creatorOrgId) {
+
+    // STRICT: Only block if not creating a 'client' (Self-provisioning)
+    if (!creatorOrgId && formData.organization_type !== 'client') {
         return { success: false, error: 'No se pudo determinar la organización del creador' }
     }
 
@@ -439,13 +442,17 @@ export async function createOrganization(formData: {
             computedParentId = formData.parent_organization_id
         } else {
             // Auto-compute based on creator type
-            const { data: creatorOrg } = await supabaseAdmin
-                .from('organizations')
-                .select('organization_type')
-                .eq('id', creatorOrgId)
-                .single()
+            let creatorType = null;
 
-            const creatorType = creatorOrg?.organization_type
+            if (creatorOrgId) {
+                const { data: creatorOrg } = await supabaseAdmin
+                    .from('organizations')
+                    .select('organization_type')
+                    .eq('id', creatorOrgId)
+                    .single()
+                creatorType = creatorOrg?.organization_type
+            }
+
             const newOrgType = formData.organization_type || 'client'
 
             // HIERARCHY RULES:

@@ -13,16 +13,19 @@ const TriggerNode = ({ data, selected }: { data: NodeData, selected: boolean }) 
 
     useEffect(() => {
         // Handle Multi-channel display
+        // Handle Multi-channel display
         if (data.channels && Array.isArray(data.channels) && data.channels.length > 0) {
-            if (data.channels.length > 1) {
-                setChannelName(`${data.channels.length} canales`);
-                return;
-            }
-            // If single valid channel in array, fall through to single check
-            const singleId = data.channels[0];
-            getChannelDetails(singleId).then(info => {
-                setChannelName(info ? info.name : 'Canal Desconocido');
-            });
+            Promise.all(data.channels.map(id => getChannelDetails(id))).then(results => {
+                const names = results.filter(r => !!r).map(r => r?.name || 'Unknown');
+
+                if (names.length === 1) {
+                    setChannelName(names[0]);
+                } else if (names.length <= 3) {
+                    setChannelName(names.join(', '));
+                } else {
+                    setChannelName(`${names[0]} +${names.length - 1}`);
+                }
+            })
             return;
         }
 

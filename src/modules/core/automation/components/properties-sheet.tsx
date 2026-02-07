@@ -87,7 +87,17 @@ export function PropertiesSheet({ node, isOpen, onClose, onUpdate, onDelete, onD
     }, [node]);
 
     const handleChange = (key: string, value: unknown) => {
-        setFormData((prev) => ({ ...prev, [key]: value }));
+        setFormData((prev) => {
+            const newData = { ...prev, [key]: value };
+
+            // Logic to clear stale fields based on type changes
+            if (key === 'triggerType' && value !== 'keyword') {
+                delete newData.keyword;
+            }
+
+            return newData;
+        });
+
         // Clear error when user starts typing
         if (errors[key]) {
             setErrors((prev) => {

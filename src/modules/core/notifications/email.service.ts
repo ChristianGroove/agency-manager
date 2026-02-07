@@ -83,7 +83,8 @@ export class EmailService {
 
                 const from = `"${senderName}" <${fromEmail}>`;
 
-                const { data, error } = await resend.emails.send({
+                // Add Timeout to Resend Call (8 seconds)
+                const sendPromise = resend.emails.send({
                     from,
                     to,
                     replyTo: replyTo || undefined,
@@ -96,10 +97,17 @@ export class EmailService {
                     ]
                 });
 
+                const timeoutPromise = new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error("Resend API Timeout (8s)")), 8000)
+                );
+
+                const { data, error } = await Promise.race([sendPromise, timeoutPromise]) as any;
+
                 if (error) {
                     // Resend specific error handling
                     console.error('[EmailService] Resend Error:', error);
-                    await this.logEmail({
+                    // Non-blocking log
+                    void this.logEmail({
                         organizationId,
                         userId,
                         recipient: Array.isArray(to) ? to.join(', ') : to,
@@ -114,8 +122,8 @@ export class EmailService {
                 messageId = data?.id;
             }
 
-            // 3. Log Success
-            await this.logEmail({
+            // 3. Log Success (Non-blocking)
+            void this.logEmail({
                 organizationId,
                 userId,
                 recipient: Array.isArray(to) ? to.join(', ') : to,
@@ -132,7 +140,8 @@ export class EmailService {
 
         } catch (err: any) {
             console.error('[EmailService] Unexpected Error:', err);
-            await this.logEmail({
+            console.error('[EmailService] Unexpected Error:', err);
+            void this.logEmail({
                 organizationId,
                 userId,
                 recipient: Array.isArray(to) ? to.join(', ') : to,

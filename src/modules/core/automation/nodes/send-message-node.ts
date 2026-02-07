@@ -35,13 +35,16 @@ export class SendMessageNode {
                 throw new Error("Missing required context: conversationId");
             }
 
-            fileLogger.log(`[SendMessageNode] Sending via actions.ts. Conv=${conversationId}, Channel=${channel}`);
+            const connectionId = this.contextManager.get('connection_id') as string | undefined;
+
+            fileLogger.log(`[SendMessageNode] Sending via actions.ts. Conv=${conversationId}, Channel=${channel}, Conn=${connectionId}`);
 
             // Send via Server Action (Robust Fallback)
             const result = await sendOutboundMessage(
                 conversationId,
                 { type: 'text', text: messageContent },
-                channel
+                channel,
+                connectionId
             );
 
             if (!result.success) {

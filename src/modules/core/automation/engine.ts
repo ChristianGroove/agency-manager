@@ -274,10 +274,11 @@ export class WorkflowEngine {
             }
 
             case 'action':
-
+            case 'send_message': // Fail-safe for legacy/direct node types
+                const actionType = node.data.actionType || (node.type === 'send_message' ? 'send_message' : null);
 
                 // E.g. Send Message
-                if (node.data.actionType === 'send_message') {
+                if (actionType === 'send_message') {
                     const sendMessageNode = new SendMessageNode(this.contextManager);
                     await sendMessageNode.execute(node.data as unknown as SendMessageNodeData);
                 }

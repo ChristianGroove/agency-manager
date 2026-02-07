@@ -47,9 +47,15 @@ export async function saveWorkflow(id: string, name: string, description: string
                     triggerType = 'keyword';
                 } else {
                     triggerType = 'message_received';
+                    // Explicitly remove keyword from config if it's a catch-all
+                    if (triggerConfig.keyword) delete triggerConfig.keyword;
                 }
             } else {
                 triggerType = rawType;
+                // For other types like 'first_contact', we also don't want a keyword overriding logic
+                if (rawType !== 'keyword' && triggerConfig.keyword) {
+                    delete triggerConfig.keyword;
+                }
             }
 
             console.log('[saveWorkflow] Mapped trigger:', { rawType, triggerType, hasKeyword, triggerConfig });
