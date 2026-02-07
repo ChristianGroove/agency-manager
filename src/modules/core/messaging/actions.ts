@@ -465,9 +465,11 @@ export async function sendOutboundMessage(conversationId: string, content: any, 
     const providerOptions: any = {
         to: recipientPhone,
         content: {
-            type: content.type === 'document' ? 'image' : content.type,
-            text: content.text || content.body || content.caption, // Fallback for various structures
+            type: content.type, // Remove incorrect 'document' -> 'image' mapping
+            text: content.text || content.body || content.caption,
+            caption: content.caption || content.text || content.body, // EXPLICITLY pass caption for media
             mediaUrl: content.url || content.mediaUrl,
+            filename: content.filename, // Ensure filename is passed for documents
             // For interactive messages (buttons-node passes these)
             buttons: content.buttons,
             sections: content.sections,

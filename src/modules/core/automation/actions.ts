@@ -615,3 +615,61 @@ export async function duplicateWorkflow(id: string) {
         return { success: false, error: error instanceof Error ? error.message : "Unknown error" }
     }
 }
+
+export async function uploadAutomationMedia(formData: FormData) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+        throw new Error("Unauthorized")
+    }
+
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) {
+        throw new Error("Organization context required")
+    }
+
+    const file = formData.get("file") as File
+    const bucket = "automation-media"
+
+    if (!file) {
+        throw new Error("No file selected")
+    }
+
+    // Validation
+    const MAX_SIZE = 10 * 1024 * 1024; // 10MB
+    if (file.size > MAX_SIZE) throw new Error("File size exceeds 10MB limit")
+
+    // Allowed types: Images, Videos, Documents (PDF)
+    // We check mime types but also generic categories
+    const type = file.type;
+    const isImage = type.startsWith('image/');
+    const isVideo = type.startsWith('video/');
+    const isPdf = type === 'application/pdf';
+
+    if (!isImage && !isVideo && !isPdf) {
+        throw new Error("Unsupported file type. Only Images, Videos and PDFs are allowed.")
+    }
+
+    // Upload
+    const fileExt = file.name.split(".").pop()
+    // Use clear structure: orgId/type/timestamp_random.ext
+    const category = isImage ? 'images' : (isVideo ? 'videos' : 'docs');
+    const fileName = `${orgId}/${category}/${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${fileExt}`
+
+    const { error: uploadError } = await supabase.storage
+        .from(bucket)
+        .upload(fileName, file, {
+            upsert: false,
+        })
+
+    if (uploadError) {
+        throw new Error("Upload failed: " + uploadError.message)
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+        .from(bucket)
+        .getPublicUrl(fileName)
+
+    return { success: true, url: publicUrl, type: file.type, name: file.name }
+}

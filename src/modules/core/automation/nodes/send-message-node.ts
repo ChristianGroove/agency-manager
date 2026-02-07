@@ -5,20 +5,30 @@ import { NodeExecutionResult } from '../types';
 export interface SendMessageNodeData {
     actionType: 'send_message';
     message?: string;
+    headerMediaType?: 'none' | 'image' | 'video' | 'document';
+    headerMediaUrl?: string;
+    headerText?: string; // Title
+    footerText?: string;
 }
 
 export class SendMessageNode {
     constructor(private contextManager: ContextManager) { }
 
     async execute(data: SendMessageNodeData): Promise<NodeExecutionResult> {
-        const messageContent = this.contextManager.resolve((data.message as string) || '');
         const { fileLogger } = await import('@/lib/file-logger');
         const { sendOutboundMessage } = await import('../../messaging/actions');
 
-        fileLogger.log(`[SendMessageNode] Started. Message: "${messageContent}"`);
+        // 1. Resolve Variables in all Text Fields
+        const body = this.contextManager.resolve((data.message as string) || '');
+        const headerText = data.headerText ? this.contextManager.resolve(data.headerText) : '';
+        const footerText = data.footerText ? this.contextManager.resolve(data.footerText) : '';
+        const mediaUrl = data.headerMediaUrl ? this.contextManager.resolve(data.headerMediaUrl) : '';
+        const mediaType = data.headerMediaType || 'none';
+
+        fileLogger.log(`[SendMessageNode] Started. Type=${mediaType}, BodyLen=${body.length}`);
 
         try {
-            // Extract context
+            // 2. Extract Context
             const conversationId = (
                 this.contextManager.get('conversation.id') ||
                 this.contextManager.get('conversationId') ||
@@ -37,12 +47,54 @@ export class SendMessageNode {
 
             const connectionId = this.contextManager.get('connection_id') as string | undefined;
 
-            fileLogger.log(`[SendMessageNode] Sending via actions.ts. Conv=${conversationId}, Channel=${channel}, Conn=${connectionId}`);
+            // 3. Construct Payload with WhatsApp Markdown for Header/Footer emulation
+            let finalBody = body;
 
-            // Send via Server Action (Robust Fallback)
+            // Prepend Header (Bold)
+            if (headerText) {
+                finalBody = `*${headerText}*\n\n${finalBody}`;
+            }
+
+            // Append Footer (Italic + Small separation)
+            if (footerText) {
+                finalBody = `${finalBody}\n\n_${footerText}_`;
+            }
+
+            let payload: any = {
+                type: 'text',
+                text: finalBody
+            };
+
+            // 4. Handle Media Types
+            if (mediaType !== 'none' && mediaUrl) {
+                if (mediaType === 'image') {
+                    payload = {
+                        type: 'image',
+                        url: mediaUrl,
+                        caption: finalBody // Image caption supports markdown
+                    };
+                } else if (mediaType === 'video') {
+                    payload = {
+                        type: 'video',
+                        url: mediaUrl,
+                        caption: finalBody
+                    };
+                } else if (mediaType === 'document') {
+                    payload = {
+                        type: 'document',
+                        url: mediaUrl,
+                        caption: finalBody,
+                        filename: headerText || 'Documento' // Use Title as filename if available
+                    };
+                }
+            }
+
+            fileLogger.log(`[SendMessageNode] Sending Payload: Type=${payload.type}, Media=${!!mediaUrl}`);
+
+            // 5. Send Message
             const result = await sendOutboundMessage(
                 conversationId,
-                { type: 'text', text: messageContent },
+                payload,
                 channel,
                 connectionId
             );

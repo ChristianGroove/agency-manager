@@ -12,6 +12,8 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { MediaUpload } from '@/components/ui/media-upload';
+import { uploadAutomationMedia } from '@/modules/core/automation/actions';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Node } from '@xyflow/react';
 import { Trash2, Copy, Zap, Box, Settings2, X, Check, Database, Globe, Mail, MessageSquare, Plus, AlertCircle, MousePointer, Clock, Tag, ArrowRightCircle } from 'lucide-react';
@@ -881,25 +883,96 @@ export function PropertiesSheet({ node, isOpen, onClose, onUpdate, onDelete, onD
                             </div>
 
                             {formData.actionType === 'send_message' ? (
-                                <div className="space-y-3">
-                                    <div className="flex justify-between items-center">
-                                        <Label>Contenido del Mensaje</Label>
-                                        <span className="text-xs text-blue-500 cursor-pointer hover:underline">Insert Variable</span>
+                                <div className="space-y-4">
+                                    {/* Header Config */}
+                                    <div className="space-y-4 p-3 bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-100 dark:border-slate-800">
+
+                                        {/* Media Header (Optional) */}
+                                        <div className="space-y-3">
+                                            <Label className="text-xs font-semibold text-slate-500 uppercase">Multimedia (Opcional)</Label>
+                                            <Select
+                                                value={(formData.headerMediaType as string) || 'none'}
+                                                onValueChange={(v) => handleChange('headerMediaType', v)}
+                                            >
+                                                <SelectTrigger className="h-9 bg-white dark:bg-slate-900">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="none">Ninguno</SelectItem>
+                                                    <SelectItem value="image">Imagen</SelectItem>
+                                                    <SelectItem value="video">Video</SelectItem>
+                                                    <SelectItem value="document">Documento</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+
+                                            {['image', 'video', 'document'].includes((formData.headerMediaType as string)) && (
+                                                <MediaUpload
+                                                    value={(formData.headerMediaUrl as string)}
+                                                    onChange={(url, type, name) => {
+                                                        handleChange('headerMediaUrl', url)
+                                                        handleChange('headerMediaMime', type) // Store mime type
+                                                        handleChange('headerMediaName', name)
+                                                    }}
+                                                    onUpload={uploadAutomationMedia}
+                                                    compact
+                                                    acceptedTypes={
+                                                        formData.headerMediaType === 'image' ? ['image/*'] :
+                                                            formData.headerMediaType === 'video' ? ['video/*'] :
+                                                                ['application/pdf']
+                                                    }
+                                                    label={`Subir ${formData.headerMediaType === 'image' ? 'Imagen' : formData.headerMediaType === 'video' ? 'Video' : 'PDF'}`}
+                                                />
+                                            )}
+                                        </div>
+
+                                        {/* Title (Text Header) (Optional) */}
+                                        <div className="space-y-2">
+                                            <div className="flex justify-between items-center">
+                                                <Label className="text-xs font-semibold text-slate-500 uppercase">Título (Negrita)</Label>
+                                                {/* Optional: Add variable picker trigger here if needed */}
+                                            </div>
+                                            <Input
+                                                value={(formData.headerText as string) || ''}
+                                                onChange={(e) => handleChange('headerText', e.target.value)}
+                                                placeholder="Ej: ¡Bienvenido a Pixy!"
+                                                className="bg-white dark:bg-slate-900 font-bold"
+                                            />
+                                        </div>
+
                                     </div>
-                                    <Textarea
-                                        value={(formData.message as string) || ''}
-                                        onChange={(e) => handleChange('message', e.target.value)}
-                                        placeholder="Hello {{lead.name}}, checking in..."
-                                        rows={5}
-                                        className={`resize-none bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 ${errors.message ? 'border-red-500 focus-visible:ring-red-500' : ''
-                                            }`}
-                                    />
-                                    {errors.message && (
-                                        <p className="text-xs text-red-500 mt-1">{errors.message}</p>
-                                    )}
-                                    <p className="text-[10px] text-muted-foreground italic">
-                                        Tip: You can use Handlebars syntax like {'{{lead.email}}'} to personalize variables.
-                                    </p>
+
+                                    {/* Body Config */}
+                                    <div className="space-y-2">
+                                        <div className="flex justify-between items-center">
+                                            <Label>Cuerpo del Mensaje</Label>
+                                            <span className="text-xs text-blue-500 cursor-pointer hover:underline">Insert Variable</span>
+                                        </div>
+                                        <Textarea
+                                            value={(formData.message as string) || ''}
+                                            onChange={(e) => handleChange('message', e.target.value)}
+                                            placeholder="Hello {{lead.name}}, checking in..."
+                                            rows={5}
+                                            className={`resize-none bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 ${errors.message ? 'border-red-500 focus-visible:ring-red-500' : ''
+                                                }`}
+                                        />
+                                        {errors.message && (
+                                            <p className="text-xs text-red-500 mt-1">{errors.message}</p>
+                                        )}
+                                        <p className="text-[10px] text-muted-foreground italic">
+                                            Tip: You can use Handlebars syntax like {'{{lead.email}}'} to personalize variables.
+                                        </p>
+                                    </div>
+
+                                    {/* Footer Config */}
+                                    <div className="space-y-2">
+                                        <Label>Pie de Página (Opcional)</Label>
+                                        <Input
+                                            value={(formData.footerText as string) || ''}
+                                            onChange={(e) => handleChange('footerText', e.target.value)}
+                                            placeholder="Texto pequeño en gris"
+                                            className="bg-slate-50 dark:bg-slate-900 text-xs"
+                                        />
+                                    </div>
                                 </div>
                             ) : (
                                 <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-lg border border-dashed border-slate-200 dark:border-slate-800 text-center">
