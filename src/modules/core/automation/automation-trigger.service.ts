@@ -271,7 +271,10 @@ export class AutomationTriggerService {
                     }
                 }
 
-                fileLogger.log(`[AutomationTrigger] 🚀 Triggering Workflow: ${wf.name} (${wf.id})`)
+                console.log(`[AutomationTrigger] 🚀 Triggering Workflow: ${wf.name} (${wf.id})`, {
+                    leadName: fullLead?.name,
+                    leadId: leadId
+                })
                 this.executeWorkflow(wf, {
                     organization_id: orgId,
                     conversation: { id: conversationId, channel },

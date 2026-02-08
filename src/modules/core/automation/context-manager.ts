@@ -33,7 +33,9 @@ export class ContextManager {
                 }
             }
 
-            return value !== undefined ? String(value) : ''
+            const result = value !== undefined ? String(value) : ''
+            console.log(`[ContextManager] Resolved {{${path}}} -> "${result}"`)
+            return result
         })
     }
 

@@ -167,11 +167,23 @@ export function ButtonsNode({ data, selected }: ButtonsNodeProps) {
 
                 {/* CTA Preview */}
                 {messageType === 'cta' && (
-                    <div className="text-center">
-                        <div className="text-xs bg-emerald-100 border border-emerald-200 rounded px-3 py-1.5 inline-flex items-center gap-1 font-medium text-emerald-700">
-                            <Link className="h-3 w-3" />
-                            Ver más
-                        </div>
+                    <div className="space-y-1">
+                        {(data.buttons as any[])?.map((btn: any, i: number) => (
+                            <div key={i} className="text-center">
+                                <div className="text-xs bg-emerald-100 border border-emerald-200 rounded px-3 py-1.5 inline-flex items-center gap-1 font-medium text-emerald-700">
+                                    <Link className="h-3 w-3" />
+                                    {btn.text || 'Botón CTA'}
+                                </div>
+                            </div>
+                        ))}
+                        {(!data.buttons || data.buttons.length === 0) && (
+                            <div className="text-center">
+                                <div className="text-xs bg-emerald-100 border border-emerald-200 rounded px-3 py-1.5 inline-flex items-center gap-1 font-medium text-emerald-700">
+                                    <Link className="h-3 w-3" />
+                                    Configurar CTA
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
 

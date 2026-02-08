@@ -112,10 +112,10 @@ export async function signup(formData: FormData) {
         if (!actionLink) return { error: "Error generando enlace de confirmación" }
 
         // SANITIZATION
-        if (actionLink.includes('localhost')) {
-            actionLink = actionLink.replace('http://localhost:3000', 'https://app.pixy.com.co')
-            actionLink = actionLink.replace('http://127.0.0.1:3000', 'https://app.pixy.com.co')
-            actionLink = actionLink.replace('redirect_to=http%3A%2F%2Flocalhost%3A3000', 'redirect_to=https%3A%2F%2Fapp.pixy.com.co')
+        if (actionLink.includes('localhost') || actionLink.includes('127.0.0.1')) {
+            actionLink = actionLink.replace('http://localhost:3000', redirectBase)
+            actionLink = actionLink.replace('http://127.0.0.1:3000', redirectBase)
+            actionLink = actionLink.replace('redirect_to=http%3A%2F%2Flocalhost%3A3000', `redirect_to=${encodeURIComponent(redirectBase)}`)
         }
 
         // 2. Send Custom Confirmation Email
@@ -184,11 +184,11 @@ export async function sendMagicLink(formData: FormData) {
         let actionLink = linkData.properties?.action_link
         if (!actionLink) return { error: "Error generando enlace" }
 
-        // SANITIZATION: If Supabase returns localhost (due to config), force overwrite it to production
-        if (actionLink.includes('localhost')) {
-            actionLink = actionLink.replace('http://localhost:3000', 'https://app.pixy.com.co')
-            actionLink = actionLink.replace('http://127.0.0.1:3000', 'https://app.pixy.com.co')
-            actionLink = actionLink.replace('redirect_to=http%3A%2F%2Flocalhost%3A3000', 'redirect_to=https%3A%2F%2Fapp.pixy.com.co')
+        // SANITIZATION: If Supabase returns localhost (due to config), force overwrite it to production/env
+        if (actionLink.includes('localhost') || actionLink.includes('127.0.0.1')) {
+            actionLink = actionLink.replace('http://localhost:3000', redirectBase)
+            actionLink = actionLink.replace('http://127.0.0.1:3000', redirectBase)
+            actionLink = actionLink.replace('redirect_to=http%3A%2F%2Flocalhost%3A3000', `redirect_to=${encodeURIComponent(redirectBase)}`)
         }
 
         // 2. Send Custom Email
@@ -264,13 +264,13 @@ export async function resetPasswordRequest(formData: FormData) {
         return { success: false, error: "Failed to generate recovery link" }
     }
 
-    // SANITIZATION: If Supabase returns localhost (due to config), force overwrite it to production
-    if (actionLink.includes('localhost')) {
-        console.log("SANITIZE: Replacing localhost in actionLink with app.pixy.com.co")
-        actionLink = actionLink.replace('http://localhost:3000', 'https://app.pixy.com.co')
-        actionLink = actionLink.replace('http://127.0.0.1:3000', 'https://app.pixy.com.co')
+    // SANITIZATION: If Supabase returns localhost (due to config), force overwrite it to production/env
+    if (actionLink.includes('localhost') || actionLink.includes('127.0.0.1')) {
+        console.log(`SANITIZE: Replacing localhost in actionLink with ${redirectBase}`)
+        actionLink = actionLink.replace('http://localhost:3000', redirectBase)
+        actionLink = actionLink.replace('http://127.0.0.1:3000', redirectBase)
         // Also fix encoded redirect_to if present
-        actionLink = actionLink.replace('redirect_to=http%3A%2F%2Flocalhost%3A3000', 'redirect_to=https%3A%2F%2Fapp.pixy.com.co')
+        actionLink = actionLink.replace('redirect_to=http%3A%2F%2Flocalhost%3A3000', `redirect_to=${encodeURIComponent(redirectBase)}`)
     }
 
     try {

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { getPipelineStages, type PipelineStage } from '@/modules/core/crm/pipeline-actions';
+import { VariableSelector } from './variable-selector';
 import {
     Sheet,
     SheetContent,
@@ -53,7 +54,7 @@ export function PropertiesSheet({ node, isOpen, onClose, onUpdate, onDelete, onD
 
     useEffect(() => {
         if (node) {
-            const data = { ...node.data };
+            const data = { ...node.data } as Record<string, any>;
 
             // Set defaults based on node type to fix UI initialization bugs
             if (node.type === 'trigger' && !data.triggerType) {
@@ -76,12 +77,18 @@ export function PropertiesSheet({ node, isOpen, onClose, onUpdate, onDelete, onD
                 data.actionType = 'create_invoice';
             }
 
-            if (node.type === 'wait_input' && !data.inputType) {
-                data.inputType = 'any';
+            if (node.type === 'wait_input') {
+                if (!data.inputType) data.inputType = 'any';
+                if (!data.timeout) data.timeout = '1h';
+                if (!data.timeoutAction) data.timeoutAction = 'continue';
             }
 
             if (node.type === 'wait' && !data.unit) {
                 data.unit = 'minutes';
+            }
+
+            if (!data.label) {
+                data.label = (node.data as any)?.label || `Paso ${node.type}`;
             }
 
             setFormData(data);
@@ -110,8 +117,8 @@ export function PropertiesSheet({ node, isOpen, onClose, onUpdate, onDelete, onD
         }
     };
 
-    const validateForm = (): boolean => {
-        if (!node) return true; // Guard clause
+    const validateForm = (): any => {
+        if (!node) return { valid: true, errors: {}, count: 0 }; // Guard clause
 
         const newErrors: Record<string, string> = {};
 
@@ -343,16 +350,22 @@ export function PropertiesSheet({ node, isOpen, onClose, onUpdate, onDelete, onD
             }
         }
 
+        const validationResult = {
+            valid: Object.keys(newErrors).length === 0,
+            errors: newErrors,
+            count: Object.keys(newErrors).length
+        };
+
         setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
+        return validationResult;
     };
 
     const handleSave = () => {
-        if (!validateForm()) {
-            const errorCount = Object.keys(errors).length;
+        const result = validateForm();
+        if (!result.valid) {
+            const firstError = Object.values(result.errors)[0] as string;
             toast.error('Configuración incompleta', {
-                description: `Hay ${errorCount > 0 ? errorCount : 'campos'} campo(s) con errores. Revísalos antes de continuar.`,
-                icon: <AlertCircle className="h-4 w-4" />,
+                description: firstError || `Hay ${result.count} campo(s) con errores.`,
             });
             return;
         }
@@ -945,9 +958,30 @@ export function PropertiesSheet({ node, isOpen, onClose, onUpdate, onDelete, onD
                                     <div className="space-y-2">
                                         <div className="flex justify-between items-center">
                                             <Label>Cuerpo del Mensaje</Label>
-                                            <span className="text-xs text-blue-500 cursor-pointer hover:underline">Insert Variable</span>
+                                            <VariableSelector onSelect={(v) => {
+                                                const textarea = document.getElementById('message-body-textarea') as HTMLTextAreaElement;
+                                                if (textarea) {
+                                                    const start = textarea.selectionStart;
+                                                    const end = textarea.selectionEnd;
+                                                    const text = (formData.message as string) || '';
+                                                    const newText = text.substring(0, start) + v + text.substring(end);
+                                                    handleChange('message', newText);
+                                                    // Defer focus back to textarea
+                                                    setTimeout(() => {
+                                                        textarea.focus();
+                                                        textarea.setSelectionRange(start + v.length, start + v.length);
+                                                    }, 0);
+                                                } else {
+                                                    handleChange('message', (formData.message as string || '') + v);
+                                                }
+                                            }}>
+                                                <span className="text-xs text-blue-500 cursor-pointer hover:underline flex items-center gap-1">
+                                                    <Zap size={10} /> Insert Variable
+                                                </span>
+                                            </VariableSelector>
                                         </div>
                                         <Textarea
+                                            id="message-body-textarea"
                                             value={(formData.message as string) || ''}
                                             onChange={(e) => handleChange('message', e.target.value)}
                                             placeholder="Hello {{lead.name}}, checking in..."
@@ -1140,11 +1174,34 @@ export function PropertiesSheet({ node, isOpen, onClose, onUpdate, onDelete, onD
                             {formData.actionType === 'create_lead' && (
                                 <div className="space-y-3 p-4 bg-indigo-50/50 dark:bg-indigo-950/20 rounded-lg border border-indigo-100 dark:border-indigo-900/50">
                                     <div className="space-y-2">
-                                        <Label>Nombre del Lead<span className="text-red-500 ml-1">*</span></Label>
+                                        <div className="flex justify-between items-center">
+                                            <Label>Nombre del Lead<span className="text-red-500 ml-1">*</span></Label>
+                                            <VariableSelector onSelect={(v) => {
+                                                const el = document.getElementById('crm-lead-name') as HTMLInputElement;
+                                                const current = (formData.leadName as string) || '';
+                                                if (el) {
+                                                    const start = el.selectionStart || 0;
+                                                    const end = el.selectionEnd || 0;
+                                                    const newValue = current.substring(0, start) + v + current.substring(end);
+                                                    handleChange('leadName', newValue);
+                                                    setTimeout(() => {
+                                                        el.focus();
+                                                        el.setSelectionRange(start + v.length, start + v.length);
+                                                    }, 0);
+                                                } else {
+                                                    handleChange('leadName', current + v);
+                                                }
+                                            }}>
+                                                <span className="text-[10px] text-blue-500 cursor-pointer hover:underline flex items-center gap-1">
+                                                    <Zap size={10} /> Insert Variable
+                                                </span>
+                                            </VariableSelector>
+                                        </div>
                                         <Input
+                                            id="crm-lead-name"
                                             value={(formData.leadName as string) || ''}
                                             onChange={(e) => handleChange('leadName', e.target.value)}
-                                            placeholder="{'{{message.sender}}'}"
+                                            placeholder="{{message.sender}}"
                                             className="bg-white dark:bg-slate-900 font-mono text-sm"
                                         />
                                     </div>
@@ -1312,8 +1369,31 @@ export function PropertiesSheet({ node, isOpen, onClose, onUpdate, onDelete, onD
                             </div>
 
                             <div className="space-y-2">
-                                <Label>Asunto<span className="text-red-500 ml-1">*</span></Label>
+                                <div className="flex justify-between items-center">
+                                    <Label>Asunto<span className="text-red-500 ml-1">*</span></Label>
+                                    <VariableSelector onSelect={(v) => {
+                                        const el = document.getElementById('email-subject') as HTMLInputElement;
+                                        const current = (formData.subject as string) || '';
+                                        if (el) {
+                                            const start = el.selectionStart || 0;
+                                            const end = el.selectionEnd || 0;
+                                            const newValue = current.substring(0, start) + v + current.substring(end);
+                                            handleChange('subject', newValue);
+                                            setTimeout(() => {
+                                                el.focus();
+                                                el.setSelectionRange(start + v.length, start + v.length);
+                                            }, 0);
+                                        } else {
+                                            handleChange('subject', current + v);
+                                        }
+                                    }}>
+                                        <span className="text-[10px] text-blue-500 cursor-pointer hover:underline flex items-center gap-1">
+                                            <Zap size={10} /> Insert Var
+                                        </span>
+                                    </VariableSelector>
+                                </div>
                                 <Input
+                                    id="email-subject"
                                     value={(formData.subject as string) || ''}
                                     onChange={(e) => handleChange('subject', e.target.value)}
                                     placeholder="¡Bienvenido {{lead.name}}!"
@@ -1326,8 +1406,31 @@ export function PropertiesSheet({ node, isOpen, onClose, onUpdate, onDelete, onD
                             </div>
 
                             <div className="space-y-2">
-                                <Label>Cuerpo (HTML)<span className="text-red-500 ml-1">*</span></Label>
+                                <div className="flex justify-between items-center">
+                                    <Label>Cuerpo (HTML)<span className="text-red-500 ml-1">*</span></Label>
+                                    <VariableSelector onSelect={(v) => {
+                                        const el = document.getElementById('email-body') as HTMLTextAreaElement;
+                                        const current = (formData.body as string) || '';
+                                        if (el) {
+                                            const start = el.selectionStart || 0;
+                                            const end = el.selectionEnd || 0;
+                                            const newValue = current.substring(0, start) + v + current.substring(end);
+                                            handleChange('body', newValue);
+                                            setTimeout(() => {
+                                                el.focus();
+                                                el.setSelectionRange(start + v.length, start + v.length);
+                                            }, 0);
+                                        } else {
+                                            handleChange('body', current + v);
+                                        }
+                                    }}>
+                                        <span className="text-[10px] text-blue-500 cursor-pointer hover:underline flex items-center gap-1">
+                                            <Zap size={10} /> Insert Variable
+                                        </span>
+                                    </VariableSelector>
+                                </div>
                                 <Textarea
+                                    id="email-body"
                                     value={(formData.body as string) || ''}
                                     onChange={(e) => handleChange('body', e.target.value)}
                                     placeholder='<h1>Hola {{lead.name}}</h1><p>Gracias por registrarte.</p>'
@@ -1376,11 +1479,34 @@ export function PropertiesSheet({ node, isOpen, onClose, onUpdate, onDelete, onD
                             <div className="space-y-2">
                                 <div className="flex items-center justify-between">
                                     <Label>Mensaje<span className="text-red-500 ml-1">*</span></Label>
-                                    <span className="text-xs text-muted-foreground">
-                                        {((formData.body as string) || '').length}/160
-                                    </span>
+                                    <div className="flex items-center gap-3">
+                                        <VariableSelector onSelect={(v) => {
+                                            const el = document.getElementById('sms-body') as HTMLTextAreaElement;
+                                            const current = (formData.body as string) || '';
+                                            if (el) {
+                                                const start = el.selectionStart || 0;
+                                                const end = el.selectionEnd || 0;
+                                                const newValue = current.substring(0, start) + v + current.substring(end);
+                                                handleChange('body', newValue);
+                                                setTimeout(() => {
+                                                    el.focus();
+                                                    el.setSelectionRange(start + v.length, start + v.length);
+                                                }, 0);
+                                            } else {
+                                                handleChange('body', current + v);
+                                            }
+                                        }}>
+                                            <span className="text-[10px] text-blue-500 cursor-pointer hover:underline flex items-center gap-1">
+                                                <Zap size={10} /> Variable
+                                            </span>
+                                        </VariableSelector>
+                                        <span className="text-xs text-muted-foreground">
+                                            {((formData.body as string) || '').length}/160
+                                        </span>
+                                    </div>
                                 </div>
                                 <Textarea
+                                    id="sms-body"
                                     value={(formData.body as string) || ''}
                                     onChange={(e) => handleChange('body', e.target.value)}
                                     placeholder='Hola {{lead.name}}, confirmamos tu cita para mañana.'
@@ -1631,14 +1757,37 @@ export function PropertiesSheet({ node, isOpen, onClose, onUpdate, onDelete, onD
                                     <SelectContent>
                                         <SelectItem value="buttons">Botones Simples (Max 3)</SelectItem>
                                         <SelectItem value="list">Lista de Opciones (Max 10)</SelectItem>
-                                        <SelectItem value="cta" disabled>Llamada a la Acción (URL/Tel)</SelectItem>
+                                        <SelectItem value="cta">Llamada a la Acción (URL/Tel)</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
 
                             <div className="space-y-2">
-                                <Label>Cuerpo del Mensaje<span className="text-red-500 ml-1">*</span></Label>
+                                <div className="flex justify-between items-center">
+                                    <Label>Cuerpo del Mensaje<span className="text-red-500 ml-1">*</span></Label>
+                                    <VariableSelector onSelect={(v) => {
+                                        const el = document.getElementById('buttons-body') as HTMLTextAreaElement;
+                                        const current = (formData.body as string) || '';
+                                        if (el) {
+                                            const start = el.selectionStart || 0;
+                                            const end = el.selectionEnd || 0;
+                                            const newValue = current.substring(0, start) + v + current.substring(end);
+                                            handleChange('body', newValue);
+                                            setTimeout(() => {
+                                                el.focus();
+                                                el.setSelectionRange(start + v.length, start + v.length);
+                                            }, 0);
+                                        } else {
+                                            handleChange('body', current + v);
+                                        }
+                                    }}>
+                                        <span className="text-[10px] text-blue-500 cursor-pointer hover:underline flex items-center gap-1">
+                                            <Zap size={10} /> Insert Variable
+                                        </span>
+                                    </VariableSelector>
+                                </div>
                                 <Textarea
+                                    id="buttons-body"
                                     value={(formData.body as string) || ''}
                                     onChange={(e) => handleChange('body', e.target.value)}
                                     placeholder="Selecciona una opción del menú..."
@@ -1670,7 +1819,7 @@ export function PropertiesSheet({ node, isOpen, onClose, onUpdate, onDelete, onD
                             </div>
 
                             <div className="space-y-3 pt-2">
-                                {/* Buttons Configuration */}
+                                {/* Buttons Configuration (Reply Only) */}
                                 {formData.messageType === 'buttons' && (
                                     <>
                                         <div className="flex items-center justify-between">
@@ -1679,6 +1828,9 @@ export function PropertiesSheet({ node, isOpen, onClose, onUpdate, onDelete, onD
                                                 {((formData.buttons as any[]) || []).length} / 3
                                             </span>
                                         </div>
+                                        <p className="text-xs text-muted-foreground mb-2">
+                                            Botones de respuesta rápida para continuar el flujo.
+                                        </p>
 
                                         {((formData.buttons as Array<{ id: string, title: string }>) || []).map((btn, index) => (
                                             <div key={index} className="flex gap-2 items-center">
@@ -1855,6 +2007,102 @@ export function PropertiesSheet({ node, isOpen, onClose, onUpdate, onDelete, onD
                                         </Button>
                                     </>
                                 )}
+
+                                {/* CTA Configuration */}
+                                {formData.messageType === 'cta' && (
+                                    <>
+                                        <div className="flex items-center justify-between">
+                                            <Label>Botones de Acción</Label>
+                                            <span className="text-xs text-muted-foreground">
+                                                {((formData.ctaButtons as any[]) || []).length} / 2
+                                            </span>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground mb-2">
+                                            Soporta enlaces (URL) y números de teléfono.
+                                        </p>
+
+                                        {((formData.ctaButtons as Array<{ type: 'url' | 'phone', text: string, value: string }>) || []).map((btn, index) => (
+                                            <div key={index} className="p-3 border rounded-lg bg-slate-50/50 space-y-3 relative group">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    onClick={() => {
+                                                        const ctaButtons = (formData.ctaButtons as any[]) || [];
+                                                        handleChange('ctaButtons', ctaButtons.filter((_, i) => i !== index));
+                                                    }}
+                                                    className="absolute right-2 top-2 h-6 w-6 text-slate-400 hover:text-red-500"
+                                                >
+                                                    <Trash2 size={14} />
+                                                </Button>
+
+                                                <div className="space-y-1">
+                                                    <Label className="text-xs">Tipo de Acción</Label>
+                                                    <Select
+                                                        value={btn.type}
+                                                        onValueChange={(v) => {
+                                                            const ctaButtons = (formData.ctaButtons as any[]) || [];
+                                                            ctaButtons[index] = { ...ctaButtons[index], type: v };
+                                                            handleChange('ctaButtons', ctaButtons);
+                                                        }}
+                                                    >
+                                                        <SelectTrigger className="h-8 bg-white dark:bg-slate-950">
+                                                            <SelectValue />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="url">Abrir Sitio Web (URL)</SelectItem>
+                                                            <SelectItem value="phone">Llamar Teléfono</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+
+                                                <div className="space-y-1">
+                                                    <Label className="text-xs">Texto del Botón</Label>
+                                                    <Input
+                                                        value={btn.text}
+                                                        onChange={(e) => {
+                                                            const ctaButtons = (formData.ctaButtons as any[]) || [];
+                                                            ctaButtons[index] = { ...ctaButtons[index], text: e.target.value };
+                                                            handleChange('ctaButtons', ctaButtons);
+                                                        }}
+                                                        placeholder="Ej: Visitar Web"
+                                                        className="h-8 bg-white dark:bg-slate-950"
+                                                    />
+                                                </div>
+
+                                                <div className="space-y-1">
+                                                    <Label className="text-xs">{btn.type === 'url' ? 'URL (Enlace)' : 'Número de Teléfono'}</Label>
+                                                    <Input
+                                                        value={btn.value}
+                                                        onChange={(e) => {
+                                                            const ctaButtons = (formData.ctaButtons as any[]) || [];
+                                                            ctaButtons[index] = { ...ctaButtons[index], value: e.target.value };
+                                                            handleChange('ctaButtons', ctaButtons);
+                                                        }}
+                                                        placeholder={btn.type === 'url' ? 'https://example.com' : '+573001234567'}
+                                                        className="h-8 bg-white dark:bg-slate-950 font-mono text-xs"
+                                                    />
+                                                </div>
+                                            </div>
+                                        ))}
+
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => {
+                                                const ctaButtons = (formData.ctaButtons as any[]) || [];
+                                                if (ctaButtons.length >= 2) {
+                                                    toast.error(`Máximo 2 botones permitidos`);
+                                                    return;
+                                                }
+                                                handleChange('ctaButtons', [...ctaButtons, { type: 'url', text: '', value: '' }]);
+                                            }}
+                                            className="w-full border-dashed"
+                                        >
+                                            <Plus size={14} className="mr-2" />
+                                            Agregar Botón CTA
+                                        </Button>
+                                    </>
+                                )}
                             </div>
                         </div>
                     )}
@@ -1910,8 +2158,11 @@ export function PropertiesSheet({ node, isOpen, onClose, onUpdate, onDelete, onD
                                         value={(formData.timeout as string) || '1h'}
                                         onChange={(e) => handleChange('timeout', e.target.value)}
                                         placeholder="ej. 30m, 1h, 24h"
-                                        className="bg-slate-50 dark:bg-slate-900"
+                                        className={`bg-slate-50 dark:bg-slate-900 ${errors.timeout ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                                     />
+                                    {errors.timeout && (
+                                        <p className="text-[10px] text-red-500 mt-1">{errors.timeout}</p>
+                                    )}
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Acción al Expirar</Label>
@@ -1930,6 +2181,153 @@ export function PropertiesSheet({ node, isOpen, onClose, onUpdate, onDelete, onD
                                     </Select>
                                 </div>
                             </div>
+
+                            {/* Validation Settings */}
+                            <div className="space-y-3 pt-2">
+                                <Label className="text-sm font-medium">Validación de Entrada (Opcional)</Label>
+                                <Select
+                                    value={(formData.validation as any)?.type || 'any'}
+                                    onValueChange={(v) => {
+                                        if (v === 'any') {
+                                            handleChange('validation', undefined);
+                                        } else {
+                                            handleChange('validation', { type: v, errorMessage: (formData.validation as any)?.errorMessage || 'Entrada inválida' });
+                                        }
+                                    }}
+                                >
+                                    <SelectTrigger className="h-9 bg-slate-50 dark:bg-slate-900">
+                                        <SelectValue placeholder="Sin validación" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="any">Sin validación (aceptar todo)</SelectItem>
+                                        <SelectItem value="email">Formato Email</SelectItem>
+                                        <SelectItem value="phone">Formato Teléfono</SelectItem>
+                                        <SelectItem value="number">Solo Números</SelectItem>
+                                        <SelectItem value="regex">Expresión Regular (Regex)</SelectItem>
+                                        <SelectItem value="contains">Debe contener texto...</SelectItem>
+                                    </SelectContent>
+                                </Select>
+
+                                {formData.validation && (formData.validation as any).type !== 'any' && (
+                                    <div className="space-y-3 p-3 bg-slate-50 dark:bg-slate-900/50 rounded-lg border">
+                                        {['regex', 'contains'].includes((formData.validation as any).type) && (
+                                            <div className="space-y-1">
+                                                <Label className="text-xs">Patrón / Texto a buscar</Label>
+                                                <Input
+                                                    value={(formData.validation as any).value || ''}
+                                                    onChange={(e) => handleChange('validation', { ...formData.validation as any, value: e.target.value })}
+                                                    placeholder={(formData.validation as any).type === 'regex' ? '^\\d{4}$' : 'hola'}
+                                                    className="h-8 text-sm"
+                                                />
+                                            </div>
+                                        )}
+                                        <div className="space-y-1">
+                                            <Label className="text-xs">Mensaje de Error (si falla)</Label>
+                                            <Input
+                                                value={(formData.validation as any).errorMessage || ''}
+                                                onChange={(e) => handleChange('validation', { ...formData.validation as any, errorMessage: e.target.value })}
+                                                placeholder="Ej: Introduce un email válido"
+                                                className="h-8 text-sm"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Keyword Branching (Branches) */}
+                            {['text', 'any'].includes(formData.inputType as string) && (
+                                <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+                                    <div className="flex items-center justify-between">
+                                        <Label className="text-sm font-medium">Ramificación por Palabras Clave</Label>
+                                        <span className="text-[10px] text-muted-foreground uppercase bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">Opcional</span>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">
+                                        Reconoce palabras en el texto para seguir caminos distintos.
+                                    </p>
+
+                                    {((formData.keywordBranches as Array<{ keyword: string, branchId: string, matchType: 'exact' | 'contains' }>) || []).map((kb, idx) => (
+                                        <div key={idx} className="p-3 border rounded-lg bg-white dark:bg-slate-950 space-y-3 shadow-sm relative group">
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() => {
+                                                    const branches = (formData.keywordBranches as any[]) || [];
+                                                    handleChange('keywordBranches', branches.filter((_, i) => i !== idx));
+                                                }}
+                                                className="absolute right-2 top-2 h-6 w-6 text-slate-400 hover:text-red-500"
+                                            >
+                                                <Trash2 size={14} />
+                                            </Button>
+
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <div className="space-y-1">
+                                                    <Label className="text-[10px] uppercase text-muted-foreground">Palabra Clave</Label>
+                                                    <Input
+                                                        value={kb.keyword}
+                                                        onChange={(e) => {
+                                                            const branches = (formData.keywordBranches as any[]) || [];
+                                                            branches[idx] = { ...branches[idx], keyword: e.target.value };
+                                                            handleChange('keywordBranches', branches);
+                                                        }}
+                                                        placeholder="Hlar / Precio"
+                                                        className="h-8 text-sm"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <Label className="text-[10px] uppercase text-muted-foreground">Coincidencia</Label>
+                                                    <Select
+                                                        value={kb.matchType}
+                                                        onValueChange={(v) => {
+                                                            const branches = (formData.keywordBranches as any[]) || [];
+                                                            branches[idx] = { ...branches[idx], matchType: v as any };
+                                                            handleChange('keywordBranches', branches);
+                                                        }}
+                                                    >
+                                                        <SelectTrigger className="h-8 text-xs bg-slate-50 dark:bg-slate-900">
+                                                            <SelectValue />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="exact">Exacta</SelectItem>
+                                                            <SelectItem value="contains">Contiene</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-1">
+                                                <Label className="text-[10px] uppercase text-muted-foreground">Handle de Salida (ID)</Label>
+                                                <div className="flex gap-2 items-center">
+                                                    <Input
+                                                        value={kb.branchId}
+                                                        onChange={(e) => {
+                                                            const branches = (formData.keywordBranches as any[]) || [];
+                                                            branches[idx] = { ...branches[idx], branchId: e.target.value };
+                                                            handleChange('keywordBranches', branches);
+                                                        }}
+                                                        placeholder="custom_output"
+                                                        className="h-8 text-xs font-mono"
+                                                    />
+                                                    <span className="text-[10px] text-slate-400 whitespace-nowrap italic">← Usa este ID en un handle</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => {
+                                            const branches = (formData.keywordBranches as any[]) || [];
+                                            const newId = `branch_${Math.random().toString(36).substr(2, 5)}`;
+                                            handleChange('keywordBranches', [...branches, { keyword: '', branchId: newId, matchType: 'exact' }]);
+                                        }}
+                                        className="w-full border-dashed h-9"
+                                    >
+                                        <Plus size={14} className="mr-2" />
+                                        Agregar Rama por Palabra Clave
+                                    </Button>
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -2051,7 +2449,7 @@ export function PropertiesSheet({ node, isOpen, onClose, onUpdate, onDelete, onD
                         </div>
                     </div>
                 </div>
-            </SheetContent>
+            </SheetContent >
         </Sheet >
     );
 }

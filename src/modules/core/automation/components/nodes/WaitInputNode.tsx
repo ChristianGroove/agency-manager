@@ -14,6 +14,7 @@ interface WaitInputNodeProps {
         validation?: {
             type: string
         }
+        keywordBranches?: Array<{ keyword: string, branchId: string, matchType: 'exact' | 'contains' }>
     }
     selected?: boolean
 }
@@ -113,38 +114,67 @@ export function WaitInputNode({ data, selected }: WaitInputNodeProps) {
 
                 {/* Store Variable */}
                 {data.storeAs && (
-                    <p className="text-[10px] text-gray-500 text-center">
-                        → <code className="bg-white px-1 rounded">{`{{${data.storeAs}}}`}</code>
+                    <p className="text-[10px] text-gray-400 text-center italic">
+                        Almacena en <code className="bg-white/50 px-1 rounded-sm border border-amber-200">{`{{${data.storeAs}}}`}</code>
                     </p>
+                )}
+
+                {/* Keyword branches */}
+                {data.keywordBranches && data.keywordBranches.length > 0 && (
+                    <div className="space-y-1 mt-2">
+                        {data.keywordBranches.map((kb: any, i: number) => (
+                            <div
+                                key={kb.branchId || i}
+                                className="relative text-[10px] bg-white border border-amber-200 rounded px-2 py-1 font-medium text-amber-700 flex justify-between items-center group"
+                            >
+                                <span className="truncate pr-1">
+                                    {kb.matchType === 'exact' ? '"' : '*'}{kb.keyword}{kb.matchType === 'exact' ? '"' : '*'}
+                                </span>
+                                <Handle
+                                    type="source"
+                                    position={Position.Right}
+                                    id={String(kb.branchId)}
+                                    className="!w-2.5 !h-2.5 !bg-amber-500 !border-2 !border-white transition-all hover:scale-125 hover:!bg-amber-600"
+                                    style={{ right: '-16px', top: '50%', transform: 'translateY(-50%)' }}
+                                    title={`Keyword: ${kb.keyword}`}
+                                />
+                            </div>
+                        ))}
+                    </div>
                 )}
 
                 {/* Validation indicator */}
                 {data.validation && (
-                    <p className="text-[10px] text-amber-600 text-center">
-                        ✓ Validación: {data.validation.type}
+                    <p className="text-[10px] text-amber-600/70 text-center font-medium">
+                        ✓ Valida: {data.validation.type}
                     </p>
                 )}
             </div>
 
             {/* Output Handles */}
-            <Handle
-                type="source"
-                position={Position.Right}
-                id="success"
-                className="!w-3 !h-3 !bg-green-500 !border-2 !border-white"
-                style={{ top: '40%' }}
-            />
+            <div className="flex flex-col gap-4 absolute -right-3 top-1/2 -translate-y-1/2 h-full justify-center pointer-events-none">
+                <div className="relative h-6 w-6">
+                    <Handle
+                        type="source"
+                        position={Position.Right}
+                        id="success"
+                        className="!w-3 !h-3 !bg-green-500 !border-2 !border-white pointer-events-auto"
+                        title="Éxito (Cualquier otra)"
+                    />
+                </div>
 
-            {/* Timeout branch handle */}
-            {data.timeoutAction === 'branch' && (
-                <Handle
-                    type="source"
-                    position={Position.Right}
-                    id="timeout"
-                    className="!w-3 !h-3 !bg-orange-500 !border-2 !border-white"
-                    style={{ top: '70%' }}
-                />
-            )}
+                {data.timeoutAction === 'branch' && (
+                    <div className="relative h-6 w-6">
+                        <Handle
+                            type="source"
+                            position={Position.Right}
+                            id="timeout"
+                            className="!w-3 !h-3 !bg-orange-500 !border-2 !border-white pointer-events-auto"
+                            title="Expiró el tiempo"
+                        />
+                    </div>
+                )}
+            </div>
         </div>
     )
 }

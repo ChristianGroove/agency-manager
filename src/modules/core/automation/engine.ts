@@ -56,8 +56,13 @@ export class WorkflowEngine {
 
     constructor(definition: WorkflowDefinition, initialContext: WorkflowContext = {}) {
         this.definition = definition
+        // Add "contact" as an alias for "lead" if it exists for better variable compatibility
+        if (initialContext.lead && !initialContext.contact) {
+            initialContext.contact = initialContext.lead
+        }
         this.context = initialContext
         this.contextManager = new ContextManager(this.context)
+        console.log(`[Engine] Initialized with keys: ${Object.keys(initialContext).join(', ')}`)
     }
 
     /**

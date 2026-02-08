@@ -30,6 +30,9 @@ export interface WaitInputNodeData {
     // For button responses - map button IDs to branches
     buttonBranches?: Record<string, string>  // { "btn_yes": "branch_yes", "btn_no": "branch_no" }
 
+    // For text responses - map keywords to branches
+    keywordBranches?: Array<{ keyword: string, branchId: string, matchType: 'exact' | 'contains' }>
+
     // For text matching fallback
     buttonOptions?: Array<{ id: string, title: string }>
 }
@@ -175,6 +178,21 @@ export class WaitInputNode {
             let nextBranchId: string | undefined
             if (processedMessage.buttonId && config.buttonBranches) {
                 nextBranchId = config.buttonBranches[processedMessage.buttonId]
+            }
+
+            // Determine which branch to follow for keywords (if no button matched)
+            if (!nextBranchId && processedMessage.type === 'text' && config.keywordBranches) {
+                const text = processedMessage.content.toLowerCase().trim()
+                for (const kb of config.keywordBranches) {
+                    const kw = kb.keyword.toLowerCase().trim()
+                    if (kb.matchType === 'exact' && text === kw) {
+                        nextBranchId = kb.branchId
+                        break
+                    } else if (kb.matchType === 'contains' && text.includes(kw)) {
+                        nextBranchId = kb.branchId
+                        break
+                    }
+                }
             }
 
             // Mark as completed

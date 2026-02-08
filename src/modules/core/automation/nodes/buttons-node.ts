@@ -1,5 +1,4 @@
 
-
 import { ContextManager } from '../context-manager'
 import { sendOutboundMessage } from '@/modules/core/messaging/actions'
 import { InteractiveButton, InteractiveListSection } from '@/modules/core/messaging/providers/types'
@@ -87,6 +86,8 @@ export class ButtonsNode {
                 return { success: false, error: 'No conversation ID available' }
             }
 
+            const channel = (this.contextManager.get('channel') || this.contextManager.get('conversation.channel') || 'whatsapp') as string
+
             // Build message content based on type
             let messageContent: any
 
@@ -153,8 +154,6 @@ export class ButtonsNode {
                 default:
                     return { success: false, error: `Unknown message type: ${data.messageType}` }
             }
-
-            const channel = (this.contextManager.get('channel') || this.contextManager.get('conversation.channel') || 'whatsapp') as string
 
             // Send the message
             const result = await sendOutboundMessage(
