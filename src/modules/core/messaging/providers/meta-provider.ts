@@ -368,21 +368,17 @@ export class MetaProvider implements MessagingProvider {
      * Helper to get API token from integration_connections if not provided in constructor
      */
     private async getTokenByAssetId(assetId: string, options?: { forceDb?: boolean }): Promise<string> {
-        console.log(`[MetaProvider] getTokenByAssetId called with: "${assetId}"`);
-
         try {
             const { data: connections, error } = await supabaseAdmin
                 .from('integration_connections')
                 .select('credentials, provider_key, metadata')
-                .in('provider_key', ['meta_whatsapp', 'meta_business'])
+                .in('provider_key', ['meta_whatsapp', 'meta_business', 'whatsapp_cloud'])
                 .eq('status', 'active');
 
             if (error) {
                 console.error('[MetaProvider] DB query error:', error);
                 return '';
             }
-
-            console.log(`[MetaProvider] Found ${connections?.length || 0} active meta connections`);
 
             if (!connections || connections.length === 0) return '';
 
@@ -402,23 +398,17 @@ export class MetaProvider implements MessagingProvider {
                     const hasAsset = assets.some((a: any) => a.id === assetId || a.id === String(assetId));
 
                     if (hasAsset) {
-                        const token = creds.access_token || creds.accessToken || '';
-                        console.log(`[MetaProvider] MATCH! Token found in meta_business (length: ${token.length})`);
-                        return token;
+                        return creds.access_token || creds.accessToken || '';
                     }
                 }
 
-                // STRATEGY 2: Legacy Meta WhatsApp
-                const storedId = creds.phoneNumberId || creds.phone_number_id;
-                console.log(`[MetaProvider] Checking connection - storedId: "${storedId}" vs requested: "${assetId}"`);
+                // STRATEGY 2: WhatsApp Cloud / Legacy
+                const storedId = conn.metadata?.asset_id || conn.metadata?.phone_number_id || creds.phoneNumberId || creds.phone_number_id;
 
-                if (storedId === assetId) {
-                    const token = creds.accessToken || creds.apiToken || creds.access_token || '';
-                    console.log(`[MetaProvider] MATCH! Token found (length: ${token.length})`);
-                    return token;
+                if (String(storedId) === String(assetId)) {
+                    return creds.access_token || creds.accessToken || creds.apiToken || '';
                 }
             }
-            console.log('[MetaProvider] No matching connection found');
             return '';
         } catch (error) {
             console.error('[MetaProvider] getTokenByAssetId failed:', error);
@@ -519,13 +509,6 @@ export class MetaProvider implements MessagingProvider {
      * Helper to parse message content type
      */
     private async parseMessageContent(msg: any, phoneNumberId?: string): Promise<IncomingMessage['content']> {
-        if (msg.type === 'text') {
-            return {
-                type: 'text',
-                text: msg.text?.body
-            };
-        }
-
         if (msg.type === 'image') {
             const mediaId = msg.image.id;
             const caption = msg.image.caption;
