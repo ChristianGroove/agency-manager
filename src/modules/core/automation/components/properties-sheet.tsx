@@ -17,11 +17,17 @@ import { MediaUpload } from '@/components/ui/media-upload';
 import { uploadAutomationMedia } from '@/modules/core/automation/actions';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Node } from '@xyflow/react';
-import { Trash2, Copy, Zap, Box, Settings2, X, Check, Database, Globe, Mail, MessageSquare, Plus, AlertCircle, MousePointer, Clock, Tag, ArrowRightCircle } from 'lucide-react';
+import { Trash2, Copy, Zap, Box, Settings2, X, Check, Database, Globe, Mail, MessageSquare, Plus, AlertCircle, MousePointer, Clock, Tag, ArrowRightCircle, HelpCircle, GitBranch } from 'lucide-react';
 import { ChannelSelector } from './channel-selector';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface PropertiesSheetProps {
     node: Node | null;
@@ -36,6 +42,18 @@ const getAbTestDefaults = () => [
     { id: 'a', label: 'Path A', percentage: 50 },
     { id: 'b', label: 'Path B', percentage: 50 }
 ];
+
+const parseDuration = (str: string) => {
+    const match = str.match(/^(\d+)([smhd])$/);
+    if (match) {
+        return { value: parseInt(match[1]), unit: match[2] };
+    }
+    return { value: 1, unit: 'h' };
+};
+
+const formatDuration = (val: number, unit: string) => {
+    return `${val}${unit}`;
+};
 
 export function PropertiesSheet({ node, isOpen, onClose, onUpdate, onDelete, onDuplicate }: PropertiesSheetProps) {
 
@@ -448,7 +466,7 @@ export function PropertiesSheet({ node, isOpen, onClose, onUpdate, onDelete, onD
 
     return (
         <Sheet open={isOpen} onOpenChange={onClose}>
-            <SheetContent className="w-[400px] sm:w-[500px] p-0 border-none bg-white dark:bg-slate-950 flex flex-col shadow-2xl m-4 rounded-2xl h-[calc(100vh-2rem)] overflow-hidden focus:outline-none ring-0">
+            <SheetContent className="p-0 border-none bg-white dark:bg-slate-950 flex flex-col shadow-2xl m-4 rounded-2xl h-[calc(100vh-2rem)] overflow-hidden focus:outline-none ring-0 transition-all duration-300 w-[400px] sm:w-[500px]">
 
                 {/* Modern Header */}
                 <div className="px-6 py-6 border-b border-slate-100 dark:border-slate-900">
@@ -1763,6 +1781,16 @@ export function PropertiesSheet({ node, isOpen, onClose, onUpdate, onDelete, onD
                             </div>
 
                             <div className="space-y-2">
+                                <Label>Encabezado (Opcional)</Label>
+                                <Input
+                                    value={(formData.header as any)?.content || (formData.header as string) || ''}
+                                    onChange={(e) => handleChange('header', { type: 'text', content: e.target.value })}
+                                    placeholder="Negrita superior"
+                                    className="bg-slate-50 dark:bg-slate-900"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
                                 <div className="flex justify-between items-center">
                                     <Label>Cuerpo del Mensaje<span className="text-red-500 ml-1">*</span></Label>
                                     <VariableSelector onSelect={(v) => {
@@ -1797,25 +1825,14 @@ export function PropertiesSheet({ node, isOpen, onClose, onUpdate, onDelete, onD
                                 <p className="text-xs text-muted-foreground">Soporta variables {'{{...}}'}</p>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label>Encabezado (Opcional)</Label>
-                                    <Input
-                                        value={(formData.header as any)?.content || (formData.header as string) || ''}
-                                        onChange={(e) => handleChange('header', { type: 'text', content: e.target.value })}
-                                        placeholder="Negrita superior"
-                                        className="bg-slate-50 dark:bg-slate-900"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Pie de página (Opcional)</Label>
-                                    <Input
-                                        value={(formData.footer as string) || ''}
-                                        onChange={(e) => handleChange('footer', e.target.value)}
-                                        placeholder="Texto gris pequeño"
-                                        className="bg-slate-50 dark:bg-slate-900"
-                                    />
-                                </div>
+                            <div className="space-y-2">
+                                <Label>Pie de página (Opcional)</Label>
+                                <Input
+                                    value={(formData.footer as string) || ''}
+                                    onChange={(e) => handleChange('footer', e.target.value)}
+                                    placeholder="Texto gris pequeño"
+                                    className="bg-slate-50 dark:bg-slate-900"
+                                />
                             </div>
 
                             <div className="space-y-3 pt-2">
@@ -2108,228 +2125,296 @@ export function PropertiesSheet({ node, isOpen, onClose, onUpdate, onDelete, onD
                     )}
 
                     {/* Wait Input Configuration */}
+                    {/* Wait Input Configuration (Enhanced) */}
                     {node.type === 'wait_input' && (
-                        <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                            <Separator className="bg-slate-100 dark:bg-slate-800" />
-                            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                Configuración de Espera
-                            </Label>
+                        <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+                            <div className="space-y-6 pb-6">
+                                {/* Left Column: Core Configuration */}
+                                <div className="space-y-6">
+                                    <div className="space-y-3">
+                                        <div className="flex items-center gap-2">
+                                            <Label className="text-sm font-semibold text-slate-900 dark:text-slate-100">Tipo de Respuesta</Label>
+                                            <TooltipProvider delayDuration={0}>
+                                                <Tooltip>
+                                                    <TooltipTrigger>
+                                                        <HelpCircle className="h-3.5 w-3.5 text-slate-400 hover:text-slate-600 transition-colors" />
+                                                    </TooltipTrigger>
+                                                    <TooltipContent className="max-w-[250px] text-xs">
+                                                        Define qué tipo de contenido esperas recibir del usuario. 'Cualquier Respuesta' captura todo el texto.
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            </TooltipProvider>
+                                        </div>
+                                        <Select
+                                            value={(formData.inputType as string) || 'any'}
+                                            onValueChange={(v) => handleChange('inputType', v)}
+                                        >
+                                            <SelectTrigger className="h-10 bg-slate-50 dark:bg-slate-900 border-slate-200">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="any">Cualquier Respuesta (Texto/Media)</SelectItem>
+                                                <SelectItem value="text">Solo Texto</SelectItem>
+                                                <SelectItem value="button_click">Interacción (Botones/Listas)</SelectItem>
+                                                <SelectItem value="image">Imagen / Foto</SelectItem>
+                                                <SelectItem value="location">Ubicación GPS</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
 
-                            <div className="space-y-3">
-                                <Label>Tipo de Respuesta Esperada</Label>
-                                <Select
-                                    value={(formData.inputType as string) || 'any'}
-                                    onValueChange={(v) => handleChange('inputType', v)}
-                                >
-                                    <SelectTrigger className="h-10 bg-slate-50 dark:bg-slate-900">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="any">Cualquier Respuesta</SelectItem>
-                                        <SelectItem value="text">Solo Texto</SelectItem>
-                                        <SelectItem value="button_click">Clic en Botón (Interactivo)</SelectItem>
-                                        <SelectItem value="image">Imagen / Foto</SelectItem>
-                                        <SelectItem value="location">Ubicación</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
+                                    <div className="space-y-3">
+                                        <div className="flex items-center gap-2">
+                                            <Label className="text-sm font-semibold">Almacenamiento</Label>
+                                            <TooltipProvider delayDuration={0}>
+                                                <Tooltip>
+                                                    <TooltipTrigger>
+                                                        <HelpCircle className="h-3.5 w-3.5 text-slate-400 hover:text-slate-600 transition-colors" />
+                                                    </TooltipTrigger>
+                                                    <TooltipContent className="max-w-[250px] text-xs">
+                                                        Guarda la respuesta del usuario en una variable para usarla después (ej. en un mensaje: {'{{nombre}}'}).
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            </TooltipProvider>
+                                        </div>
+                                        <div className="relative">
+                                            <Input
+                                                value={(formData.storeAs as string) || ''}
+                                                onChange={(e) => handleChange('storeAs', e.target.value)}
+                                                placeholder="ej. email_cliente"
+                                                className="bg-slate-50 dark:bg-slate-900 pl-9 font-mono text-sm"
+                                            />
+                                            <span className="absolute left-3 top-2.5 text-slate-400 font-mono text-sm">{'{{'}</span>
+                                            <span className="absolute right-3 top-2.5 text-slate-400 font-mono text-sm">{'}}'}</span>
+                                        </div>
+                                    </div>
 
-                            <div className="space-y-2">
-                                <Label>Guardar Respuesta en Variable</Label>
-                                <div className="relative">
-                                    <Input
-                                        value={(formData.storeAs as string) || ''}
-                                        onChange={(e) => handleChange('storeAs', e.target.value)}
-                                        placeholder="ej. respuesta_cliente"
-                                        className="bg-slate-50 dark:bg-slate-900 pl-9"
-                                    />
-                                    <span className="absolute left-3 top-2.5 text-slate-400 font-mono text-sm">{'{{'}</span>
-                                    <span className="absolute right-3 top-2.5 text-slate-400 font-mono text-sm">{'}}'}</span>
+                                    <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 space-y-4">
+                                        <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
+                                            <Clock className="h-4 w-4 text-amber-500" />
+                                            <Label className="font-medium text-amber-700 dark:text-amber-500">Configuración de Timeout</Label>
+                                        </div>
+
+                                        <div className="space-y-4">
+                                            <div className="space-y-2">
+                                                <Label className="text-xs">Tiempo Máximo</Label>
+                                                <div className="flex flex-col gap-2">
+                                                    <div className="grid grid-cols-2 gap-2">
+                                                        <Input
+                                                            type="number"
+                                                            min="1"
+                                                            value={parseDuration((formData.timeout as string) || '1h').value}
+                                                            onChange={(e) => {
+                                                                const val = parseInt(e.target.value) || 1;
+                                                                const currentUnit = parseDuration((formData.timeout as string) || '1h').unit;
+                                                                handleChange('timeout', formatDuration(val, currentUnit));
+                                                            }}
+                                                            className="bg-white dark:bg-slate-950"
+                                                        />
+                                                        <Select
+                                                            value={parseDuration((formData.timeout as string) || '1h').unit}
+                                                            onValueChange={(u) => {
+                                                                const currentVal = parseDuration((formData.timeout as string) || '1h').value;
+                                                                handleChange('timeout', formatDuration(currentVal, u));
+                                                            }}
+                                                        >
+                                                            <SelectTrigger className="w-full bg-white dark:bg-slate-950">
+                                                                <SelectValue />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="s">Segundos</SelectItem>
+                                                                <SelectItem value="m">Minutos</SelectItem>
+                                                                <SelectItem value="h">Horas</SelectItem>
+                                                                <SelectItem value="d">Días</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label className="text-xs">Acción al Expirar</Label>
+                                                <Select
+                                                    value={(formData.timeoutAction as string) || 'continue'}
+                                                    onValueChange={(v) => handleChange('timeoutAction', v)}
+                                                >
+                                                    <SelectTrigger className="bg-white dark:bg-slate-950">
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="continue">Continuar flujo</SelectItem>
+                                                        <SelectItem value="branch">Crear Rama (Timeout)</SelectItem>
+                                                        <SelectItem value="stop">Detener</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                        </div>
+                                        {errors.timeout && (
+                                            <p className="text-[10px] text-red-500 bg-red-50 p-1.5 rounded-md border border-red-100 flex items-center gap-1.5">
+                                                <AlertCircle className="h-3 w-3" />
+                                                {errors.timeout}
+                                            </p>
+                                        )}
+                                    </div>
                                 </div>
-                                <p className="text-xs text-muted-foreground">
-                                    Podrás usar esta variable en pasos siguientes como {'{{respuesta_cliente}}'}
-                                </p>
-                            </div>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label>Tiempo Máximo (Timeout)</Label>
-                                    <Input
-                                        value={(formData.timeout as string) || '1h'}
-                                        onChange={(e) => handleChange('timeout', e.target.value)}
-                                        placeholder="ej. 30m, 1h, 24h"
-                                        className={`bg-slate-50 dark:bg-slate-900 ${errors.timeout ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
-                                    />
-                                    {errors.timeout && (
-                                        <p className="text-[10px] text-red-500 mt-1">{errors.timeout}</p>
+                                {/* Right Column: Advanced Logic */}
+                                <div className="space-y-6">
+                                    {/* Validation Section */}
+                                    <div className="space-y-3">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <Label className="text-sm font-semibold">Reglas de Validación</Label>
+                                                <div className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-[10px] font-bold uppercase tracking-wider">
+                                                    Calidad de Datos
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 shadow-sm">
+                                            <Select
+                                                value={(formData.validation as any)?.type || 'any'}
+                                                onValueChange={(v) => {
+                                                    if (v === 'any') {
+                                                        handleChange('validation', undefined);
+                                                    } else {
+                                                        handleChange('validation', { type: v, errorMessage: (formData.validation as any)?.errorMessage || 'Entrada inválida' });
+                                                    }
+                                                }}
+                                            >
+                                                <SelectTrigger className="w-full mb-3 bg-slate-50 dark:bg-slate-900 border-none ring-1 ring-slate-200 dark:ring-slate-800">
+                                                    <SelectValue placeholder="Sin validación" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="any">Sin validación (aceptar todo)</SelectItem>
+                                                    <SelectItem value="email">Formato Email</SelectItem>
+                                                    <SelectItem value="phone">Formato Teléfono</SelectItem>
+                                                    <SelectItem value="number">Solo Números</SelectItem>
+                                                    <SelectItem value="regex">Regex Personalizado</SelectItem>
+                                                    <SelectItem value="contains">Debe contener texto...</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+
+                                            {!!formData.validation && (formData.validation as any).type !== 'any' && (
+                                                <div className="space-y-3 pl-1 animate-in fade-in slide-in-from-top-1 duration-200">
+                                                    {['regex', 'contains'].includes((formData.validation as any).type) && (
+                                                        <div className="space-y-1.5">
+                                                            <Label className="text-xs font-medium text-slate-500">
+                                                                {(formData.validation as any).type === 'regex' ? 'Expresión Regular' : 'Texto a buscar'}
+                                                            </Label>
+                                                            <Input
+                                                                value={(formData.validation as any).value || ''}
+                                                                onChange={(e) => handleChange('validation', { ...formData.validation as any, value: e.target.value })}
+                                                                placeholder={(formData.validation as any).type === 'regex' ? '^\\d{4}$' : 'palabra clave'}
+                                                                className="h-9 text-sm font-mono bg-slate-50"
+                                                            />
+                                                        </div>
+                                                    )}
+
+                                                    <div className="space-y-1.5">
+                                                        <Label className="text-xs font-medium text-slate-500">Mensaje de Error (al usuario)</Label>
+                                                        <Input
+                                                            value={(formData.validation as any).errorMessage || ''}
+                                                            onChange={(e) => handleChange('validation', { ...formData.validation as any, errorMessage: e.target.value })}
+                                                            placeholder="ej. Por favor ingresa un email válido"
+                                                            className="h-9 text-sm bg-slate-50"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Keyword Branching */}
+                                    {['text', 'any'].includes(formData.inputType as string) && (
+                                        <div className="space-y-3">
+                                            <div className="flex items-center justify-between">
+                                                <Label className="text-sm font-semibold">Ramas por Palabras Clave</Label>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => {
+                                                        const currentBranches = (formData.keywordBranches as any[]) || [];
+                                                        handleChange('keywordBranches', [...currentBranches, { keyword: '', branchId: crypto.randomUUID(), matchType: 'exact' }]);
+                                                    }}
+                                                    className="h-7 text-xs gap-1.5 pr-2.5 pl-2"
+                                                >
+                                                    <Plus className="h-3.5 w-3.5" />
+                                                    Nueva Rama
+                                                </Button>
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                {((formData.keywordBranches as any[]) || []).length === 0 ? (
+                                                    <div className="text-center p-6 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
+                                                        <GitBranch className="h-8 w-8 text-slate-300 mx-auto mb-2" />
+                                                        <p className="text-xs text-muted-foreground">
+                                                            Crea caminos alternativos si el usuario escribe palabras específicas.
+                                                        </p>
+                                                    </div>
+                                                ) : (
+                                                    <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+                                                        {((formData.keywordBranches as any[]) || []).map((branch, index) => (
+                                                            <div key={index} className="flex items-start gap-2 p-3 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg group hover:border-amber-200 transition-colors shadow-sm">
+                                                                <div className="grid gap-2 flex-1">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <Select
+                                                                            value={branch.matchType}
+                                                                            onValueChange={(v) => {
+                                                                                const newBranches = [...(formData.keywordBranches as any[])];
+                                                                                newBranches[index] = { ...branch, matchType: v };
+                                                                                handleChange('keywordBranches', newBranches);
+                                                                            }}
+                                                                        >
+                                                                            <SelectTrigger className="h-8 w-[110px] text-xs bg-slate-50 border-none">
+                                                                                <SelectValue />
+                                                                            </SelectTrigger>
+                                                                            <SelectContent>
+                                                                                <SelectItem value="exact">Es igual a</SelectItem>
+                                                                                <SelectItem value="contains">Contiene</SelectItem>
+                                                                            </SelectContent>
+                                                                        </Select>
+                                                                        <Input
+                                                                            value={branch.keyword}
+                                                                            onChange={(e) => {
+                                                                                const newBranches = [...(formData.keywordBranches as any[])];
+                                                                                newBranches[index] = { ...branch, keyword: e.target.value };
+                                                                                handleChange('keywordBranches', newBranches);
+                                                                            }}
+                                                                            placeholder="Palabra clave..."
+                                                                            className="h-8 text-sm flex-1 font-medium bg-slate-50 border-none focus-visible:ring-1"
+                                                                        />
+                                                                    </div>
+                                                                    <div className="flex items-center gap-2 px-2 text-[10px] text-muted-foreground">
+                                                                        <ArrowRightCircle className="h-3 w-3" />
+                                                                        <span>Salida:</span>
+                                                                        <code className="bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded border border-amber-100 font-mono">
+                                                                            {branch.matchType === 'exact' ? '"' : '*'}{branch.keyword || '...'}{branch.matchType === 'exact' ? '"' : '*'}
+                                                                        </code>
+                                                                    </div>
+                                                                </div>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    onClick={() => {
+                                                                        const newBranches = [...(formData.keywordBranches as any[])];
+                                                                        newBranches.splice(index, 1);
+                                                                        handleChange('keywordBranches', newBranches);
+                                                                    }}
+                                                                    className="h-8 w-8 text-slate-400 hover:text-red-500 hover:bg-red-50 -mt-1 -mr-1"
+                                                                >
+                                                                    <Trash2 className="h-4 w-4" />
+                                                                </Button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
                                     )}
                                 </div>
-                                <div className="space-y-2">
-                                    <Label>Acción al Expirar</Label>
-                                    <Select
-                                        value={(formData.timeoutAction as string) || 'continue'}
-                                        onValueChange={(v) => handleChange('timeoutAction', v)}
-                                    >
-                                        <SelectTrigger className="bg-slate-50 dark:bg-slate-900">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="continue">Continuar flujo</SelectItem>
-                                            <SelectItem value="branch">Branch (Camino alternativo)</SelectItem>
-                                            <SelectItem value="stop">Detener workflow</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
                             </div>
-
-                            {/* Validation Settings */}
-                            <div className="space-y-3 pt-2">
-                                <Label className="text-sm font-medium">Validación de Entrada (Opcional)</Label>
-                                <Select
-                                    value={(formData.validation as any)?.type || 'any'}
-                                    onValueChange={(v) => {
-                                        if (v === 'any') {
-                                            handleChange('validation', undefined);
-                                        } else {
-                                            handleChange('validation', { type: v, errorMessage: (formData.validation as any)?.errorMessage || 'Entrada inválida' });
-                                        }
-                                    }}
-                                >
-                                    <SelectTrigger className="h-9 bg-slate-50 dark:bg-slate-900">
-                                        <SelectValue placeholder="Sin validación" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="any">Sin validación (aceptar todo)</SelectItem>
-                                        <SelectItem value="email">Formato Email</SelectItem>
-                                        <SelectItem value="phone">Formato Teléfono</SelectItem>
-                                        <SelectItem value="number">Solo Números</SelectItem>
-                                        <SelectItem value="regex">Expresión Regular (Regex)</SelectItem>
-                                        <SelectItem value="contains">Debe contener texto...</SelectItem>
-                                    </SelectContent>
-                                </Select>
-
-                                {formData.validation && (formData.validation as any).type !== 'any' && (
-                                    <div className="space-y-3 p-3 bg-slate-50 dark:bg-slate-900/50 rounded-lg border">
-                                        {['regex', 'contains'].includes((formData.validation as any).type) && (
-                                            <div className="space-y-1">
-                                                <Label className="text-xs">Patrón / Texto a buscar</Label>
-                                                <Input
-                                                    value={(formData.validation as any).value || ''}
-                                                    onChange={(e) => handleChange('validation', { ...formData.validation as any, value: e.target.value })}
-                                                    placeholder={(formData.validation as any).type === 'regex' ? '^\\d{4}$' : 'hola'}
-                                                    className="h-8 text-sm"
-                                                />
-                                            </div>
-                                        )}
-                                        <div className="space-y-1">
-                                            <Label className="text-xs">Mensaje de Error (si falla)</Label>
-                                            <Input
-                                                value={(formData.validation as any).errorMessage || ''}
-                                                onChange={(e) => handleChange('validation', { ...formData.validation as any, errorMessage: e.target.value })}
-                                                placeholder="Ej: Introduce un email válido"
-                                                className="h-8 text-sm"
-                                            />
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Keyword Branching (Branches) */}
-                            {['text', 'any'].includes(formData.inputType as string) && (
-                                <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800">
-                                    <div className="flex items-center justify-between">
-                                        <Label className="text-sm font-medium">Ramificación por Palabras Clave</Label>
-                                        <span className="text-[10px] text-muted-foreground uppercase bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">Opcional</span>
-                                    </div>
-                                    <p className="text-xs text-muted-foreground">
-                                        Reconoce palabras en el texto para seguir caminos distintos.
-                                    </p>
-
-                                    {((formData.keywordBranches as Array<{ keyword: string, branchId: string, matchType: 'exact' | 'contains' }>) || []).map((kb, idx) => (
-                                        <div key={idx} className="p-3 border rounded-lg bg-white dark:bg-slate-950 space-y-3 shadow-sm relative group">
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                onClick={() => {
-                                                    const branches = (formData.keywordBranches as any[]) || [];
-                                                    handleChange('keywordBranches', branches.filter((_, i) => i !== idx));
-                                                }}
-                                                className="absolute right-2 top-2 h-6 w-6 text-slate-400 hover:text-red-500"
-                                            >
-                                                <Trash2 size={14} />
-                                            </Button>
-
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <div className="space-y-1">
-                                                    <Label className="text-[10px] uppercase text-muted-foreground">Palabra Clave</Label>
-                                                    <Input
-                                                        value={kb.keyword}
-                                                        onChange={(e) => {
-                                                            const branches = (formData.keywordBranches as any[]) || [];
-                                                            branches[idx] = { ...branches[idx], keyword: e.target.value };
-                                                            handleChange('keywordBranches', branches);
-                                                        }}
-                                                        placeholder="Hlar / Precio"
-                                                        className="h-8 text-sm"
-                                                    />
-                                                </div>
-                                                <div className="space-y-1">
-                                                    <Label className="text-[10px] uppercase text-muted-foreground">Coincidencia</Label>
-                                                    <Select
-                                                        value={kb.matchType}
-                                                        onValueChange={(v) => {
-                                                            const branches = (formData.keywordBranches as any[]) || [];
-                                                            branches[idx] = { ...branches[idx], matchType: v as any };
-                                                            handleChange('keywordBranches', branches);
-                                                        }}
-                                                    >
-                                                        <SelectTrigger className="h-8 text-xs bg-slate-50 dark:bg-slate-900">
-                                                            <SelectValue />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value="exact">Exacta</SelectItem>
-                                                            <SelectItem value="contains">Contiene</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-                                                </div>
-                                            </div>
-
-                                            <div className="space-y-1">
-                                                <Label className="text-[10px] uppercase text-muted-foreground">Handle de Salida (ID)</Label>
-                                                <div className="flex gap-2 items-center">
-                                                    <Input
-                                                        value={kb.branchId}
-                                                        onChange={(e) => {
-                                                            const branches = (formData.keywordBranches as any[]) || [];
-                                                            branches[idx] = { ...branches[idx], branchId: e.target.value };
-                                                            handleChange('keywordBranches', branches);
-                                                        }}
-                                                        placeholder="custom_output"
-                                                        className="h-8 text-xs font-mono"
-                                                    />
-                                                    <span className="text-[10px] text-slate-400 whitespace-nowrap italic">← Usa este ID en un handle</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
-
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => {
-                                            const branches = (formData.keywordBranches as any[]) || [];
-                                            const newId = `branch_${Math.random().toString(36).substr(2, 5)}`;
-                                            handleChange('keywordBranches', [...branches, { keyword: '', branchId: newId, matchType: 'exact' }]);
-                                        }}
-                                        className="w-full border-dashed h-9"
-                                    >
-                                        <Plus size={14} className="mr-2" />
-                                        Agregar Rama por Palabra Clave
-                                    </Button>
-                                </div>
-                            )}
                         </div>
                     )}
+
 
                     {/* Tag Node Configuration */}
                     {node.type === 'tag' && (

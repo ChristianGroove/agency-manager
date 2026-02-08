@@ -43,8 +43,10 @@ import AIAgentNode from '@/modules/core/automation/components/nodes/AIAgentNode'
 import ButtonsNode from '@/modules/core/automation/components/nodes/ButtonsNode';
 import WaitInputNode from '@/modules/core/automation/components/nodes/WaitInputNode';
 import TagNode from '@/modules/core/automation/components/nodes/TagNode';
+import ConditionNode from '@/modules/core/automation/components/nodes/ConditionNode';
 import StageNode from '@/modules/core/automation/components/nodes/StageNode';
 import { PropertiesSheet } from '@/modules/core/automation/components/properties-sheet';
+import DeletableEdge from '@/modules/core/automation/components/edges/DeletableEdge';
 import { AISuggestionsPanel } from '@/modules/core/automation/components/ai-suggestions-panel';
 import { createWorkflowVersion, getWorkflow, saveWorkflow } from '@/modules/core/automation/actions';
 import { WorkflowConfigurationSheet } from '@/modules/core/automation/components/workflow-configuration-sheet';
@@ -68,7 +70,13 @@ const nodeTypes = {
     buttons: ButtonsNode,
     wait_input: WaitInputNode,
     tag: TagNode,
+    condition: ConditionNode,
     stage: StageNode,
+};
+
+const edgeTypes = {
+    default: DeletableEdge,
+    smoothstep: DeletableEdge,
 };
 
 function WorkflowEditorContent({ id }: { id: string }) {
@@ -556,6 +564,8 @@ function WorkflowEditorContent({ id }: { id: string }) {
                         fitView
                         proOptions={{ hideAttribution: true }}
                         className="bg-slate-50 dark:bg-slate-950"
+                        edgeTypes={edgeTypes}
+                        defaultEdgeOptions={{ type: 'default', animated: true }}
                     >
                         <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
                         <Panel position="bottom-right" className="flex flex-col items-center gap-4 !pointer-events-auto !m-6 !p-0">

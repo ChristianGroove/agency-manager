@@ -1,8 +1,6 @@
-"use client"
-
-import { Handle, Position } from '@xyflow/react'
-import { Tag, Plus, Minus } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { Handle, Position } from '@xyflow/react';
+import { Tag, Plus, Minus } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface TagNodeProps {
     data: {
@@ -13,26 +11,26 @@ interface TagNodeProps {
 }
 
 export function TagNode({ data, selected }: TagNodeProps) {
-    const action = data.action || 'add'
-    const isAdd = action === 'add'
+    const action = data.action || 'add';
+    const isAdd = action === 'add';
 
     return (
         <div className={cn(
-            "min-w-[180px] rounded-xl border-2 shadow-sm transition-all bg-white",
-            isAdd ? "border-amber-200" : "border-red-200",
-            selected && "ring-2 ring-offset-2 ring-violet-500 shadow-md scale-105"
+            "min-w-[200px] max-w-[240px] rounded-xl border-2 shadow-lg transition-all bg-white dark:bg-slate-900",
+            isAdd
+                ? (selected ? "border-amber-500 shadow-xl scale-105 ring-1 ring-amber-500" : "border-slate-200 dark:border-slate-800")
+                : (selected ? "border-red-500 shadow-xl scale-105 ring-1 ring-red-500" : "border-slate-200 dark:border-slate-800")
         )}>
-            {/* Input Handle */}
             <Handle
                 type="target"
                 position={Position.Left}
-                className="!w-3 !h-3 !bg-gray-400 !border-2 !border-white"
+                className="!w-3 !h-3 !bg-slate-400 !border-2 !border-white transition-all hover:scale-125"
             />
 
-            {/* Header */}
+            {/* Premium Header */}
             <div className={cn(
-                "flex items-center gap-2 px-3 py-2 rounded-t-lg text-white",
-                isAdd ? "bg-amber-500" : "bg-red-500"
+                "flex items-center gap-2 px-3 py-2 rounded-t-lg text-white bg-gradient-to-r",
+                isAdd ? "from-amber-400 to-orange-500" : "from-red-500 to-rose-600"
             )}>
                 <div className="p-1 bg-white/20 rounded">
                     <Tag className="h-3.5 w-3.5" />
@@ -40,30 +38,30 @@ export function TagNode({ data, selected }: TagNodeProps) {
                 <span className="text-xs font-semibold tracking-wide flex-1">
                     {isAdd ? 'AÑADIR ETIQUETA' : 'QUITAR ETIQUETA'}
                 </span>
-                {isAdd ? <Plus className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
+                {isAdd ? <Plus className="h-3.5 w-3.5" /> : <Minus className="h-3.5 w-3.5" />}
             </div>
 
             {/* Content */}
             <div className="p-3">
                 <div className={cn(
                     "text-xs border rounded px-2 py-1.5 text-center font-medium truncate",
-                    isAdd ? "bg-amber-50 text-amber-700 border-amber-100" : "bg-red-50 text-red-700 border-red-100"
+                    isAdd ? "bg-amber-50 text-amber-700 border-amber-100 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900/50"
+                        : "bg-red-50 text-red-700 border-red-100 dark:bg-red-950/30 dark:text-red-400 dark:border-red-900/50"
                 )}>
                     {data.tagName || "Sin etiqueta"}
                 </div>
             </div>
 
-            {/* Output Handle */}
             <Handle
                 type="source"
                 position={Position.Right}
                 className={cn(
-                    "!w-3 !h-3 !border-2 !border-white",
+                    "!w-3 !h-3 !border-2 !border-white transition-all hover:scale-125",
                     isAdd ? "!bg-amber-500" : "!bg-red-500"
                 )}
             />
         </div>
-    )
+    );
 }
 
-export default TagNode
+export default TagNode;

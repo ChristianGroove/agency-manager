@@ -1,45 +1,56 @@
-
 import React, { memo } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
-import { Badge } from '@/components/ui/badge';
-import { Receipt, FileText } from 'lucide-react';
+import { Receipt, FileText, CreditCard } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 const BillingNode = ({ data, selected }: NodeProps) => {
     return (
-        <div className={`shadow-lg rounded-xl border-2 bg-white dark:bg-slate-900 min-w-[280px] transition-all duration-200 ${selected ? 'border-amber-500 ring-4 ring-amber-500/20' : 'border-slate-200 dark:border-slate-800 hover:border-amber-400'}`}>
-            <Handle type="target" position={Position.Top} className="!w-3 !h-3 !bg-slate-400" />
+        <div className={cn(
+            "min-w-[200px] max-w-[260px] rounded-xl border-2 shadow-lg transition-all bg-white dark:bg-slate-900",
+            selected ? "border-amber-500 shadow-xl scale-105 ring-1 ring-amber-500" : "border-slate-200 dark:border-slate-800"
+        )}>
+            <Handle
+                type="target"
+                position={Position.Top}
+                className="!w-3 !h-3 !bg-slate-400 !border-2 !border-white transition-all hover:scale-125"
+            />
 
-            <div className="p-4">
-                <div className="flex items-center gap-3 mb-3">
-                    <div className="h-10 w-10 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center shadow-sm">
-                        <Receipt className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-                    </div>
-                    <div>
-                        <h3 className="font-bold text-sm text-slate-900 dark:text-white leading-tight">
-                            {data.label as string || 'Billing'}
-                        </h3>
-                        <p className="text-[10px] uppercase tracking-wider font-semibold text-amber-600 dark:text-amber-400 mt-0.5">
-                            Facturación
-                        </p>
-                    </div>
+            {/* Premium Header */}
+            <div className="flex items-center gap-2 px-3 py-2 rounded-t-lg bg-gradient-to-r from-amber-500 to-yellow-600 text-white">
+                <div className="p-1 bg-white/20 rounded">
+                    <Receipt className="h-3.5 w-3.5" />
                 </div>
+                <span className="text-xs font-semibold tracking-wide">
+                    FACTURACIÓN
+                </span>
+            </div>
 
-                <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-2.5 text-xs text-slate-600 dark:text-slate-300 space-y-1.5 border border-slate-100 dark:border-slate-800/50">
-                    <div className="flex items-center gap-2">
-                        <FileText className="h-3.5 w-3.5 opacity-70" />
-                        <span className="font-medium">
-                            Action: {(data.actionType as string)?.replace('_', ' ').toUpperCase() || 'SELECT ACTION'}
+            {/* Content */}
+            <div className="p-3">
+                <div className="bg-amber-50 dark:bg-amber-950/20 rounded p-2 text-xs border border-amber-100 dark:border-amber-900/30 space-y-2">
+                    <div className="flex items-center gap-2 text-amber-800 dark:text-amber-200 font-medium">
+                        <CreditCard className="h-3.5 w-3.5 opacity-70" />
+                        <span className="truncate">
+                            {(data.actionType as string)?.replace('_', ' ').toUpperCase() || 'ACCIÓN'}
                         </span>
                     </div>
+
                     {data.itemId !== undefined && (
-                        <div className="pl-5.5 text-[10px] text-slate-500 truncate">
-                            Item: {String(data.itemId)}
+                        <div className="flex items-start gap-1.5 pl-1 pt-1 border-t border-amber-200 dark:border-amber-800/50">
+                            <FileText className="h-3 w-3 text-amber-500 mt-0.5" />
+                            <span className="text-[10px] text-amber-700 dark:text-amber-400 font-mono truncate">
+                                Item ID: {String(data.itemId)}
+                            </span>
                         </div>
                     )}
                 </div>
             </div>
 
-            <Handle type="source" position={Position.Bottom} className="!w-3 !h-3 !bg-slate-400" />
+            <Handle
+                type="source"
+                position={Position.Bottom}
+                className="!w-3 !h-3 !bg-slate-400 !border-2 !border-white transition-all hover:scale-125"
+            />
         </div>
     );
 };
