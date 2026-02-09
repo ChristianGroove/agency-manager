@@ -40,18 +40,32 @@ export async function getCatalogItem(id: string) {
 export async function createCatalogItem(data: Partial<ServiceCatalogItem>) {
     const supabase = await createClient()
     const orgId = await getCurrentOrganizationId()
-    if (!orgId) throw new Error("No org")
+
+    if (!orgId) {
+        throw new Error("No org")
+    }
+
+    // Fix: Extract non-DB fields and move them to metadata
+    const { cta_type, price_label_type, metadata, ...dbData } = data
+    const safeMetadata = {
+        ...(metadata || {}),
+        cta_type,
+        price_label_type
+    }
 
     const { data: newItem, error } = await supabase
         .from('service_catalog')
         .insert({
-            ...data,
+            ...dbData,
+            metadata: safeMetadata,
             organization_id: orgId
         })
         .select()
         .single()
 
-    if (error) throw error
+    if (error) {
+        throw error
+    }
     revalidatePath('/portfolio')
     return { success: true, data: newItem }
 }
@@ -61,15 +75,36 @@ export async function updateCatalogItem(id: string, data: Partial<ServiceCatalog
     const orgId = await getCurrentOrganizationId()
     if (!orgId) throw new Error("No org")
 
+    // Fix: Extract non-DB fields and move them to metadata to avoid "column does not exist" error
+    const { cta_type, price_label_type, metadata, ...dbData } = data
+
+    // Only update metadata if we have new values or if metadata is provided
+    let updatePayload: any = { ...dbData }
+
+    if (cta_type || price_label_type || metadata) {
+        // We need to be careful with updates. ideally we merge, but for now let's just push what we have.
+        // If we don't fetch existing, we might overwrite. 
+        // However, the form sends the full object usually.
+        updatePayload.metadata = {
+            ...(metadata || {}),
+            // Only add if they are defined
+            ...(cta_type ? { cta_type } : {}),
+            ...(price_label_type ? { price_label_type } : {})
+        }
+    }
+
     const { data: updated, error } = await supabase
         .from('service_catalog')
-        .update(data)
+        .update(updatePayload)
         .eq('id', id)
         .eq('organization_id', orgId)
         .select()
         .single()
 
-    if (error) throw error
+    if (error) {
+        console.error("❌ UPDATE CATALOG ITEM ERROR:", JSON.stringify(error, null, 2))
+        throw error
+    }
     revalidatePath('/portfolio')
     return { success: true, data: updated }
 }

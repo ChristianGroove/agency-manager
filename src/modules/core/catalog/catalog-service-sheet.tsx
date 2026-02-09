@@ -48,14 +48,14 @@ export function CatalogServiceSheet({
         name: "",
         description: "",
         category: "",
-        type: "recurring",
+        type: "one_off",
         frequency: "monthly",
         base_price: 0,
         is_visible_in_portal: true,
         image_url: "",
         ai_generated_image: false,
         cta_type: "whatsapp",
-        price_label_type: "base_price",
+        price_label_type: "price",
         metadata: {}
     })
     const [isGenerating, setIsGenerating] = useState(false)
@@ -94,12 +94,12 @@ export function CatalogServiceSheet({
                 name: "",
                 description: "",
                 category: "",
-                type: "recurring",
+                type: "one_off",
                 frequency: "monthly",
                 base_price: 0,
                 is_visible_in_portal: true,
                 cta_type: "whatsapp",
-                price_label_type: "base_price",
+                price_label_type: "price",
                 metadata: {}
             })
         }
@@ -210,7 +210,8 @@ export function CatalogServiceSheet({
                 {/* Grid Container */}
                 <div className="grid grid-cols-12 h-full bg-white rounded-3xl overflow-hidden">
                     {/* LEFT PANEL: Configuration (60%) */}
-                    <div className="col-span-12 md:col-span-7 flex flex-col h-full bg-white border-r border-slate-100 overflow-y-auto relative">
+                    {/* LEFT PANEL: Configuration (60%) */}
+                    <div className="col-span-12 md:col-span-7 flex flex-col h-full bg-white border-r border-slate-100 relative overflow-hidden">
                         {/* Header */}
                         <div className="sticky top-0 z-20 bg-white border-b border-gray-100 px-8 py-5">
                             <div className="flex items-center gap-3">
@@ -228,8 +229,8 @@ export function CatalogServiceSheet({
                             </div>
                         </div>
 
-                        {/* Form Content */}
-                        <div className="p-8 pb-32 space-y-6">
+                        {/* Form Content - Scrollable Area */}
+                        <div className="flex-1 overflow-y-auto p-8 pb-32 space-y-6">
                             {/* Basics: Name & Category in Grid */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-2">
@@ -461,8 +462,8 @@ export function CatalogServiceSheet({
                                         <Sparkles className="h-3.5 w-3.5 text-brand-pink" />
                                     </div>
                                     <div>
-                                        <h4 className="text-xs font-black uppercase tracking-tight text-gray-900">{t('catalog.section_portal')}</h4>
-                                        <p className="text-[10px] text-gray-400">{t('catalog.form.portal_desc_title')}</p>
+                                        <h4 className="text-xs font-black uppercase tracking-tight text-gray-900">Detalles Extendidos</h4>
+                                        <p className="text-[10px] text-gray-400">Información que verán los clientes al girar la tarjeta.</p>
                                     </div>
                                 </div>
 
@@ -638,8 +639,9 @@ export function CatalogServiceSheet({
                             </div>
                         </div>
 
-                        {/* Footer */}
-                        <div className="absolute bottom-0 left-0 right-0 bg-white/80 backdrop-blur-md border-t border-gray-100 px-8 py-4 flex items-center justify-between z-30">
+
+                        {/* Footer - Fixed at bottom of flex column */}
+                        <div className="flex-none bg-white/80 backdrop-blur-md border-t border-gray-100 px-8 py-4 flex items-center justify-between z-30">
                             <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={loading} className="text-gray-400 font-bold uppercase text-[10px] tracking-widest">
                                 {t('catalog.buttons.cancel')}
                             </Button>
@@ -710,6 +712,6 @@ export function CatalogServiceSheet({
                     </div>
                 </div>
             </SheetContent>
-        </Sheet>
+        </Sheet >
     )
 }
