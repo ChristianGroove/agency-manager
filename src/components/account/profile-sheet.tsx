@@ -24,8 +24,9 @@ interface ProfileSheetProps {
     currentOrgId?: string | null
 }
 
-export function ProfileSheet({ open, onOpenChange, user }: ProfileSheetProps) {
+export function ProfileSheet({ open, onOpenChange, user, currentOrgId }: ProfileSheetProps) {
     const [profile, setProfile] = useState<any>(null)
+    const [orgRole, setOrgRole] = useState<string | null>(null)
     const [loading, setLoading] = useState(true)
     const [activeTab, setActiveTab] = useState("general")
     const { registerPasskey, loading: passkeyLoading } = usePasskeys()
@@ -45,6 +46,17 @@ export function ProfileSheet({ open, onOpenChange, user }: ProfileSheetProps) {
                     .eq("id", user.id)
                     .single()
                 setProfile(data)
+
+                if (currentOrgId) {
+                    const { data: memberData } = await supabase
+                        .from("organization_members")
+                        .select("role")
+                        .eq("user_id", user.id)
+                        .eq("organization_id", currentOrgId)
+                        .single()
+                    if (memberData) setOrgRole(memberData.role)
+                }
+
                 setLoading(false)
             }
 
@@ -119,7 +131,7 @@ export function ProfileSheet({ open, onOpenChange, user }: ProfileSheetProps) {
                                 <div className="grid grid-cols-2 gap-3 pt-2">
                                     <div className="flex flex-col px-3 py-2 bg-gray-50/50 rounded-lg border border-gray-100 text-center">
                                         <span className="text-[9px] uppercase font-bold text-gray-400 tracking-wider">Rol</span>
-                                        <span className="font-semibold text-gray-900 capitalize text-xs mt-0.5">{user?.app_metadata?.role || "Admin"}</span>
+                                        <span className="font-semibold text-gray-900 capitalize text-xs mt-0.5">{orgRole === 'owner' ? 'Dueño' : orgRole === 'admin' ? 'Admin' : (orgRole || "Miembro")}</span>
                                     </div>
                                     <div className="flex flex-col px-3 py-2 bg-gray-50/50 rounded-lg border border-gray-100 text-center">
                                         <span className="text-[9px] uppercase font-bold text-gray-400 tracking-wider">Miembro Desde</span>

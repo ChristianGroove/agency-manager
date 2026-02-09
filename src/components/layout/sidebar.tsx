@@ -173,22 +173,8 @@ export function SidebarContent({ isCollapsed = false, currentOrgId, isSuperAdmin
     const effectiveRole = userRole || (user as any)?.role
     const availableRoutes = filterRoutesByModules(modules, effectiveRole, organizationType, vertical, capabilities)
 
-    // INJECT RESELLER ROUTES
-    if (organizationType === 'reseller' || organizationType === 'platform') {
-        const resellerRoute = {
-            key: 'reseller_tenants',
-            label: t('sidebar.reseller_tenants'),
-            href: '/platform/organizations',
-            icon: Users,
-            category: 'core' as ModuleCategory,
-            isCore: true
-        }
-
-        // Prevent duplicate if already exists (shouldn't happen with filterRoutesByModules, but safe check)
-        if (!availableRoutes.find(r => r.key === 'reseller_tenants')) {
-            availableRoutes.splice(1, 0, resellerRoute) // Insert after Dashboard
-        }
-    }
+    // INJECT RESELLER ROUTES - REMOVED (Handled by module-config.ts)
+    // if (organizationType === 'reseller' || organizationType === 'platform') { ... }
 
     // Group routes by category
     const groupedRoutes = availableRoutes.reduce((acc, route) => {

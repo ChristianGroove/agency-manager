@@ -7,13 +7,16 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, UserPlus, Trash2, Mail, Shield, User, Settings } from "lucide-react"
+import { Loader2, UserPlus, Trash2, Mail, Shield, User, Settings, Eye, EyeOff, Lock, CheckCircle } from "lucide-react"
 import { toast } from "sonner"
 import { getOrganizationMembers, inviteMember, removeMember } from "./actions/team-actions"
 import { MemberEditSheet } from "./member-edit-sheet"
 import { RolePicker } from "@/modules/core/iam/components/role-picker"
+import { createUserManually } from "./actions/team-actions"
+import { ManualCreationForm } from "./manual-creation-form"
 
 export function TeamSettingsTab() {
     const [members, setMembers] = useState<any[]>([])
@@ -99,41 +102,60 @@ export function TeamSettingsTab() {
                         <DialogTrigger asChild>
                             <Button>
                                 <UserPlus className="h-4 w-4 mr-2" />
-                                Invitar Miembro
+                                Añadir Miembro
                             </Button>
                         </DialogTrigger>
-                        <DialogContent>
+                        <DialogContent className="sm:max-w-[500px]">
                             <DialogHeader>
-                                <DialogTitle>Invitar Nuevo Miembro</DialogTitle>
+                                <DialogTitle>Añadir Nuevo Miembro</DialogTitle>
                                 <DialogDescription>
-                                    El usuario recibirá acceso inmediato a la organización.
+                                    Elige cómo deseas agregar al usuario a tu organización.
                                 </DialogDescription>
                             </DialogHeader>
-                            <div className="space-y-4 py-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="email">Correo Electrónico</Label>
-                                    <Input
-                                        id="email"
-                                        placeholder="usuario@ejemplo.com"
-                                        value={inviteEmail}
-                                        onChange={(e) => setInviteEmail(e.target.value)}
+
+                            <Tabs defaultValue="invite" className="w-full">
+                                <TabsList className="grid w-full grid-cols-2">
+                                    <TabsTrigger value="invite">Invitar por Correo</TabsTrigger>
+                                    <TabsTrigger value="create">Crear Manualmente</TabsTrigger>
+                                </TabsList>
+
+                                {/* TAB: INVITE */}
+                                <TabsContent value="invite" className="space-y-4 py-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="email">Correo Electrónico</Label>
+                                        <Input
+                                            id="email"
+                                            placeholder="usuario@ejemplo.com"
+                                            value={inviteEmail}
+                                            onChange={(e) => setInviteEmail(e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="role">Rol</Label>
+                                        <RolePicker
+                                            value={inviteRole}
+                                            onValueChange={setInviteRole}
+                                        />
+                                    </div>
+                                    <div className="text-sm text-gray-500 bg-gray-50 p-3 rounded">
+                                        <p>El usuario recibirá un correo con un enlace de acceso único.</p>
+                                    </div>
+                                    <Button onClick={handleInvite} disabled={isInviting || !inviteEmail} className="w-full">
+                                        {isInviting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                        Enviar Invitación
+                                    </Button>
+                                </TabsContent>
+
+                                {/* TAB: CREATE MANUALLY */}
+                                <TabsContent value="create" className="space-y-4 py-4">
+                                    <ManualCreationForm
+                                        onSuccess={() => {
+                                            setIsInviteOpen(false);
+                                            loadMembers();
+                                        }}
                                     />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="role">Rol</Label>
-                                    <RolePicker
-                                        value={inviteRole}
-                                        onValueChange={setInviteRole}
-                                    />
-                                </div>
-                            </div>
-                            <DialogFooter>
-                                <Button variant="outline" onClick={() => setIsInviteOpen(false)}>Cancelar</Button>
-                                <Button onClick={handleInvite} disabled={isInviting || !inviteEmail}>
-                                    {isInviting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                    Invitar
-                                </Button>
-                            </DialogFooter>
+                                </TabsContent>
+                            </Tabs>
                         </DialogContent>
                     </Dialog>
                 </div>

@@ -51,6 +51,7 @@ export function RoleEditor({ role, onUpdate }: RoleEditorProps) {
             setIsDirty(false);
             toast.success('Role permissions updated');
         } catch (error) {
+            console.error('[RoleEditor] Msg:', error);
             toast.error('Failed to save changes');
         } finally {
             setIsSaving(false);

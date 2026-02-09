@@ -18,11 +18,12 @@ interface SidebarFloatingActionsProps {
 export function SidebarFloatingActions({ isSuperAdmin, user, currentOrgId, organizationType, initialOrgDetails }: SidebarFloatingActionsProps) {
     const [isProfileOpen, setIsProfileOpen] = useState(false)
 
-    // CRITICAL FIX: Always show Org Switcher button
-    // OrganizationSwitcher component handles its own visibility (hides if user has only 1 org)
-    // This prevents reseller/platform users from being "trapped" when managing client tenants
-    // Previous bug: organizationType !== 'client' would hide switcher when viewing client org
-    const showOrgSwitcher = true
+    // NUCLEAR FIX: Explicitly log and block
+    console.log('[SidebarFloatingActions] OrgType:', organizationType, 'SuperAdmin:', isSuperAdmin);
+
+    // Strict visibility: Only Platform/Reseller OR SuperAdmin can see this.
+    // Client members must NEVER see it unless they are SuperAdmin.
+    const showOrgSwitcher = (organizationType === 'platform' || organizationType === 'reseller') || isSuperAdmin;
 
     return (
         <div className="flex flex-col gap-3 items-end">

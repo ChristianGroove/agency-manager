@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase-server"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
 import { requireOrgRole } from "@/lib/auth/org-roles"
-import { revalidatePath } from "next/cache"
+import { revalidatePath, revalidateTag } from "next/cache"
 import { headers } from "next/headers"
 
 /**
@@ -211,21 +211,22 @@ export async function removeMember(userId: string) {
         return { success: false, error: "No tienes permisos para eliminar miembros" }
     }
 
-    // Prevent removing yourself (optional but good practice)
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    // Prevent removing yourself
+    const { data: { user } } = await (await createClient()).auth.getUser()
     if (user && user.id === userId) {
         return { success: false, error: "No puedes removerte a ti mismo." }
     }
 
     try {
-        const { error } = await supabase
+        // Use admin client to bypass RLS, we already checked permissions above
+        const { error } = await supabaseAdmin
             .from('organization_members')
             .delete()
             .match({ organization_id: orgId, user_id: userId })
 
         if (error) throw error
 
+        revalidateTag('permissions')
         revalidatePath('/settings')
         return { success: true }
     } catch (error: any) {
@@ -257,6 +258,7 @@ export async function updateMemberRole(userId: string, newRoleId: string) {
 
         if (error) throw error
 
+        revalidateTag('permissions')
         revalidatePath('/platform/settings')
         return { success: true }
     } catch (error: any) {
@@ -360,7 +362,13 @@ import { unstable_cache } from "next/cache"
 async function _getUserPermissionsInternal(userId: string, orgId: string) {
     const { data: member } = await supabaseAdmin
         .from('organization_members')
-        .select('role, permissions')
+        .select(`
+            role, 
+            permissions,
+            role_data:organization_roles (
+                name
+            )
+        `)
         .match({ organization_id: orgId, user_id: userId })
         .single()
 
@@ -368,8 +376,21 @@ async function _getUserPermissionsInternal(userId: string, orgId: string) {
 
     const { getEffectivePermissions } = await import('@/lib/permissions/defaults')
 
+    // Use the dynamic role name if available, otherwise fallback to legacy enum
+    // role_data is returned as an array by the query
+    const roleDataArray = member.role_data as unknown as { name: string }[] | { name: string } | null;
+    const dynamicName = Array.isArray(roleDataArray) ? roleDataArray[0]?.name : roleDataArray?.name;
+
+    // Normalize System Roles to canonical keys for frontend logic (sidebar, etc)
+    let finalRole = dynamicName || member.role;
+    if (finalRole === 'Dueño') finalRole = 'owner';
+    if (finalRole === 'Administrador') finalRole = 'admin';
+    if (finalRole === 'Miembro') finalRole = 'member';
+
+    const effectiveRoleName = finalRole?.toLowerCase();
+
     return {
-        role: member.role as string,
+        role: effectiveRoleName as string,
         permissions: getEffectivePermissions(member.role, member.permissions)
     }
 }
@@ -402,4 +423,121 @@ export async function getCurrentUserPermissions() {
 
     // Use cached version
     return getCachedUserPermissions(user.id, orgId)
+}
+
+/**
+ * Manually create a user with email and password
+ * Only for Admins/Owners
+ */
+export async function createUserManually(data: {
+    email: string,
+    password: string,
+    fullName: string,
+    role: string
+}) {
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) return { success: false, error: "No active organization" }
+
+    // Verify Admin/Owner permissions
+    try {
+        await requireOrgRole('admin')
+    } catch (e) {
+        return { success: false, error: "No tienes permisos para crear usuarios" }
+    }
+
+    try {
+        // 1. Create User via Admin API
+        let { data: userData, error: createError } = await supabaseAdmin.auth.admin.createUser({
+            email: data.email,
+            password: data.password,
+            email_confirm: true, // Auto-confirm since admin is creating it manually
+            user_metadata: {
+                full_name: data.fullName
+            }
+        })
+
+        if (createError) {
+            // Check if user already exists
+            if (createError.message?.includes("already been registered")) {
+                console.log('[createUserManually] User exists, updating password and metadata instead.')
+
+                // Fetch user ID by email via profiles (since they must have a profile if registered)
+                // Alternatively use listUsers filtering, but profiles is indexed by email usually or we can rely on listUsers
+                // Actually, let's use profiles table as it's cleaner if possible, but auth is source of truth.
+                // Supabase Admin doesn't have getUserByEmail exposed easily in all client versions. 
+                // Let's try profiles.
+
+                const { data: profile } = await supabaseAdmin
+                    .from('profiles')
+                    .select('id')
+                    .eq('email', data.email)
+                    .single()
+
+                if (!profile) {
+                    return { success: false, error: "El correo está registrado pero no pudimos recuperar el usuario. Contacta soporte." }
+                }
+
+                // Update the existing user's password and name
+                const { data: updatedUser, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+                    profile.id,
+                    {
+                        password: data.password,
+                        user_metadata: { full_name: data.fullName },
+                        email_confirm: true // Ensure they are confirmed
+                    }
+                )
+
+                if (updateError) {
+                    throw updateError
+                }
+
+                // Continue flow with this user
+                userData = { user: updatedUser.user }
+            } else {
+                throw createError
+            }
+        }
+
+        const user = userData.user
+        if (!user) throw new Error("Error creando usuario")
+
+        // 2. Ensure Profile
+        await supabaseAdmin
+            .from('profiles')
+            .upsert({
+                id: user.id,
+                email: data.email,
+                full_name: data.fullName,
+                platform_role: 'user',
+                updated_at: new Date().toISOString()
+            }, { onConflict: 'id', ignoreDuplicates: true })
+
+        // 3. Add to Organization Members
+        const { error: memberError } = await supabaseAdmin
+            .from('organization_members')
+            .insert({
+                organization_id: orgId,
+                user_id: user.id,
+                role: data.role === 'member' || data.role === 'admin' ? data.role : 'member', // Fallback for legacy enum
+                role_id: data.role.length > 20 ? data.role : null // If it's a UUID, it's a role_id
+            })
+
+        if (memberError) {
+            // Rollback user creation? No, maybe just error out. 
+            // Admin can retry invite or delete user.
+            console.error('[createUserManually] Membership Error:', memberError)
+            return {
+                success: false,
+                error: "Usuario creado en Auth pero falló asignación a la organización: " + memberError.message
+            }
+        }
+
+        revalidateTag('permissions')
+        revalidatePath('/platform/settings')
+        return { success: true, userId: user.id }
+
+    } catch (error: any) {
+        console.error("Create User Error:", error)
+        return { success: false, error: error.message }
+    }
 }

@@ -63,11 +63,7 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         href: '/dashboard',
         icon: LayoutDashboard,
         isCore: true,
-        category: 'core',
-        access: {
-            allowedRoles: ['owner', 'admin'],
-            excludedOrgTypes: ['client', 'reseller']
-        }
+        category: 'core'
     },
 
     // --- CRM ECOSYSTEM (Individual Routes) ---
@@ -308,7 +304,8 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         category: 'core', // Put in core to appear at top
         isCore: false, // Not core for everyone, logic will handle visibility
         access: {
-            excludedOrgTypes: ['client']
+            excludedOrgTypes: ['client'],
+            allowedRoles: ['owner', 'admin']
         }
     }
 ]
@@ -371,12 +368,13 @@ export function filterRoutesByModules(
         // 2. Vertical-based "Auto-Core" logic (Legacy support)
         if (vertical === 'agency' && route.category === 'operations' && route.key !== 'module_cleaning') return true
 
-        // 3. Capability-based "Auto-Core" logic (Agnostic future)
-        if (capabilities['CAN_MANAGE_CLIENTS'] && route.key === 'reseller_tenants') return true
 
         if (route.isCore) return true
 
         // 4. Module subscription
+        // NUCLEAR OPTION: Explicitly block reseller_tenants for clients, bypassing any other logic fallthrough
+        if (route.key === 'reseller_tenants' && orgType === 'client') return false
+
         return activeModules.includes(route.key)
     })
 }

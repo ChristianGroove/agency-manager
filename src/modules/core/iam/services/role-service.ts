@@ -74,13 +74,21 @@ export const hasPermission = cache(async (permission: PermissionString): Promise
 
     if (error || !data || !data.role) return false;
 
-    const rolePermissions = (data.role as any).permissions || {};
+    // Handle potential array response for 1:1 relation
+    const roleObj = Array.isArray(data.role) ? data.role[0] : data.role;
+    const rolePermissions = (roleObj as any)?.permissions || {};
 
     // 1. Check for Wildcard (Owner)
     if (rolePermissions['all'] === true) return true;
 
     // 2. Check specific permission
-    return rolePermissions[permission] === true;
+    const hasPerm = rolePermissions[permission] === true;
+
+    if (!hasPerm && permission.includes('manage_roles')) {
+        // Debug logging removed for production
+    }
+
+    return hasPerm;
 });
 
 /**
@@ -121,7 +129,10 @@ export async function upsertRole(role: Partial<Role>) {
             .select()
             .single();
 
-        if (error) throw error;
+        if (error) {
+            console.error('[RoleService] Update Error:', error);
+            throw error;
+        }
         return updatedRole;
     } else {
         // Create

@@ -392,8 +392,9 @@ export async function createOrganization(formData: {
             // Root Organization Creation
             // STRICT SECURITY: Public users can ONLY create 'client' orgs (Onboarding)
             // Any other type (reseller, platform) requires Super Admin
+            const isAdmin = await isSuperAdmin(user.id)
+
             if (formData.organization_type && formData.organization_type !== 'client') {
-                const isAdmin = await isSuperAdmin(user.id)
                 if (!isAdmin) {
                     return { success: false, error: "No tienes permiso para crear este tipo de organización." }
                 }
@@ -408,22 +409,18 @@ export async function createOrganization(formData: {
                 // Rule: If user is ONLY a client member, BLOCK creation.
                 // They must be Reseller or Platform to create new orgs from here.
 
-                const isAdmin = await isSuperAdmin(user.id)
                 if (!isAdmin) {
                     // Check if Reseller
                     const memberships = await getUserOrganizations()
                     const isReseller = memberships.some(m => m.organization?.organization_type === 'reseller' && ['owner', 'admin'].includes(m.role))
 
                     if (!isReseller) {
-                        // If checking for Onboarding logic:
-                        // Onboarding calls `createClientOrganization` which calls this.
-                        // But `createClientOrganization` sets type='client'.
-                        // We need to differentiate "Onboarding User" (no orgs yet) vs "Client User" (has orgs).
+                        // STRICT: If user is already a member of a client org, they CANNOT create another one.
+                        // This blocks the "Add Organization" flow for standard clients.
+                        const isClientMember = memberships.some(m => m.organization?.organization_type === 'client');
 
-                        // If user has NO organizations, allow (First time onboarding).
-                        // If user HAS organizations, and is not Reseller/Admin, BLOCK.
-                        if (memberships.length > 0) {
-                            return { success: false, error: "Tu plan actual no permite crear múltiples organizaciones. Contacta a soporte." }
+                        if (isClientMember) {
+                            return { success: false, error: "Tu plan actual no permite crear múltiples organizaciones. Contacta a soporte para un upgrade." }
                         }
                     }
                 }
