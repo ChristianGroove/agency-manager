@@ -226,7 +226,7 @@ export async function removeMember(userId: string) {
 
         if (error) throw error
 
-        revalidateTag('permissions')
+        // revalidateTag('permissions') - Removed due to build error in Next 16+
         revalidatePath('/settings')
         return { success: true }
     } catch (error: any) {
@@ -258,7 +258,7 @@ export async function updateMemberRole(userId: string, newRoleId: string) {
 
         if (error) throw error
 
-        revalidateTag('permissions')
+        // revalidateTag('permissions')
         revalidatePath('/platform/settings')
         return { success: true }
     } catch (error: any) {
@@ -402,7 +402,7 @@ export const getCachedUserPermissions = unstable_cache(
     async (userId: string, orgId: string) => _getUserPermissionsInternal(userId, orgId),
     ['user-permissions'],
     {
-        revalidate: 60,
+        revalidate: 1,
         tags: ['permissions']
     }
 )
@@ -532,7 +532,7 @@ export async function createUserManually(data: {
             }
         }
 
-        revalidateTag('permissions')
+        // revalidateTag('permissions')
         revalidatePath('/platform/settings')
         return { success: true, userId: user.id }
 
