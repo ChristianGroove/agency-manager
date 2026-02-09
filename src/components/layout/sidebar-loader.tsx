@@ -15,9 +15,10 @@ export async function SidebarLoader() {
     // getCurrentOrganizationId uses cache() so it's cheap if already called.
     const currentOrgId = await getCurrentOrganizationId()
 
-    const [sidebarContext, isAdmin] = await Promise.all([
+    const [sidebarContext, isAdmin, orgs] = await Promise.all([
         getSidebarContext(currentOrgId || undefined, user),
-        user ? isSuperAdmin(user.id) : false
+        user ? isSuperAdmin(user.id) : false,
+        import("@/modules/core/organizations/actions").then(mod => mod.getUserOrganizations())
     ])
 
     return (
@@ -26,6 +27,7 @@ export async function SidebarLoader() {
             user={user}
             isSuperAdmin={isAdmin}
             sidebarContext={sidebarContext}
+            orgCount={orgs.length}
         />
     )
 }

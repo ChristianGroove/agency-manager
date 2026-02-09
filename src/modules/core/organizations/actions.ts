@@ -456,15 +456,27 @@ export async function createOrganization(formData: {
             // - Platform creates Reseller → parent = platform
             // - Platform creates Client → parent = platform  
             // - Reseller creates Client → parent = reseller
-            // - Autoregistro (no creator context) → parent = NULL
+            // - Autoregistro (self-service) → parent = PLATFORM (Default to prevent orphans)
+
             if (creatorType === 'platform') {
                 // Platform is parent for everything it creates
                 computedParentId = creatorOrgId
             } else if (creatorType === 'reseller' && newOrgType === 'client') {
                 // Reseller is parent for clients it creates
                 computedParentId = creatorOrgId
+            } else if (!computedParentId && newOrgType === 'client') {
+                // SELF-SERVICE / ORPHAN PREVENTION
+                // If no parent determined (e.g. public registration), assign to Platform.
+                const { data: platformOrg } = await supabaseAdmin
+                    .from('organizations')
+                    .select('id')
+                    .eq('organization_type', 'platform')
+                    .single()
+
+                if (platformOrg) {
+                    computedParentId = platformOrg.id
+                }
             }
-            // Else: NULL (autoregistro or independent org)
         }
 
         // SMART SLUG: Auto-retry mechanism for unique constraint violations
@@ -535,12 +547,58 @@ export async function createOrganization(formData: {
         // We do this BEFORE assigning the owner role to the member if we were using role_id,
         // but currently organization_members uses 'role' string (legacy enum).
         // The RBAC system mirrors this. We just ensure roles exist for future usage.
+        // 2a. Seed Default Roles (Owner/Admin/Member)
+        // CRITICAL FIX: Use supabaseAdmin to bypass RLS. 
+        // The standard 'seedDefaultRoles' uses user client which fails here because RLS 
+        // might not recognize the new membership immediately or user lacks permissions strictly.
         try {
-            const { seedDefaultRoles } = await import('@/modules/core/iam/services/role-service')
-            await seedDefaultRoles(newOrg.id)
+            const roles = [
+                {
+                    organization_id: newOrg.id,
+                    name: 'Owner',
+                    description: 'Acceso total a la organización',
+                    is_system_role: true,
+                    hierarchy_level: 100,
+                    permissions: { all: true }
+                },
+                {
+                    organization_id: newOrg.id,
+                    name: 'Admin',
+                    description: 'Puede gestionar miembros y configuraciones',
+                    is_system_role: true,
+                    hierarchy_level: 50,
+                    permissions: {
+                        'org.manage_members': true,
+                        'org.manage_roles': true,
+                        'org.manage_settings': true,
+                        'org.view_audit': true,
+                        'crm.view': true,
+                        'crm.edit': true,
+                        'crm.delete': true,
+                        'content.publish': true
+                    }
+                },
+                {
+                    organization_id: newOrg.id,
+                    name: 'Member',
+                    description: 'Acceso estándar a las funciones asignadas',
+                    is_system_role: true,
+                    hierarchy_level: 10,
+                    permissions: {
+                        'crm.view': true,
+                        'crm.edit': true
+                    }
+                }
+            ];
+
+            const { error: rolesError } = await supabaseAdmin.from('organization_roles').insert(roles)
+
+            if (rolesError) {
+                console.error("Warning: Failed to seed default roles (Admin)", rolesError)
+            }
+
         } catch (e) {
-            console.error("Warning: Failed to seed default roles", e)
-            // Non-blocking for now, as strict RBAC might be optional or fallback to enum
+            console.error("Warning: Failed to seed default roles exception", e)
         }
 
         // 2b. [New] Automated Onboarding: Invite Admin

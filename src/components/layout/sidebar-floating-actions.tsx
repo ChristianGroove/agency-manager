@@ -13,17 +13,23 @@ interface SidebarFloatingActionsProps {
     currentOrgId: string | null
     organizationType?: 'platform' | 'reseller' | 'client'
     initialOrgDetails?: any
+    orgCount?: number
 }
 
-export function SidebarFloatingActions({ isSuperAdmin, user, currentOrgId, organizationType, initialOrgDetails }: SidebarFloatingActionsProps) {
+export function SidebarFloatingActions({ isSuperAdmin, user, currentOrgId, organizationType, initialOrgDetails, orgCount }: SidebarFloatingActionsProps) {
     const [isProfileOpen, setIsProfileOpen] = useState(false)
 
-    // NUCLEAR FIX: Explicitly log and block
-    console.log('[SidebarFloatingActions] OrgType:', organizationType, 'SuperAdmin:', isSuperAdmin);
+    // Visibility Logic:
+    // 1. Super Admins -> Always Show
+    // 2. Platform/Reseller Context -> Always Show (they manage others)
+    // 3. Client Context -> Only show if they have multiple orgs (context switching)
+    // 4. Fallback -> Use orgCount > 1 if available
 
-    // Strict visibility: Only Platform/Reseller OR SuperAdmin can see this.
-    // Client members must NEVER see it unless they are SuperAdmin.
-    const showOrgSwitcher = (organizationType === 'platform' || organizationType === 'reseller') || isSuperAdmin;
+    // Explicitly define visibility
+    const isPrivilegedContext = organizationType === 'platform' || organizationType === 'reseller';
+    const hasMultipleOrgs = orgCount && orgCount > 1;
+
+    const showOrgSwitcher = isSuperAdmin || isPrivilegedContext || hasMultipleOrgs;
 
     return (
         <div className="flex flex-col gap-3 items-end">

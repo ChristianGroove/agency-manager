@@ -25,6 +25,7 @@ interface SidebarProps {
     isSuperAdmin?: boolean;
     user?: any
     sidebarContext?: any
+    orgCount?: number
 }
 
 function SidebarItem({ icon: Icon, label, href, active, collapsed, isSuperAdminRoute = false }: { icon: any, label: string, href: string, active: boolean, collapsed: boolean, isSuperAdminRoute?: boolean }) {
@@ -291,7 +292,7 @@ import { useTheme } from "next-themes"
 
 import { useSidebar } from "./sidebar-provider"
 
-export function Sidebar({ currentOrgId, isSuperAdmin = false, user, sidebarContext }: Omit<SidebarProps, 'isCollapsed' | 'toggleCollapse'>) {
+export function Sidebar({ currentOrgId, isSuperAdmin = false, user, sidebarContext, orgCount }: Omit<SidebarProps, 'isCollapsed' | 'toggleCollapse'>) {
     const { isCollapsed, toggleCollapse } = useSidebar()
     const { resolvedTheme } = useTheme()
     // Fetch org type for floating actions visibility
@@ -369,6 +370,7 @@ export function Sidebar({ currentOrgId, isSuperAdmin = false, user, sidebarConte
                         currentOrgId={currentOrgId}
                         organizationType={organizationType}
                         initialOrgDetails={sidebarContext?.orgDetails}
+                        orgCount={sidebarContext?.orgCount || orgCount}
                     />
                 </div>
 

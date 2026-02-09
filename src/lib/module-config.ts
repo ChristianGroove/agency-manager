@@ -302,7 +302,7 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         href: '/platform/organizations',
         icon: Users, // Using Users icon
         category: 'core', // Put in core to appear at top
-        isCore: false, // Not core for everyone, logic will handle visibility
+        isCore: true, // Fix: Always core, but protected by access rules (excluded for clients)
         access: {
             excludedOrgTypes: ['client'],
             allowedRoles: ['owner', 'admin']
