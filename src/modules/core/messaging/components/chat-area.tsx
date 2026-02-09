@@ -392,6 +392,17 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
             {/* Messages Area */}
             {/* Messages Area */}
             <div className="flex-1 min-h-0 bg-background/50 relative">
+                {/* Wallpaper Pattern */}
+                <div
+                    className="absolute inset-0 z-0 pointer-events-none opacity-[0.03] dark:invert dark:opacity-[0.05]"
+                    style={{
+                        backgroundImage: "url('/inbox-pattern.svg')",
+                        backgroundSize: "auto 100%",
+                        backgroundRepeat: "no-repeat",
+                        backgroundPosition: "center"
+                    }}
+                />
+
                 {messages.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-full text-muted-foreground opacity-50">
                         <p className="text-sm">No messages yet</p>
