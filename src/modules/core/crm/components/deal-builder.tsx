@@ -16,9 +16,10 @@ interface DealBuilderProps {
     onCartChange?: () => void
     variant?: 'default' | 'sidebar'
     onSendQuote?: () => void // Optional callback if parent wants to handle something
+    className?: string
 }
 
-export function DealBuilder({ leadId, conversationId, onCartChange, variant = 'default' }: DealBuilderProps) {
+export function DealBuilder({ leadId, conversationId, onCartChange, variant = 'default', className }: DealBuilderProps) {
     const [cart, setCart] = useState<DealCart | null>(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
@@ -96,7 +97,7 @@ export function DealBuilder({ leadId, conversationId, onCartChange, variant = 'd
     const hasItems = items.length > 0
 
     return (
-        <div className="space-y-3">
+        <div className={cn("space-y-3", className)}>
             {/* Header / Cart Summary */}
             <div className="flex items-center justify-between px-1">
                 <div className="flex items-center gap-2">
