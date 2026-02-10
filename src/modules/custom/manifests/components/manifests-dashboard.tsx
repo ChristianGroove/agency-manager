@@ -139,18 +139,24 @@ export function ManifestsDashboard({ initialDocs }: { initialDocs: any[] }) {
                                         )}
                                     </TableCell>
                                     <TableCell className="text-right space-x-2">
-                                        <Button variant="ghost" size="sm" onClick={() => openManifest(doc)}>
-                                            <Eye className="h-4 w-4 mr-1" />
-                                            Ver
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => openManifest(doc)}
+                                            title="Ver"
+                                        >
+                                            <Eye className="h-4 w-4" />
+                                            <span className="sr-only">Ver</span>
                                         </Button>
                                         <Button
                                             variant="ghost"
-                                            size="sm"
+                                            size="icon"
                                             className="text-red-500 hover:text-red-600 hover:bg-red-50"
                                             onClick={() => handleDelete(doc)}
+                                            title="Eliminar"
                                         >
-                                            <Trash2 className="h-4 w-4 mr-1" />
-                                            Eliminar
+                                            <Trash2 className="h-4 w-4" />
+                                            <span className="sr-only">Eliminar</span>
                                         </Button>
                                     </TableCell>
                                 </TableRow>

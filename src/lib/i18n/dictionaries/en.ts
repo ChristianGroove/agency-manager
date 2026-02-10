@@ -57,6 +57,7 @@ export const en = {
         module_contract_generator: "Contract Generator",
         core_settings: "Settings",
         core_adn: "Business DNA",
+        module_manifests: "Manifests",
         reseller_tenants: "Organizations",
         tool_email_engine: "Email Engine",
         // Categories

@@ -200,7 +200,7 @@ export const MODULE_ROUTES: ModuleRoute[] = [
     // CUSTOM: MANIFIESTOS IMEI (Activated via Manual Override)
     {
         key: 'module_manifests',
-        label: 'Manifiestos IMEI',
+        label: 'Manifiestos',
         href: '/manifests',
         icon: FileText,
         category: 'tools', // Changed to 'tools' (Herramientas)

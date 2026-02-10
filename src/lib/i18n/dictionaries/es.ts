@@ -56,6 +56,7 @@ export const es = {
         core_apps: "App Store",
         core_settings: "Configuración",
         core_adn: "ADN de Negocio",
+        module_manifests: "Manifiestos",
         module_contract_generator: "Generador de Contratos",
         reseller_tenants: "Organizaciones",
         tool_email_engine: "Motor de Correos",
