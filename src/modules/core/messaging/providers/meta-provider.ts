@@ -509,6 +509,14 @@ export class MetaProvider implements MessagingProvider {
      * Helper to parse message content type
      */
     private async parseMessageContent(msg: any, phoneNumberId?: string): Promise<IncomingMessage['content']> {
+        if (msg.type === 'text') {
+            return {
+                type: 'text',
+                text: msg.text?.body || '',
+                raw: msg.text
+            };
+        }
+
         if (msg.type === 'image') {
             const mediaId = msg.image.id;
             const caption = msg.image.caption;
