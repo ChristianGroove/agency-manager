@@ -197,6 +197,17 @@ export const MODULE_ROUTES: ModuleRoute[] = [
             excludedSpaces: ['agency']
         }
     },
+    // CUSTOM: MANIFIESTOS IMEI (Activated via Manual Override)
+    {
+        key: 'module_manifests',
+        label: 'Manifiestos IMEI',
+        href: '/manifests',
+        icon: FileText,
+        category: 'tools', // Changed to 'tools' (Herramientas)
+        access: {
+            // No strict restrictions, rely on manual activation
+        }
+    },
     // HIDDEN FOR REGULAR USERS
     {
         key: 'core_knowledge',
