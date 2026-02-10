@@ -7,8 +7,8 @@ import { QuoteDesignerSheet } from "../../crm/components/quote-designer-sheet"
 import {
     User, Phone, Mail, MapPin, ExternalLink,
     CalendarClock, Archive, CheckCircle2,
-    MoreHorizontal, Tag, DollarSign, AlertCircle, Briefcase,
-    ChevronRight, ChevronDown, Palette
+    MoreHorizontal, Tag, DollarSign, Palette,
+    LayoutDashboard, MessageSquare, ShoppingBag
 } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -17,25 +17,26 @@ import { Badge } from "@/components/ui/badge"
 import { Database } from "@/types/supabase"
 import Link from "next/link"
 import { QuickAssignPanel } from "./quick-assign-panel"
-import { SmartRepliesPanel } from "./smart-replies-panel"
 import { DealBuilder } from "../../crm/components/deal-builder"
 import { getAgentsWorkload } from "../assignment-actions"
 import { archiveConversation, snoozeConversation, completeConversation } from "../conversation-actions"
 import { toast } from "sonner"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import {
     Tooltip,
     TooltipContent,
     TooltipProvider,
     TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { RepliesTab } from "./replies-tab"
+import { SavedRepliesSheet } from "./saved-replies-sheet"
 
 interface ContextDeckProps {
     conversationId: string
 }
 
 type Lead = Database['public']['Tables']['leads']['Row']
+type TabType = 'management' | 'replies' | 'sales'
 
 export function ContextDeck({ conversationId }: ContextDeckProps) {
     const [lead, setLead] = useState<Lead | null>(null)
@@ -43,8 +44,12 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
     const [agents, setAgents] = useState<any[]>([])
     const [lastMessage, setLastMessage] = useState<string | undefined>(undefined)
     const [loading, setLoading] = useState(true)
-    const [isDealExpanded, setIsDealExpanded] = useState(false)
+
+    // Tabs State
+    const [activeTab, setActiveTab] = useState<TabType>('management')
+
     const [isQuoteDesignerOpen, setIsQuoteDesignerOpen] = useState(false)
+    const [isRepliesSheetOpen, setIsRepliesSheetOpen] = useState(false)
 
     const fetchContext = useCallback(async () => {
         setLoading(true)
@@ -146,35 +151,38 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
         )
     }
 
+    // Lead Initials
+    const leadInitials = (lead.title || 'UN').slice(0, 2).toUpperCase()
+
     return (
-        <div className="flex flex-col h-full bg-background/50 dark:bg-zinc-950/50 backdrop-blur-xl border-l border-border/50">
-            {/* 1. Compact Header (Always Visible) */}
-            <div className="p-4 border-b border-border/40 bg-background/50 backdrop-blur-md sticky top-0 z-20">
-                <div className="flex items-center gap-3">
+        <div className="flex flex-col h-full bg-background/60 dark:bg-zinc-950/60 backdrop-blur-xl border-l border-white/10 dark:border-white/5 shadow-2xl z-20">
+            {/* 1. Header & Actions (Always Visible) */}
+            <div className="p-4 border-b border-border/40 bg-background/40 backdrop-blur-md sticky top-0 z-30">
+                <div className="flex items-center gap-3 mb-4">
                     <div className="relative">
-                        <Avatar className="h-12 w-12 shadow-sm ring-2 ring-background dark:ring-zinc-900">
+                        <Avatar className="h-12 w-12 shadow-lg ring-2 ring-white/20 dark:ring-white/10">
                             <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${lead.title || 'Unknown'}`} />
-                            <AvatarFallback className="bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-bold">
-                                {(lead.title || 'UN').slice(0, 2).toUpperCase()}
+                            <AvatarFallback className="bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900 dark:to-purple-900 text-indigo-700 dark:text-indigo-300 font-bold">
+                                {leadInitials}
                             </AvatarFallback>
                         </Avatar>
-                        <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-green-500 border-2 border-background" />
+                        <span className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full bg-green-500 border-2 border-background shadow-sm" />
                     </div>
                     <div className="flex-1 min-w-0">
-                        <h2 className="text-base font-bold truncate leading-tight">{lead.title || 'Contacto Desconocido'}</h2>
-                        <div className="flex items-center gap-2 mt-1">
-                            <Badge variant="secondary" className="text-[10px] h-4 px-1.5 font-normal bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-0">
+                        <h2 className="text-base font-bold truncate leading-tight tracking-tight">{lead.title || 'Contacto Desconocido'}</h2>
+                        <div className="flex items-center gap-2 mt-1.5">
+                            <Badge variant="secondary" className="text-[10px] h-4 px-1.5 font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-0 shadow-sm">
                                 {lead.company || "Particular"}
                             </Badge>
-                            <Badge variant="outline" className="text-[10px] h-4 px-1.5 font-normal border-zinc-200 dark:border-zinc-800 text-zinc-500">
+                            <Badge variant="outline" className="text-[10px] h-4 px-1.5 font-medium border-zinc-200 dark:border-zinc-800 text-zinc-500">
                                 {lead.status === 'new' ? 'Nuevo' : lead.status}
                             </Badge>
                         </div>
                     </div>
                 </div>
 
-                {/* 2. Sleek Action Bar */}
-                <div className="mt-4 grid grid-cols-4 gap-2">
+                {/* Sleek Action Bar */}
+                <div className="grid grid-cols-4 gap-2">
                     <ActionBtn
                         icon={CheckCircle2}
                         label="Resolver"
@@ -189,7 +197,6 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
                         icon={CalendarClock}
                         label="Posponer"
                         onClick={() => {
-                            // Show snooze options or just snooze for 24h as default for now
                             const tomorrow = new Date()
                             tomorrow.setDate(tomorrow.getDate() + 1)
                             snoozeConversation(conversationId, tomorrow).then(res => {
@@ -211,7 +218,7 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
                     <TooltipProvider>
                         <Tooltip>
                             <TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-9 w-full rounded-lg border border-transparent hover:border-border hover:bg-muted/50">
+                                <Button variant="ghost" size="icon" className="h-9 w-full rounded-lg border border-transparent hover:border-border hover:bg-muted/50 transition-all">
                                     <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
                                 </Button>
                             </TooltipTrigger>
@@ -221,23 +228,41 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
                 </div>
             </div>
 
-            {/* Tabs Interface */}
-            <div className="flex-1 overflow-hidden flex flex-col">
-                <div className="px-4 pt-2">
-                    <div className="flex bg-muted/40 p-1 rounded-lg">
-                        <TabButton active={!isDealExpanded} onClick={() => setIsDealExpanded(false)} label="Gestión" />
-                        <TabButton active={isDealExpanded} onClick={() => setIsDealExpanded(true)} label="Ventas" />
-                    </div>
+            {/* 2. Top Tabs Navigation */}
+            <div className="px-2 pt-2 border-b border-border/20">
+                <div className="flex items-center gap-1 p-1">
+                    <TabNavItem
+                        active={activeTab === 'management'}
+                        onClick={() => setActiveTab('management')}
+                        label="Gestión"
+                        icon={LayoutDashboard}
+                    />
+                    <TabNavItem
+                        active={activeTab === 'replies'}
+                        onClick={() => setActiveTab('replies')}
+                        label="Respuestas"
+                        icon={MessageSquare}
+                    />
+                    <TabNavItem
+                        active={activeTab === 'sales'}
+                        onClick={() => setActiveTab('sales')}
+                        label="Cotizador"
+                        icon={ShoppingBag}
+                    />
                 </div>
+            </div>
 
-                <ScrollArea className="flex-1">
-                    <div className="p-4 space-y-6">
-                        {!isDealExpanded ? (
-                            // TAB 1: GESTIÓN (CRM Info)
-                            <div className="space-y-6 animate-in fade-in duration-300">
-                                {/* Assignment Panel */}
-                                <div>
-                                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-1">Asignación</h4>
+            {/* 3. Tab Content Area */}
+            <div className="flex-1 overflow-hidden flex flex-col bg-background/30 relative">
+
+                {/* TAB 1: GESTIÓN */}
+                {activeTab === 'management' && (
+                    <ScrollArea className="h-full">
+                        <div className="p-4 space-y-6 animate-in fade-in duration-300 slide-in-from-left-2">
+                            {/* Assignment Panel */}
+                            <div className="space-y-2">
+                                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">Asignación</h4>
+                                <div className="bg-white/50 dark:bg-zinc-900/50 rounded-xl border border-white/20 dark:border-white/5 p-1 shadow-sm">
                                     <QuickAssignPanel
                                         conversationId={conversationId}
                                         currentAssignee={conversation?.assigned_to}
@@ -249,49 +274,70 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
                                         }}
                                     />
                                 </div>
+                            </div>
 
-                                <Separator />
+                            <Separator className="opacity-50" />
 
-                                {/* Contact Info */}
-                                <div className="space-y-3">
-                                    <div className="flex items-center justify-between px-1">
-                                        <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Detalles de Contacto</h4>
-                                        <Button variant="ghost" size="icon" className="h-5 w-5 rounded-full hover:bg-muted" asChild>
-                                            <Link href={`/crm?lead=${lead.id}`}><ExternalLink className="h-3 w-3 text-muted-foreground" /></Link>
-                                        </Button>
-                                    </div>
-
-                                    <div className="space-y-1">
-                                        <ContactItem icon={Phone} label="Móvil" value={lead.phone} />
-                                        <ContactItem icon={Mail} label="Email" value={lead.email} />
-                                        <ContactItem icon={MapPin} label="Ubicación" value="Ubicación Desconocida" />
-                                    </div>
+                            {/* Contact Info */}
+                            <div className="space-y-3">
+                                <div className="flex items-center justify-between px-1">
+                                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Detalles de Contacto</h4>
+                                    <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full hover:bg-muted" asChild>
+                                        <Link href={`/crm?lead=${lead.id}`}><ExternalLink className="h-3.5 w-3.5 text-muted-foreground" /></Link>
+                                    </Button>
                                 </div>
 
-                                <Separator />
-
-                                {/* Tags */}
-                                <div>
-                                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1 mb-2">Etiquetas</h4>
-                                    <div className="flex flex-wrap gap-1.5">
-                                        {(lead.tags as string[] || ['lead']).map(tag => (
-                                            <Badge key={tag} variant="secondary" className="bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 border border-transparent hover:border-border transition-colors px-2 py-0.5 text-[11px] font-normal">
-                                                <Tag className="h-3 w-3 mr-1 opacity-50" />
-                                                {tag}
-                                            </Badge>
-                                        ))}
-                                        <Button variant="outline" size="sm" className="h-5 rounded-full px-2 text-[10px] border-dashed text-muted-foreground hover:text-foreground">
-                                            + Agregar
-                                        </Button>
-                                    </div>
+                                <div className="space-y-1.5">
+                                    <ContactItem icon={Phone} label="Móvil" value={lead.phone} />
+                                    <ContactItem icon={Mail} label="Email" value={lead.email} />
+                                    <ContactItem icon={MapPin} label="Ubicación" value="Ubicación Desconocida" />
                                 </div>
                             </div>
-                        ) : (
-                            // TAB 2: VENTAS (Deal Builder)
-                            <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
+
+                            <Separator className="opacity-50" />
+
+                            {/* Tags */}
+                            <div className="space-y-2">
+                                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">Etiquetas</h4>
+                                <div className="flex flex-wrap gap-1.5 p-2 bg-white/50 dark:bg-zinc-900/50 rounded-xl border border-white/20 dark:border-white/5">
+                                    {(lead.tags as string[] || ['lead']).map(tag => (
+                                        <Badge key={tag} variant="secondary" className="bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 border border-transparent hover:border-border transition-colors px-2 py-0.5 text-[11px] font-normal shadow-sm">
+                                            <Tag className="h-3 w-3 mr-1 opacity-50" />
+                                            {tag}
+                                        </Badge>
+                                    ))}
+                                    <Button variant="outline" size="sm" className="h-5 rounded-full px-2 text-[10px] border-dashed text-muted-foreground hover:text-foreground">
+                                        + Agregar
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    </ScrollArea>
+                )}
+
+                {/* TAB 2: RESPUESTAS */}
+                {activeTab === 'replies' && (
+                    <div className="h-full flex flex-col animate-in fade-in duration-300 slide-in-from-right-2">
+                        <RepliesTab
+                            conversationId={conversationId}
+                            lastIncomingMessage={lastMessage}
+                            onManageReplies={() => setIsRepliesSheetOpen(true)}
+                        />
+                    </div>
+                )}
+
+                {/* TAB 3: COTIZADOR */}
+                {/* TAB 3: COTIZADOR */}
+                {activeTab === 'sales' && (
+                    <div className="flex flex-col h-full animate-in fade-in duration-300 slide-in-from-right-2">
+                        <ScrollArea className="flex-1">
+                            <div className="p-4 space-y-4">
                                 {/* Deal Value Hero */}
-                                <div className="p-4 rounded-xl bg-gradient-to-br from-indigo-50 to-indigo-100/50 dark:from-indigo-900/20 dark:to-indigo-900/10 border border-indigo-100 dark:border-indigo-900/30">
-                                    <div className="flex items-center gap-3">
+                                <div className="p-4 rounded-xl bg-gradient-to-br from-indigo-50 to-indigo-100/50 dark:from-indigo-900/20 dark:to-indigo-900/10 border border-indigo-100 dark:border-indigo-900/30 shadow-sm relative overflow-hidden group">
+                                    <div className="absolute top-0 right-0 p-2 opacity-50 group-hover:opacity-100 transition-opacity">
+                                        <DollarSign className="h-10 w-10 text-indigo-200 dark:text-indigo-900 -rotate-12" />
+                                    </div>
+                                    <div className="relative z-10 flex items-center gap-3">
                                         <div className="p-2 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
                                             <DollarSign className="h-5 w-5" />
                                         </div>
@@ -302,7 +348,7 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="mt-3 flex items-center gap-2">
+                                    <div className="mt-3 flex items-center gap-2 relative z-10">
                                         <Badge variant="outline" className={cn(
                                             "uppercase text-[10px] font-bold tracking-wide border-0 px-2 py-0.5",
                                             lead.priority === 'urgent' ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" :
@@ -316,68 +362,65 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
 
                                 <Separator />
 
-                                {/* Deal Builder */}
+                                {/* Deal Builder within ScrollArea */}
                                 <DealBuilder
                                     leadId={lead.id}
                                     conversationId={conversationId}
+                                    variant="sidebar"
                                     onCartChange={() => {
                                         fetchContext()
                                     }}
+                                    className="pb-2"
                                 />
                             </div>
-                        )}
-                    </div>
-                </ScrollArea>
-            </div>
+                        </ScrollArea>
 
-            {/* AI Smart Replies OR Quote Designer - Bottom Docked */}
-            <div className="border-t border-border/40 bg-background/50 backdrop-blur-sm p-1 transition-all">
-                {isDealExpanded ? (
-                    <div className="w-full px-2 py-1">
-                        <Button
-                            variant="outline"
-                            className="w-full gap-2 border-dashed border-pink-300 dark:border-pink-800 text-pink-600 dark:text-pink-400 hover:bg-pink-50 dark:hover:bg-pink-900/20 bg-white/50 dark:bg-zinc-900/50 h-9"
-                            onClick={() => setIsQuoteDesignerOpen(true)}
-                        >
-                            <Palette className="h-4 w-4" />
-                            <span className="text-sm font-medium">Quote Designer</span>
-                        </Button>
+                        {/* Fixed Bottom Footer for Quote Designer */}
+                        <div className="border-t border-border/40 bg-background/50 backdrop-blur-sm p-2 transition-all">
+                            <Button
+                                variant="outline"
+                                className="w-full gap-2 border-dashed border-pink-300 dark:border-pink-800 text-pink-600 dark:text-pink-400 hover:bg-pink-50 dark:hover:bg-pink-900/20 bg-white/50 dark:bg-zinc-900/50 h-9"
+                                onClick={() => setIsQuoteDesignerOpen(true)}
+                            >
+                                <Palette className="h-4 w-4" />
+                                <span className="text-sm font-medium">Quote Designer</span>
+                            </Button>
+                        </div>
                     </div>
-                ) : (
-                    <SmartRepliesPanel
-                        conversationId={conversationId}
-                        lastIncomingMessage={lastMessage}
-                        onSelectReply={(text) => {
-                            toast.success("Texto aplicado")
-                        }}
-                    />
                 )}
             </div>
 
+            {/* Hidden Sheets */}
             <QuoteDesignerSheet
                 open={isQuoteDesignerOpen}
                 onOpenChange={setIsQuoteDesignerOpen}
                 organizationId={conversation?.organization_id}
             />
+            <SavedRepliesSheet
+                open={isRepliesSheetOpen}
+                onOpenChange={setIsRepliesSheetOpen}
+            />
         </div>
     )
 }
 
-function TabButton({ active, onClick, label }: { active: boolean, onClick: () => void, label: string }) {
+function TabNavItem({ active, onClick, label, icon: Icon }: { active: boolean, onClick: () => void, label: string, icon: any }) {
     return (
         <button
             onClick={onClick}
             className={cn(
-                "flex-1 text-xs font-medium py-1.5 rounded-md transition-all",
+                "flex-1 flex items-center justify-center gap-2 py-2 rounded-t-lg transition-all border-b-2",
                 active
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                    ? "border-indigo-500 text-indigo-600 dark:text-indigo-400 font-medium bg-indigo-50/50 dark:bg-indigo-900/10"
+                    : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50"
             )}
         >
-            {label}
+            <Icon className="h-4 w-4" />
+            <span className="text-xs">{label}</span>
         </button>
     )
 }
+
 
 function ActionBtn({ icon: Icon, label, color, onClick }: { icon: any, label: string, color: string, onClick: () => void }) {
     return (
@@ -401,15 +444,16 @@ function ActionBtn({ icon: Icon, label, color, onClick }: { icon: any, label: st
 function ContactItem({ icon: Icon, label, value }: { icon: any, label: string, value?: string }) {
     if (!value) return null
     return (
-        <div className="group flex items-center gap-3 p-2 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800/50 transition-colors cursor-pointer" onClick={() => {
+        <div className="group flex items-center gap-3 p-2 rounded-lg bg-white/50 dark:bg-zinc-900/50 border border-transparent hover:border-indigo-200 dark:hover:border-indigo-800 transition-all cursor-pointer shadow-sm" onClick={() => {
             navigator.clipboard.writeText(value)
-            // toast.success("Copied") - Ideally add toast here
+            toast.success("Copiado al portapapeles")
         }}>
-            <Icon className="h-4 w-4 text-muted-foreground opacity-70 group-hover:opacity-100 group-hover:text-foreground transition-all" />
+            <Icon className="h-4 w-4 text-muted-foreground group-hover:text-indigo-500 transition-colors" />
             <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium truncate text-foreground/90 group-hover:text-foreground">{value}</p>
+                <p className="text-xs font-medium truncate text-foreground/90">{value}</p>
+                <p className="text-[10px] text-muted-foreground">{label}</p>
             </div>
-            <span className="opacity-0 group-hover:opacity-100 text-[10px] text-muted-foreground transition-opacity bg-background/80 px-1.5 py-0.5 rounded shadow-sm">
+            <span className="opacity-0 group-hover:opacity-100 text-[10px] text-indigo-600 font-medium transition-opacity">
                 Copiar
             </span>
         </div>

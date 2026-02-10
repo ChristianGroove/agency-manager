@@ -82,6 +82,7 @@ export async function sendMessage(conversationId: string, payload: string, id?: 
             .from('integration_connections')
             .select('*')
             .eq('id', (conversation as any).connection_id)
+            .eq('status', 'active') // ENFORCE ACTIVE STATUS
             .single();
 
         connection = boundConn;
@@ -163,18 +164,9 @@ export async function sendMessage(conversationId: string, payload: string, id?: 
             }
         }
     } else {
-        // Fallback: If no DB connection, try Env Vars for Whatsapp only (Legacy/Dev)
-        if (channel === 'whatsapp') {
-            console.log('[sendMessage] No DB connection found. Falling back to ENV variables.');
-            const { MetaProvider } = await import("./providers/meta-provider");
-            provider = new MetaProvider(
-                process.env.META_API_TOKEN!,
-                process.env.META_PHONE_NUMBER_ID!,
-                process.env.META_VERIFY_TOKEN!
-            )
-        } else {
-            throw new Error(`No active connection found for ${channel}. Please configure it in Settings > Integrations.`);
-        }
+        // STRICT MODE: No Fallback to Env Vars in Production
+        // If no DB connection, simply fail.
+        throw new Error(`No active connection found for ${channel}. Please configure it in Settings > Integrations.`);
     }
 
     // 4. Parse Payload
@@ -394,6 +386,7 @@ export async function sendOutboundMessage(conversationId: string, content: any, 
             .from('integration_connections')
             .select('*')
             .eq('id', targetConnectionId)
+            .eq('status', 'active') // ENFORCE ACTIVE STATUS
             .single()
         connection = boundConn
     }
@@ -451,13 +444,8 @@ export async function sendOutboundMessage(conversationId: string, content: any, 
             }
         }
     } else {
-        // Fallback Env
-        if (channel === 'whatsapp') {
-            const { MetaProvider } = await import("./providers/meta-provider")
-            provider = new MetaProvider(process.env.META_API_TOKEN!, process.env.META_PHONE_NUMBER_ID!, process.env.META_VERIFY_TOKEN!)
-        } else {
-            return { success: false, error: "No connection configuration found" }
-        }
+        // STRICT MODE: No Fallback to Env Vars
+        return { success: false, error: "No connection configuration found. Please enable the integration." }
     }
 
     // 3. Normalize Content & Send

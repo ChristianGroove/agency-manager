@@ -18,6 +18,7 @@ import { ConversationListItem } from "./conversation-list-item"
 import { useMessageNotifications } from "@/modules/core/preferences/use-message-notifications"
 import { useInboxPreferences } from "@/modules/core/preferences/use-inbox-preferences"
 import { useInboxShortcuts } from "@/modules/core/preferences/use-inbox-shortcuts"
+import { useCurrentOrganization } from "@/modules/core/organizations/hooks/use-current-organization"
 
 type FilterTab = 'all' | 'unread' | 'assigned' | 'archived' | 'snoozed'
 
@@ -49,6 +50,7 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
     const [isSettingsOpen, setIsSettingsOpen] = useState(false)
     const searchInputRef = useRef<HTMLInputElement>(null)
     const { preferences, updatePreferences } = useInboxPreferences()
+    const { organizationId, loading: orgLoading } = useCurrentOrganization()
 
     // Enable Global Notifications (Sound/Push)
     useMessageNotifications();
@@ -69,8 +71,8 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
 
     // Initial Fetch
     useEffect(() => {
-        fetchConversations(true)
-    }, [activeFilter])
+        if (!orgLoading) fetchConversations(true)
+    }, [activeFilter, organizationId, orgLoading])
 
     const fetchConversations = async (showLoading = false) => {
         if (showLoading) setLoading(true)
@@ -102,6 +104,11 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
                 // Exclude archived AND snoozed by default from main list
                 query = query.neq('state', 'archived').neq('status', 'snoozed')
                 break
+        }
+
+        // Critical: Filter by Organization
+        if (organizationId) {
+            query = query.eq('organization_id', organizationId)
         }
 
         const { data, error } = await query

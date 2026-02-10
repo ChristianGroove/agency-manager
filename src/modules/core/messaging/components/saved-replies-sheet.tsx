@@ -1,21 +1,23 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { MessageTemplate, getTemplates, createTemplate, updateTemplate, deleteTemplate } from "../template-actions"
+// ... imports
+import { useEffect, useState, useRef } from "react"
+import { MessageTemplate, getTemplates, createTemplate, updateTemplate, deleteTemplate, TemplateComponent } from "../template-actions"
+import { extractMetadata, COLORS, ICONS } from "../template-utils"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { Search, Plus, Star, Trash2, Edit2, Save, X, Smile, Reply, ArrowLeft, Zap, MessageSquare, FileText } from "lucide-react"
+import { Search, Plus, Star, Trash2, Edit2, Save, X, Smile, Reply, ArrowLeft, Zap, MessageSquare, FileText, Check } from "lucide-react"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
-// import dynamic from "next/dynamic" // Emoji picker removed for now as icon is not in schema
 import { Label } from "@/components/ui/label"
 import { refineDraftContent } from "../ai/actions"
+import dynamic from "next/dynamic"
 
-// const EmojiPicker = dynamic(() => import('emoji-picker-react'), { ssr: false })
+const EmojiPicker = dynamic(() => import('emoji-picker-react'), { ssr: false })
 
 interface SavedRepliesSheetProps {
     open: boolean
@@ -30,6 +32,24 @@ export function SavedRepliesSheet({ open, onOpenChange, onSelect }: SavedReplies
     const [isCreating, setIsCreating] = useState(false)
     const [isLoading, setIsLoading] = useState(false)
     const [isRefining, setIsRefining] = useState(false)
+    const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+    const emojiPickerRef = useRef<HTMLDivElement>(null)
+
+    // Click outside to close emoji picker
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target as Node)) {
+                setShowEmojiPicker(false)
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside)
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside)
+        }
+    }, [])
+
+    // UI Metadata State
+    const [uiMeta, setUiMeta] = useState({ color: 'gray', icon: 'MessageSquare' })
 
     useEffect(() => {
         if (open) {
@@ -37,12 +57,33 @@ export function SavedRepliesSheet({ open, onOpenChange, onSelect }: SavedReplies
         }
     }, [open])
 
+    // Load metadata when editing starts
+    useEffect(() => {
+        if (editingReply && editingReply.components) {
+            const meta = extractMetadata(editingReply.components)
+            setUiMeta({
+                color: meta.color || 'gray',
+                icon: meta.icon || 'MessageSquare'
+            })
+        } else {
+            // Reset to defaults for new items
+            setUiMeta({ color: 'gray', icon: 'MessageSquare' })
+        }
+    }, [editingReply])
+
     const refreshReplies = () => {
         setIsLoading(true)
         getTemplates().then(data => {
             setReplies(data)
             setIsLoading(false)
         })
+    }
+
+    const handleEmojiClick = (emojiData: any) => {
+        setEditingReply(prev => ({
+            ...prev,
+            content: (prev?.content || "") + emojiData.emoji
+        }))
     }
 
     const handleRefine = async () => {
@@ -73,19 +114,28 @@ export function SavedRepliesSheet({ open, onOpenChange, onSelect }: SavedReplies
             return
         }
 
+        const components: TemplateComponent[] = [
+            { type: 'BODY', format: 'TEXT', text: editingReply.content || '' },
+            {
+                type: 'UI_METADATA',
+                format: 'JSON',
+                text: JSON.stringify(uiMeta)
+            }
+        ]
+
         try {
             if (editingReply.id) {
                 await updateTemplate(editingReply.id, {
                     name: editingReply.name,
                     category: editingReply.category || 'MARKETING',
-                    components: [{ type: 'BODY', format: 'TEXT', text: editingReply.content || '' }]
+                    components
                 })
             } else {
                 await createTemplate({
                     name: editingReply.name!,
                     category: editingReply.category || 'MARKETING',
                     language: 'es',
-                    components: [{ type: 'BODY', format: 'TEXT', text: editingReply.content! }]
+                    components
                 })
             }
 
@@ -129,11 +179,6 @@ export function SavedRepliesSheet({ open, onOpenChange, onSelect }: SavedReplies
                     bg-transparent
                 "
             >
-                <SheetHeader className="hidden">
-                    <SheetTitle>Message Templates</SheetTitle>
-                    <SheetDescription>Manage saved replies</SheetDescription>
-                </SheetHeader>
-
                 <div className="flex flex-col h-full bg-white/95 backdrop-blur-xl">
 
                     {/* Header */}
@@ -159,7 +204,7 @@ export function SavedRepliesSheet({ open, onOpenChange, onSelect }: SavedReplies
                                     {isEditorOpen ? (editingReply?.id ? 'Edit Template' : 'New Template') : 'Message Templates'}
                                 </h2>
                                 <p className="text-xs text-muted-foreground mt-1">
-                                    {isEditorOpen ? 'Configure content and category.' : 'Manage your quick replies.'}
+                                    {isEditorOpen ? 'Configure content and appearance.' : 'Manage your quick replies.'}
                                 </p>
                             </div>
                         </div>
@@ -170,7 +215,7 @@ export function SavedRepliesSheet({ open, onOpenChange, onSelect }: SavedReplies
                         {isEditorOpen ? (
                             // EDITOR VIEW
                             <ScrollArea className="h-full p-6">
-                                <div className="space-y-6 max-w-lg mx-auto">
+                                <div className="space-y-6 max-w-lg mx-auto pb-20">
                                     {/* Name Input */}
                                     <div className="space-y-2">
                                         <Label>Name (Title)</Label>
@@ -182,22 +227,88 @@ export function SavedRepliesSheet({ open, onOpenChange, onSelect }: SavedReplies
                                         />
                                     </div>
 
+                                    {/* Appearance Section */}
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label>Color</Label>
+                                            <div className="flex flex-wrap gap-2">
+                                                {COLORS.map(c => (
+                                                    <button
+                                                        key={c.id}
+                                                        onClick={() => setUiMeta(prev => ({ ...prev, color: c.id }))}
+                                                        className={cn(
+                                                            "w-8 h-8 rounded-full border-2 transition-all flex items-center justify-center",
+                                                            c.bg,
+                                                            uiMeta.color === c.id ? "border-indigo-600 scale-110 shadow-sm" : "border-transparent hover:scale-105"
+                                                        )}
+                                                        title={c.label}
+                                                    >
+                                                        {uiMeta.color === c.id && <Check className="h-4 w-4 text-indigo-700" />}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>Icon</Label>
+                                            <div className="flex flex-wrap gap-2">
+                                                {ICONS.map(i => {
+                                                    const IconC = i.icon
+                                                    return (
+                                                        <button
+                                                            key={i.id}
+                                                            onClick={() => setUiMeta(prev => ({ ...prev, icon: i.id }))}
+                                                            className={cn(
+                                                                "w-9 h-9 rounded-lg border transition-all flex items-center justify-center",
+                                                                uiMeta.icon === i.id ? "bg-indigo-50 border-indigo-200 text-indigo-600" : "bg-white border-gray-100 text-gray-400 hover:bg-gray-50"
+                                                            )}
+                                                            title={i.label}
+                                                        >
+                                                            <IconC className="h-5 w-5" />
+                                                        </button>
+                                                    )
+                                                })}
+                                            </div>
+                                        </div>
+                                    </div>
+
                                     {/* Content */}
                                     <div className="space-y-2">
                                         <Label>Message Content</Label>
-                                        <div className="relative">
+                                        <div className="relative border rounded-xl bg-gray-50/50 focus-within:bg-white focus-within:ring-2 focus-within:ring-indigo-100 transition-all">
                                             <Textarea
                                                 placeholder="Type your message here..."
-                                                className="min-h-[200px] resize-none text-base leading-relaxed p-4 bg-gray-50/30 focus:bg-white transition-colors"
+                                                className="min-h-[150px] resize-none text-base leading-relaxed p-4 bg-transparent border-none focus-visible:ring-0"
                                                 value={editingReply?.content || ""}
                                                 onChange={e => setEditingReply(prev => ({ ...prev, content: e.target.value }))}
                                                 disabled={isRefining}
                                             />
-                                            <div className="absolute bottom-2 right-2 flex gap-1">
+                                            <div className="flex items-center justify-between px-3 py-2 border-t border-gray-100">
+                                                <div className="relative" ref={emojiPickerRef}>
+                                                    <Button
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        className="h-8 w-8 rounded-full text-muted-foreground hover:text-amber-500 hover:bg-amber-50"
+                                                        onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                                                    >
+                                                        <Smile className="h-5 w-5" />
+                                                    </Button>
+                                                    {showEmojiPicker && (
+                                                        <div className="absolute bottom-10 left-0 z-50 shadow-xl rounded-xl border border-gray-100">
+                                                            <EmojiPicker
+                                                                onEmojiClick={handleEmojiClick}
+                                                                lazyLoadEmojis={true}
+                                                                searchDisabled={false}
+                                                                width={300}
+                                                                height={350}
+                                                            />
+                                                        </div>
+                                                    )}
+                                                </div>
+
                                                 <Button
                                                     size="sm"
                                                     variant="ghost"
-                                                    className="h-6 px-2 text-[10px] text-muted-foreground hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                                                    className="h-7 text-xs text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
                                                     onClick={handleRefine}
                                                     disabled={isRefining}
                                                 >
@@ -209,7 +320,7 @@ export function SavedRepliesSheet({ open, onOpenChange, onSelect }: SavedReplies
 
                                     {/* Delete Zone */}
                                     {editingReply?.id && (
-                                        <div className="pt-8 border-t flex justify-center">
+                                        <div className="pt-6 border-t flex justify-center">
                                             <Button
                                                 variant="ghost"
                                                 className="text-red-500 hover:text-red-600 hover:bg-red-50"
@@ -254,44 +365,48 @@ export function SavedRepliesSheet({ open, onOpenChange, onSelect }: SavedReplies
                                             </div>
                                         </button>
 
-                                        {filteredReplies.map(reply => (
-                                            <div
-                                                key={reply.id}
-                                                onClick={() => isEditorOpen ? null : onSelect?.(reply.content)}
-                                                className="group relative flex flex-col gap-3 p-4 rounded-xl border bg-white border-gray-100 hover:border-indigo-200 hover:shadow-lg hover:shadow-indigo-500/5 transition-all cursor-pointer"
-                                            >
-                                                <div className="flex items-start justify-between">
-                                                    <div className="flex items-center gap-3">
-                                                        <span className="text-2xl bg-gray-50 p-2 rounded-lg h-10 w-10 flex items-center justify-center border border-gray-100">
-                                                            📄
-                                                        </span>
-                                                        <div>
-                                                            <div className="flex items-center gap-2">
-                                                                <h4 className="font-semibold text-sm text-gray-900">{reply.name}</h4>
+                                        {filteredReplies.map(reply => {
+                                            const meta = extractMetadata(reply.components || [])
+                                            const colorDef = COLORS.find(c => c.id === (meta.color || 'gray')) || COLORS[0]
+                                            const IconDef = ICONS.find(i => i.id === (meta.icon || 'MessageSquare')) || ICONS[0]
+                                            const IconC = IconDef.icon
+
+                                            return (
+                                                <div
+                                                    key={reply.id}
+                                                    onClick={() => isEditorOpen ? null : onSelect?.(reply.content)}
+                                                    className={cn(
+                                                        "group relative flex flex-col gap-3 p-4 rounded-xl border bg-white hover:shadow-lg transition-all cursor-pointer",
+                                                        colorDef.class.replace('border-l-4', 'border-l-[6px]'), // Emphasize the color strip
+                                                        "border-gray-100 hover:border-indigo-200"
+                                                    )}
+                                                >
+                                                    <div className="flex items-start justify-between">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className={cn("p-2 rounded-lg h-9 w-9 flex items-center justify-center", colorDef.bg)}>
+                                                                <IconC className={cn("h-5 w-5", colorDef.text)} />
                                                             </div>
-                                                            <div className="flex gap-2 mt-0.5">
-                                                                <span className="text-[10px] font-medium text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded-md">
-                                                                    {reply.category || 'MARKETING'}
-                                                                </span>
+                                                            <div>
+                                                                <div className="flex items-center gap-2">
+                                                                    <h4 className="font-semibold text-sm text-gray-900">{reply.name}</h4>
+                                                                </div>
+                                                                <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
+                                                                    {reply.content}
+                                                                </p>
                                                             </div>
                                                         </div>
+                                                        <Button
+                                                            size="icon"
+                                                            variant="ghost"
+                                                            className="h-8 w-8 text-gray-400 hover:text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                            onClick={(e) => { e.stopPropagation(); setEditingReply(reply); }}
+                                                        >
+                                                            <Edit2 className="h-4 w-4" />
+                                                        </Button>
                                                     </div>
-                                                    <Button
-                                                        size="icon"
-                                                        variant="ghost"
-                                                        className="h-8 w-8 text-gray-400 hover:text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                        onClick={(e) => { e.stopPropagation(); setEditingReply(reply); }}
-                                                    >
-                                                        <Edit2 className="h-4 w-4" />
-                                                    </Button>
                                                 </div>
-                                                <div className="bg-gray-50/50 p-2.5 rounded-lg border border-gray-100/50">
-                                                    <p className="text-xs text-gray-600 line-clamp-2 leading-relaxed">
-                                                        {reply.content}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        ))}
+                                            )
+                                        })}
                                     </div>
                                 </ScrollArea>
                             </div>

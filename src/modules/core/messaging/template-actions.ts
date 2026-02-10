@@ -16,8 +16,8 @@ export interface TemplateButton {
 }
 
 export interface TemplateComponent {
-    type: 'HEADER' | 'BODY' | 'FOOTER' | 'BUTTONS'
-    format?: 'TEXT' | 'IMAGE' | 'VIDEO' | 'DOCUMENT'
+    type: 'HEADER' | 'BODY' | 'FOOTER' | 'BUTTONS' | 'UI_METADATA'
+    format?: 'TEXT' | 'IMAGE' | 'VIDEO' | 'DOCUMENT' | 'JSON'
     text?: string
     buttons?: TemplateButton[]
     example?: {
@@ -127,3 +127,5 @@ function extractBodyText(components: TemplateComponent[]): string {
     const body = components.find(c => c.type === 'BODY')
     return body?.text || "Sin contenido de texto"
 }
+
+

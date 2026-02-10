@@ -18,7 +18,7 @@ import { ConversationActionsMenu } from "./conversation-actions-menu"
 import dynamic from 'next/dynamic'
 import { toast } from "sonner"
 import { SavedRepliesSheet } from "./saved-replies-sheet"
-import { QuickReplySelector } from "./quick-reply-selector"
+
 
 const EmojiPicker = dynamic(() => import('emoji-picker-react'), { ssr: false })
 
@@ -504,11 +504,7 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
                 )}
 
                 <div className="flex gap-2">
-                    {/* NEW Quick Reply Selector */}
-                    <QuickReplySelector
-                        onSelect={handleTemplateSelect}
-                        onManage={() => setIsRepliesSheetOpen(true)}
-                    />
+
 
                     <Button
                         variant="ghost"

@@ -14,9 +14,11 @@ interface DealBuilderProps {
     leadId: string
     conversationId: string
     onCartChange?: () => void
+    variant?: 'default' | 'sidebar'
+    onSendQuote?: () => void // Optional callback if parent wants to handle something
 }
 
-export function DealBuilder({ leadId, conversationId, onCartChange }: DealBuilderProps) {
+export function DealBuilder({ leadId, conversationId, onCartChange, variant = 'default' }: DealBuilderProps) {
     const [cart, setCart] = useState<DealCart | null>(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
@@ -102,16 +104,19 @@ export function DealBuilder({ leadId, conversationId, onCartChange }: DealBuilde
                     <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Productos</span>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 text-muted-foreground hover:text-indigo-600 disabled:opacity-30 disabled:hover:text-muted-foreground"
-                        onClick={handleSendInteractive}
-                        disabled={!hasItems}
-                        title={hasItems ? "Enviar Cotización Interactiva" : "Agrega productos para enviar"}
-                    >
-                        <ArrowUpRight className="h-4 w-4" />
-                    </Button>
+                    {/* Only show header button if NOT in sidebar mode */}
+                    {variant !== 'sidebar' && (
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 text-muted-foreground hover:text-indigo-600 disabled:opacity-30 disabled:hover:text-muted-foreground"
+                            onClick={handleSendInteractive}
+                            disabled={!hasItems}
+                            title={hasItems ? "Enviar Cotización Interactiva" : "Agrega productos para enviar"}
+                        >
+                            <ArrowUpRight className="h-4 w-4" />
+                        </Button>
+                    )}
                     <Badge variant="outline" className="font-mono tabular-nums">
                         {items.length} items
                     </Badge>
@@ -176,6 +181,19 @@ export function DealBuilder({ leadId, conversationId, onCartChange }: DealBuilde
             <ProductSelector
                 onSelect={(product) => handleAddItem(product)}
             />
+
+            {/* Sidebar Variant: Prominent Send Button at Bottom */}
+            {variant === 'sidebar' && (
+                <Button
+                    className="w-full mt-4 bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20 transition-all h-10"
+                    onClick={handleSendInteractive}
+                    disabled={!hasItems}
+                >
+                    <ArrowUpRight className="h-4 w-4 mr-2" />
+                    Enviar Cotización
+                </Button>
+            )}
         </div>
     )
 }
+
