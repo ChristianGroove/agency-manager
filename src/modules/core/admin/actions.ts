@@ -326,7 +326,65 @@ export async function saveMetaConfig(clientId: string, formData: FormData) {
     const { error } = existing ? await supabaseAdmin.from("integration_configs").update(configData).eq("id", existing.id) : await supabaseAdmin.from("integration_configs").insert(configData)
     if (error) return { success: false, error: "Error saving config" }
     revalidatePath(`/clients/${clientId}`)
+    revalidatePath(`/clients/${clientId}`)
+    revalidatePath(`/clients/${clientId}`)
     return { success: true }
+}
+
+export async function disconnectMetaConfig(clientId: string) {
+    if (!clientId) return { success: false, error: "Client ID required" }
+
+    // We remove the config entirely or just clear the sensitive token/ids?
+    // Let's delete the row for clean start.
+    const { error } = await supabaseAdmin
+        .from("integration_configs")
+        .delete()
+        .eq("client_id", clientId)
+        .eq("platform", "meta")
+
+    if (error) {
+        console.error("Error disconnecting Meta:", error)
+        return { success: false, error: "Error al desconectar. Intente nuevamente." }
+    }
+
+    revalidatePath(`/clients/${clientId}`)
+    return { success: true }
+}
+
+export async function getMetaAssets(clientId: string) {
+    if (!clientId) return { success: false, error: "Client ID required" }
+
+    try {
+        const { data: config } = await supabaseAdmin
+            .from("integration_configs")
+            .select("access_token")
+            .eq("client_id", clientId)
+            .eq("platform", "meta")
+            .single()
+
+        if (!config?.access_token) {
+            return { success: false, error: "No access token found" }
+        }
+
+        const { MetaGraphAPI } = await import('@/lib/meta/graph-api')
+        const metaApi = new MetaGraphAPI()
+
+        const [adAccounts, pages] = await Promise.all([
+            metaApi.getAdAccounts(config.access_token),
+            metaApi.getConnectedAssets(config.access_token)
+        ])
+
+        return {
+            success: true,
+            data: {
+                adAccounts,
+                pages
+            }
+        }
+    } catch (error: any) {
+        console.error("Error fetching Meta assets:", error)
+        return { success: false, error: error.message }
+    }
 }
 
 

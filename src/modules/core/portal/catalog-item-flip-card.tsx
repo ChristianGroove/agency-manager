@@ -38,6 +38,10 @@ export function CatalogItemFlipCard({
     const highlights = portalMeta.highlights || []
     const customFields = portalMeta.custom_fields || {}
 
+    // Fix: Validates if property exists on root (DB column) or metadata (JSONB)
+    const priceLabelType = item.price_label_type || item.metadata?.price_label_type || 'base_price'
+    const ctaType = item.cta_type || item.metadata?.cta_type || 'whatsapp'
+
     const formatPrice = (price?: number) => {
         if (!price) return t('portal.components.flip_card.consult')
         return new Intl.NumberFormat('es-CO', {
@@ -129,9 +133,9 @@ export function CatalogItemFlipCard({
 
                             <div className="flex flex-col items-end">
                                 <span className="text-[8px] text-gray-400 uppercase font-bold tracking-tighter mb-0.5 opacity-70">
-                                    {item.price_label_type === 'from'
+                                    {priceLabelType === 'from'
                                         ? t('portal.components.flip_card.from')
-                                        : item.price_label_type === 'price'
+                                        : priceLabelType === 'price'
                                             ? t('portal.components.flip_card.price')
                                             : t('portal.components.flip_card.base_price')}
                                 </span>
@@ -243,11 +247,11 @@ export function CatalogItemFlipCard({
                                 )}
                                 style={!isRequested ? { backgroundColor: 'var(--brand-pink, #F205E2)' } : {}}
                             >
-                                {item.cta_type === 'buy' && t('portal.components.flip_card.cta_buy')}
-                                {item.cta_type === 'info' && t('portal.components.flip_card.cta_info')}
-                                {item.cta_type === 'quote' && t('portal.components.flip_card.cta_quote')}
-                                {item.cta_type === 'appointment' && t('portal.components.flip_card.cta_appointment')}
-                                {item.cta_type === 'portfolio' && t('portal.components.flip_card.cta_details')}                                {(!item.cta_type || item.cta_type === 'whatsapp') && (
+                                {ctaType === 'buy' && t('portal.components.flip_card.cta_buy')}
+                                {ctaType === 'info' && t('portal.components.flip_card.cta_info')}
+                                {ctaType === 'quote' && t('portal.components.flip_card.cta_quote')}
+                                {ctaType === 'appointment' && t('portal.components.flip_card.cta_appointment')}
+                                {ctaType === 'portfolio' && t('portal.components.flip_card.cta_details')}                                {(!ctaType || ctaType === 'whatsapp') && (
                                     <>
                                         <MessageCircle className="h-4 w-4 mr-2" />
                                         {isRequested ? t('portal.components.flip_card.request_again') : t('portal.components.flip_card.request_whatsapp')}

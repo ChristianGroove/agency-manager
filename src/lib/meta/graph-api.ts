@@ -24,18 +24,16 @@ export class MetaGraphAPI {
     private appSecret: string;
     private redirectUri: string;
 
-    constructor() {
+    constructor(baseUrl?: string) {
         this.appId = process.env.NEXT_PUBLIC_META_APP_ID || process.env.META_APP_ID || '25468410932828305';
         this.appSecret = process.env.META_APP_SECRET || '';
-        // Dynamic redirect URI based on environment
-        this.redirectUri = process.env.NEXT_PUBLIC_APP_URL
-            ? `${process.env.NEXT_PUBLIC_APP_URL}/api/integrations/meta/callback`
-            : 'http://localhost:3000/api/integrations/meta/callback';
+
+        // Priority: Passed baseUrl > Env Var > Localhost
+        const appUrl = baseUrl || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+        this.redirectUri = `${appUrl}/api/integrations/meta/callback`;
 
         if (!this.appId || !this.appSecret) {
             console.error('[MetaGraphAPI] ⚠️ Missing Environment Variables: META_APP_ID or META_APP_SECRET');
-            console.log('[MetaGraphAPI] App ID in use:', this.appId);
-            console.log('[MetaGraphAPI] Secret present:', !!this.appSecret);
         }
     }
 
@@ -50,8 +48,6 @@ export class MetaGraphAPI {
         url.searchParams.append('code', code);
 
         console.log(`[MetaGraphAPI] Exchanging code for token... Version: ${META_API_VERSION}`);
-        console.log(`[MetaGraphAPI] Redirect URI: ${this.redirectUri}`);
-        console.log(`[MetaGraphAPI] App ID: ${this.appId}`);
 
         const res = await fetch(url.toString());
         const data = await res.json();
@@ -290,5 +286,26 @@ export class MetaGraphAPI {
 
         const res = await fetch(url.toString());
         return await res.json();
+    }
+
+    /**
+     * Get Ad Accounts
+     */
+    async getAdAccounts(accessToken: string): Promise<any[]> {
+        const url = new URL(`${META_GRAPH_URL}/${META_API_VERSION}/me/adaccounts`);
+        url.searchParams.append('access_token', accessToken);
+        url.searchParams.append('fields', 'id,name,account_id,currency');
+        url.searchParams.append('limit', '100');
+
+        const res = await fetch(url.toString());
+        const data = await res.json();
+
+        if (data.error) {
+            console.error('[MetaGraphAPI] Ad Accounts Fetch Failed:', data.error);
+            // Don't throw, just return empty to avoid breaking the whole flow
+            return [];
+        }
+
+        return data.data || [];
     }
 }

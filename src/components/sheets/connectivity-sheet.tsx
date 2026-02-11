@@ -13,7 +13,7 @@ import { Loader2, Zap, CheckCircle2, LayoutGrid, BarChart3, Globe, Smartphone, A
 import { cn } from "@/lib/utils"
 import { MobilePreview } from "@/components/marketing/mobile-preview"
 import { InsightsTab } from "@/modules/core/portal/insights/insights-tab"
-import { getMetaConfig, saveMetaConfig, syncClientSocialMetrics, syncClientAdsMetrics } from "@/modules/core/admin/actions"
+import { getMetaConfig, saveMetaConfig, syncClientSocialMetrics, syncClientAdsMetrics, getMetaAssets } from "@/modules/core/admin/actions"
 import { supabase } from "@/lib/supabase"
 
 interface ConnectivitySheetProps {
@@ -36,6 +36,7 @@ export function ConnectivitySheet({ client, services, trigger, open: controlledO
     const [activeTab, setActiveTab] = useState("meta")
     const [loadingConfig, setLoadingConfig] = useState(false)
     const [metaConfig, setMetaConfig] = useState<any>(null)
+    const [availableAssets, setAvailableAssets] = useState<{ adAccounts: any[], pages: any[] }>({ adAccounts: [], pages: [] })
     const [refreshKey, setRefreshKey] = useState(0) // Forces InsightsTab reload
 
     // Portal Settings
@@ -53,11 +54,44 @@ export function ConnectivitySheet({ client, services, trigger, open: controlledO
         }
     }, [open, activeTab])
 
+    // OAuth Listener
+    useEffect(() => {
+        const handleMessage = (event: MessageEvent) => {
+            if (event.data?.type === 'META_CONNECT_SUCCESS' && event.data?.clientId === client.id) {
+                toast.success("Conexión con Meta exitosa")
+                loadMetaConfig()
+            }
+        }
+        window.addEventListener('message', handleMessage)
+        return () => window.removeEventListener('message', handleMessage)
+    }, [client.id])
+
     const loadMetaConfig = async () => {
         setLoadingConfig(true)
         const { config } = await getMetaConfig(client.id)
-        if (config) setMetaConfig(config)
+        if (config) {
+            setMetaConfig(config)
+
+            // If we have a token, fetch assets
+            if (config.access_token) {
+                const assets = await getMetaAssets(client.id)
+                if (assets.success && assets.data) {
+                    setAvailableAssets(assets.data)
+                }
+            }
+        }
         setLoadingConfig(false)
+    }
+
+    const handleConnectMeta = () => {
+        const appId = process.env.NEXT_PUBLIC_META_APP_ID || '25468410932828305'; // Fallback to avoid crash, but should be env
+        const redirectUri = `${window.location.origin}/api/integrations/meta/callback`;
+        const scope = 'ads_read,pages_show_list,pages_read_engagement';
+        const state = `contact_connect:${client.id}`;
+
+        const url = `https://www.facebook.com/v24.0/dialog/oauth?client_id=${appId}&redirect_uri=${redirectUri}&state=${state}&scope=${scope}&response_type=code`;
+
+        window.open(url, 'Connect Meta', 'width=600,height=700');
     }
 
     const handleSaveMetaConnection = async (formData: FormData) => {
@@ -171,38 +205,136 @@ export function ConnectivitySheet({ client, services, trigger, open: controlledO
                                                     {loadingConfig ? (
                                                         <div className="flex justify-center py-8"><Loader2 className="animate-spin text-gray-300 w-6 h-6" /></div>
                                                     ) : (
-                                                        <form action={handleSaveMetaConnection} className="space-y-4">
-                                                            <div className="grid gap-4">
-                                                                <div className="space-y-1.5">
-                                                                    <Label className="text-xs font-medium text-gray-500">System User Token (EAA...)</Label>
-                                                                    <div className="relative">
-                                                                        <Input
-                                                                            name="access_token"
-                                                                            type="password"
-                                                                            defaultValue={metaConfig?.access_token}
-                                                                            className="pl-3 pr-8 font-mono text-xs bg-gray-50 border-gray-200 focus:bg-white transition-colors"
-                                                                            placeholder="Pegar token aquí..."
-                                                                        />
-                                                                        {metaConfig?.access_token && <div className="absolute right-3 top-2.5 w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />}
+                                                        <div className="space-y-4">
+                                                            {!isMetaConnected ? (
+                                                                <div className="text-center py-6 space-y-4">
+                                                                    <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mx-auto text-blue-600">
+                                                                        <Globe className="w-6 h-6" />
+                                                                    </div>
+                                                                    <div>
+                                                                        <h4 className="text-sm font-semibold text-gray-900">Conectar con Meta</h4>
+                                                                        <p className="text-xs text-gray-500 mt-1 max-w-[250px] mx-auto">
+                                                                            Inicia sesión para seleccionar tus cuentas publicitarias y páginas de Facebook.
+                                                                        </p>
+                                                                    </div>
+                                                                    <Button
+                                                                        onClick={handleConnectMeta}
+                                                                        className="bg-[#1877F2] hover:bg-[#166fe5] text-white shadow-md shadow-blue-200/50"
+                                                                    >
+                                                                        Continuar con Facebook
+                                                                    </Button>
+                                                                    <div className="pt-2">
+                                                                        <p className="text-[10px] text-gray-400">
+                                                                            Se abrirá una ventana emergente segura.
+                                                                        </p>
                                                                     </div>
                                                                 </div>
-                                                                <div className="grid grid-cols-2 gap-4">
-                                                                    <div className="space-y-1.5">
-                                                                        <Label className="text-xs font-medium text-gray-500">Ad Account ID</Label>
-                                                                        <Input name="ad_account_id" defaultValue={metaConfig?.ad_account_id} className="font-mono text-xs bg-gray-50 border-gray-200" placeholder="act_..." />
+                                                            ) : (
+                                                                <form action={handleSaveMetaConnection} className="space-y-4">
+                                                                    {/* Hidden Token Field (Preserve existing or set new) */}
+                                                                    <input type="hidden" name="access_token" value={metaConfig?.access_token || ''} />
+
+                                                                    <div className="bg-emerald-50/50 border border-emerald-100 rounded-lg p-3 flex items-center gap-3">
+                                                                        <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
+                                                                            <CheckCircle2 className="w-4 h-4" />
+                                                                        </div>
+                                                                        <div className="flex-1">
+                                                                            <p className="text-xs font-medium text-emerald-900">Cuenta de Meta Conectada</p>
+                                                                            <p className="text-[10px] text-emerald-600 truncate max-w-[200px]">Token activo y válido</p>
+                                                                        </div>
+                                                                        <Button
+                                                                            type="button"
+                                                                            variant="ghost"
+                                                                            size="sm"
+                                                                            className="h-7 text-[10px] text-red-500 hover:text-red-700 hover:bg-red-50"
+                                                                            onClick={async () => {
+                                                                                if (confirm("¿Estás seguro de que deseas desconectar esta cuenta? Se perderá el acceso a métricas y selección de activos.")) {
+                                                                                    try {
+                                                                                        // Dynamic import to avoid circular dep issues if any, though likely fine here
+                                                                                        const { disconnectMetaConfig } = await import("@/modules/core/admin/actions")
+                                                                                        setLoadingConfig(true)
+                                                                                        const result = await disconnectMetaConfig(client.id)
+                                                                                        if (result.success) {
+                                                                                            toast.success("Cuenta desconectada correctamente")
+                                                                                            setMetaConfig(null)
+                                                                                            setAvailableAssets({ adAccounts: [], pages: [] })
+                                                                                        } else {
+                                                                                            toast.error(result.error || "Error al desconectar")
+                                                                                        }
+                                                                                        setLoadingConfig(false)
+                                                                                    } catch (e) {
+                                                                                        console.error(e)
+                                                                                        setLoadingConfig(false)
+                                                                                        toast.error("Error inesperado al desconectar")
+                                                                                    }
+                                                                                }
+                                                                            }}
+                                                                        >
+                                                                            Desvincular
+                                                                        </Button>
                                                                     </div>
-                                                                    <div className="space-y-1.5">
-                                                                        <Label className="text-xs font-medium text-gray-500">Page ID</Label>
-                                                                        <Input name="page_id" defaultValue={metaConfig?.page_id} className="font-mono text-xs bg-gray-50 border-gray-200" placeholder="123..." />
+
+                                                                    <div className="grid gap-4">
+                                                                        <div className="space-y-1.5">
+                                                                            <Label className="text-xs font-medium text-gray-500">Cuenta Publicitaria (Ads)</Label>
+                                                                            {availableAssets.adAccounts.length > 0 ? (
+                                                                                <select
+                                                                                    name="ad_account_id"
+                                                                                    defaultValue={metaConfig?.ad_account_id}
+                                                                                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                                                                                >
+                                                                                    <option value="">Seleccionar cuenta...</option>
+                                                                                    {availableAssets.adAccounts.map((acc: any) => (
+                                                                                        <option key={acc.id} value={acc.id}>
+                                                                                            {acc.name} ({acc.account_id}) - {acc.currency}
+                                                                                        </option>
+                                                                                    ))}
+                                                                                </select>
+                                                                            ) : (
+                                                                                <Input
+                                                                                    name="ad_account_id"
+                                                                                    defaultValue={metaConfig?.ad_account_id}
+                                                                                    className="font-mono text-xs bg-gray-50 border-gray-200"
+                                                                                    placeholder="act_..."
+                                                                                />
+                                                                            )}
+                                                                            <p className="text-[10px] text-gray-400">Si no aparece, verifica permisos en Business Manager</p>
+                                                                        </div>
+
+                                                                        <div className="space-y-1.5">
+                                                                            <Label className="text-xs font-medium text-gray-500">Página de Facebook</Label>
+                                                                            {availableAssets.pages.length > 0 ? (
+                                                                                <select
+                                                                                    name="page_id"
+                                                                                    defaultValue={metaConfig?.page_id}
+                                                                                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                                                                                >
+                                                                                    <option value="">Seleccionar página...</option>
+                                                                                    {availableAssets.pages.map((page: any) => (
+                                                                                        <option key={page.id} value={page.id}>
+                                                                                            {page.name} (ID: {page.id})
+                                                                                        </option>
+                                                                                    ))}
+                                                                                </select>
+                                                                            ) : (
+                                                                                <Input
+                                                                                    name="page_id"
+                                                                                    defaultValue={metaConfig?.page_id}
+                                                                                    className="font-mono text-xs bg-gray-50 border-gray-200"
+                                                                                    placeholder="123..."
+                                                                                />
+                                                                            )}
+                                                                        </div>
                                                                     </div>
-                                                                </div>
-                                                            </div>
-                                                            <div className="flex justify-end pt-2">
-                                                                <Button type="submit" size="sm" className="bg-gray-900 text-white h-8 text-xs font-medium hover:bg-black transition-all shadow-lg shadow-gray-200">
-                                                                    Guardar y Sincronizar
-                                                                </Button>
-                                                            </div>
-                                                        </form>
+
+                                                                    <div className="flex justify-end pt-2">
+                                                                        <Button type="submit" size="sm" className="bg-gray-900 text-white h-8 text-xs font-medium hover:bg-black transition-all shadow-lg shadow-gray-200">
+                                                                            Guardar Configuración
+                                                                        </Button>
+                                                                    </div>
+                                                                </form>
+                                                            )}
+                                                        </div>
                                                     )}
                                                 </CardContent>
                                             </Card>

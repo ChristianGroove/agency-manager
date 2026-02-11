@@ -89,8 +89,72 @@ export async function GET(request: Request) {
         });
     }
 
-    // 2. Parse State - Format: "orgId" or "orgId:channelType"
+    // 2. Parse State - Format: "orgId" or "orgId:channelType" or "contact_connect:clientId"
     const stateParts = state.split(':');
+
+    // NEW: Contact Connectivity Flow
+    if (stateParts[0] === 'contact_connect') {
+        const clientId = stateParts[1];
+        if (!clientId) return createClientRedirect(appUrl, '/platform/integrations', { error: 'missing_client_id' });
+
+        try {
+            const { MetaGraphAPI } = await import('@/lib/meta/graph-api');
+            const { saveMetaConfig } = await import('@/modules/core/admin/actions');
+            const metaApi = new MetaGraphAPI(appUrl);
+
+            // Exchange for Long Lived Token
+            const longLivedToken = await metaApi.exchangeCodeForToken(code);
+
+            // Save Token (Partial Config)
+            const formData = new FormData();
+            formData.append('access_token', longLivedToken);
+            // We don't have ad_account/page yet, those will be selected in UI
+
+            // We use a specific function/logic to just save the token without validation
+            // Reuse saveMetaConfig but we need to bypass validation if we just have token
+            // For now, let's just update the token using Supabase Admin directly to avoid validation errors in action
+            const { createClient } = await import('@supabase/supabase-js');
+            const supabaseAdmin = createClient(
+                process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                process.env.SUPABASE_SERVICE_ROLE_KEY!
+            );
+
+            // Update or Insert just the token
+            const { data: existing } = await supabaseAdmin
+                .from("integration_configs")
+                .select("id, settings")
+                .eq("client_id", clientId)
+                .eq("platform", "meta")
+                .single();
+
+            const payload = {
+                client_id: clientId,
+                platform: "meta",
+                access_token: longLivedToken,
+                updated_at: new Date().toISOString()
+            };
+
+            if (existing) {
+                await supabaseAdmin.from("integration_configs").update(payload).eq("id", existing.id);
+            } else {
+                await supabaseAdmin.from("integration_configs").insert(payload);
+            }
+
+            // Close Popup Script
+            const html = `<!DOCTYPE html><html><body>
+            <script>
+                window.opener.postMessage({ type: 'META_CONNECT_SUCCESS', clientId: '${clientId}' }, '*');
+                window.close();
+            </script>
+            </body></html>`;
+            return new NextResponse(html, { headers: { 'Content-Type': 'text/html' } });
+
+        } catch (e: any) {
+            console.error("Contact Connect Error:", e);
+            return createClientRedirect(appUrl, '/platform/integrations', { error: 'contact_connect_failed', desc: e.message });
+        }
+    }
+
     const orgId = stateParts[0];
     const channelType = stateParts[1] as 'whatsapp' | 'messenger' | 'instagram' | undefined;
     const isGranularConnection = !!channelType;
@@ -98,7 +162,7 @@ export async function GET(request: Request) {
     // 3. Exchange Code for Token & Get Assets
     try {
         const { MetaGraphAPI } = await import('@/lib/meta/graph-api');
-        const metaApi = new MetaGraphAPI();
+        const metaApi = new MetaGraphAPI(appUrl);
 
         const longLivedToken = await metaApi.exchangeCodeForToken(code);
         const userProfile = await metaApi.getUserProfile(longLivedToken);
