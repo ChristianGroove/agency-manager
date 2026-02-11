@@ -68,6 +68,22 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
                     .eq('id', conv.lead_id)
                     .single()
                 if (leadData) setLead(leadData)
+            } else if (conv.client_id) {
+                const { data: clientData } = await supabase
+                    .from('clients')
+                    .select('*')
+                    .eq('id', conv.client_id)
+                    .single()
+
+                // Map client to lead shape for UI compatibility
+                if (clientData) {
+                    setLead({
+                        ...clientData,
+                        title: clientData.name, // Map name to title
+                        company: clientData.company_name, // Map company_name
+                        status: 'client' // Custom status
+                    } as any)
+                }
             } else {
                 setLead(null)
             }

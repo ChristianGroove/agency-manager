@@ -23,7 +23,7 @@ export const ConversationListItem = memo(function ConversationListItem({ conv, i
         id: conv.id,
     })
 
-    const contactName = conv.leads?.name || conv.leads?.phone || "Unknown"
+    const contactName = conv.clients?.name || conv.leads?.name || conv.clients?.phone || conv.leads?.phone || "Unknown"
     const isUnread = conv.unread_count > 0
 
     const getPriorityColor = (priority?: string | null) => {

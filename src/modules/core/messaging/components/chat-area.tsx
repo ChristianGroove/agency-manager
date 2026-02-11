@@ -29,6 +29,11 @@ type Conversation = Database['public']['Tables']['conversations']['Row'] & {
         phone: string | null
         status: string | null
     } | null
+    clients: {
+        name: string | null
+        phone: string | null
+        avatar_url: string | null
+    } | null
 }
 
 interface ChatAreaProps {
@@ -99,6 +104,11 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
                     name,
                     phone,
                     status
+                ),
+                clients (
+                    name,
+                    phone,
+                    avatar_url
                 )
             `)
             .eq('id', conversationId)
@@ -344,9 +354,9 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
         }
     }
 
-    // Lead Name fallback
-    const leadName = conversation?.leads?.name || conversation?.leads?.phone || "Unknown User"
-    const leadInitials = leadName.slice(0, 2).toUpperCase()
+    // Contact Name fallback (Lead or Client)
+    const leadName = conversation?.clients?.name || conversation?.leads?.name || conversation?.clients?.phone || conversation?.leads?.phone || "Unknown User"
+    const leadInitials = (leadName || "UN").slice(0, 2).toUpperCase()
 
     return (
         <div className="flex flex-col h-full bg-[#efeae2] dark:bg-zinc-950/30 overflow-hidden relative">

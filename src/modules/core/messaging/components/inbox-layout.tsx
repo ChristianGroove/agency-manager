@@ -3,7 +3,8 @@
 import * as React from "react"
 import { DndContext, DragOverlay, useSensor, useSensors, PointerSensor, DragStartEvent, DragEndEvent } from "@dnd-kit/core"
 import { cn } from "@/lib/utils"
-import { ConversationList } from "./conversation-list"
+// import { ConversationList } from "./conversation-list" // Deprecated
+import { SidebarTabs } from "./sidebar/sidebar-tabs"
 import { ChatArea } from "./chat-area"
 import { ContextDeck } from "./context-deck"
 import { ConversationDropZones } from "./conversation-drop-zones"
@@ -97,9 +98,9 @@ export function InboxLayout({ initialConversationId }: InboxLayoutProps) {
 
                 {/* Left Pane */}
                 <div className="w-full md:w-[320px] lg:w-[380px] flex-none border-r border-border flex flex-col bg-white dark:bg-zinc-900/50 relative">
-                    <ConversationList
-                        selectedId={selectedConversationId}
-                        onSelect={setSelectedConversationId}
+                    <SidebarTabs
+                        selectedConversationId={selectedConversationId}
+                        onSelectConversation={setSelectedConversationId}
                     />
                     <ConversationDropZones visible={!!activeDragId} />
                 </div>

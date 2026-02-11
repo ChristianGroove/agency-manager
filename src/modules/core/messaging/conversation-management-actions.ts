@@ -31,18 +31,12 @@ export async function updateConversationState(
     conversationId: string,
     updates: { state?: string; status?: string }
 ) {
-    console.log('[updateConversationState] Called with:', { conversationId, updates })
-
-    // Use admin client to bypass RLS issues
     const { supabaseAdmin } = await import("@/lib/supabase-admin")
 
-    // Only update the 'state' column which we know exists
-    // 'status' might not exist in all schemas
     const safeUpdates: any = { updated_at: new Date().toISOString() }
     if (updates.state) safeUpdates.state = updates.state
     if (updates.status) safeUpdates.status = updates.status
 
-    // If resolution is happening, inject the timestamp marker
     if (updates.status === 'closed') {
         const { data: current } = await supabaseAdmin
             .from('conversations')
@@ -56,8 +50,6 @@ export async function updateConversationState(
         }
     }
 
-    console.log('[updateConversationState] Applying update:', safeUpdates)
-
     const { data, error } = await supabaseAdmin
         .from('conversations')
         .update(safeUpdates)
@@ -68,8 +60,6 @@ export async function updateConversationState(
         console.error("[updateConversationState] FAILED:", error)
         return { success: false, error: error.message }
     }
-
-    console.log('[updateConversationState] SUCCESS:', data)
 
     revalidatePath('/crm/inbox')
     revalidatePath('/inbox')
@@ -192,7 +182,6 @@ export async function searchConversations(query: string, filters?: {
         .select('*, leads(name, phone)')
         .order('last_message_at', { ascending: false })
 
-    // Text search
     if (query) {
         queryBuilder = queryBuilder.textSearch('last_message', query, {
             type: 'websearch',
@@ -200,7 +189,6 @@ export async function searchConversations(query: string, filters?: {
         })
     }
 
-    // Filters
     if (filters?.state) {
         queryBuilder = queryBuilder.eq('state', filters.state)
     }
@@ -245,7 +233,7 @@ export async function bulkArchiveConversations(conversationIds: string[]) {
 }
 
 /**
- * Bulk assign conversations
+ * Bulk Assign Conversations
  */
 export async function bulkAssignConversations(conversationIds: string[], userId: string | null) {
     const supabase = await createClient()
@@ -262,4 +250,156 @@ export async function bulkAssignConversations(conversationIds: string[], userId:
 
     revalidatePath('/inbox')
     return { success: true }
+}
+
+/**
+ * Create or get existing conversation for a lead, client, or raw phone.
+ * When a raw phone is provided, it first checks for existing Client/Lead,
+ * then creates a new Lead if none found.
+ */
+export async function createConversation(input: { lead_id?: string, client_id?: string, phone?: string, channel?: string }) {
+    const supabase = await createClient()
+    const { lead_id, client_id, phone, channel } = input
+
+    if (!lead_id && !client_id && !phone) {
+        return { success: false, error: 'Must provide either lead_id, client_id, or phone' }
+    }
+
+    // Helper to get Org ID from authenticated user
+    const getOrgId = async () => {
+        const { data: { user }, error: authError } = await supabase.auth.getUser()
+        if (authError || !user) return null
+
+        const { data: member } = await supabase
+            .from('organization_members')
+            .select('organization_id')
+            .eq('user_id', user.id)
+            .limit(1)
+            .single()
+
+        return member?.organization_id
+    }
+
+    // Resolve Entity
+    let finalClientId = client_id
+    let finalLeadId = lead_id
+    let resolvedOrgId: string | null = null
+
+    if (!finalClientId && !finalLeadId && phone) {
+        // A. Check for existing Client
+        const { data: existingClient } = await supabase
+            .from('clients')
+            .select('id, organization_id')
+            .eq('phone', phone)
+            .single()
+
+        if (existingClient) {
+            finalClientId = existingClient.id
+            resolvedOrgId = existingClient.organization_id
+        } else {
+            // B. Check for existing Lead
+            const { data: existingLead } = await supabase
+                .from('leads')
+                .select('id, organization_id')
+                .eq('phone', phone)
+                .single()
+
+            if (existingLead) {
+                finalLeadId = existingLead.id
+                resolvedOrgId = existingLead.organization_id
+            } else {
+                // C. Create new Lead (Quick Contact)
+                const orgId = await getOrgId()
+                if (!orgId) return { success: false, error: 'No organization found for user.' }
+
+                const { data: newLead, error: leadError } = await supabase
+                    .from('leads')
+                    .insert({
+                        organization_id: orgId,
+                        name: phone,
+                        phone: phone,
+                        status: 'new',
+                        source: 'direct_chat'
+                    })
+                    .select()
+                    .single()
+
+                if (leadError) return { success: false, error: 'Failed to create lead: ' + leadError.message }
+                finalLeadId = newLead.id
+                resolvedOrgId = orgId
+            }
+        }
+    }
+
+    // 1. Check if an active conversation already exists
+    let query = supabase
+        .from('conversations')
+        .select('*')
+        .neq('state', 'archived')
+        .order('last_message_at', { ascending: false })
+        .limit(1)
+
+    if (finalClientId) {
+        query = query.eq('client_id', finalClientId)
+    } else if (finalLeadId) {
+        query = query.eq('lead_id', finalLeadId)
+    } else {
+        return { success: false, error: 'Failed to resolve contact entity.' }
+    }
+
+    const { data: existing } = await query.single()
+
+    if (existing) {
+        return { success: true, data: existing }
+    }
+
+    // 2. Resolve Organization ID (if not already resolved)
+    let organization_id: string | null = resolvedOrgId
+
+    if (!organization_id) {
+        if (finalClientId) {
+            const { data: client } = await supabase
+                .from('clients')
+                .select('organization_id')
+                .eq('id', finalClientId)
+                .single()
+            organization_id = client?.organization_id || null
+        } else if (finalLeadId) {
+            const { data: lead } = await supabase
+                .from('leads')
+                .select('organization_id')
+                .eq('id', finalLeadId)
+                .single()
+            organization_id = lead?.organization_id || null
+        }
+    }
+
+    if (!organization_id) {
+        return { success: false, error: 'Entity not found or missing organization context' }
+    }
+
+    // 3. Create new conversation
+    const { data: newConv, error } = await supabase
+        .from('conversations')
+        .insert({
+            organization_id: organization_id,
+            lead_id: finalLeadId || null,
+            client_id: finalClientId || null,
+            channel: channel || 'whatsapp',
+            state: 'active',
+            status: 'open',
+            unread_count: 0,
+            last_message: 'Chat started',
+            last_message_at: new Date().toISOString()
+        })
+        .select()
+        .single()
+
+    if (error) {
+        console.error("Failed to create conversation:", error)
+        return { success: false, error: error.message }
+    }
+
+    revalidatePath('/inbox')
+    return { success: true, data: newConv }
 }

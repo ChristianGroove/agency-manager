@@ -1,9 +1,7 @@
-
 "use client"
 
 import { useEffect, useState, useMemo, useRef } from "react"
 import { supabase } from "@/lib/supabase"
-import { formatDistanceToNow } from "date-fns"
 import { Search, MessageSquare, Phone, User, Check, CheckCheck, Filter, Archive, UserCheck, Clock, Bell, BellOff, Settings as SettingsIcon } from "lucide-react"
 import { Virtuoso } from "react-virtuoso"
 import { Input } from "@/components/ui/input"
@@ -11,10 +9,9 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { Database } from "@/types/supabase"
-import { InboxSettingsSheet } from "./inbox-settings-sheet"
+import { InboxSettingsSheet } from "../inbox-settings-sheet"
 import { Button } from "@/components/ui/button"
-import { ConversationActionsMenu } from "./conversation-actions-menu"
-import { ConversationListItem } from "./conversation-list-item"
+import { ConversationListItem } from "../conversation-list-item"
 import { useMessageNotifications } from "@/modules/core/preferences/use-message-notifications"
 import { useInboxPreferences } from "@/modules/core/preferences/use-inbox-preferences"
 import { useInboxShortcuts } from "@/modules/core/preferences/use-inbox-shortcuts"
@@ -31,17 +28,18 @@ type Conversation = Database['public']['Tables']['conversations']['Row'] & {
     integration_connections: {
         connection_name: string | null
     } | null
-    state?: 'active' | 'archived' | 'closed'
-    tags?: string[]
-    priority?: string
+    clients: {
+        name: string | null
+        phone: string | null
+    } | null
 }
 
-interface ConversationListProps {
+interface SidebarConversationListProps {
     selectedId: string | null
-    onSelect: (id: string | null) => void // Updated to allow null
+    onSelect: (id: string | null) => void
 }
 
-export function ConversationList({ selectedId, onSelect }: ConversationListProps) {
+export function SidebarConversationList({ selectedId, onSelect }: SidebarConversationListProps) {
     const [conversations, setConversations] = useState<Conversation[]>([])
     const [searchQuery, setSearchQuery] = useState("")
     const [activeFilter, setActiveFilter] = useState<FilterTab>('all')
@@ -76,11 +74,10 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
 
     const fetchConversations = async (showLoading = false) => {
         if (showLoading) setLoading(true)
-        // console.log('[ConversationList] Fetching conversations...')
 
         let query = supabase
             .from('conversations')
-            .select('*, leads(name, phone), integration_connections(connection_name)')
+            .select('*, leads(name, phone), clients(name, phone), integration_connections(connection_name)')
             .order('last_message_at', { ascending: false })
 
         // Apply filter
@@ -124,20 +121,16 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
     // Auto-deselect if selected conversation is gone (and no search is active)
     useEffect(() => {
         if (!loading && selectedId && conversations.length >= 0) {
-            // Only strictly deselect if we are in 'all' filter and NOT searching
-            // This prevents closing the chat if you just filtered it out by typing search or clicking a tab
-            // BUT if the list is completely empty in 'all' view, it means it's deleted.
             if (activeFilter === 'all' && !searchQuery) {
                 const stillExists = conversations.some(c => c.id === selectedId)
                 if (!stillExists) {
-                    console.log('[ConversationList] Selected conversation no longer in list, deselecting.')
                     onSelect(null)
                 }
             }
         }
     }, [conversations, loading, selectedId, activeFilter, searchQuery])
 
-    // Real-time subscription (Unchanged)
+    // Real-time subscription
     useEffect(() => {
         const channel = supabase
             .channel('conversations-list')
@@ -156,13 +149,7 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
 
     // Filter and search conversations
     const filteredConversations = useMemo(() => {
-        console.log('[ConversationList] Filtering conversations:', {
-            total: conversations.length,
-            searchQuery: searchQuery.trim()
-        })
-
         if (!searchQuery.trim()) {
-            console.log('[ConversationList] No search query, returning all:', conversations.length)
             return conversations
         }
 
@@ -177,7 +164,6 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
                 lastMessage.includes(query)
         })
 
-        console.log('[ConversationList] Filtered result:', filtered.length)
         return filtered
     }, [conversations, searchQuery])
 
@@ -193,38 +179,11 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
     }, [conversations, currentUserId])
 
     return (
-        <div className="flex flex-col h-full border-r bg-white dark:bg-zinc-950">
+        <div className="flex flex-col h-full bg-white dark:bg-zinc-950">
             <InboxSettingsSheet open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
 
-            {/* Header */}
-            <div className="p-4 border-b space-y-3">
-                <div className="flex items-center justify-between">
-                    <h2 className="text-lg font-bold flex items-center gap-2">
-                        <MessageSquare className="h-5 w-5" />
-                        Conversations
-                    </h2>
-                    <div className="flex items-center gap-1">
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className={cn("h-8 w-8 transition-colors", !preferences.notifications.sound_enabled && "text-amber-500 hover:text-amber-600")}
-                            onClick={() => updatePreferences('notifications', { sound_enabled: !preferences.notifications.sound_enabled })}
-                            title={preferences.notifications.sound_enabled ? "Mute Sounds (Focus Mode)" : "Unmute Sounds"}
-                        >
-                            {preferences.notifications.sound_enabled ? <Bell className="h-4 w-4" /> : <BellOff className="h-4 w-4" />}
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                            onClick={() => setIsSettingsOpen(true)}
-                            title="Inbox Settings"
-                        >
-                            <SettingsIcon className="h-4 w-4" />
-                        </Button>
-                    </div>
-                </div>
-
+            {/* Header Area */}
+            <div className="px-4 pb-2 pt-2 space-y-3">
                 {/* Search */}
                 <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -233,66 +192,76 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
                         placeholder="Search conversations..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-9"
+                        className="pl-9 bg-zinc-50 dark:bg-zinc-900 border-none shadow-none h-9 text-sm focus-visible:ring-1 focus-visible:ring-offset-0"
                     />
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground hover:text-foreground"
+                        onClick={() => setIsSettingsOpen(true)}
+                        title="Inbox Settings"
+                    >
+                        <SettingsIcon className="h-3.5 w-3.5" />
+                    </Button>
                 </div>
 
+                {/* Filter Tabs */}
                 <Tabs value={activeFilter} onValueChange={(v) => setActiveFilter(v as FilterTab)} className="w-full">
-                    <TabsList className="w-full justify-start gap-2 bg-transparent p-0 h-auto border-b rounded-none px-4">
+                    <TabsList className="w-full justify-start gap-1 bg-transparent p-0 h-auto">
                         <TabsTrigger
                             value="all"
-                            className="text-xs rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none px-2 py-3 transition-all"
+                            className="text-[11px] font-medium rounded-full border border-transparent data-[state=active]:bg-zinc-100 dark:data-[state=active]:bg-zinc-800 data-[state=active]:text-foreground text-muted-foreground px-3 py-1.5 transition-all h-7"
                         >
                             All
                         </TabsTrigger>
                         <TabsTrigger
                             value="unread"
-                            className="text-xs rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none px-2 py-3 transition-all"
+                            className="text-[11px] font-medium rounded-full border border-transparent data-[state=active]:bg-zinc-100 dark:data-[state=active]:bg-zinc-800 data-[state=active]:text-foreground text-muted-foreground px-3 py-1.5 transition-all h-7"
                         >
                             Unread
                             {counts.unread > 0 && (
-                                <Badge className="ml-1.5 h-5 min-w-[1.25rem] px-1 bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 border-none shadow-sm transition-transform data-[state=active]:scale-110 flex items-center justify-center">
+                                <Badge className="ml-1.5 h-4 min-w-[1rem] px-1 bg-brand-pink text-white border-none shadow-none text-[9px] flex items-center justify-center">
                                     {counts.unread}
                                 </Badge>
                             )}
                         </TabsTrigger>
                         <TabsTrigger
                             value="assigned"
-                            className="text-xs rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none px-2 py-3 transition-all"
+                            className="text-[11px] font-medium rounded-full border border-transparent data-[state=active]:bg-zinc-100 dark:data-[state=active]:bg-zinc-800 data-[state=active]:text-foreground text-muted-foreground px-3 py-1.5 transition-all h-7"
                             title="Assigned to me"
                         >
-                            <UserCheck className="h-4 w-4" />
+                            Assigned
                         </TabsTrigger>
                         <TabsTrigger
                             value="snoozed"
-                            className="text-xs rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none px-2 py-3 transition-all"
+                            className="text-[11px] font-medium rounded-full border border-transparent data-[state=active]:bg-zinc-100 dark:data-[state=active]:bg-zinc-800 data-[state=active]:text-foreground text-muted-foreground px-2 py-1.5 transition-all h-7"
                             title="Snoozed"
                         >
-                            <Clock className="h-4 w-4" />
+                            <Clock className="h-3.5 w-3.5" />
                         </TabsTrigger>
                         <TabsTrigger
                             value="archived"
-                            className="text-xs rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none px-2 py-3 transition-all"
+                            className="text-[11px] font-medium rounded-full border border-transparent data-[state=active]:bg-zinc-100 dark:data-[state=active]:bg-zinc-800 data-[state=active]:text-foreground text-muted-foreground px-2 py-1.5 transition-all h-7"
                             title="Archived"
                         >
-                            <Archive className="h-4 w-4" />
+                            <Archive className="h-3.5 w-3.5" />
                         </TabsTrigger>
                     </TabsList>
                 </Tabs>
             </div>
 
             {/* Conversation List */}
-            <div className="flex-1 min-h-0 bg-background">
+            <div className="flex-1 min-h-0">
                 {loading ? (
                     <div className="p-8 text-center text-sm text-muted-foreground">
                         Loading...
                     </div>
                 ) : filteredConversations.length === 0 ? (
-                    <div className="p-8 text-center">
-                        <MessageSquare className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-                        <p className="text-sm font-medium">No conversations</p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                            {searchQuery ? 'No results found' : 'Conversations will appear here'}
+                    <div className="flex flex-col items-center justify-center h-full p-8 text-center opacity-60">
+                        <MessageSquare className="h-8 w-8 mb-3 text-muted-foreground" />
+                        <p className="text-sm font-medium text-foreground">No conversations</p>
+                        <p className="text-xs text-muted-foreground mt-1 max-w-[180px]">
+                            {searchQuery ? 'Try a different search term' : 'New messages will appear here'}
                         </p>
                     </div>
                 ) : (
