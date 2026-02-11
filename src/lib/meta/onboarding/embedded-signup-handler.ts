@@ -140,12 +140,14 @@ export class EmbeddedSignupHandler {
     }
 
     /**
-     * Subscribe smb_message_echoes field for Coexistence mode.
-     * This enables mirroring of messages sent from the mobile WhatsApp Business app.
+     * Subscribe coexistence webhook fields: smb_message_echoes + history.
+     * - smb_message_echoes: mirrors messages sent from the mobile WA Business app
+     * - history: syncs conversation history for seamless mobile↔desktop experience
+     * 
+     * Also configures the rate limiter to 20 mps (Meta's coexistence limit).
      */
     private async subscribeSmbMessageEchoes(wabaId: string, accessToken: string): Promise<void> {
         try {
-            // The subscribed_apps endpoint with specific fields
             const url = `${GRAPH_URL}/${wabaId}/subscribed_apps`;
             const res = await fetch(url, {
                 method: 'POST',
@@ -154,21 +156,32 @@ export class EmbeddedSignupHandler {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    override_callback_uri: undefined, // Use app-level webhook
-                    subscribed_fields: ['messages', 'smb_message_echoes']
+                    subscribed_fields: ['messages', 'smb_message_echoes', 'history']
                 })
             });
 
             const data = await res.json();
 
             if (!res.ok) {
-                console.warn('[EmbeddedSignup] smb_message_echoes subscription warning:', data);
+                console.warn('[EmbeddedSignup] Coexistence fields subscription warning:', data);
             } else {
-                console.log('[EmbeddedSignup] ✅ smb_message_echoes subscribed for Coexistence');
+                console.log('[EmbeddedSignup] ✅ Coexistence fields subscribed (messages, smb_message_echoes, history)');
+            }
+
+            // Configure rate limiter for coexistence mode (20 mps limit)
+            try {
+                const { metaRateLimiter } = await import('@/lib/meta/rate-limiter');
+                metaRateLimiter.configureWaba(wabaId, {
+                    maxTokens: 20,
+                    refillRate: 20,
+                });
+                console.log(`[EmbeddedSignup] ✅ Rate limiter set to 20 mps for WABA ${wabaId} (Coexistence)`);
+            } catch (rlError) {
+                console.warn('[EmbeddedSignup] Rate limiter config warning:', rlError);
             }
         } catch (error) {
             // Non-fatal: log but don't break onboarding
-            console.warn('[EmbeddedSignup] smb_message_echoes subscription error:', error);
+            console.warn('[EmbeddedSignup] Coexistence subscription error:', error);
         }
     }
 

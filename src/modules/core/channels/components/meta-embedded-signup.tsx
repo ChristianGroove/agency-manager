@@ -99,8 +99,9 @@ export function MetaEmbeddedSignup({ onSuccess, onError }: MetaEmbeddedSignupPro
                 override_default_response_type: true,
                 extras: {
                     setup: {},
-                    featureType: 'only_waba_sharing',
-                    sessionInfoVersion: 2
+                    featureType: 'whatsapp_business_app_onboarding',
+                    sessionInfoVersion: '3',
+                    version: 'v4'
                 }
             }
         );
