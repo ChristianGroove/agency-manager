@@ -1,5 +1,4 @@
 import { supabaseAdmin } from "@/lib/supabase-admin"
-import { encryptObject } from "@/modules/core/integrations/encryption"
 import { wabaSubscriptionManager } from "@/lib/meta/waba-subscription-manager"
 
 const GRAPH_URL = 'https://graph.facebook.com/v24.0';
@@ -14,7 +13,14 @@ export interface OnboardingResult {
 export class EmbeddedSignupHandler {
 
     /**
-     * Complete the onboarding process given an OAuth code from the Embedded Signup flow
+     * Complete the onboarding process given an OAuth code from the Embedded Signup flow.
+     * 
+     * Steps:
+     * 1. Exchange code for access token
+     * 2. Resolve WABA ID
+     * 3. Get phone numbers
+     * 4. Register in DB (with deduplication)
+     * 5. Subscribe webhooks + smb_message_echoes for Coexistence
      */
     async completeOnboarding(orgId: string, code: string): Promise<OnboardingResult> {
         try {
@@ -27,13 +33,8 @@ export class EmbeddedSignupHandler {
             }
             console.log('[EmbeddedSignup] Access Token obtained');
 
-            // 2. Fetch WABA ID and Phone Numbers
-            // In Embedded Signup, the token usually gives access to the WABA created/selected
-            // We need to find the WABA ID. Often getting /me/accounts or debug_token helps.
-            // But usually, the frontend might pass the wabaId. 
-            // If not, we fetch:
-            const wabaId = await this.resolveWabaId(tokenData.access_token, tokenData.waba_id); // tokenData often has config_id or we use what came back
-
+            // 2. Resolve WABA ID
+            const wabaId = await this.resolveWabaId(tokenData.access_token, tokenData.waba_id);
             if (!wabaId) {
                 throw new Error('Could not resolve WABA ID from token response');
             }
@@ -43,11 +44,11 @@ export class EmbeddedSignupHandler {
             if (phoneNumbers.length === 0) {
                 throw new Error('No phone numbers found for this WABA');
             }
-            const primaryPhone = phoneNumbers[0]; // Auto-select first for now
+            const primaryPhone = phoneNumbers[0];
 
             console.log(`[EmbeddedSignup] Found WABA: ${wabaId}, Phone: ${primaryPhone.display_phone_number}`);
 
-            // 4. Register in Database (Supabase)
+            // 4. Register in Database with deduplication
             const connectionId = await this.registerConnection(orgId, {
                 wabaId,
                 accessToken: tokenData.access_token,
@@ -60,8 +61,10 @@ export class EmbeddedSignupHandler {
             const subResult = await wabaSubscriptionManager.subscribeWABA(wabaId, tokenData.access_token);
             if (!subResult.success) {
                 console.warn('[EmbeddedSignup] Webhook subscription warning:', subResult.error);
-                // We don't fail the whole process, but log warning
             }
+
+            // 6. Subscribe smb_message_echoes for Coexistence mode
+            await this.subscribeSmbMessageEchoes(wabaId, tokenData.access_token);
 
             return {
                 success: true,
@@ -80,11 +83,9 @@ export class EmbeddedSignupHandler {
 
     /**
      * Exchange System User Code for Access Token
-     * endpoint: oauth/access_token
      */
     private async exchangeCodeForToken(code: string): Promise<any> {
-        // NOTE: In production, these should be env vars
-        const appId = process.env.NEXT_PUBLIC_META_APP_ID;
+        const appId = process.env.NEXT_PUBLIC_META_APP_ID || process.env.META_APP_ID;
         const appSecret = process.env.META_APP_SECRET;
 
         if (!appId || !appSecret) {
@@ -98,7 +99,7 @@ export class EmbeddedSignupHandler {
         if (data.error) {
             throw new Error(`Token Exchange Error: ${data.error.message}`);
         }
-        return data; // contains access_token, and potentially config_id / waba info depending on permission
+        return data;
     }
 
     /**
@@ -107,9 +108,7 @@ export class EmbeddedSignupHandler {
     private async resolveWabaId(accessToken: string, hintWabaId?: string): Promise<string> {
         if (hintWabaId) return hintWabaId;
 
-        // If no hint, inspect token or check /me/accounts (if it's a user token)
-        // For System User token from Embedded Signup, it often has the WABA scope.
-        // Let's try fetching shared WABAs:
+        // For System User token from Embedded Signup, fetch shared WABAs
         const url = `${GRAPH_URL}/me/client_whatsapp_business_accounts?access_token=${accessToken}`;
         const res = await fetch(url);
         const data = await res.json();
@@ -118,7 +117,15 @@ export class EmbeddedSignupHandler {
             return data.data[0].id;
         }
 
-        // Fallback: This might be a direct WABA access token? (unlikely)
+        // Fallback: try owned WABAs
+        const ownedUrl = `${GRAPH_URL}/me/businesses?fields=owned_whatsapp_business_accounts&access_token=${accessToken}`;
+        const ownedRes = await fetch(ownedUrl);
+        const ownedData = await ownedRes.json();
+
+        if (ownedData.data?.[0]?.owned_whatsapp_business_accounts?.data?.[0]?.id) {
+            return ownedData.data[0].owned_whatsapp_business_accounts.data[0].id;
+        }
+
         return '';
     }
 
@@ -133,7 +140,43 @@ export class EmbeddedSignupHandler {
     }
 
     /**
-     * Register logic in Supabase
+     * Subscribe smb_message_echoes field for Coexistence mode.
+     * This enables mirroring of messages sent from the mobile WhatsApp Business app.
+     */
+    private async subscribeSmbMessageEchoes(wabaId: string, accessToken: string): Promise<void> {
+        try {
+            // The subscribed_apps endpoint with specific fields
+            const url = `${GRAPH_URL}/${wabaId}/subscribed_apps`;
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    override_callback_uri: undefined, // Use app-level webhook
+                    subscribed_fields: ['messages', 'smb_message_echoes']
+                })
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                console.warn('[EmbeddedSignup] smb_message_echoes subscription warning:', data);
+            } else {
+                console.log('[EmbeddedSignup] ✅ smb_message_echoes subscribed for Coexistence');
+            }
+        } catch (error) {
+            // Non-fatal: log but don't break onboarding
+            console.warn('[EmbeddedSignup] smb_message_echoes subscription error:', error);
+        }
+    }
+
+    /**
+     * Register connection in Supabase with deduplication.
+     * 
+     * Uses the same schema as activateMetaChannel to ensure compatibility
+     * with the inbox and channel management system.
      */
     private async registerConnection(orgId: string, data: {
         wabaId: string,
@@ -143,37 +186,87 @@ export class EmbeddedSignupHandler {
         businessName: string
     }): Promise<string> {
 
-        const credentials = {
-            apiToken: data.accessToken,
-            phoneNumberId: data.phoneNumberId,
-            wabaId: data.wabaId
-        };
+        // Check for existing connection (including deleted/disconnected)
+        const { data: existing } = await supabaseAdmin
+            .from('integration_connections')
+            .select('id, status')
+            .eq('organization_id', orgId)
+            .eq('provider_key', 'whatsapp_cloud')
+            .eq('metadata->>asset_id', data.phoneNumberId)
+            .limit(1);
 
-        // Encrypt credentials
-        const encrypted = encryptObject(credentials);
+        if (existing && existing.length > 0) {
+            const existingChannel = existing[0];
 
-        const metadata = {
-            business_name: data.businessName,
-            display_phone: data.displayPhoneNumber,
-            asset_id: data.phoneNumberId, // For inbox matching
-            waba_id: data.wabaId,
-            platform: 'whatsapp_cloud'
+            if (existingChannel.status === 'active') {
+                console.log(`[EmbeddedSignup] Channel already active: ${existingChannel.id}`);
+                // Update credentials with fresh token
+                await supabaseAdmin
+                    .from('integration_connections')
+                    .update({
+                        credentials: { access_token: data.accessToken },
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', existingChannel.id);
+                return existingChannel.id;
+            }
+
+            // Reactivate deleted/disconnected channel
+            console.log(`[EmbeddedSignup] Reactivating channel: ${existingChannel.id}`);
+            await supabaseAdmin
+                .from('integration_connections')
+                .update({
+                    status: 'active',
+                    credentials: { access_token: data.accessToken },
+                    metadata: {
+                        asset_id: data.phoneNumberId,
+                        asset_type: 'whatsapp',
+                        asset_name: data.businessName,
+                        waba_id: data.wabaId,
+                        display_phone_number: data.displayPhoneNumber,
+                        webhook_status: 'app_level',
+                        source: 'embedded_signup',
+                    },
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', existingChannel.id);
+
+            return existingChannel.id;
+        }
+
+        // Create new connection — compatible with activateMetaChannel schema
+        const channelData = {
+            organization_id: orgId,
+            provider_key: 'whatsapp_cloud',
+            connection_name: `${data.businessName} (${data.displayPhoneNumber})`,
+            credentials: {
+                access_token: data.accessToken,
+            },
+            metadata: {
+                asset_id: data.phoneNumberId,
+                asset_type: 'whatsapp',
+                asset_name: data.businessName,
+                waba_id: data.wabaId,
+                display_phone_number: data.displayPhoneNumber,
+                webhook_status: 'app_level',
+                source: 'embedded_signup',
+            },
+            config: {
+                asset_type: 'whatsapp',
+            },
+            status: 'active',
+            is_primary: false,
         };
 
         const { data: conn, error } = await supabaseAdmin
             .from('integration_connections')
-            .insert({
-                organization_id: orgId,
-                provider_key: 'whatsapp_cloud',
-                status: 'active', // Active immediately
-                credentials: encrypted,
-                metadata: metadata,
-                name: `${data.businessName} (${data.displayPhoneNumber})`
-            })
+            .insert(channelData)
             .select()
             .single();
 
         if (error) throw error;
+
+        console.log(`[EmbeddedSignup] New channel created: ${conn.id}`);
         return conn.id;
     }
 }

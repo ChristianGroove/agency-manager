@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Plus, MessageCircle, Store, Instagram } from "lucide-react"
 import { useState } from "react"
 import { EvolutionConnectSheet } from "./evolution-connect-sheet"
+import { WhatsAppConnectModal } from "./whatsapp-connect-modal"
 import { useRouter } from "next/navigation"
 import {
     Tooltip,
@@ -33,6 +34,7 @@ import { SectionHeader } from "@/components/layout/section-header"
 
 export function ChannelsList({ channels, pipelineStages, agents }: ChannelsListProps) {
     const [isEvolutionOpen, setIsEvolutionOpen] = useState(false)
+    const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false)
     const router = useRouter()
 
     const handleSuccess = () => {
@@ -93,9 +95,9 @@ export function ChannelsList({ channels, pipelineStages, agents }: ChannelsListP
                             <Store className="mr-2 h-4 w-4" /> Marketplace
                         </Button>
 
-                        {/* WhatsApp Button - Official Meta API */}
+                        {/* WhatsApp Button - Opens choice modal */}
                         <Button
-                            onClick={() => handleMetaConnect('whatsapp')}
+                            onClick={() => setIsWhatsAppModalOpen(true)}
                             className="bg-[#25D366] hover:bg-[#128C7E] text-white shadow-sm"
                         >
                             <MessageCircle className="mr-2 h-4 w-4" />
@@ -172,6 +174,12 @@ export function ChannelsList({ channels, pipelineStages, agents }: ChannelsListP
                 open={isEvolutionOpen}
                 onOpenChange={setIsEvolutionOpen}
                 onSuccess={handleSuccess}
+            />
+
+            <WhatsAppConnectModal
+                open={isWhatsAppModalOpen}
+                onOpenChange={setIsWhatsAppModalOpen}
+                onOAuthConnect={() => handleMetaConnect('whatsapp')}
             />
         </div>
     )
