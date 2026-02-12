@@ -1,10 +1,14 @@
 import { Suspense } from "react"
 import { getChannels } from "@/modules/core/channels/actions"
 import { ChannelsList } from "@/modules/core/channels/components/channels-list"
+import { getDictionary } from "@/lib/i18n/get-dictionary"
 
-export const metadata = {
-    title: "Canales de Mensajería | CRM",
-    description: "Gestiona tus conexiones de WhatsApp y otros canales",
+export async function generateMetadata() {
+    const dict = await getDictionary()
+    return {
+        title: dict.crm.meta.channels_title,
+        description: dict.crm.meta.channels_desc,
+    }
 }
 
 import { getPipelineStages } from "@/modules/core/crm/pipeline-actions"

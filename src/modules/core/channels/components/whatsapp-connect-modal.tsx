@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dialog"
 import { MetaEmbeddedSignup } from "./meta-embedded-signup"
 import { MessageCircle, Smartphone, Building2, ArrowRight, Zap, Shield } from "lucide-react"
+import { useTranslation } from "@/lib/i18n/use-translation"
 
 interface WhatsAppConnectModalProps {
     open: boolean
@@ -20,6 +21,7 @@ interface WhatsAppConnectModalProps {
 type ConnectionMethod = null | 'oauth' | 'embedded';
 
 export function WhatsAppConnectModal({ open, onOpenChange, onOAuthConnect }: WhatsAppConnectModalProps) {
+    const { t } = useTranslation()
     const [selectedMethod, setSelectedMethod] = useState<ConnectionMethod>(null)
 
     const handleClose = () => {
@@ -43,11 +45,11 @@ export function WhatsAppConnectModal({ open, onOpenChange, onOAuthConnect }: Wha
                                 <MessageCircle className="h-6 w-6" />
                             </div>
                             <DialogTitle className="text-xl font-semibold text-white">
-                                Conectar WhatsApp
+                                {t('crm.channels.modal.title')}
                             </DialogTitle>
                         </div>
                         <DialogDescription className="text-white/85 text-sm">
-                            Elige cómo deseas vincular tu número de WhatsApp Business a Pixy.
+                            {t('crm.channels.modal.subtitle')}
                         </DialogDescription>
                     </DialogHeader>
                 </div>
@@ -68,23 +70,22 @@ export function WhatsAppConnectModal({ open, onOpenChange, onOAuthConnect }: Wha
                             </div>
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-1">
-                                    <h3 className="font-semibold text-sm">Registro Rápido con Meta</h3>
+                                    <h3 className="font-semibold text-sm">{t('crm.channels.modal.embedded.title')}</h3>
                                     <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-full bg-[#1877F2] text-white">
-                                        Recomendado
+                                        {t('crm.channels.modal.embedded.recommended')}
                                     </span>
                                 </div>
                                 <p className="text-xs text-muted-foreground leading-relaxed">
-                                    Conecta tu número directamente desde aquí sin salir de Pixy.
-                                    Ideal si quieres <strong>seguir usando la app móvil de WhatsApp Business</strong> al mismo tiempo.
+                                    {t('crm.channels.modal.embedded.desc')}
                                 </p>
                                 <div className="flex items-center gap-4 mt-2.5">
                                     <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
                                         <Smartphone className="h-3.5 w-3.5 text-[#25D366]" />
-                                        <span>Compatible con app móvil</span>
+                                        <span>{t('crm.channels.modal.embedded.mobile_compat')}</span>
                                     </div>
                                     <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
                                         <Shield className="h-3.5 w-3.5 text-[#1877F2]" />
-                                        <span>Configuración automática</span>
+                                        <span>{t('crm.channels.modal.embedded.auto_config')}</span>
                                     </div>
                                 </div>
                             </div>
@@ -103,14 +104,13 @@ export function WhatsAppConnectModal({ open, onOpenChange, onOAuthConnect }: Wha
                                 <Building2 className="h-5 w-5" />
                             </div>
                             <div className="flex-1 min-w-0">
-                                <h3 className="font-semibold text-sm mb-1">Conexión Administrada (OAuth)</h3>
+                                <h3 className="font-semibold text-sm mb-1">{t('crm.channels.modal.oauth.title')}</h3>
                                 <p className="text-xs text-muted-foreground leading-relaxed">
-                                    Vinculación completa vía inicio de sesión en Facebook.
-                                    Ideal para cuentas <strong>gestionadas exclusivamente desde Pixy</strong>.
+                                    {t('crm.channels.modal.oauth.desc')}
                                 </p>
                                 <div className="flex items-center gap-1.5 mt-2.5 text-[11px] text-muted-foreground">
                                     <Building2 className="h-3.5 w-3.5 text-[#25D366]" />
-                                    <span>Control total desde el dashboard</span>
+                                    <span>{t('crm.channels.modal.oauth.control')}</span>
                                 </div>
                             </div>
                             <ArrowRight className="h-5 w-5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mt-2" />
@@ -125,15 +125,14 @@ export function WhatsAppConnectModal({ open, onOpenChange, onOAuthConnect }: Wha
                             onClick={() => setSelectedMethod(null)}
                             className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
                         >
-                            ← Volver a métodos de conexión
+                            ← {t('crm.channels.modal.back')}
                         </button>
 
                         <div className="space-y-3">
                             <div className="flex items-start gap-3 p-3 rounded-lg bg-blue-50/70 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/30">
                                 <Smartphone className="h-4 w-4 text-blue-500 mt-0.5 shrink-0" />
                                 <p className="text-xs text-muted-foreground leading-relaxed">
-                                    Al conectar con este método, podrás seguir usando la <strong>app móvil de WhatsApp Business</strong> (v2.24.17+)
-                                    junto con el inbox de Pixy. Los mensajes se sincronizan automáticamente.
+                                    {t('crm.channels.modal.sync_note')}
                                 </p>
                             </div>
 

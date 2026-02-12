@@ -1,8 +1,12 @@
 import { InboxLayout } from "@/modules/core/messaging/components/inbox-layout"
+import { getDictionary } from "@/lib/i18n/get-dictionary"
 
-export const metadata = {
-    title: "Inbox | CRM",
-    description: "Centro de mensajería unificado",
+export async function generateMetadata() {
+    const dict = await getDictionary()
+    return {
+        title: dict.crm.meta.inbox_title,
+        description: dict.crm.meta.inbox_desc,
+    }
 }
 
 export default function CRMInboxPage() {

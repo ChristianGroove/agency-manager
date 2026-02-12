@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
 import { Zap, Search, Plus, Trash2 } from "lucide-react"
+import { useTranslation } from "@/lib/i18n/use-translation"
 
 interface QuickReply {
     id: string
@@ -21,6 +22,7 @@ interface QuickRepliesPanelProps {
 }
 
 export function QuickRepliesPanel({ onSelect }: QuickRepliesPanelProps) {
+    const { t } = useTranslation()
     const [replies, setReplies] = useState<QuickReply[]>([])
     const [searchQuery, setSearchQuery] = useState("")
     const [loading, setLoading] = useState(true)
@@ -56,12 +58,12 @@ export function QuickRepliesPanel({ onSelect }: QuickRepliesPanelProps) {
             <div className="p-3 border-b">
                 <div className="flex items-center gap-2 mb-2">
                     <Zap className="h-4 w-4" />
-                    <h3 className="font-semibold text-sm">Quick Replies</h3>
+                    <h3 className="font-semibold text-sm">{t('crm.inbox.chat.quick_replies.title')}</h3>
                 </div>
                 <div className="relative">
                     <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
                     <Input
-                        placeholder="Search..."
+                        placeholder={t('crm.inbox.chat.quick_replies.search')}
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className="pl-7 h-8 text-sm"
@@ -72,13 +74,13 @@ export function QuickRepliesPanel({ onSelect }: QuickRepliesPanelProps) {
             <ScrollArea className="flex-1">
                 {loading ? (
                     <div className="p-4 text-center text-sm text-muted-foreground">
-                        Loading...
+                        {t('common.loading')}
                     </div>
                 ) : filteredReplies.length === 0 ? (
                     <div className="p-4 text-center">
                         <Zap className="h-8 w-8 mx-auto mb-2 text-muted-foreground opacity-50" />
                         <p className="text-xs text-muted-foreground">
-                            {searchQuery ? 'No results' : 'No quick replies'}
+                            {searchQuery ? t('common.no_results') : t('crm.inbox.chat.quick_replies.empty')}
                         </p>
                     </div>
                 ) : (

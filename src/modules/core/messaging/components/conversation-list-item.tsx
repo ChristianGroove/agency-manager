@@ -5,8 +5,10 @@ import { useDraggable } from "@dnd-kit/core"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { formatDistanceToNow } from "date-fns"
+import { es, enUS } from "date-fns/locale"
 import { UserCheck, MessageSquare, Facebook, Instagram } from "lucide-react"
 import { ConversationActionsMenu } from "./conversation-actions-menu"
+import { useTranslation } from "@/lib/i18n/use-translation"
 
 // Redefine type or import if shared. Using local definition for now or basic shape.
 type Conversation = any // Simplify for prototype component
@@ -19,11 +21,12 @@ interface ConversationListItemProps {
 }
 
 export const ConversationListItem = memo(function ConversationListItem({ conv, isSelected, onSelect, fetchConversations }: ConversationListItemProps) {
+    const { t, locale } = useTranslation()
     const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
         id: conv.id,
     })
 
-    const contactName = conv.clients?.name || conv.leads?.name || conv.clients?.phone || conv.leads?.phone || "Unknown"
+    const contactName = conv.clients?.name || conv.leads?.name || conv.clients?.phone || conv.leads?.phone || t('crm.inbox.chat.unknown_user')
     const isUnread = conv.unread_count > 0
 
     const getPriorityColor = (priority?: string | null) => {
@@ -127,7 +130,7 @@ export const ConversationListItem = memo(function ConversationListItem({ conv, i
                             "text-sm text-muted-foreground line-clamp-2 break-all",
                             isUnread && "text-foreground/80 font-medium"
                         )}>
-                            {conv.last_message_preview || conv.last_message || "No messages yet"}
+                            {conv.last_message_preview || conv.last_message || t('crm.inbox.chat.no_messages')}
                         </p>
                     </div>
 
@@ -151,8 +154,11 @@ export const ConversationListItem = memo(function ConversationListItem({ conv, i
 
                         <span>
                             {conv.last_message_at
-                                ? formatDistanceToNow(new Date(conv.last_message_at), { addSuffix: true })
-                                : 'Recently'
+                                ? formatDistanceToNow(new Date(conv.last_message_at), {
+                                    addSuffix: true,
+                                    locale: locale === 'es' ? es : enUS
+                                })
+                                : t('common.recently')
                             }
                         </span>
 

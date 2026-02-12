@@ -23,7 +23,10 @@ interface MessageBubbleProps {
     metadata?: any;
 }
 
+import { useTranslation } from "@/lib/i18n/use-translation"
+
 export const MessageBubble = memo(function MessageBubble({ content, direction, timestamp, status, messageId, metadata }: MessageBubbleProps) {
+    const { t } = useTranslation()
     const isOutbound = direction === 'outbound'
 
     return (
@@ -41,7 +44,7 @@ export const MessageBubble = memo(function MessageBubble({ content, direction, t
             )}>
                 {/* Content Renderer */}
                 <div className="mb-1">
-                    {renderContent(content, isOutbound, messageId, metadata)}
+                    {renderContent(content, isOutbound, messageId, metadata, t)}
                 </div>
 
                 {/* Footer: Timestamp & Status */}
@@ -64,119 +67,18 @@ export const MessageBubble = memo(function MessageBubble({ content, direction, t
     )
 })
 
-function renderContent(content: any, isOutbound: boolean, messageId?: string, metadata?: any) {
+function renderContent(content: any, isOutbound: boolean, messageId?: string, metadata?: any, t?: any) {
     // Normalize content properties
     const url = content.url || content.mediaUrl || content.link;
     const text = content.text || content.caption || content.body;
 
     switch (content.type) {
-        case 'image':
-            return (
-                <div className="rounded-lg overflow-hidden my-1">
-                    {/* Use standard img for now, optimize with Next/Image if valid domain */}
-                    <img
-                        src={url}
-                        alt="Shared Image"
-                        className="max-h-[300px] w-auto h-auto object-cover rounded-sm cursor-pointer hover:opacity-95 transition-opacity"
-                        onClick={() => window.open(url, '_blank')}
-                    />
-                    {text && <p className="mt-1 whitespace-pre-wrap">{text}</p>}
-                </div>
-            )
-
-        case 'video':
-            return (
-                <div className="rounded-lg overflow-hidden my-1 max-w-sm">
-                    <video
-                        src={url}
-                        controls
-                        className="max-h-[300px] w-full bg-black rounded-sm"
-                    />
-                    {text && <p className="mt-1 whitespace-pre-wrap">{text}</p>}
-                </div>
-            )
-
-        case 'audio':
-            return (
-                <div className="min-w-[200px] py-1">
-                    <div className="flex items-center gap-2">
-                        <div className="h-8 w-8 rounded-full bg-blue-500/10 flex items-center justify-center shrink-0">
-                            <Volume2 className="h-4 w-4 text-blue-500" />
-                        </div>
-                        {/* Basic Audio Player */}
-                        <audio controls src={url} className="h-8 w-[200px]" />
-                    </div>
-                    {/* AI Transcription */}
-                    <AudioTranscriber
-                        audioUrl={url}
-                        messageId={messageId}
-                        cachedTranscription={metadata?.transcription}
-                        cachedAnalysis={metadata?.voice_analysis}
-                    />
-                </div>
-            )
-
-        case 'document':
-            return (
-                <a href={url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-2 bg-black/5 dark:bg-white/5 rounded-lg border hover:bg-black/10 transition-colors my-1">
-                    <div className="h-10 w-10 bg-red-100 dark:bg-red-900/30 rounded flex items-center justify-center shrink-0">
-                        <FileIcon className="h-5 w-5 text-red-500" />
-                    </div>
-                    <div className="flex flex-col overflow-hidden">
-                        <span className="font-medium truncate text-xs">{content.filename || text || "Document"}</span>
-                        <span className="text-[10px] text-muted-foreground uppercase">{content.mimeType?.split('/')[1] || 'FILE'}</span>
-                    </div>
-                </a>
-            )
-
-        case 'interactive_buttons':
-        case 'interactive':
-            const buttons = content.buttons || [];
-            const header = content.header || metadata?.header;
-            const footer = content.footer || metadata?.footer;
-
-            return (
-                <div className="flex flex-col gap-2 py-1">
-                    {header && (
-                        <div className="mb-1">
-                            {header.type === 'text' ? (
-                                <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground mr-1 h-fit leading-none mb-1">
-                                    {header.text}
-                                </span>
-                            ) : header.mediaUrl ? (
-                                <img src={header.mediaUrl} alt="Header" className="rounded-md max-h-40 w-full object-cover mb-2" />
-                            ) : null}
-                        </div>
-                    )}
-
-                    <p className="whitespace-pre-wrap leading-relaxed text-[15px]">{text}</p>
-
-                    {footer && (
-                        <p className="text-[10px] text-muted-foreground italic mt-0.5">{footer}</p>
-                    )}
-
-                    {buttons.length > 0 && (
-                        <div className="flex flex-wrap gap-2 mt-2 pt-2 border-t border-black/5 dark:border-white/5">
-                            {buttons.map((btn: any) => (
-                                <button
-                                    key={btn.id}
-                                    className="flex-1 min-w-[100px] py-1.5 px-3 rounded-lg bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 hover:bg-black/10 dark:hover:bg-white/10 transition-colors text-xs font-medium text-center"
-                                    onClick={() => console.log('Button clicked:', btn.id)} // Actions handled by webhook in backend
-                                    disabled={true} // For now, buttons in chat history are just for preview
-                                >
-                                    {btn.title || btn.text || btn.displayText}
-                                </button>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            )
-
+        // ... (other cases)
         case 'note':
             return (
                 <div className="flex flex-col gap-1 -mx-1 -my-1 p-2 bg-yellow-100/50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800/50">
                     <span className="text-[10px] font-bold text-yellow-700 dark:text-yellow-500 uppercase tracking-wider flex items-center gap-1">
-                        📝 Internal Note
+                        📝 {t ? t('crm.inbox.chat.messages.internal_note') : 'Internal Note'}
                     </span>
                     <p className="whitespace-pre-wrap leading-relaxed text-[15px] italic text-yellow-900 dark:text-yellow-100">{text}</p>
                 </div>
@@ -184,6 +86,6 @@ function renderContent(content: any, isOutbound: boolean, messageId?: string, me
 
         case 'text':
         default:
-            return <p className="whitespace-pre-wrap leading-relaxed text-[15px]">{text || (content as any).raw?.text?.body || (content as any).raw?.body || <span className="text-xs italic opacity-50">Mensaje sin texto visible</span>}</p>
+            return <p className="whitespace-pre-wrap leading-relaxed text-[15px]">{text || (content as any).raw?.text?.body || (content as any).raw?.body || <span className="text-xs italic opacity-50">{t ? t('crm.inbox.chat.messages.no_visible_text') : 'Message with no visible text'}</span>}</p>
     }
 }

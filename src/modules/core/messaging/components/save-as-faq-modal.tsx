@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "sonner"
+import { useTranslation } from "@/lib/i18n/use-translation"
 
 interface SaveAsFAQModalProps {
     open: boolean
@@ -17,6 +18,7 @@ interface SaveAsFAQModalProps {
 }
 
 export function SaveAsFAQModal({ open, onOpenChange, conversationId }: SaveAsFAQModalProps) {
+    const { t } = useTranslation()
     const [isExtracting, setIsExtracting] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
     const [extracted, setExtracted] = useState<{
@@ -34,14 +36,14 @@ export function SaveAsFAQModal({ open, onOpenChange, conversationId }: SaveAsFAQ
             const messagesData = await messagesRes.json()
 
             if (!messagesData.messages || messagesData.messages.length === 0) {
-                toast.error("No hay mensajes en esta conversación")
+                toast.error(t('crm.inbox.chat.faq.no_messages'))
                 return
             }
 
             // Format conversation text
             const conversationText = messagesData.messages
                 .slice(-10) // Last 10 messages
-                .map((m: any) => `[${m.direction === 'incoming' ? 'Cliente' : 'Agente'}]: ${m.content?.text || ''}`)
+                .map((m: any) => `[${m.direction === 'incoming' ? t('common.client') : t('common.agent')}]: ${m.content?.text || ''}`)
                 .join('\n')
 
             // Call extraction API
@@ -56,10 +58,10 @@ export function SaveAsFAQModal({ open, onOpenChange, conversationId }: SaveAsFAQ
             if (extractData.success && extractData.faq) {
                 setExtracted(extractData.faq)
             } else {
-                toast.error(extractData.error || "Error al extraer FAQ")
+                toast.error(extractData.error || t('crm.inbox.chat.faq.extract_error'))
             }
         } catch (error: any) {
-            toast.error(error.message || "Error de red")
+            toast.error(error.message || t('common.connection_error'))
         } finally {
             setIsExtracting(false)
         }
@@ -79,14 +81,14 @@ export function SaveAsFAQModal({ open, onOpenChange, conversationId }: SaveAsFAQ
             const data = await res.json()
 
             if (data.success) {
-                toast.success("FAQ guardada exitosamente")
+                toast.success(t('crm.inbox.chat.faq.save_success'))
                 onOpenChange(false)
                 setExtracted(null)
             } else {
-                toast.error(data.error || "Error al guardar")
+                toast.error(data.error || t('crm.inbox.chat.faq.save_error'))
             }
         } catch (error: any) {
-            toast.error(error.message || "Error de red")
+            toast.error(error.message || t('common.connection_error'))
         } finally {
             setIsSaving(false)
         }
@@ -98,10 +100,10 @@ export function SaveAsFAQModal({ open, onOpenChange, conversationId }: SaveAsFAQ
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <Lightbulb className="h-5 w-5 text-yellow-500" />
-                        Guardar como FAQ
+                        {t('crm.inbox.chat.faq.save_as')}
                     </DialogTitle>
                     <DialogDescription>
-                        Usa IA para extraer una pregunta y respuesta limpias de esta conversación.
+                        {t('crm.inbox.chat.faq.desc')}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -115,12 +117,12 @@ export function SaveAsFAQModal({ open, onOpenChange, conversationId }: SaveAsFAQ
                             {isExtracting ? (
                                 <>
                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    Analizando conversación...
+                                    {t('crm.inbox.chat.faq.analyzing')}
                                 </>
                             ) : (
                                 <>
                                     <Lightbulb className="mr-2 h-4 w-4" />
-                                    Extraer FAQ con IA
+                                    {t('crm.inbox.chat.faq.extract')}
                                 </>
                             )}
                         </Button>
@@ -128,14 +130,14 @@ export function SaveAsFAQModal({ open, onOpenChange, conversationId }: SaveAsFAQ
                 ) : (
                     <div className="space-y-4">
                         <div className="space-y-2">
-                            <Label>Pregunta</Label>
+                            <Label>{t('crm.inbox.chat.faq.question')}</Label>
                             <Input
                                 value={extracted.question}
                                 onChange={(e) => setExtracted({ ...extracted, question: e.target.value })}
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label>Respuesta</Label>
+                            <Label>{t('crm.inbox.chat.faq.answer')}</Label>
                             <Textarea
                                 value={extracted.answer}
                                 onChange={(e) => setExtracted({ ...extracted, answer: e.target.value })}
@@ -143,7 +145,7 @@ export function SaveAsFAQModal({ open, onOpenChange, conversationId }: SaveAsFAQ
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label>Categoría</Label>
+                            <Label>{t('crm.inbox.chat.faq.category')}</Label>
                             <Select
                                 value={extracted.category}
                                 onValueChange={(val) => setExtracted({ ...extracted, category: val })}
@@ -152,11 +154,11 @@ export function SaveAsFAQModal({ open, onOpenChange, conversationId }: SaveAsFAQ
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="General">General</SelectItem>
-                                    <SelectItem value="Billing">Facturación</SelectItem>
-                                    <SelectItem value="Support">Soporte</SelectItem>
-                                    <SelectItem value="Product">Producto</SelectItem>
-                                    <SelectItem value="Shipping">Envíos</SelectItem>
+                                    <SelectItem value="General">{t('crm.inbox.chat.faq.categories.general')}</SelectItem>
+                                    <SelectItem value="Billing">{t('crm.inbox.chat.faq.categories.billing')}</SelectItem>
+                                    <SelectItem value="Support">{t('crm.inbox.chat.faq.categories.support')}</SelectItem>
+                                    <SelectItem value="Product">{t('crm.inbox.chat.faq.categories.product')}</SelectItem>
+                                    <SelectItem value="Shipping">{t('crm.inbox.chat.faq.categories.shipping')}</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
@@ -165,7 +167,7 @@ export function SaveAsFAQModal({ open, onOpenChange, conversationId }: SaveAsFAQ
 
                 <DialogFooter>
                     <Button variant="outline" onClick={() => onOpenChange(false)}>
-                        Cancelar
+                        {t('common.cancel')}
                     </Button>
                     {extracted && (
                         <Button onClick={handleSave} disabled={isSaving}>
@@ -174,7 +176,7 @@ export function SaveAsFAQModal({ open, onOpenChange, conversationId }: SaveAsFAQ
                             ) : (
                                 <Check className="mr-2 h-4 w-4" />
                             )}
-                            Guardar FAQ
+                            {t('crm.inbox.chat.faq.save_as')}
                         </Button>
                     )}
                 </DialogFooter>

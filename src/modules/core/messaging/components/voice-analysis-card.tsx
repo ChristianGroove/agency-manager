@@ -4,6 +4,7 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { BrainCircuit, CheckSquare, AlignLeft, AlertCircle, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useTranslation } from "@/lib/i18n/use-translation"
 
 interface VoiceAnalysis {
     summary: string
@@ -24,6 +25,7 @@ export function VoiceAnalysisCard({
     existingAnalysis,
     onAnalysisComplete
 }: VoiceAnalysisCardProps) {
+    const { t } = useTranslation()
     const [analysis, setAnalysis] = useState<VoiceAnalysis | null>(existingAnalysis || null)
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState("")
@@ -45,10 +47,10 @@ export function VoiceAnalysisCard({
                 setAnalysis(data.analysis)
                 onAnalysisComplete?.(data.analysis)
             } else {
-                setError(data.error || "Analysis failed")
+                setError(data.error || t('crm.inbox.chat.voice.error'))
             }
         } catch (e) {
-            setError("Network error")
+            setError(t('crm.inbox.chat.voice.network_error'))
         } finally {
             setIsLoading(false)
         }
@@ -58,7 +60,7 @@ export function VoiceAnalysisCard({
         return (
             <div className="mt-2 p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-md border border-indigo-100 dark:border-indigo-800 flex items-center gap-2 text-xs text-indigo-600 dark:text-indigo-400">
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                <span>Analizando nota de voz...</span>
+                <span>{t('crm.inbox.chat.voice.analyzing')}</span>
             </div>
         )
     }
@@ -76,7 +78,7 @@ export function VoiceAnalysisCard({
                     className="h-6 text-[10px] text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:text-indigo-400"
                 >
                     <BrainCircuit className="h-3 w-3 mr-1" />
-                    Analizar con IA
+                    {t('crm.inbox.chat.voice.analyze_ai')}
                 </Button>
                 {error && <span className="text-[10px] text-red-500 ml-2">{error}</span>}
             </div>
@@ -98,11 +100,11 @@ export function VoiceAnalysisCard({
                 {/* Header */}
                 <div className="flex items-center gap-1.5 text-xs font-semibold text-indigo-900 dark:text-indigo-100">
                     <BrainCircuit className="h-3.5 w-3.5 text-indigo-500" />
-                    <span>Resumen Inteligente</span>
+                    <span>{t('crm.inbox.chat.voice.smart_summary')}</span>
                     {analysis.sentiment === 'urgent' && (
                         <span className="ml-auto flex items-center gap-1 text-[10px] font-bold text-red-600 bg-red-50 dark:bg-red-900/20 px-1.5 py-0.5 rounded-full uppercase tracking-wider">
                             <AlertCircle className="h-3 w-3" />
-                            Urgente
+                            {t('crm.inbox.chat.voice.urgent')}
                         </span>
                     )}
                 </div>

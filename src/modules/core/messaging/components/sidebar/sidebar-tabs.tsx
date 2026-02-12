@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils"
 import { SidebarConversationList } from "./sidebar-conversation-list"
 import { SidebarContactList } from "./sidebar-contact-list"
 import { MessageSquare, Users2 } from "lucide-react"
+import { useTranslation } from "@/lib/i18n/use-translation"
 
 interface SidebarTabsProps {
     selectedConversationId: string | null
@@ -14,6 +15,7 @@ interface SidebarTabsProps {
 type TabType = 'conversations' | 'contacts'
 
 export function SidebarTabs({ selectedConversationId, onSelectConversation }: SidebarTabsProps) {
+    const { t } = useTranslation()
     const [activeTab, setActiveTab] = React.useState<TabType>('conversations')
 
     // When a conversation is selected from contacts, we want to maybe auto-switch back?
@@ -46,7 +48,7 @@ export function SidebarTabs({ selectedConversationId, onSelectConversation }: Si
                         )}
                     >
                         <MessageSquare className="h-3.5 w-3.5" />
-                        Conversations
+                        {t('crm.inbox.sidebar.tabs.conversations')}
                     </button>
                     <button
                         onClick={() => setActiveTab('contacts')}
@@ -58,7 +60,7 @@ export function SidebarTabs({ selectedConversationId, onSelectConversation }: Si
                         )}
                     >
                         <Users2 className="h-3.5 w-3.5" />
-                        Contacts
+                        {t('crm.inbox.sidebar.tabs.contacts')}
                     </button>
                 </div>
             </div>

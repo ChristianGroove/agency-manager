@@ -11,8 +11,15 @@ export const es = {
         back: "Volver",
         error: "Error",
         success: "Éxito",
-        saved: "Guardado correctamente",
+        you: "Tú",
+        unknown: "Desconocido",
+        no_results: "No se encontraron resultados",
+        agent: "Agente",
+        client: "Cliente",
+        saved: "Guardado exitosamente",
         unexpected_error: "Ocurrió un error inesperado",
+        connection_error: "Error de conexión con el servidor",
+        recently: "Recientemente",
         actions: {
             create: "Crear",
             update: "Actualizar",
@@ -836,6 +843,432 @@ export const es = {
         }
     },
     crm: {
+        meta: {
+            settings_title: "Configuración CRM",
+            settings_desc: "Gestiona la configuración de tu CRM",
+            channels_title: "Canales de Mensajería | CRM",
+            channels_desc: "Gestiona tus conexiones de WhatsApp y otros canales",
+            inbox_title: "Inbox | CRM",
+            inbox_desc: "Centro de mensajería unificado"
+        },
+        channels: {
+            title: "Canales de Mensajería",
+            subtitle: "Conecta tus cuentas para gestionar conversaciones.",
+            marketplace: "Marketplace",
+            connect_qr: "Conectar con QR (Legacy)",
+            empty_state: {
+                title: "No hay canales conectados",
+                description: "Conecta WhatsApp, Messenger o Instagram para centralizar tus conversaciones."
+            },
+            modal: {
+                title: "Conectar WhatsApp",
+                subtitle: "Elige cómo deseas vincular tu número de WhatsApp Business a Pixy.",
+                back: "Volver a métodos de conexión",
+                sync_note: "Al conectar con este método, podrás seguir usando la **app móvil de WhatsApp Business** (v2.24.17+) junto con el inbox de Pixy. Los mensajes se sincronizan automáticamente.",
+                embedded: {
+                    title: "Registro Rápido con Meta",
+                    recommended: "Recomendado",
+                    desc: "Conecta tu número directamente desde aquí sin salir de Pixy. Ideal si quieres **seguir usando la app móvil de WhatsApp Business** al mismo tiempo.",
+                    mobile_compat: "Compatible con app móvil",
+                    auto_config: "Configuración automática"
+                },
+                oauth: {
+                    title: "Conexión Administrada (OAuth)",
+                    desc: "Vinculación completa vía inicio de sesión en Facebook. Ideal para cuentas **gestionadas exclusivamente desde Pixy**.",
+                    control: "Control total desde el dashboard"
+                }
+            }
+        },
+        settings: {
+            title: "Configuración CRM",
+            subtitle: "Administra las preferencias generales de tu sistema de relaciones con clientes.",
+            tabs: {
+                channels: "Canales",
+                channels_desc: "WhatsApp y más",
+                pipelines: "Pipelines",
+                pipelines_desc: "Etapas de venta",
+                templates: "Plantillas (Meta)",
+                templates_desc: "Mensajes predefinidos",
+                industry: "Plantillas de Industria",
+                industry_desc: "Modelos de Pipeline"
+            }
+        },
+        reports: {
+            title: "Analytics Hub",
+            subtitle: "Centro de inteligencia y métricas de crecimiento",
+            time_ranges: {
+                last_7_days: "Últimos 7 días",
+                last_30_days: "Últimos 30 días",
+                last_90_days: "Últimos 90 días",
+                this_year: "Este año"
+            },
+            kpis: {
+                total_leads: "Total Leads",
+                new_this_period: "este periodo",
+                pipeline_value: "Valor Pipeline",
+                open_opportunities: "Oportunidades abiertas",
+                conversion_rate: "Tasa de Conversión",
+                avg_deal: "Promedio",
+                per_deal: "deal",
+                open_conversations: "Conversaciones Abiertas",
+                pending_response: "Pendientes de respuesta"
+            },
+            funnel: {
+                title: "Embudo de Ventas",
+                subtitle: "Distribución por etapa"
+            },
+            sources: {
+                title: "Fuentes de Leads",
+                subtitle: "Origen de los contactos"
+            },
+            team: {
+                title: "Rendimiento del Equipo",
+                subtitle: "Top performers por valor cerrado",
+                leads_assigned: "leads asignados",
+                deals: "deals"
+            },
+            activity: {
+                title: "Actividad Reciente",
+                subtitle: "Últimos movimientos",
+                empty: "Sin actividad reciente"
+            },
+            empty_data: {
+                funnel: "No hay datos de embudo disponibles",
+                sources: "No hay datos de fuentes disponibles",
+                team: "No hay datos de equipo disponibles"
+            },
+            status: {
+                new: "Nuevos",
+                contacted: "Contactados",
+                qualified: "Calificados",
+                negotiation: "Negociación",
+                won: "Ganados",
+                lost: "Perdidos"
+            }
+        },
+        inbox: {
+            sidebar: {
+                tabs: {
+                    conversations: "Conversaciones",
+                    contacts: "Contactos"
+                },
+                search_placeholder: "Buscar conversaciones...",
+                search_contacts_placeholder: "Buscar o ingresar teléfono...",
+                inbox_settings: "Ajustes del Inbox",
+                filters: {
+                    all: "Todos",
+                    unread: "No leídos",
+                    assigned: "Asignados",
+                    assigned_to_me: "Asignados a mí",
+                    snoozed: "Pospuestos",
+                    archived: "Archivados"
+                },
+                loading: "Cargando...",
+                no_conversations: "No hay conversaciones",
+                no_conversations_desc: "Los nuevos mensajes aparecerán aquí",
+                no_conversations_desc_search: "Prueba con un término de búsqueda diferente",
+                no_contacts: "No se encontraron contactos",
+                no_contacts_desc: "Ingresa un número de teléfono para iniciar un nuevo chat.",
+                direct_dial: "Chat con {name}",
+                start_chat: "Haz clic para iniciar conversación"
+            },
+            chat: {
+                no_messages: "Sin mensajes",
+                input_placeholder: "Escribe un mensaje... (Atajo: '/' para respuestas guardadas)",
+                refine_ai: "Refinar con IA",
+                ai_refined: "Refinado por IA",
+                note_mode: "Modo Nota",
+                note: "Nota",
+                unknown_user: "Usuario desconocido",
+                quick_replies: {
+                    title: "Respuestas Rápidas",
+                    search: "Buscar respuestas...",
+                    empty: "No hay respuestas rápidas",
+                    add: "Nueva respuesta"
+                },
+                replies: {
+                    title: "Sugerencias IA",
+                    generate: "Generar respuestas con IA",
+                    regenerate: "Regenerar sugerencias",
+                    analyzing: "Analizando contexto...",
+                    context: "contexto KB",
+                    close: "Cerrar sugerencias",
+                    types: {
+                        short: "Corta",
+                        medium: "Media",
+                        detailed: "Detallada"
+                    },
+                    errors: {
+                        no_message: "No hay mensaje para analizar",
+                        failed: "Error al generar respuestas",
+                        connection: "Error de conexión con IA"
+                    }
+                },
+                faq: {
+                    save_as: "Guardar como FAQ",
+                    desc: "Usa IA para extraer una pregunta y respuesta limpias de esta conversación.",
+                    extract: "Extraer FAQ con IA",
+                    analyzing: "Analizando conversación...",
+                    question: "Pregunta",
+                    answer: "Respuesta",
+                    category: "Categoría",
+                    categories: {
+                        general: "General",
+                        billing: "Facturación",
+                        support: "Soporte",
+                        product: "Producto",
+                        shipping: "Envíos"
+                    },
+                    no_messages: "No hay mensajes en esta conversación",
+                    extract_error: "Error al extraer FAQ",
+                    save_success: "FAQ guardada correctamente",
+                    save_error: "Error al guardar FAQ"
+                },
+                templates: {
+                    title: "Plantillas de Mensaje",
+                    manage: "Gestiona tus respuestas rápidas.",
+                    configure: "Configura el contenido y apariencia.",
+                    new: "Nueva Plantilla",
+                    edit: "Editar Plantilla",
+                    name: "Nombre de Plantilla",
+                    name_id: "Nombre (ID)",
+                    name_placeholder: "ej. welcome_discount",
+                    name_required: "El nombre es obligatorio",
+                    name_error_format: "Solo minúsculas, números y guiones bajos",
+                    name_placeholder_example: "ej. welcome_discount_v1",
+                    category_marketing: "Marketing (Promociones)",
+                    category_utility: "Utility (Confirmaciones)",
+                    category_auth: "Authentication (OTP)",
+                    image: "Imagen",
+                    video: "Video",
+                    doc: "Documento",
+                    content: "Contenido",
+                    content_placeholder: "Escribe tu mensaje aquí...",
+                    color: "Color",
+                    icon: "Icono",
+                    ai_improve: "Mejorar con IA",
+                    polishing: "Puliedo...",
+                    refine_min_chars: "Mensaje muy corto para refinar",
+                    refined: "Borrador procesado por IA",
+                    save_success: "Plantilla guardada",
+                    save_error: "Error al guardar",
+                    delete_confirm: "¿Estás seguro de eliminar esta plantilla?",
+                    delete_success: "Plantilla eliminada",
+                    create_new: "Crear Nueva Plantilla",
+                    add_library: "Añadir a tu biblioteca personal",
+                    structure: "Estructura del Mensaje",
+                    header: "Cabecera (Opcional)",
+                    header_none: "Ninguna",
+                    header_text: "Texto",
+                    header_media: "Multimedia",
+                    header_placeholder: "ej. ¡Oferta Especial!",
+                    body: "Cuerpo del Mensaje",
+                    body_placeholder: "Hola {{1}}, gracias por tu compra...",
+                    add_variable: "+ Variable",
+                    footer: "Pie de Página (Opcional)",
+                    footer_placeholder: "ej. Enviado por Agency Manager",
+                    buttons: "Botones (Máx 3)",
+                    quick_reply: "Respuesta Rápida",
+                    url: "Enlace URL",
+                    phone: "Teléfono",
+                    button_text: "Texto del Botón",
+                    preview_title: "Vista Previa",
+                    preview_desc: "Esta es una aproximación. El diseño final puede variar por dispositivo."
+                },
+                voice: {
+                    analyzing: "Analizando mensaje de voz...",
+                    analyze_ai: "Analizar con IA",
+                    smart_summary: "Resumen Inteligente",
+                    urgent: "Urgente",
+                    error: "Error al analizar voz",
+                    network_error: "Error de red"
+                },
+                sentiment: {
+                    positive: "Positivo",
+                    neutral: "Neutral",
+                    negative: "Negativo",
+                    urgent: "Urgente",
+                    alert_negative: "Pico de sentimiento negativo detectado",
+                    alert_urgent: "Solicitud urgente detectada",
+                    alert_escalate: "Podría ser necesaria una escalada",
+                    acknowledge: "Entendido"
+                },
+                actions: {
+                    start_chat: "Iniciando chat...",
+                    chat_opened: "Chat abierto",
+                    chat_error: "No se pudo iniciar el chat",
+                    refine_ai_success: "Borrador procesado por IA",
+                    refine_ai_error: "No se pudo refinar el borrador",
+                    ai_error: "Error de IA",
+                    file_too_large: "Archivo muy grande (máx 10MB)",
+                    upload_failed: "Error al subir archivo"
+                }
+            },
+            context: {
+                loading: "Cargando contexto...",
+                unknown_contact: "Contacto Desconocido",
+                no_lead_desc: "Este contacto no está registrado como Lead o Cliente en el CRM.",
+                create_lead: "Crear Lead",
+                particular: "Particular",
+                new_badge: "Nuevo",
+                quote_designer: "Diseñador de Cotizaciones",
+                tabs: {
+                    management: "Gestión",
+                    replies: "Respuestas",
+                    sales: "Cotizador"
+                },
+                sections: {
+                    assignment: "Asignación",
+                    contact_details: "Detalles de Contacto",
+                    tags: "Etiquetas",
+                    potential_value: "Valor Potencial",
+                    assignee_label: "ASIGNADO A",
+                    unassigned_click_to_assign: "Nadie (Clic para asignar)",
+                    search_agent_placeholder: "Buscar agente...",
+                    no_agents_found: "No se encontraron agentes.",
+                    agents_heading: "Agentes",
+                    unassign: "Desasignar",
+                    unknown_agent: "Desconocido"
+                },
+                contact_fields: {
+                    mobile: "Móvil",
+                    email: "Email",
+                    location: "Ubicación",
+                    unknown_location: "Ubicación Desconocida"
+                },
+                actions: {
+                    resolve: "Resolver",
+                    resolved: "Conversación resuelta",
+                    resolve_error: "Error al resolver",
+                    snooze: "Posponer",
+                    snoozed_tomorrow: "Pospuesto hasta mañana",
+                    archive: "Archivar",
+                    archived: "Conversación archivada",
+                    archive_error: "Error al archivar",
+                    more_options: "Más Opciones",
+                    copy: "Copiar",
+                    copied: "Copiado al portapapeles",
+                    add: "Agregar",
+                    assigned: "Asignado",
+                    unassigned: "Desasignado",
+                    failed_to_assign: "Error al asignar"
+                },
+                priority: {
+                    urgent: "Urgente",
+                    high: "Alta",
+                    normal: "Normal"
+                }
+            },
+            layout: {
+                ready_title: "Tu Inbox está listo",
+                ready_desc: "Selecciona una conversación de la izquierda para comenzar a chatear.",
+                select_chat: "Selecciona un chat para ver detalles",
+                moving: "Moviendo conversación...",
+                drop_to_change: "Suelta para cambiar estado",
+                reopened: "reabierta",
+                action_resolved: "resuelta",
+                action_archived: "archivada",
+                action_reopened: "reabierta",
+                action_snoozed: "pospuesta",
+                conversation_updated: "Conversación {label}",
+                connection_error: "Error de conexión",
+                unknown: "Desconocido",
+                internal_note: "Nota Interna",
+                no_visible_text: "Mensaje sin texto visible"
+            },
+            settings: {
+                title: "Configuración del Inbox",
+                desc: "Gestiona la disponibilidad y reglas de asignación",
+                tabs: {
+                    status: "Estado del Agente",
+                    rules: "Reglas",
+                    preferences: "Preferencias"
+                },
+                sections: {
+                    availability: "Tu Disponibilidad",
+                    availability_desc: "Controla cómo se te asignan las conversaciones y monitorea la carga del equipo.",
+                    routing: "Lógica de Enrutamiento",
+                    routing_desc: "Define reglas automáticas para distribuir conversaciones entre los agentes.",
+                    personalization: "Personalización & Zen",
+                    personalization_desc: "Ajusta notificaciones, sonidos y atajos para tu flujo ideal.",
+                    status_updated: "Estado actualizado a {status}",
+                    update_error: "Error al actualizar estado",
+                    auto_assign_on: "Auto-asignación activada",
+                    auto_assign_off: "Auto-asignación desactivada",
+                    auto_assign_error: "Error al cambiar auto-asignación",
+                    capacity_updated: "Capacidad actualizada a {capacity}",
+                    capacity_error: "Error al actualizar capacidad",
+                    loading_status: "Cargando estado...",
+                    rules: {
+                        title: "Reglas de Asignación",
+                        desc: "Configura el enrutamiento automático de conversaciones",
+                        load_error: "Error al cargar reglas",
+                        new_rule: "Nueva Regla",
+                        edit_rule: "Editar Regla",
+                        create_rule: "Crear Regla de Asignación",
+                        save_success: "Regla guardada correctamente",
+                        save_error: "Error al guardar regla",
+                        delete_confirm: "¿Estás seguro de que quieres eliminar esta regla?",
+                        delete_success: "Regla eliminada",
+                        delete_error: "Error al eliminar regla",
+                        activated: "Regla activada",
+                        deactivated: "Regla desactivada",
+                        state_error: "Error al cambiar estado de regla",
+                        empty_title: "Sin Reglas de Asignación",
+                        empty_desc: "Crea tu primera regla para automatizar el reparto de chats",
+                        create_first: "Crear Primera Regla",
+                        priority: "Prioridad",
+                        priority_label: "Prioridad (menor = más urgente)",
+                        strategy: "Estrategia",
+                        strategies: {
+                            load_balance: "Load Balance (Equilibrio de Carga)",
+                            round_robin: "Round Robin (Turnos)",
+                            skills_based: "Skills Based (Habilidades)",
+                            specific_agent: "Specific Agent (Específico)"
+                        },
+                        conditions: {
+                            title: "Condiciones (Cuándo aplicar)",
+                            channel: "Canal",
+                            tags: "Etiquetas",
+                            priority: "Prioridad",
+                            business_hours: "Solo en Horario Laboral (9 AM - 5 PM)"
+                        },
+                        fields: {
+                            name: "Nombre de la Regla *",
+                            name_placeholder: "Ej: Clientes VIP a Agentes Senior",
+                            description: "Descripción",
+                            description_placeholder: "Descripción opcional"
+                        }
+                    },
+                    profile_init_success: "Perfil de agente inicializado",
+                    profile_init_error: "Error al inicializar perfil: {error}",
+                    profile_not_found: "Perfil de Agente No Encontrado",
+                    profile_not_found_desc: "Parece que aún no tienes un perfil de agente activo. Actívalo para comenzar a recibir chats.",
+                    activate_profile: "Activar mi Perfil de Agente",
+                    team_workload: "Carga del Equipo",
+                    your_status: "Tu Estado",
+                    online: "Disponible",
+                    away: "Ausente",
+                    busy: "Ocupado",
+                    offline: "Offline",
+                    available_note: "Nota: Debes estar {status} para recibir nuevas conversaciones automáticas.",
+                    auto_assign: "Auto-Asignación",
+                    auto_assign_tooltip: "Si está activado, el sistema te asignará chats automáticamente según las reglas definidas.",
+                    max_capacity: "Capacidad Máxima",
+                    max_capacity_tooltip: "Número máximo de conversaciones activas que puedes manejar al mismo tiempo.",
+                    max_capacity_chats: "{capacity} chats",
+                    current_load: "Carga Actual",
+                    manual: "Manual",
+                    test_tools: "Herramientas de Prueba",
+                    test_tools_desc: "Simula eventos para verificar el funcionamiento de las reglas.",
+                    simulate_message: "Simular Mensaje Nuevo (WhatsApp)",
+                    simulating: "Simulando...",
+                    simulation_success: "Mensaje simulado enviado",
+                    simulation_success_desc: "Revisa el inbox, debería aparecer un nuevo chat asignado.",
+                    simulation_failed: "Falló la simulación: {message}"
+                }
+            }
+        },
         leads: {
             title: "Leads",
             desc: "Gestiona tus oportunidades de venta.",

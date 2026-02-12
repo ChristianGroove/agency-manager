@@ -14,6 +14,8 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { SectionHeader } from "@/components/layout/section-header"
+import { useTranslation } from "@/lib/i18n/use-translation"
 
 // Facebook/Messenger icon (lucide doesn't have a good one)
 function FacebookIcon({ className }: { className?: string }) {
@@ -30,9 +32,8 @@ interface ChannelsListProps {
     agents: any[]
 }
 
-import { SectionHeader } from "@/components/layout/section-header"
-
 export function ChannelsList({ channels, pipelineStages, agents }: ChannelsListProps) {
+    const { t } = useTranslation()
     const [isEvolutionOpen, setIsEvolutionOpen] = useState(false)
     const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false)
     const router = useRouter()
@@ -85,14 +86,14 @@ export function ChannelsList({ channels, pipelineStages, agents }: ChannelsListP
     return (
         <div className="space-y-6">
             <SectionHeader
-                title="Canales de Mensajería"
-                subtitle="Conecta tus cuentas para gestionar conversaciones."
+                title={t('crm.channels.title')}
+                subtitle={t('crm.channels.subtitle')}
                 titleClassName="text-2xl"
                 action={
                     <div className="flex items-center gap-2 flex-wrap">
                         {/* Marketplace Link */}
                         <Button variant="ghost" onClick={() => router.push('/platform/integrations')}>
-                            <Store className="mr-2 h-4 w-4" /> Marketplace
+                            <Store className="mr-2 h-4 w-4" /> {t('crm.channels.marketplace')}
                         </Button>
 
                         {/* WhatsApp Button - Opens choice modal */}
@@ -136,7 +137,7 @@ export function ChannelsList({ channels, pipelineStages, agents }: ChannelsListP
                                     </Button>
                                 </TooltipTrigger>
                                 <TooltipContent>
-                                    <p>Conectar con QR (Legacy)</p>
+                                    <p>{t('crm.channels.connect_qr')}</p>
                                 </TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
@@ -161,9 +162,9 @@ export function ChannelsList({ channels, pipelineStages, agents }: ChannelsListP
                             <MessageCircle className="h-8 w-8 text-[#25D366]" />
                         </div>
                         <div className="max-w-md space-y-2">
-                            <h3 className="font-semibold text-lg">No hay canales conectados</h3>
+                            <h3 className="font-semibold text-lg">{t('crm.channels.empty_state.title')}</h3>
                             <p className="text-sm text-muted-foreground">
-                                Conecta WhatsApp, Messenger o Instagram para centralizar tus conversaciones.
+                                {t('crm.channels.empty_state.description')}
                             </p>
                         </div>
                     </div>

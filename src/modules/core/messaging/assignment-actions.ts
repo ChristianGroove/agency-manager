@@ -374,3 +374,24 @@ export async function getChannelAssignmentRule(connectionId: string) {
 
     return data
 }
+/**
+ * Get all assignment rules for the current organization
+ */
+export async function getAssignmentRules() {
+    const supabase = await createClient()
+    const orgId = await getCurrentOrganizationId()
+
+    if (!orgId) return { success: false, error: 'No organization found', data: [] }
+
+    const { data, error } = await supabase
+        .from('assignment_rules')
+        .select('*')
+        .eq('organization_id', orgId)
+        .order('priority', { ascending: true })
+
+    if (error) {
+        return { success: false, error: error.message, data: [] }
+    }
+
+    return { success: true, data }
+}

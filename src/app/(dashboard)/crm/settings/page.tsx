@@ -1,8 +1,12 @@
 import { redirect } from "next/navigation"
+import { getDictionary } from "@/lib/i18n/get-dictionary"
 
-export const metadata = {
-    title: "Configuración CRM",
-    description: "Gestiona la configuración de tu CRM",
+export async function generateMetadata() {
+    const dict = await getDictionary()
+    return {
+        title: dict.crm.meta.settings_title,
+        description: dict.crm.meta.settings_desc,
+    }
 }
 
 /**

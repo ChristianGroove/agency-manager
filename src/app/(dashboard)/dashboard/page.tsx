@@ -27,7 +27,7 @@ import { useRegisterView } from "@/modules/core/caa/context/view-context"
 import { useTranslation } from "@/lib/i18n/use-translation"
 
 export default function DashboardPage() {
-    const { t } = useTranslation()
+    const { t, tArray } = useTranslation()
     const [dashboardData, setDashboardData] = useState<DashboardDataProps | null>(null)
     const [loading, setLoading] = useState(true)
     const [orgType, setOrgType] = useState<'agency' | 'cleaning'>('agency') // Default to agency
@@ -328,7 +328,7 @@ export default function DashboardPage() {
                 title: t('dashboard.hero.mrr_agency'),
                 value: <CountUp end={monthlyRecurring} duration={2} separator="," />,
                 unit: "COP/mes",
-                tips: t('dashboard.tips.agency') || []
+                tips: tArray('dashboard.tips.agency')
             },
             social: {
                 facebook: settings?.social_facebook,
@@ -439,7 +439,7 @@ export default function DashboardPage() {
                 title: t('dashboard.hero.revenue_7d'),
                 value: <CountUp end={totalRevenueWeek} duration={2} separator="," />,
                 unit: "COP",
-                tips: t('dashboard.tips.cleaning') || []
+                tips: tArray('dashboard.tips.cleaning')
             },
             social: {
                 facebook: coreData.settings?.social_facebook,

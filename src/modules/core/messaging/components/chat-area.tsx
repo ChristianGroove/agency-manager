@@ -18,6 +18,7 @@ import { ConversationActionsMenu } from "./conversation-actions-menu"
 import dynamic from 'next/dynamic'
 import { toast } from "sonner"
 import { SavedRepliesSheet } from "./saved-replies-sheet"
+import { useTranslation } from "@/lib/i18n/use-translation"
 
 
 const EmojiPicker = dynamic(() => import('emoji-picker-react'), { ssr: false })
@@ -43,6 +44,7 @@ interface ChatAreaProps {
 }
 
 export function ChatArea({ conversationId, isContextOpen, onToggleContext }: ChatAreaProps) {
+    const { t } = useTranslation()
     const [messages, setMessages] = useState<Message[]>([])
     const [conversation, setConversation] = useState<Conversation | null>(null)
     const [inputValue, setInputValue] = useState("")
@@ -248,7 +250,7 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
             if (!result.success) {
                 console.error("Failed to send", (result as any).error)
                 setMessages(prev => prev.filter(m => m.id !== optimisticId))
-                toast.error("Failed to send message", { description: (result as any).error || "Unknown error" })
+                toast.error(t('crm.inbox.chat.actions.chat_error'), { description: (result as any).error || t('crm.inbox.layout.unknown') })
             }
         } catch (error) {
             console.error("Failed to send", error)
@@ -301,12 +303,12 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
             const result = await refineDraftContent(inputValue)
             if (result.success && result.refined) {
                 setInputValue(result.refined)
-                toast.success("Draft processed by AI", { icon: "✨" })
+                toast.success(t('crm.inbox.chat.actions.refine_ai_success'), { icon: "✨" })
             } else {
-                toast.error("Could not refine draft")
+                toast.error(t('crm.inbox.chat.actions.refine_ai_error'))
             }
         } catch (error) {
-            toast.error("AI Error")
+            toast.error(t('crm.inbox.chat.actions.ai_error'))
         } finally {
             setIsRefining(false)
         }
@@ -318,7 +320,7 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
         if (!file) return
 
         if (file.size > 10 * 1024 * 1024) {
-            toast.error("File to large (max 10MB)")
+            toast.error(t('crm.inbox.chat.actions.file_too_large'))
             return
         }
 
@@ -347,7 +349,7 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
 
         } catch (error) {
             console.error("Upload failed", error)
-            toast.error("Failed to upload file")
+            toast.error(t('crm.inbox.chat.actions.upload_failed'))
         } finally {
             setUploading(false)
             if (fileInputRef.current) fileInputRef.current.value = ''
@@ -355,7 +357,7 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
     }
 
     // Contact Name fallback (Lead or Client)
-    const leadName = conversation?.clients?.name || conversation?.leads?.name || conversation?.clients?.phone || conversation?.leads?.phone || "Unknown User"
+    const leadName = conversation?.clients?.name || conversation?.leads?.name || conversation?.clients?.phone || conversation?.leads?.phone || t('crm.inbox.chat.unknown_user')
     const leadInitials = (leadName || "UN").slice(0, 2).toUpperCase()
 
     return (
@@ -415,7 +417,7 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
 
                 {messages.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-full text-muted-foreground opacity-50">
-                        <p className="text-sm">No messages yet</p>
+                        <p className="text-sm">{t('crm.inbox.chat.no_messages')}</p>
                     </div>
                 ) : (
                     <Virtuoso
@@ -490,11 +492,11 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
                                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-600 opacity-75"></span>
                                     <span className="relative inline-flex rounded-full h-2 w-2 bg-yellow-700"></span>
                                 </span>
-                                Note Mode
+                                {t('crm.inbox.chat.note_mode')}
                             </>
                         ) : (
                             <>
-                                📝 Note
+                                {t('crm.inbox.chat.note')}
                             </>
                         )}
                     </Button>
@@ -548,7 +550,7 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
                         value={inputValue}
                         onChange={handleInputChange}
                         onKeyDown={handleKeyDown}
-                        placeholder="Type a message... (Tip: Type '/' for saved replies)"
+                        placeholder={t('crm.inbox.chat.input_placeholder')}
                         className="min-h-[24px] max-h-[120px] w-full border-none shadow-none focus-visible:ring-0 p-0 bg-transparent resize-none leading-relaxed"
                         rows={1}
                         style={{ height: inputValue ? 'auto' : '24px' }}
@@ -562,7 +564,7 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
                             onClick={handleRefine}
                             disabled={isRefining}
                             className="h-6 w-6 ml-2 text-purple-600 hover:text-purple-700 hover:bg-purple-100 rounded-full shrink-0 animate-in fade-in zoom-in duration-200"
-                            title="Refine with AI"
+                            title={t('crm.inbox.chat.refine_ai')}
                         >
                             <Wand2 className={cn("h-4 w-4", isRefining && "animate-spin")} />
                         </Button>

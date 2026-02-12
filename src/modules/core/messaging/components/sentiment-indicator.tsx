@@ -3,6 +3,7 @@
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { AlertTriangle, Smile, Meh, Frown, AlertCircle } from "lucide-react"
+import { useTranslation } from "@/lib/i18n/use-translation"
 
 interface SentimentBadgeProps {
     sentiment: 'positive' | 'neutral' | 'negative' | 'urgent' | null
@@ -19,32 +20,33 @@ export function SentimentBadge({
     showIcon = true,
     showLabel = true
 }: SentimentBadgeProps) {
+    const { t } = useTranslation()
     if (!sentiment) return null
 
     const config = {
         positive: {
-            label: 'Happy',
+            label: t('crm.inbox.chat.sentiment.positive'),
             icon: Smile,
             color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
             emoji: '😊',
             borderColor: 'border-green-500'
         },
         neutral: {
-            label: 'Neutral',
+            label: t('crm.inbox.chat.sentiment.neutral'),
             icon: Meh,
             color: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200',
             emoji: '😐',
             borderColor: 'border-gray-500'
         },
         negative: {
-            label: 'Frustrated',
+            label: t('crm.inbox.chat.sentiment.negative'),
             icon: Frown,
             color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
             emoji: '😟',
             borderColor: 'border-yellow-500'
         },
         urgent: {
-            label: 'URGENT',
+            label: t('crm.inbox.chat.sentiment.urgent'),
             icon: AlertTriangle,
             color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 font-bold',
             emoji: '🔴',
@@ -140,6 +142,7 @@ export function SentimentAlert({
     detectedKeywords,
     onAcknowledge
 }: SentimentAlertProps) {
+    const { t } = useTranslation()
     const severityConfig = {
         low: 'border-blue-500 bg-blue-50 dark:bg-blue-950',
         medium: 'border-yellow-500 bg-yellow-50 dark:bg-yellow-950',
@@ -148,9 +151,9 @@ export function SentimentAlert({
     }
 
     const alertMessages = {
-        negative_spike: 'Customer sentiment has turned negative',
-        urgent_keywords: 'Urgent keywords detected - immediate attention needed',
-        escalation_needed: 'This conversation should be escalated'
+        negative_spike: t('crm.inbox.chat.sentiment.alert_negative'),
+        urgent_keywords: t('crm.inbox.chat.sentiment.alert_urgent'),
+        escalation_needed: t('crm.inbox.chat.sentiment.alert_escalate')
     }
 
     return (
@@ -170,14 +173,14 @@ export function SentimentAlert({
                         onClick={onAcknowledge}
                         className="text-xs underline hover:no-underline"
                     >
-                        Acknowledge
+                        {t('crm.inbox.chat.sentiment.acknowledge')}
                     </button>
                 )}
             </div>
 
             {detectedKeywords && detectedKeywords.length > 0 && (
                 <div className="flex flex-wrap gap-1">
-                    <span className="text-xs text-muted-foreground">Keywords:</span>
+                    <span className="text-xs text-muted-foreground">{t('crm.inbox.chat.replies.context')}:</span>
                     {detectedKeywords.map((kw, idx) => (
                         <Badge key={idx} variant="destructive" className="text-xs px-1 py-0">
                             {kw}

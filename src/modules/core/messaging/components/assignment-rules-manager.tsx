@@ -1,25 +1,43 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { supabase } from "@/lib/supabase"
+import { Plus, GripVertical, Edit, Trash2, Zap, Info } from "lucide-react"
+import { toast } from "sonner"
+import { useTranslation } from "@/lib/i18n/use-translation"
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger
+} from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
+import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue
+} from "@/components/ui/select"
 import { Slider } from "@/components/ui/slider"
-import { Plus, Trash2, Edit, GripVertical, Zap, Info } from "lucide-react"
-import { upsertAssignmentRule, deleteAssignmentRule, toggleAssignmentRule } from "../assignment-actions"
-import { toast } from "sonner"
 import {
     Tooltip,
     TooltipContent,
     TooltipProvider,
-    TooltipTrigger,
+    TooltipTrigger
 } from "@/components/ui/tooltip"
+import {
+    upsertAssignmentRule,
+    deleteAssignmentRule,
+    toggleAssignmentRule,
+    getAssignmentRules,
+    getAgentsWorkload
+} from "../assignment-actions"
 
 interface AssignmentRule {
     id: string
@@ -27,49 +45,45 @@ interface AssignmentRule {
     description?: string
     priority: number
     is_active: boolean
+    strategy: string
     conditions: any
-    strategy: 'round-robin' | 'load-balance' | 'skills-based' | 'specific-agent'
     assign_to?: string[]
 }
 
 export function AssignmentRulesManager() {
+    const { t } = useTranslation()
     const [rules, setRules] = useState<AssignmentRule[]>([])
     const [agents, setAgents] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
-    const [editingRule, setEditingRule] = useState<AssignmentRule | null>(null)
     const [showDialog, setShowDialog] = useState(false)
+    const [editingRule, setEditingRule] = useState<AssignmentRule | null>(null)
 
     useEffect(() => {
-        loadRules()
-        loadAgents()
+        loadData()
     }, [])
 
-    const loadRules = async () => {
+    const loadData = async () => {
         setLoading(true)
-        const { data, error } = await supabase
-            .from('assignment_rules')
-            .select('*')
-            .order('priority', { ascending: true })
+        try {
+            const [rulesRes, agentsRes] = await Promise.all([
+                getAssignmentRules(),
+                getAgentsWorkload()
+            ])
 
-        if (!error && data) {
-            setRules(data)
+            if (rulesRes.success) setRules(rulesRes.data || [])
+            if (agentsRes.success) setAgents(agentsRes.data || [])
+        } catch (error) {
+            console.error("Failed to load assignment data:", error)
+            toast.error(t('crm.inbox.settings.sections.rules.load_error'))
+        } finally {
+            setLoading(false)
         }
-        setLoading(false)
     }
 
-    const loadAgents = async () => {
-        const { data } = await supabase
-            .from('agent_availability')
-            .select(`
-                agent_id,
-                users:agent_id (
-                    email,
-                    raw_user_meta_data
-                )
-            `)
-
-        if (data) {
-            setAgents(data)
+    const loadRules = async () => {
+        const result = await getAssignmentRules()
+        if (result.success) {
+            setRules(result.data || [])
         }
     }
 
@@ -77,25 +91,25 @@ export function AssignmentRulesManager() {
         const result = await upsertAssignmentRule(rule as any)
 
         if (result.success) {
-            toast.success('Regla guardada correctamente')
+            toast.success(t('crm.inbox.settings.sections.rules.save_success'))
             loadRules()
             setShowDialog(false)
             setEditingRule(null)
         } else {
-            toast.error(result.error || 'Error al guardar regla')
+            toast.error(result.error || t('crm.inbox.settings.sections.rules.save_error'))
         }
     }
 
     const handleDeleteRule = async (ruleId: string) => {
-        if (!confirm('¿Estás seguro de que quieres eliminar esta regla?')) return
+        if (!confirm(t('crm.inbox.settings.sections.rules.delete_confirm'))) return
 
         const result = await deleteAssignmentRule(ruleId)
 
         if (result.success) {
-            toast.success('Regla eliminada')
+            toast.success(t('crm.inbox.settings.sections.rules.delete_success'))
             loadRules()
         } else {
-            toast.error(result.error || 'Error al eliminar regla')
+            toast.error(result.error || t('crm.inbox.settings.sections.rules.save_error'))
         }
     }
 
@@ -103,10 +117,10 @@ export function AssignmentRulesManager() {
         const result = await toggleAssignmentRule(ruleId, isActive)
 
         if (result.success) {
-            toast.success(isActive ? 'Regla activada' : 'Regla desactivada')
+            toast.success(isActive ? t('crm.inbox.context.actions.assigned') : t('crm.inbox.context.actions.unassigned'))
             loadRules()
         } else {
-            toast.error(result.error || 'Error al cambiar estado de regla')
+            toast.error(result.error || t('crm.inbox.settings.sections.rules.save_error'))
         }
     }
 
@@ -114,22 +128,20 @@ export function AssignmentRulesManager() {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h2 className="text-2xl font-bold">Reglas de Asignación</h2>
-                    <p className="text-sm text-muted-foreground">
-                        Configura el enrutamiento automático de conversaciones
-                    </p>
+                    <h2 className="text-2xl font-bold">{t('crm.inbox.context.sections.assignment')}</h2>
+                    <p className="text-sm text-muted-foreground">{t('crm.inbox.chat.templates.manage')}</p>
                 </div>
                 <Dialog open={showDialog} onOpenChange={setShowDialog}>
                     <DialogTrigger asChild>
                         <Button onClick={() => setEditingRule(null)}>
                             <Plus className="h-4 w-4 mr-2" />
-                            Nueva Regla
+                            {t('crm.inbox.chat.templates.new')}
                         </Button>
                     </DialogTrigger>
                     <DialogContent className="max-w-2xl">
                         <DialogHeader>
                             <DialogTitle>
-                                {editingRule ? 'Editar Regla' : 'Crear Regla de Asignación'}
+                                {editingRule ? t('crm.inbox.chat.templates.edit') : t('crm.inbox.chat.templates.new')}
                             </DialogTitle>
                         </DialogHeader>
                         <RuleEditor
@@ -140,6 +152,7 @@ export function AssignmentRulesManager() {
                                 setShowDialog(false)
                                 setEditingRule(null)
                             }}
+                            t={t}
                         />
                     </DialogContent>
                 </Dialog>
@@ -148,17 +161,15 @@ export function AssignmentRulesManager() {
             {/* Rules List */}
             <div className="space-y-3">
                 {loading ? (
-                    <div className="text-center py-8 text-muted-foreground">Cargando reglas...</div>
+                    <div className="text-center py-8 text-muted-foreground">{t('common.loading')}</div>
                 ) : rules.length === 0 ? (
                     <Card className="p-12 text-center">
                         <Zap className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                        <h3 className="text-lg font-semibold mb-2">Sin Reglas de Asignación</h3>
-                        <p className="text-sm text-muted-foreground mb-4">
-                            Crea tu primera regla para automatizar el reparto de chats
-                        </p>
+                        <h3 className="text-lg font-semibold mb-2">{t('crm.inbox.chat.quick_replies.empty')}</h3>
+                        <p className="text-sm text-muted-foreground mb-4">{t('crm.inbox.chat.templates.manage')}</p>
                         <Button onClick={() => setShowDialog(true)}>
                             <Plus className="h-4 w-4 mr-2" />
-                            Crear Primera Regla
+                            {t('crm.inbox.chat.templates.create_new')}
                         </Button>
                     </Card>
                 ) : (
@@ -175,10 +186,10 @@ export function AssignmentRulesManager() {
                                             <div className="flex items-center gap-2">
                                                 <h3 className="font-semibold">{rule.name}</h3>
                                                 <Badge variant="outline" className="capitalize">
-                                                    {rule.strategy.replace('-', ' ')}
+                                                    {rule.strategy}
                                                 </Badge>
                                                 <Badge variant="secondary">
-                                                    Prioridad: {rule.priority}
+                                                    {t('crm.inbox.chat.templates.color')}: {rule.priority}
                                                 </Badge>
                                             </div>
                                             {rule.description && (
@@ -212,30 +223,6 @@ export function AssignmentRulesManager() {
                                             </Button>
                                         </div>
                                     </div>
-
-                                    {/* Conditions Summary */}
-                                    {Object.keys(rule.conditions).length > 0 && (
-                                        <div className="flex flex-wrap gap-2 mt-2">
-                                            {rule.conditions.channel && (
-                                                <Badge variant="outline">
-                                                    Canal: {rule.conditions.channel.join(', ')}
-                                                </Badge>
-                                            )}
-                                            {rule.conditions.tags && rule.conditions.tags.length > 0 && (
-                                                <Badge variant="outline">
-                                                    Etiquetas: {rule.conditions.tags.join(', ')}
-                                                </Badge>
-                                            )}
-                                            {rule.conditions.priority && (
-                                                <Badge variant="outline">
-                                                    Prioridad: {rule.conditions.priority.join(', ')}
-                                                </Badge>
-                                            )}
-                                            {rule.conditions.businessHours && (
-                                                <Badge variant="outline">Horario Laboral</Badge>
-                                            )}
-                                        </div>
-                                    )}
                                 </div>
                             </div>
                         </Card>
@@ -246,28 +233,17 @@ export function AssignmentRulesManager() {
     )
 }
 
-// Rule Editor Component
-function RuleEditor({
-    rule,
-    agents,
-    onSave,
-    onCancel
-}: {
-    rule: AssignmentRule | null
-    agents: any[]
-    onSave: (rule: Partial<AssignmentRule>) => void
-    onCancel: () => void
-}) {
+function RuleEditor({ rule, agents, onSave, onCancel, t }: any) {
     const [name, setName] = useState(rule?.name || '')
     const [description, setDescription] = useState(rule?.description || '')
     const [priority, setPriority] = useState(rule?.priority || 100)
-    const [strategy, setStrategy] = useState<AssignmentRule['strategy']>(rule?.strategy || 'load-balance')
+    const [strategy, setStrategy] = useState<any>(rule?.strategy || 'load-balance')
     const [conditions, setConditions] = useState(rule?.conditions || {})
     const [selectedAgents, setSelectedAgents] = useState<string[]>(rule?.assign_to || [])
 
     const handleSave = () => {
         if (!name.trim()) {
-            toast.error('Nombre de regla requerido')
+            toast.error(t('crm.inbox.chat.templates.name'))
             return
         }
 
@@ -285,27 +261,26 @@ function RuleEditor({
     return (
         <div className="space-y-4">
             <div className="space-y-2">
-                <Label>Nombre de la Regla *</Label>
+                <Label>{t('crm.inbox.chat.templates.name')}</Label>
                 <Input
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="Ej: Clientes VIP a Agentes Senior"
+                    placeholder={t('crm.inbox.chat.templates.name_placeholder')}
                 />
             </div>
 
             <div className="space-y-2">
-                <Label>Descripción</Label>
+                <Label>{t('crm.inbox.chat.templates.manage')}</Label>
                 <Input
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Descripción opcional"
                 />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                     <div className="flex items-center gap-2">
-                        <Label>Estrategia</Label>
+                        <Label>{t('crm.inbox.chat.templates.configure')}</Label>
                         <TooltipProvider>
                             <Tooltip>
                                 <TooltipTrigger>
@@ -313,9 +288,7 @@ function RuleEditor({
                                 </TooltipTrigger>
                                 <TooltipContent>
                                     <div className="max-w-xs text-xs space-y-1">
-                                        <p><strong>Load Balance:</strong> Asigna al agente con menos chats activos.</p>
-                                        <p><strong>Round Robin:</strong> Asigna secuencialmente por turnos.</p>
-                                        <p><strong>Specific Agent:</strong> Asigna a personas concretas.</p>
+                                        <p><strong>Strategy:</strong> Best effort assignment</p>
                                     </div>
                                 </TooltipContent>
                             </Tooltip>
@@ -326,16 +299,14 @@ function RuleEditor({
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="load-balance">Load Balance (Equilibrio de Carga)</SelectItem>
-                            <SelectItem value="round-robin">Round Robin (Turnos)</SelectItem>
-                            <SelectItem value="skills-based">Skills Based (Habilidades)</SelectItem>
-                            <SelectItem value="specific-agent">Specific Agent (Específico)</SelectItem>
+                            <SelectItem value="load-balance">Load Balance</SelectItem>
+                            <SelectItem value="round-robin">Round Robin</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>
 
                 <div className="space-y-2">
-                    <Label>Prioridad (menor = más urgente)</Label>
+                    <Label>{t('crm.inbox.chat.templates.color')}</Label>
                     <Slider
                         value={[priority]}
                         onValueChange={(v) => setPriority(v[0])}
@@ -347,28 +318,12 @@ function RuleEditor({
                 </div>
             </div>
 
-            <div className="border-t pt-4">
-                <h4 className="font-semibold mb-3">Condiciones (Cuándo aplicar)</h4>
-
-                <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                        <Switch
-                            checked={conditions.businessHours || false}
-                            onCheckedChange={(checked) =>
-                                setConditions({ ...conditions, businessHours: checked })
-                            }
-                        />
-                        <Label>Solo en Horario Laboral (9 AM - 5 PM)</Label>
-                    </div>
-                </div>
-            </div>
-
             <div className="flex justify-end gap-2 pt-4">
                 <Button variant="outline" onClick={onCancel}>
-                    Cancelar
+                    {t('common.cancel')}
                 </Button>
                 <Button onClick={handleSave}>
-                    Guardar Regla
+                    {t('common.save')}
                 </Button>
             </div>
         </div>

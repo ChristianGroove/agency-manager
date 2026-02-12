@@ -18,7 +18,8 @@ import { createTemplate, updateTemplate, TemplateComponent, TemplateCategory, Me
 import { WhatsAppPreview } from "./whatsapp-preview"
 import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
+import { useTranslation } from "@/lib/i18n/use-translation"
 
 interface TemplateBuilderSheetProps {
     open: boolean
@@ -27,14 +28,15 @@ interface TemplateBuilderSheetProps {
     onSuccess?: () => void
 }
 
-const formSchema = z.object({
-    name: z.string().min(1, "Nombre requerido").regex(/^[a-z0-9_]+$/, "Solo minúsculas y guiones bajos (format_meta)"),
-    category: z.enum(['MARKETING', 'UTILITY', 'AUTHENTICATION']),
-    language: z.string().default('es'),
-})
-
 export function TemplateBuilderSheet({ open, onOpenChange, templateToEdit, onSuccess }: TemplateBuilderSheetProps) {
+    const { t } = useTranslation()
     const [isLoading, setIsLoading] = useState(false)
+
+    const formSchema = z.object({
+        name: z.string().min(1, t('crm.inbox.chat.templates.name_required')).regex(/^[a-z0-9_]+$/, t('crm.inbox.chat.templates.name_error_format')),
+        category: z.enum(['MARKETING', 'UTILITY', 'AUTHENTICATION']),
+        language: z.string().default('es'),
+    })
 
     // Complex State for Components
     const [headerType, setHeaderType] = useState<'NONE' | 'TEXT' | 'MEDIA'>('NONE')
@@ -134,7 +136,7 @@ export function TemplateBuilderSheet({ open, onOpenChange, templateToEdit, onSuc
     const currentComponents = constructComponents()
 
     const onSubmit = async (values: z.infer<typeof formSchema>) => {
-        if (!bodyText) return toast.error("El cuerpo del mensaje es obligatorio")
+        if (!bodyText) return toast.error(t('crm.inbox.chat.templates.save_error'))
 
         setIsLoading(true)
         try {
@@ -145,10 +147,10 @@ export function TemplateBuilderSheet({ open, onOpenChange, templateToEdit, onSuc
 
             if (templateToEdit) {
                 await updateTemplate(templateToEdit.id, payload)
-                toast.success("Template actualizado")
+                toast.success(t('crm.inbox.chat.templates.save_success'))
             } else {
                 await createTemplate(payload)
-                toast.success("Template creado")
+                toast.success(t('crm.inbox.chat.templates.save_success'))
             }
 
             onSuccess?.()
@@ -162,7 +164,7 @@ export function TemplateBuilderSheet({ open, onOpenChange, templateToEdit, onSuc
 
     // Helper: Add Button
     const addButton = (type: 'QUICK_REPLY' | 'URL' | 'PHONE_NUMBER') => {
-        if (buttons.length >= 3) return toast.warning("Máximo 3 botones permitidos")
+        if (buttons.length >= 3) return toast.warning(t('crm.inbox.chat.templates.buttons'))
         setButtons([...buttons, { type, text: "" }])
     }
 
@@ -197,11 +199,10 @@ export function TemplateBuilderSheet({ open, onOpenChange, templateToEdit, onSuc
                         <div>
                             <SheetTitle className="text-lg font-bold flex items-center gap-2">
                                 <Sparkles className="w-4 h-4 text-purple-500" />
-                                {templateToEdit ? 'Editar Template' : 'Nuevo Template'}
+                                {templateToEdit ? t('crm.inbox.chat.templates.edit') : t('crm.inbox.chat.templates.new')}
                             </SheetTitle>
-                            <SheetDescription className="hidden">Constructor de Mensajes</SheetDescription>
+                            <SheetDescription className="hidden">{t('crm.inbox.chat.templates.title')}</SheetDescription>
                         </div>
-
                     </div>
 
                     {/* Form Content */}
@@ -215,11 +216,11 @@ export function TemplateBuilderSheet({ open, onOpenChange, templateToEdit, onSuc
                                         name="name"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Nombre (ID)</FormLabel>
+                                                <FormLabel>{t('crm.inbox.chat.templates.name_id')}</FormLabel>
                                                 <FormControl>
-                                                    <Input {...field} placeholder="ej. welcome_discount_v1" className="bg-slate-50 font-mono text-sm" />
+                                                    <Input {...field} placeholder={t('crm.inbox.chat.templates.name_placeholder_example')} className="bg-slate-50 font-mono text-sm" />
                                                 </FormControl>
-                                                <p className="text-[10px] text-muted-foreground">Solo minúsculas y _</p>
+                                                <p className="text-[10px] text-muted-foreground">{t('crm.inbox.chat.templates.name_placeholder')}</p>
                                                 <FormMessage />
                                             </FormItem>
                                         )}
@@ -229,17 +230,17 @@ export function TemplateBuilderSheet({ open, onOpenChange, templateToEdit, onSuc
                                         name="category"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Categoría</FormLabel>
+                                                <FormLabel>{t('crm.inbox.chat.faq.category')}</FormLabel>
                                                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                                                     <FormControl>
                                                         <SelectTrigger>
-                                                            <SelectValue placeholder="Select" />
+                                                            <SelectValue placeholder={t('common.search')} />
                                                         </SelectTrigger>
                                                     </FormControl>
                                                     <SelectContent>
-                                                        <SelectItem value="MARKETING">Marketing (Promociones)</SelectItem>
-                                                        <SelectItem value="UTILITY">Utility (Confirmaciones)</SelectItem>
-                                                        <SelectItem value="AUTHENTICATION">Authentication (OTP)</SelectItem>
+                                                        <SelectItem value="MARKETING">{t('crm.inbox.chat.templates.category_marketing')}</SelectItem>
+                                                        <SelectItem value="UTILITY">{t('crm.inbox.chat.templates.category_utility')}</SelectItem>
+                                                        <SelectItem value="AUTHENTICATION">{t('crm.inbox.chat.templates.category_auth')}</SelectItem>
                                                     </SelectContent>
                                                 </Select>
                                                 <FormMessage />
@@ -252,7 +253,7 @@ export function TemplateBuilderSheet({ open, onOpenChange, templateToEdit, onSuc
 
                                 {/* STRUCTURE BUILDER */}
                                 <div className="space-y-4">
-                                    <Label className="uppercase text-xs font-bold text-muted-foreground tracking-wider">Estructura del Mensaje</Label>
+                                    <Label className="uppercase text-xs font-bold text-muted-foreground tracking-wider">{t('crm.inbox.chat.templates.structure')}</Label>
 
                                     <Accordion type="single" collapsible defaultValue="body" className="w-full">
 
@@ -263,33 +264,33 @@ export function TemplateBuilderSheet({ open, onOpenChange, templateToEdit, onSuc
                                                     <div className="p-1.5 bg-indigo-50 rounded-md text-indigo-600">
                                                         <ImageIcon className="w-4 h-4" />
                                                     </div>
-                                                    <span className="font-semibold text-sm">Cabecera (Opcional)</span>
+                                                    <span className="font-semibold text-sm">{t('crm.inbox.chat.templates.header')}</span>
                                                 </div>
                                             </AccordionTrigger>
                                             <AccordionContent className="pt-2 pb-4 space-y-4">
                                                 <div className="flex gap-2">
-                                                    {['NONE', 'TEXT', 'MEDIA'].map((t) => (
+                                                    {['NONE', 'TEXT', 'MEDIA'].map((type) => (
                                                         <div
-                                                            key={t}
-                                                            onClick={() => setHeaderType(t as any)}
+                                                            key={type}
+                                                            onClick={() => setHeaderType(type as any)}
                                                             className={`
                                                                 flex-1 py-2 px-3 rounded-lg border text-center text-xs cursor-pointer transition-colors font-medium
-                                                                ${headerType === t ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'hover:bg-slate-50'}
+                                                                ${headerType === type ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'hover:bg-slate-50'}
                                                             `}
                                                         >
-                                                            {t === 'NONE' ? 'Ninguna' : t === 'TEXT' ? 'Texto' : 'Multimedia'}
+                                                            {type === 'NONE' ? t('crm.inbox.chat.templates.header_none') : type === 'TEXT' ? t('crm.inbox.chat.templates.header_text') : t('crm.inbox.chat.templates.header_media')}
                                                         </div>
                                                     ))}
                                                 </div>
 
                                                 {headerType === 'TEXT' && (
                                                     <div className="space-y-2">
-                                                        <Label>Texto de Cabecera</Label>
+                                                        <Label>{t('crm.inbox.chat.templates.header_text')}</Label>
                                                         <Input
                                                             value={headerText}
                                                             onChange={e => setHeaderText(e.target.value)}
                                                             maxLength={60}
-                                                            placeholder="ej. ¡Oferta Especial!"
+                                                            placeholder={t('crm.inbox.chat.templates.header_placeholder')}
                                                         />
                                                         <p className="text-right text-[10px] text-muted-foreground">{headerText.length}/60</p>
                                                     </div>
@@ -310,7 +311,7 @@ export function TemplateBuilderSheet({ open, onOpenChange, templateToEdit, onSuc
                                                                 {f === 'VIDEO' && <Video className="w-4 h-4" />}
                                                                 {/* @ts-ignore */}
                                                                 {f === 'DOCUMENT' && <Type className="w-4 h-4" />}
-                                                                <span className="text-[10px] font-medium">{f === 'IMAGE' ? 'Imagen' : f === 'VIDEO' ? 'Video' : 'Doc'}</span>
+                                                                <span className="text-[10px] font-medium">{f === 'IMAGE' ? t('crm.inbox.chat.templates.image') : f === 'VIDEO' ? t('crm.inbox.chat.templates.video') : t('crm.inbox.chat.templates.doc')}</span>
                                                             </div>
                                                         ))}
                                                     </div>
@@ -325,7 +326,7 @@ export function TemplateBuilderSheet({ open, onOpenChange, templateToEdit, onSuc
                                                     <div className="p-1.5 bg-blue-50 rounded-md text-blue-600">
                                                         <Type className="w-4 h-4" />
                                                     </div>
-                                                    <span className="font-semibold text-sm">Cuerpo del Mensaje</span>
+                                                    <span className="font-semibold text-sm">{t('crm.inbox.chat.templates.body')}</span>
                                                 </div>
                                             </AccordionTrigger>
                                             <AccordionContent className="pt-2 pb-4 space-y-4">
@@ -334,15 +335,14 @@ export function TemplateBuilderSheet({ open, onOpenChange, templateToEdit, onSuc
                                                         value={bodyText}
                                                         onChange={e => setBodyText(e.target.value)}
                                                         className="min-h-[120px] resize-none text-base leading-relaxed p-4 bg-slate-50"
-                                                        placeholder="Hola {{1}}, gracias por tu compra..."
+                                                        placeholder={t('crm.inbox.chat.templates.body_placeholder')}
                                                     />
-
                                                 </div>
                                                 <div className="flex items-center justify-between text-xs text-muted-foreground">
-                                                    <span>Usa {'{{1}}'}, {'{{2}}'} para variables.</span>
+                                                    <span>{t('crm.inbox.chat.templates.body_placeholder')}</span>
                                                     <div className="flex items-center gap-2">
                                                         <Button type="button" size="sm" variant="outline" className="h-6 text-[10px] bg-slate-100" onClick={() => setBodyText(prev => prev + ' {{1}}')}>
-                                                            + Variable
+                                                            {t('crm.inbox.chat.templates.add_variable')}
                                                         </Button>
                                                         <Button type="button" size="sm" variant="outline" className="h-6 text-[10px]" onClick={() => setBodyText(prev => prev + ' *negrita* ')}>
                                                             B
@@ -359,14 +359,14 @@ export function TemplateBuilderSheet({ open, onOpenChange, templateToEdit, onSuc
                                                     <div className="p-1.5 bg-slate-100 rounded-md text-slate-500">
                                                         <Type className="w-4 h-4" />
                                                     </div>
-                                                    <span className="font-semibold text-sm">Pie de Página (Opcional)</span>
+                                                    <span className="font-semibold text-sm">{t('crm.inbox.chat.templates.footer')}</span>
                                                 </div>
                                             </AccordionTrigger>
                                             <AccordionContent className="pt-2 pb-4">
                                                 <Input
                                                     value={footerText}
                                                     onChange={e => setFooterText(e.target.value)}
-                                                    placeholder="ej. Enviado por Agency Manager"
+                                                    placeholder={t('crm.inbox.chat.templates.footer_placeholder')}
                                                     maxLength={60}
                                                 />
                                             </AccordionContent>
@@ -379,7 +379,7 @@ export function TemplateBuilderSheet({ open, onOpenChange, templateToEdit, onSuc
                                                     <div className="p-1.5 bg-orange-50 rounded-md text-orange-600">
                                                         <LinkIcon className="w-4 h-4" />
                                                     </div>
-                                                    <span className="font-semibold text-sm">Botones (Máx 3)</span>
+                                                    <span className="font-semibold text-sm">{t('crm.inbox.chat.templates.buttons')}</span>
                                                 </div>
                                             </AccordionTrigger>
                                             <AccordionContent className="pt-2 pb-4 space-y-4">
@@ -397,7 +397,7 @@ export function TemplateBuilderSheet({ open, onOpenChange, templateToEdit, onSuc
 
                                                         <div className="flex items-center gap-2">
                                                             <Badge variant="outline" className="text-[10px]">
-                                                                {btn.type === 'QUICK_REPLY' ? 'Respuesta Rápida' : btn.type === 'URL' ? 'Enlace' : 'Teléfono'}
+                                                                {btn.type === 'QUICK_REPLY' ? t('crm.inbox.chat.templates.quick_reply') : btn.type === 'URL' ? t('crm.inbox.chat.templates.url') : t('crm.inbox.chat.templates.phone')}
                                                             </Badge>
                                                         </div>
 
@@ -405,7 +405,7 @@ export function TemplateBuilderSheet({ open, onOpenChange, templateToEdit, onSuc
                                                             <Input
                                                                 value={btn.text}
                                                                 onChange={e => updateButton(idx, 'text', e.target.value)}
-                                                                placeholder="Texto del botón"
+                                                                placeholder={t('crm.inbox.chat.templates.button_text')}
                                                                 className="h-8 text-sm"
                                                                 maxLength={25}
                                                             />
@@ -433,13 +433,13 @@ export function TemplateBuilderSheet({ open, onOpenChange, templateToEdit, onSuc
                                                 {buttons.length < 3 && (
                                                     <div className="flex gap-2 pt-2">
                                                         <Button type="button" size="sm" variant="outline" onClick={() => addButton('QUICK_REPLY')} className="flex-1 text-xs">
-                                                            + Rápida
+                                                            + {t('crm.inbox.chat.templates.quick_reply')}
                                                         </Button>
                                                         <Button type="button" size="sm" variant="outline" onClick={() => addButton('URL')} className="flex-1 text-xs">
-                                                            + Enlace
+                                                            + {t('crm.inbox.chat.templates.url')}
                                                         </Button>
                                                         <Button type="button" size="sm" variant="outline" onClick={() => addButton('PHONE_NUMBER')} className="flex-1 text-xs">
-                                                            + Teléfono
+                                                            + {t('crm.inbox.chat.templates.phone')}
                                                         </Button>
                                                     </div>
                                                 )}
@@ -454,12 +454,12 @@ export function TemplateBuilderSheet({ open, onOpenChange, templateToEdit, onSuc
                     {/* Footer Actions */}
                     <div className="p-6 border-t bg-slate-50 flex items-center justify-between shrink-0">
                         <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="text-muted-foreground hover:text-red-500">
-                            Cancelar
+                            {t('common.cancel')}
                         </Button>
 
                         <Button onClick={form.handleSubmit(onSubmit)} disabled={isLoading} className="bg-[#25D366] hover:bg-[#128C7E] text-white font-bold shadow-sm">
                             {isLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                            Guardar Template
+                            {t('common.save')}
                         </Button>
                     </div>
                 </div>
@@ -473,7 +473,7 @@ export function TemplateBuilderSheet({ open, onOpenChange, templateToEdit, onSuc
 
                     <div className="relative z-10 flex flex-col items-center gap-6">
                         <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur px-4 py-2 rounded-full text-xs font-medium text-slate-500 shadow-sm border">
-                            Vista Previa en Vivo
+                            {t('crm.inbox.chat.templates.preview_title')}
                         </div>
 
                         <div className="scale-110 origin-center transition-all duration-500">
@@ -482,7 +482,7 @@ export function TemplateBuilderSheet({ open, onOpenChange, templateToEdit, onSuc
 
                         <div className="text-center max-w-[280px]">
                             <p className="text-[10px] text-muted-foreground mt-4">
-                                Esta vista es una aproximación. El diseño final puede variar ligeramente según el dispositivo del usuario (iOS/Android).
+                                {t('crm.inbox.chat.templates.preview_desc')}
                             </p>
                         </div>
                     </div>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import React, { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -16,6 +16,7 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { useTranslation } from "@/lib/i18n/use-translation"
 
 interface AgentWorkload {
     agent_id: string
@@ -30,6 +31,7 @@ interface AgentWorkload {
 }
 
 export function AgentWorkloadDashboard() {
+    const { t } = useTranslation()
     const [agents, setAgents] = useState<AgentWorkload[]>([])
     const [currentUser, setCurrentUser] = useState<any>(null)
     const [loading, setLoading] = useState(true)
@@ -76,11 +78,9 @@ export function AgentWorkloadDashboard() {
 
         const result = await updateAgentStatus(status)
         if (result.success) {
-            toast.success(`Estado actualizado a ${status}`)
-            // loadWorkload() // Realtime should handle this, but we can verify later
+            toast.success(t('crm.inbox.settings.sections.status_updated', { status: t(`crm.inbox.settings.sections.${status}`) }))
         } else {
-            // Revert on failure
-            toast.error(result.error || 'Error al actualizar estado')
+            toast.error(result.error || t('crm.inbox.settings.sections.update_error'))
             loadWorkload()
         }
     }
@@ -93,9 +93,9 @@ export function AgentWorkloadDashboard() {
 
         const result = await toggleAutoAssign(enabled)
         if (result.success) {
-            toast.success(enabled ? 'Auto-asignación activada' : 'Auto-asignación desactivada')
+            toast.success(enabled ? t('crm.inbox.settings.sections.auto_assign_on') : t('crm.inbox.settings.sections.auto_assign_off'))
         } else {
-            toast.error(result.error || 'Error al cambiar auto-asignación')
+            toast.error(result.error || t('crm.inbox.settings.sections.auto_assign_error'))
             loadWorkload()
         }
     }
@@ -110,9 +110,9 @@ export function AgentWorkloadDashboard() {
 
         const result = await updateAgentCapacity(newCapacity)
         if (result.success) {
-            toast.success(`Capacidad actualizada a ${newCapacity}`)
+            toast.success(t('crm.inbox.settings.sections.capacity_updated', { capacity: newCapacity }))
         } else {
-            toast.error(result.error || 'Error al actualizar capacidad')
+            toast.error(result.error || t('crm.inbox.settings.sections.capacity_error'))
             loadWorkload()
         }
     }
@@ -143,10 +143,10 @@ export function AgentWorkloadDashboard() {
     const getUserName = (agent: AgentWorkload) => {
         // If it's me, use my local user data
         if (agent.agent_id === currentUser?.id) {
-            return currentUser.user_metadata?.name || currentUser.email || 'Tú'
+            return currentUser.user_metadata?.name || currentUser.email || t('common.you')
         }
         // Fallback for others (since we removed join for now)
-        return agent.users?.raw_user_meta_data?.name || agent.users?.email || `Agente ${agent.agent_id.substring(0, 4)}`
+        return agent.users?.raw_user_meta_data?.name || agent.users?.email || `${t('crm.inbox.settings.tabs.status')} ${agent.agent_id.substring(0, 4)}`
     }
 
     if (loading) {
@@ -158,11 +158,11 @@ export function AgentWorkloadDashboard() {
         // Auto-create agent profile by setting status which upserts in backend
         const result = await updateAgentStatus('online')
         if (result.success) {
-            toast.success('Perfil de agente inicializado')
+            toast.success(t('crm.inbox.settings.sections.profile_init_success'))
             // Force reload to ensure RLS and server state are fully propagated
             window.location.reload()
         } else {
-            toast.error('Error al inicializar perfil: ' + result.error)
+            toast.error(t('crm.inbox.settings.sections.profile_init_error', { error: result.error || 'Unknown error' }))
         }
         setLoading(false)
     }
@@ -179,18 +179,18 @@ export function AgentWorkloadDashboard() {
                     <div className="mx-auto w-12 h-12 bg-indigo-50 rounded-full flex items-center justify-center mb-4">
                         <User className="h-6 w-6 text-indigo-600" />
                     </div>
-                    <h3 className="text-lg font-semibold mb-2">Perfil de Agente No Encontrado</h3>
+                    <h3 className="text-lg font-semibold mb-2">{t('crm.inbox.settings.sections.profile_not_found')}</h3>
                     <p className="text-sm text-muted-foreground mb-6 max-w-sm mx-auto">
-                        Parece que aún no tienes un perfil de agente activo. Actívalo para comenzar a recibir chats.
+                        {t('crm.inbox.settings.sections.profile_not_found_desc')}
                     </p>
                     <Button onClick={handleInitializeProfile}>
-                        Activar mi Perfil de Agente
+                        {t('crm.inbox.settings.sections.activate_profile')}
                     </Button>
                 </Card>
                 {/* Still show team workload if available */}
                 {agents.length > 0 && (
                     <Card className="p-6">
-                        <h3 className="text-lg font-semibold mb-4">Carga del Equipo</h3>
+                        <h3 className="text-lg font-semibold mb-4">{t('crm.inbox.settings.sections.team_workload')}</h3>
                         {/* ... existing team list code ... */}
                         <div className="space-y-3">
                             {agents.map(agent => (
@@ -213,7 +213,7 @@ export function AgentWorkloadDashboard() {
             {/* Current Agent Status Card */}
             {currentAgent && (
                 <Card className="p-6">
-                    <h3 className="text-lg font-semibold mb-4">Tu Estado</h3>
+                    <h3 className="text-lg font-semibold mb-4">{t('crm.inbox.settings.sections.your_status')}</h3>
 
                     {/* Status Selector */}
                     <div className="flex gap-2 mb-4">
@@ -226,15 +226,18 @@ export function AgentWorkloadDashboard() {
                                 className="capitalize"
                             >
                                 <Circle className={`h-3 w-3 mr-2 fill-current ${getStatusColor(status)}`} />
-                                {status === 'online' ? 'Disponible' :
-                                    status === 'away' ? 'Ausente' :
-                                        status === 'busy' ? 'Ocupado' : 'Offline'}
+                                {t(`crm.inbox.settings.sections.${status}`)}
                             </Button>
                         ))}
                     </div>
                     {currentAgent.status !== 'online' && (
                         <p className="text-xs text-amber-600 mb-4 bg-amber-50 p-2 rounded border border-amber-100">
-                            Nota: Debes estar <strong>Disponible</strong> para recibir nuevas conversaciones automáticas.
+                            {t('crm.inbox.settings.sections.available_note', { status: '' }).split('{status}').map((part, i, arr) => (
+                                <React.Fragment key={i}>
+                                    {part}
+                                    {i < arr.length - 1 && <strong>{t('crm.inbox.settings.sections.online')}</strong>}
+                                </React.Fragment>
+                            ))}
                         </p>
                     )}
 
@@ -242,7 +245,7 @@ export function AgentWorkloadDashboard() {
                     <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-2">
                             <Zap className="h-4 w-4" />
-                            <span className="text-sm font-medium">Auto-Asignación</span>
+                            <span className="text-sm font-medium">{t('crm.inbox.settings.sections.auto_assign')}</span>
                             <TooltipProvider>
                                 <Tooltip>
                                     <TooltipTrigger>
@@ -250,7 +253,7 @@ export function AgentWorkloadDashboard() {
                                     </TooltipTrigger>
                                     <TooltipContent>
                                         <p className="max-w-xs text-xs">
-                                            Si está activado, el sistema te asignará chats automáticamente según las reglas definidas.
+                                            {t('crm.inbox.settings.sections.auto_assign_tooltip')}
                                         </p>
                                     </TooltipContent>
                                 </Tooltip>
@@ -266,7 +269,7 @@ export function AgentWorkloadDashboard() {
                     <div className="space-y-2">
                         <div className="flex justify-between text-sm">
                             <div className="flex items-center gap-2">
-                                <span>Capacidad Máxima</span>
+                                <span>{t('crm.inbox.settings.sections.max_capacity')}</span>
                                 <TooltipProvider>
                                     <Tooltip>
                                         <TooltipTrigger>
@@ -274,13 +277,13 @@ export function AgentWorkloadDashboard() {
                                         </TooltipTrigger>
                                         <TooltipContent>
                                             <p className="max-w-xs text-xs">
-                                                Número máximo de conversaciones activas que puedes manejar al mismo tiempo.
+                                                {t('crm.inbox.settings.sections.max_capacity_tooltip')}
                                             </p>
                                         </TooltipContent>
                                     </Tooltip>
                                 </TooltipProvider>
                             </div>
-                            <span className="font-semibold">{currentAgent.max_capacity} chats</span>
+                            <span className="font-semibold">{t('crm.inbox.settings.sections.max_capacity_chats', { capacity: currentAgent.max_capacity })}</span>
                         </div>
                         <Slider
                             value={[currentAgent.max_capacity]}
@@ -296,7 +299,7 @@ export function AgentWorkloadDashboard() {
                     {/* Current Load */}
                     <div className="mt-4 p-4 bg-muted/30 rounded-lg">
                         <div className="flex justify-between items-center mb-2">
-                            <span className="text-sm text-muted-foreground">Carga Actual</span>
+                            <span className="text-sm text-muted-foreground">{t('crm.inbox.settings.sections.current_load')}</span>
                             <span className="text-lg font-bold">
                                 {currentAgent.current_load} / {currentAgent.max_capacity}
                             </span>
@@ -313,11 +316,11 @@ export function AgentWorkloadDashboard() {
 
             {/* All Agents Workload */}
             <Card className="p-6">
-                <h3 className="text-lg font-semibold mb-4">Carga del Equipo</h3>
+                <h3 className="text-lg font-semibold mb-4">{t('crm.inbox.settings.sections.team_workload')}</h3>
                 <div className="space-y-3">
                     {agents.map(agent => {
                         const loadPercentage = getLoadPercentage(agent)
-                        const name = agent.users?.raw_user_meta_data?.name || agent.users?.email || 'Desconocido'
+                        const name = agent.users?.raw_user_meta_data?.name || agent.users?.email || t('common.unknown')
 
                         return (
                             <div key={agent.agent_id} className="flex items-center gap-3 p-3 rounded-lg border">
@@ -334,7 +337,7 @@ export function AgentWorkloadDashboard() {
                                     <div className="flex items-center gap-2 mb-1">
                                         <span className="text-sm font-medium truncate">{name}</span>
                                         {!agent.auto_assign_enabled && (
-                                            <Badge variant="outline" className="text-xs">Manual</Badge>
+                                            <Badge variant="outline" className="text-xs">{t('crm.inbox.settings.sections.manual')}</Badge>
                                         )}
                                     </div>
 
@@ -366,11 +369,11 @@ export function AgentWorkloadDashboard() {
                         <Zap className="h-4 w-4" />
                     </div>
                     <div className="flex-1">
-                        <h4 className="text-sm font-semibold text-indigo-900">Herramientas de Prueba</h4>
+                        <h4 className="text-sm font-semibold text-indigo-900">{t('crm.inbox.settings.sections.test_tools')}</h4>
                         <p className="text-xs text-indigo-700 mb-3">
-                            Simula eventos para verificar el funcionamiento de las reglas.
+                            {t('crm.inbox.settings.sections.test_tools_desc')}
                         </p>
-                        <SimulationControls />
+                        <SimulationControls t={t} />
                     </div>
                 </div>
             </Card>
@@ -378,7 +381,7 @@ export function AgentWorkloadDashboard() {
     )
 }
 
-function SimulationControls() {
+function SimulationControls({ t }: { t: any }) {
     const [loading, setLoading] = useState(false)
     const { simulateInboundMessage } = require('../actions') // Lazy load actions
 
@@ -390,11 +393,11 @@ function SimulationControls() {
             const result = await simulateInboundMessage(randomPhone)
 
             if (result.success) {
-                toast.success('Mensaje simulado enviado', {
-                    description: 'Revisa el inbox, debería aparecer un nuevo chat asignado.'
+                toast.success(t('crm.inbox.settings.sections.simulation_success'), {
+                    description: t('crm.inbox.settings.sections.simulation_success_desc')
                 })
             } else {
-                toast.error('Falló la simulación: ' + result.message)
+                toast.error(t('crm.inbox.settings.sections.simulation_failed', { message: result.message }))
             }
         } catch (err: any) {
             toast.error('Error: ' + err.message)
@@ -410,7 +413,7 @@ function SimulationControls() {
             onClick={handleSimulateMessage}
             disabled={loading}
         >
-            {loading ? 'Simulando...' : 'Simular Mensaje Nuevo (WhatsApp)'}
+            {loading ? t('crm.inbox.settings.sections.simulating') : t('crm.inbox.settings.sections.simulate_message')}
         </Button>
     )
 }

@@ -23,46 +23,44 @@ interface SmartRepliesPanelProps {
 // Key: conversationId, Value: { text: lastIncomingMessage, data: replies }
 const replyCache: Record<string, { lastMessage: string, replies: SmartReply[], usedKB: number }> = {}
 
+import { useTranslation } from "@/lib/i18n/use-translation"
+
 export function SmartRepliesPanel({
     conversationId,
     lastIncomingMessage,
     onSelectReply,
     isGenerating = false
 }: SmartRepliesPanelProps) {
-
-    const handleSelectReply = (text: string) => {
-        // Dispatch custom event for ChatArea to catch
-        const event = new CustomEvent('insert-smart-reply', { detail: text })
-        window.dispatchEvent(event)
-
-        // Optional: Still copy to clipboard as backup? Or just notify
-        onSelectReply(text, 'auto') // Keep original prop call for metrics/logging if needed
-    }
+    const { t } = useTranslation()
     const [replies, setReplies] = useState<SmartReply[]>([])
     const [loading, setLoading] = useState(false)
-    const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
     const [usedKB, setUsedKB] = useState(0)
+    const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
 
-    // Load from cache on mount or when conversation loops
     useEffect(() => {
-        if (!conversationId || !lastIncomingMessage) return
-
-        const cached = replyCache[conversationId]
-        if (cached && cached.lastMessage === lastIncomingMessage) {
-            setReplies(cached.replies)
-            setUsedKB(cached.usedKB || 0)
+        // Load from cache if available
+        if (conversationId && replyCache[conversationId] && replyCache[conversationId].lastMessage === lastIncomingMessage) {
+            setReplies(replyCache[conversationId].replies)
+            setUsedKB(replyCache[conversationId].usedKB)
         } else {
-            // New context or no cache involved -> Start fresh if not already populated
-            if (!cached || cached.lastMessage !== lastIncomingMessage) {
-                setReplies([])
-                setUsedKB(0)
-            }
+            setReplies([])
+            setUsedKB(0)
         }
     }, [conversationId, lastIncomingMessage])
 
+    const handleSelectReply = (text: string) => {
+        onSelectReply(text, 'smart')
+    }
+
+    const handleCopy = (text: string, index: number) => {
+        navigator.clipboard.writeText(text)
+        setCopiedIndex(index)
+        toast.success(t('common.success'))
+        setTimeout(() => setCopiedIndex(null), 2000)
+    }
     const generateReplies = async () => {
         if (!conversationId || !lastIncomingMessage) {
-            toast.error("Se necesita un mensaje del cliente para generar respuestas.")
+            toast.error(t('crm.inbox.chat.replies.errors.no_message'))
             return
         }
 
@@ -88,28 +86,17 @@ export function SmartRepliesPanel({
                     }
                 }
             } else {
-                toast.error("No se pudieron generar respuestas.")
+                toast.error(t('crm.inbox.chat.replies.errors.failed'))
             }
         } catch (error) {
             console.error('Failed to generate replies:', error)
-            toast.error("Error de conexión con IA.")
+            toast.error(t('crm.inbox.chat.replies.errors.connection'))
         } finally {
             setLoading(false)
         }
     }
 
-    const handleCopy = async (text: string, index: number) => {
-        await navigator.clipboard.writeText(text)
-        setCopiedIndex(index)
-        setTimeout(() => setCopiedIndex(null), 2000)
-    }
-
-    // --- CASE 1: No Message (Hidden/Disabled) ---
-    if (!lastIncomingMessage) {
-        return null // Don't show anything unless there's something to reply to
-    }
-
-    // --- CASE 2: Empty State (Call to Action) ---
+    // ...
     if (replies.length === 0 && !loading) {
         return (
             <div className="w-full px-2 py-1">
@@ -119,34 +106,32 @@ export function SmartRepliesPanel({
                     onClick={generateReplies}
                 >
                     <Sparkles className="h-4 w-4" />
-                    <span className="text-sm font-medium">Generar Respuestas</span>
+                    <span className="text-sm font-medium">{t('crm.inbox.chat.replies.generate')}</span>
                 </Button>
             </div>
         )
     }
 
-    // --- CASE 3: Loading ---
     if (loading) {
         return (
             <div className="w-full px-2 py-1">
                 <div className="p-3 border rounded-lg bg-background flex items-center justify-center gap-2 text-sm text-purple-600">
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>Analizando contexto...</span>
+                    <span>{t('crm.inbox.chat.replies.analyzing')}</span>
                 </div>
             </div>
         )
     }
 
-    // --- CASE 4: Results (Compact List) ---
     return (
         <div className="mx-4 my-2 space-y-2">
             <div className="flex items-center justify-between px-1">
                 <div className="flex items-center gap-1.5 text-purple-600 dark:text-purple-400">
                     <Sparkles className="h-3.5 w-3.5" />
-                    <span className="text-xs font-semibold uppercase tracking-wider">Sugerencias IA</span>
+                    <span className="text-xs font-semibold uppercase tracking-wider">{t('crm.inbox.chat.replies.title')}</span>
                     {usedKB > 0 && (
                         <span className="ml-1 px-1.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-[10px] font-medium text-indigo-600 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
-                            📚 +{usedKB} Contexto
+                            📚 +{usedKB} {t('crm.inbox.chat.replies.context')}
                         </span>
                     )}
                 </div>
@@ -156,7 +141,7 @@ export function SmartRepliesPanel({
                     className="h-5 w-5 rounded-full hover:bg-muted"
                     onClick={() => setReplies([])}
                 >
-                    <span className="sr-only">Cerrar</span>
+                    <span className="sr-only">{t('crm.inbox.chat.replies.close')}</span>
                     <span className="text-xs text-muted-foreground">×</span>
                 </Button>
             </div>
@@ -201,7 +186,7 @@ export function SmartRepliesPanel({
                                 reply.type === 'medium' && "text-blue-600 bg-blue-50 dark:bg-blue-900/20",
                                 reply.type === 'detailed' && "text-purple-600 bg-purple-50 dark:bg-purple-900/20",
                             )}>
-                                {reply.type === 'short' ? 'Rápida' : reply.type === 'medium' ? 'Normal' : 'Detallada'}
+                                {t(`crm.inbox.chat.replies.types.${reply.type}`)}
                             </span>
                         </div>
                     </div>
@@ -214,7 +199,7 @@ export function SmartRepliesPanel({
                 className="w-full h-6 text-[10px] text-muted-foreground hover:text-purple-600"
                 onClick={generateReplies}
             >
-                Regenerar opciones
+                {t('crm.inbox.chat.replies.regenerate')}
             </Button>
         </div>
     )

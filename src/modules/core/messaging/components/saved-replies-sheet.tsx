@@ -1,6 +1,5 @@
 "use client"
 
-// ... imports
 import { useEffect, useState, useRef } from "react"
 import { MessageTemplate, getTemplates, createTemplate, updateTemplate, deleteTemplate, TemplateComponent } from "../template-actions"
 import { extractMetadata, COLORS, ICONS } from "../template-utils"
@@ -16,6 +15,7 @@ import { cn } from "@/lib/utils"
 import { Label } from "@/components/ui/label"
 import { refineDraftContent } from "../ai/actions"
 import dynamic from "next/dynamic"
+import { useTranslation } from "@/lib/i18n/use-translation"
 
 const EmojiPicker = dynamic(() => import('emoji-picker-react'), { ssr: false })
 
@@ -26,6 +26,7 @@ interface SavedRepliesSheetProps {
 }
 
 export function SavedRepliesSheet({ open, onOpenChange, onSelect }: SavedRepliesSheetProps) {
+    const { t } = useTranslation()
     const [replies, setReplies] = useState<MessageTemplate[]>([])
     const [searchQuery, setSearchQuery] = useState("")
     const [editingReply, setEditingReply] = useState<Partial<MessageTemplate> | null>(null)
@@ -88,7 +89,7 @@ export function SavedRepliesSheet({ open, onOpenChange, onSelect }: SavedReplies
 
     const handleRefine = async () => {
         if (!editingReply?.content || editingReply.content.length < 5) {
-            toast.error("Enter at least a few words first.")
+            toast.error(t('crm.inbox.chat.templates.refine_min_chars'))
             return
         }
 
@@ -97,12 +98,12 @@ export function SavedRepliesSheet({ open, onOpenChange, onSelect }: SavedReplies
             const result = await refineDraftContent(editingReply.content)
             if (result.success && result.refined) {
                 setEditingReply(prev => ({ ...prev, content: result.refined }))
-                toast.success("Polished by AI! ✨")
+                toast.success(t('crm.inbox.chat.templates.refined'))
             } else {
-                toast.error("Could not refine: " + result.error)
+                toast.error(t('crm.inbox.chat.templates.save_error') + ": " + result.error)
             }
         } catch (error) {
-            toast.error("AI Error")
+            toast.error(t('crm.inbox.chat.actions.ai_error'))
         } finally {
             setIsRefining(false)
         }
@@ -110,7 +111,7 @@ export function SavedRepliesSheet({ open, onOpenChange, onSelect }: SavedReplies
 
     const handleSave = async () => {
         if (!editingReply?.name || !editingReply?.content) {
-            toast.error("Please fill in name and content")
+            toast.error(t('crm.inbox.chat.templates.save_error'))
             return
         }
 
@@ -139,20 +140,20 @@ export function SavedRepliesSheet({ open, onOpenChange, onSelect }: SavedReplies
                 })
             }
 
-            toast.success("Saved successfully!")
+            toast.success(t('crm.inbox.chat.templates.save_success'))
             refreshReplies()
             setEditingReply(null)
             setIsCreating(false)
         } catch (error) {
-            toast.error("Failed to save")
+            toast.error(t('crm.inbox.chat.templates.save_error'))
         }
     }
 
     const handleDelete = async (id: string) => {
-        if (confirm("Are you sure you want to delete this template?")) {
+        if (confirm(t('crm.inbox.chat.templates.delete_confirm'))) {
             await deleteTemplate(id)
             refreshReplies()
-            toast.success("Deleted")
+            toast.success(t('crm.inbox.chat.templates.delete_success'))
             if (editingReply?.id === id) {
                 setEditingReply(null)
                 setIsCreating(false)
@@ -201,10 +202,10 @@ export function SavedRepliesSheet({ open, onOpenChange, onSelect }: SavedReplies
 
                             <div>
                                 <h2 className="text-lg font-bold text-gray-900 tracking-tight leading-none">
-                                    {isEditorOpen ? (editingReply?.id ? 'Edit Template' : 'New Template') : 'Message Templates'}
+                                    {isEditorOpen ? (editingReply?.id ? t('crm.inbox.chat.templates.edit') : t('crm.inbox.chat.templates.new')) : t('crm.inbox.chat.templates.title')}
                                 </h2>
                                 <p className="text-xs text-muted-foreground mt-1">
-                                    {isEditorOpen ? 'Configure content and appearance.' : 'Manage your quick replies.'}
+                                    {isEditorOpen ? t('crm.inbox.chat.templates.configure') : t('crm.inbox.chat.templates.manage')}
                                 </p>
                             </div>
                         </div>
@@ -218,9 +219,9 @@ export function SavedRepliesSheet({ open, onOpenChange, onSelect }: SavedReplies
                                 <div className="space-y-6 max-w-lg mx-auto pb-20">
                                     {/* Name Input */}
                                     <div className="space-y-2">
-                                        <Label>Name (Title)</Label>
+                                        <Label>{t('crm.inbox.chat.templates.name')}</Label>
                                         <Input
-                                            placeholder="e.g. Welcome Message"
+                                            placeholder={t('crm.inbox.chat.templates.name_placeholder')}
                                             className="h-12 text-lg font-medium"
                                             value={editingReply?.name || ""}
                                             onChange={e => setEditingReply(prev => ({ ...prev, name: e.target.value }))}
@@ -230,7 +231,7 @@ export function SavedRepliesSheet({ open, onOpenChange, onSelect }: SavedReplies
                                     {/* Appearance Section */}
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-2">
-                                            <Label>Color</Label>
+                                            <Label>{t('crm.inbox.chat.templates.color')}</Label>
                                             <div className="flex flex-wrap gap-2">
                                                 {COLORS.map(c => (
                                                     <button
@@ -249,7 +250,7 @@ export function SavedRepliesSheet({ open, onOpenChange, onSelect }: SavedReplies
                                             </div>
                                         </div>
                                         <div className="space-y-2">
-                                            <Label>Icon</Label>
+                                            <Label>{t('crm.inbox.chat.templates.icon')}</Label>
                                             <div className="flex flex-wrap gap-2">
                                                 {ICONS.map(i => {
                                                     const IconC = i.icon
@@ -273,10 +274,10 @@ export function SavedRepliesSheet({ open, onOpenChange, onSelect }: SavedReplies
 
                                     {/* Content */}
                                     <div className="space-y-2">
-                                        <Label>Message Content</Label>
+                                        <Label>{t('crm.inbox.chat.templates.content')}</Label>
                                         <div className="relative border rounded-xl bg-gray-50/50 focus-within:bg-white focus-within:ring-2 focus-within:ring-indigo-100 transition-all">
                                             <Textarea
-                                                placeholder="Type your message here..."
+                                                placeholder={t('crm.inbox.chat.templates.content_placeholder')}
                                                 className="min-h-[150px] resize-none text-base leading-relaxed p-4 bg-transparent border-none focus-visible:ring-0"
                                                 value={editingReply?.content || ""}
                                                 onChange={e => setEditingReply(prev => ({ ...prev, content: e.target.value }))}
@@ -312,7 +313,7 @@ export function SavedRepliesSheet({ open, onOpenChange, onSelect }: SavedReplies
                                                     onClick={handleRefine}
                                                     disabled={isRefining}
                                                 >
-                                                    {isRefining ? 'Polishing...' : 'AI Improve ✨'}
+                                                    {isRefining ? t('crm.inbox.chat.templates.polishing') : t('crm.inbox.chat.templates.ai_improve')}
                                                 </Button>
                                             </div>
                                         </div>
@@ -327,7 +328,7 @@ export function SavedRepliesSheet({ open, onOpenChange, onSelect }: SavedReplies
                                                 onClick={() => handleDelete(editingReply.id!)}
                                             >
                                                 <Trash2 className="h-4 w-4 mr-2" />
-                                                Delete Template
+                                                {t('crm.inbox.chat.templates.delete_confirm')}
                                             </Button>
                                         </div>
                                     )}
@@ -341,7 +342,7 @@ export function SavedRepliesSheet({ open, onOpenChange, onSelect }: SavedReplies
                                     <div className="relative">
                                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                         <Input
-                                            placeholder="Search templates..."
+                                            placeholder={t('common.search')}
                                             value={searchQuery}
                                             onChange={(e) => setSearchQuery(e.target.value)}
                                             className="pl-10 h-11 bg-gray-50/50 border-gray-200 focus:bg-white transition-all rounded-xl"
@@ -360,8 +361,8 @@ export function SavedRepliesSheet({ open, onOpenChange, onSelect }: SavedReplies
                                                 <Plus className="h-5 w-5" />
                                             </div>
                                             <div>
-                                                <h4 className="font-semibold text-sm text-gray-900 group-hover:text-indigo-700">Create New Template</h4>
-                                                <p className="text-xs text-muted-foreground">Add to your library.</p>
+                                                <h4 className="font-semibold text-sm text-gray-900 group-hover:text-indigo-700">{t('crm.inbox.chat.templates.create_new')}</h4>
+                                                <p className="text-xs text-muted-foreground">{t('crm.inbox.chat.templates.add_library')}</p>
                                             </div>
                                         </button>
 
@@ -417,18 +418,14 @@ export function SavedRepliesSheet({ open, onOpenChange, onSelect }: SavedReplies
                     {isEditorOpen && (
                         <div className="sticky bottom-0 bg-white/80 backdrop-blur-md p-6 border-t border-gray-100 flex items-center justify-end z-20 gap-3">
                             <Button variant="ghost" onClick={() => { setEditingReply(null); setIsCreating(false); }}>
-                                Cancelar
+                                {t('common.cancel')}
                             </Button>
                             <Button onClick={handleSave} className="bg-brand-pink hover:bg-brand-pink/90 text-white shadow-lg shadow-gray-200">
                                 <Save className="mr-2 h-4 w-4" />
-                                Guardar Cambios
+                                {t('common.save')}
                             </Button>
                         </div>
                     )}
-
-                    <div className="absolute top-1/2 left-0 -translate-x-full">
-                        {/* Close X outside if needed, but Sheet handles overlay click */}
-                    </div>
 
                 </div>
             </SheetContent>

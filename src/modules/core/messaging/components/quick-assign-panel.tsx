@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/popover"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { cn } from "@/lib/utils"
+import { useTranslation } from "@/lib/i18n/use-translation"
 
 interface Agent {
     agent_id: string
@@ -31,6 +32,7 @@ interface QuickAssignPanelProps {
 }
 
 export function QuickAssignPanel({ conversationId, currentAssignee, agents, onAssigned }: QuickAssignPanelProps) {
+    const { t } = useTranslation()
     const [open, setOpen] = useState(false)
     const [assigning, setAssigning] = useState(false)
 
@@ -39,17 +41,17 @@ export function QuickAssignPanel({ conversationId, currentAssignee, agents, onAs
         const result = await assignConversation(conversationId, agentId)
 
         if (result.success) {
-            toast.success(agentId ? 'Assigned' : 'Unassigned')
+            toast.success(agentId ? t('crm.inbox.context.actions.assigned') : t('crm.inbox.context.actions.unassigned'))
             onAssigned?.()
             setOpen(false)
         } else {
-            toast.error(result.error || 'Failed to assign')
+            toast.error(result.error || t('crm.inbox.context.actions.failed_to_assign'))
         }
         setAssigning(false)
     }
 
     const currentAgent = agents.find(a => a.agent_id === currentAssignee)
-    const currentName = currentAgent?.users?.raw_user_meta_data?.name || currentAgent?.users?.email || 'Unassigned'
+    const currentName = currentAgent?.users?.raw_user_meta_data?.name || currentAgent?.users?.email || t('crm.inbox.context.sections.unassign')
     const currentInitials = currentName.substring(0, 2).toUpperCase()
 
     const getStatusColor = (status: string) => {
@@ -83,9 +85,9 @@ export function QuickAssignPanel({ conversationId, currentAssignee, agents, onAs
                             )}
                         </div>
                         <div className="text-left">
-                            <div className="text-[10px] uppercase font-semibold text-muted-foreground">ASIGNADO A</div>
+                            <div className="text-[10px] uppercase font-semibold text-muted-foreground">{t('crm.inbox.context.sections.assignee_label')}</div>
                             <div className="text-sm font-medium leading-none mt-0.5 group-hover:underline decoration-muted-foreground/50 underline-offset-2">
-                                {currentAssignee ? currentName : "Nadie (Clic para asignar)"}
+                                {currentAssignee ? currentName : t('crm.inbox.context.sections.unassigned_click_to_assign')}
                             </div>
                         </div>
                     </div>
@@ -94,20 +96,20 @@ export function QuickAssignPanel({ conversationId, currentAssignee, agents, onAs
             </PopoverTrigger>
             <PopoverContent className="w-[280px] p-0" align="start">
                 <Command>
-                    <CommandInput placeholder="Buscar agente..." disabled={assigning} />
+                    <CommandInput placeholder={t('crm.inbox.context.sections.search_agent_placeholder')} disabled={assigning} />
                     <CommandList>
-                        <CommandEmpty>No se encontraron agentes.</CommandEmpty>
-                        <CommandGroup heading="Agentes">
+                        <CommandEmpty>{t('crm.inbox.context.sections.no_agents_found')}</CommandEmpty>
+                        <CommandGroup heading={t('crm.inbox.context.sections.agents_heading')}>
                             {currentAssignee && (
                                 <CommandItem onSelect={() => handleAssign(null)} className="text-red-500">
                                     <User className="mr-2 h-4 w-4" />
-                                    Desasignar
+                                    {t('crm.inbox.context.sections.unassign')}
                                     <Check className={cn("ml-auto h-4 w-4", !currentAssignee ? "opacity-100" : "opacity-0")} />
                                 </CommandItem>
                             )}
                             {agents
                                 .map(agent => {
-                                    const name = agent.users?.raw_user_meta_data?.name || agent.users?.email || 'Desconocido'
+                                    const name = agent.users?.raw_user_meta_data?.name || agent.users?.email || t('crm.inbox.context.sections.unknown_agent')
                                     const loadPercentage = (agent.current_load / agent.max_capacity) * 100
                                     return (
                                         <CommandItem

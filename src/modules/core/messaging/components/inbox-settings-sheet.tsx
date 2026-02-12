@@ -10,6 +10,7 @@ import { Separator } from "@/components/ui/separator"
 import { NotificationsCard } from "@/modules/core/preferences/components/notifications-card"
 import { ProductivityCard } from "@/modules/core/preferences/components/productivity-card"
 import { DisplayCard } from "@/modules/core/preferences/components/display-card"
+import { useTranslation } from "@/lib/i18n/use-translation"
 
 interface InboxSettingsSheetProps {
     open: boolean
@@ -17,6 +18,7 @@ interface InboxSettingsSheetProps {
 }
 
 export function InboxSettingsSheet({ open, onOpenChange }: InboxSettingsSheetProps) {
+    const { t } = useTranslation()
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
             <SheetContent
@@ -36,8 +38,8 @@ export function InboxSettingsSheet({ open, onOpenChange }: InboxSettingsSheetPro
                                 <Settings className="h-5 w-5" />
                             </div>
                             <div>
-                                <SheetTitle className="text-xl font-bold text-gray-900 tracking-tight">Configuración del Inbox</SheetTitle>
-                                <p className="text-xs text-muted-foreground">Gestiona la disponibilidad y reglas de asignación</p>
+                                <SheetTitle className="text-xl font-bold text-gray-900 tracking-tight">{t('crm.inbox.settings.title')}</SheetTitle>
+                                <p className="text-xs text-muted-foreground">{t('crm.inbox.settings.desc')}</p>
                             </div>
                         </div>
                     </div>
@@ -52,21 +54,21 @@ export function InboxSettingsSheet({ open, onOpenChange }: InboxSettingsSheetPro
                                         className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm px-4"
                                     >
                                         <User className="h-4 w-4 mr-2" />
-                                        Estado del Agente
+                                        {t('crm.inbox.settings.tabs.status')}
                                     </TabsTrigger>
                                     <TabsTrigger
                                         value="rules"
                                         className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm px-4"
                                     >
                                         <Zap className="h-4 w-4 mr-2" />
-                                        Reglas
+                                        {t('crm.inbox.settings.tabs.rules')}
                                     </TabsTrigger>
                                     <TabsTrigger
                                         value="preferences"
                                         className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm px-4"
                                     >
                                         <Sparkles className="h-4 w-4 mr-2" />
-                                        Preferencias
+                                        {t('crm.inbox.settings.tabs.preferences')}
                                     </TabsTrigger>
                                 </TabsList>
                             </div>
@@ -76,9 +78,9 @@ export function InboxSettingsSheet({ open, onOpenChange }: InboxSettingsSheetPro
                             <div className="flex-1 overflow-y-auto px-8 py-6 scrollbar-thin scrollbar-thumb-gray-200">
                                 <TabsContent value="status" className="mt-0 space-y-6 max-w-3xl">
                                     <div className="space-y-1 mb-6">
-                                        <h3 className="text-lg font-semibold">Tu Disponibilidad</h3>
+                                        <h3 className="text-lg font-semibold">{t('crm.inbox.settings.sections.availability')}</h3>
                                         <p className="text-sm text-muted-foreground">
-                                            Controla cómo se te asignan las conversaciones y monitorea la carga del equipo.
+                                            {t('crm.inbox.settings.sections.availability_desc')}
                                         </p>
                                     </div>
                                     <AgentWorkloadDashboard />
@@ -86,9 +88,9 @@ export function InboxSettingsSheet({ open, onOpenChange }: InboxSettingsSheetPro
 
                                 <TabsContent value="rules" className="mt-0 space-y-6 max-w-3xl">
                                     <div className="space-y-1 mb-6">
-                                        <h3 className="text-lg font-semibold">Lógica de Enrutamiento</h3>
+                                        <h3 className="text-lg font-semibold">{t('crm.inbox.settings.sections.routing')}</h3>
                                         <p className="text-sm text-muted-foreground">
-                                            Define reglas automáticas para distribuir conversaciones entre los agentes.
+                                            {t('crm.inbox.settings.sections.routing_desc')}
                                         </p>
                                     </div>
                                     <AssignmentRulesManager />
@@ -96,9 +98,9 @@ export function InboxSettingsSheet({ open, onOpenChange }: InboxSettingsSheetPro
 
                                 <TabsContent value="preferences" className="mt-0 space-y-6 max-w-3xl">
                                     <div className="space-y-1 mb-6">
-                                        <h3 className="text-lg font-semibold">Personalización & Zen</h3>
+                                        <h3 className="text-lg font-semibold">{t('crm.inbox.settings.sections.personalization')}</h3>
                                         <p className="text-sm text-muted-foreground">
-                                            Ajusta notificaciones, sonidos y atajos para tu flujo ideal.
+                                            {t('crm.inbox.settings.sections.personalization_desc')}
                                         </p>
                                     </div>
                                     <NotificationsCard />

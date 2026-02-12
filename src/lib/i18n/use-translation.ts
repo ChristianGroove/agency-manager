@@ -25,14 +25,33 @@ function getNestedValue<T>(obj: T, path: string): any {
 export function useTranslation() {
     const { dict, locale } = useI18n()
 
-    function t(path: Path<Dictionary>): any {
-        const value = getNestedValue(dict, path as string)
+    function t(path: Path<Dictionary>, params?: Record<string, string | number>): string {
+        let value = getNestedValue(dict, path as string)
         if (value === undefined || value === null) {
             console.warn(`[i18n] Missing translation for key: ${path}`)
             return path as string
         }
+
+        if (typeof value !== 'string') {
+            return String(value)
+        }
+
+        if (params) {
+            Object.entries(params).forEach(([key, val]) => {
+                value = (value as string).replace(`{${key}}`, String(val))
+            })
+        }
+
         return value
     }
 
-    return { t, locale }
+    function tArray(path: Path<Dictionary>): string[] {
+        const value = getNestedValue(dict, path as string)
+        if (Array.isArray(value)) {
+            return value
+        }
+        return []
+    }
+
+    return { t, tArray, locale }
 }

@@ -12,6 +12,7 @@ import {
 } from "lucide-react"
 
 import { SectionHeader } from "@/components/layout/section-header"
+import { useTranslation } from "@/lib/i18n/use-translation"
 
 interface SettingsLayoutProps {
     children: React.ReactNode
@@ -19,32 +20,33 @@ interface SettingsLayoutProps {
 
 export default function SettingsLayout({ children }: SettingsLayoutProps) {
     const pathname = usePathname()
+    const { t } = useTranslation()
 
     // Definition of tabs
     const items = [
         {
-            title: "Canales",
+            title: t('crm.settings.tabs.channels'),
             href: "/crm/settings/channels",
             icon: MessageCircle,
-            description: "WhatsApp y más"
+            description: t('crm.settings.tabs.channels_desc')
         },
         {
-            title: "Pipelines",
+            title: t('crm.settings.tabs.pipelines'),
             href: "/crm/settings/pipeline",
             icon: GitBranch,
-            description: "Etapas de venta"
+            description: t('crm.settings.tabs.pipelines_desc')
         },
         {
-            title: "Plantillas (Meta)",
+            title: t('crm.settings.tabs.templates'),
             href: "/crm/settings/templates",
             icon: FileText,
-            description: "Mensajes predefinidos"
+            description: t('crm.settings.tabs.templates_desc')
         },
         {
-            title: "Plantillas de Industria",
+            title: t('crm.settings.tabs.industry'),
             href: "/crm/settings/pipeline-templates",
             icon: Layout,
-            description: "Modelos de Pipeline"
+            description: t('crm.settings.tabs.industry_desc')
         },
     ]
 
@@ -52,12 +54,10 @@ export default function SettingsLayout({ children }: SettingsLayoutProps) {
         <div className="h-full space-y-6">
             {/* Standardized Module Header */}
             <SectionHeader
-                title="Configuración CRM"
-                subtitle="Administra las preferencias generales de tu sistema de relaciones con clientes."
+                title={t('crm.settings.title')}
+                subtitle={t('crm.settings.subtitle')}
                 icon={Settings}
             />
-
-
 
             {/* Horizontal Navigation Tabs */}
             <div className="flex flex-col space-y-6">

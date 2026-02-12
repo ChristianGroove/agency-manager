@@ -22,6 +22,7 @@ import { getAgentsWorkload } from "../assignment-actions"
 import { archiveConversation, snoozeConversation, completeConversation } from "../conversation-actions"
 import { toast } from "sonner"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { useTranslation } from "@/lib/i18n/use-translation"
 import {
     Tooltip,
     TooltipContent,
@@ -39,6 +40,7 @@ type Lead = Database['public']['Tables']['leads']['Row']
 type TabType = 'management' | 'replies' | 'sales'
 
 export function ContextDeck({ conversationId }: ContextDeckProps) {
+    const { t } = useTranslation()
     const [lead, setLead] = useState<Lead | null>(null)
     const [conversation, setConversation] = useState<any>(null)
     const [agents, setAgents] = useState<any[]>([])
@@ -147,7 +149,7 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
         return (
             <div className="flex flex-col items-center justify-center h-full space-y-3">
                 <div className="h-6 w-6 border-2 border-brand-pink border-t-transparent rounded-full animate-spin" />
-                <p className="text-xs text-muted-foreground animate-pulse">Cargando contexto...</p>
+                <p className="text-xs text-muted-foreground animate-pulse">{t('crm.inbox.context.loading')}</p>
             </div>
         )
     }
@@ -159,10 +161,10 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
                     <User className="h-8 w-8 text-muted-foreground/50" />
                 </div>
                 <div className="space-y-1">
-                    <h3 className="font-semibold text-foreground">Contacto Desconocido</h3>
-                    <p className="text-sm text-muted-foreground max-w-[180px] mx-auto">Esta conversación no está vinculada a un Lead en el CRM.</p>
+                    <h3 className="font-semibold text-foreground">{t('crm.inbox.context.unknown_contact')}</h3>
+                    <p className="text-sm text-muted-foreground max-w-[180px] mx-auto">{t('crm.inbox.context.no_lead_desc')}</p>
                 </div>
-                <Button variant="outline" size="sm" className="rounded-full px-6">Crear Lead</Button>
+                <Button variant="outline" size="sm" className="rounded-full px-6">{t('crm.inbox.context.create_lead')}</Button>
             </div>
         )
     }
@@ -185,13 +187,13 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
                         <span className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full bg-green-500 border-2 border-background shadow-sm" />
                     </div>
                     <div className="flex-1 min-w-0">
-                        <h2 className="text-base font-bold truncate leading-tight tracking-tight">{lead.title || 'Contacto Desconocido'}</h2>
+                        <h2 className="text-base font-bold truncate leading-tight tracking-tight">{lead.title || t('crm.inbox.context.unknown_contact')}</h2>
                         <div className="flex items-center gap-2 mt-1.5">
                             <Badge variant="secondary" className="text-[10px] h-4 px-1.5 font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-0 shadow-sm">
-                                {lead.company || "Particular"}
+                                {lead.company || t('crm.inbox.context.particular')}
                             </Badge>
                             <Badge variant="outline" className="text-[10px] h-4 px-1.5 font-medium border-zinc-200 dark:border-zinc-800 text-zinc-500">
-                                {lead.status === 'new' ? 'Nuevo' : lead.status}
+                                {lead.status === 'new' ? t('crm.inbox.context.new_badge') : lead.status}
                             </Badge>
                         </div>
                     </div>
@@ -201,33 +203,33 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
                 <div className="grid grid-cols-4 gap-2">
                     <ActionBtn
                         icon={CheckCircle2}
-                        label="Resolver"
+                        label={t('crm.inbox.context.actions.resolve')}
                         onClick={async () => {
                             const res = await completeConversation(conversationId)
-                            if (res.success) toast.success("Conversación resuelta")
-                            else toast.error("Error al resolver")
+                            if (res.success) toast.success(t('crm.inbox.context.actions.resolved'))
+                            else toast.error(t('crm.inbox.context.actions.resolve_error'))
                         }}
                         color="text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20"
                     />
                     <ActionBtn
                         icon={CalendarClock}
-                        label="Posponer"
+                        label={t('crm.inbox.context.actions.snooze')}
                         onClick={() => {
                             const tomorrow = new Date()
                             tomorrow.setDate(tomorrow.getDate() + 1)
                             snoozeConversation(conversationId, tomorrow).then(res => {
-                                if (res.success) toast.success("Pospuesto hasta mañana")
+                                if (res.success) toast.success(t('crm.inbox.context.actions.snoozed_tomorrow'))
                             })
                         }}
                         color="text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20"
                     />
                     <ActionBtn
                         icon={Archive}
-                        label="Archivar"
+                        label={t('crm.inbox.context.actions.archive')}
                         onClick={async () => {
                             const res = await archiveConversation(conversationId)
-                            if (res.success) toast.success("Conversación archivada")
-                            else toast.error("Error al archivar")
+                            if (res.success) toast.success(t('crm.inbox.context.actions.archived'))
+                            else toast.error(t('crm.inbox.context.actions.archive_error'))
                         }}
                         color="text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
                     />
@@ -238,7 +240,7 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
                                     <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
                                 </Button>
                             </TooltipTrigger>
-                            <TooltipContent>Más Opciones</TooltipContent>
+                            <TooltipContent>{t('crm.inbox.context.actions.more_options')}</TooltipContent>
                         </Tooltip>
                     </TooltipProvider>
                 </div>
@@ -250,19 +252,19 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
                     <TabNavItem
                         active={activeTab === 'management'}
                         onClick={() => setActiveTab('management')}
-                        label="Gestión"
+                        label={t('crm.inbox.context.tabs.management')}
                         icon={LayoutDashboard}
                     />
                     <TabNavItem
                         active={activeTab === 'replies'}
                         onClick={() => setActiveTab('replies')}
-                        label="Respuestas"
+                        label={t('crm.inbox.context.tabs.replies')}
                         icon={MessageSquare}
                     />
                     <TabNavItem
                         active={activeTab === 'sales'}
                         onClick={() => setActiveTab('sales')}
-                        label="Cotizador"
+                        label={t('crm.inbox.context.tabs.sales')}
                         icon={ShoppingBag}
                     />
                 </div>
@@ -277,7 +279,7 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
                         <div className="p-4 space-y-6 animate-in fade-in duration-300 slide-in-from-left-2">
                             {/* Assignment Panel */}
                             <div className="space-y-2">
-                                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">Asignación</h4>
+                                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">{t('crm.inbox.context.sections.assignment')}</h4>
                                 <div className="bg-white/50 dark:bg-zinc-900/50 rounded-xl border border-white/20 dark:border-white/5 p-1 shadow-sm">
                                     <QuickAssignPanel
                                         conversationId={conversationId}
@@ -297,16 +299,16 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
                             {/* Contact Info */}
                             <div className="space-y-3">
                                 <div className="flex items-center justify-between px-1">
-                                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Detalles de Contacto</h4>
+                                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t('crm.inbox.context.sections.contact_details')}</h4>
                                     <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full hover:bg-muted" asChild>
                                         <Link href={`/crm?lead=${lead.id}`}><ExternalLink className="h-3.5 w-3.5 text-muted-foreground" /></Link>
                                     </Button>
                                 </div>
 
                                 <div className="space-y-1.5">
-                                    <ContactItem icon={Phone} label="Móvil" value={lead.phone} />
-                                    <ContactItem icon={Mail} label="Email" value={lead.email} />
-                                    <ContactItem icon={MapPin} label="Ubicación" value="Ubicación Desconocida" />
+                                    <ContactItem icon={Phone} label={t('crm.inbox.context.contact_fields.mobile')} value={lead.phone} t={t} />
+                                    <ContactItem icon={Mail} label={t('crm.inbox.context.contact_fields.email')} value={lead.email} t={t} />
+                                    <ContactItem icon={MapPin} label={t('crm.inbox.context.contact_fields.location')} value={t('crm.inbox.context.contact_fields.unknown_location')} t={t} />
                                 </div>
                             </div>
 
@@ -314,7 +316,7 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
 
                             {/* Tags */}
                             <div className="space-y-2">
-                                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">Etiquetas</h4>
+                                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">{t('crm.inbox.context.sections.tags')}</h4>
                                 <div className="flex flex-wrap gap-1.5 p-2 bg-white/50 dark:bg-zinc-900/50 rounded-xl border border-white/20 dark:border-white/5">
                                     {(lead.tags as string[] || ['lead']).map(tag => (
                                         <Badge key={tag} variant="secondary" className="bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 border border-transparent hover:border-border transition-colors px-2 py-0.5 text-[11px] font-normal shadow-sm">
@@ -323,7 +325,7 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
                                         </Badge>
                                     ))}
                                     <Button variant="outline" size="sm" className="h-5 rounded-full px-2 text-[10px] border-dashed text-muted-foreground hover:text-foreground">
-                                        + Agregar
+                                        + {t('crm.inbox.context.actions.add')}
                                     </Button>
                                 </div>
                             </div>
@@ -358,7 +360,7 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
                                             <DollarSign className="h-5 w-5" />
                                         </div>
                                         <div>
-                                            <div className="text-[10px] uppercase tracking-wider text-indigo-600/70 dark:text-indigo-400/70 font-bold">Valor Potencial</div>
+                                            <div className="text-[10px] uppercase tracking-wider text-indigo-600/70 dark:text-indigo-400/70 font-bold">{t('crm.inbox.context.sections.potential_value')}</div>
                                             <div className="text-2xl font-bold text-indigo-950 dark:text-indigo-100 font-mono tracking-tight">
                                                 ${lead.value?.toLocaleString() || '0'}
                                             </div>
@@ -371,7 +373,7 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
                                                 lead.priority === 'high' ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400" :
                                                     "bg-white/50 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
                                         )}>
-                                            {lead.priority === 'urgent' ? 'Urgente' : lead.priority === 'high' ? 'Alta' : 'Normal'}
+                                            {lead.priority === 'urgent' ? t('crm.inbox.context.priority.urgent') : lead.priority === 'high' ? t('crm.inbox.context.priority.high') : t('crm.inbox.context.priority.normal')}
                                         </Badge>
                                     </div>
                                 </div>
@@ -399,7 +401,7 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
                                 onClick={() => setIsQuoteDesignerOpen(true)}
                             >
                                 <Palette className="h-4 w-4" />
-                                <span className="text-sm font-medium">Quote Designer</span>
+                                <span className="text-sm font-medium">{t('crm.inbox.context.quote_designer')}</span>
                             </Button>
                         </div>
                     </div>
@@ -457,12 +459,12 @@ function ActionBtn({ icon: Icon, label, color, onClick }: { icon: any, label: st
     )
 }
 
-function ContactItem({ icon: Icon, label, value }: { icon: any, label: string, value?: string }) {
+function ContactItem({ icon: Icon, label, value, t }: { icon: any, label: string, value?: string, t: any }) {
     if (!value) return null
     return (
         <div className="group flex items-center gap-3 p-2 rounded-lg bg-white/50 dark:bg-zinc-900/50 border border-transparent hover:border-indigo-200 dark:hover:border-indigo-800 transition-all cursor-pointer shadow-sm" onClick={() => {
             navigator.clipboard.writeText(value)
-            toast.success("Copiado al portapapeles")
+            toast.success(t('crm.inbox.context.actions.copied'))
         }}>
             <Icon className="h-4 w-4 text-muted-foreground group-hover:text-indigo-500 transition-colors" />
             <div className="flex-1 min-w-0">
@@ -470,7 +472,7 @@ function ContactItem({ icon: Icon, label, value }: { icon: any, label: string, v
                 <p className="text-[10px] text-muted-foreground">{label}</p>
             </div>
             <span className="opacity-0 group-hover:opacity-100 text-[10px] text-indigo-600 font-medium transition-opacity">
-                Copiar
+                {t('crm.inbox.context.actions.copy')}
             </span>
         </div>
     )

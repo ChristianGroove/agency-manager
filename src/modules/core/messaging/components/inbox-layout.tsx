@@ -10,12 +10,14 @@ import { ContextDeck } from "./context-deck"
 import { ConversationDropZones } from "./conversation-drop-zones"
 import { updateConversationState } from "../conversation-management-actions"
 import { toast } from "sonner"
+import { useTranslation } from "@/lib/i18n/use-translation"
 
 interface InboxLayoutProps {
     initialConversationId?: string | null
 }
 
 export function InboxLayout({ initialConversationId }: InboxLayoutProps) {
+    const { t } = useTranslation()
     const [selectedConversationId, setSelectedConversationId] = React.useState<string | null>(initialConversationId || null)
     const [isContextOpen, setIsContextOpen] = React.useState(true)
     const [activeDragId, setActiveDragId] = React.useState<string | null>(null)
@@ -55,16 +57,16 @@ export function InboxLayout({ initialConversationId }: InboxLayoutProps) {
 
         if (targetZone === 'resolved') {
             updates = { state: 'archived', status: 'closed' }
-            actionLabel = 'resuelta'
+            actionLabel = t('crm.inbox.layout.action_resolved')
         } else if (targetZone === 'archived') {
             updates = { state: 'archived', status: 'archived' }
-            actionLabel = 'archivada'
+            actionLabel = t('crm.inbox.layout.action_archived')
         } else if (targetZone === 'open' || targetZone === 'active') {
             updates = { state: 'active', status: 'open' }
-            actionLabel = 'reabierta'
+            actionLabel = t('crm.inbox.layout.action_reopened')
         } else if (targetZone === 'snoozed') {
             updates = { state: 'active', status: 'snoozed' }
-            actionLabel = 'pospuesta'
+            actionLabel = t('crm.inbox.layout.action_snoozed')
         }
 
         if (Object.keys(updates).length > 0) {
@@ -76,14 +78,14 @@ export function InboxLayout({ initialConversationId }: InboxLayoutProps) {
 
                 if (!result.success) {
                     console.error('Failed to update conversation:', result.error)
-                    toast.error(`Error: ${result.error || 'Desconocido'}`)
+                    toast.error(`Error: ${result.error || t('crm.inbox.layout.unknown')}`)
                 } else {
-                    toast.success(`Conversación ${actionLabel}`)
+                    toast.success(t('crm.inbox.layout.conversation_updated', { label: actionLabel }))
                     window.location.reload()
                 }
             } catch (err) {
                 console.error('Exception calling server action:', err)
-                toast.error('Error de conexión')
+                toast.error(t('crm.inbox.layout.connection_error'))
             }
         }
     }
@@ -120,8 +122,8 @@ export function InboxLayout({ initialConversationId }: InboxLayoutProps) {
                                 <span className="text-4xl">📬</span>
                             </div>
                             <div>
-                                <h3 className="font-semibold text-lg text-foreground">Tu Inbox está listo</h3>
-                                <p className="text-sm max-w-xs">Selecciona una conversación de la izquierda para comenzar a chatear.</p>
+                                <h3 className="font-semibold text-lg text-foreground">{t('crm.inbox.layout.ready_title')}</h3>
+                                <p className="text-sm max-w-xs">{t('crm.inbox.layout.ready_desc')}</p>
                             </div>
                         </div>
                     )}
@@ -134,7 +136,7 @@ export function InboxLayout({ initialConversationId }: InboxLayoutProps) {
                             <ContextDeck conversationId={selectedConversationId} />
                         ) : (
                             <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground text-center">
-                                <p>Selecciona un chat para ver detalles</p>
+                                <p>{t('crm.inbox.layout.select_chat')}</p>
                             </div>
                         )}
                     </div>
@@ -156,8 +158,8 @@ export function InboxLayout({ initialConversationId }: InboxLayoutProps) {
                                 💬
                             </div>
                             <div className="flex-1 min-w-0">
-                                <p className="text-sm font-bold text-foreground truncate">Moviendo conversación...</p>
-                                <p className="text-xs text-muted-foreground">Suelta para cambiar estado</p>
+                                <p className="text-sm font-bold text-foreground truncate">{t('crm.inbox.layout.moving')}</p>
+                                <p className="text-xs text-muted-foreground">{t('crm.inbox.layout.drop_to_change')}</p>
                             </div>
                             <div className="h-2 w-2 rounded-full bg-zinc-900 dark:bg-zinc-100 animate-pulse" />
                         </div>

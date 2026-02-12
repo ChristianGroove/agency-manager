@@ -10,18 +10,18 @@ import {
 } from "@/components/ui/select"
 import {
     Users, DollarSign, TrendingUp, MessageSquare, Target, Award,
-    BarChart3, PieChart, Activity, Clock, ArrowUpRight, ArrowDownRight,
-    RefreshCw
+    BarChart3, PieChart, Activity, RefreshCw
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
     getCRMStats, getLeadsBySource, getLeadsByStatus, getRecentActivity, getAgentPerformance,
     type CRMStats, type LeadsBySource, type LeadsByStatus, type RecentActivity, type AgentPerformance
 } from '@/modules/core/crm/analytics-actions'
-
 import { SectionHeader } from "@/components/layout/section-header"
+import { useTranslation } from "@/lib/i18n/use-translation"
 
 export default function ReportsPage() {
+    const { t } = useTranslation()
     const [loading, setLoading] = useState(true)
     const [timeRange, setTimeRange] = useState('30')
     const [stats, setStats] = useState<CRMStats | null>(null)
@@ -60,12 +60,12 @@ export default function ReportsPage() {
     }
 
     const statusLabels: Record<string, string> = {
-        new: 'Nuevos',
-        contacted: 'Contactados',
-        qualified: 'Calificados',
-        negotiation: 'Negociación',
-        won: 'Ganados',
-        lost: 'Perdidos'
+        new: t('crm.reports.status.new'),
+        contacted: t('crm.reports.status.contacted'),
+        qualified: t('crm.reports.status.qualified'),
+        negotiation: t('crm.reports.status.negotiation'),
+        won: t('crm.reports.status.won'),
+        lost: t('crm.reports.status.lost')
     }
 
     const statusColors: Record<string, string> = {
@@ -81,8 +81,8 @@ export default function ReportsPage() {
         <div className="h-full space-y-6 overflow-auto">
             {/* Header */}
             <SectionHeader
-                title="Analytics Hub"
-                subtitle="Centro de inteligencia y métricas de crecimiento"
+                title={t('crm.reports.title')}
+                subtitle={t('crm.reports.subtitle')}
                 icon={BarChart3}
                 action={
                     <div className="flex items-center gap-3">
@@ -91,10 +91,10 @@ export default function ReportsPage() {
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="7">Últimos 7 días</SelectItem>
-                                <SelectItem value="30">Últimos 30 días</SelectItem>
-                                <SelectItem value="90">Últimos 90 días</SelectItem>
-                                <SelectItem value="365">Este año</SelectItem>
+                                <SelectItem value="7">{t('crm.reports.time_ranges.last_7_days')}</SelectItem>
+                                <SelectItem value="30">{t('crm.reports.time_ranges.last_30_days')}</SelectItem>
+                                <SelectItem value="90">{t('crm.reports.time_ranges.last_90_days')}</SelectItem>
+                                <SelectItem value="365">{t('crm.reports.time_ranges.this_year')}</SelectItem>
                             </SelectContent>
                         </Select>
                         <Button variant="outline" size="icon" onClick={loadData} disabled={loading}>
@@ -109,12 +109,12 @@ export default function ReportsPage() {
                 <Card className="p-6 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 border-blue-200 dark:border-blue-800/30">
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-sm text-blue-600 dark:text-blue-400 font-medium">Total Leads</p>
+                            <p className="text-sm text-blue-600 dark:text-blue-400 font-medium">{t('crm.reports.kpis.total_leads')}</p>
                             <p className="text-3xl font-bold text-blue-900 dark:text-white mt-1">
                                 {loading ? '...' : stats?.totalLeads.toLocaleString()}
                             </p>
                             <p className="text-xs text-blue-600/70 dark:text-blue-400/70 mt-1">
-                                +{stats?.newLeadsThisMonth || 0} este periodo
+                                +{stats?.newLeadsThisMonth || 0} {t('crm.reports.kpis.new_this_period')}
                             </p>
                         </div>
                         <div className="p-3 bg-blue-500/10 rounded-2xl">
@@ -126,12 +126,12 @@ export default function ReportsPage() {
                 <Card className="p-6 bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/20 dark:to-emerald-800/20 border-emerald-200 dark:border-emerald-800/30">
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">Valor Pipeline</p>
+                            <p className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">{t('crm.reports.kpis.pipeline_value')}</p>
                             <p className="text-3xl font-bold text-emerald-900 dark:text-white mt-1">
                                 {loading ? '...' : formatCurrency(stats?.pipelineValue || 0)}
                             </p>
                             <p className="text-xs text-emerald-600/70 dark:text-emerald-400/70 mt-1">
-                                Oportunidades abiertas
+                                {t('crm.reports.kpis.open_opportunities')}
                             </p>
                         </div>
                         <div className="p-3 bg-emerald-500/10 rounded-2xl">
@@ -143,12 +143,12 @@ export default function ReportsPage() {
                 <Card className="p-6 bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 border-purple-200 dark:border-purple-800/30">
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-sm text-purple-600 dark:text-purple-400 font-medium">Tasa de Conversión</p>
+                            <p className="text-sm text-purple-600 dark:text-purple-400 font-medium">{t('crm.reports.kpis.conversion_rate')}</p>
                             <p className="text-3xl font-bold text-purple-900 dark:text-white mt-1">
                                 {loading ? '...' : `${stats?.conversionRate || 0}%`}
                             </p>
                             <p className="text-xs text-purple-600/70 dark:text-purple-400/70 mt-1">
-                                Promedio: {formatCurrency(stats?.avgDealSize || 0)}/deal
+                                {t('crm.reports.kpis.avg_deal')}: {formatCurrency(stats?.avgDealSize || 0)}/{t('crm.reports.kpis.per_deal')}
                             </p>
                         </div>
                         <div className="p-3 bg-purple-500/10 rounded-2xl">
@@ -160,12 +160,12 @@ export default function ReportsPage() {
                 <Card className="p-6 bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 border-orange-200 dark:border-orange-800/30">
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-sm text-orange-600 dark:text-orange-400 font-medium">Conversaciones Abiertas</p>
+                            <p className="text-sm text-orange-600 dark:text-orange-400 font-medium">{t('crm.reports.kpis.open_conversations')}</p>
                             <p className="text-3xl font-bold text-orange-900 dark:text-white mt-1">
                                 {loading ? '...' : stats?.openConversations || 0}
                             </p>
                             <p className="text-xs text-orange-600/70 dark:text-orange-400/70 mt-1">
-                                Pendientes de respuesta
+                                {t('crm.reports.kpis.pending_response')}
                             </p>
                         </div>
                         <div className="p-3 bg-orange-500/10 rounded-2xl">
@@ -181,8 +181,8 @@ export default function ReportsPage() {
                 <Card className="p-6">
                     <div className="flex items-center justify-between mb-6">
                         <div>
-                            <h3 className="font-bold text-lg">Embudo de Ventas</h3>
-                            <p className="text-sm text-muted-foreground">Distribución por etapa</p>
+                            <h3 className="font-bold text-lg">{t('crm.reports.funnel.title')}</h3>
+                            <p className="text-sm text-muted-foreground">{t('crm.reports.funnel.subtitle')}</p>
                         </div>
                         <BarChart3 className="w-5 h-5 text-muted-foreground" />
                     </div>
@@ -207,7 +207,7 @@ export default function ReportsPage() {
                         })}
                         {funnelData.length === 0 && !loading && (
                             <div className="py-8 text-center text-muted-foreground">
-                                No hay datos de embudo disponibles
+                                {t('crm.reports.empty_data.funnel')}
                             </div>
                         )}
                     </div>
@@ -217,8 +217,8 @@ export default function ReportsPage() {
                 <Card className="p-6">
                     <div className="flex items-center justify-between mb-6">
                         <div>
-                            <h3 className="font-bold text-lg">Fuentes de Leads</h3>
-                            <p className="text-sm text-muted-foreground">Origen de los contactos</p>
+                            <h3 className="font-bold text-lg">{t('crm.reports.sources.title')}</h3>
+                            <p className="text-sm text-muted-foreground">{t('crm.reports.sources.subtitle')}</p>
                         </div>
                         <PieChart className="w-5 h-5 text-muted-foreground" />
                     </div>
@@ -240,7 +240,7 @@ export default function ReportsPage() {
                         })}
                         {sourceData.length === 0 && !loading && (
                             <div className="py-8 text-center text-muted-foreground">
-                                No hay datos de fuentes disponibles
+                                {t('crm.reports.empty_data.sources')}
                             </div>
                         )}
                     </div>
@@ -253,8 +253,8 @@ export default function ReportsPage() {
                 <Card className="p-6 lg:col-span-2">
                     <div className="flex items-center justify-between mb-6">
                         <div>
-                            <h3 className="font-bold text-lg">Rendimiento del Equipo</h3>
-                            <p className="text-sm text-muted-foreground">Top performers por valor cerrado</p>
+                            <h3 className="font-bold text-lg">{t('crm.reports.team.title')}</h3>
+                            <p className="text-sm text-muted-foreground">{t('crm.reports.team.subtitle')}</p>
                         </div>
                         <Award className="w-5 h-5 text-muted-foreground" />
                     </div>
@@ -270,18 +270,18 @@ export default function ReportsPage() {
                                     </div>
                                     <div>
                                         <p className="font-medium">{agent.agentName}</p>
-                                        <p className="text-xs text-muted-foreground">{agent.leadsAssigned} leads asignados</p>
+                                        <p className="text-xs text-muted-foreground">{agent.leadsAssigned} {t('crm.reports.team.leads_assigned')}</p>
                                     </div>
                                 </div>
                                 <div className="text-right">
                                     <p className="font-bold text-green-600">{formatCurrency(agent.totalValue)}</p>
-                                    <p className="text-xs text-muted-foreground">{agent.dealsWon} deals ({agent.conversionRate}%)</p>
+                                    <p className="text-xs text-muted-foreground">{agent.dealsWon} {t('crm.reports.team.deals')} ({agent.conversionRate}%)</p>
                                 </div>
                             </div>
                         ))}
                         {agents.length === 0 && !loading && (
                             <div className="py-8 text-center text-muted-foreground">
-                                No hay datos de equipo disponibles
+                                {t('crm.reports.empty_data.team')}
                             </div>
                         )}
                     </div>
@@ -291,8 +291,8 @@ export default function ReportsPage() {
                 <Card className="p-6">
                     <div className="flex items-center justify-between mb-6">
                         <div>
-                            <h3 className="font-bold text-lg">Actividad Reciente</h3>
-                            <p className="text-sm text-muted-foreground">Últimos movimientos</p>
+                            <h3 className="font-bold text-lg">{t('crm.reports.activity.title')}</h3>
+                            <p className="text-sm text-muted-foreground">{t('crm.reports.activity.subtitle')}</p>
                         </div>
                         <Activity className="w-5 h-5 text-muted-foreground" />
                     </div>
@@ -314,7 +314,7 @@ export default function ReportsPage() {
                             ))}
                             {activities.length === 0 && !loading && (
                                 <div className="py-8 text-center text-muted-foreground">
-                                    Sin actividad reciente
+                                    {t('crm.reports.activity.empty')}
                                 </div>
                             )}
                         </div>

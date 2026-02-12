@@ -16,6 +16,7 @@ import { useMessageNotifications } from "@/modules/core/preferences/use-message-
 import { useInboxPreferences } from "@/modules/core/preferences/use-inbox-preferences"
 import { useInboxShortcuts } from "@/modules/core/preferences/use-inbox-shortcuts"
 import { useCurrentOrganization } from "@/modules/core/organizations/hooks/use-current-organization"
+import { useTranslation } from "@/lib/i18n/use-translation"
 
 type FilterTab = 'all' | 'unread' | 'assigned' | 'archived' | 'snoozed'
 
@@ -40,6 +41,7 @@ interface SidebarConversationListProps {
 }
 
 export function SidebarConversationList({ selectedId, onSelect }: SidebarConversationListProps) {
+    const { t } = useTranslation()
     const [conversations, setConversations] = useState<Conversation[]>([])
     const [searchQuery, setSearchQuery] = useState("")
     const [activeFilter, setActiveFilter] = useState<FilterTab>('all')
@@ -189,7 +191,7 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                         ref={searchInputRef}
-                        placeholder="Search conversations..."
+                        placeholder={t('crm.inbox.sidebar.search_placeholder')}
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className="pl-9 bg-zinc-50 dark:bg-zinc-900 border-none shadow-none h-9 text-sm focus-visible:ring-1 focus-visible:ring-offset-0"
@@ -199,7 +201,7 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
                         size="icon"
                         className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground hover:text-foreground"
                         onClick={() => setIsSettingsOpen(true)}
-                        title="Inbox Settings"
+                        title={t('crm.inbox.sidebar.inbox_settings')}
                     >
                         <SettingsIcon className="h-3.5 w-3.5" />
                     </Button>
@@ -212,13 +214,13 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
                             value="all"
                             className="text-[11px] font-medium rounded-full border border-transparent data-[state=active]:bg-zinc-100 dark:data-[state=active]:bg-zinc-800 data-[state=active]:text-foreground text-muted-foreground px-3 py-1.5 transition-all h-7"
                         >
-                            All
+                            {t('crm.inbox.sidebar.filters.all')}
                         </TabsTrigger>
                         <TabsTrigger
                             value="unread"
                             className="text-[11px] font-medium rounded-full border border-transparent data-[state=active]:bg-zinc-100 dark:data-[state=active]:bg-zinc-800 data-[state=active]:text-foreground text-muted-foreground px-3 py-1.5 transition-all h-7"
                         >
-                            Unread
+                            {t('crm.inbox.sidebar.filters.unread')}
                             {counts.unread > 0 && (
                                 <Badge className="ml-1.5 h-4 min-w-[1rem] px-1 bg-brand-pink text-white border-none shadow-none text-[9px] flex items-center justify-center">
                                     {counts.unread}
@@ -228,21 +230,21 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
                         <TabsTrigger
                             value="assigned"
                             className="text-[11px] font-medium rounded-full border border-transparent data-[state=active]:bg-zinc-100 dark:data-[state=active]:bg-zinc-800 data-[state=active]:text-foreground text-muted-foreground px-3 py-1.5 transition-all h-7"
-                            title="Assigned to me"
+                            title={t('crm.inbox.sidebar.filters.assigned_to_me')}
                         >
-                            Assigned
+                            {t('crm.inbox.sidebar.filters.assigned')}
                         </TabsTrigger>
                         <TabsTrigger
                             value="snoozed"
                             className="text-[11px] font-medium rounded-full border border-transparent data-[state=active]:bg-zinc-100 dark:data-[state=active]:bg-zinc-800 data-[state=active]:text-foreground text-muted-foreground px-2 py-1.5 transition-all h-7"
-                            title="Snoozed"
+                            title={t('crm.inbox.sidebar.filters.snoozed')}
                         >
                             <Clock className="h-3.5 w-3.5" />
                         </TabsTrigger>
                         <TabsTrigger
                             value="archived"
                             className="text-[11px] font-medium rounded-full border border-transparent data-[state=active]:bg-zinc-100 dark:data-[state=active]:bg-zinc-800 data-[state=active]:text-foreground text-muted-foreground px-2 py-1.5 transition-all h-7"
-                            title="Archived"
+                            title={t('crm.inbox.sidebar.filters.archived')}
                         >
                             <Archive className="h-3.5 w-3.5" />
                         </TabsTrigger>
@@ -254,14 +256,14 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
             <div className="flex-1 min-h-0">
                 {loading ? (
                     <div className="p-8 text-center text-sm text-muted-foreground">
-                        Loading...
+                        {t('crm.inbox.sidebar.loading')}
                     </div>
                 ) : filteredConversations.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-full p-8 text-center opacity-60">
                         <MessageSquare className="h-8 w-8 mb-3 text-muted-foreground" />
-                        <p className="text-sm font-medium text-foreground">No conversations</p>
+                        <p className="text-sm font-medium text-foreground">{t('crm.inbox.sidebar.no_conversations')}</p>
                         <p className="text-xs text-muted-foreground mt-1 max-w-[180px]">
-                            {searchQuery ? 'Try a different search term' : 'New messages will appear here'}
+                            {searchQuery ? t('crm.inbox.sidebar.no_conversations_desc_search') : t('crm.inbox.sidebar.no_conversations_desc')}
                         </p>
                     </div>
                 ) : (
