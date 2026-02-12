@@ -17,7 +17,7 @@ declare global {
 }
 
 const META_APP_ID = process.env.NEXT_PUBLIC_META_APP_ID || '25468410932828305';
-const EMBEDDED_SIGNUP_CONFIG_ID = process.env.NEXT_PUBLIC_META_EMBEDDED_SIGNUP_CONFIG_ID || '902210238851316';
+const EMBEDDED_SIGNUP_CONFIG_ID = process.env.NEXT_PUBLIC_META_EMBEDDED_SIGNUP_CONFIG_ID || '2080917496052099';
 
 interface MetaEmbeddedSignupProps {
     onSuccess?: () => void;
@@ -46,7 +46,7 @@ export function MetaEmbeddedSignup({ onSuccess, onError }: MetaEmbeddedSignupPro
                 appId: META_APP_ID,
                 cookie: true,
                 xfbml: false,
-                version: 'v24.0'
+                version: 'v21.0'
             });
             setStatus('ready');
         };
@@ -58,6 +58,10 @@ export function MetaEmbeddedSignup({ onSuccess, onError }: MetaEmbeddedSignupPro
             script.src = 'https://connect.facebook.net/en_US/sdk.js';
             script.async = true;
             script.defer = true;
+            script.onerror = () => {
+                setStatus('error');
+                setErrorMessage('No se pudo cargar el SDK de Facebook.');
+            };
             document.head.appendChild(script);
         }
     }, []);
@@ -84,13 +88,9 @@ export function MetaEmbeddedSignup({ onSuccess, onError }: MetaEmbeddedSignupPro
                         onError?.('No authorization code received');
                         return;
                     }
-
-                    // Send code to our API
                     processSignupCode(code);
                 } else {
-                    // User cancelled or denied
                     setStatus('idle');
-                    console.log('[EmbeddedSignup] User cancelled or denied');
                 }
             },
             {
@@ -101,7 +101,6 @@ export function MetaEmbeddedSignup({ onSuccess, onError }: MetaEmbeddedSignupPro
                     setup: {},
                     featureType: 'whatsapp_business_app_onboarding',
                     sessionInfoVersion: '3',
-                    version: 'v4'
                 }
             }
         );
