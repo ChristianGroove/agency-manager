@@ -74,13 +74,15 @@ function renderContent(content: any, isOutbound: boolean, messageId?: string, me
 
     switch (content.type) {
         // ... (other cases)
+
+        // Note is now handled at the top level, but keep for safety/fallback if logic changes
         case 'note':
             return (
-                <div className="flex flex-col gap-1 -mx-1 -my-1 p-2 bg-yellow-100/50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800/50">
-                    <span className="text-[10px] font-bold text-yellow-700 dark:text-yellow-500 uppercase tracking-wider flex items-center gap-1">
-                        📝 {t ? t('crm.inbox.chat.messages.internal_note') : 'Internal Note'}
+                <div className="flex flex-col gap-1 -mx-1 -my-1 p-2.5 bg-zinc-50 dark:bg-zinc-900/50 rounded-lg border border-zinc-100 dark:border-zinc-800">
+                    <span className="text-[10px] font-bold text-primary/80 uppercase tracking-wider">
+                        {t ? t('crm.inbox.chat.note') : 'Note'}
                     </span>
-                    <p className="whitespace-pre-wrap leading-relaxed text-[15px] italic text-yellow-900 dark:text-yellow-100">{text}</p>
+                    <p className="whitespace-pre-wrap leading-relaxed text-[15px] italic text-zinc-600 dark:text-zinc-400">{text}</p>
                 </div>
             )
 

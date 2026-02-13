@@ -78,20 +78,33 @@ export const ConversationListItem = memo(function ConversationListItem({ conv, i
         >
             {/* New Message Indicator Dot (Pulsing) */}
             {isNew && (
-                <span className="absolute right-3 top-3 h-2.5 w-2.5 rounded-full bg-blue-500 animate-ping opacity-75" />
-            )}
-            {/* Priority Indicator - Move to right or subtle dot */}
-            {conv.priority && conv.priority !== 'normal' && (
-                <div
-                    className={cn(
-                        "absolute right-2 top-2 h-2 w-2 rounded-full",
-                        getPriorityColor(conv.priority)
-                    )}
-                />
+                <span className="absolute right-3 top-3 h-2.5 w-2.5 rounded-full bg-blue-500 animate-ping opacity-75 pointer-events-none" />
             )}
 
-            <div className="flex items-start gap-3">
-                <div className="flex-shrink-0 mt-1 pointer-events-none">
+            {/* Action Menu - Absolute Positioned to save height */}
+            <div
+                className="absolute right-1 top-1 opacity-0 group-hover:opacity-100 transition-opacity md:opacity-0 focus-within:opacity-100 has-[:focus]:opacity-100 lg:opacity-0 sm:opacity-100" // Visible on mobile/touch typically via tap? Actually simpler: always visible on touch, hover on desktop?
+            // For simplicity and user request "save height", let's make it visible on hover for desktop, but we need it accessible. 
+            // Creating a floating button that doesn't affect flow.
+            >
+                {/* Re-thinking: If I hide it, how do they delete on mobile? Swipe? 
+                Let's keep it visible but absolute.
+             */}
+            </div>
+            <div
+                className="absolute right-0 top-0 p-2 z-10"
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
+            >
+                <ConversationActionsMenu
+                    conversationId={conv.id}
+                    isArchived={conv.state === 'archived'}
+                    onActionComplete={fetchConversations}
+                />
+            </div>
+
+            <div className="flex items-center gap-3">
+                <div className="flex-shrink-0 pointer-events-none">
                     <Avatar className="h-10 w-10 border border-black/5 dark:border-white/10 shadow-sm">
                         <AvatarImage src={conv.leads?.avatar_url || conv.clients?.avatar_url} alt={contactName} />
                         <AvatarFallback className="bg-gradient-to-br from-zinc-100 to-zinc-200 dark:from-zinc-800 dark:to-zinc-900 text-zinc-900 dark:text-zinc-100 font-bold">
@@ -100,14 +113,20 @@ export const ConversationListItem = memo(function ConversationListItem({ conv, i
                     </Avatar>
                 </div>
 
-                <div className="flex-1 min-w-0 pointer-events-none">
-                    <div className="flex items-center justify-between mb-1">
-                        <span className={cn(
-                            "font-medium truncate text-sm",
-                            isUnread && "font-bold text-foreground"
-                        )}>
-                            {contactName}
-                        </span>
+                <div className="flex-1 min-w-0 pointer-events-none flex flex-col gap-1 pr-6">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 min-w-0">
+                            <span className={cn(
+                                "font-medium truncate text-sm",
+                                isUnread && "font-bold text-foreground"
+                            )}>
+                                {contactName}
+                            </span>
+                            {/* Priority Inline */}
+                            {conv.priority && conv.priority !== 'normal' && (
+                                <div className={cn("h-2 w-2 rounded-full flex-shrink-0", getPriorityColor(conv.priority))} />
+                            )}
+                        </div>
 
                         <div className="flex items-center gap-2 flex-shrink-0 ml-2 pointer-events-auto">
                             {conv.assigned_to && (
@@ -118,22 +137,15 @@ export const ConversationListItem = memo(function ConversationListItem({ conv, i
                                     {conv.unread_count}
                                 </Badge>
                             )}
-                            {/* Action Menu needs to be clickable. */}
-                            <div onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
-                                <ConversationActionsMenu
-                                    conversationId={conv.id}
-                                    isArchived={conv.state === 'archived'}
-                                    onActionComplete={fetchConversations}
-                                />
-                            </div>
                         </div>
                     </div>
 
-                    <div className="mb-1">
+                    <div>
                         <p className={cn(
-                            "text-sm text-muted-foreground line-clamp-2 break-all",
+                            "text-sm text-muted-foreground line-clamp-1 break-all leading-tight",
                             isUnread && "text-foreground/80 font-medium"
                         )}>
+                            {/* Force leading-tight to minimize height */}
                             {conv.last_message_preview || conv.last_message || t('crm.inbox.chat.no_messages')}
                         </p>
                     </div>

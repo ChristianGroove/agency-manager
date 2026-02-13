@@ -382,40 +382,53 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
             {/* Header */}
             <div className="h-16 border-b flex items-center justify-between px-4 bg-white dark:bg-zinc-900 shadow-sm z-10 w-full shrink-0">
                 <div className="flex items-center gap-3">
+                    {/* Large Channel Icon (No Container) */}
+                    <div className="shrink-0">
+                        {(() => {
+                            if (!conversation) {
+                                return <div className="h-9 w-9 rounded-full bg-zinc-200 dark:bg-zinc-800 animate-pulse" />;
+                            }
 
-                    <div className="flex flex-col">
-                        <div className="flex items-center gap-2">
-                            <h3 className="font-semibold text-sm leading-tight text-foreground">{leadName}</h3>
-                            {conversation?.leads?.status && (
-                                <Badge variant="outline" className="text-[10px] h-5">
-                                    <Target className="h-3 w-3 mr-1" />
-                                    {conversation.leads.status}
-                                </Badge>
-                            )}
-                        </div>
-                        <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
-                            {/* Channel Icon & Name in Header */}
-                            {(() => {
-                                const rawChannel = conversation?.channel?.toLowerCase() || '';
-                                const providerKey = (conversation as any)?.integration_connections?.provider_key?.toLowerCase() || '';
-                                const combined = `${rawChannel} ${providerKey}`;
+                            const rawChannel = conversation?.channel?.toLowerCase() || '';
+                            const providerKey = (conversation as any)?.integration_connections?.provider_key?.toLowerCase() || '';
+                            const combined = `${rawChannel} ${providerKey}`;
 
-                                if (combined.includes('whatsapp') || combined.includes('evolution')) {
-                                    return <img src="/social media icons/whatsapp.png" className="h-3 w-3 object-contain" alt="WA" />;
-                                }
-                                if (combined.includes('messenger') || combined.includes('facebook')) {
-                                    return <img src="/social media icons/messenger.png" className="h-3 w-3 object-contain" alt="MSG" />;
-                                }
-                                if (combined.includes('instagram')) {
-                                    return <img src="/social media icons/instagram.png" className="h-3 w-3 object-contain" alt="IG" />;
-                                }
-                                return null;
-                            })()}
+                            if (combined.includes('whatsapp') || combined.includes('evolution')) {
+                                return <img src="/social media icons/whatsapp.png" className="h-9 w-9 object-contain drop-shadow-sm" alt="WA" />;
+                            }
+                            if (combined.includes('messenger') || combined.includes('facebook')) {
+                                return <img src="/social media icons/messenger.png" className="h-9 w-9 object-contain drop-shadow-sm" alt="MSG" />;
+                            }
+                            if (combined.includes('instagram')) {
+                                return <img src="/social media icons/instagram.png" className="h-9 w-9 object-contain drop-shadow-sm" alt="IG" />;
+                            }
+                            return <img src="/social media icons/whatsapp.png" className="h-9 w-9 object-contain opacity-50 grayscale" alt="Unk" />;
+                        })()}
+                    </div>
 
-                            <span className="capitalize">{conversation?.channel || 'Unknown Channel'}</span>
-                            <span className="opacity-50">•</span>
-                            <span>{conversation?.id.slice(0, 8)}</span>
-                        </p>
+                    <div className="flex flex-col justify-center min-w-[120px]">
+                        {!conversation ? (
+                            <div className="space-y-1.5 py-0.5">
+                                <div className="h-4 w-32 bg-zinc-200 dark:bg-zinc-800 rounded animate-pulse" />
+                                <div className="h-3 w-24 bg-zinc-200 dark:bg-zinc-800 rounded animate-pulse" />
+                            </div>
+                        ) : (
+                            <>
+                                <div className="flex items-center gap-2">
+                                    <h3 className="font-semibold text-sm leading-none text-foreground">{leadName}</h3>
+                                    {conversation?.leads?.status && (
+                                        <Badge variant="outline" className="text-[9px] h-4 px-1.5 font-normal text-muted-foreground border-zinc-200 dark:border-zinc-800">
+                                            {conversation.leads.status}
+                                        </Badge>
+                                    )}
+                                </div>
+                                <p className="text-[11px] text-muted-foreground flex items-center gap-1.5 mt-0.5">
+                                    <span className="capitalize">{conversation?.channel || 'Unknown'}</span>
+                                    <span className="opacity-50">•</span>
+                                    <span className="font-mono opacity-70">{conversation?.id.slice(0, 8)}</span>
+                                </p>
+                            </>
+                        )}
                     </div>
                 </div>
                 <div className="flex items-center gap-1">
@@ -512,8 +525,6 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
                             <TooltipContent>Llamar</TooltipContent>
                         </Tooltip>
 
-                        <ConversationActionsMenu conversationId={conversationId} />
-
                         <Tooltip>
                             <TooltipTrigger asChild>
                                 <Button variant="ghost" size="icon" onClick={onToggleContext} className={cn("text-muted-foreground hover:text-foreground h-8 w-8", isContextOpen && "bg-muted")}>
@@ -598,32 +609,20 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
             <div className="p-3 bg-white dark:bg-zinc-900 items-end flex gap-2 border-t relative z-20">
                 {/* Removed floating chips */}
 
-                {/* Internal Mode Toggle */}
-                <div className="absolute -top-12 right-4 z-30">
+                {/* Internal Mode Toggle - Centered Floating */}
+                <div className="absolute -top-10 left-1/2 -translate-x-1/2 z-30 flex justify-center">
                     <Button
-                        variant={isInternal ? "default" : "outline"}
+                        variant="ghost"
                         size="sm"
                         onClick={() => setIsInternal(!isInternal)}
                         className={cn(
-                            "rounded-full shadow-lg transition-all gap-2 h-8 text-xs font-medium",
+                            "rounded-full shadow-sm backdrop-blur-md border transition-all duration-300 h-7 text-xs font-semibold px-4 tracking-wide",
                             isInternal
-                                ? "bg-yellow-400 hover:bg-yellow-500 text-yellow-950 border-yellow-500"
-                                : "bg-background/80 backdrop-blur hover:bg-background border-dashed text-muted-foreground"
+                                ? "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 border-transparent ring-2 ring-zinc-900/10 dark:ring-zinc-100/20 transform scale-105"
+                                : "bg-white/80 dark:bg-zinc-900/80 hover:bg-white dark:hover:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-muted-foreground hover:text-foreground"
                         )}
                     >
-                        {isInternal ? (
-                            <>
-                                <span className="relative flex h-2 w-2">
-                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-600 opacity-75"></span>
-                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-yellow-700"></span>
-                                </span>
-                                {t('crm.inbox.chat.note_mode')}
-                            </>
-                        ) : (
-                            <>
-                                {t('crm.inbox.chat.note')}
-                            </>
-                        )}
+                        {isInternal ? t('crm.inbox.chat.note_mode') : t('crm.inbox.chat.note')}
                     </Button>
                 </div>
 

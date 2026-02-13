@@ -88,15 +88,30 @@ export function ConversationActionsMenu({
 
                     <DropdownMenuSeparator />
 
-                    {/* AI: Save as FAQ */}
                     <DropdownMenuItem onClick={() => setIsFAQModalOpen(true)}>
                         <Lightbulb className="mr-2 h-4 w-4 text-yellow-500" />
                         Guardar como FAQ
                     </DropdownMenuItem>
+
+                    <DropdownMenuSeparator />
+
+                    <DropdownMenuItem
+                        className="text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-900/20"
+                        onClick={() => {
+                            if (window.confirm("¿Estás seguro de que quieres eliminar esta conversación? Esta acción no se puede deshacer.")) {
+                                handleAction(
+                                    () => deleteConversation(conversationId),
+                                    "Conversación eliminada"
+                                )
+                            }
+                        }}
+                    >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Eliminar
+                    </DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* FAQ Modal */}
             <SaveAsFAQModal
                 open={isFAQModalOpen}
                 onOpenChange={setIsFAQModalOpen}
