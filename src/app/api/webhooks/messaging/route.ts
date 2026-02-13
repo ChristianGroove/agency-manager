@@ -40,6 +40,8 @@ async function getConfiguredManager() {
             process.env.META_WEBHOOK_VERIFY_TOKEN || 'pixy_webhook_2026'
         )
         webhookManager.registerProvider('whatsapp', metaProvider)
+        webhookManager.registerProvider('messenger', metaProvider)
+        webhookManager.registerProvider('instagram', metaProvider)
 
         // Register Evolution API (Unofficial WhatsApp)
         // Note: For sending, we need real credentials. For receiving webhook, dummy config suffices 

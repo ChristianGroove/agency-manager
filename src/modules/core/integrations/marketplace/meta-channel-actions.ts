@@ -97,11 +97,18 @@ export async function activateMetaChannel(input: ActivateInput): Promise<{ succe
             ? (input.providerKey === 'facebook_page' ? 'page' : input.providerKey === 'whatsapp_cloud' ? 'whatsapp' : 'instagram')
             : input.assetType;
 
-        if (assetType === "page" && accessToken) {
+        if ((assetType === "page" || assetType === "instagram") && accessToken) {
             try {
+                // For both Page and Instagram, we need a Long-Lived Page Access Token
                 finalAccessToken = await metaApi.exchangeForLongLivedPageToken(accessToken);
-                const webhookResult = await metaApi.subscribePageWebhooks(assetId, finalAccessToken);
+
+                // For Instagram, we still subscribe the Page ID because Meta delivers 
+                // Instagram Webhooks via the Page's subscribed_apps entry.
+                const pageIdToSubscribe = assetType === "instagram" ? (input as any).pageId || (input as any).page_id || assetId : assetId;
+
+                const webhookResult = await metaApi.subscribePageWebhooks(pageIdToSubscribe, finalAccessToken);
                 webhookStatus = webhookResult.success ? "subscribed" : "failed";
+                console.log(`[activateMetaChannel] Webhook ${webhookStatus} for ${assetType} (${assetId}) via Page ${pageIdToSubscribe}`);
             } catch (e: any) {
                 console.warn(`[activateMetaChannel] Token/webhook setup warning: ${e.message}`);
             }
@@ -168,7 +175,8 @@ export async function activateMetaChannel(input: ActivateInput): Promise<{ succe
                 asset_name: assetName,
                 waba_id: wabaId,
                 display_phone_number: displayPhoneNumber,
-                webhook_status: webhookStatus
+                webhook_status: webhookStatus,
+                page_id: (input as any).pageId || (input as any).page_id
             },
             config: {
                 asset_type: assetType
