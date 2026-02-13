@@ -13,17 +13,24 @@ export async function generateMetadata() {
 
 import { getPipelineStages } from "@/modules/core/crm/pipeline-actions"
 import { getOrganizationMembers } from "@/modules/core/settings/actions/team-actions"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
 
 export default async function ChannelsPage() {
-    const [channels, pipelineStages, agents] = await Promise.all([
+    const [channels, pipelineStages, agents, organizationId] = await Promise.all([
         getChannels(),
         getPipelineStages(),
-        getOrganizationMembers()
+        getOrganizationMembers(),
+        getCurrentOrganizationId()
     ])
 
     return (
         <Suspense fallback={<div>Loading channels...</div>}>
-            <ChannelsList channels={channels} pipelineStages={pipelineStages} agents={agents} />
+            <ChannelsList
+                channels={channels}
+                pipelineStages={pipelineStages}
+                agents={agents}
+                organizationId={organizationId}
+            />
         </Suspense>
     )
 }

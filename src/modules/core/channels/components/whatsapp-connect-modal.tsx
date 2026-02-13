@@ -16,11 +16,12 @@ interface WhatsAppConnectModalProps {
     open: boolean
     onOpenChange: (open: boolean) => void
     onOAuthConnect: () => void
+    organizationId?: string | null
 }
 
 type ConnectionMethod = null | 'oauth' | 'embedded';
 
-export function WhatsAppConnectModal({ open, onOpenChange, onOAuthConnect }: WhatsAppConnectModalProps) {
+export function WhatsAppConnectModal({ open, onOpenChange, onOAuthConnect, organizationId }: WhatsAppConnectModalProps) {
     const { t } = useTranslation()
     const [selectedMethod, setSelectedMethod] = useState<ConnectionMethod>(null)
 
@@ -139,6 +140,7 @@ export function WhatsAppConnectModal({ open, onOpenChange, onOAuthConnect }: Wha
                             <MetaEmbeddedSignup
                                 onSuccess={handleClose}
                                 onError={(error) => console.error('[WhatsAppModal]', error)}
+                                organizationId={organizationId}
                             />
                         </div>
                     </div>

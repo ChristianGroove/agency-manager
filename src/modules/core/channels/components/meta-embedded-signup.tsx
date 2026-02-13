@@ -22,14 +22,16 @@ const EMBEDDED_SIGNUP_CONFIG_ID = process.env.NEXT_PUBLIC_META_EMBEDDED_SIGNUP_C
 interface MetaEmbeddedSignupProps {
     onSuccess?: () => void;
     onError?: (error: string) => void;
+    organizationId?: string | null;
 }
 
 type SignupStatus = 'idle' | 'loading-sdk' | 'ready' | 'authenticating' | 'processing' | 'success' | 'error';
 
-export function MetaEmbeddedSignup({ onSuccess, onError }: MetaEmbeddedSignupProps) {
+export function MetaEmbeddedSignup({ onSuccess, onError, organizationId: orgIdProp }: MetaEmbeddedSignupProps) {
     const [status, setStatus] = useState<SignupStatus>('idle');
     const [errorMessage, setErrorMessage] = useState<string>('');
-    const { organizationId, loading: orgLoading } = useCurrentOrganization();
+    const { organizationId: orgIdHook, loading: orgLoading } = useCurrentOrganization();
+    const organizationId = orgIdProp || orgIdHook;
     const router = useRouter();
 
     // Load Facebook SDK

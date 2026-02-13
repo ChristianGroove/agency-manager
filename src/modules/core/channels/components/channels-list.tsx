@@ -30,9 +30,10 @@ interface ChannelsListProps {
     channels: Channel[]
     pipelineStages: any[]
     agents: any[]
+    organizationId?: string | null
 }
 
-export function ChannelsList({ channels, pipelineStages, agents }: ChannelsListProps) {
+export function ChannelsList({ channels, pipelineStages, agents, organizationId }: ChannelsListProps) {
     const { t } = useTranslation()
     const [isEvolutionOpen, setIsEvolutionOpen] = useState(false)
     const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false)
@@ -181,6 +182,7 @@ export function ChannelsList({ channels, pipelineStages, agents }: ChannelsListP
                 open={isWhatsAppModalOpen}
                 onOpenChange={setIsWhatsAppModalOpen}
                 onOAuthConnect={() => handleMetaConnect('whatsapp')}
+                organizationId={organizationId}
             />
         </div>
     )

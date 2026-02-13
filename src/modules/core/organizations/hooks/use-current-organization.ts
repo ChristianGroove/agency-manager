@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
 
@@ -8,24 +7,54 @@ export function useCurrentOrganization() {
 
     useEffect(() => {
         const fetchOrg = async () => {
-            const { data: { user } } = await supabase.auth.getUser()
-            if (!user) {
+            try {
+                const { data: { user } } = await supabase.auth.getUser()
+                if (!user) {
+                    setLoading(false)
+                    return
+                }
+
+                // 1. Try to get from cookie first (alignment with server-side context)
+                const getCookie = (name: string) => {
+                    const value = `; ${document.cookie}`;
+                    const parts = value.split(`; ${name}=`);
+                    if (parts.length === 2) return parts.pop()?.split(';').shift();
+                }
+
+                const orgCookie = getCookie('pixy_org_id')
+
+                if (orgCookie) {
+                    // Validate membership for safety
+                    const { data: membership } = await supabase
+                        .from('organization_members')
+                        .select('organization_id')
+                        .eq('organization_id', orgCookie)
+                        .eq('user_id', user.id)
+                        .maybeSingle()
+
+                    if (membership) {
+                        setOrganizationId(membership.organization_id)
+                        setLoading(false)
+                        return
+                    }
+                }
+
+                // 2. Fallback: Get the first organization
+                const { data } = await supabase
+                    .from('organization_members')
+                    .select('organization_id')
+                    .eq('user_id', user.id)
+                    .limit(1)
+                    .maybeSingle()
+
+                if (data) {
+                    setOrganizationId(data.organization_id)
+                }
+            } catch (error) {
+                console.error("[useCurrentOrganization] Error:", error)
+            } finally {
                 setLoading(false)
-                return
             }
-
-            // Get the first organization for now
-            // In a multi-tenant app, this should come from the URL or a global context/cookie
-            const { data } = await supabase
-                .from('organization_members')
-                .select('organization_id')
-                .eq('user_id', user.id)
-                .single()
-
-            if (data) {
-                setOrganizationId(data.organization_id)
-            }
-            setLoading(false)
         }
 
         fetchOrg()
