@@ -17,6 +17,7 @@ import { useInboxPreferences } from "@/modules/core/preferences/use-inbox-prefer
 import { useInboxShortcuts } from "@/modules/core/preferences/use-inbox-shortcuts"
 import { useCurrentOrganization } from "@/modules/core/organizations/hooks/use-current-organization"
 import { useTranslation } from "@/lib/i18n/use-translation"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 type FilterTab = 'all' | 'unread' | 'assigned' | 'archived' | 'snoozed'
 
@@ -185,72 +186,93 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
             <InboxSettingsSheet open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
 
             {/* Header Area */}
-            <div className="px-4 pb-2 pt-2 space-y-3">
-                {/* Search */}
-                <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                        ref={searchInputRef}
-                        placeholder={t('crm.inbox.sidebar.search_placeholder')}
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-9 bg-zinc-50 dark:bg-zinc-900 border-none shadow-none h-9 text-sm focus-visible:ring-1 focus-visible:ring-offset-0"
-                    />
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground hover:text-foreground"
-                        onClick={() => setIsSettingsOpen(true)}
-                        title={t('crm.inbox.sidebar.inbox_settings')}
-                    >
-                        <SettingsIcon className="h-3.5 w-3.5" />
-                    </Button>
-                </div>
+            <TooltipProvider>
+                <div className="px-4 pb-2 pt-2 space-y-3">
+                    {/* Search */}
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            ref={searchInputRef}
+                            placeholder={t('crm.inbox.sidebar.search_placeholder')}
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="pl-9 bg-zinc-50 dark:bg-zinc-900 border-none shadow-none h-9 text-sm focus-visible:ring-1 focus-visible:ring-offset-0"
+                        />
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground hover:text-foreground"
+                                    onClick={() => setIsSettingsOpen(true)}
+                                >
+                                    <SettingsIcon className="h-3.5 w-3.5" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>{t('crm.inbox.sidebar.inbox_settings')}</TooltipContent>
+                        </Tooltip>
+                    </div>
 
-                {/* Filter Tabs */}
-                <Tabs value={activeFilter} onValueChange={(v) => setActiveFilter(v as FilterTab)} className="w-full">
-                    <TabsList className="w-full justify-start gap-1 bg-transparent p-0 h-auto">
-                        <TabsTrigger
-                            value="all"
-                            className="text-[11px] font-medium rounded-full border border-transparent data-[state=active]:bg-zinc-100 dark:data-[state=active]:bg-zinc-800 data-[state=active]:text-foreground text-muted-foreground px-3 py-1.5 transition-all h-7"
-                        >
-                            {t('crm.inbox.sidebar.filters.all')}
-                        </TabsTrigger>
-                        <TabsTrigger
-                            value="unread"
-                            className="text-[11px] font-medium rounded-full border border-transparent data-[state=active]:bg-zinc-100 dark:data-[state=active]:bg-zinc-800 data-[state=active]:text-foreground text-muted-foreground px-3 py-1.5 transition-all h-7"
-                        >
-                            {t('crm.inbox.sidebar.filters.unread')}
-                            {counts.unread > 0 && (
-                                <Badge className="ml-1.5 h-4 min-w-[1rem] px-1 bg-brand-pink text-white border-none shadow-none text-[9px] flex items-center justify-center">
-                                    {counts.unread}
-                                </Badge>
-                            )}
-                        </TabsTrigger>
-                        <TabsTrigger
-                            value="assigned"
-                            className="text-[11px] font-medium rounded-full border border-transparent data-[state=active]:bg-zinc-100 dark:data-[state=active]:bg-zinc-800 data-[state=active]:text-foreground text-muted-foreground px-3 py-1.5 transition-all h-7"
-                            title={t('crm.inbox.sidebar.filters.assigned_to_me')}
-                        >
-                            {t('crm.inbox.sidebar.filters.assigned')}
-                        </TabsTrigger>
-                        <TabsTrigger
-                            value="snoozed"
-                            className="text-[11px] font-medium rounded-full border border-transparent data-[state=active]:bg-zinc-100 dark:data-[state=active]:bg-zinc-800 data-[state=active]:text-foreground text-muted-foreground px-2 py-1.5 transition-all h-7"
-                            title={t('crm.inbox.sidebar.filters.snoozed')}
-                        >
-                            <Clock className="h-3.5 w-3.5" />
-                        </TabsTrigger>
-                        <TabsTrigger
-                            value="archived"
-                            className="text-[11px] font-medium rounded-full border border-transparent data-[state=active]:bg-zinc-100 dark:data-[state=active]:bg-zinc-800 data-[state=active]:text-foreground text-muted-foreground px-2 py-1.5 transition-all h-7"
-                            title={t('crm.inbox.sidebar.filters.archived')}
-                        >
-                            <Archive className="h-3.5 w-3.5" />
-                        </TabsTrigger>
-                    </TabsList>
-                </Tabs>
-            </div>
+                    {/* Filter Tabs */}
+                    <Tabs value={activeFilter} onValueChange={(v) => setActiveFilter(v as FilterTab)} className="w-full">
+                        <TabsList className="w-full justify-start gap-1 bg-transparent p-0 h-auto">
+                            <TabsTrigger
+                                value="all"
+                                className="text-[11px] font-medium rounded-full border border-transparent data-[state=active]:bg-zinc-100 dark:data-[state=active]:bg-zinc-800 data-[state=active]:text-foreground text-muted-foreground px-3 py-1.5 transition-all h-7"
+                            >
+                                {t('crm.inbox.sidebar.filters.all')}
+                            </TabsTrigger>
+                            <TabsTrigger
+                                value="unread"
+                                className="text-[11px] font-medium rounded-full border border-transparent data-[state=active]:bg-zinc-100 dark:data-[state=active]:bg-zinc-800 data-[state=active]:text-foreground text-muted-foreground px-3 py-1.5 transition-all h-7"
+                            >
+                                {t('crm.inbox.sidebar.filters.unread')}
+                                {counts.unread > 0 && (
+                                    <Badge className="ml-1.5 h-4 min-w-[1rem] px-1 bg-brand-pink text-white border-none shadow-none text-[9px] flex items-center justify-center">
+                                        {counts.unread}
+                                    </Badge>
+                                )}
+                            </TabsTrigger>
+
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <TabsTrigger
+                                        value="assigned"
+                                        className="text-[11px] font-medium rounded-full border border-transparent data-[state=active]:bg-zinc-100 dark:data-[state=active]:bg-zinc-800 data-[state=active]:text-foreground text-muted-foreground px-2 py-1.5 transition-all h-7"
+                                    >
+                                        <User className="h-3.5 w-3.5" />
+                                    </TabsTrigger>
+                                </TooltipTrigger>
+                                <TooltipContent>{t('crm.inbox.sidebar.filters.assigned_to_me')}</TooltipContent>
+                            </Tooltip>
+
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <TabsTrigger
+                                        value="snoozed"
+                                        className="text-[11px] font-medium rounded-full border border-transparent data-[state=active]:bg-zinc-100 dark:data-[state=active]:bg-zinc-800 data-[state=active]:text-foreground text-muted-foreground px-2 py-1.5 transition-all h-7"
+                                    >
+                                        <Clock className="h-3.5 w-3.5" />
+                                    </TabsTrigger>
+                                </TooltipTrigger>
+                                <TooltipContent>{t('crm.inbox.sidebar.filters.snoozed')}</TooltipContent>
+                            </Tooltip>
+
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <TabsTrigger
+                                        value="archived"
+                                        className="text-[11px] font-medium rounded-full border border-transparent data-[state=active]:bg-zinc-100 dark:data-[state=active]:bg-zinc-800 data-[state=active]:text-foreground text-muted-foreground px-2 py-1.5 transition-all h-7"
+                                    >
+                                        <Archive className="h-3.5 w-3.5" />
+                                    </TabsTrigger>
+                                </TooltipTrigger>
+                                <TooltipContent>{t('crm.inbox.sidebar.filters.archived')}</TooltipContent>
+                            </Tooltip>
+                        </TabsList>
+                    </Tabs>
+                </div>
+            </TooltipProvider>
 
             {/* Conversation List */}
             <div className="flex-1 min-h-0">

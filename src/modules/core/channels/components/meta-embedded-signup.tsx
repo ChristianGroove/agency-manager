@@ -5,6 +5,7 @@ import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import { useCurrentOrganization } from "@/modules/core/organizations/hooks/use-current-organization"
 import { Loader2, CheckCircle2, XCircle } from "lucide-react"
+import { useTranslation } from "@/lib/i18n/use-translation"
 
 /**
  * Global FB SDK type declarations
@@ -28,6 +29,7 @@ interface MetaEmbeddedSignupProps {
 type SignupStatus = 'idle' | 'loading-sdk' | 'ready' | 'authenticating' | 'processing' | 'success' | 'error';
 
 export function MetaEmbeddedSignup({ onSuccess, onError, organizationId: orgIdProp }: MetaEmbeddedSignupProps) {
+    const { t } = useTranslation()
     const [status, setStatus] = useState<SignupStatus>('idle');
     const [errorMessage, setErrorMessage] = useState<string>('');
     const { organizationId: orgIdHook, loading: orgLoading } = useCurrentOrganization();
@@ -62,19 +64,19 @@ export function MetaEmbeddedSignup({ onSuccess, onError, organizationId: orgIdPr
             script.defer = true;
             script.onerror = () => {
                 setStatus('error');
-                setErrorMessage('No se pudo cargar el SDK de Facebook.');
+                setErrorMessage(t('meta.embedded_signup.error_sdk'));
             };
             document.head.appendChild(script);
         }
-    }, []);
+    }, [t]);
 
     const handleEmbeddedSignup = useCallback(() => {
         if (!window.FB) {
-            toast.error('Facebook SDK no está cargado. Intenta de nuevo.');
+            toast.error(t('meta.embedded_signup.error_sdk'));
             return;
         }
         if (!organizationId) {
-            toast.error('No se encontró la organización. Recarga la página.');
+            toast.error(t('meta.embedded_signup.error_generic'));
             return;
         }
 
@@ -86,7 +88,7 @@ export function MetaEmbeddedSignup({ onSuccess, onError, organizationId: orgIdPr
                     const code = response.authResponse.code;
                     if (!code) {
                         setStatus('error');
-                        setErrorMessage('No se recibió el código de autorización de Meta.');
+                        setErrorMessage(t('meta.embedded_signup.error_auth'));
                         onError?.('No authorization code received');
                         return;
                     }
@@ -106,7 +108,7 @@ export function MetaEmbeddedSignup({ onSuccess, onError, organizationId: orgIdPr
                 }
             }
         );
-    }, [organizationId]);
+    }, [organizationId, t, onError]);
 
     const processSignupCode = async (code: string) => {
         setStatus('processing');
@@ -124,11 +126,11 @@ export function MetaEmbeddedSignup({ onSuccess, onError, organizationId: orgIdPr
             const data = await response.json();
 
             if (!response.ok || !data.success) {
-                throw new Error(data.error || 'Error en el registro');
+                throw new Error(data.error || t('meta.embedded_signup.error_generic'));
             }
 
             setStatus('success');
-            toast.success('¡WhatsApp conectado exitosamente!', {
+            toast.success(t('meta.embedded_signup.success'), {
                 description: `WABA: ${data.wabaId}`,
             });
 
@@ -142,7 +144,7 @@ export function MetaEmbeddedSignup({ onSuccess, onError, organizationId: orgIdPr
             console.error('[EmbeddedSignup] Processing error:', error);
             setStatus('error');
             setErrorMessage(error.message || 'Error desconocido');
-            toast.error('Error al conectar WhatsApp', {
+            toast.error(t('meta.embedded_signup.error_generic'), {
                 description: error.message,
             });
             onError?.(error.message);
@@ -153,52 +155,46 @@ export function MetaEmbeddedSignup({ onSuccess, onError, organizationId: orgIdPr
     const isProcessing = status === 'authenticating' || status === 'processing';
 
     return (
-        <div className="space-y-4">
-            {/* Status feedback */}
+        <div className="space-y-4 pt-2">
+            {/* Status feedback - Minimalist */}
             {status === 'processing' && (
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
-                    <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
-                    <span className="text-sm text-blue-700 dark:text-blue-300">
-                        Configurando tu cuenta de WhatsApp Business...
-                    </span>
+                <div className="flex items-center gap-3 text-sm text-zinc-600 dark:text-zinc-400 animate-pulse">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>{t('meta.embedded_signup.setup')}</span>
                 </div>
             )}
 
             {status === 'success' && (
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800">
-                    <CheckCircle2 className="h-4 w-4 text-green-500" />
-                    <span className="text-sm text-green-700 dark:text-green-300">
-                        ¡WhatsApp conectado! Redirigiendo...
-                    </span>
+                <div className="flex items-center gap-3 text-sm text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/10 px-3 py-2 rounded-lg border border-green-100 dark:border-green-900/20">
+                    <CheckCircle2 className="h-4 w-4" />
+                    <span>{t('meta.embedded_signup.connected')}</span>
                 </div>
             )}
 
             {status === 'error' && (
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800">
-                    <XCircle className="h-4 w-4 text-red-500" />
-                    <span className="text-sm text-red-700 dark:text-red-300">
-                        {errorMessage}
-                    </span>
+                <div className="flex items-center gap-3 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/10 px-3 py-2 rounded-lg border border-red-100 dark:border-red-900/20">
+                    <XCircle className="h-4 w-4 shrink-0" />
+                    <span>{errorMessage}</span>
                 </div>
             )}
 
-            {/* Main action button */}
+            {/* Main action button - Premium Style */}
             <button
                 onClick={handleEmbeddedSignup}
                 disabled={isLoading || isProcessing || status === 'success'}
-                className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl font-medium transition-all duration-200
-                    bg-[#1877F2] hover:bg-[#166FE5] text-white shadow-md hover:shadow-lg
-                    disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-md
-                    focus:outline-none focus:ring-2 focus:ring-[#1877F2]/50 focus:ring-offset-2 dark:focus:ring-offset-slate-900"
+                className="w-full flex items-center justify-center gap-2.5 py-3 px-4 rounded-xl font-medium text-sm transition-all duration-200
+                    bg-[#1877F2] hover:bg-[#166FE5] text-white shadow-sm hover:shadow-md
+                    disabled:opacity-50 disabled:cursor-not-allowed
+                    focus:outline-none focus:ring-2 focus:ring-[#1877F2]/50 focus:ring-offset-1 dark:focus:ring-offset-zinc-900"
             >
                 {isProcessing ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <Loader2 className="h-4.5 w-4.5 animate-spin" />
                 ) : (
-                    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor">
-                        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+                    <svg viewBox="0 0 24 24" className="h-5 w-5 fill-current" aria-hidden="true">
+                        <path d="M23.9981 11.9991C23.9981 5.37216 18.626 0 11.9991 0C5.37216 0 0 5.37216 0 11.9991C0 17.9882 4.38789 22.9522 10.1242 23.8524V15.4676H7.07758V11.9991H10.1242V9.35553C10.1242 6.34826 11.9156 4.68714 14.6564 4.68714C15.9692 4.68714 17.3436 4.92149 17.3436 4.92149V7.87439H15.8294C14.3388 7.87439 13.8739 8.79933 13.8739 9.74824V11.9991H17.2018L16.6698 15.4676H13.8739V23.8524C19.6103 22.9522 23.9981 17.9882 23.9981 11.9991Z" />
                     </svg>
                 )}
-                {isProcessing ? 'Procesando...' : 'Continuar con Meta'}
+                {isProcessing ? t('meta.embedded_signup.processing') : t('meta.embedded_signup.button')}
             </button>
         </div>
     );

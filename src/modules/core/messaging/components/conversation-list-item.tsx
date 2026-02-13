@@ -135,9 +135,9 @@ export const ConversationListItem = memo(function ConversationListItem({ conv, i
                     </div>
 
                     <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
-                        {((conv.channel as any) === 'whatsapp' || (conv.channel as any) === 'evolution') && (
+                        {(['whatsapp', 'evolution', 'whatsapp_cloud', 'meta_whatsapp'].includes((conv.channel as any)?.toLowerCase())) && (
                             <>
-                                <MessageSquare className="h-3 w-3" />
+                                <img src="/social media icons/whatsapp.png" alt="WhatsApp" className="h-3.5 w-3.5 object-contain" />
                                 {conv.integration_connections?.connection_name && (
                                     <span className="text-[10px] px-1.5 py-0.5 bg-zinc-100 dark:bg-zinc-800 rounded text-zinc-600 dark:text-zinc-400 font-medium truncate max-w-[80px]">
                                         {conv.integration_connections.connection_name}
@@ -145,11 +145,11 @@ export const ConversationListItem = memo(function ConversationListItem({ conv, i
                                 )}
                             </>
                         )}
-                        {(conv.channel as any) === 'messenger' && (
-                            <Facebook className="h-3 w-3 text-blue-600" />
+                        {(['messenger', 'meta_messenger', 'facebook_dm', 'facebook_page'].includes((conv.channel as any)?.toLowerCase())) && (
+                            <img src="/social media icons/messenger.png" alt="Messenger" className="h-3.5 w-3.5 object-contain" />
                         )}
-                        {(conv.channel as any) === 'instagram' && (
-                            <Instagram className="h-3 w-3 text-pink-600" />
+                        {(['instagram', 'instagram_dm', 'meta_instagram'].includes((conv.channel as any)?.toLowerCase())) && (
+                            <img src="/social media icons/instagram.png" alt="Instagram" className="h-3.5 w-3.5 object-contain" />
                         )}
 
                         <span>

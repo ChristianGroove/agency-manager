@@ -39,7 +39,6 @@ export function InboxLayout({ initialConversationId }: InboxLayoutProps) {
         setActiveDragId(null)
 
         if (!over) {
-            console.log('Dropped outside - no action taken')
             return
         }
 
@@ -50,7 +49,7 @@ export function InboxLayout({ initialConversationId }: InboxLayoutProps) {
         const conversationId = active.id as string
         const targetZone = over.id as string
 
-        console.log(`Dropped ${conversationId} over ${targetZone}`)
+
 
         let updates: { state?: string; status?: string } = {}
         let actionLabel = ''
@@ -70,11 +69,8 @@ export function InboxLayout({ initialConversationId }: InboxLayoutProps) {
         }
 
         if (Object.keys(updates).length > 0) {
-            console.log('Calling updateConversationState with:', { conversationId, updates })
-
             try {
                 const result = await updateConversationState(conversationId, updates)
-                console.log('Server action result:', result)
 
                 if (!result.success) {
                     console.error('Failed to update conversation:', result.error)
@@ -99,7 +95,7 @@ export function InboxLayout({ initialConversationId }: InboxLayoutProps) {
             <div className="flex h-full w-full bg-background/95 dark:bg-zinc-950/90 backdrop-blur-xl overflow-hidden relative rounded-2xl border border-border/50 shadow-2xl shadow-black/5 dark:shadow-black/20">
 
                 {/* Left Pane */}
-                <div className="w-full md:w-[320px] lg:w-[380px] flex-none border-r border-border flex flex-col bg-white dark:bg-zinc-900/50 relative">
+                <div className="w-full md:w-[300px] lg:w-[320px] flex-none border-r border-border flex flex-col bg-white dark:bg-zinc-900/50 relative">
                     <SidebarTabs
                         selectedConversationId={selectedConversationId}
                         onSelectConversation={setSelectedConversationId}
@@ -131,7 +127,7 @@ export function InboxLayout({ initialConversationId }: InboxLayoutProps) {
 
                 {/* Right Pane */}
                 {isContextOpen && (
-                    <div className="hidden lg:flex w-[350px] flex-none border-l border-border flex-col bg-background dark:bg-zinc-900">
+                    <div className="hidden lg:flex w-[320px] flex-none border-l border-border flex-col bg-background dark:bg-zinc-900">
                         {selectedConversationId ? (
                             <ContextDeck conversationId={selectedConversationId} />
                         ) : (

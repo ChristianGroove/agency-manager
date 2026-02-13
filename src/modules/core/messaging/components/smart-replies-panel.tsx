@@ -101,8 +101,7 @@ export function SmartRepliesPanel({
         return (
             <div className="w-full px-2 py-1">
                 <Button
-                    variant="outline"
-                    className="w-full gap-2 border-dashed border-purple-200 dark:border-purple-800 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 bg-white/50 dark:bg-zinc-900/50 h-9"
+                    className="w-full gap-2 bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm h-9"
                     onClick={generateReplies}
                 >
                     <Sparkles className="h-4 w-4" />

@@ -46,6 +46,9 @@ export class WABASubscriptionManager {
                     'Authorization': `Bearer ${accessToken}`,
                     'Content-Type': 'application/json',
                 },
+                body: JSON.stringify({
+                    subscribed_fields: ['messages', 'calls', 'automatic_events', 'smb_message_echoes']
+                })
             });
 
             const data = await response.json();

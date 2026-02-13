@@ -206,6 +206,31 @@ export class MetaProvider implements MessagingProvider {
                                         ctwa_clid: msg.referral.ctwa_clid
                                     } : undefined
                                 });
+
+                                // 3.1 Handle Referrals (Ads/CTWA) - PERSISTENCE
+                                if (msg.referral) {
+                                    console.log('[MetaProvider] 🟢 Referral/CTWA detected:', msg.referral);
+
+                                    // Calculate 72h free window
+                                    const now = new Date();
+                                    const freeWindowExpiresAt = new Date(now.getTime() + 72 * 60 * 60 * 1000); // 72 hours
+
+                                    // We need to identify the conversation to update it
+                                    // The 'from' field in this context is the user's phone number (conversation identifier)
+                                    const userPhone = msg.from;
+
+                                    // We need to find the conversation or lead associated with this phone number
+                                    // Since this is inside the loop, we might not have the conversation ID handy yet without a DB lookup.
+                                    // However, we can fire-and-forget an update based on the phone number.
+
+                                    this.persistReferralData(userPhone, {
+                                        referral_source: msg.referral.source_type,
+                                        referral_id: msg.referral.source_id,
+                                        ctwa_clid: msg.referral.ctwa_clid,
+                                        referral_headline: msg.referral.headline,
+                                        free_window_expires_at: freeWindowExpiresAt.toISOString()
+                                    }).catch(err => console.error('[MetaProvider] Failed to persist referral data:', err));
+                                }
                             }
                         }
 
@@ -768,6 +793,53 @@ export class MetaProvider implements MessagingProvider {
         }
 
         return payload;
+    }
+
+    /**
+     * Helper to persist referral data (CTWA) to the database
+     */
+    private async persistReferralData(userPhone: string, data: any) {
+        try {
+            // Find the most recent conversation or lead for this phone number
+            // Strategy: Search leads first as it's the primary entity
+            const { data: lead } = await supabaseAdmin
+                .from('leads') // leads table
+                .select('id, metadata')
+                .eq('phone', userPhone)
+                .single();
+
+            if (lead) {
+                const newMeta = { ...lead.metadata, ...data };
+                await supabaseAdmin
+                    .from('leads')
+                    .update({ metadata: newMeta })
+                    .eq('id', lead.id);
+                console.log(`[MetaProvider] Updated Lead ${lead.id} with referral data`);
+                return;
+            }
+
+            // If no lead, try finding a conversation directly
+            const { data: conv } = await supabaseAdmin
+                .from('conversations')
+                .select('id, metadata')
+                .eq('channel_type', 'whatsapp')
+                .ilike('metadata->>display_phone_number', `%${userPhone}%`)
+                .order('updated_at', { ascending: false })
+                .limit(1)
+                .single();
+
+            if (conv) {
+                const newMeta = { ...conv.metadata, ...data };
+                await supabaseAdmin
+                    .from('conversations')
+                    .update({ metadata: newMeta })
+                    .eq('id', conv.id);
+                console.log(`[MetaProvider] Updated Conversation ${conv.id} with referral data`);
+            }
+
+        } catch (error: any) {
+            console.error('[MetaProvider] persistReferralData error:', error);
+        }
     }
 }
 

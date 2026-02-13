@@ -7,8 +7,7 @@ import { QuoteDesignerSheet } from "../../crm/components/quote-designer-sheet"
 import {
     User, Phone, Mail, MapPin, ExternalLink,
     CalendarClock, Archive, CheckCircle2,
-    MoreHorizontal, Tag, DollarSign, Palette,
-    LayoutDashboard, MessageSquare, ShoppingBag
+    MoreHorizontal, Tag, DollarSign, Palette
 } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -174,129 +173,97 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
 
     return (
         <div className="flex flex-col h-full bg-background/60 dark:bg-zinc-950/60 backdrop-blur-xl border-l border-white/10 dark:border-white/5 shadow-2xl z-20">
-            {/* 1. Header & Actions (Always Visible) */}
-            <div className="p-4 border-b border-border/40 bg-background/40 backdrop-blur-md sticky top-0 z-30">
-                <div className="flex items-center gap-3 mb-4">
-                    <div className="relative">
-                        <Avatar className="h-12 w-12 shadow-lg ring-2 ring-white/20 dark:ring-white/10">
-                            <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${lead.title || 'Unknown'}`} />
-                            <AvatarFallback className="bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900 dark:to-purple-900 text-indigo-700 dark:text-indigo-300 font-bold">
-                                {leadInitials}
-                            </AvatarFallback>
-                        </Avatar>
-                        <span className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full bg-green-500 border-2 border-background shadow-sm" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                        <h2 className="text-base font-bold truncate leading-tight tracking-tight">{lead.title || t('crm.inbox.context.unknown_contact')}</h2>
-                        <div className="flex items-center gap-2 mt-1.5">
-                            <Badge variant="secondary" className="text-[10px] h-4 px-1.5 font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-0 shadow-sm">
-                                {lead.company || t('crm.inbox.context.particular')}
-                            </Badge>
-                            <Badge variant="outline" className="text-[10px] h-4 px-1.5 font-medium border-zinc-200 dark:border-zinc-800 text-zinc-500">
-                                {lead.status === 'new' ? t('crm.inbox.context.new_badge') : lead.status}
-                            </Badge>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Sleek Action Bar */}
-                <div className="grid grid-cols-4 gap-2">
-                    <ActionBtn
-                        icon={CheckCircle2}
-                        label={t('crm.inbox.context.actions.resolve')}
-                        onClick={async () => {
-                            const res = await completeConversation(conversationId)
-                            if (res.success) toast.success(t('crm.inbox.context.actions.resolved'))
-                            else toast.error(t('crm.inbox.context.actions.resolve_error'))
-                        }}
-                        color="text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20"
-                    />
-                    <ActionBtn
-                        icon={CalendarClock}
-                        label={t('crm.inbox.context.actions.snooze')}
-                        onClick={() => {
-                            const tomorrow = new Date()
-                            tomorrow.setDate(tomorrow.getDate() + 1)
-                            snoozeConversation(conversationId, tomorrow).then(res => {
-                                if (res.success) toast.success(t('crm.inbox.context.actions.snoozed_tomorrow'))
-                            })
-                        }}
-                        color="text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20"
-                    />
-                    <ActionBtn
-                        icon={Archive}
-                        label={t('crm.inbox.context.actions.archive')}
-                        onClick={async () => {
-                            const res = await archiveConversation(conversationId)
-                            if (res.success) toast.success(t('crm.inbox.context.actions.archived'))
-                            else toast.error(t('crm.inbox.context.actions.archive_error'))
-                        }}
-                        color="text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                    />
-                    <TooltipProvider>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-9 w-full rounded-lg border border-transparent hover:border-border hover:bg-muted/50 transition-all">
-                                    <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>{t('crm.inbox.context.actions.more_options')}</TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
-                </div>
-            </div>
-
-            {/* 2. Top Tabs Navigation */}
-            <div className="px-2 pt-2 border-b border-border/20">
-                <div className="flex items-center gap-1 p-1">
-                    <TabNavItem
-                        active={activeTab === 'management'}
+            {/* 1. Pill-Style Tabs Navigation */}
+            <div className="px-4 py-3 border-b border-border/40 shrink-0">
+                <div className="flex p-1 bg-zinc-100 dark:bg-zinc-900 rounded-lg">
+                    <button
                         onClick={() => setActiveTab('management')}
-                        label={t('crm.inbox.context.tabs.management')}
-                        icon={LayoutDashboard}
-                    />
-                    <TabNavItem
-                        active={activeTab === 'replies'}
+                        className={cn(
+                            "flex-1 flex items-center justify-center py-1.5 text-xs font-semibold rounded-md transition-all",
+                            activeTab === 'management'
+                                ? "bg-white dark:bg-zinc-800 text-foreground shadow-sm"
+                                : "text-muted-foreground hover:text-foreground"
+                        )}
+                    >
+                        {t('crm.inbox.context.tabs.management')}
+                    </button>
+                    <button
                         onClick={() => setActiveTab('replies')}
-                        label={t('crm.inbox.context.tabs.replies')}
-                        icon={MessageSquare}
-                    />
-                    <TabNavItem
-                        active={activeTab === 'sales'}
+                        className={cn(
+                            "flex-1 flex items-center justify-center py-1.5 text-xs font-semibold rounded-md transition-all",
+                            activeTab === 'replies'
+                                ? "bg-white dark:bg-zinc-800 text-foreground shadow-sm"
+                                : "text-muted-foreground hover:text-foreground"
+                        )}
+                    >
+                        {t('crm.inbox.context.tabs.replies')}
+                    </button>
+                    <button
                         onClick={() => setActiveTab('sales')}
-                        label={t('crm.inbox.context.tabs.sales')}
-                        icon={ShoppingBag}
-                    />
+                        className={cn(
+                            "flex-1 flex items-center justify-center py-1.5 text-xs font-semibold rounded-md transition-all",
+                            activeTab === 'sales'
+                                ? "bg-white dark:bg-zinc-800 text-foreground shadow-sm"
+                                : "text-muted-foreground hover:text-foreground"
+                        )}
+                    >
+                        {t('crm.inbox.context.tabs.sales')}
+                    </button>
                 </div>
             </div>
 
-            {/* 3. Tab Content Area */}
+            {/* 2. Tab Content Area */}
             <div className="flex-1 overflow-hidden flex flex-col bg-background/30 relative">
 
                 {/* TAB 1: GESTIÓN */}
                 {activeTab === 'management' && (
                     <ScrollArea className="h-full">
                         <div className="p-4 space-y-6 animate-in fade-in duration-300 slide-in-from-left-2">
-                            {/* Assignment Panel */}
-                            <div className="space-y-2">
-                                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">{t('crm.inbox.context.sections.assignment')}</h4>
-                                <div className="bg-white/50 dark:bg-zinc-900/50 rounded-xl border border-white/20 dark:border-white/5 p-1 shadow-sm">
-                                    <QuickAssignPanel
-                                        conversationId={conversationId}
-                                        currentAssignee={conversation?.assigned_to}
-                                        agents={agents}
-                                        onAssigned={() => {
-                                            supabase.from('conversations').select('*').eq('id', conversationId).single().then(({ data }) => {
-                                                if (data) setConversation(data)
-                                            })
-                                        }}
-                                    />
+
+                            {/* Original Header Content Moved Here */}
+                            <div className="flex items-center gap-3 mb-2">
+                                <div className="relative">
+                                    <Avatar className="h-14 w-14 shadow-lg ring-2 ring-white/20 dark:ring-white/10">
+                                        <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${lead.title || 'Unknown'}`} />
+                                        <AvatarFallback className="bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900 dark:to-purple-900 text-indigo-700 dark:text-indigo-300 font-bold text-lg">
+                                            {leadInitials}
+                                        </AvatarFallback>
+                                    </Avatar>
+                                    <span className="absolute bottom-0 right-0 h-4 w-4 rounded-full bg-green-500 border-2 border-background shadow-sm" />
+                                </div>
+                                <div className="flex-1 min-w-0 py-1">
+                                    <h2 className="text-lg font-bold truncate leading-tight tracking-tight">{lead.title || t('crm.inbox.context.unknown_contact')}</h2>
+                                    <div className="flex items-center gap-2 mt-1.5">
+                                        <Badge variant="secondary" className="text-[10px] h-5 px-2 font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-0 shadow-sm">
+                                            {lead.company || t('crm.inbox.context.particular')}
+                                        </Badge>
+                                        <Badge variant="outline" className="text-[10px] h-5 px-2 font-medium border-zinc-200 dark:border-zinc-800 text-zinc-500">
+                                            {lead.status === 'new' ? t('crm.inbox.context.new_badge') : lead.status}
+                                        </Badge>
+                                    </div>
                                 </div>
                             </div>
 
                             <Separator className="opacity-50" />
 
-                            {/* Contact Info */}
+                            {/* Tags - Reordered to top, title removed */}
+                            <div className="space-y-2">
+                                <div className="flex flex-wrap gap-1.5 p-2 bg-white/50 dark:bg-zinc-900/50 rounded-xl border border-white/20 dark:border-white/5">
+                                    {(lead.tags as string[] || ['lead']).map(tag => (
+                                        <Badge key={tag} variant="secondary" className="bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 border border-transparent hover:border-border transition-colors px-2 py-0.5 text-[11px] font-normal shadow-sm">
+                                            <Tag className="h-3 w-3 mr-1 opacity-50" />
+                                            {tag}
+                                        </Badge>
+                                    ))}
+                                    <Button variant="outline" size="sm" className="h-5 rounded-full px-2 text-[10px] border-dashed text-muted-foreground hover:text-foreground">
+                                        + {t('crm.inbox.context.actions.add')}
+                                    </Button>
+                                </div>
+                            </div>
+
+                            <Separator className="opacity-50" />
+
+                            {/* Contact Info - Reordered to middle */}
                             <div className="space-y-3">
                                 <div className="flex items-center justify-between px-1">
                                     <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t('crm.inbox.context.sections.contact_details')}</h4>
@@ -314,19 +281,20 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
 
                             <Separator className="opacity-50" />
 
-                            {/* Tags */}
+                            {/* Assignment Panel - Reordered to bottom */}
                             <div className="space-y-2">
-                                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">{t('crm.inbox.context.sections.tags')}</h4>
-                                <div className="flex flex-wrap gap-1.5 p-2 bg-white/50 dark:bg-zinc-900/50 rounded-xl border border-white/20 dark:border-white/5">
-                                    {(lead.tags as string[] || ['lead']).map(tag => (
-                                        <Badge key={tag} variant="secondary" className="bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 border border-transparent hover:border-border transition-colors px-2 py-0.5 text-[11px] font-normal shadow-sm">
-                                            <Tag className="h-3 w-3 mr-1 opacity-50" />
-                                            {tag}
-                                        </Badge>
-                                    ))}
-                                    <Button variant="outline" size="sm" className="h-5 rounded-full px-2 text-[10px] border-dashed text-muted-foreground hover:text-foreground">
-                                        + {t('crm.inbox.context.actions.add')}
-                                    </Button>
+                                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">{t('crm.inbox.context.sections.assignment')}</h4>
+                                <div className="bg-white/50 dark:bg-zinc-900/50 rounded-xl border border-white/20 dark:border-white/5 p-1 shadow-sm">
+                                    <QuickAssignPanel
+                                        conversationId={conversationId}
+                                        currentAssignee={conversation?.assigned_to}
+                                        agents={agents}
+                                        onAssigned={() => {
+                                            supabase.from('conversations').select('*').eq('id', conversationId).single().then(({ data }) => {
+                                                if (data) setConversation(data)
+                                            })
+                                        }}
+                                    />
                                 </div>
                             </div>
                         </div>
@@ -345,36 +313,23 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
                 )}
 
                 {/* TAB 3: COTIZADOR */}
-                {/* TAB 3: COTIZADOR */}
                 {activeTab === 'sales' && (
                     <div className="flex flex-col h-full animate-in fade-in duration-300 slide-in-from-right-2">
                         <ScrollArea className="flex-1">
                             <div className="p-4 space-y-4">
                                 {/* Deal Value Hero */}
-                                <div className="p-4 rounded-xl bg-gradient-to-br from-indigo-50 to-indigo-100/50 dark:from-indigo-900/20 dark:to-indigo-900/10 border border-indigo-100 dark:border-indigo-900/30 shadow-sm relative overflow-hidden group">
-                                    <div className="absolute top-0 right-0 p-2 opacity-50 group-hover:opacity-100 transition-opacity">
-                                        <DollarSign className="h-10 w-10 text-indigo-200 dark:text-indigo-900 -rotate-12" />
-                                    </div>
-                                    <div className="relative z-10 flex items-center gap-3">
-                                        <div className="p-2 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+                                {/* Deal Value Hero - Simplified */}
+                                <div className="px-1 py-2">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 rounded-lg bg-primary/10 text-primary">
                                             <DollarSign className="h-5 w-5" />
                                         </div>
                                         <div>
-                                            <div className="text-[10px] uppercase tracking-wider text-indigo-600/70 dark:text-indigo-400/70 font-bold">{t('crm.inbox.context.sections.potential_value')}</div>
-                                            <div className="text-2xl font-bold text-indigo-950 dark:text-indigo-100 font-mono tracking-tight">
+                                            <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">{t('crm.inbox.context.sections.potential_value')}</div>
+                                            <div className="text-2xl font-bold text-foreground font-mono tracking-tight">
                                                 ${lead.value?.toLocaleString() || '0'}
                                             </div>
                                         </div>
-                                    </div>
-                                    <div className="mt-3 flex items-center gap-2 relative z-10">
-                                        <Badge variant="outline" className={cn(
-                                            "uppercase text-[10px] font-bold tracking-wide border-0 px-2 py-0.5",
-                                            lead.priority === 'urgent' ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" :
-                                                lead.priority === 'high' ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400" :
-                                                    "bg-white/50 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
-                                        )}>
-                                            {lead.priority === 'urgent' ? t('crm.inbox.context.priority.urgent') : lead.priority === 'high' ? t('crm.inbox.context.priority.high') : t('crm.inbox.context.priority.normal')}
-                                        </Badge>
                                     </div>
                                 </div>
 
@@ -397,7 +352,7 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
                         <div className="border-t border-border/40 bg-background/50 backdrop-blur-sm p-2 transition-all">
                             <Button
                                 variant="outline"
-                                className="w-full gap-2 border-dashed border-pink-300 dark:border-pink-800 text-pink-600 dark:text-pink-400 hover:bg-pink-50 dark:hover:bg-pink-900/20 bg-white/50 dark:bg-zinc-900/50 h-9"
+                                className="w-full gap-2 border-dashed border-primary/30 text-primary hover:bg-primary/5 bg-background/50 h-9"
                                 onClick={() => setIsQuoteDesignerOpen(true)}
                             >
                                 <Palette className="h-4 w-4" />
@@ -422,54 +377,17 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
     )
 }
 
-function TabNavItem({ active, onClick, label, icon: Icon }: { active: boolean, onClick: () => void, label: string, icon: any }) {
-    return (
-        <button
-            onClick={onClick}
-            className={cn(
-                "flex-1 flex items-center justify-center gap-2 py-2 rounded-t-lg transition-all border-b-2",
-                active
-                    ? "border-indigo-500 text-indigo-600 dark:text-indigo-400 font-medium bg-indigo-50/50 dark:bg-indigo-900/10"
-                    : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50"
-            )}
-        >
-            <Icon className="h-4 w-4" />
-            <span className="text-xs">{label}</span>
-        </button>
-    )
-}
-
-
-function ActionBtn({ icon: Icon, label, color, onClick }: { icon: any, label: string, color: string, onClick: () => void }) {
-    return (
-        <TooltipProvider>
-            <Tooltip>
-                <TooltipTrigger asChild>
-                    <Button
-                        variant="ghost"
-                        onClick={onClick}
-                        className={cn("h-9 w-full rounded-lg border border-transparent hover:border-zinc-200 dark:hover:border-zinc-800 transition-all flex items-center justify-center", color)}
-                    >
-                        <Icon className="h-4 w-4" />
-                    </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="text-xs">{label}</TooltipContent>
-            </Tooltip>
-        </TooltipProvider>
-    )
-}
-
 function ContactItem({ icon: Icon, label, value, t }: { icon: any, label: string, value?: string, t: any }) {
     if (!value) return null
     return (
-        <div className="group flex items-center gap-3 p-2 rounded-lg bg-white/50 dark:bg-zinc-900/50 border border-transparent hover:border-indigo-200 dark:hover:border-indigo-800 transition-all cursor-pointer shadow-sm" onClick={() => {
+        <div className="group flex items-center gap-3 p-1.5 rounded-md hover:bg-muted/50 transition-all cursor-pointer" onClick={() => {
             navigator.clipboard.writeText(value)
             toast.success(t('crm.inbox.context.actions.copied'))
         }}>
             <Icon className="h-4 w-4 text-muted-foreground group-hover:text-indigo-500 transition-colors" />
             <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium truncate text-foreground/90">{value}</p>
-                <p className="text-[10px] text-muted-foreground">{label}</p>
+                <p className="text-xs text-muted-foreground">{label}</p>
             </div>
             <span className="opacity-0 group-hover:opacity-100 text-[10px] text-indigo-600 font-medium transition-opacity">
                 {t('crm.inbox.context.actions.copy')}

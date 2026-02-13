@@ -1,6 +1,5 @@
 "use client"
 
-import { useState } from "react"
 import {
     Dialog,
     DialogContent,
@@ -9,7 +8,7 @@ import {
     DialogDescription,
 } from "@/components/ui/dialog"
 import { MetaEmbeddedSignup } from "./meta-embedded-signup"
-import { MessageCircle, Smartphone, Building2, ArrowRight, Zap, Shield } from "lucide-react"
+import { MessageCircle, Building2, BadgeCheck, Smartphone } from "lucide-react"
 import { useTranslation } from "@/lib/i18n/use-translation"
 
 interface WhatsAppConnectModalProps {
@@ -19,132 +18,94 @@ interface WhatsAppConnectModalProps {
     organizationId?: string | null
 }
 
-type ConnectionMethod = null | 'oauth' | 'embedded';
-
 export function WhatsAppConnectModal({ open, onOpenChange, onOAuthConnect, organizationId }: WhatsAppConnectModalProps) {
     const { t } = useTranslation()
-    const [selectedMethod, setSelectedMethod] = useState<ConnectionMethod>(null)
-
-    const handleClose = () => {
-        setSelectedMethod(null)
-        onOpenChange(false)
-    }
-
-    const handleOAuth = () => {
-        handleClose()
-        onOAuthConnect()
-    }
 
     return (
-        <Dialog open={open} onOpenChange={handleClose}>
-            <DialogContent className="sm:max-w-[520px] p-0 gap-0 overflow-hidden border-0 shadow-2xl">
-                {/* Header */}
-                <div className="bg-gradient-to-br from-[#25D366] to-[#128C7E] p-6 text-white">
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="sm:max-w-[700px] p-0 gap-0 border-none shadow-2xl bg-white dark:bg-zinc-950 overflow-hidden ring-1 ring-zinc-200 dark:ring-zinc-800">
+
+                {/* Clean, Minimal Header */}
+                <div className="px-8 pt-8 pb-2">
                     <DialogHeader>
-                        <div className="flex items-center gap-3 mb-2">
-                            <div className="p-2 bg-white/20 rounded-xl backdrop-blur-sm">
-                                <MessageCircle className="h-6 w-6" />
-                            </div>
-                            <DialogTitle className="text-xl font-semibold text-white">
-                                {t('crm.channels.modal.title')}
-                            </DialogTitle>
-                        </div>
-                        <DialogDescription className="text-white/85 text-sm">
-                            {t('crm.channels.modal.subtitle')}
+                        <DialogTitle className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">
+                            {t('meta.connect_modal.title')}
+                        </DialogTitle>
+                        <DialogDescription className="text-base text-zinc-500 dark:text-zinc-400 mt-2">
+                            {t('meta.connect_modal.description')}
                         </DialogDescription>
                     </DialogHeader>
                 </div>
 
-                {/* Method selection */}
-                {selectedMethod === null && (
-                    <div className="p-6 space-y-3">
-                        {/* Embedded Signup Option */}
-                        <button
-                            onClick={() => setSelectedMethod('embedded')}
-                            className="w-full group relative flex items-start gap-4 p-4 rounded-xl border-2 border-transparent
-                                bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30
-                                hover:border-[#1877F2] hover:shadow-md
-                                transition-all duration-200 text-left"
-                        >
-                            <div className="shrink-0 p-2.5 rounded-lg bg-[#1877F2] text-white shadow-sm">
-                                <Zap className="h-5 w-5" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-1">
-                                    <h3 className="font-semibold text-sm">{t('crm.channels.modal.embedded.title')}</h3>
-                                    <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-full bg-[#1877F2] text-white">
-                                        {t('crm.channels.modal.embedded.recommended')}
-                                    </span>
-                                </div>
-                                <p className="text-xs text-muted-foreground leading-relaxed">
-                                    {t('crm.channels.modal.embedded.desc')}
-                                </p>
-                                <div className="flex items-center gap-4 mt-2.5">
-                                    <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                                        <Smartphone className="h-3.5 w-3.5 text-[#25D366]" />
-                                        <span>{t('crm.channels.modal.embedded.mobile_compat')}</span>
-                                    </div>
-                                    <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                                        <Shield className="h-3.5 w-3.5 text-[#1877F2]" />
-                                        <span>{t('crm.channels.modal.embedded.auto_config')}</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <ArrowRight className="h-5 w-5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mt-2" />
-                        </button>
+                <div className="p-8 pt-6 grid md:grid-cols-2 gap-6">
+                    {/* Option 1: WhatsApp Business (Primary / Embedded) */}
+                    <div className="relative group rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50 p-6 flex flex-col h-full hover:border-[#25D366]/30 hover:shadow-lg hover:shadow-[#25D366]/5 transition-all">
+                        <div className="absolute top-4 right-4">
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400">
+                                <BadgeCheck className="w-3 h-3" />
+                                {t('meta.connect_modal.embedded.recommended')}
+                            </span>
+                        </div>
 
-                        {/* OAuth Option */}
-                        <button
-                            onClick={handleOAuth}
-                            className="w-full group relative flex items-start gap-4 p-4 rounded-xl border-2 border-transparent
-                                bg-muted/40 dark:bg-muted/20
-                                hover:border-[#25D366] hover:shadow-md
-                                transition-all duration-200 text-left"
-                        >
-                            <div className="shrink-0 p-2.5 rounded-lg bg-[#25D366] text-white shadow-sm">
-                                <Building2 className="h-5 w-5" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <h3 className="font-semibold text-sm mb-1">{t('crm.channels.modal.oauth.title')}</h3>
-                                <p className="text-xs text-muted-foreground leading-relaxed">
-                                    {t('crm.channels.modal.oauth.desc')}
-                                </p>
-                                <div className="flex items-center gap-1.5 mt-2.5 text-[11px] text-muted-foreground">
-                                    <Building2 className="h-3.5 w-3.5 text-[#25D366]" />
-                                    <span>{t('crm.channels.modal.oauth.control')}</span>
-                                </div>
-                            </div>
-                            <ArrowRight className="h-5 w-5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mt-2" />
-                        </button>
-                    </div>
-                )}
+                        <div className="mb-5 flex-shrink-0 w-14 h-14 rounded-2xl bg-white dark:bg-zinc-800 shadow-sm flex items-center justify-center border border-zinc-100 dark:border-zinc-700">
+                            <MessageCircle className="w-7 h-7 text-[#25D366]" />
+                        </div>
 
-                {/* Embedded Signup Flow */}
-                {selectedMethod === 'embedded' && (
-                    <div className="p-6 space-y-4">
-                        <button
-                            onClick={() => setSelectedMethod(null)}
-                            className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
-                        >
-                            ← {t('crm.channels.modal.back')}
-                        </button>
+                        <div className="flex-1 mb-6">
+                            <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 text-lg mb-2">
+                                {t('meta.connect_modal.embedded.title')}
+                            </h3>
+                            <p className="text-sm text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                                {t('meta.connect_modal.embedded.description')}
+                                <span className="block mt-2 text-zinc-700 dark:text-zinc-300 font-medium flex items-center gap-1.5 bg-white dark:bg-zinc-800/50 w-fit px-2 py-1 rounded-md border border-zinc-100 dark:border-zinc-800">
+                                    <Smartphone className="w-3.5 h-3.5" />
+                                    {t('meta.connect_modal.embedded.mobile_compatible')}
+                                </span>
+                            </p>
+                        </div>
 
-                        <div className="space-y-3">
-                            <div className="flex items-start gap-3 p-3 rounded-lg bg-blue-50/70 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/30">
-                                <Smartphone className="h-4 w-4 text-blue-500 mt-0.5 shrink-0" />
-                                <p className="text-xs text-muted-foreground leading-relaxed">
-                                    {t('crm.channels.modal.sync_note')}
-                                </p>
-                            </div>
-
+                        {/* The Embedded Signup Button is rendered here directly */}
+                        <div className="w-full mt-auto">
                             <MetaEmbeddedSignup
-                                onSuccess={handleClose}
+                                onSuccess={() => onOpenChange(false)}
                                 onError={(error) => console.error('[WhatsAppModal]', error)}
                                 organizationId={organizationId}
                             />
                         </div>
                     </div>
-                )}
+
+                    {/* Option 2: OAuth / Assets (Secondary) */}
+                    <div className="relative group rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-6 flex flex-col h-full hover:border-zinc-400 hover:shadow-lg hover:shadow-zinc-500/5 transition-all">
+                        <div className="mb-5 flex-shrink-0 w-14 h-14 rounded-2xl bg-zinc-50 dark:bg-zinc-800/50 flex items-center justify-center border border-zinc-100 dark:border-zinc-700/50">
+                            <Building2 className="w-7 h-7 text-zinc-700 dark:text-zinc-300" />
+                        </div>
+
+                        <div className="flex-1 mb-6">
+                            <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 text-lg mb-2">
+                                {t('meta.connect_modal.oauth.title')}
+                            </h3>
+                            <p className="text-sm text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                                {t('meta.connect_modal.oauth.description')}
+                            </p>
+                        </div>
+
+                        <div className="w-full mt-auto mb-2">
+                            <button
+                                onClick={() => {
+                                    onOpenChange(false)
+                                    onOAuthConnect()
+                                }}
+                                className="w-full flex items-center justify-center gap-2.5 py-3 px-4 rounded-xl font-medium text-sm transition-all duration-200
+                                    bg-zinc-900 dark:bg-white hover:bg-zinc-800 dark:hover:bg-zinc-200 
+                                    text-white dark:text-zinc-900 shadow-sm hover:shadow-md
+                                    focus:outline-none focus:ring-2 focus:ring-zinc-900/20"
+                            >
+                                <Building2 className="w-4 h-4" />
+                                {t('meta.connect_modal.oauth.button')}
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </DialogContent>
         </Dialog>
     )

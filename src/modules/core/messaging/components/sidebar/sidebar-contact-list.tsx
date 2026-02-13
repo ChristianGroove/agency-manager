@@ -31,9 +31,7 @@ export function SidebarContactList({ onSelectConversation }: SidebarContactListP
     const performSearch = async (query: string) => {
         setLoading(true)
         try {
-            console.log("Fetching sidebar contacts with query:", query)
             const data = await getSidebarContacts(query)
-            console.log("Received sidebar contacts:", data)
             setContacts(data)
         } catch (error) {
             console.error("Error fetching sidebar contacts:", error)
@@ -155,10 +153,12 @@ export function SidebarContactList({ onSelectConversation }: SidebarContactListP
                         totalCount={displayContacts.length}
                         data={displayContacts}
                         itemContent={(index, contact) => (
-                            <div className={cn(
-                                "border-b border-border/50 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors group cursor-pointer",
-                                contact.id === 'new-direct-dial' && "bg-indigo-50/50 dark:bg-indigo-900/10"
-                            )}>
+                            <div
+                                onClick={() => handleStartChat(contact)}
+                                className={cn(
+                                    "border-b border-border/50 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors group cursor-pointer",
+                                    contact.id === 'new-direct-dial' && "bg-indigo-50/50 dark:bg-indigo-900/10"
+                                )}>
                                 <div className="p-3 flex items-center gap-3">
                                     <Avatar className="h-10 w-10 border border-border/50">
                                         <AvatarImage src={contact.avatar_url || undefined} />
@@ -175,12 +175,6 @@ export function SidebarContactList({ onSelectConversation }: SidebarContactListP
                                             <h4 className="text-sm font-semibold truncate text-foreground">
                                                 {contact.id === 'new-direct-dial' ? t('crm.inbox.sidebar.direct_dial', { name: contact.name }) : (contact.name || t('crm.inbox.chat.unknown_user'))}
                                             </h4>
-                                            {/* Status Badge */}
-                                            {contact.status && (
-                                                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-500 font-medium uppercase tracking-tight">
-                                                    {contact.status}
-                                                </span>
-                                            )}
                                         </div>
 
                                         <div className="flex items-center gap-2 text-xs text-muted-foreground truncate">
@@ -189,15 +183,9 @@ export function SidebarContactList({ onSelectConversation }: SidebarContactListP
                                             ) : (
                                                 <>
                                                     {contact.company_name && (
-                                                        <span className="flex items-center gap-1">
+                                                        <span className="flex items-center gap-1 text-[10px] text-muted-foreground/80">
                                                             <Building2 className="h-3 w-3" />
                                                             {contact.company_name}
-                                                        </span>
-                                                    )}
-                                                    {contact.email && (
-                                                        <span className="flex items-center gap-1 truncate">
-                                                            <Mail className="h-3 w-3" />
-                                                            {contact.email}
                                                         </span>
                                                     )}
                                                 </>
@@ -210,8 +198,7 @@ export function SidebarContactList({ onSelectConversation }: SidebarContactListP
                                         <Button
                                             size="icon"
                                             variant="ghost"
-                                            className="h-8 w-8 rounded-full bg-brand-pink/10 text-brand-pink hover:bg-brand-pink hover:text-white"
-                                            onClick={() => handleStartChat(contact)}
+                                            className="h-8 w-8 rounded-full text-muted-foreground hover:text-primary hover:bg-transparent"
                                             title={t('crm.inbox.sidebar.tabs.conversations')}
                                         >
                                             <MessageCircle className="h-4 w-4" />

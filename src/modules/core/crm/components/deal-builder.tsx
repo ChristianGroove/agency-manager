@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Plus, Minus, Type, Trash2, ShoppingCart, Loader2, Package, ArrowUpRight } from "lucide-react"
+import { Plus, Minus, Type, Trash2, ShoppingCart, Loader2, Package, ArrowUpRight, CornerDownLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
@@ -186,11 +186,11 @@ export function DealBuilder({ leadId, conversationId, onCartChange, variant = 'd
             {/* Sidebar Variant: Prominent Send Button at Bottom */}
             {variant === 'sidebar' && (
                 <Button
-                    className="w-full mt-4 bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20 transition-all h-10"
+                    className="w-full mt-4 bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 transition-all h-10"
                     onClick={handleSendInteractive}
                     disabled={!hasItems}
                 >
-                    <ArrowUpRight className="h-4 w-4 mr-2" />
+                    <CornerDownLeft className="h-4 w-4 mr-2" />
                     Enviar Cotización
                 </Button>
             )}

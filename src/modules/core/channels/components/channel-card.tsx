@@ -23,12 +23,25 @@ import { EditChannelSheet } from "./edit-channel-sheet"
 
 // Helper for Icon and Color
 const getChannelVisuals = (key: string, isVirtual: boolean, virtType?: string) => {
-    // If virtual, use virtual type or fallback to key
-    if (key === 'meta_whatsapp') return { icon: Smartphone, color: 'text-green-600', bg: 'bg-green-100' }
-    if (key === 'meta_facebook') return { icon: Facebook, color: 'text-blue-600', bg: 'bg-blue-100' }
-    if (key === 'meta_instagram') return { icon: Instagram, color: 'text-pink-600', bg: 'bg-pink-100' }
+    const k = key.toLowerCase();
+
+    // WhatsApp
+    if (k === 'meta_whatsapp' || k === 'whatsapp_cloud' || k === 'whatsapp') return { iconSrc: '/social media icons/whatsapp.png', bg: 'bg-green-50' }
+
+    // Facebook Page / Messenger
+    if (k === 'meta_facebook' || k === 'facebook_page' || k === 'facebook_dm') return { iconSrc: '/social media icons/facebook.png', bg: 'bg-blue-50' }
+    if (k === 'meta_messenger' || k === 'messenger') return { iconSrc: '/social media icons/messenger.png', bg: 'bg-blue-50' }
+
+    // Instagram
+    if (k === 'meta_instagram' || k === 'instagram_dm' || k === 'instagram') return { iconSrc: '/social media icons/instagram.png', bg: 'bg-pink-50' }
+
+    // Virtual Types (from assets)
+    if (virtType === 'whatsapp') return { iconSrc: '/social media icons/whatsapp.png', bg: 'bg-green-50' }
+    if (virtType === 'instagram') return { iconSrc: '/social media icons/instagram.png', bg: 'bg-pink-50' }
+    if (virtType === 'facebook') return { iconSrc: '/social media icons/facebook.png', bg: 'bg-blue-50' }
+
     // Fallback/Standard
-    return { icon: MessageCircle, color: 'text-primary', bg: 'bg-primary/10' }
+    return { iconSrc: null, bg: 'bg-zinc-100', FallbackIcon: MessageCircle }
 }
 
 interface ChannelCardProps {
@@ -45,7 +58,7 @@ export function ChannelCard({ channel, pipelineStages = [], agents = [], isVirtu
     const [isEditOpen, setIsEditOpen] = useState(false)
 
     // VISUAL CONSTANTS
-    const { icon: Icon, color: iconColor, bg: iconBg } = getChannelVisuals(
+    const { iconSrc, bg: iconBg, FallbackIcon } = getChannelVisuals(
         channel.provider_key,
         isVirtual,
         channel.metadata?._virtual_asset_type
@@ -118,8 +131,12 @@ export function ChannelCard({ channel, pipelineStages = [], agents = [], isVirtu
             <Card className={`relative overflow-hidden cursor-pointer transition-all hover:shadow-md ${channel.is_primary ? 'border-primary/50 ring-1 ring-primary/20 bg-primary/5' : ''}`} onClick={handleCardClick}>
                 <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
                     <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-xl ${iconBg} ${iconColor} relative`}>
-                            <Icon className="h-5 w-5" />
+                        <div className={`p-2 rounded-xl ${iconBg} relative`}>
+                            {iconSrc ? (
+                                <img src={iconSrc} alt="Channel Icon" className="h-6 w-6 object-contain" />
+                            ) : (
+                                FallbackIcon && <FallbackIcon className="h-6 w-6 text-zinc-500" />
+                            )}
                             {isVirtual && (
                                 <div className="absolute top-0 right-0 h-2 w-2 bg-blue-500 rounded-full ring-2 ring-white" />
                             )}

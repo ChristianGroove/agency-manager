@@ -155,6 +155,31 @@ export const es = {
             marketing: "Marketing",
             review: "Revisión",
         },
+        connect_modal: {
+            title: "Conectar con Meta",
+            description: "Selecciona el tipo de integración que deseas configurar para tu organización.",
+            embedded: {
+                recommended: "Recomendado",
+                title: "Crear / Migrar",
+                description: "Registra un número nuevo o migra uno existente.",
+                mobile_compatible: "Compatible con App Móvil",
+            },
+            oauth: {
+                title: "Ya tengo WABA",
+                description: "Si ya tienes una cuenta de WhatsApp Business API configurada y verificada, selecciónala directamente de tu portafolio de Meta.",
+                button: "Listar mis cuentas"
+            }
+        },
+        embedded_signup: {
+            button: "Continuar con Meta",
+            processing: "Procesando...",
+            setup: "Configurando cuenta...",
+            connected: "¡Conectado! Redirigiendo...",
+            error_sdk: "No se pudo cargar el SDK de Facebook.",
+            error_auth: "No se recibió el código de autorización.",
+            error_generic: "Error al conectar WhatsApp",
+            success: "¡WhatsApp conectado exitosamente!"
+        }
     },
     dashboard: {
         stats: {
@@ -1116,6 +1141,10 @@ export const es = {
                     management: "Gestión",
                     replies: "Respuestas",
                     sales: "Cotizador"
+                },
+                replies: {
+                    saved_templates: "Plantillas",
+                    manage: "Administrar"
                 },
                 sections: {
                     assignment: "Asignación",

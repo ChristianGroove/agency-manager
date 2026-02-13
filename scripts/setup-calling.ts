@@ -56,7 +56,7 @@ async function enableCalling() {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                call_icon_visibility: 'DEFAULT'
+                call_icon_visibility: 'DEFAULT' // CRITICAL: Must be DEFAULT or HIDE
             })
         }
     );

@@ -179,6 +179,35 @@ export async function GET(request: Request) {
             const wabaResult = await metaApi.getWhatsAppAccounts(longLivedToken);
             wabas = wabaResult.data || [];
             wabaError = wabaResult.error;
+
+            // 3.1 Bulk Portfolio Sync (Meta 2026 Compliance)
+            // Automatically subscribe ALL WABAs to webhooks to prevent "Shadow Delivery"
+            if (wabas.length > 0) {
+                console.log(`[MetaCallback] Starting Bulk Sync for ${wabas.length} WABAs...`);
+
+                try {
+                    const { wabaSubscriptionManager } = await import('@/lib/meta/waba-subscription-manager');
+
+                    const subscriptionPayload = wabas.map((w: any) => ({
+                        wabaId: w.id,
+                        accessToken: longLivedToken
+                    }));
+
+                    const results = await wabaSubscriptionManager.batchSubscribe(subscriptionPayload);
+
+                    const successCount = results.filter(r => r.success).length;
+                    console.log(`[MetaCallback] Bulk Sync Complete. Success: ${successCount}/${wabas.length}`);
+
+                    // Log failures if any
+                    results.filter(r => !r.success).forEach(r => {
+                        console.error(`[MetaCallback] Failed to subscribe WABA ${r.wabaId}:`, r.error);
+                    });
+
+                } catch (syncError) {
+                    console.error('[MetaCallback] Bulk Sync Failed:', syncError);
+                    // We don't block the flow, but we log the critical error
+                }
+            }
         }
 
         console.log("🚀 Meta Connected!", {

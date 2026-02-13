@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useTranslation } from "@/lib/i18n/use-translation"
 import { extractMetadata, COLORS, ICONS } from "../template-utils"
 import { MessageSquare, Star, Heart, ThumbsUp, Zap, AlertCircle, CheckCircle, Clock, Search, FileText, Plus } from "lucide-react"
 import { Input } from "@/components/ui/input"
@@ -18,6 +19,7 @@ interface RepliesTabProps {
 }
 
 export function RepliesTab({ conversationId, lastIncomingMessage, onManageReplies }: RepliesTabProps) {
+    const { t } = useTranslation()
     const [templates, setTemplates] = useState<MessageTemplate[]>([])
     const [searchQuery, setSearchQuery] = useState("")
     const [loading, setLoading] = useState(true)
@@ -73,9 +75,9 @@ export function RepliesTab({ conversationId, lastIncomingMessage, onManageReplie
                     {/* Saved Templates List */}
                     <div className="space-y-2">
                         <div className="flex items-center justify-between">
-                            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Plantillas Guardadas</h4>
+                            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t('crm.inbox.context.replies.saved_templates')}</h4>
                             <Button variant="ghost" size="sm" className="h-5 px-2 text-[10px] text-muted-foreground hover:text-foreground" onClick={onManageReplies}>
-                                Administrar
+                                {t('crm.inbox.context.replies.manage')}
                             </Button>
                         </div>
 

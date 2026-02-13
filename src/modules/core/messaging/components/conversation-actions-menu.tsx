@@ -86,69 +86,12 @@ export function ConversationActionsMenu({
                         Mark as read
                     </DropdownMenuItem>
 
-                    <DropdownMenuSub>
-                        <DropdownMenuSubTrigger>
-                            <Clock className="mr-2 h-4 w-4" />
-                            Snooze
-                        </DropdownMenuSubTrigger>
-                        <DropdownMenuSubContent>
-                            <DropdownMenuItem onClick={() => handleSnooze(addHours(new Date(), 4))}>
-                                Later Today (4 hours)
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleSnooze(setMinutes(setHours(addDays(new Date(), 1), 9), 0))}>
-                                Tomorrow (9:00 AM)
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleSnooze(setMinutes(setHours(nextMonday(new Date()), 9), 0))}>
-                                Next Week (Mon 9:00 AM)
-                            </DropdownMenuItem>
-                        </DropdownMenuSubContent>
-                    </DropdownMenuSub>
-
                     <DropdownMenuSeparator />
-
-                    {isArchived ? (
-                        <DropdownMenuItem
-                            onClick={() => handleAction(
-                                () => unarchiveConversation(conversationId),
-                                "Conversation unarchived"
-                            )}
-                        >
-                            <ArchiveRestore className="mr-2 h-4 w-4" />
-                            Unarchive
-                        </DropdownMenuItem>
-                    ) : (
-                        <DropdownMenuItem
-                            onClick={() => handleAction(
-                                () => archiveConversation(conversationId),
-                                "Conversation archived"
-                            )}
-                        >
-                            <Archive className="mr-2 h-4 w-4" />
-                            Archive
-                        </DropdownMenuItem>
-                    )}
 
                     {/* AI: Save as FAQ */}
                     <DropdownMenuItem onClick={() => setIsFAQModalOpen(true)}>
                         <Lightbulb className="mr-2 h-4 w-4 text-yellow-500" />
                         Guardar como FAQ
-                    </DropdownMenuItem>
-
-                    <DropdownMenuSeparator />
-
-                    <DropdownMenuItem
-                        onClick={() => {
-                            if (confirm("Are you sure? This will permanently delete the conversation and all messages.")) {
-                                handleAction(
-                                    () => deleteConversation(conversationId),
-                                    "Conversation deleted"
-                                )
-                            }
-                        }}
-                        className="text-destructive focus:text-destructive"
-                    >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete
                     </DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>

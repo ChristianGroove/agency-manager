@@ -142,15 +142,43 @@ export async function POST(req: NextRequest) {
 
 /**
  * Get available time slots for a date
+ * Ensures YYYY-MM-DD format as required by CalendarPicker
  */
 async function getTimeSlots(date: string): Promise<{
     time_slots: Array<{ id: string; title: string }>;
 }> {
     console.log(`[Flows] Getting time slots for ${date}`);
 
+    // Validate YYYY-MM-DD format
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(date)) {
+        console.error(`[Flows] Invalid date format: ${date}`);
+        return { time_slots: [] };
+    }
+
     // Demo mode: return mock data
     if (IS_DEMO_MODE) {
-        const slots = DEMO_TIME_SLOTS[date] || DEMO_TIME_SLOTS['2026-01-23'];
+        // Mock logic: 
+        // If date is weekend, return fewer slots
+        // If date is past, return empty
+        const day = new Date(date).getDay();
+        if (day === 0 || day === 6) { // Weekend
+            return {
+                time_slots: [
+                    { id: '10:00', title: '10:00 AM (Weekend)' },
+                    { id: '11:00', title: '11:00 AM (Weekend)' }
+                ]
+            };
+        }
+
+        const slots = DEMO_TIME_SLOTS[date] || [
+            { id: '09:00', title: '09:00 AM' },
+            { id: '10:00', title: '10:00 AM' },
+            { id: '11:00', title: '11:00 AM' },
+            { id: '14:00', title: '02:00 PM' },
+            { id: '15:00', title: '03:00 PM' },
+            { id: '16:00', title: '04:00 PM' }
+        ];
         return { time_slots: slots };
     }
 
@@ -158,13 +186,12 @@ async function getTimeSlots(date: string): Promise<{
     // TODO: Implement real database query
     // const slots = await db.query(...)
 
-    // For now, return demo data
-    const slots = DEMO_TIME_SLOTS[date] || [
-        { id: '09:00', title: '9:00 AM' },
-        { id: '14:00', title: '2:00 PM' }
-    ];
-
-    return { time_slots: slots };
+    return {
+        time_slots: [
+            { id: '09:00', title: '09:00 AM' },
+            { id: '15:00', title: '03:00 PM' }
+        ]
+    };
 }
 
 /**

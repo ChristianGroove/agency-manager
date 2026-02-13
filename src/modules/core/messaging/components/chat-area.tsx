@@ -1,9 +1,10 @@
+"use client"
 
 import { Virtuoso, VirtuosoHandle } from "react-virtuoso"
 
 import { useEffect, useRef, useState } from "react"
 import { supabase } from "@/lib/supabase"
-import { Send, Phone, MoreVertical, Sidebar, Paperclip, Smile, Check, CheckCheck, User, X, Target, Wand2 } from "lucide-react"
+import { Send, Phone, MoreVertical, Sidebar, Paperclip, Smile, Check, CheckCheck, User, X, Target, Wand2, CheckCircle2, Clock, Archive, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Separator } from "@/components/ui/separator"
@@ -19,6 +20,14 @@ import dynamic from 'next/dynamic'
 import { toast } from "sonner"
 import { SavedRepliesSheet } from "./saved-replies-sheet"
 import { useTranslation } from "@/lib/i18n/use-translation"
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { archiveConversation, snoozeConversation, completeConversation, deleteConversation } from "../conversation-actions"
+
 
 
 const EmojiPicker = dynamic(() => import('emoji-picker-react'), { ssr: false })
@@ -104,13 +113,15 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
                 *,
                 leads (
                     name,
-                    phone,
-                    status
+                    phone
                 ),
                 clients (
                     name,
-                    phone,
-                    avatar_url
+                    phone
+                ),
+                integration_connections (
+                    connection_name,
+                    provider_key
                 )
             `)
             .eq('id', conversationId)
@@ -371,12 +382,7 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
             {/* Header */}
             <div className="h-16 border-b flex items-center justify-between px-4 bg-white dark:bg-zinc-900 shadow-sm z-10 w-full shrink-0">
                 <div className="flex items-center gap-3">
-                    <Avatar className="h-10 w-10 border">
-                        <AvatarImage src="" />
-                        <AvatarFallback className="bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-200">
-                            {leadInitials}
-                        </AvatarFallback>
-                    </Avatar>
+
                     <div className="flex flex-col">
                         <div className="flex items-center gap-2">
                             <h3 className="font-semibold text-sm leading-tight text-foreground">{leadName}</h3>
@@ -387,17 +393,136 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
                                 </Badge>
                             )}
                         </div>
-                        <p className="text-[11px] text-muted-foreground capitalize">{conversation?.channel || 'WhatsApp'} • {conversation?.id.slice(0, 8)}</p>
+                        <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+                            {/* Channel Icon & Name in Header */}
+                            {(() => {
+                                const rawChannel = conversation?.channel?.toLowerCase() || '';
+                                const providerKey = (conversation as any)?.integration_connections?.provider_key?.toLowerCase() || '';
+                                const combined = `${rawChannel} ${providerKey}`;
+
+                                if (combined.includes('whatsapp') || combined.includes('evolution')) {
+                                    return <img src="/social media icons/whatsapp.png" className="h-3 w-3 object-contain" alt="WA" />;
+                                }
+                                if (combined.includes('messenger') || combined.includes('facebook')) {
+                                    return <img src="/social media icons/messenger.png" className="h-3 w-3 object-contain" alt="MSG" />;
+                                }
+                                if (combined.includes('instagram')) {
+                                    return <img src="/social media icons/instagram.png" className="h-3 w-3 object-contain" alt="IG" />;
+                                }
+                                return null;
+                            })()}
+
+                            <span className="capitalize">{conversation?.channel || 'Unknown Channel'}</span>
+                            <span className="opacity-50">•</span>
+                            <span>{conversation?.id.slice(0, 8)}</span>
+                        </p>
                     </div>
                 </div>
                 <div className="flex items-center gap-1">
-                    <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
-                        <Phone className="h-5 w-5" />
-                    </Button>
-                    <ConversationActionsMenu conversationId={conversationId} />
-                    <Button variant="ghost" size="icon" onClick={onToggleContext} className={cn("text-muted-foreground hover:text-foreground", isContextOpen && "bg-muted")}>
-                        <Sidebar className="h-5 w-5" />
-                    </Button>
+                    <TooltipProvider delayDuration={0}>
+                        {/* Action: Resolve */}
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-muted-foreground hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20"
+                                    onClick={async () => {
+                                        const res = await completeConversation(conversationId)
+                                        if (res.success) toast.success(t('crm.inbox.context.actions.resolved'))
+                                        else toast.error(t('crm.inbox.context.actions.resolve_error'))
+                                    }}
+                                >
+                                    <CheckCircle2 className="h-4 w-4" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>{t('crm.inbox.context.actions.resolve')}</TooltipContent>
+                        </Tooltip>
+
+                        {/* Action: Snooze */}
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-muted-foreground hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20"
+                                    onClick={() => {
+                                        const tomorrow = new Date()
+                                        tomorrow.setDate(tomorrow.getDate() + 1)
+                                        snoozeConversation(conversationId, tomorrow).then(res => {
+                                            if (res.success) toast.success(t('crm.inbox.context.actions.snoozed_tomorrow'))
+                                        })
+                                    }}
+                                >
+                                    <Clock className="h-4 w-4" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>{t('crm.inbox.context.actions.snooze')}</TooltipContent>
+                        </Tooltip>
+
+                        {/* Action: Archive */}
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-muted-foreground hover:text-zinc-900 hover:bg-zinc-100 dark:hover:text-zinc-100 dark:hover:bg-zinc-800"
+                                    onClick={async () => {
+                                        const res = await archiveConversation(conversationId)
+                                        if (res.success) toast.success(t('crm.inbox.context.actions.archived'))
+                                        else toast.error(t('crm.inbox.context.actions.archive_error'))
+                                    }}
+                                >
+                                    <Archive className="h-4 w-4" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>{t('crm.inbox.context.actions.archive')}</TooltipContent>
+                        </Tooltip>
+
+                        {/* Action: Delete */}
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                    onClick={async () => {
+                                        if (confirm(t('common.confirm_delete'))) {
+                                            const res = await deleteConversation(conversationId)
+                                            if (!res.success) toast.error(t('common.error'))
+                                        }
+                                    }}
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>{t('common.delete')}</TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+
+                    <div className="w-px h-4 bg-border mx-1" />
+
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground h-8 w-8">
+                                    <Phone className="h-4 w-4" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Llamar</TooltipContent>
+                        </Tooltip>
+
+                        <ConversationActionsMenu conversationId={conversationId} />
+
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button variant="ghost" size="icon" onClick={onToggleContext} className={cn("text-muted-foreground hover:text-foreground h-8 w-8", isContextOpen && "bg-muted")}>
+                                    <Sidebar className="h-4 w-4" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Ver detalles</TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
                 </div>
             </div>
 
@@ -446,7 +571,7 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
                             }
 
                             return (
-                                <div className="px-2 md:px-4 py-1 max-w-4xl mx-auto w-full">
+                                <div className="px-2 md:px-8 py-1 max-w-[1400px] mx-auto w-full">
                                     {showDateSeparator && (
                                         <div className="flex justify-center my-4 opacity-100">
                                             <div className="bg-black/5 dark:bg-white/5 text-muted-foreground text-[10px] px-2 py-1 rounded-full uppercase tracking-wider font-medium">
