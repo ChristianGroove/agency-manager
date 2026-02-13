@@ -26,6 +26,7 @@ type Conversation = Database['public']['Tables']['conversations']['Row'] & {
     leads: {
         name: string | null
         phone: string | null
+        avatar_url: string | null
     } | null
     integration_connections: {
         connection_name: string | null
@@ -33,6 +34,7 @@ type Conversation = Database['public']['Tables']['conversations']['Row'] & {
     clients: {
         name: string | null
         phone: string | null
+        avatar_url: string | null
     } | null
 }
 
@@ -80,7 +82,7 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
 
         let query = supabase
             .from('conversations')
-            .select('*, leads(name, phone), clients(name, phone), integration_connections(connection_name)')
+            .select('*, leads(name, phone, avatar_url), clients(name, phone, avatar_url), integration_connections(connection_name)')
             .order('last_message_at', { ascending: false })
 
         // Apply filter

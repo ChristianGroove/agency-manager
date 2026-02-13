@@ -9,6 +9,7 @@ import { es, enUS } from "date-fns/locale"
 import { UserCheck, MessageSquare, Facebook, Instagram } from "lucide-react"
 import { ConversationActionsMenu } from "./conversation-actions-menu"
 import { useTranslation } from "@/lib/i18n/use-translation"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 // Redefine type or import if shared. Using local definition for now or basic shape.
 type Conversation = any // Simplify for prototype component
@@ -91,9 +92,12 @@ export const ConversationListItem = memo(function ConversationListItem({ conv, i
 
             <div className="flex items-start gap-3">
                 <div className="flex-shrink-0 mt-1 pointer-events-none">
-                    <div className="h-10 w-10 rounded-full bg-gradient-to-br from-zinc-100 to-zinc-200 dark:from-zinc-800 dark:to-zinc-900 flex items-center justify-center text-zinc-900 dark:text-zinc-100 font-bold shadow-sm border border-black/5 dark:border-white/10">
-                        {contactName.slice(0, 2).toUpperCase()}
-                    </div>
+                    <Avatar className="h-10 w-10 border border-black/5 dark:border-white/10 shadow-sm">
+                        <AvatarImage src={conv.leads?.avatar_url || conv.clients?.avatar_url} alt={contactName} />
+                        <AvatarFallback className="bg-gradient-to-br from-zinc-100 to-zinc-200 dark:from-zinc-800 dark:to-zinc-900 text-zinc-900 dark:text-zinc-100 font-bold">
+                            {contactName.slice(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                    </Avatar>
                 </div>
 
                 <div className="flex-1 min-w-0 pointer-events-none">

@@ -131,6 +131,7 @@ export interface IncomingMessage {
     channel: ChannelType;
     from: string;
     senderName?: string;
+    senderAvatarUrl?: string;
     buttonId?: string; // ID for interactive responses (buttons/lists)
     content: {
         type: 'text' | 'image' | 'audio' | 'video' | 'document' | 'interactive' | 'unknown';

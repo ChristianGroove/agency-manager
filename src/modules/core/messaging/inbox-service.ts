@@ -323,10 +323,19 @@ export class InboxService {
             console.log('[InboxService] Found existing lead:', lead.id);
 
             // AUTO-HEAL: If name is generic and we have a real one now, update it
+            // AUTO-HEAL: Update name and avatar if available
+            const updates: any = {};
             if ((lead.name === 'User' || lead.name === lead.phone) && msg.senderName && msg.senderName !== 'User') {
-                await supabase.from('leads').update({ name: msg.senderName }).eq('id', lead.id);
+                updates.name = msg.senderName;
                 lead.name = msg.senderName;
-                console.log('[InboxService] Updated lead name to:', msg.senderName);
+            }
+            if (msg.senderAvatarUrl) {
+                updates.avatar_url = msg.senderAvatarUrl;
+            }
+
+            if (Object.keys(updates).length > 0) {
+                await supabase.from('leads').update(updates).eq('id', lead.id);
+                console.log('[InboxService] Updated lead info:', updates);
             }
         } else {
             console.log('[InboxService] Creating new lead for:', msg.from);
@@ -334,6 +343,7 @@ export class InboxService {
                 organization_id: orgId,
                 phone: msg.from,
                 name: msg.senderName || msg.from,
+                avatar_url: msg.senderAvatarUrl,
                 status: 'new',
                 source_connection_id: connectionId // Attribution: Track which line captured this lead
             }).select().single();

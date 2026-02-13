@@ -224,7 +224,7 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
                             <div className="flex items-center gap-3 mb-2">
                                 <div className="relative">
                                     <Avatar className="h-14 w-14 shadow-lg ring-2 ring-white/20 dark:ring-white/10">
-                                        <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${lead.title || 'Unknown'}`} />
+                                        <AvatarImage src={(lead as any).avatar_url} className="object-cover" />
                                         <AvatarFallback className="bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900 dark:to-purple-900 text-indigo-700 dark:text-indigo-300 font-bold text-lg">
                                             {leadInitials}
                                         </AvatarFallback>
@@ -232,7 +232,7 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
                                     <span className="absolute bottom-0 right-0 h-4 w-4 rounded-full bg-green-500 border-2 border-background shadow-sm" />
                                 </div>
                                 <div className="flex-1 min-w-0 py-1">
-                                    <h2 className="text-lg font-bold truncate leading-tight tracking-tight">{lead.title || t('crm.inbox.context.unknown_contact')}</h2>
+                                    <h2 className="text-lg font-bold truncate leading-tight tracking-tight">{lead.name || lead.title || t('crm.inbox.context.unknown_contact')}</h2>
                                     <div className="flex items-center gap-2 mt-1.5">
                                         <Badge variant="secondary" className="text-[10px] h-5 px-2 font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-0 shadow-sm">
                                             {lead.company || t('crm.inbox.context.particular')}
@@ -273,7 +273,12 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
                                 </div>
 
                                 <div className="space-y-1.5">
-                                    <ContactItem icon={Phone} label={t('crm.inbox.context.contact_fields.mobile')} value={lead.phone} t={t} />
+                                    <ContactItem
+                                        icon={conversation?.channel === 'instagram' ? User : Phone}
+                                        label={conversation?.channel === 'instagram' ? 'Instagram ID' : conversation?.channel === 'messenger' ? 'Messenger ID' : t('crm.inbox.context.contact_fields.mobile')}
+                                        value={lead.phone}
+                                        t={t}
+                                    />
                                     <ContactItem icon={Mail} label={t('crm.inbox.context.contact_fields.email')} value={lead.email} t={t} />
                                     <ContactItem icon={MapPin} label={t('crm.inbox.context.contact_fields.location')} value={t('crm.inbox.context.contact_fields.unknown_location')} t={t} />
                                 </div>

@@ -274,10 +274,21 @@ export class MetaProvider implements MessagingProvider {
 
                             // Try to fetch real name if we have a token
                             let senderName = 'User';
-                            if (this.apiToken) {
+                            let senderAvatar = undefined;
+
+                            // Resolve Token: Use global apiToken or fetch from DB (Tenant aware)
+                            let effectiveToken = this.apiToken;
+                            if (!effectiveToken) {
+                                effectiveToken = await this.getTokenByAssetId(pageOrIgId);
+                            }
+
+                            if (effectiveToken) {
                                 debugLog('Fetching sender profile...');
-                                const profile = await this.getSenderProfile(messaging.sender.id, pageOrIgId, this.apiToken);
-                                if (profile?.name) senderName = profile.name;
+                                const profile = await this.getSenderProfile(messaging.sender.id, pageOrIgId, effectiveToken, channel as any);
+                                if (profile) {
+                                    if (profile.name) senderName = profile.name;
+                                    if (profile.picture) senderAvatar = profile.picture;
+                                }
                             }
 
                             debugLog(`Pushing message from ${senderName} (${channel})`);
@@ -287,6 +298,7 @@ export class MetaProvider implements MessagingProvider {
                                 channel: channel as any,
                                 from: messaging.sender.id,
                                 senderName: senderName,
+                                senderAvatarUrl: senderAvatar,
                                 timestamp: new Date(messaging.timestamp),
                                 content: msg.text || (msg.attachments ? '[Attachment]' : ''),
                                 metadata: {
@@ -345,15 +357,22 @@ export class MetaProvider implements MessagingProvider {
     /**
      * Helper to get FB/IG User Profile (Name/Picture)
      */
-    private async getSenderProfile(psid: string, assetId: string, userToken: string) {
+    private async getSenderProfile(psid: string, assetId: string, userToken: string, channel?: 'messenger' | 'instagram') {
         try {
             const pageToken = await this.getPageAccessToken(assetId, userToken);
-            const url = `https://graph.facebook.com/v24.0/${psid}?fields=first_name,last_name,profile_pic&access_token=${pageToken}`;
+
+            // IG Users don't have first_name/last_name, just 'name'
+            const fields = channel === 'instagram'
+                ? 'name,profile_pic'
+                : 'first_name,last_name,profile_pic';
+
+            const url = `https://graph.facebook.com/v24.0/${psid}?fields=${fields}&access_token=${pageToken}`;
             const res = await fetch(url);
             const data = await res.json();
-            if (data.first_name) {
+
+            if (data.name || data.first_name) {
                 return {
-                    name: `${data.first_name} ${data.last_name || ''}`.trim(),
+                    name: data.name || `${data.first_name} ${data.last_name || ''}`.trim(),
                     picture: data.profile_pic
                 };
             }
@@ -397,7 +416,7 @@ export class MetaProvider implements MessagingProvider {
             const { data: connections, error } = await supabaseAdmin
                 .from('integration_connections')
                 .select('credentials, provider_key, metadata')
-                .in('provider_key', ['meta_whatsapp', 'meta_business', 'whatsapp_cloud'])
+                .in('provider_key', ['meta_whatsapp', 'meta_business', 'whatsapp_cloud', 'facebook_page', 'instagram_dm'])
                 .eq('status', 'active');
 
             if (error) {
