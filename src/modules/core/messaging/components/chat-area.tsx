@@ -487,7 +487,7 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
                                     size="icon"
                                     className="h-8 w-8 text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
                                     onClick={async () => {
-                                        if (confirm(t('common.confirm_delete'))) {
+                                        if (window.confirm(t('common.confirm_delete'))) {
                                             const res = await deleteConversation(conversationId)
                                             if (!res.success) toast.error(t('common.error'))
                                         }

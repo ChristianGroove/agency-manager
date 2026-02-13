@@ -6,6 +6,7 @@ export const en = {
         confirm: "Confirm",
         delete: "Delete",
         edit: "Edit",
+        confirm_delete: "Are you sure you want to delete this?",
         loading: "Loading...",
         search: "Search...",
         back: "Back",

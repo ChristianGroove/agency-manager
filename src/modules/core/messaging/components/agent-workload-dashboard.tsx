@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card"
 import { Slider } from "@/components/ui/slider"
 import { Switch } from "@/components/ui/switch"
 import { updateAgentStatus, toggleAutoAssign, updateAgentCapacity, getAgentsWorkload } from "../assignment-actions"
+import { simulateInboundMessage } from "../actions"
 import { Circle, User, Zap, Info } from "lucide-react"
 import { toast } from "sonner"
 import {
@@ -383,7 +384,7 @@ export function AgentWorkloadDashboard() {
 
 function SimulationControls({ t }: { t: any }) {
     const [loading, setLoading] = useState(false)
-    const { simulateInboundMessage } = require('../actions') // Lazy load actions
+    // const { simulateInboundMessage } = require('../actions') // Lazy load handled via top-level import
 
     const handleSimulateMessage = async () => {
         setLoading(true)

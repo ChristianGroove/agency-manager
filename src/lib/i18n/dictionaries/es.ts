@@ -6,6 +6,7 @@ export const es = {
         confirm: "Confirmar",
         delete: "Eliminar",
         edit: "Editar",
+        confirm_delete: "¿Estás seguro de que deseas eliminar esto?",
         loading: "Cargando...",
         search: "Buscar...",
         back: "Volver",
