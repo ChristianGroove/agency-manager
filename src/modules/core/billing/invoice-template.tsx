@@ -156,7 +156,7 @@ export const InvoiceTemplate = forwardRef<HTMLDivElement, InvoiceTemplateProps>(
                                 <div className="flex items-center gap-2 min-w-0">
                                     <img src="/payment-methods/bancolombia.png" alt="Bancolombia" className="h-4 w-4 object-contain flex-shrink-0" />
                                     <div className="min-w-0">
-                                        <p className="text-[10px] font-bold text-gray-900 truncate">{settings?.bancolombia_account || "068 000 030 18"}</p>
+                                        <p className="text-[10px] font-bold text-gray-900 truncate">{settings?.bancolombia_account || "068 000 830 18"}</p>
                                     </div>
                                 </div>
                                 <button className="p-1 hover:bg-gray-200 rounded text-gray-500 hover:text-gray-900 transition-colors flex-shrink-0" title="Copiar">
