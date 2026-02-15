@@ -69,8 +69,9 @@ export async function GET(request: Request) {
                         results.remindersSent++;
                     }
 
-                    // B. Invoice Generation (On Due Date)
-                    if (billingDate.getTime() === today.getTime()) {
+                    // B. Invoice Generation (On Due Date or Past Due)
+                    // We use <= to catch up if the cron job didn't run on the exact day
+                    if (billingDate.getTime() <= today.getTime()) {
                         const invoiceId = await generateInvoiceSystem(sub, client);
                         if (invoiceId) {
                             results.invoicesGenerated++;
