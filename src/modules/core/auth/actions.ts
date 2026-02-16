@@ -21,10 +21,16 @@ export async function login(formData: FormData) {
         password: formData.get('password') as string,
     }
 
-    const { error } = await supabase.auth.signInWithPassword(data)
+    const { data: { user }, error } = await supabase.auth.signInWithPassword(data)
 
     if (error) {
         return { error: error.message }
+    }
+
+    if (user && !user.email_confirmed_at) {
+        // Force logout just in case
+        await supabase.auth.signOut()
+        return { error: "Por favor confirma tu correo electrónico antes de ingresar." }
     }
 
     revalidatePath('/', 'layout')
@@ -111,11 +117,28 @@ export async function signup(formData: FormData) {
         let actionLink = linkData.properties?.action_link
         if (!actionLink) return { error: "Error generando enlace de confirmación" }
 
-        // SANITIZATION
-        if (actionLink.includes('localhost') || actionLink.includes('127.0.0.1')) {
-            actionLink = actionLink.replace('http://localhost:3000', redirectBase)
-            actionLink = actionLink.replace('http://127.0.0.1:3000', redirectBase)
-            actionLink = actionLink.replace('redirect_to=http%3A%2F%2Flocalhost%3A3000', `redirect_to=${encodeURIComponent(redirectBase)}`)
+        // SANITIZATION & BRANDING: Replace Supabase URL with our Custom Confirm Route
+        // We extract the token and type to build our own link
+        try {
+            const supabaseUrlObj = new URL(actionLink)
+            const token = supabaseUrlObj.searchParams.get('token')
+            const type = supabaseUrlObj.searchParams.get('type') || 'signup'
+            const redirectParam = supabaseUrlObj.searchParams.get('redirect_to')
+
+            if (token) {
+                // Construct our own safe URL
+                // We use /auth/verify?token_hash=...&type=signup&next=...
+                const nextPath = '/onboarding' // Default next
+                actionLink = `${redirectBase}/auth/verify?token_hash=${token}&type=${type}&next=${encodeURIComponent(nextPath)}`
+            }
+        } catch (e) {
+            console.error("Error parsing/rewriting Supabase link:", e)
+            // Fallback to simple replacement if URL parsing fails
+            if (actionLink.includes('localhost') || actionLink.includes('127.0.0.1')) {
+                actionLink = actionLink.replace('http://localhost:3000', redirectBase)
+                actionLink = actionLink.replace('http://127.0.0.1:3000', redirectBase)
+                actionLink = actionLink.replace('redirect_to=http%3A%2F%2Flocalhost%3A3000', `redirect_to=${encodeURIComponent(redirectBase)}`)
+            }
         }
 
         // 2. Send Custom Confirmation Email

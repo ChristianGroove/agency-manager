@@ -702,13 +702,17 @@ export async function createOrganization(formData: {
         await switchOrganization(newOrg.id)
 
         // 6. Complete Onboarding (Mark flag in Auth Metadata)
-        const { error: metaError } = await supabase.auth.updateUser({
-            data: { onboarding_completed: true }
-        })
+        // 6. Complete Onboarding (Mark flag in Auth Metadata)
+        // CRITICAL FIX: Use Admin Client to update metadata. 
+        // Using standard user client triggers a session refresh which might invalidate 
+        // the current cookies before the redirect happens, causing a logout.
+        const { error: metaError } = await supabaseAdmin.auth.admin.updateUserById(
+            user.id,
+            { user_metadata: { onboarding_completed: true } }
+        )
 
         if (metaError) {
             console.error("Warning: Failed to update onboarding status", metaError)
-            // Non-blocking, but important for middleware
         }
 
         return {

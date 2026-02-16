@@ -270,12 +270,27 @@ async function generateInvoiceSystem(subscription: any, client: any) {
     try {
         const { data: service } = await supabaseAdmin
             .from('services')
-            .select('id')
+            .select('id, deleted_at')
             .eq('client_id', subscription.client_id)
             .eq('name', subscription.name) // Heuristic match
             .order('created_at', { ascending: false })
             .limit(1)
             .maybeSingle();
+
+        // SELF-HEALING: If service is deleted, cancel subscription and do not invoice
+        if (service && service.deleted_at) {
+            console.log(`[BillingCron] Service ${service.id} is deleted. Cancelling subscription ${subscription.id} and skipping invoice.`);
+
+            await supabaseAdmin
+                .from('subscriptions')
+                .update({
+                    status: 'cancelled',
+                    deleted_at: new Date().toISOString()
+                })
+                .eq('id', subscription.id);
+
+            return null; // Skip invoice generation
+        }
 
         if (service) {
             // Calculate Cycle Dates (Arrears/Current assumption)

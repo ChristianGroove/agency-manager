@@ -1,0 +1,32 @@
+[
+  {
+    "id": "07960dd8-3bfc-4e01-bc81-f30d03d04ee8",
+    "name": "Departamento de Diseño",
+    "amount": 1850000,
+    "next_billing_date": "2026-03-31",
+    "status": "active",
+    "client": {
+      "id": "95e7f87f-d209-44d6-8b33-497b06c72a51",
+      "name": "Liliana Melo Murillo"
+    },
+    "organization": {
+      "id": "db9d1288-80ab-48df-b130-a0739881c6f2",
+      "name": "Pixy Agency"
+    }
+  },
+  {
+    "id": "f89925cf-8c79-427f-8b12-860773744aaf",
+    "name": "Departamento de Diseño",
+    "amount": 1850000,
+    "next_billing_date": "2026-05-01",
+    "status": "active",
+    "client": {
+      "id": "38a16721-784e-4fe9-b944-6fbd11d759a7",
+      "name": "Diana Maria Melo Murillo"
+    },
+    "organization": {
+      "id": "db9d1288-80ab-48df-b130-a0739881c6f2",
+      "name": "Pixy Agency"
+    }
+  }
+]
