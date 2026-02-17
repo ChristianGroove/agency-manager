@@ -207,15 +207,16 @@ export function SettingsForm({
             id: 'billing',
             label: t('settings.tabs.billing'),
             icon: FileText,
-            requiredModule: 'module_invoicing',
+            requiredModule: null, // Enabled for everyone (Resellers & Clients)
             minRole: 'admin'
         },
         {
             id: 'payments',
             label: t('settings.tabs.payments'),
             icon: CreditCard,
-            requiredModules: ['module_payments', 'module_invoicing'],
-            matchAny: true,
+            requiredModule: null, // Enabled for everyone
+            requiredModules: undefined,
+            matchAny: false,
             minRole: 'admin'
         },
         {

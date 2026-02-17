@@ -27,12 +27,18 @@ export default function InvoicePage() {
   useEffect(() => {
     if (params.id) {
       fetchInvoice(params.id as string)
-      fetchSettings()
     }
   }, [params.id])
 
-  const fetchSettings = async () => {
-    const data = await getSettings()
+  useEffect(() => {
+    if (invoice?.organization_id) {
+      fetchSettings(invoice.organization_id)
+    }
+  }, [invoice?.organization_id])
+
+  const fetchSettings = async (orgId: string) => {
+    const { getPublicInvoiceSettings } = await import("@/modules/core/settings/actions")
+    const data = await getPublicInvoiceSettings(orgId)
     setSettings(data)
   }
 

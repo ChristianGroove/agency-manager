@@ -42,10 +42,18 @@ export const InvoiceTemplate = forwardRef<HTMLDivElement, InvoiceTemplateProps>(
                     {/* Header */}
                     <div className="flex justify-between items-start mb-6 pb-4 border-b-2 border-gray-900">
                         <div className="flex flex-col items-center">
-                            <img src={settings?.agency_logo || "/branding/logo dark.svg"} alt="Agency Logo" className="h-11 w-auto" />
-                            <p className="text-xs text-gray-600 mt-1 font-medium tracking-wide">
-                                {settings?.agency_name || "Private design service"}
-                            </p>
+                            {/* Logo: Try Main Light -> Document -> Main -> Portal -> Agency Logo prop */}
+                            {(settings?.main_logo_light_url || settings?.document_logo_url || settings?.main_logo_url || settings?.portal_logo_url || settings?.agency_logo) ? (
+                                <img
+                                    src={settings?.main_logo_light_url || settings?.document_logo_url || settings?.main_logo_url || settings?.portal_logo_url || settings?.agency_logo}
+                                    alt="Agency Logo"
+                                    className="h-14 w-auto object-contain"
+                                />
+                            ) : (
+                                <div className="h-14 flex items-center justify-center bg-gray-100 px-4 rounded text-xs text-gray-400 font-medium">
+                                    [ Logo ]
+                                </div>
+                            )}
                         </div>
                         <div className="text-right">
                             <h2 className="text-2xl font-bold text-gray-900 mb-1">
@@ -84,12 +92,28 @@ export const InvoiceTemplate = forwardRef<HTMLDivElement, InvoiceTemplateProps>(
                     <div className="grid grid-cols-2 gap-6 mb-4">
                         <div>
                             <h3 className="text-[10px] font-bold mb-1.5 uppercase text-gray-500 tracking-wider">Emitido por:</h3>
-                            <p className="font-bold text-base text-gray-900">{invoice.emitter?.legal_name || settings?.company_name || "[ Nombre de la Empresa ]"}</p>
-                            {(invoice.emitter?.identification_number || settings?.company_nit) && <p className="text-sm text-gray-700">NIT: {invoice.emitter?.identification_number || settings?.company_nit}</p>}
-                            {(invoice.emitter?.address || settings?.company_address) && <p className="text-sm text-gray-700">{invoice.emitter?.address || settings?.company_address}</p>}
-                            {(invoice.emitter?.email || settings?.company_email || settings?.agency_email) && <p className="text-sm text-gray-700">{invoice.emitter?.email || settings?.company_email || settings?.agency_email}</p>}
-                            {(invoice.emitter?.phone || settings?.company_phone || settings?.agency_phone) && <p className="text-sm font-semibold text-gray-900 mt-1">Cel: {invoice.emitter?.phone || settings?.company_phone || settings?.agency_phone}</p>}
-                            {(settings?.agency_website) && <p className="text-sm text-gray-700 mt-0.5">{settings.agency_website}</p>}
+                            {/* Priority: Settings (Tenant) > Emitter (Invoice Specific) */}
+                            <p className="font-bold text-base text-gray-900">{settings?.company_name || settings?.agency_name || invoice.emitter?.legal_name}</p>
+
+                            {(settings?.company_nit || invoice.emitter?.identification_number) &&
+                                <p className="text-sm text-gray-700">NIT: {settings?.company_nit || invoice.emitter?.identification_number}</p>
+                            }
+
+                            {(settings?.company_address || invoice.emitter?.address) &&
+                                <p className="text-sm text-gray-700">{settings?.company_address || invoice.emitter?.address}</p>
+                            }
+
+                            {(settings?.company_email || settings?.agency_email || invoice.emitter?.email) &&
+                                <p className="text-sm text-gray-700">{settings?.company_email || settings?.agency_email || invoice.emitter?.email}</p>
+                            }
+
+                            {(settings?.company_phone || settings?.agency_phone || invoice.emitter?.phone) &&
+                                <p className="text-sm font-semibold text-gray-900 mt-1">Cel: {settings?.company_phone || settings?.agency_phone || invoice.emitter?.phone}</p>
+                            }
+
+                            {(settings?.agency_website) &&
+                                <p className="text-sm text-gray-700 mt-0.5">{settings.agency_website}</p>
+                            }
                         </div>
                         <div>
                             <h3 className="text-[10px] font-bold mb-1.5 uppercase text-gray-500 tracking-wider">Para:</h3>
@@ -151,119 +175,183 @@ export const InvoiceTemplate = forwardRef<HTMLDivElement, InvoiceTemplateProps>(
                     <div className="mt-auto mb-2">
                         <h4 className="text-[10px] font-bold uppercase text-gray-500 tracking-wider mb-1.5">Métodos de Pago</h4>
                         <div className="grid grid-cols-3 gap-2">
-                            {/* Bancolombia */}
-                            <div className="p-2 rounded-lg bg-gray-50 border border-gray-300 flex items-center justify-between gap-2">
-                                <div className="flex items-center gap-2 min-w-0">
-                                    <img src="/payment-methods/bancolombia.png" alt="Bancolombia" className="h-4 w-4 object-contain flex-shrink-0" />
-                                    <div className="min-w-0">
-                                        <p className="text-[10px] font-bold text-gray-900 truncate">{settings?.bancolombia_account || "068 000 830 18"}</p>
-                                    </div>
-                                </div>
-                                <button className="p-1 hover:bg-gray-200 rounded text-gray-500 hover:text-gray-900 transition-colors flex-shrink-0" title="Copiar">
-                                    <span className="sr-only">Copiar</span>
-                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                                </button>
-                            </div>
+                            {settings?.payment_methods?.map((method: any) => {
+                                const titleLower = method.title.toLowerCase()
+                                let iconSrc = "/payment-methods/default.png"
+                                if (titleLower.includes('bancolombia')) iconSrc = "/payment-methods/bancolombia.png"
+                                else if (titleLower.includes('nequi')) iconSrc = "/payment-methods/nequi.png"
+                                else if (titleLower.includes('daviplata')) iconSrc = "/payment-methods/daviplata.png"
+                                else if (titleLower.includes('paypal')) iconSrc = "/payment-methods/paypal.png"
+                                else if (titleLower.includes('wompi')) iconSrc = "/payment-methods/wompi.png"
+                                else if (titleLower.includes('bre-b') || titleLower.includes('breb')) iconSrc = "/payment-methods/bre-b.png"
 
-                            {/* Bre-B */}
-                            <div className="p-2 rounded-lg bg-gray-50 border border-gray-300 flex items-center justify-between gap-2">
-                                <div className="flex items-center gap-2 min-w-0">
-                                    <img src="/payment-methods/bre-b.png" alt="Bre-B" className="h-4 w-4 object-contain flex-shrink-0" />
-                                    <div className="min-w-0">
-                                        <p className="text-[10px] font-bold text-gray-900 truncate">{settings?.bre_b_number || "0090983657"}</p>
-                                    </div>
-                                </div>
-                                <button className="p-1 hover:bg-gray-200 rounded text-gray-500 hover:text-gray-900 transition-colors flex-shrink-0" title="Copiar">
-                                    <span className="sr-only">Copiar</span>
-                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                                </button>
-                            </div>
+                                const isGateway = method.type === 'GATEWAY'
+                                const value = isGateway ? (method.details?.payment_link) : (method.details?.account_number)
 
-                            {/* Nequi */}
-                            <div className="p-2 rounded-lg bg-gray-50 border border-gray-300 flex items-center justify-between gap-2">
-                                <div className="flex items-center gap-2 min-w-0">
-                                    <img src="/payment-methods/nequi.png" alt="Nequi" className="h-4 w-4 object-contain flex-shrink-0" />
-                                    <div className="min-w-0">
-                                        <p className="text-[10px] font-bold text-gray-900 truncate">{settings?.nequi_number || "300 670 5958"}</p>
-                                    </div>
-                                </div>
-                                <button className="p-1 hover:bg-gray-200 rounded text-gray-500 hover:text-gray-900 transition-colors flex-shrink-0" title="Copiar">
-                                    <span className="sr-only">Copiar</span>
-                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                                </button>
-                            </div>
+                                if (!value) return null
 
-                            {/* Daviplata */}
-                            <div className="p-2 rounded-lg bg-gray-50 border border-gray-300 flex items-center justify-between gap-2">
-                                <div className="flex items-center gap-2 min-w-0">
-                                    <img src="/payment-methods/daviplata.png" alt="Daviplata" className="h-4 w-4 object-contain flex-shrink-0" />
-                                    <div className="min-w-0">
-                                        <p className="text-[10px] font-bold text-gray-900 truncate">{settings?.daviplata_number || "300 670 5958"}</p>
+                                return (
+                                    <div key={method.id} className="p-2 rounded-lg bg-gray-50 border border-gray-300 flex items-center justify-between gap-2 overflow-hidden">
+                                        <div className="flex items-center gap-2 min-w-0">
+                                            <img
+                                                src={iconSrc}
+                                                alt={method.title}
+                                                className="h-4 w-4 object-contain flex-shrink-0"
+                                                onError={(e) => { e.currentTarget.style.display = 'none' }}
+                                            />
+                                            <div className="min-w-0">
+                                                <p className="text-[10px] font-bold text-gray-900 truncate" title={method.title}>
+                                                    {isGateway ? "Link de pago" : value}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        {isGateway ? (
+                                            <a
+                                                href={value}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="px-2 py-0.5 text-[9px] font-medium rounded border transition-colors whitespace-nowrap"
+                                                style={{
+                                                    backgroundColor: `${brandingSettings?.document_primary_color || '#6B7280'}14`,
+                                                    color: brandingSettings?.document_primary_color || '#6B7280',
+                                                    borderColor: `${brandingSettings?.document_primary_color || '#6B7280'}33`
+                                                }}
+                                            >
+                                                Pagar
+                                            </a>
+                                        ) : (
+                                            <button
+                                                className="p-1 hover:bg-gray-200 rounded text-gray-500 hover:text-gray-900 transition-colors flex-shrink-0"
+                                                title="Copiar"
+                                                onClick={() => { if (typeof navigator !== 'undefined') navigator.clipboard.writeText(value) }}
+                                            >
+                                                <span className="sr-only">Copiar</span>
+                                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                                            </button>
+                                        )}
                                     </div>
-                                </div>
-                                <button className="p-1 hover:bg-gray-200 rounded text-gray-500 hover:text-gray-900 transition-colors flex-shrink-0" title="Copiar">
-                                    <span className="sr-only">Copiar</span>
-                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                                </button>
-                            </div>
+                                )
+                            })}
 
-                            {/* PayPal */}
-                            <div className="p-2 rounded-lg bg-gray-50 border border-gray-300 flex items-center justify-between gap-2">
-                                <div className="flex items-center gap-2 min-w-0">
-                                    <img src="/payment-methods/paypal.png" alt="PayPal" className="h-4 w-4 object-contain flex-shrink-0" />
-                                    <div className="min-w-0">
-                                        <p className="text-[10px] font-bold text-gray-900 truncate">Link de pago</p>
-                                    </div>
-                                </div>
-                                <a
-                                    href={settings?.paypal_link || "https://www.paypal.com/paypalme/pixypay"}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="px-2 py-0.5 text-[9px] font-medium rounded border transition-colors whitespace-nowrap"
-                                    style={{
-                                        backgroundColor: `${brandingSettings?.document_primary_color || '#6B7280'}14`,
-                                        color: brandingSettings?.document_primary_color || '#6B7280',
-                                        borderColor: `${brandingSettings?.document_primary_color || '#6B7280'}33`
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        e.currentTarget.style.backgroundColor = `${brandingSettings?.document_primary_color || '#6B7280'}24`
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        e.currentTarget.style.backgroundColor = `${brandingSettings?.document_primary_color || '#6B7280'}14`
-                                    }}
-                                >
-                                    Ir a pagar
-                                </a>
-                            </div>
+                            {/* Legacy Fallbacks */}
+                            {(!settings?.payment_methods || settings.payment_methods.length === 0) && (
+                                <>
+                                    {/* Método: Bancolombia */}
+                                    {settings?.bancolombia_account && (
+                                        <div className="p-2 rounded-lg bg-gray-50 border border-gray-300 flex items-center justify-between gap-2">
+                                            <div className="flex items-center gap-2 min-w-0">
+                                                <img src="/payment-methods/bancolombia.png" alt="Bancolombia" className="h-4 w-4 object-contain flex-shrink-0" />
+                                                <div className="min-w-0">
+                                                    <p className="text-[10px] font-bold text-gray-900 truncate">{settings.bancolombia_account}</p>
+                                                </div>
+                                            </div>
+                                            <button className="p-1 hover:bg-gray-200 rounded text-gray-500 hover:text-gray-900 transition-colors flex-shrink-0" title="Copiar">
+                                                <span className="sr-only">Copiar</span>
+                                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                                            </button>
+                                        </div>
+                                    )}
 
-                            {/* Wompi */}
-                            <div className="p-2 rounded-lg bg-gray-50 border border-gray-300 flex items-center justify-between gap-2">
-                                <div className="flex items-center gap-2 min-w-0">
-                                    <img src="/payment-methods/wompi.png" alt="Wompi" className="h-4 w-4 object-contain flex-shrink-0" />
-                                    <div className="min-w-0">
-                                        <p className="text-[10px] font-bold text-gray-900 truncate">Link de pago</p>
-                                    </div>
-                                </div>
-                                <a
-                                    href={settings?.wompi_link || "https://checkout.wompi.co/l/7MP7DT"}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="px-2 py-0.5 text-[9px] font-medium rounded border transition-colors whitespace-nowrap"
-                                    style={{
-                                        backgroundColor: `${brandingSettings?.document_primary_color || '#6B7280'}14`,
-                                        color: brandingSettings?.document_primary_color || '#6B7280',
-                                        borderColor: `${brandingSettings?.document_primary_color || '#6B7280'}33`
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        e.currentTarget.style.backgroundColor = `${brandingSettings?.document_primary_color || '#6B7280'}24`
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        e.currentTarget.style.backgroundColor = `${brandingSettings?.document_primary_color || '#6B7280'}14`
-                                    }}
-                                >
-                                    Ir a pagar
-                                </a>
-                            </div>
+                                    {/* Método: Bre-B */}
+                                    {settings?.bre_b_number && (
+                                        <div className="p-2 rounded-lg bg-gray-50 border border-gray-300 flex items-center justify-between gap-2">
+                                            <div className="flex items-center gap-2 min-w-0">
+                                                <img src="/payment-methods/bre-b.png" alt="Bre-B" className="h-4 w-4 object-contain flex-shrink-0" />
+                                                <div className="min-w-0">
+                                                    <p className="text-[10px] font-bold text-gray-900 truncate">{settings.bre_b_number}</p>
+                                                </div>
+                                            </div>
+                                            <button className="p-1 hover:bg-gray-200 rounded text-gray-500 hover:text-gray-900 transition-colors flex-shrink-0" title="Copiar">
+                                                <span className="sr-only">Copiar</span>
+                                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {/* Método: Nequi */}
+                                    {settings?.nequi_number && (
+                                        <div className="p-2 rounded-lg bg-gray-50 border border-gray-300 flex items-center justify-between gap-2">
+                                            <div className="flex items-center gap-2 min-w-0">
+                                                <img src="/payment-methods/nequi.png" alt="Nequi" className="h-4 w-4 object-contain flex-shrink-0" />
+                                                <div className="min-w-0">
+                                                    <p className="text-[10px] font-bold text-gray-900 truncate">{settings.nequi_number}</p>
+                                                </div>
+                                            </div>
+                                            <button className="p-1 hover:bg-gray-200 rounded text-gray-500 hover:text-gray-900 transition-colors flex-shrink-0" title="Copiar">
+                                                <span className="sr-only">Copiar</span>
+                                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {/* Método: Daviplata */}
+                                    {settings?.daviplata_number && (
+                                        <div className="p-2 rounded-lg bg-gray-50 border border-gray-300 flex items-center justify-between gap-2">
+                                            <div className="flex items-center gap-2 min-w-0">
+                                                <img src="/payment-methods/daviplata.png" alt="Daviplata" className="h-4 w-4 object-contain flex-shrink-0" />
+                                                <div className="min-w-0">
+                                                    <p className="text-[10px] font-bold text-gray-900 truncate">{settings.daviplata_number}</p>
+                                                </div>
+                                            </div>
+                                            <button className="p-1 hover:bg-gray-200 rounded text-gray-500 hover:text-gray-900 transition-colors flex-shrink-0" title="Copiar">
+                                                <span className="sr-only">Copiar</span>
+                                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {/* Método: PayPal */}
+                                    {settings?.paypal_link && (
+                                        <div className="p-2 rounded-lg bg-gray-50 border border-gray-300 flex items-center justify-between gap-2">
+                                            <div className="flex items-center gap-2 min-w-0">
+                                                <img src="/payment-methods/paypal.png" alt="PayPal" className="h-4 w-4 object-contain flex-shrink-0" />
+                                                <div className="min-w-0">
+                                                    <p className="text-[10px] font-bold text-gray-900 truncate">Link de pago</p>
+                                                </div>
+                                            </div>
+                                            <a
+                                                href={settings.paypal_link}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="px-2 py-0.5 text-[9px] font-medium rounded border transition-colors whitespace-nowrap"
+                                                style={{
+                                                    backgroundColor: `${brandingSettings?.document_primary_color || '#6B7280'}14`,
+                                                    color: brandingSettings?.document_primary_color || '#6B7280',
+                                                    borderColor: `${brandingSettings?.document_primary_color || '#6B7280'}33`
+                                                }}
+                                            >
+                                                Ir a pagar
+                                            </a>
+                                        </div>
+                                    )}
+
+                                    {/* Método: Wompi */}
+                                    {settings?.wompi_link && (
+                                        <div className="p-2 rounded-lg bg-gray-50 border border-gray-300 flex items-center justify-between gap-2">
+                                            <div className="flex items-center gap-2 min-w-0">
+                                                <img src="/payment-methods/wompi.png" alt="Wompi" className="h-4 w-4 object-contain flex-shrink-0" />
+                                                <div className="min-w-0">
+                                                    <p className="text-[10px] font-bold text-gray-900 truncate">Link de pago</p>
+                                                </div>
+                                            </div>
+                                            <a
+                                                href={settings.wompi_link}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="px-2 py-0.5 text-[9px] font-medium rounded border transition-colors whitespace-nowrap"
+                                                style={{
+                                                    backgroundColor: `${brandingSettings?.document_primary_color || '#6B7280'}14`,
+                                                    color: brandingSettings?.document_primary_color || '#6B7280',
+                                                    borderColor: `${brandingSettings?.document_primary_color || '#6B7280'}33`
+                                                }}
+                                            >
+                                                Ir a pagar
+                                            </a>
+                                        </div>
+                                    )}
+
+                                </>
+                            )}
                         </div>
                     </div>
 

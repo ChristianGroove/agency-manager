@@ -56,7 +56,8 @@ export async function getSettings() {
         const defaultSettings = {
             organization_id: orgId,
             agency_name: 'My Agency', // Fallback
-            agency_email: user.email || 'contact@example.com',
+            agency_email: null, // intentionally blank to avoid inheriting admin's email
+            agency_website: null,
             agency_currency: 'USD',
             default_language: 'en',
             portal_enabled: true
@@ -435,4 +436,74 @@ export async function getDocumentBrandingDefaults(): Promise<DocumentBrandingSet
         document_header_text_color: '#1F2937', // gray-800
         document_footer_text_color: '#6B7280', // gray-500
     }
+}
+
+/**
+ * Get SAFE settings for public invoice view
+ * Returns only branding, contact info, and payment instructions.
+ * NO API KEYS.
+ */
+export async function getPublicInvoiceSettings(organizationId: string) {
+    // Use Admin client to bypass RLS for public invoice rendering
+    // This allows fetching settings even if the viewer is not a member of the org
+    const { supabaseAdmin } = await import("@/lib/supabase-admin")
+
+    if (!organizationId) return {}
+
+    const { data, error } = await supabaseAdmin
+        .from("organization_settings")
+        .select(`
+            agency_name,
+            agency_email,
+            agency_phone,
+            agency_website,
+            agency_legal_name,
+            
+            legal_text,
+            
+            main_logo_url,
+            main_logo_light_url,
+            portal_logo_url,
+            document_logo_url,
+            document_watermark_url
+        `)
+        .eq('organization_id', organizationId)
+        .maybeSingle()
+
+    // Cast data to any to avoid TS errors with missing main_logo_light_url in types
+    const settings = data as any;
+
+    if (error) {
+        console.error("Error fetching public settings:", error)
+        return {}
+    }
+
+    // Fetch active payment methods
+    const { data: paymentMethods } = await supabaseAdmin
+        .from('organization_payment_methods')
+        .select('*')
+        .eq('organization_id', organizationId)
+        .eq('is_active', true)
+        .order('display_order' as any, { ascending: true })
+
+    // Map legacy/missing fields for the template
+    const s = settings as any;
+    // @ts-ignore
+    return {
+        ...s,
+        // Map legal text
+        invoice_legal_text: s?.legal_text,
+
+        // Intelligent Logo Fallback: Document -> Main Light (Best for white background) -> Main -> Portal
+        agency_logo: s?.document_logo_url || s?.main_logo_light_url || s?.main_logo_url || s?.portal_logo_url,
+        document_logo_url: s?.document_logo_url || s?.main_logo_light_url || s?.main_logo_url || s?.portal_logo_url,
+
+        // Map contact info to "company_" fields expected by template
+        company_name: s?.agency_legal_name || s?.agency_name,
+        company_email: s?.agency_email,
+        company_phone: s?.agency_phone,
+
+        // Payment methods
+        payment_methods: paymentMethods || []
+    } as any || {}
 }
