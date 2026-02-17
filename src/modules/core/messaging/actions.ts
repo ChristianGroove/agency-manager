@@ -90,13 +90,24 @@ export async function sendMessage(conversationId: string, payload: string, id?: 
 
     // Strategy B: Fallback to finding ANY active connection for channel (Legacy/Default)
     if (!connection) {
-        console.log(`[sendMessage] No bound connection, searching default for channel: ${channel}`);
-        const providerKey = (channel === 'messenger' || channel === 'instagram') ? 'meta_business' : (channel === 'evolution' ? 'evolution_api' : 'meta_whatsapp');
+        // console.log(`[sendMessage] No bound connection, searching default for channel: ${channel}`);
+
+        // Define possible provider keys for the channel
+        let providerKeys: string[] = [];
+        if (channel === 'messenger' || channel === 'instagram') {
+            providerKeys = ['meta_business', 'meta_messenger', 'meta_instagram'];
+        } else if (channel === 'evolution') {
+            providerKeys = ['evolution_api'];
+        } else {
+            // WhatsApp: Try standard 'meta_whatsapp' (new) AND 'whatsapp_cloud' (legacy)
+            providerKeys = ['meta_whatsapp', 'whatsapp_cloud'];
+        }
+
         const { data: defaultConn } = await supabase
             .from('integration_connections')
             .select('*')
             .eq('organization_id', conversation.organization_id)
-            .eq('provider_key', providerKey)
+            .in('provider_key', providerKeys)
             .eq('status', 'active')
             .order('created_at', { ascending: false })
             .limit(1)
