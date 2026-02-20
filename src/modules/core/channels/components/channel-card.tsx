@@ -153,7 +153,16 @@ export function ChannelCard({ channel, pipelineStages = [], agents = [], isVirtu
                                     {liveStatus || 'unknown'}
                                 </Badge>
                                 <span className="text-[10px] text-muted-foreground font-mono">
-                                    {(channel.metadata as any)?._virtual_asset_type?.toUpperCase() || channel.provider_key.replace('meta_', '').toUpperCase()}
+                                    {(channel.metadata as any)?._virtual_asset_type?.toUpperCase()
+                                        || ({
+                                            'meta_whatsapp': 'WhatsApp',
+                                            'whatsapp_cloud': 'WhatsApp',
+                                            'evolution_api': 'Evolution',
+                                            'meta_instagram': 'Instagram',
+                                            'meta_business': 'Meta Business',
+                                        } as Record<string, string>)[channel.provider_key]
+                                        || channel.provider_key.replace(/_/g, ' ').toUpperCase()
+                                    }
                                 </span>
                             </div>
                         </div>
@@ -238,7 +247,13 @@ export function ChannelCard({ channel, pipelineStages = [], agents = [], isVirtu
                             </div>
                         ) : (
                             <div className="text-xs text-muted-foreground space-y-2">
-                                <div>Provider: <span className="font-medium text-gray-900">{channel.provider_key.replace(/_/g, ' ').toUpperCase()}</span></div>
+                                <div>Provider: <span className="font-medium text-gray-900">{({
+                                    'meta_whatsapp': 'WhatsApp',
+                                    'whatsapp_cloud': 'WhatsApp',
+                                    'evolution_api': 'Evolution API',
+                                    'meta_instagram': 'Instagram',
+                                    'meta_business': 'Meta Business',
+                                } as Record<string, string>)[channel.provider_key] || channel.provider_key}</span></div>
                                 {(channel.metadata as any)?.display_phone_number && (
                                     <div>Phone: {(channel.metadata as any).display_phone_number}</div>
                                 )}

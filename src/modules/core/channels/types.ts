@@ -3,7 +3,7 @@ export type ChannelStatus = 'active' | 'disconnected' | 'error' | 'expired' | 'c
 export interface Channel {
     id: string
     organization_id: string
-    provider_key: 'meta_whatsapp' | 'evolution_api' | 'meta_instagram' | 'meta_business'
+    provider_key: 'meta_whatsapp' | 'whatsapp_cloud' | 'evolution_api' | 'meta_instagram' | 'meta_business'
     connection_name: string
     status: ChannelStatus
     credentials: Record<string, any>
