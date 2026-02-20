@@ -3,9 +3,10 @@
 import { Channel } from "../types"
 import { PipelineStage } from "@/modules/core/crm/pipeline-actions"
 import { Button } from "@/components/ui/button"
-import { Save, Loader2, Link2, Phone, Eye, EyeOff, RefreshCw } from "lucide-react"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+    Save, Loader2, Phone, Eye, EyeOff, RefreshCw,
+    Clock, Users, MessageSquare, Settings2, Star
+} from "lucide-react"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -13,10 +14,9 @@ import { useState, useEffect } from "react"
 import { updateChannel } from "../actions"
 import { toast } from "sonner"
 import { Switch } from "@/components/ui/switch"
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetTitle, SheetDescription } from "@/components/ui/sheet"
 import { getChannelAssignmentRule, upsertAssignmentRule, deleteAssignmentRule } from "@/modules/core/messaging/assignment-actions"
 import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
 
 interface EditChannelSheetProps {
     open: boolean
@@ -24,6 +24,32 @@ interface EditChannelSheetProps {
     channel: Channel
     pipelineStages: PipelineStage[]
     agents: any[]
+}
+
+// Section header component for visual consistency
+function SectionTitle({ icon: Icon, title, badge }: { icon: any, title: string, badge?: React.ReactNode }) {
+    return (
+        <div className="flex items-center justify-between pt-1 pb-2">
+            <div className="flex items-center gap-2 text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                <Icon className="h-4 w-4" />
+                {title}
+            </div>
+            {badge}
+        </div>
+    )
+}
+
+// Compact row for toggle-style settings
+function SettingRow({ label, description, children }: { label: string, description?: string, children: React.ReactNode }) {
+    return (
+        <div className="flex items-center justify-between py-3 gap-4">
+            <div className="min-w-0">
+                <Label className="text-sm font-medium">{label}</Label>
+                {description && <p className="text-xs text-muted-foreground mt-0.5">{description}</p>}
+            </div>
+            <div className="shrink-0">{children}</div>
+        </div>
+    )
 }
 
 export function EditChannelSheet({ open, onOpenChange, channel, pipelineStages, agents }: EditChannelSheetProps) {
@@ -56,30 +82,20 @@ export function EditChannelSheet({ open, onOpenChange, channel, pipelineStages, 
 
     const isWhatsApp = channel.provider_key === 'meta_whatsapp' || channel.provider_key === 'whatsapp_cloud'
 
-    // Fetch Routing Rule on Open
     useEffect(() => {
         if (open) {
             setIsFetchingRule(true)
             getChannelAssignmentRule(channel.id)
                 .then(rule => {
-                    if (rule) {
-                        setAssignmentRule(rule)
-                        setInitialRuleId(rule.id)
-                    } else {
-                        setAssignmentRule(null)
-                        setInitialRuleId(null)
-                    }
+                    if (rule) { setAssignmentRule(rule); setInitialRuleId(rule.id) }
+                    else { setAssignmentRule(null); setInitialRuleId(null) }
                 })
                 .finally(() => setIsFetchingRule(false))
 
-            // Fetch calling status for WhatsApp channels
-            if (isWhatsApp) {
-                loadCallingStatus()
-            }
+            if (isWhatsApp) loadCallingStatus()
         }
     }, [open, channel.id])
 
-    // Load calling status from Meta
     async function loadCallingStatus() {
         setCallingLoading(true)
         try {
@@ -88,69 +104,45 @@ export function EditChannelSheet({ open, onOpenChange, channel, pipelineStages, 
             setCallingEnabled(data.enabled ?? false)
             setIconVisibility(data.iconVisibility ?? 'HIDE')
             setCallingStatusSource(data.source ?? 'unknown')
-        } catch (err) {
-            console.error('Failed to load calling status:', err)
-            setCallingStatusSource('error')
-        } finally {
-            setCallingLoading(false)
-        }
+        } catch { setCallingStatusSource('error') }
+        finally { setCallingLoading(false) }
     }
 
-    // Toggle calling API
     async function handleToggleCalling(enabled: boolean) {
         setCallingLoading(true)
         try {
             const res = await fetch('/api/meta/calling', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: 'toggle', enabled })
             })
             const data = await res.json()
-            if (!res.ok) throw new Error(data.error || 'Failed to update')
-
+            if (!res.ok) throw new Error(data.error || 'Failed')
             setCallingEnabled(enabled)
-            if (enabled && iconVisibility === 'HIDE') {
-                setIconVisibility('DEFAULT')
-            }
-
-            toast.success(enabled ? 'Calling API activado' : 'Calling API desactivado', {
-                description: 'Confirmación recibida de Meta Graph API'
-            })
-        } catch (error: any) {
-            toast.error('Error de Meta API', { description: error.message })
+            if (enabled && iconVisibility === 'HIDE') setIconVisibility('DEFAULT')
+            toast.success(enabled ? 'Calling activado' : 'Calling desactivado', { description: 'Confirmación de Meta Graph API' })
+        } catch (e: any) {
+            toast.error('Error Meta API', { description: e.message })
             setCallingEnabled(!enabled)
-        } finally {
-            setCallingLoading(false)
-        }
+        } finally { setCallingLoading(false) }
     }
 
-    // Toggle icon visibility
     async function handleIconVisibility(visibility: 'DEFAULT' | 'HIDE') {
         if (!callingEnabled && visibility === 'DEFAULT') {
-            toast.error('Activa Calling primero', { description: 'No puedes mostrar el ícono sin activar las llamadas.' })
+            toast.error('Activa Calling primero')
             return
         }
         setCallingLoading(true)
         try {
             const res = await fetch('/api/meta/calling', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: 'icon', visibility })
             })
             const data = await res.json()
-            if (!res.ok) throw new Error(data.error || 'Failed to update')
-
+            if (!res.ok) throw new Error(data.error || 'Failed')
             setIconVisibility(visibility)
-            toast.success('Visibilidad actualizada', {
-                description: visibility === 'DEFAULT'
-                    ? 'El ícono de llamada es visible para los usuarios'
-                    : 'El ícono de llamada está oculto'
-            })
-        } catch (error: any) {
-            toast.error('Error', { description: error.message })
-        } finally {
-            setCallingLoading(false)
-        }
+            toast.success(visibility === 'DEFAULT' ? 'Ícono visible' : 'Ícono oculto')
+        } catch (e: any) { toast.error('Error', { description: e.message }) }
+        finally { setCallingLoading(false) }
     }
 
     const handleSave = async () => {
@@ -164,23 +156,16 @@ export function EditChannelSheet({ open, onOpenChange, channel, pipelineStages, 
                 welcome_message: welcomeMessage,
                 working_hours: workingHours,
             })
-
             if (assignmentRule) {
-                await upsertAssignmentRule({
-                    ...assignmentRule,
-                    conditions: { connection_id: [channel.id] }
-                })
+                await upsertAssignmentRule({ ...assignmentRule, conditions: { connection_id: [channel.id] } })
             } else if (initialRuleId && !assignmentRule) {
                 await deleteAssignmentRule(initialRuleId)
             }
-
-            toast.success("Guardado", { description: "Configuración del canal actualizada." })
+            toast.success("Guardado", { description: "Configuración actualizada." })
             onOpenChange(false)
         } catch (error: any) {
             toast.error("Error", { description: error.message || "No se pudo guardar." })
-        } finally {
-            setIsLoading(false)
-        }
+        } finally { setIsLoading(false) }
     }
 
     const timezones = [
@@ -191,380 +176,271 @@ export function EditChannelSheet({ open, onOpenChange, channel, pipelineStages, 
         { value: 'Europe/Madrid', label: 'España (GMT+1)' },
     ]
 
+    const providerLabel = ({
+        'meta_whatsapp': 'WhatsApp', 'whatsapp_cloud': 'WhatsApp',
+        'evolution_api': 'Evolution', 'meta_instagram': 'Instagram', 'meta_business': 'Meta Business',
+    } as Record<string, string>)[channel.provider_key] || channel.provider_key
+
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
             <SheetContent
                 side="right"
                 className="
-                    sm:max-w-3xl w-full p-0 gap-0 border-none shadow-2xl
+                    sm:max-w-xl w-full p-0 gap-0 border-none shadow-2xl
                     mr-4 my-4 h-[calc(100vh-2rem)] rounded-3xl overflow-hidden
                     data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:mr-6
                     bg-transparent
                 "
             >
                 <div className="flex flex-col h-full bg-white/95 dark:bg-gray-950/95 backdrop-blur-xl">
-                    {/* Header Fixed */}
-                    <div className="sticky top-0 z-20 flex items-center justify-between shrink-0 px-8 py-5 bg-white/40 dark:bg-gray-950/40 backdrop-blur-md border-b border-black/5 dark:border-white/5">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg text-blue-700 dark:text-blue-400">
-                                <Link2 className="h-5 w-5" />
-                            </div>
+                    {/* Header */}
+                    <div className="sticky top-0 z-20 shrink-0 px-6 py-4 bg-white/60 dark:bg-gray-950/60 backdrop-blur-md border-b border-black/5 dark:border-white/5">
+                        <div className="flex items-center justify-between">
                             <div>
-                                <SheetTitle className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">Configuración de Canal</SheetTitle>
-                                <SheetDescription>
+                                <SheetTitle className="text-lg font-bold text-gray-900 dark:text-white tracking-tight">
                                     {channel.connection_name}
+                                </SheetTitle>
+                                <SheetDescription className="text-xs">
+                                    {providerLabel} · {(channel.metadata as any)?.display_phone_number || channel.provider_key}
                                 </SheetDescription>
                             </div>
+                            <Button
+                                onClick={handleSave}
+                                disabled={isLoading || isFetchingRule}
+                                size="sm"
+                                className="bg-black dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-200 rounded-xl shadow-lg shadow-black/10"
+                            >
+                                {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                                <span className="ml-1.5">Guardar</span>
+                            </Button>
                         </div>
-                        <Button onClick={handleSave} disabled={isLoading || isFetchingRule} className="bg-black dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-200 rounded-xl shadow-lg shadow-black/10">
-                            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            <Save className="mr-2 h-4 w-4" /> Guardar
-                        </Button>
                     </div>
 
-                    {/* Scrollable Content */}
-                    <div className="flex-1 overflow-y-auto p-8 relative scrollbar-thin scrollbar-thumb-gray-200">
-                        <Tabs defaultValue="general" className="space-y-6">
-                            <TabsList className="bg-white dark:bg-gray-900 border w-full justify-start p-1 h-auto flex-wrap">
-                                <TabsTrigger value="general">General</TabsTrigger>
-                                {isWhatsApp && (
-                                    <TabsTrigger value="whatsapp" className="data-[state=active]:text-green-600">
-                                        <Phone className="h-3.5 w-3.5 mr-1.5" />
-                                        WhatsApp
-                                    </TabsTrigger>
-                                )}
-                                <TabsTrigger value="routing">Asignación</TabsTrigger>
-                                <TabsTrigger value="automation">Automatización</TabsTrigger>
-                            </TabsList>
+                    {/* Single scrollable view */}
+                    <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200">
+                        <div className="px-6 py-5 space-y-1">
 
-                            {/* --- GENERAL --- */}
-                            <TabsContent value="general">
-                                <Card>
-                                    <CardHeader>
-                                        <CardTitle>Básico</CardTitle>
-                                    </CardHeader>
-                                    <CardContent className="space-y-4">
-                                        <div className="grid gap-2">
-                                            <Label>Nombre de la Conexión</Label>
-                                            <Input value={name} onChange={e => setName(e.target.value)} />
-                                        </div>
-                                        <div className="flex items-center justify-between rounded-lg border p-4 bg-white dark:bg-gray-900">
-                                            <div className="space-y-0.5">
-                                                <Label className="text-base">Canal Principal</Label>
-                                                <p className="text-sm text-muted-foreground">
-                                                    Usar este canal por defecto para mensajes salientes.
-                                                </p>
-                                            </div>
-                                            <Switch checked={isPrimary} onCheckedChange={setIsPrimary} />
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            </TabsContent>
-
-                            {/* --- WHATSAPP FEATURES (Calling API) --- */}
+                            {/* ═══════ WHATSAPP — CALLING API (first if applicable) ═══════ */}
                             {isWhatsApp && (
-                                <TabsContent value="whatsapp">
-                                    <div className="space-y-6">
-                                        {/* Calling API Controls */}
-                                        <Card className="border-green-200 dark:border-green-900 shadow-sm">
-                                            <CardHeader className="bg-green-50/50 dark:bg-green-950/20">
-                                                <div className="flex items-center justify-between">
-                                                    <div>
-                                                        <CardTitle className="flex items-center gap-2 text-green-700 dark:text-green-400">
-                                                            <Phone className="h-5 w-5" />
-                                                            Calling API
-                                                        </CardTitle>
-                                                        <CardDescription className="mt-1">
-                                                            Controla las llamadas de voz vía WhatsApp Business
-                                                        </CardDescription>
-                                                    </div>
-                                                    <Badge
-                                                        variant={callingEnabled ? "default" : "secondary"}
-                                                        className={callingEnabled ? "bg-green-600 hover:bg-green-700" : ""}
-                                                    >
-                                                        {callingLoading ? (
-                                                            <Loader2 className="h-3 w-3 animate-spin" />
-                                                        ) : callingEnabled ? 'Activo' : 'Inactivo'}
-                                                    </Badge>
-                                                </div>
-                                            </CardHeader>
-                                            <CardContent className="space-y-5 pt-6">
-                                                {/* Enable/Disable Toggle */}
-                                                <div className="flex items-center justify-between p-4 rounded-lg border bg-white dark:bg-gray-900">
-                                                    <div className="space-y-0.5">
-                                                        <Label className="text-base font-semibold">
-                                                            Llamadas de Voz
-                                                        </Label>
-                                                        <p className="text-sm text-muted-foreground">
-                                                            Permite recibir y realizar llamadas por WhatsApp
-                                                        </p>
-                                                    </div>
-                                                    <Switch
-                                                        checked={callingEnabled}
-                                                        onCheckedChange={handleToggleCalling}
-                                                        disabled={callingLoading}
-                                                    />
-                                                </div>
-
-                                                <Separator />
-
-                                                {/* Icon Visibility */}
-                                                <div className="flex items-center justify-between p-4 rounded-lg border bg-white dark:bg-gray-900">
-                                                    <div className="space-y-0.5">
-                                                        <Label className="text-base font-semibold">
-                                                            Ícono de Llamada
-                                                        </Label>
-                                                        <p className="text-sm text-muted-foreground">
-                                                            Muestra u oculta el botón de llamar en el chat de WhatsApp
-                                                        </p>
-                                                    </div>
-                                                    <Select
-                                                        value={iconVisibility}
-                                                        onValueChange={(v) => handleIconVisibility(v as 'DEFAULT' | 'HIDE')}
-                                                        disabled={callingLoading || !callingEnabled}
-                                                    >
-                                                        <SelectTrigger className="w-36">
-                                                            <SelectValue />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value="DEFAULT">
-                                                                <div className="flex items-center gap-2">
-                                                                    <Eye className="w-4 h-4" />
-                                                                    Visible
-                                                                </div>
-                                                            </SelectItem>
-                                                            <SelectItem value="HIDE">
-                                                                <div className="flex items-center gap-2">
-                                                                    <EyeOff className="w-4 h-4" />
-                                                                    Oculto
-                                                                </div>
-                                                            </SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-                                                </div>
-
-                                                {/* Status Info */}
-                                                {callingLoading && (
-                                                    <div className="flex items-center gap-2 text-sm text-muted-foreground px-1">
-                                                        <Loader2 className="w-4 h-4 animate-spin" />
-                                                        Sincronizando con Meta...
-                                                    </div>
-                                                )}
-
-                                                {/* Refresh */}
-                                                <div className="flex items-center justify-between pt-2">
-                                                    <span className="text-xs text-muted-foreground">
-                                                        {callingStatusSource === 'meta' && 'Estado sincronizado con Meta'}
-                                                        {callingStatusSource === 'default' && 'Configuración predeterminada'}
-                                                        {callingStatusSource === 'error' && 'No se pudo verificar el estado'}
-                                                        {callingStatusSource === 'loading' && 'Cargando...'}
-                                                    </span>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        onClick={loadCallingStatus}
-                                                        disabled={callingLoading}
-                                                    >
-                                                        <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
-                                                        Verificar
-                                                    </Button>
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-
-                                        {/* Info Card */}
-                                        <Card className="bg-blue-50/50 dark:bg-blue-950/10 border-blue-100 dark:border-blue-900/50">
-                                            <CardContent className="pt-5 text-sm text-blue-700 dark:text-blue-400 space-y-2">
-                                                <p>
-                                                    <strong>¿Cómo funciona?</strong> Cuando activas Calling, los usuarios de WhatsApp podrán llamar a tu número de negocio.
-                                                </p>
-                                                <p>
-                                                    <strong>Ícono de llamada:</strong> El modo &quot;Visible&quot; muestra un botón de llamar en la cabecera del chat. Los cambios se aplican inmediatamente en WhatsApp.
-                                                </p>
-                                            </CardContent>
-                                        </Card>
+                                <>
+                                    <SectionTitle
+                                        icon={Phone}
+                                        title="Llamadas WhatsApp"
+                                        badge={
+                                            <Badge
+                                                variant={callingEnabled ? "default" : "secondary"}
+                                                className={`text-[10px] ${callingEnabled ? "bg-green-600" : ""}`}
+                                            >
+                                                {callingLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : callingEnabled ? 'ON' : 'OFF'}
+                                            </Badge>
+                                        }
+                                    />
+                                    <div className="rounded-xl border bg-white/50 dark:bg-white/5 px-4 divide-y divide-gray-100 dark:divide-white/5">
+                                        <SettingRow label="Llamadas de Voz" description="Activar llamadas por WhatsApp Business">
+                                            <Switch
+                                                checked={callingEnabled}
+                                                onCheckedChange={handleToggleCalling}
+                                                disabled={callingLoading}
+                                            />
+                                        </SettingRow>
+                                        <SettingRow label="Ícono de Llamada" description="Botón visible en el chat del usuario">
+                                            <Select
+                                                value={iconVisibility}
+                                                onValueChange={(v) => handleIconVisibility(v as 'DEFAULT' | 'HIDE')}
+                                                disabled={callingLoading || !callingEnabled}
+                                            >
+                                                <SelectTrigger className="w-28 h-8 text-xs">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="DEFAULT">
+                                                        <span className="flex items-center gap-1.5"><Eye className="w-3 h-3" />Visible</span>
+                                                    </SelectItem>
+                                                    <SelectItem value="HIDE">
+                                                        <span className="flex items-center gap-1.5"><EyeOff className="w-3 h-3" />Oculto</span>
+                                                    </SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </SettingRow>
                                     </div>
-                                </TabsContent>
+                                    <div className="flex items-center justify-between px-1 pt-1 pb-3">
+                                        <span className="text-[10px] text-muted-foreground">
+                                            {callingStatusSource === 'meta' && '✓ Sincronizado con Meta'}
+                                            {callingStatusSource === 'default' && '○ Config predeterminada'}
+                                            {callingStatusSource === 'error' && '⚠ Sin conexión a Meta'}
+                                            {callingStatusSource === 'loading' && '...'}
+                                        </span>
+                                        <Button variant="ghost" size="sm" onClick={loadCallingStatus} disabled={callingLoading} className="h-6 text-[10px] px-2">
+                                            <RefreshCw className="h-3 w-3 mr-1" />Verificar
+                                        </Button>
+                                    </div>
+
+                                    <div className="border-b border-gray-100 dark:border-white/5" />
+                                </>
                             )}
 
-                            {/* --- ROUTING --- */}
-                            <TabsContent value="routing">
-                                <Card>
-                                    <CardHeader>
-                                        <div className="flex justify-between items-start">
-                                            <div>
-                                                <CardTitle>Reglas de Asignación</CardTitle>
-                                                <CardDescription>¿Quién debe atender los chats de este canal?</CardDescription>
-                                            </div>
-                                            {isFetchingRule && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
-                                        </div>
-                                    </CardHeader>
-                                    <CardContent className="space-y-6">
-                                        <div className="flex items-center justify-between rounded-lg border p-4">
-                                            <div className="space-y-0.5">
-                                                <Label className="text-base">Asignación Personalizada</Label>
-                                                <p className="text-sm text-muted-foreground">
-                                                    Sobrescribir reglas generales para este canal.
-                                                </p>
-                                            </div>
-                                            <Switch
-                                                checked={!!assignmentRule}
-                                                onCheckedChange={(checked) => {
-                                                    if (checked && !assignmentRule) {
-                                                        setAssignmentRule({
-                                                            name: `Rule for ${channel.connection_name}`,
-                                                            priority: 10,
-                                                            conditions: { connection_id: [channel.id] },
-                                                            strategy: 'round-robin',
-                                                            assign_to: [],
-                                                            is_active: true
-                                                        } as any)
-                                                    } else if (!checked) {
-                                                        setAssignmentRule(null)
-                                                    }
-                                                }}
-                                            />
+                            {/* ═══════ GENERAL ═══════ */}
+                            <SectionTitle icon={Settings2} title="General" />
+                            <div className="rounded-xl border bg-white/50 dark:bg-white/5 px-4 divide-y divide-gray-100 dark:divide-white/5">
+                                <div className="py-3 space-y-1.5">
+                                    <Label className="text-xs text-muted-foreground">Nombre de la Conexión</Label>
+                                    <Input
+                                        value={name}
+                                        onChange={e => setName(e.target.value)}
+                                        className="h-8 text-sm"
+                                    />
+                                </div>
+                                <SettingRow label="Canal Principal" description="Usar por defecto para mensajes salientes">
+                                    <Switch checked={isPrimary} onCheckedChange={setIsPrimary} />
+                                </SettingRow>
+                                <div className="py-3 space-y-1.5">
+                                    <Label className="text-xs text-muted-foreground">Etapa Inicial del Pipeline</Label>
+                                    <Select value={pipelineStageId || "none"} onValueChange={setPipelineStageId}>
+                                        <SelectTrigger className="h-8 text-sm">
+                                            <SelectValue placeholder="Seleccionar" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="none">Desactivado</SelectItem>
+                                            {pipelineStages.map(stage => (
+                                                <SelectItem key={stage.id} value={stage.id}>{stage.name}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+
+                            <div className="border-b border-gray-100 dark:border-white/5 my-1" />
+
+                            {/* ═══════ MENSAJES Y HORARIO ═══════ */}
+                            <SectionTitle icon={MessageSquare} title="Mensajes Automáticos" />
+                            <div className="rounded-xl border bg-white/50 dark:bg-white/5 px-4 divide-y divide-gray-100 dark:divide-white/5">
+                                <div className="py-3 space-y-1.5">
+                                    <Label className="text-xs text-muted-foreground">Mensaje de Bienvenida</Label>
+                                    <Input
+                                        value={welcomeMessage}
+                                        onChange={e => setWelcomeMessage(e.target.value)}
+                                        placeholder="¡Hola! Gracias por escribirnos..."
+                                        className="h-8 text-sm"
+                                    />
+                                </div>
+                                <div className="py-3 space-y-1.5">
+                                    <Label className="text-xs text-muted-foreground">Respuesta Fuera de Horario</Label>
+                                    <Input
+                                        value={autoReply}
+                                        onChange={e => setAutoReply(e.target.value)}
+                                        placeholder="Estamos cerrados, te contactamos mañana."
+                                        className="h-8 text-sm"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="border-b border-gray-100 dark:border-white/5 my-1" />
+
+                            {/* ═══════ HORARIO ═══════ */}
+                            <SectionTitle icon={Clock} title="Horario de Atención" />
+                            <div className="rounded-xl border bg-white/50 dark:bg-white/5 px-4 py-3 space-y-3">
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="space-y-1">
+                                        <Label className="text-xs text-muted-foreground">Inicio</Label>
+                                        <Input type="time" value={workingHours.start} onChange={e => setWorkingHours({ ...workingHours, start: e.target.value })} className="h-8 text-sm" />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label className="text-xs text-muted-foreground">Fin</Label>
+                                        <Input type="time" value={workingHours.end} onChange={e => setWorkingHours({ ...workingHours, end: e.target.value })} className="h-8 text-sm" />
+                                    </div>
+                                </div>
+                                <div className="space-y-1">
+                                    <Label className="text-xs text-muted-foreground">Zona Horaria</Label>
+                                    <Select value={workingHours.timezone || 'America/Bogota'} onValueChange={tz => setWorkingHours({ ...workingHours, timezone: tz })}>
+                                        <SelectTrigger className="h-8 text-sm">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {timezones.map(tz => (
+                                                <SelectItem key={tz.value} value={tz.value}>{tz.label}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+
+                            <div className="border-b border-gray-100 dark:border-white/5 my-1" />
+
+                            {/* ═══════ ASIGNACIÓN ═══════ */}
+                            <SectionTitle
+                                icon={Users}
+                                title="Asignación de Agentes"
+                                badge={isFetchingRule ? <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" /> : undefined}
+                            />
+                            <div className="rounded-xl border bg-white/50 dark:bg-white/5 px-4 divide-y divide-gray-100 dark:divide-white/5">
+                                <SettingRow label="Regla Personalizada" description="Sobrescribir asignación general para este canal">
+                                    <Switch
+                                        checked={!!assignmentRule}
+                                        onCheckedChange={(checked) => {
+                                            if (checked && !assignmentRule) {
+                                                setAssignmentRule({
+                                                    name: `Rule for ${channel.connection_name}`,
+                                                    priority: 10,
+                                                    conditions: { connection_id: [channel.id] },
+                                                    strategy: 'round-robin',
+                                                    assign_to: [],
+                                                    is_active: true
+                                                } as any)
+                                            } else if (!checked) {
+                                                setAssignmentRule(null)
+                                            }
+                                        }}
+                                    />
+                                </SettingRow>
+
+                                {assignmentRule && (
+                                    <div className="py-3 space-y-3 animate-in slide-in-from-top-2 duration-200">
+                                        <div className="space-y-1">
+                                            <Label className="text-xs text-muted-foreground">Estrategia</Label>
+                                            <Select value={assignmentRule.strategy} onValueChange={(val) => setAssignmentRule({ ...assignmentRule, strategy: val })}>
+                                                <SelectTrigger className="h-8 text-sm">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="round-robin">Round Robin</SelectItem>
+                                                    <SelectItem value="specific-agent">Agentes Específicos</SelectItem>
+                                                </SelectContent>
+                                            </Select>
                                         </div>
 
-                                        {assignmentRule && (
-                                            <div className="space-y-4 border-l-2 border-primary/20 pl-4 animate-in slide-in-from-left-2">
-                                                <div className="grid gap-2">
-                                                    <Label>Estrategia</Label>
-                                                    <Select
-                                                        value={assignmentRule.strategy}
-                                                        onValueChange={(val) => setAssignmentRule({ ...assignmentRule, strategy: val })}
-                                                    >
-                                                        <SelectTrigger className="bg-white dark:bg-gray-900">
-                                                            <SelectValue />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value="round-robin">Round Robin (Equitativo)</SelectItem>
-                                                            <SelectItem value="specific-agent">Agentes Específicos</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-                                                </div>
-
-                                                {assignmentRule.strategy === 'specific-agent' && (
-                                                    <div className="grid gap-2">
-                                                        <Label>Seleccionar Agentes</Label>
-                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto border rounded-md p-2 bg-white dark:bg-gray-900">
-                                                            {agents.map(agent => (
-                                                                <div key={agent.user.id} className="flex items-center space-x-2 p-1 hover:bg-slate-50 dark:hover:bg-gray-800 rounded">
-                                                                    <Switch
-                                                                        id={agent.user.id}
-                                                                        checked={assignmentRule.assign_to?.includes(agent.user.id)}
-                                                                        onCheckedChange={(checked) => {
-                                                                            const current = assignmentRule.assign_to || []
-                                                                            const updated = checked
-                                                                                ? [...current, agent.user.id]
-                                                                                : current.filter((id: string) => id !== agent.user.id)
-                                                                            setAssignmentRule({ ...assignmentRule, assign_to: updated })
-                                                                        }}
-                                                                    />
-                                                                    <Label htmlFor={agent.user.id} className="text-sm font-normal cursor-pointer w-full">
-                                                                        {agent.user.full_name || agent.user.email}
-                                                                    </Label>
-                                                                </div>
-                                                            ))}
+                                        {assignmentRule.strategy === 'specific-agent' && (
+                                            <div className="space-y-1">
+                                                <Label className="text-xs text-muted-foreground">Agentes</Label>
+                                                <div className="grid grid-cols-1 gap-1 max-h-36 overflow-y-auto">
+                                                    {agents.map(agent => (
+                                                        <div key={agent.user.id} className="flex items-center gap-2 py-1 px-1 hover:bg-gray-50 dark:hover:bg-white/5 rounded">
+                                                            <Switch
+                                                                id={agent.user.id}
+                                                                checked={assignmentRule.assign_to?.includes(agent.user.id)}
+                                                                onCheckedChange={(checked) => {
+                                                                    const current = assignmentRule.assign_to || []
+                                                                    const updated = checked
+                                                                        ? [...current, agent.user.id]
+                                                                        : current.filter((id: string) => id !== agent.user.id)
+                                                                    setAssignmentRule({ ...assignmentRule, assign_to: updated })
+                                                                }}
+                                                                className="scale-75"
+                                                            />
+                                                            <Label htmlFor={agent.user.id} className="text-xs font-normal cursor-pointer">
+                                                                {agent.user.full_name || agent.user.email}
+                                                            </Label>
                                                         </div>
-                                                    </div>
-                                                )}
+                                                    ))}
+                                                </div>
                                             </div>
                                         )}
-                                    </CardContent>
-                                </Card>
-                            </TabsContent>
+                                    </div>
+                                )}
+                            </div>
 
-                            {/* --- AUTOMATION --- */}
-                            <TabsContent value="automation">
-                                <div className="grid gap-6">
-                                    <Card>
-                                        <CardHeader>
-                                            <CardTitle>Entrada al CRM</CardTitle>
-                                        </CardHeader>
-                                        <CardContent className="space-y-4">
-                                            <div className="space-y-2">
-                                                <Label>Etapa Inicial del Pipeline</Label>
-                                                <Select value={pipelineStageId || "none"} onValueChange={setPipelineStageId}>
-                                                    <SelectTrigger>
-                                                        <SelectValue placeholder="Select a stage" />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="none">Desactivado</SelectItem>
-                                                        {pipelineStages.map(stage => (
-                                                            <SelectItem key={stage.id} value={stage.id}>
-                                                                {stage.name}
-                                                            </SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                                <p className="text-xs text-muted-foreground">
-                                                    Los nuevos leads entrarán automáticamente aquí.
-                                                </p>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-
-                                    <Card>
-                                        <CardHeader>
-                                            <CardTitle>Respuestas Automáticas</CardTitle>
-                                        </CardHeader>
-                                        <CardContent className="space-y-4">
-                                            <div className="space-y-2">
-                                                <Label>Mensaje de Bienvenida</Label>
-                                                <Input
-                                                    value={welcomeMessage}
-                                                    onChange={e => setWelcomeMessage(e.target.value)}
-                                                    placeholder="Ej: ¡Hola! Gracias por escribirnos..."
-                                                />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label>Respuesta de Fuera de Horario</Label>
-                                                <Input
-                                                    value={autoReply}
-                                                    onChange={e => setAutoReply(e.target.value)}
-                                                    placeholder="Ej: Estamos cerrados, te contactamos mañana."
-                                                />
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-
-                                    <Card>
-                                        <CardHeader>
-                                            <CardTitle>Horario de Atención</CardTitle>
-                                        </CardHeader>
-                                        <CardContent className="space-y-4">
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div className="space-y-2">
-                                                    <Label>Inicio</Label>
-                                                    <Input type="time" value={workingHours.start} onChange={e => setWorkingHours({ ...workingHours, start: e.target.value })} />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <Label>Fin</Label>
-                                                    <Input type="time" value={workingHours.end} onChange={e => setWorkingHours({ ...workingHours, end: e.target.value })} />
-                                                </div>
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label>Timezone</Label>
-                                                <Select
-                                                    value={workingHours.timezone || 'America/Bogota'}
-                                                    onValueChange={tz => setWorkingHours({ ...workingHours, timezone: tz })}
-                                                >
-                                                    <SelectTrigger>
-                                                        <SelectValue />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        {timezones.map(tz => (
-                                                            <SelectItem key={tz.value} value={tz.value}>{tz.label}</SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                </div>
-                            </TabsContent>
-                        </Tabs>
+                            {/* Bottom spacing */}
+                            <div className="h-4" />
+                        </div>
                     </div>
                 </div>
             </SheetContent>
