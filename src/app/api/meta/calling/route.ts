@@ -2,12 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase-server'
 import { getCurrentOrganizationId } from '@/modules/core/organizations/actions'
 
-const META_API_VERSION = 'v24.0'
+const META_API_VERSION = 'v22.0'
 const META_GRAPH_URL = 'https://graph.facebook.com'
 
 /**
  * Resolves Meta credentials from the active WhatsApp connection
- * Same pattern as resolveMetaCredentials in template-actions.ts
  */
 async function resolveCallingCredentials() {
     const orgId = await getCurrentOrganizationId()
@@ -57,14 +56,16 @@ async function resolveCallingCredentials() {
 
 /**
  * GET /api/meta/calling
- * Fetches the current calling status from Meta Graph API
+ * Fetches the current calling/settings status from Meta Graph API
+ * Uses: GET /{phone-number-id}?fields=is_calling_enabled
  */
 export async function GET() {
     try {
         const { accessToken, phoneNumberId } = await resolveCallingCredentials()
 
+        // Query the phone number node to get calling fields
         const response = await fetch(
-            `${META_GRAPH_URL}/${META_API_VERSION}/${phoneNumberId}/whatsapp_business_calling_settings`,
+            `${META_GRAPH_URL}/${META_API_VERSION}/${phoneNumberId}?fields=id,display_phone_number,is_calling_enabled`,
             {
                 headers: { 'Authorization': `Bearer ${accessToken}` },
                 cache: 'no-store'
@@ -73,15 +74,18 @@ export async function GET() {
 
         if (!response.ok) {
             const errData = await response.json().catch(() => ({}))
-            // If 400 or the endpoint doesn't exist yet, return defaults
+            console.error('[Calling GET] Meta API error:', errData)
+
+            // If the field doesn't exist yet or permission issue, return defaults
             if (response.status === 400 || response.status === 404) {
                 return NextResponse.json({
                     enabled: false,
                     iconVisibility: 'HIDE',
-                    source: 'default'
+                    source: 'default',
+                    note: 'Calling API may not be available for this phone number'
                 })
             }
-            console.error('[Calling GET] Meta API error:', errData)
+
             return NextResponse.json({
                 enabled: false,
                 iconVisibility: 'HIDE',
@@ -91,10 +95,13 @@ export async function GET() {
         }
 
         const data = await response.json()
+        console.log('[Calling GET] Phone number data:', JSON.stringify(data))
 
         return NextResponse.json({
-            enabled: data.voice_status === 'ENABLED' || data.status === 'ENABLED',
-            iconVisibility: data.call_icon_visibility || 'HIDE',
+            enabled: data.is_calling_enabled === true,
+            iconVisibility: data.is_calling_enabled ? 'DEFAULT' : 'HIDE',
+            phoneNumberId: data.id,
+            displayPhone: data.display_phone_number,
             source: 'meta'
         })
     } catch (error: any) {
@@ -108,10 +115,12 @@ export async function GET() {
 
 /**
  * POST /api/meta/calling
- * Toggles calling status or icon visibility
+ * Toggles calling via: POST /{phone-number-id}/settings
+ * Body to Meta: { voice_calling_enabled: true/false }
  * 
- * Body: { action: 'toggle', enabled: boolean }
- *    or { action: 'icon', visibility: 'DEFAULT' | 'HIDE' }
+ * Actions:
+ *   { action: 'toggle', enabled: boolean }
+ *   { action: 'icon', visibility: 'DEFAULT' | 'HIDE' }
  */
 export async function POST(req: NextRequest) {
     try {
@@ -120,14 +129,14 @@ export async function POST(req: NextRequest) {
         const { action, enabled, visibility } = body
 
         if (action === 'toggle' || action === undefined) {
-            // Enable/disable calling
             const targetEnabled = enabled ?? body.enabled
             if (typeof targetEnabled !== 'boolean') {
                 return NextResponse.json({ error: 'Missing "enabled" field' }, { status: 400 })
             }
 
+            // POST /{phone-number-id}/settings with voice_calling_enabled
             const response = await fetch(
-                `${META_GRAPH_URL}/${META_API_VERSION}/${phoneNumberId}/whatsapp_business_calling_settings`,
+                `${META_GRAPH_URL}/${META_API_VERSION}/${phoneNumberId}/settings`,
                 {
                     method: 'POST',
                     headers: {
@@ -135,18 +144,20 @@ export async function POST(req: NextRequest) {
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        voice_status: targetEnabled ? 'ENABLED' : 'DISABLED'
+                        voice_calling_enabled: targetEnabled
                     })
                 }
             )
 
             const data = await response.json()
+            console.log('[Calling POST toggle] Response:', JSON.stringify(data))
 
             if (!response.ok) {
                 console.error('[Calling POST toggle] Meta error:', data)
                 return NextResponse.json({
                     success: false,
-                    error: data?.error?.message || 'Meta API error'
+                    error: data?.error?.message || 'Meta API error',
+                    meta_error: data?.error
                 }, { status: response.status })
             }
 
@@ -158,14 +169,17 @@ export async function POST(req: NextRequest) {
         }
 
         if (action === 'icon') {
-            // Set icon visibility
+            // Icon visibility is tied to calling being enabled
+            // When calling is ON, icon is visible; when OFF, it's hidden
+            // This is controlled by the same voice_calling_enabled setting
             const targetVisibility = visibility || 'DEFAULT'
             if (!['DEFAULT', 'HIDE'].includes(targetVisibility)) {
                 return NextResponse.json({ error: 'visibility must be DEFAULT or HIDE' }, { status: 400 })
             }
 
+            const shouldEnable = targetVisibility === 'DEFAULT'
             const response = await fetch(
-                `${META_GRAPH_URL}/${META_API_VERSION}/${phoneNumberId}/whatsapp_business_calling_settings`,
+                `${META_GRAPH_URL}/${META_API_VERSION}/${phoneNumberId}/settings`,
                 {
                     method: 'POST',
                     headers: {
@@ -173,18 +187,20 @@ export async function POST(req: NextRequest) {
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        call_icon_visibility: targetVisibility
+                        voice_calling_enabled: shouldEnable
                     })
                 }
             )
 
             const data = await response.json()
+            console.log('[Calling POST icon] Response:', JSON.stringify(data))
 
             if (!response.ok) {
                 console.error('[Calling POST icon] Meta error:', data)
                 return NextResponse.json({
                     success: false,
-                    error: data?.error?.message || 'Meta API error'
+                    error: data?.error?.message || 'Meta API error',
+                    meta_error: data?.error
                 }, { status: response.status })
             }
 
