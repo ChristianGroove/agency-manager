@@ -56,27 +56,29 @@ async function resolveCallingCredentials() {
 
 /**
  * GET /api/meta/calling
- * Fetches the current calling/settings status from Meta Graph API
- * Uses: GET /{phone-number-id}?fields=is_calling_enabled
+ * Fetches current calling settings from Meta Graph API
+ * Uses: GET /{phone-number-id}/settings to read calling config
  */
 export async function GET() {
     try {
         const { accessToken, phoneNumberId } = await resolveCallingCredentials()
 
-        // Query the phone number node to get calling fields
+        // Query the phone number node for calling fields
         const response = await fetch(
-            `${META_GRAPH_URL}/${META_API_VERSION}/${phoneNumberId}?fields=id,display_phone_number,is_calling_enabled`,
+            `${META_GRAPH_URL}/${META_API_VERSION}/${phoneNumberId}?fields=id,display_phone_number,calling`,
             {
                 headers: { 'Authorization': `Bearer ${accessToken}` },
                 cache: 'no-store'
             }
         )
 
-        if (!response.ok) {
-            const errData = await response.json().catch(() => ({}))
-            console.error('[Calling GET] Meta API error:', errData)
+        const data = await response.json()
+        console.log('[Calling GET] Response:', JSON.stringify(data))
 
-            // If the field doesn't exist yet or permission issue, return defaults
+        if (!response.ok) {
+            console.error('[Calling GET] Meta API error:', data)
+
+            // If calling not available, return defaults
             if (response.status === 400 || response.status === 404) {
                 return NextResponse.json({
                     enabled: false,
@@ -90,16 +92,19 @@ export async function GET() {
                 enabled: false,
                 iconVisibility: 'HIDE',
                 source: 'error',
-                error: errData?.error?.message || 'Unknown error'
+                error: data?.error?.message || 'Unknown error'
             })
         }
 
-        const data = await response.json()
-        console.log('[Calling GET] Phone number data:', JSON.stringify(data))
+        // Parse the calling object from the response
+        const calling = data.calling || {}
+        const isEnabled = calling.status === 'ENABLED'
+        const iconVis = calling.call_icon_visibility || (isEnabled ? 'DEFAULT' : 'DISABLED')
 
         return NextResponse.json({
-            enabled: data.is_calling_enabled === true,
-            iconVisibility: data.is_calling_enabled ? 'DEFAULT' : 'HIDE',
+            enabled: isEnabled,
+            iconVisibility: iconVis === 'DEFAULT' ? 'DEFAULT' : 'HIDE',
+            callingData: calling,
             phoneNumberId: data.id,
             displayPhone: data.display_phone_number,
             source: 'meta'
@@ -116,7 +121,7 @@ export async function GET() {
 /**
  * POST /api/meta/calling
  * Toggles calling via: POST /{phone-number-id}/settings
- * Body to Meta: { voice_calling_enabled: true/false }
+ * Body to Meta: { calling: { status: 'ENABLED' | 'DISABLED', call_icon_visibility: 'DEFAULT' | 'DISABLED' } }
  * 
  * Actions:
  *   { action: 'toggle', enabled: boolean }
@@ -134,7 +139,17 @@ export async function POST(req: NextRequest) {
                 return NextResponse.json({ error: 'Missing "enabled" field' }, { status: 400 })
             }
 
-            // POST /{phone-number-id}/settings with voice_calling_enabled
+            // POST /{phone-number-id}/settings with calling object
+            const callingPayload: any = {
+                status: targetEnabled ? 'ENABLED' : 'DISABLED'
+            }
+            // When enabling, also show call icon by default
+            if (targetEnabled) {
+                callingPayload.call_icon_visibility = 'DEFAULT'
+            }
+
+            console.log('[Calling POST toggle] Sending:', JSON.stringify({ calling: callingPayload }))
+
             const response = await fetch(
                 `${META_GRAPH_URL}/${META_API_VERSION}/${phoneNumberId}/settings`,
                 {
@@ -144,7 +159,7 @@ export async function POST(req: NextRequest) {
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        voice_calling_enabled: targetEnabled
+                        calling: callingPayload
                     })
                 }
             )
@@ -169,15 +184,17 @@ export async function POST(req: NextRequest) {
         }
 
         if (action === 'icon') {
-            // Icon visibility is tied to calling being enabled
-            // When calling is ON, icon is visible; when OFF, it's hidden
-            // This is controlled by the same voice_calling_enabled setting
+            // Set call icon visibility independently
             const targetVisibility = visibility || 'DEFAULT'
             if (!['DEFAULT', 'HIDE'].includes(targetVisibility)) {
                 return NextResponse.json({ error: 'visibility must be DEFAULT or HIDE' }, { status: 400 })
             }
 
-            const shouldEnable = targetVisibility === 'DEFAULT'
+            // Meta uses 'DEFAULT' for visible, 'DISABLED' for hidden
+            const metaVisibility = targetVisibility === 'DEFAULT' ? 'DEFAULT' : 'DISABLED'
+
+            console.log('[Calling POST icon] Sending:', JSON.stringify({ calling: { call_icon_visibility: metaVisibility } }))
+
             const response = await fetch(
                 `${META_GRAPH_URL}/${META_API_VERSION}/${phoneNumberId}/settings`,
                 {
@@ -187,7 +204,9 @@ export async function POST(req: NextRequest) {
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        voice_calling_enabled: shouldEnable
+                        calling: {
+                            call_icon_visibility: metaVisibility
+                        }
                     })
                 }
             )
