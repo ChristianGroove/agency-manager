@@ -389,7 +389,9 @@ export async function sendOutboundMessage(conversationId: string, content: any, 
     // 2. Resolve Connection (Simple Default Strategy for Automation)
     // We assume default connection for the channel
     let provider: any = null
-    const providerKey = (channel === 'messenger' || channel === 'instagram') ? 'meta_business' : (channel === 'evolution' ? 'evolution_api' : 'meta_whatsapp');
+    const providerKeys = (channel === 'messenger' || channel === 'instagram')
+        ? ['meta_business', 'meta_messenger', 'meta_instagram']
+        : (channel === 'evolution' ? ['evolution_api'] : ['meta_whatsapp', 'whatsapp_cloud']);
 
     // Try bound connection first
     // Try bound connection first, or explicit override
@@ -411,7 +413,7 @@ export async function sendOutboundMessage(conversationId: string, content: any, 
             .from('integration_connections')
             .select('*')
             .eq('organization_id', conversation.organization_id)
-            .eq('provider_key', providerKey)
+            .in('provider_key', providerKeys)
             .eq('status', 'active')
             .order('created_at', { ascending: false })
             .limit(1)

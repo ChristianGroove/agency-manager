@@ -286,6 +286,9 @@ export class WorkflowEngine {
                 if (actionType === 'send_message') {
                     const sendMessageNode = new SendMessageNode(this.contextManager);
                     await sendMessageNode.execute(node.data as unknown as SendMessageNodeData);
+                } else {
+                    console.warn(`[Engine] Unknown action type: ${actionType} for node ${node.id}`);
+                    await this.logStep(node.id, 'warn', `Unknown action type: ${actionType}`);
                 }
                 break
 

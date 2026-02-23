@@ -87,6 +87,7 @@ export class ButtonsNode {
             }
 
             const channel = (this.contextManager.get('channel') || this.contextManager.get('conversation.channel') || 'whatsapp') as string
+            const connectionId = this.contextManager.get('connection_id') as string | undefined
 
             // Build message content based on type
             let messageContent: any
@@ -159,7 +160,8 @@ export class ButtonsNode {
             const result = await sendOutboundMessage(
                 conversationId,
                 messageContent,
-                channel
+                channel,
+                connectionId
             )
 
             if (!result.success) {
