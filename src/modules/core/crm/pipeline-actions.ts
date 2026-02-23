@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase-server"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { revalidateTag } from "next/cache"
 
 export type PipelineStage = {
     id: string
@@ -59,10 +60,19 @@ export async function createPipelineStage(input: {
     if (!orgId) return { success: false, error: "No organization context" }
 
     try {
+        // Find default pipeline if not provided
+        const { data: pipeline } = await supabase
+            .from('pipelines')
+            .select('id')
+            .eq('organization_id', orgId)
+            .eq('is_default', true)
+            .single()
+
         const { data, error } = await supabase
             .from('pipeline_stages')
             .insert({
                 organization_id: orgId,
+                pipeline_id: pipeline?.id,
                 name: input.name,
                 status_key: input.status_key,
                 color: input.color || 'bg-gray-500',
@@ -73,6 +83,8 @@ export async function createPipelineStage(input: {
             .single()
 
         if (error) throw error
+
+        revalidateTag('pipeline')
 
         return { success: true, data: data as PipelineStage }
     } catch (error: any) {
@@ -101,6 +113,8 @@ export async function updatePipelineStage(
 
         if (error) throw error
 
+        revalidateTag('pipeline')
+
         return { success: true, data: data as PipelineStage }
     } catch (error: any) {
         console.error("Error updating pipeline stage:", error)
@@ -123,6 +137,8 @@ export async function deletePipelineStage(stageId: string): Promise<ActionRespon
             .eq('organization_id', orgId)
 
         if (error) throw error
+
+        revalidateTag('pipeline')
 
         return { success: true }
     } catch (error: any) {
@@ -150,6 +166,8 @@ export async function reorderPipelineStages(
         )
 
         await Promise.all(updates)
+
+        revalidateTag('pipeline')
 
         return { success: true }
     } catch (error: any) {
@@ -226,19 +244,25 @@ import { supabaseAdmin } from "@/lib/supabase-admin"
  * Cached version of getPipelineStages (1 hour TTL)
  * Stages rarely change.
  */
-export const getCachedPipelineStages = unstable_cache(
-    async (orgId: string) => {
-        // Use Admin Client to bypass cookies() requirement in cache scope
-        const { data, error } = await supabaseAdmin
-            .from('pipeline_stages')
-            .select('*')
-            .eq('organization_id', orgId)
-            .eq('is_active', true)
-            .order('display_order', { ascending: true })
+async function fetchPipelineStages(orgId: string) {
+    // Use Admin Client to bypass cookies() requirement in cache scope
+    const { data, error } = await supabaseAdmin
+        .from('pipeline_stages')
+        .select('*')
+        .eq('organization_id', orgId)
+        .eq('is_active', true)
+        .order('display_order', { ascending: true })
 
-        if (error) return []
-        return data as PipelineStage[]
-    },
+    if (error) return []
+    return data as PipelineStage[]
+}
+
+/**
+ * Cached version of getPipelineStages (1 hour TTL)
+ * Stages rarely change.
+ */
+export const getCachedPipelineStages = unstable_cache(
+    async (orgId: string) => fetchPipelineStages(orgId),
     ['pipeline-stages'],
     { revalidate: 3600, tags: ['pipeline'] }
 )
