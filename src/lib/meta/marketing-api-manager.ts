@@ -192,7 +192,7 @@ export class MarketingAPIManager {
     /**
      * Send individual marketing message with TTL
      */
-    private async sendMarketingMessage(params: {
+    async sendMarketingMessage(params: {
         phoneNumberId: string;
         to: string;
         template_name: string;

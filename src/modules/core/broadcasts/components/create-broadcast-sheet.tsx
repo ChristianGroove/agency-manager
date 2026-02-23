@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { Badge } from '@/components/ui/badge'
 import {
     Send,
     Users,
@@ -15,7 +16,11 @@ import {
     Mail,
     Phone,
     Loader2,
-    Radio
+    Radio,
+    FileText,
+    Clock,
+    AlertCircle,
+    CheckCircle2
 } from 'lucide-react'
 import {
     Select,
@@ -27,6 +32,7 @@ import {
 import { createQuickCampaign } from '../marketing-actions'
 import { getRecipientCount } from '../actions'
 import { toast } from 'sonner'
+import { getTemplates, syncTemplatesFromMeta, MessageTemplate } from '@/modules/core/messaging/template-actions'
 
 interface CreateBroadcastSheetProps {
     open: boolean
@@ -38,6 +44,10 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
     const [loading, setLoading] = useState(false)
     const [recipientCount, setRecipientCount] = useState(0)
     const [countLoading, setCountLoading] = useState(false)
+    const [templates, setTemplates] = useState<MessageTemplate[]>([])
+    const [selectedTemplate, setSelectedTemplate] = useState<MessageTemplate | null>(null)
+    const [templateVarValues, setTemplateVarValues] = useState<Record<string, string>>({})
+    const [ttlSeconds, setTtlSeconds] = useState(86400) // Default 24h
 
     const [form, setForm] = useState({
         name: '',
@@ -66,8 +76,49 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
                 }
             })
             setRecipientCount(0)
+            setSelectedTemplate(null)
+            setTemplateVarValues({})
+            setTtlSeconds(86400)
+            // Load approved templates
+            loadTemplates()
         }
     }, [open])
+
+    const loadTemplates = async () => {
+        try {
+            // Sync from Meta first to get latest templates
+            try { await syncTemplatesFromMeta() } catch { /* ignore sync errors */ }
+            const all = await getTemplates()
+            // Only show templates that are APPROVED and genuinely exist in Meta
+            setTemplates(all.filter(t => t.status === 'APPROVED' && t.meta_id))
+        } catch { /* ignore */ }
+    }
+
+    // Detect variables in selected template body
+    const templateBodyText = selectedTemplate?.components?.find(c => c.type === 'BODY')?.text || ''
+    const templateVars = useMemo(() => {
+        const regex = /\{\{(\d+)\}\}/g
+        const matches: string[] = []
+        let match
+        while ((match = regex.exec(templateBodyText)) !== null) {
+            if (!matches.includes(match[0])) matches.push(match[0])
+        }
+        return matches.sort()
+    }, [templateBodyText])
+
+    const handleTemplateSelect = (templateId: string) => {
+        const tmpl = templates.find(t => t.id === templateId) || null
+        setSelectedTemplate(tmpl)
+        setTemplateVarValues({})
+    }
+
+    const filledPreview = useMemo(() => {
+        let text = templateBodyText
+        Object.entries(templateVarValues).forEach(([key, val]) => {
+            text = text.replace(key, val || key)
+        })
+        return text
+    }, [templateBodyText, templateVarValues])
 
     const updateFilters = async (newFilters: typeof form.filters) => {
         setForm(prev => ({ ...prev, filters: newFilters }))
@@ -84,17 +135,31 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
             toast.error('Ingresa un nombre para la campaña')
             return
         }
-        if (!form.message.trim()) {
-            toast.error('Ingresa el mensaje a enviar')
-            return
+
+        // WhatsApp requires a template
+        if (form.channel === 'whatsapp') {
+            if (!selectedTemplate) {
+                toast.error('Selecciona una plantilla aprobada para WhatsApp')
+                return
+            }
+        } else {
+            if (!form.message.trim()) {
+                toast.error('Ingresa el mensaje a enviar')
+                return
+            }
         }
 
         setLoading(true)
         const result = await createQuickCampaign({
             name: form.name,
-            message: form.message,
+            message: form.channel === 'whatsapp' ? filledPreview : form.message,
             channel: form.channel,
-            filters: form.filters
+            filters: form.filters,
+            // Template-specific data for WhatsApp HSM
+            template_name: selectedTemplate?.name,
+            template_language: selectedTemplate?.language,
+            template_params: templateVarValues,
+            ttl_seconds: form.channel === 'whatsapp' ? ttlSeconds : undefined
         })
 
         if (result.success) {
@@ -200,20 +265,120 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
                                 </Select>
                             </div>
 
-                            {/* Message */}
-                            <div className="space-y-2">
-                                <Label>Mensaje *</Label>
-                                <Textarea
-                                    placeholder="Escribe tu mensaje aquí... Usa {{nombre}} para personalizar"
-                                    rows={5}
-                                    value={form.message}
-                                    onChange={(e) => setForm(prev => ({ ...prev, message: e.target.value }))}
-                                    className="resize-none"
-                                />
-                                <p className="text-xs text-muted-foreground">
-                                    Variables: {'{{nombre}}'}, {'{{empresa}}'}, {'{{telefono}}'}
-                                </p>
-                            </div>
+                            {/* Message: Template for WA, Free text for others */}
+                            {form.channel === 'whatsapp' ? (
+                                <div className="space-y-4">
+                                    {/* Template Selector */}
+                                    <div className="space-y-2">
+                                        <Label className="flex items-center gap-2">
+                                            <FileText className="h-4 w-4 text-green-600" />
+                                            Plantilla WhatsApp *
+                                        </Label>
+                                        <Select
+                                            value={selectedTemplate?.id || ''}
+                                            onValueChange={handleTemplateSelect}
+                                        >
+                                            <SelectTrigger className="h-11">
+                                                <SelectValue placeholder="Selecciona una plantilla aprobada" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {templates.length === 0 ? (
+                                                    <div className="p-3 text-center text-sm text-muted-foreground">
+                                                        No hay plantillas aprobadas
+                                                    </div>
+                                                ) : (
+                                                    templates.map(t => (
+                                                        <SelectItem key={t.id} value={t.id}>
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="font-mono text-xs">{t.name}</span>
+                                                                <Badge variant="outline" className="text-[9px] border-0 bg-green-100 text-green-700">
+                                                                    {t.category}
+                                                                </Badge>
+                                                            </div>
+                                                        </SelectItem>
+                                                    ))
+                                                )}
+                                            </SelectContent>
+                                        </Select>
+                                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                            <AlertCircle className="h-3 w-3" />
+                                            Solo plantillas aprobadas por Meta
+                                        </p>
+                                    </div>
+
+                                    {/* Variable Inputs */}
+                                    {selectedTemplate && templateVars.length > 0 && (
+                                        <div className="space-y-3 p-4 bg-amber-50/50 dark:bg-amber-950/20 rounded-xl border border-amber-100 dark:border-amber-900/30">
+                                            <Label className="text-xs font-semibold text-amber-800 dark:text-amber-300 flex items-center gap-1">
+                                                <AlertCircle className="h-3.5 w-3.5" />
+                                                Valores predeterminados para variables
+                                            </Label>
+                                            <p className="text-[11px] text-muted-foreground">
+                                                Mapea variables a datos del lead: nombre, empresa, etc.
+                                            </p>
+                                            {templateVars.map(varName => (
+                                                <div key={varName} className="flex items-center gap-3">
+                                                    <Badge variant="secondary" className="text-xs font-mono shrink-0 w-12 justify-center">
+                                                        {varName}
+                                                    </Badge>
+                                                    <Input
+                                                        placeholder={`Valor para ${varName} (ej: lead.nombre)`}
+                                                        value={templateVarValues[varName] || ''}
+                                                        onChange={(e) => setTemplateVarValues(prev => ({
+                                                            ...prev,
+                                                            [varName]: e.target.value
+                                                        }))}
+                                                        className="h-9"
+                                                    />
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {selectedTemplate && templateVars.length === 0 && (
+                                        <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-900/20 rounded-xl text-xs text-green-700 dark:text-green-400">
+                                            <CheckCircle2 className="h-4 w-4" />
+                                            Esta plantilla no requiere variables
+                                        </div>
+                                    )}
+
+                                    {/* TTL Selector */}
+                                    <div className="space-y-2">
+                                        <Label className="flex items-center gap-2">
+                                            <Clock className="h-4 w-4 text-blue-600" />
+                                            Tiempo de Vida (TTL)
+                                        </Label>
+                                        <Select
+                                            value={String(ttlSeconds)}
+                                            onValueChange={(v) => setTtlSeconds(Number(v))}
+                                        >
+                                            <SelectTrigger className="h-11">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="43200">Flash Sale — 12 horas</SelectItem>
+                                                <SelectItem value="86400">Diario — 24 horas</SelectItem>
+                                                <SelectItem value="604800">Semanal — 7 días</SelectItem>
+                                                <SelectItem value="2592000">Mensual — 30 días</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="space-y-2">
+                                    <Label>Mensaje *</Label>
+                                    <Textarea
+                                        placeholder="Escribe tu mensaje aquí... Usa {{nombre}} para personalizar"
+                                        rows={5}
+                                        value={form.message}
+                                        onChange={(e) => setForm(prev => ({ ...prev, message: e.target.value }))}
+                                        className="resize-none"
+                                    />
+                                    <p className="text-xs text-muted-foreground">
+                                        Variables: {'{{nombre}}'}, {'{{empresa}}'}, {'{{telefono}}'}
+                                    </p>
+                                </div>
+                            )}
 
                             {/* Segmentation */}
                             <div className="space-y-4 p-4 bg-slate-50/50 rounded-xl border border-slate-100">
@@ -261,11 +426,18 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
                             </div>
 
                             {/* Preview */}
-                            {form.message && (
+                            {(form.channel === 'whatsapp' ? selectedTemplate : form.message) && (
                                 <div className="space-y-2">
                                     <Label className="text-xs text-muted-foreground">Vista Previa</Label>
-                                    <div className="bg-green-50 dark:bg-green-950/30 rounded-xl p-4 text-sm border border-green-100">
-                                        {form.message}
+                                    <div className="bg-[#e5ddd5] dark:bg-zinc-800 rounded-2xl p-4">
+                                        <div className="max-w-[85%] ml-auto">
+                                            <div className="bg-[#dcf8c6] dark:bg-green-900/60 rounded-xl rounded-tr-sm p-3 shadow-sm">
+                                                <p className="text-[13px] text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed">
+                                                    {form.channel === 'whatsapp' ? filledPreview : form.message}
+                                                </p>
+                                                <p className="text-[10px] text-gray-400 text-right mt-1">Marketing ✓</p>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             )}

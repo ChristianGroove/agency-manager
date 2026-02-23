@@ -1,6 +1,6 @@
 
 export class MetaConnector {
-    private readonly baseUrl = 'https://graph.facebook.com/v19.0'
+    private readonly baseUrl = 'https://graph.facebook.com/v24.0'
     private accessToken: string
 
     constructor(accessToken: string) {

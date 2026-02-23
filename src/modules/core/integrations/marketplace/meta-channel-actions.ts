@@ -5,6 +5,7 @@ import { requireOrgRole } from "@/lib/auth/org-roles"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { revalidatePath } from "next/cache"
 import { MetaGraphAPI } from "@/lib/meta/graph-api"
+import { wabaSubscriptionManager } from "@/lib/meta/waba-subscription-manager"
 
 /**
  * Input from UI (IntegrationSetupSheet) - uses parentConnectionId
@@ -115,7 +116,23 @@ export async function activateMetaChannel(input: ActivateInput): Promise<{ succe
         }
 
         if (assetType === "whatsapp") {
-            webhookStatus = "app_level";
+            try {
+                // Subscribe WABA to app webhooks (Critical for inbound messages)
+                if (wabaId) {
+                    console.log(`[activateMetaChannel] Subscribing WABA ${wabaId}...`);
+                    const subResult = await wabaSubscriptionManager.subscribeWABA(wabaId, finalAccessToken);
+                    webhookStatus = subResult.success ? "app_level" : "failed";
+                    if (!subResult.success) {
+                        console.error('[activateMetaChannel] WABA Subscription Failed:', subResult.error);
+                    }
+                } else {
+                    console.warn('[activateMetaChannel] No WABA ID available for subscription');
+                    webhookStatus = "app_level_pending";
+                }
+            } catch (e: any) {
+                console.error(`[activateMetaChannel] WABA subscription error: ${e.message}`);
+                webhookStatus = "failed";
+            }
         }
 
         // Check if channel already exists (including deleted ones)

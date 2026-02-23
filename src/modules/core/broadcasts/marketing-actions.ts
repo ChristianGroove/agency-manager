@@ -173,6 +173,11 @@ export async function createQuickCampaign(data: {
     message: string
     channel: 'whatsapp' | 'sms' | 'email'
     filters: Record<string, unknown>
+    // Template-specific fields for WhatsApp HSM
+    template_name?: string
+    template_language?: string
+    template_params?: Record<string, string>
+    ttl_seconds?: number
 }) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -213,6 +218,15 @@ export async function createQuickCampaign(data: {
     if (sError) return { success: false, error: sError.message }
 
     // 3. Create Step 1 (The Message)
+    // Include template data when channel is WhatsApp with HSM
+    const stepContent: any = { body: data.message }
+    if (data.template_name) {
+        stepContent.template_name = data.template_name
+        stepContent.template_language = data.template_language || 'en_US'
+        stepContent.template_params = data.template_params || {}
+        stepContent.ttl_seconds = data.ttl_seconds || 86400
+    }
+
     const { error: stError } = await supabase
         .from('marketing_steps')
         .insert({
@@ -221,7 +235,7 @@ export async function createQuickCampaign(data: {
             type: data.channel,
             name: 'Broadcast Message',
             order_index: 0,
-            content: { body: data.message }
+            content: stepContent
         })
     if (stError) return { success: false, error: stError.message }
 

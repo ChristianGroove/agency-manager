@@ -670,13 +670,14 @@ export class MetaProvider implements MessagingProvider {
                 payload.template = {
                     name: content.templateName,
                     language: { code: content.templateLanguage || 'en_US' },
-                    components: []
+                    components: content.templateComponents || []
                 };
                 // Support for Authentication/Utility templates with TTL or ROI tracking via opaque data
                 if (content.time_to_live) {
                     (payload.template as any).time_to_live = content.time_to_live;
                 }
                 break;
+
 
             case 'image':
                 payload.type = 'image';

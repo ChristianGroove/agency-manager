@@ -1,0 +1,124 @@
+﻿[dotenv@17.3.1] injecting env (20) from .env.local -- tip: ÔÜÖ´©Å  override existing env vars with { override: true }
+=== 1. Checking integration_connections ===
+Found 4 Meta/WhatsApp connections:
+  - El Carnaval del Pollo Mirador [whatsapp_cloud] status=active
+    metadata keys: [
+  'waba_id',
+  'asset_id',
+  'asset_name',
+  'asset_type',
+  'webhook_status',
+  'display_phone_number'
+]
+    metadata.waba_id: 2367949683699176
+    metadata.asset_id: 935099026362489
+    credentials keys: [ 'access_token' ]
+
+=== 2. Fetching templates from Meta for WABA: 2367949683699176 ===
+URL: https://graph.facebook.com/v24.0/2367949683699176/message_templates?fields=name,status,category,language,components&limit=100
+node.exe : Meta API Error: {
+En línea: 1 Carácter: 1
++ & "C:\Program Files\nodejs/node.exe" 
+"C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Meta 
+    API Error: {:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  "error": {
+    "message": "Unsupported get request. Object 
+with ID '2367949683699176' does not exist, cannot 
+be loaded due to missing permissions, or does not 
+support this operation. Please read the Graph API 
+documentation at 
+https://developers.facebook.com/docs/graph-api",
+    "type": "GraphMethodException",
+    "code": 100,
+    "error_subcode": 33,
+    "fbtrace_id": "AQi3cH-sKk4Av9zl_0h63qb"
+  }
+}
+  - Pixy Spaces [whatsapp_cloud] status=deleted
+    metadata keys: [
+  'waba_id',
+  'asset_id',
+  'asset_name',
+  'asset_type',
+  'webhook_status',
+  'display_phone_number'
+]
+    metadata.waba_id: 1541979373724497
+    metadata.asset_id: 917233028147729
+    credentials keys: [ 'access_token' ]
+
+=== 2. Fetching templates from Meta for WABA: 1541979373724497 ===
+URL: https://graph.facebook.com/v24.0/1541979373724497/message_templates?fields=name,status,category,language,components&limit=100
+
+Got 0 templates from Meta:
+
+ÔÜá´©Å  Meta returned 0 templates. This WABA has no templates registered.
+   You need to create templates in Meta Business Manager first.
+  - Pixy Spaces [whatsapp_cloud] status=active
+    metadata keys: [
+  'waba_id',
+  'asset_id',
+  'asset_name',
+  'asset_type',
+  'webhook_status',
+  'display_phone_number'
+]
+    metadata.waba_id: 1541979373724497
+    metadata.asset_id: 917233028147729
+    credentials keys: [ 'access_token' ]
+
+=== 2. Fetching templates from Meta for WABA: 1541979373724497 ===
+URL: https://graph.facebook.com/v24.0/1541979373724497/message_templates?fields=name,status,category,language,components&limit=100
+
+Got 0 templates from Meta:
+
+ÔÜá´©Å  Meta returned 0 templates. This WABA has no templates registered.
+   You need to create templates in Meta Business Manager first.
+  - Pixy Spaces [whatsapp_cloud] status=active
+    metadata keys: [
+  'waba_id',
+  'asset_id',
+  'asset_name',
+  'asset_type',
+  'webhook_status',
+  'display_phone_number'
+]
+    metadata.waba_id: 1541979373724497
+    metadata.asset_id: 917233028147729
+    credentials keys: [ 'access_token' ]
+
+=== 2. Fetching templates from Meta for WABA: 1541979373724497 ===
+URL: https://graph.facebook.com/v24.0/1541979373724497/message_templates?fields=name,status,category,language,components&limit=100
+
+Got 0 templates from Meta:
+
+ÔÜá´©Å  Meta returned 0 templates. This WABA has no templates registered.
+   You need to create templates in Meta Business Manager first.
+
+=== 3. Checking local messaging_templates table ===
+Found 20 local templates:
+  - test quick replies (en) [active] meta_id=NONE
+  - Invoice Sent (es) [APPROVED] meta_id=NONE
+  - Quote Sent (es) [APPROVED] meta_id=NONE
+  - Portal Invite (es) [APPROVED] meta_id=NONE
+  - Billing Summary (es) [APPROVED] meta_id=NONE
+  - Invoice Sent (es) [APPROVED] meta_id=NONE
+  - Quote Sent (es) [APPROVED] meta_id=NONE
+  - Portal Invite (es) [APPROVED] meta_id=NONE
+  - Billing Summary (es) [APPROVED] meta_id=NONE
+  - Invoice Sent (es) [APPROVED] meta_id=NONE
+  - Quote Sent (es) [APPROVED] meta_id=NONE
+  - Portal Invite (es) [APPROVED] meta_id=NONE
+  - Billing Summary (es) [APPROVED] meta_id=NONE
+  - Invoice Sent (es) [APPROVED] meta_id=NONE
+  - Quote Sent (es) [APPROVED] meta_id=NONE
+  - Portal Invite (es) [APPROVED] meta_id=NONE
+  - Billing Summary (es) [APPROVED] meta_id=NONE
+  - test1 (es) [PENDING] meta_id=NONE
+  - tesccsdffg (es) [PENDING] meta_id=NONE
+  - Gracias por tu compra (es) [PENDING] meta_id=NONE

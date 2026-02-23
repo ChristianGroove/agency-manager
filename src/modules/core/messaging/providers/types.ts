@@ -68,6 +68,7 @@ export interface TemplateContent {
     templateName: string
     templateLanguage?: string
     templateVariables?: Record<string, string>
+    templateComponents?: any[] // HSM component parameters (body, header, etc.)
     time_to_live?: number // Added for ROI Audit (MM API)
 }
 

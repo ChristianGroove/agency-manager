@@ -60,7 +60,7 @@ export class MetaAdapter implements IntegrationAdapter {
             if (pageId) {
                 try {
                     // console.log(`[MetaAdapter] Fetching Page Token for ${pageId}...`);
-                    const tokenResp = await fetch(`https://graph.facebook.com/v19.0/${pageId}?fields=access_token`, {
+                    const tokenResp = await fetch(`https://graph.facebook.com/v24.0/${pageId}?fields=access_token`, {
                         headers: { 'Authorization': `Bearer ${accessToken}` }
                     });
                     if (tokenResp.ok) {

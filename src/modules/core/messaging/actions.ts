@@ -154,11 +154,15 @@ export async function sendMessage(conversationId: string, payload: string, id?: 
                 }
 
                 const metadata = (conversation as any).metadata || {};
+                // Fix: Also check connection.metadata for legacy 'whatsapp_cloud' connections
+                const connMetadata = (connection as any).metadata || {};
+
                 const assetId = finalCreds.phoneNumberId ||
                     finalCreds.phone_number_id ||
                     metadata.phoneNumberId ||
                     metadata.pageId ||
-                    metadata.instagramBusinessId;
+                    metadata.instagramBusinessId ||
+                    connMetadata.asset_id; // Added fallback
 
                 const token = finalCreds.accessToken || finalCreds.access_token;
 

@@ -12,8 +12,39 @@ import { InboxService } from "@/modules/core/messaging/inbox-service"
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ slug?: string[] }> }) {
     const { slug } = await params
+
+    // DEBUG LOGGING
+    const fs = require('fs');
+    const path = require('path');
+    const debugLogPath = path.join(process.cwd(), 'webhook-evolution-debug.log');
     try {
-        const body = await req.json()
+        const timestamp = new Date().toISOString();
+        const logEntry = `\n[${timestamp}] 📥 EVO POST ${req.url}\n${JSON.stringify(Object.fromEntries(req.headers.entries()), null, 2)}\n`;
+        fs.appendFileSync(debugLogPath, logEntry);
+    } catch (e) { }
+
+    try {
+        const rawBody = await req.json(); // Consumes body, might break downstream if not careful? 
+        // req.json() reads stream. If we read it here, subsequent req.json() calls will fail?
+        // Wait, the original code calls `const body = await req.json()` on line 16.
+        // I should capture that result instead of calling json() twice.
+
+        const body = rawBody; // Reuse for original code
+        try {
+            fs.appendFileSync(debugLogPath, `📦 EVO BODY:\n${JSON.stringify(body, null, 2)}\n`);
+        } catch (e) { }
+
+        // original code continues... but I need to replace line 16?
+        // Replace ONLY line 16? No, I am replacing lines 14-16.
+
+        // Let's rewrite carefully.
+        // Original:
+        // 14:     const { slug } = await params
+        // 15:     try {
+        // 16:         const body = await req.json()
+
+        // Replacement must provide `body`.
+
         const { event, instance, data } = body
 
         // Evolution v2 uses 'event' field, some versions use 'type'

@@ -4,7 +4,7 @@ import { Virtuoso, VirtuosoHandle } from "react-virtuoso"
 
 import { useEffect, useRef, useState } from "react"
 import { supabase } from "@/lib/supabase"
-import { Send, Phone, MoreVertical, Sidebar, Paperclip, Smile, Check, CheckCheck, User, X, Target, Wand2, CheckCircle2, Clock, Archive, Trash2 } from "lucide-react"
+import { Send, Phone, MoreVertical, Sidebar, Paperclip, Smile, Check, CheckCheck, User, X, Target, Wand2, CheckCircle2, Clock, Archive, Trash2, FileText } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Separator } from "@/components/ui/separator"
@@ -19,6 +19,7 @@ import { ConversationActionsMenu } from "./conversation-actions-menu"
 import dynamic from 'next/dynamic'
 import { toast } from "sonner"
 import { SavedRepliesSheet } from "./saved-replies-sheet"
+import { TemplatePickerSheet } from "./template-picker-sheet"
 import { useTranslation } from "@/lib/i18n/use-translation"
 import {
     Tooltip,
@@ -63,6 +64,7 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
     const [isInternal, setIsInternal] = useState(false)
     // New Sheet State
     const [isRepliesSheetOpen, setIsRepliesSheetOpen] = useState(false)
+    const [isTemplatePickerOpen, setIsTemplatePickerOpen] = useState(false)
 
     const scrollRef = useRef<HTMLDivElement>(null)
     const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -158,11 +160,15 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
         const channel = supabase
             .channel(`chat-area-${conversationId}`)
             .on('postgres_changes',
-                { event: 'INSERT', schema: 'public', table: 'messages' },
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'messages',
+                    filter: `conversation_id=eq.${conversationId}`
+                },
                 (payload) => {
                     const newMsg = payload.new as Message
-                    if (newMsg.conversation_id !== conversationId) return
-                    console.log('[ChatArea] INSERT received', newMsg)
+                    console.log('[ChatArea] INSERT received', newMsg.id)
 
                     setMessages((prev) => {
                         if (prev.some(m => m.id === newMsg.id)) return prev
@@ -173,17 +179,17 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
                 }
             )
             .on('postgres_changes',
-                { event: 'UPDATE', schema: 'public', table: 'conversations' },
+                { event: '*', schema: 'public', table: 'conversations' },
                 (payload) => {
-                    const newConv = payload.new as Conversation
-                    if (newConv.id !== conversationId) return
-                    console.log('[ChatArea] UPDATE received (Fallback)', newConv)
+                    const updated = payload.new as any
+                    if (!updated || updated.id !== conversationId) return
+                    console.log('[ChatArea] Conversation change received, refreshing messages')
 
-                    setTimeout(() => {
-                        // Only update conversation details (header, etc), do NOT re-fetch all messages
-                        // The 'INSERT' listener on messages table handles the chat stream
-                        fetchConversation()
-                    }, 500)
+                    // Refetch both conversation details AND messages
+                    // The messages INSERT subscription may not fire if the table
+                    // lacks Realtime publication, so this is the reliable fallback
+                    fetchConversation()
+                    fetchMessages()
                 }
             )
             .subscribe((status, error) => {
@@ -197,6 +203,26 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
             supabase.removeChannel(channel)
         }
     }, [conversationId])
+
+    // Polling fallback: check for new messages every 3 seconds
+    // Guarantees updates even if Realtime subscriptions don't fire
+    useEffect(() => {
+        if (!conversationId) return
+
+        const poll = setInterval(async () => {
+            const { count, error } = await supabase
+                .from('messages')
+                .select('*', { count: 'exact', head: true })
+                .eq('conversation_id', conversationId)
+
+            if (!error && count !== null && count !== messages.length) {
+                fetchMessages()
+                fetchConversation()
+            }
+        }, 3000)
+
+        return () => clearInterval(poll)
+    }, [conversationId, messages.length])
 
     const handleSend = async (contentOverride?: string, type: 'text' | 'image' | 'video' | 'audio' | 'document' | 'note' = 'text', mediaUrl?: string) => {
         const textContent = contentOverride !== undefined ? contentOverride : inputValue.trim()
@@ -377,6 +403,16 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
                 open={isRepliesSheetOpen}
                 onOpenChange={setIsRepliesSheetOpen}
                 onSelect={handleTemplateSelect}
+            />
+
+            <TemplatePickerSheet
+                open={isTemplatePickerOpen}
+                onOpenChange={setIsTemplatePickerOpen}
+                conversationId={conversationId}
+                onSent={() => {
+                    // Refresh messages after template send
+                    fetchMessages()
+                }}
             />
 
             {/* Header */}
@@ -666,6 +702,20 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
                         disabled={uploading}
                     >
                         <Paperclip className={cn("h-5 w-5", uploading && "animate-pulse")} />
+                    </Button>
+
+                    {/* Template Picker Button */}
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className={cn(
+                            "text-muted-foreground hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 shrink-0 rounded-full h-10 w-10",
+                            isTemplatePickerOpen && "bg-green-50 text-green-600 dark:bg-green-900/20"
+                        )}
+                        onClick={() => setIsTemplatePickerOpen(true)}
+                        title="Enviar plantilla WhatsApp"
+                    >
+                        <FileText className="h-5 w-5" />
                     </Button>
                 </div>
 

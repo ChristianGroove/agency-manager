@@ -1,0 +1,50 @@
+﻿[dotenv@17.3.1] injecting env (20) from .env.local -- tip: ­ƒñû agentic secret storage: https://dotenvx.com/as2
+
+=== Step 1: Resolving Pixy Spaces credentials ===
+  Connection: Pixy Spaces
+  WABA ID: 1541979373724497
+  Org ID: db9d1288-80ab-48df-b130-a0739881c6f2
+  Token length: 317
+
+=== Step 2: Cleaning up fake local templates ===
+  Found 0 local templates to delete
+
+=== Step 3: Submitting 5 templates to Meta ===
+
+  ­ƒôä Submitting: welcome_message (UTILITY, en_US)
+  Ô£à Meta accepted: id=1238424218394919 status=PENDING
+  Ô£à Saved to DB with meta_id=1238424218394919
+
+  ­ƒôä Submitting: appointment_reminder (UTILITY, en_US)
+  Ô£à Meta accepted: id=1447681463690751 status=PENDING
+  Ô£à Saved to DB with meta_id=1447681463690751
+
+  ­ƒôä Submitting: order_update (UTILITY, en_US)
+  Ô£à Meta accepted: id=1161208619264417 status=PENDING
+  Ô£à Saved to DB with meta_id=1161208619264417
+
+  ­ƒôä Submitting: seasonal_promotion (MARKETING, en_US)
+  Ô£à Meta accepted: id=1960012918233846 status=PENDING
+  Ô£à Saved to DB with meta_id=1960012918233846
+
+  ­ƒôä Submitting: feedback_request (UTILITY, en_US)
+  Ô£à Meta accepted: id=941301618367824 status=PENDING
+  Ô£à Saved to DB with meta_id=941301618367824
+
+
+ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ
+  SUBMISSION SUMMARY
+ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ
+  Ô£à welcome_message: meta_id=1238424218394919 [PENDING]
+  Ô£à appointment_reminder: meta_id=1447681463690751 [PENDING]
+  Ô£à order_update: meta_id=1161208619264417 [PENDING]
+  Ô£à seasonal_promotion: meta_id=1960012918233846 [PENDING]
+  Ô£à feedback_request: meta_id=941301618367824 [PENDING]
+
+  Total: 5/5 submitted successfully
+
+  ÔÅ│ Templates are now pending Meta review.
+  ­ƒôï Meta typically approves UTILITY templates within minutes.
+  ­ƒôï MARKETING templates may take up to 24 hours.
+
+  Next: Run "Sincronizar" in Settings ÔåÆ Plantillas to check approval status.

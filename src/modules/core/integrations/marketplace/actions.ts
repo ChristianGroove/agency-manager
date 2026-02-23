@@ -356,7 +356,7 @@ export async function getMetaAuthUrl(channelType?: 'whatsapp' | 'messenger' | 'i
             ];
     }
 
-    const finalUrl = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&state=${state}&scope=${scopes.join(',')}&response_type=code`;
+    const finalUrl = `https://www.facebook.com/v24.0/dialog/oauth?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&state=${state}&scope=${scopes.join(',')}&response_type=code`;
 
     console.log('[Meta OAuth] Final URL:', finalUrl);
 

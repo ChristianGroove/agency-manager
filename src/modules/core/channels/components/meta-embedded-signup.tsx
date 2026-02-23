@@ -50,7 +50,7 @@ export function MetaEmbeddedSignup({ onSuccess, onError, organizationId: orgIdPr
                 appId: META_APP_ID,
                 cookie: true,
                 xfbml: false,
-                version: 'v21.0'
+                version: 'v24.0'
             });
             setStatus('ready');
         };

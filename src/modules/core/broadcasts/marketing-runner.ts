@@ -137,12 +137,59 @@ async function processEnrollment(supabase: any, enrollment: any, debugLogs: stri
             throw new Error('Could not create/find conversation for message dispatch')
         }
 
-        // 2. Dispatch Message (Uses sendOutboundMessage which handles Provider selection)
-        // TODO: Implement SPINTAX parsing here if enabled in campaign.delivery_config.humanize
+        // 2. Dispatch Message
         const content = step.content
 
-        // Ensure channel matches step type
-        const result = await sendOutboundMessage(conversationId, content, step.type)
+        let result: any
+
+        if (content.template_name && step.type === 'whatsapp') {
+            // HSM Template Dispatch via MarketingAPIManager
+            debugLogs.push(`[${enrollment.id}] Using HSM Template: ${content.template_name}`)
+
+            const { marketingAPIManager } = await import('@/lib/meta/marketing-api-manager')
+
+            // Resolve phone_number_id from the org's connection
+            const { data: connection } = await supabase
+                .from('integration_connections')
+                .select('credentials, metadata')
+                .eq('organization_id', lead.organization_id)
+                .in('provider_key', ['meta_whatsapp', 'whatsapp_cloud'])
+                .eq('status', 'active')
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .single()
+
+            const creds = connection?.credentials as any
+            const phoneNumberId = creds?.phoneNumberId || creds?.phone_number_id ||
+                (connection?.metadata as any)?.asset_id || process.env.META_PHONE_NUMBER_ID!
+
+            // Substitute lead-specific values into template params
+            const params: Record<string, string> = {}
+            if (content.template_params) {
+                for (const [key, val] of Object.entries(content.template_params as Record<string, string>)) {
+                    params[key] = val
+                        .replace('{{nombre}}', lead.name || '')
+                        .replace('{{empresa}}', lead.company || '')
+                        .replace('{{telefono}}', lead.phone || '')
+                }
+            }
+
+            try {
+                const hsmResult = await marketingAPIManager.sendMarketingMessage({
+                    phoneNumberId,
+                    to: lead.phone,
+                    template_name: content.template_name,
+                    ttl_seconds: content.ttl_seconds || 86400,
+                    parameters: params
+                })
+                result = { success: true, externalId: hsmResult.message_id }
+            } catch (e: any) {
+                result = { success: false, error: e.message }
+            }
+        } else {
+            // Plain text dispatch (non-template or non-WhatsApp)
+            result = await sendOutboundMessage(conversationId, content, step.type)
+        }
 
         if (!result.success) {
             throw new Error(`Send Failed: ${result.error}`)

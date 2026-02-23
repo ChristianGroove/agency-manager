@@ -3,10 +3,10 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Search, FileText, Zap, MessageSquare, Clock, AlertCircle, CheckCircle2 } from "lucide-react"
+import { Plus, Search, FileText, Zap, MessageSquare, Clock, AlertCircle, CheckCircle2, RefreshCw, Trash2, Upload } from "lucide-react"
 import { useState, useEffect } from "react"
 import { toast } from "sonner"
-import { getTemplates, deleteTemplate, MessageTemplate } from "@/modules/core/messaging/template-actions"
+import { getTemplates, deleteTemplateFromMeta, syncTemplatesFromMeta, submitTemplateToMeta, MessageTemplate } from "@/modules/core/messaging/template-actions"
 import { TemplateBuilderSheet } from "@/modules/core/messaging/components/template-builder-sheet"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -19,6 +19,7 @@ export default function TemplatesPage() {
     const [isCreateOpen, setIsCreateOpen] = useState(false)
     const [filter, setFilter] = useState("")
     const [editingTemplate, setEditingTemplate] = useState<MessageTemplate | null>(null)
+    const [isSyncing, setIsSyncing] = useState(false)
 
     useEffect(() => {
         loadTemplates()
@@ -38,13 +39,29 @@ export default function TemplatesPage() {
 
     const handleDelete = async (id: string, e: React.MouseEvent) => {
         e.stopPropagation()
-        if (!confirm("¿Estás seguro de eliminar este template?")) return
+        if (!confirm("¿Eliminar este template? Si está en Meta, también se eliminará allá.")) return
         try {
-            await deleteTemplate(id)
+            await deleteTemplateFromMeta(id)
             setTemplates(templates.filter(t => t.id !== id))
-            toast.success("Template eliminado")
-        } catch (error) {
-            toast.error("Error al eliminar")
+            toast.success("Template eliminado de Meta y local")
+        } catch (error: any) {
+            toast.error(error.message || "Error al eliminar")
+        }
+    }
+
+    const handleSync = async () => {
+        setIsSyncing(true)
+        try {
+            const result = await syncTemplatesFromMeta()
+            toast.success(`${result.synced} plantillas sincronizadas desde Meta`)
+            if (result.errors.length > 0) {
+                toast.warning(`${result.errors.length} errores de sync`)
+            }
+            await loadTemplates()
+        } catch (error: any) {
+            toast.error(error.message || "Error al sincronizar")
+        } finally {
+            setIsSyncing(false)
         }
     }
 
@@ -82,6 +99,15 @@ export default function TemplatesPage() {
                                         onChange={(e) => setFilter(e.target.value)}
                                     />
                                 </div>
+                                <Button
+                                    variant="outline"
+                                    onClick={handleSync}
+                                    disabled={isSyncing}
+                                    className="gap-2"
+                                >
+                                    <RefreshCw className={cn("h-4 w-4", isSyncing && "animate-spin")} />
+                                    Sincronizar
+                                </Button>
                                 <Button onClick={handleNew} className="bg-[#25D366] hover:bg-[#128C7E] text-white font-semibold">
                                     <Plus className="mr-2 h-4 w-4" />
                                     Nueva Plantilla
@@ -140,10 +166,11 @@ export default function TemplatesPage() {
                                     </div>
                                     <div className={cn(
                                         "w-2 h-2 rounded-full",
-                                        template.status === 'APPROVED' ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]" :
+                                        template.meta_id && template.status === 'APPROVED' ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]" :
                                             template.status === 'REJECTED' ? "bg-red-500" :
-                                                "bg-yellow-400 animate-pulse"
-                                    )} title={template.status} />
+                                                template.meta_id ? "bg-yellow-400 animate-pulse" :
+                                                    "bg-gray-300"
+                                    )} title={template.meta_id ? template.status : 'Solo local'} />
                                 </div>
                             </CardHeader>
                             <CardContent className="pt-4">
@@ -154,7 +181,7 @@ export default function TemplatesPage() {
                                     </p>
                                 </div>
                                 <div className="flex items-center justify-between mt-4 text-xs text-muted-foreground">
-                                    <div className="flex gap-2">
+                                    <div className="flex gap-2 items-center">
                                         {template.components?.some(c => c.type === 'HEADER') && (
                                             <span title="Multimedia">
                                                 <FileText className="w-3.5 h-3.5" />
@@ -165,10 +192,33 @@ export default function TemplatesPage() {
                                                 <Zap className="w-3.5 h-3.5" />
                                             </span>
                                         )}
+                                        {template.meta_id && (
+                                            <span title="Verificado en Meta" className="text-green-500">
+                                                <Upload className="w-3.5 h-3.5" />
+                                            </span>
+                                        )}
                                     </div>
-                                    <span className="capitalize text-[10px] bg-slate-100 px-2 py-0.5 rounded-full">
-                                        {template.status.toLowerCase()}
-                                    </span>
+                                    <div className="flex items-center gap-2">
+                                        <span className={cn(
+                                            "text-[10px] px-2 py-0.5 rounded-full",
+                                            template.meta_id && template.status === 'APPROVED'
+                                                ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                                                : template.meta_id
+                                                    ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
+                                                    : "bg-slate-100 text-slate-500 dark:bg-zinc-800"
+                                        )}>
+                                            {template.meta_id
+                                                ? template.status.toLowerCase()
+                                                : 'solo local'}
+                                        </span>
+                                        <button
+                                            onClick={(e) => handleDelete(template.id, e)}
+                                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-md hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+                                            title="Eliminar plantilla"
+                                        >
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
+                                    </div>
                                 </div>
                             </CardContent>
                         </Card>
