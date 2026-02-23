@@ -140,7 +140,8 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
         }
 
         // Apply strict isolation if active
-        if (preferences.behavior.strict_isolation && currentUserId) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        if ((preferences.behavior as any).strict_isolation && currentUserId) {
             query = query.eq('assigned_to', currentUserId)
         }
 
