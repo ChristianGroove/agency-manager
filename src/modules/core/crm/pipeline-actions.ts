@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase-server"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
-import { revalidateTag } from "next/cache"
+import { revalidatePath } from "next/cache"
 
 export type PipelineStage = {
     id: string
@@ -84,7 +84,9 @@ export async function createPipelineStage(input: {
 
         if (error) throw error
 
-        revalidateTag('pipeline')
+        revalidatePath('/crm')
+        revalidatePath('/crm/pipeline')
+        revalidatePath('/crm/settings/pipeline')
 
         return { success: true, data: data as PipelineStage }
     } catch (error: any) {
@@ -113,7 +115,9 @@ export async function updatePipelineStage(
 
         if (error) throw error
 
-        revalidateTag('pipeline')
+        revalidatePath('/crm')
+        revalidatePath('/crm/pipeline')
+        revalidatePath('/crm/settings/pipeline')
 
         return { success: true, data: data as PipelineStage }
     } catch (error: any) {
@@ -138,7 +142,9 @@ export async function deletePipelineStage(stageId: string): Promise<ActionRespon
 
         if (error) throw error
 
-        revalidateTag('pipeline')
+        revalidatePath('/crm')
+        revalidatePath('/crm/pipeline')
+        revalidatePath('/crm/settings/pipeline')
 
         return { success: true }
     } catch (error: any) {
@@ -167,7 +173,9 @@ export async function reorderPipelineStages(
 
         await Promise.all(updates)
 
-        revalidateTag('pipeline')
+        revalidatePath('/crm')
+        revalidatePath('/crm/pipeline')
+        revalidatePath('/crm/settings/pipeline')
 
         return { success: true }
     } catch (error: any) {
@@ -261,11 +269,13 @@ async function fetchPipelineStages(orgId: string) {
  * Cached version of getPipelineStages (1 hour TTL)
  * Stages rarely change.
  */
-export const getCachedPipelineStages = unstable_cache(
-    async (orgId: string) => fetchPipelineStages(orgId),
-    ['pipeline-stages'],
-    { revalidate: 3600, tags: ['pipeline'] }
-)
+export async function getCachedPipelineStages(orgId: string) {
+    return unstable_cache(
+        async () => fetchPipelineStages(orgId),
+        ['pipeline-stages', orgId],
+        { revalidate: 3600 }
+    )()
+}
 
 /**
  * Aggregated server action to fetch all CRM data in parallel.
