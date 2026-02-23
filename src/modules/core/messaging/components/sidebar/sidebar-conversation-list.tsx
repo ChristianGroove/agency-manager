@@ -74,11 +74,19 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
         }
     });
 
-    // Get current user
+    // Get current user and permissions
     useEffect(() => {
-        supabase.auth.getUser().then(({ data }) => {
-            setCurrentUserId(data.user?.id || null)
-        })
+        const fetchInitialData = async () => {
+            const { data } = await supabase.auth.getUser()
+            if (data.user) {
+                setCurrentUserId(data.user.id)
+                // Fetch organizational permissions for channel governance
+                const perms = await getCurrentUserPermissions()
+                setUserPermissions(perms)
+            }
+        }
+        fetchInitialData()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
     // Initial Fetch
@@ -87,6 +95,7 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
             fetchConversations(true)
             fetchChannels()
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activeFilter, organizationId, orgLoading, selectedChannelId])
 
     const fetchChannels = async () => {
@@ -175,6 +184,7 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
                 }
             }
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [conversations, loading, selectedId, activeFilter, searchQuery])
 
     // Real-time subscription
@@ -192,6 +202,7 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
         return () => {
             channel.unsubscribe()
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activeFilter, currentUserId])
 
     // Filter and search conversations
