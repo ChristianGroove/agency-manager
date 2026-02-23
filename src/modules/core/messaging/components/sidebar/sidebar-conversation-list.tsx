@@ -58,7 +58,9 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
     const [activeFilter, setActiveFilter] = useState<FilterTab>('all')
     const [loading, setLoading] = useState(true)
     const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [userPermissions, setUserPermissions] = useState<any>(null)
+    const [permissionsLoaded, setPermissionsLoaded] = useState(false)
     const [isSettingsOpen, setIsSettingsOpen] = useState(false)
     const searchInputRef = useRef<HTMLInputElement>(null)
     const { preferences, updatePreferences } = useInboxPreferences()
@@ -83,6 +85,9 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
                 // Fetch organizational permissions for channel governance
                 const perms = await getCurrentUserPermissions()
                 setUserPermissions(perms)
+                setPermissionsLoaded(true)
+            } else {
+                setPermissionsLoaded(true)
             }
         }
         fetchInitialData()
@@ -91,16 +96,26 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
 
     // Initial Fetch
     useEffect(() => {
-        if (!orgLoading) {
+        if (!orgLoading && permissionsLoaded) {
             fetchConversations(true)
             fetchChannels()
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [activeFilter, organizationId, orgLoading, selectedChannelId])
+    }, [activeFilter, organizationId, orgLoading, permissionsLoaded, selectedChannelId])
 
     const fetchChannels = async () => {
         const data = await getChannels()
-        setChannels(data)
+
+        // Filter channels for staff based on governance
+        const isStaff = userPermissions?.role === 'member'
+        const authorizedChannels = userPermissions?.permissions?.inbox_access || []
+
+        if (isStaff) {
+            const filteredChannels = data.filter(c => authorizedChannels.includes(c.id))
+            setChannels(filteredChannels)
+        } else {
+            setChannels(data)
+        }
     }
 
     const fetchConversations = async (showLoading = false) => {

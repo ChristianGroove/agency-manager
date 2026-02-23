@@ -1328,6 +1328,94 @@ export const es = {
             settings: "Configuración",
             import: "Importar",
             analytics: "Analítica"
+        },
+        crm_settings: {
+            title: "Configuración CRM",
+            desc: "Administra las preferencias generales de tu sistema de relaciones con clientes.",
+            tabs: {
+                channels: "Canales",
+                pipelines: "Pipelines",
+                templates: "Plantillas (Meta)",
+                industry_templates: "Plantillas de Industria"
+            },
+            channels: {
+                title: "Canales de Mensajería",
+                subtitle: "Conecta tus cuentas para gestionar conversaciones.",
+                empty: "No hay canales conectados.",
+                card: {
+                    provider: "Proveedor",
+                    phone: "Teléfono",
+                    created: "Creado",
+                    reconnect: "Reconectar",
+                    edit: "Editar Configuración"
+                },
+                sheet: {
+                    save: "Guardar",
+                    calling: {
+                        title: "LLAMADAS WHATSAPP",
+                        voice_title: "Llamadas de Voz",
+                        voice_desc: "Activar llamadas por WhatsApp Business",
+                        icon_title: "Ícono de Llamada",
+                        icon_desc: "Botón visible en el chat del usuario",
+                        verify: "Verificar",
+                        default_config: "Config predeterminada",
+                        status_on: "ON",
+                        status_off: "OFF",
+                        visibility: {
+                            visible: "Visible",
+                            hidden: "Oculto"
+                        }
+                    },
+                    general: {
+                        title: "GENERAL",
+                        connection_name: "Nombre de la Conexión",
+                        primary_channel: "Canal Principal",
+                        primary_desc: "Usar por defecto para mensajes salientes",
+                        initial_stage: "Etapa Inicial del Pipeline",
+                        stage_disabled: "Desactivado"
+                    },
+                    messages: {
+                        title: "MENSAJES AUTOMÁTICOS",
+                        welcome: "Mensaje de Bienvenida",
+                        welcome_placeholder: "¡Hola! Gracias por escribirnos...",
+                        off_hours: "Respuesta Fuera de Horario",
+                        off_hours_placeholder: "Estamos cerrados, te contactamos mañana."
+                    },
+                    schedule: {
+                        title: "HORARIO DE ATENCIÓN",
+                        start: "Hora Inicio",
+                        end: "Hora Fin",
+                        timezone: "Zona Horaria"
+                    },
+                    assignment: {
+                        title: "ASIGNACIÓN",
+                        custom_rule: "Regla Personalizada",
+                        custom_rule_desc: "Sobrescribir asignación general para este canal",
+                        strategy: "Estrategia"
+                    }
+                }
+            },
+            templates: {
+                title: "Plantillas de Mensajes",
+                subtitle: "Gestiona tus respuestas y mensajes automáticos aprobados por Meta.",
+                sync: "Sincronizar",
+                new_template: "Nueva Plantilla",
+                search: "Buscar plantilla...",
+                empty: "No tienes plantillas creadas",
+                empty_desc: "Comienza creando tu primera plantilla para estandarizar la comunicación con tus clientes.",
+                create_first: "Crear Plantilla",
+                delete_confirm: "¿Eliminar este template? Si está en Meta, también se eliminará allá.",
+                delete_success: "Template eliminado de Meta y local",
+                sync_success: "{count} plantillas sincronizadas desde Meta",
+                sync_errors: "{count} errores de sync",
+                no_waba: "No hay una conexión de WhatsApp activa. Configura una en Ajustes > Integraciones.",
+                status: {
+                    meta_verified: "Verificado en Meta",
+                    local_only: "Solo local",
+                    multimedia: "Multimedia",
+                    buttons: "Botones"
+                }
+            }
         }
     }
 } as const

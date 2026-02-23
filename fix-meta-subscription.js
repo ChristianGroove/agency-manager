@@ -1,79 +1,43 @@
 
-require('dotenv').config({ path: '.env.local' });
-const { createClient } = require('@supabase/supabase-js');
-const axios = require('axios');
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+const dotenv = require('dotenv');
+dotenv.config({ path: '.env.production' });
 
 async function fixSubscription() {
-    console.log('--- Fixing Meta WABA Subscription ---');
+    const wabaId = process.env.WHATSAPP_BUSINESS_ACCOUNT_ID;
+    const accessToken = process.env.META_PERMANENT_ACCESS_TOKEN;
+    const productionUrl = process.env.NEXT_PUBLIC_APP_URL + '/api/webhooks/messaging?channel=whatsapp';
+    const verifyToken = 'pixy_webhook_2026'; // Default in route.ts
 
-    // 1. Get Connection
-    const { data: orgs } = await supabase
-        .from('organizations')
-        .select('*')
-        .ilike('name', '%carnaval del pollo%');
+    console.log(`--- Updating Subscription for WABA: ${wabaId} ---`);
+    console.log(`New URL: ${productionUrl}`);
+    console.log(`Verify Token: ${verifyToken}`);
 
-    if (!orgs || orgs.length === 0) return console.log('❌ No orgs found');
-    const org = orgs[0];
-    console.log(`Found Org: ${org.name} (${org.id})`);
-
-    const { data: connections } = await supabase
-        .from('integration_connections')
-        .select('*')
-        .eq('organization_id', org.id);
-
-    // Filter by WABA ID
-    const connection = connections.find(c => c.metadata?.waba_id === '909228274804708');
-
-    if (!connection) return console.log('❌ Connection not found');
-
-    const accessToken = connection.credentials.access_token;
-    const wabaId = connection.metadata.waba_id;
-
-    console.log(`WABA ID: ${wabaId}`);
-    if (!accessToken) return console.log('❌ No Access Token found');
+    const url = `https://graph.facebook.com/v22.0/${wabaId}/subscribed_apps`;
 
     try {
-        // 0. CLEAR SUBSCRIPTION (DELETE)
-        console.log('\n--- Clearing Subscription (DELETE) ---');
-        try {
-            await axios.delete(`https://graph.facebook.com/v21.0/${wabaId}/subscribed_apps?access_token=${accessToken}`);
-            console.log('✅ Deleted successfully');
-        } catch (e) {
-            console.log('⚠️ Delete failed:', e.message);
-        }
-
-        // 1. SUBSCRIBE TO MESSAGES (Targeting App Logic)
-        console.log('\n--- Subscribing to fields (App Logic Match) ---');
-
-        const subUrl = `https://graph.facebook.com/v21.0/${wabaId}/subscribed_apps`;
-
-        const payload = {
-            subscribed_fields: ['messages', 'calls', 'automatic_events', 'smb_message_echoes'] // EXACTLY AS IN MANAGER
-        };
-
-        const config = {
+        const res = await fetch(url, {
+            method: 'POST',
             headers: {
                 'Authorization': `Bearer ${accessToken}`,
                 'Content-Type': 'application/json'
-            }
-        };
+            },
+            body: JSON.stringify({
+                subscribed_fields: ['messages', 'smb_message_echoes', 'message_deliveries', 'message_reads'],
+                override_callback_uri: productionUrl,
+                verify_token: verifyToken
+            })
+        });
 
-        const subRes = await axios.post(subUrl, payload, config);
-        console.log('✅ Subscription Result:', JSON.stringify(subRes.data, null, 2));
+        const data = await res.json();
+        console.log("Response:", JSON.stringify(data, null, 2));
 
-        // 3. Verify Again
-        console.log('\n--- Verifying New Subscription ---');
-        const checkUrl = `https://graph.facebook.com/v21.0/${wabaId}/subscribed_apps?access_token=${accessToken}`;
-        const checkRes = await axios.get(checkUrl);
-        console.log('Current Subscriptions:', JSON.stringify(checkRes.data, null, 2));
-
-    } catch (error) {
-        console.error('❌ Meta API Error:', error.response ? error.response.data : error.message);
+        if (data.success) {
+            console.log("\n✅ SUCCESS! WABA is now pointing to production.");
+        } else {
+            console.log("\n❌ FAILED to update subscription.");
+        }
+    } catch (e) {
+        console.error("Error updating subscription:", e);
     }
 }
 

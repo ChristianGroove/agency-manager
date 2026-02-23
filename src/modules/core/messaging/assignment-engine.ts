@@ -84,6 +84,13 @@ function matchesConditions(conv: any, conditions: any): boolean {
         }
     }
 
+    // Check specific connection_id
+    if (conditions.connection_id && conditions.connection_id.length > 0) {
+        if (!conditions.connection_id.includes(conv.connection_id)) {
+            return false
+        }
+    }
+
     // Check tags
     if (conditions.tags && conditions.tags.length > 0) {
         const convTags = conv.tags || []

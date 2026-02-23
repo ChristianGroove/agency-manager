@@ -40,17 +40,25 @@ export interface MessageTemplate {
     content: string
 }
 
-export async function getTemplates() {
+/**
+ * Get templates for the current organization, optionally filtered by channel
+ */
+export async function getTemplates(channelId?: string): Promise<MessageTemplate[]> {
     const orgId = await getCurrentOrganizationId()
-    if (!orgId) return []
+    if (!orgId) throw new Error("Organization context required")
 
     const supabase = await createClient()
-    const { data } = await supabase
-        .from("messaging_templates")
-        .select("*")
-        .eq("organization_id", orgId)
-        .order("created_at", { ascending: false })
+    let query = supabase
+        .from('messaging_templates')
+        .select('*')
+        .eq('organization_id', orgId)
 
+    if (channelId) {
+        query = query.eq('channel_id', channelId)
+    }
+
+    const { data, error } = await query.order('created_at', { ascending: false })
+    if (error) throw new Error(error.message)
     return (data || []) as MessageTemplate[]
 }
 
@@ -134,21 +142,27 @@ const META_API_VERSION = 'v24.0'
 const META_GRAPH_URL = 'https://graph.facebook.com'
 
 /**
- * Resolves the WABA ID and Access Token for the current organization's Meta connection
+ * Resolves the WABA ID and Access Token for a specific connection or the primary one
  */
-async function resolveMetaCredentials(orgId: string): Promise<{ wabaId: string, accessToken: string, phoneNumberId: string }> {
+async function resolveMetaCredentials(orgId: string, channelId?: string): Promise<{ wabaId: string, accessToken: string, phoneNumberId: string, connectionId: string }> {
     const supabase = await createClient()
 
     // 1. Find the active Meta/WhatsApp connection
-    const { data: connection, error: connError } = await supabase
+    let query = supabase
         .from('integration_connections')
         .select('*')
         .eq('organization_id', orgId)
         .in('provider_key', ['meta_whatsapp', 'whatsapp_cloud'])
         .eq('status', 'active')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single()
+
+    if (channelId) {
+        query = query.eq('id', channelId)
+    } else {
+        // Default to the one marked as primary (if any) or the most recent
+        query = query.order('created_at', { ascending: false })
+    }
+
+    const { data: connection, error: connError } = await query.limit(1).maybeSingle()
 
     if (connError || !connection) {
         console.error('[resolveMetaCredentials] No connection found:', connError?.message)
@@ -203,24 +217,23 @@ async function resolveMetaCredentials(orgId: string): Promise<{ wabaId: string, 
         throw new Error(`Missing WABA ID. Available metadata: ${JSON.stringify(Object.keys(metadata))}. Please re-connect WhatsApp.`)
     }
 
-    console.log('[resolveMetaCredentials] Resolved:', {
+    return {
         wabaId,
-        phoneNumberId: phoneNumberId || 'MISSING',
-        tokenLength: accessToken?.length
-    })
-
-    return { wabaId, accessToken, phoneNumberId: phoneNumberId || '' }
+        accessToken,
+        phoneNumberId: phoneNumberId || '',
+        connectionId: connection.id
+    }
 }
 
 /**
  * Sync templates FROM Meta Graph API into local DB
  * GET /{WABA_ID}/message_templates
  */
-export async function syncTemplatesFromMeta(): Promise<{ synced: number, errors: string[] }> {
+export async function syncTemplatesFromMeta(channelId?: string): Promise<{ synced: number, errors: string[] }> {
     const orgId = await getCurrentOrganizationId()
     if (!orgId) throw new Error("Organization context required")
 
-    const { wabaId, accessToken } = await resolveMetaCredentials(orgId)
+    const { wabaId, accessToken, connectionId } = await resolveMetaCredentials(orgId, channelId)
 
     const url = `${META_GRAPH_URL}/${META_API_VERSION}/${wabaId}/message_templates?fields=name,status,category,language,components&limit=100`
     console.log('[syncTemplatesFromMeta] Fetching from:', url.replace(accessToken, '***'))
@@ -248,35 +261,25 @@ export async function syncTemplatesFromMeta(): Promise<{ synced: number, errors:
 
     for (const mt of metaTemplates) {
         try {
-            // Check if template already exists locally by name
-            const { data: existing } = await supabase
+            const { error: upsertError } = await supabase
                 .from('messaging_templates')
-                .select('id')
-                .eq('organization_id', orgId)
-                .eq('name', mt.name)
-                .eq('language', mt.language)
-                .maybeSingle()
+                .upsert({
+                    organization_id: orgId,
+                    channel_id: connectionId, // Link to specific connection
+                    name: mt.name,
+                    category: mt.category,
+                    language: mt.language,
+                    status: mt.status,
+                    components: mt.components,
+                    meta_id: mt.id,
+                    content: extractBodyText(mt.components),
+                    updated_at: new Date().toISOString()
+                }, {
+                    onConflict: 'organization_id,name,language'
+                })
 
-            const templateData = {
-                organization_id: orgId,
-                name: mt.name,
-                category: mt.category,
-                language: mt.language,
-                components: mt.components || [],
-                status: mt.status,
-                meta_id: mt.id,
-                content: extractBodyText(mt.components || [])
-            }
-
-            if (existing) {
-                await supabase
-                    .from('messaging_templates')
-                    .update({ status: mt.status, meta_id: mt.id, components: mt.components || [] })
-                    .eq('id', existing.id)
-            } else {
-                await supabase
-                    .from('messaging_templates')
-                    .insert(templateData)
+            if (upsertError) {
+                throw new Error(upsertError.message)
             }
             synced++
         } catch (e: any) {
@@ -292,11 +295,12 @@ export async function syncTemplatesFromMeta(): Promise<{ synced: number, errors:
  * Submit a template TO Meta for approval
  * POST /{WABA_ID}/message_templates
  */
-export async function submitTemplateToMeta(templateId: string): Promise<{ success: boolean, metaId?: string, error?: string }> {
+export async function submitTemplateToMeta(templateId: string, channelId?: string): Promise<{ success: boolean, metaId?: string, error?: string }> {
     const orgId = await getCurrentOrganizationId()
     if (!orgId) throw new Error("Organization context required")
 
     const supabase = await createClient()
+    const { wabaId, accessToken } = await resolveMetaCredentials(orgId, channelId)
     const { data: template } = await supabase
         .from('messaging_templates')
         .select('*')
@@ -305,8 +309,6 @@ export async function submitTemplateToMeta(templateId: string): Promise<{ succes
         .single()
 
     if (!template) throw new Error("Template not found")
-
-    const { wabaId, accessToken } = await resolveMetaCredentials(orgId)
 
     // Build Meta-compatible components (strip UI_METADATA)
     const metaComponents = ((template as any).components || [])
@@ -368,11 +370,12 @@ export async function submitTemplateToMeta(templateId: string): Promise<{ succes
  * Delete a template FROM Meta and local DB
  * DELETE /{WABA_ID}/message_templates?name={name}
  */
-export async function deleteTemplateFromMeta(templateId: string): Promise<{ success: boolean, error?: string }> {
+export async function deleteTemplateFromMeta(templateId: string, channelId?: string): Promise<{ success: boolean, error?: string }> {
     const orgId = await getCurrentOrganizationId()
     if (!orgId) throw new Error("Organization context required")
 
     const supabase = await createClient()
+    const { wabaId, accessToken } = await resolveMetaCredentials(orgId, channelId)
     const { data: template } = await supabase
         .from('messaging_templates')
         .select('*')

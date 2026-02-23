@@ -15,6 +15,7 @@ export interface UserPreferences {
         auto_advance: boolean;
         send_on_enter: boolean;
         default_view: 'all' | 'unassigned' | 'mentions';
+        strict_isolation?: boolean;
     };
     shortcuts: Record<string, string>;
     theme: {
@@ -34,7 +35,8 @@ export const DEFAULT_PREFERENCES: UserPreferences = {
     behavior: {
         auto_advance: false,
         send_on_enter: true,
-        default_view: 'all'
+        default_view: 'all',
+        strict_isolation: false
     },
     shortcuts: {},
     theme: {

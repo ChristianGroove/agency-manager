@@ -26,9 +26,10 @@ interface TemplateBuilderSheetProps {
     onOpenChange: (open: boolean) => void
     templateToEdit?: MessageTemplate | null
     onSuccess?: () => void
+    channelId?: string
 }
 
-export function TemplateBuilderSheet({ open, onOpenChange, templateToEdit, onSuccess }: TemplateBuilderSheetProps) {
+export function TemplateBuilderSheet({ open, onOpenChange, templateToEdit, onSuccess, channelId }: TemplateBuilderSheetProps) {
     const { t } = useTranslation()
     const [isLoading, setIsLoading] = useState(false)
 
@@ -149,7 +150,7 @@ export function TemplateBuilderSheet({ open, onOpenChange, templateToEdit, onSuc
                 await updateTemplate(templateToEdit.id, payload)
                 toast.success(t('crm.inbox.chat.templates.save_success'))
             } else {
-                await createTemplate(payload)
+                await createTemplate({ ...payload, channel_id: channelId })
                 toast.success(t('crm.inbox.chat.templates.save_success'))
             }
 

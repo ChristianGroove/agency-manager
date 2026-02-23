@@ -1323,11 +1323,99 @@ export const en = {
         },
         pipeline: {
             title: "Pipeline",
-            kanban_view: "Kanban",
+            kanban_view: "Board",
             list_view: "List",
             settings: "Settings",
             import: "Import",
             analytics: "Analytics"
+        },
+        crm_settings: {
+            title: "CRM Settings",
+            desc: "Manage your CRM system's general preferences.",
+            tabs: {
+                channels: "Channels",
+                pipelines: "Pipelines",
+                templates: "Templates (Meta)",
+                industry_templates: "Industry Templates"
+            },
+            channels: {
+                title: "Messaging Channels",
+                subtitle: "Connect your accounts to manage conversations.",
+                empty: "No channels connected.",
+                card: {
+                    provider: "Provider",
+                    phone: "Phone",
+                    created: "Created",
+                    reconnect: "Reconnect",
+                    edit: "Edit Settings"
+                },
+                sheet: {
+                    save: "Save",
+                    calling: {
+                        title: "WHATSAPP CALLING",
+                        voice_title: "Voice Calls",
+                        voice_desc: "Enable calls via WhatsApp Business",
+                        icon_title: "Call Icon",
+                        icon_desc: "Button visible in the user's chat",
+                        verify: "Verify",
+                        default_config: "Default config",
+                        status_on: "ON",
+                        status_off: "OFF",
+                        visibility: {
+                            visible: "Visible",
+                            hidden: "Hidden"
+                        }
+                    },
+                    general: {
+                        title: "GENERAL",
+                        connection_name: "Connection Name",
+                        primary_channel: "Primary Channel",
+                        primary_desc: "Use by default for outgoing messages",
+                        initial_stage: "Initial Pipeline Stage",
+                        stage_disabled: "Disabled"
+                    },
+                    messages: {
+                        title: "AUTOMATIC MESSAGES",
+                        welcome: "Welcome Message",
+                        welcome_placeholder: "Hi! Thanks for writing to us...",
+                        off_hours: "Off-Hours Response",
+                        off_hours_placeholder: "We are closed, we will contact you tomorrow."
+                    },
+                    schedule: {
+                        title: "BUSINESS HOURS",
+                        start: "Start Time",
+                        end: "End Time",
+                        timezone: "Timezone"
+                    },
+                    assignment: {
+                        title: "ASSIGNMENT",
+                        custom_rule: "Custom Rule",
+                        custom_rule_desc: "Override general assignment for this channel",
+                        strategy: "Strategy"
+                    }
+                }
+            },
+            templates: {
+                title: "Message Templates",
+                subtitle: "Manage your Meta-approved responses and automated messages.",
+                sync: "Sync",
+                new_template: "New Template",
+                search: "Search template...",
+                empty: "No templates created",
+                empty_desc: "Start by creating your first template to standardize communication with your clients.",
+                create_first: "Create Template",
+                delete_confirm: "Delete this template? If it exists on Meta, it will be deleted there as well.",
+                delete_success: "Template deleted from Meta and local",
+                sync_success: "{count} templates synced from Meta",
+                sync_errors: "{count} sync errors",
+                no_waba: "No active WhatsApp connection. Configure one in Settings > Integrations.",
+                status: {
+                    meta_verified: "Verified on Meta",
+                    local_only: "Local only",
+                    multimedia: "Multimedia",
+                    buttons: "Buttons"
+                }
+            }
         }
     }
 } as const

@@ -4,7 +4,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Zap, Command, CheckSquare, Keyboard } from "lucide-react";
+import { Zap, Command, CheckSquare, Keyboard, ShieldAlert } from "lucide-react";
 import { useInboxPreferences } from "../use-inbox-preferences";
 
 export function ProductivityCard() {
@@ -52,6 +52,26 @@ export function ProductivityCard() {
                         id="send-enter"
                         checked={behavior.send_on_enter}
                         onCheckedChange={(v) => updatePreferences('behavior', { send_on_enter: v })}
+                    />
+                </div>
+
+                <div className="border-t" />
+
+                {/* Strict Isolation */}
+                <div className="flex items-center justify-between space-x-2">
+                    <div className="flex flex-col space-y-1">
+                        <Label htmlFor="strict-isolation" className="flex items-center gap-2">
+                            <ShieldAlert className="h-3.5 w-3.5 text-rose-500" />
+                            Strict Isolation Mode
+                        </Label>
+                        <span className="text-xs text-muted-foreground">
+                            Only show conversations explicitly assigned to you. Hides the general inbox stream.
+                        </span>
+                    </div>
+                    <Switch
+                        id="strict-isolation"
+                        checked={behavior.strict_isolation}
+                        onCheckedChange={(v) => updatePreferences('behavior', { strict_isolation: v })}
                     />
                 </div>
 

@@ -12,8 +12,15 @@ import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
 import { SectionHeader } from "@/components/layout/section-header"
+import { useI18n } from "@/lib/i18n/context"
+import { getChannels } from "@/modules/core/channels/actions"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Channel } from "@/modules/core/channels/types"
 
 export default function TemplatesPage() {
+    const { dict } = useI18n()
+    const t = dict.crm.crm_settings.templates
+
     const [templates, setTemplates] = useState<MessageTemplate[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [isCreateOpen, setIsCreateOpen] = useState(false)
@@ -21,17 +28,42 @@ export default function TemplatesPage() {
     const [editingTemplate, setEditingTemplate] = useState<MessageTemplate | null>(null)
     const [isSyncing, setIsSyncing] = useState(false)
 
+    // Multi-WABA support
+    const [channels, setChannels] = useState<Channel[]>([])
+    const [selectedChannelId, setSelectedChannelId] = useState<string>("")
+
     useEffect(() => {
-        loadTemplates()
+        const fetchChannels = async () => {
+            const data = await getChannels()
+            // Filter only Meta/Cloud WhatsApp
+            const wabaChannels = data.filter(c =>
+                c.provider_key === 'meta_whatsapp' || c.provider_key === 'whatsapp_cloud'
+            )
+            setChannels(wabaChannels)
+            if (wabaChannels.length > 0) {
+                // Try to find the primary one, otherwise first one
+                const primary = wabaChannels.find(c => c.is_primary)
+                setSelectedChannelId(primary?.id || wabaChannels[0].id)
+            } else {
+                setIsLoading(false)
+            }
+        }
+        fetchChannels()
     }, [])
+
+    useEffect(() => {
+        if (selectedChannelId) {
+            loadTemplates()
+        }
+    }, [selectedChannelId])
 
     const loadTemplates = async () => {
         setIsLoading(true)
         try {
-            const data = await getTemplates()
+            const data = await getTemplates(selectedChannelId)
             setTemplates(data)
         } catch (error) {
-            toast.error("Error al cargar templates")
+            toast.error(dict.common.connection_error)
         } finally {
             setIsLoading(false)
         }
@@ -39,27 +71,28 @@ export default function TemplatesPage() {
 
     const handleDelete = async (id: string, e: React.MouseEvent) => {
         e.stopPropagation()
-        if (!confirm("¿Eliminar este template? Si está en Meta, también se eliminará allá.")) return
+        if (!confirm(t.delete_confirm)) return
         try {
-            await deleteTemplateFromMeta(id)
+            await deleteTemplateFromMeta(id, selectedChannelId)
             setTemplates(templates.filter(t => t.id !== id))
-            toast.success("Template eliminado de Meta y local")
+            toast.success(t.delete_success)
         } catch (error: any) {
-            toast.error(error.message || "Error al eliminar")
+            toast.error(error.message || dict.common.error)
         }
     }
 
     const handleSync = async () => {
+        if (!selectedChannelId) return
         setIsSyncing(true)
         try {
-            const result = await syncTemplatesFromMeta()
-            toast.success(`${result.synced} plantillas sincronizadas desde Meta`)
+            const result = await syncTemplatesFromMeta(selectedChannelId)
+            toast.success(t.sync_success.replace('{count}', String(result.synced)))
             if (result.errors.length > 0) {
-                toast.warning(`${result.errors.length} errores de sync`)
+                toast.warning(t.sync_errors.replace('{count}', String(result.errors.length)))
             }
             await loadTemplates()
         } catch (error: any) {
-            toast.error(error.message || "Error al sincronizar")
+            toast.error(error.message || dict.common.error)
         } finally {
             setIsSyncing(false)
         }
@@ -85,32 +118,50 @@ export default function TemplatesPage() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="w-full">
                     <SectionHeader
-                        title="Plantillas de Mensajes"
-                        subtitle="Gestiona tus respuestas y mensajes automáticos aprobados por Meta."
+                        title={t.title}
+                        subtitle={t.subtitle}
                         titleClassName="text-2xl"
                         action={
                             <div className="flex gap-2">
                                 <div className="relative w-full sm:w-64">
                                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                                     <Input
-                                        placeholder="Buscar plantilla..."
+                                        placeholder={t.search}
                                         className="pl-9"
                                         value={filter}
                                         onChange={(e) => setFilter(e.target.value)}
                                     />
                                 </div>
+                                {channels.length > 1 && (
+                                    <Select value={selectedChannelId} onValueChange={setSelectedChannelId}>
+                                        <SelectTrigger className="w-48 h-10">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {channels.map(c => (
+                                                <SelectItem key={c.id} value={c.id}>
+                                                    {c.connection_name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                )}
                                 <Button
                                     variant="outline"
                                     onClick={handleSync}
-                                    disabled={isSyncing}
+                                    disabled={isSyncing || !selectedChannelId}
                                     className="gap-2"
                                 >
                                     <RefreshCw className={cn("h-4 w-4", isSyncing && "animate-spin")} />
-                                    Sincronizar
+                                    {t.sync}
                                 </Button>
-                                <Button onClick={handleNew} className="bg-[#25D366] hover:bg-[#128C7E] text-white font-semibold">
+                                <Button
+                                    onClick={handleNew}
+                                    disabled={!selectedChannelId}
+                                    className="bg-[#25D366] hover:bg-[#128C7E] text-white font-semibold"
+                                >
                                     <Plus className="mr-2 h-4 w-4" />
-                                    Nueva Plantilla
+                                    {t.new_template}
                                 </Button>
                             </div>
                         }
@@ -127,11 +178,22 @@ export default function TemplatesPage() {
                     <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
                         <MessageSquare className="h-8 w-8 text-green-600" />
                     </div>
-                    <h3 className="text-lg font-medium">No tienes plantillas creadas</h3>
-                    <p className="text-muted-foreground max-w-sm text-center mt-2 mb-6">
-                        Comienza creando tu primera plantilla para estandarizar la comunicación con tus clientes.
-                    </p>
-                    <Button onClick={handleNew}>Crear Plantilla</Button>
+                    {channels.length === 0 ? (
+                        <>
+                            <h3 className="text-lg font-medium">{dict.crm.crm_settings.channels.empty}</h3>
+                            <p className="text-muted-foreground max-w-sm text-center mt-2 mb-6">
+                                {t.no_waba}
+                            </p>
+                        </>
+                    ) : (
+                        <>
+                            <h3 className="text-lg font-medium">{t.empty}</h3>
+                            <p className="text-muted-foreground max-w-sm text-center mt-2 mb-6">
+                                {t.empty_desc}
+                            </p>
+                            <Button onClick={handleNew}>{t.create_first}</Button>
+                        </>
+                    )}
                 </div>
             ) : (
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 pb-10">
@@ -170,7 +232,7 @@ export default function TemplatesPage() {
                                             template.status === 'REJECTED' ? "bg-red-500" :
                                                 template.meta_id ? "bg-yellow-400 animate-pulse" :
                                                     "bg-gray-300"
-                                    )} title={template.meta_id ? template.status : 'Solo local'} />
+                                    )} title={template.meta_id ? template.status : t.status.local_only} />
                                 </div>
                             </CardHeader>
                             <CardContent className="pt-4">
@@ -183,17 +245,17 @@ export default function TemplatesPage() {
                                 <div className="flex items-center justify-between mt-4 text-xs text-muted-foreground">
                                     <div className="flex gap-2 items-center">
                                         {template.components?.some(c => c.type === 'HEADER') && (
-                                            <span title="Multimedia">
+                                            <span title={t.status.multimedia}>
                                                 <FileText className="w-3.5 h-3.5" />
                                             </span>
                                         )}
                                         {template.components?.some(c => c.type === 'BUTTONS') && (
-                                            <span title="Botones">
+                                            <span title={t.status.buttons}>
                                                 <Zap className="w-3.5 h-3.5" />
                                             </span>
                                         )}
                                         {template.meta_id && (
-                                            <span title="Verificado en Meta" className="text-green-500">
+                                            <span title={t.status.meta_verified} className="text-green-500">
                                                 <Upload className="w-3.5 h-3.5" />
                                             </span>
                                         )}
@@ -209,7 +271,7 @@ export default function TemplatesPage() {
                                         )}>
                                             {template.meta_id
                                                 ? template.status.toLowerCase()
-                                                : 'solo local'}
+                                                : t.status.local_only}
                                         </span>
                                         <button
                                             onClick={(e) => handleDelete(template.id, e)}
@@ -231,6 +293,7 @@ export default function TemplatesPage() {
                 onOpenChange={setIsCreateOpen}
                 templateToEdit={editingTemplate}
                 onSuccess={loadTemplates}
+                channelId={selectedChannelId}
             />
         </div>
     )

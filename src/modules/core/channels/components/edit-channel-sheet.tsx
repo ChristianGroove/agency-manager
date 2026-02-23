@@ -17,6 +17,7 @@ import { Switch } from "@/components/ui/switch"
 import { Sheet, SheetContent, SheetTitle, SheetDescription } from "@/components/ui/sheet"
 import { getChannelAssignmentRule, upsertAssignmentRule, deleteAssignmentRule } from "@/modules/core/messaging/assignment-actions"
 import { Badge } from "@/components/ui/badge"
+import { useI18n } from "@/lib/i18n/context"
 
 interface EditChannelSheetProps {
     open: boolean
@@ -53,6 +54,8 @@ function SettingRow({ label, description, children }: { label: string, descripti
 }
 
 export function EditChannelSheet({ open, onOpenChange, channel, pipelineStages, agents }: EditChannelSheetProps) {
+    const { dict } = useI18n()
+    const t = dict.crm.crm_settings.channels.sheet
     const [isLoading, setIsLoading] = useState(false)
     const [isFetchingRule, setIsFetchingRule] = useState(false)
 
@@ -119,9 +122,9 @@ export function EditChannelSheet({ open, onOpenChange, channel, pipelineStages, 
             if (!res.ok) throw new Error(data.error || 'Failed')
             setCallingEnabled(enabled)
             if (enabled && iconVisibility === 'HIDE') setIconVisibility('DEFAULT')
-            toast.success(enabled ? 'Calling activado' : 'Calling desactivado', { description: 'Confirmación de Meta Graph API' })
+            toast.success(enabled ? t.calling.status_on : t.calling.status_off)
         } catch (e: any) {
-            toast.error('Error Meta API', { description: e.message })
+            toast.error(dict.common.error, { description: e.message })
             setCallingEnabled(!enabled)
         } finally { setCallingLoading(false) }
     }
@@ -140,8 +143,8 @@ export function EditChannelSheet({ open, onOpenChange, channel, pipelineStages, 
             const data = await res.json()
             if (!res.ok) throw new Error(data.error || 'Failed')
             setIconVisibility(visibility)
-            toast.success(visibility === 'DEFAULT' ? 'Ícono visible' : 'Ícono oculto')
-        } catch (e: any) { toast.error('Error', { description: e.message }) }
+            toast.success(visibility === 'DEFAULT' ? t.calling.visibility.visible : t.calling.visibility.hidden)
+        } catch (e: any) { toast.error(dict.common.error, { description: e.message }) }
         finally { setCallingLoading(false) }
     }
 
@@ -161,10 +164,10 @@ export function EditChannelSheet({ open, onOpenChange, channel, pipelineStages, 
             } else if (initialRuleId && !assignmentRule) {
                 await deleteAssignmentRule(initialRuleId)
             }
-            toast.success("Guardado", { description: "Configuración actualizada." })
+            toast.success(dict.common.saved)
             onOpenChange(false)
         } catch (error: any) {
-            toast.error("Error", { description: error.message || "No se pudo guardar." })
+            toast.error(dict.common.error, { description: error.message || dict.common.unexpected_error })
         } finally { setIsLoading(false) }
     }
 
@@ -211,7 +214,7 @@ export function EditChannelSheet({ open, onOpenChange, channel, pipelineStages, 
                                 className="bg-black dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-200 rounded-xl shadow-lg shadow-black/10"
                             >
                                 {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                                <span className="ml-1.5">Guardar</span>
+                                <span className="ml-1.5">{t.save}</span>
                             </Button>
                         </div>
                     </div>
@@ -225,25 +228,25 @@ export function EditChannelSheet({ open, onOpenChange, channel, pipelineStages, 
                                 <>
                                     <SectionTitle
                                         icon={Phone}
-                                        title="Llamadas WhatsApp"
+                                        title={t.calling.title}
                                         badge={
                                             <Badge
                                                 variant={callingEnabled ? "default" : "secondary"}
                                                 className={`text-[10px] ${callingEnabled ? "bg-green-600" : ""}`}
                                             >
-                                                {callingLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : callingEnabled ? 'ON' : 'OFF'}
+                                                {callingLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : callingEnabled ? t.calling.status_on : t.calling.status_off}
                                             </Badge>
                                         }
                                     />
                                     <div className="rounded-xl border bg-white/50 dark:bg-white/5 px-4 divide-y divide-gray-100 dark:divide-white/5">
-                                        <SettingRow label="Llamadas de Voz" description="Activar llamadas por WhatsApp Business">
+                                        <SettingRow label={t.calling.voice_title} description={t.calling.voice_desc}>
                                             <Switch
                                                 checked={callingEnabled}
                                                 onCheckedChange={handleToggleCalling}
                                                 disabled={callingLoading}
                                             />
                                         </SettingRow>
-                                        <SettingRow label="Ícono de Llamada" description="Botón visible en el chat del usuario">
+                                        <SettingRow label={t.calling.icon_title} description={t.calling.icon_desc}>
                                             <Select
                                                 value={iconVisibility}
                                                 onValueChange={(v) => handleIconVisibility(v as 'DEFAULT' | 'HIDE')}
@@ -254,10 +257,10 @@ export function EditChannelSheet({ open, onOpenChange, channel, pipelineStages, 
                                                 </SelectTrigger>
                                                 <SelectContent>
                                                     <SelectItem value="DEFAULT">
-                                                        <span className="flex items-center gap-1.5"><Eye className="w-3 h-3" />Visible</span>
+                                                        <span className="flex items-center gap-1.5"><Eye className="w-3 h-3" />{t.calling.visibility.visible}</span>
                                                     </SelectItem>
                                                     <SelectItem value="HIDE">
-                                                        <span className="flex items-center gap-1.5"><EyeOff className="w-3 h-3" />Oculto</span>
+                                                        <span className="flex items-center gap-1.5"><EyeOff className="w-3 h-3" />{t.calling.visibility.hidden}</span>
                                                     </SelectItem>
                                                 </SelectContent>
                                             </Select>
@@ -265,13 +268,13 @@ export function EditChannelSheet({ open, onOpenChange, channel, pipelineStages, 
                                     </div>
                                     <div className="flex items-center justify-between px-1 pt-1 pb-3">
                                         <span className="text-[10px] text-muted-foreground">
-                                            {callingStatusSource === 'meta' && '✓ Sincronizado con Meta'}
-                                            {callingStatusSource === 'default' && '○ Config predeterminada'}
-                                            {callingStatusSource === 'error' && '⚠ Sin conexión a Meta'}
+                                            {callingStatusSource === 'meta' && `✓ ${dict.common.saved}`}
+                                            {callingStatusSource === 'default' && `○ ${t.calling.default_config}`}
+                                            {callingStatusSource === 'error' && `⚠ ${dict.common.connection_error}`}
                                             {callingStatusSource === 'loading' && '...'}
                                         </span>
                                         <Button variant="ghost" size="sm" onClick={loadCallingStatus} disabled={callingLoading} className="h-6 text-[10px] px-2">
-                                            <RefreshCw className="h-3 w-3 mr-1" />Verificar
+                                            <RefreshCw className="h-3 w-3 mr-1" />{t.calling.verify}
                                         </Button>
                                     </div>
 
@@ -280,27 +283,27 @@ export function EditChannelSheet({ open, onOpenChange, channel, pipelineStages, 
                             )}
 
                             {/* ═══════ GENERAL ═══════ */}
-                            <SectionTitle icon={Settings2} title="General" />
+                            <SectionTitle icon={Settings2} title={t.general.title} />
                             <div className="rounded-xl border bg-white/50 dark:bg-white/5 px-4 divide-y divide-gray-100 dark:divide-white/5">
                                 <div className="py-3 space-y-1.5">
-                                    <Label className="text-xs text-muted-foreground">Nombre de la Conexión</Label>
+                                    <Label className="text-xs text-muted-foreground">{t.general.connection_name}</Label>
                                     <Input
                                         value={name}
                                         onChange={e => setName(e.target.value)}
                                         className="h-8 text-sm"
                                     />
                                 </div>
-                                <SettingRow label="Canal Principal" description="Usar por defecto para mensajes salientes">
+                                <SettingRow label={t.general.primary_channel} description={t.general.primary_desc}>
                                     <Switch checked={isPrimary} onCheckedChange={setIsPrimary} />
                                 </SettingRow>
                                 <div className="py-3 space-y-1.5">
-                                    <Label className="text-xs text-muted-foreground">Etapa Inicial del Pipeline</Label>
+                                    <Label className="text-xs text-muted-foreground">{t.general.initial_stage}</Label>
                                     <Select value={pipelineStageId || "none"} onValueChange={setPipelineStageId}>
                                         <SelectTrigger className="h-8 text-sm">
-                                            <SelectValue placeholder="Seleccionar" />
+                                            <SelectValue placeholder={dict.common.search} />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="none">Desactivado</SelectItem>
+                                            <SelectItem value="none">{t.general.stage_disabled}</SelectItem>
                                             {pipelineStages.map(stage => (
                                                 <SelectItem key={stage.id} value={stage.id}>{stage.name}</SelectItem>
                                             ))}
@@ -312,23 +315,23 @@ export function EditChannelSheet({ open, onOpenChange, channel, pipelineStages, 
                             <div className="border-b border-gray-100 dark:border-white/5 my-1" />
 
                             {/* ═══════ MENSAJES Y HORARIO ═══════ */}
-                            <SectionTitle icon={MessageSquare} title="Mensajes Automáticos" />
+                            <SectionTitle icon={MessageSquare} title={t.messages.title} />
                             <div className="rounded-xl border bg-white/50 dark:bg-white/5 px-4 divide-y divide-gray-100 dark:divide-white/5">
                                 <div className="py-3 space-y-1.5">
-                                    <Label className="text-xs text-muted-foreground">Mensaje de Bienvenida</Label>
+                                    <Label className="text-xs text-muted-foreground">{t.messages.welcome}</Label>
                                     <Input
                                         value={welcomeMessage}
                                         onChange={e => setWelcomeMessage(e.target.value)}
-                                        placeholder="¡Hola! Gracias por escribirnos..."
+                                        placeholder={t.messages.welcome_placeholder}
                                         className="h-8 text-sm"
                                     />
                                 </div>
                                 <div className="py-3 space-y-1.5">
-                                    <Label className="text-xs text-muted-foreground">Respuesta Fuera de Horario</Label>
+                                    <Label className="text-xs text-muted-foreground">{t.messages.off_hours}</Label>
                                     <Input
                                         value={autoReply}
                                         onChange={e => setAutoReply(e.target.value)}
-                                        placeholder="Estamos cerrados, te contactamos mañana."
+                                        placeholder={t.messages.off_hours_placeholder}
                                         className="h-8 text-sm"
                                     />
                                 </div>
@@ -337,20 +340,20 @@ export function EditChannelSheet({ open, onOpenChange, channel, pipelineStages, 
                             <div className="border-b border-gray-100 dark:border-white/5 my-1" />
 
                             {/* ═══════ HORARIO ═══════ */}
-                            <SectionTitle icon={Clock} title="Horario de Atención" />
+                            <SectionTitle icon={Clock} title={t.schedule.title} />
                             <div className="rounded-xl border bg-white/50 dark:bg-white/5 px-4 py-3 space-y-3">
                                 <div className="grid grid-cols-2 gap-3">
                                     <div className="space-y-1">
-                                        <Label className="text-xs text-muted-foreground">Inicio</Label>
+                                        <Label className="text-xs text-muted-foreground">{t.schedule.start}</Label>
                                         <Input type="time" value={workingHours.start} onChange={e => setWorkingHours({ ...workingHours, start: e.target.value })} className="h-8 text-sm" />
                                     </div>
                                     <div className="space-y-1">
-                                        <Label className="text-xs text-muted-foreground">Fin</Label>
+                                        <Label className="text-xs text-muted-foreground">{t.schedule.end}</Label>
                                         <Input type="time" value={workingHours.end} onChange={e => setWorkingHours({ ...workingHours, end: e.target.value })} className="h-8 text-sm" />
                                     </div>
                                 </div>
                                 <div className="space-y-1">
-                                    <Label className="text-xs text-muted-foreground">Zona Horaria</Label>
+                                    <Label className="text-xs text-muted-foreground">{t.schedule.timezone}</Label>
                                     <Select value={workingHours.timezone || 'America/Bogota'} onValueChange={tz => setWorkingHours({ ...workingHours, timezone: tz })}>
                                         <SelectTrigger className="h-8 text-sm">
                                             <SelectValue />
@@ -369,11 +372,11 @@ export function EditChannelSheet({ open, onOpenChange, channel, pipelineStages, 
                             {/* ═══════ ASIGNACIÓN ═══════ */}
                             <SectionTitle
                                 icon={Users}
-                                title="Asignación de Agentes"
+                                title={t.assignment.title}
                                 badge={isFetchingRule ? <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" /> : undefined}
                             />
                             <div className="rounded-xl border bg-white/50 dark:bg-white/5 px-4 divide-y divide-gray-100 dark:divide-white/5">
-                                <SettingRow label="Regla Personalizada" description="Sobrescribir asignación general para este canal">
+                                <SettingRow label={t.assignment.custom_rule} description={t.assignment.custom_rule_desc}>
                                     <Switch
                                         checked={!!assignmentRule}
                                         onCheckedChange={(checked) => {
@@ -396,13 +399,12 @@ export function EditChannelSheet({ open, onOpenChange, channel, pipelineStages, 
                                 {assignmentRule && (
                                     <div className="py-3 space-y-3 animate-in slide-in-from-top-2 duration-200">
                                         <div className="space-y-1">
-                                            <Label className="text-xs text-muted-foreground">Estrategia</Label>
+                                            <Label className="text-xs text-muted-foreground">{t.assignment.strategy}</Label>
                                             <Select value={assignmentRule.strategy} onValueChange={(val) => setAssignmentRule({ ...assignmentRule, strategy: val })}>
                                                 <SelectTrigger className="h-8 text-sm">
                                                     <SelectValue />
                                                 </SelectTrigger>
                                                 <SelectContent>
-                                                    <SelectItem value="round-robin">Round Robin</SelectItem>
                                                     <SelectItem value="specific-agent">Agentes Específicos</SelectItem>
                                                 </SelectContent>
                                             </Select>

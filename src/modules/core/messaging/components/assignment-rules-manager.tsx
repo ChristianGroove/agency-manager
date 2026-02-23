@@ -38,6 +38,8 @@ import {
     getAssignmentRules,
     getAgentsWorkload
 } from "../assignment-actions"
+import { getChannels } from "@/modules/core/channels/actions"
+import { Channel } from "@/modules/core/channels/types"
 
 interface AssignmentRule {
     id: string
@@ -54,6 +56,7 @@ export function AssignmentRulesManager() {
     const { t } = useTranslation()
     const [rules, setRules] = useState<AssignmentRule[]>([])
     const [agents, setAgents] = useState<any[]>([])
+    const [channels, setChannels] = useState<Channel[]>([])
     const [loading, setLoading] = useState(true)
     const [showDialog, setShowDialog] = useState(false)
     const [editingRule, setEditingRule] = useState<AssignmentRule | null>(null)
@@ -65,13 +68,15 @@ export function AssignmentRulesManager() {
     const loadData = async () => {
         setLoading(true)
         try {
-            const [rulesRes, agentsRes] = await Promise.all([
+            const [rulesRes, agentsRes, channelsRes] = await Promise.all([
                 getAssignmentRules(),
-                getAgentsWorkload()
+                getAgentsWorkload(),
+                getChannels()
             ])
 
             if (rulesRes.success) setRules(rulesRes.data || [])
             if (agentsRes.success) setAgents(agentsRes.data || [])
+            setChannels(channelsRes || [])
         } catch (error) {
             console.error("Failed to load assignment data:", error)
             toast.error(t('crm.inbox.settings.sections.rules.load_error'))
@@ -147,6 +152,7 @@ export function AssignmentRulesManager() {
                         <RuleEditor
                             rule={editingRule}
                             agents={agents}
+                            channels={channels}
                             onSave={handleSaveRule}
                             onCancel={() => {
                                 setShowDialog(false)
@@ -233,13 +239,14 @@ export function AssignmentRulesManager() {
     )
 }
 
-function RuleEditor({ rule, agents, onSave, onCancel, t }: any) {
+function RuleEditor({ rule, agents, channels, onSave, onCancel, t }: any) {
     const [name, setName] = useState(rule?.name || '')
     const [description, setDescription] = useState(rule?.description || '')
     const [priority, setPriority] = useState(rule?.priority || 100)
     const [strategy, setStrategy] = useState<any>(rule?.strategy || 'load-balance')
     const [conditions, setConditions] = useState(rule?.conditions || {})
     const [selectedAgents, setSelectedAgents] = useState<string[]>(rule?.assign_to || [])
+    const [selectedChannel, setSelectedChannel] = useState<string>(rule?.conditions?.connection_id?.[0] || 'all')
 
     const handleSave = () => {
         if (!name.trim()) {
@@ -253,7 +260,10 @@ function RuleEditor({ rule, agents, onSave, onCancel, t }: any) {
             description,
             priority,
             strategy,
-            conditions,
+            conditions: {
+                ...conditions,
+                connection_id: selectedChannel !== 'all' ? [selectedChannel] : undefined
+            },
             assign_to: selectedAgents.length > 0 ? selectedAgents : undefined
         })
     }
@@ -275,6 +285,23 @@ function RuleEditor({ rule, agents, onSave, onCancel, t }: any) {
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                 />
+            </div>
+
+            <div className="space-y-2">
+                <Label>{t('crm.inbox.sidebar.filters.all')} / {t('crm.inbox.context.sections.channels')}</Label>
+                <Select value={selectedChannel} onValueChange={setSelectedChannel}>
+                    <SelectTrigger>
+                        <SelectValue placeholder={t('crm.inbox.sidebar.filters.all')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">{t('crm.inbox.sidebar.filters.all')}</SelectItem>
+                        {channels.map((channel: any) => (
+                            <SelectItem key={channel.id} value={channel.id}>
+                                {channel.connection_name}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
