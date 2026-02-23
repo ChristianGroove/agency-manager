@@ -13,11 +13,17 @@ import { InboxSettingsSheet } from "../inbox-settings-sheet"
 import { Button } from "@/components/ui/button"
 import { ConversationListItem } from "../conversation-list-item"
 import { useMessageNotifications } from "@/modules/core/preferences/use-message-notifications"
+import { getCurrentUserPermissions } from "@/modules/core/settings/actions/team-actions"
 import { useInboxPreferences } from "@/modules/core/preferences/use-inbox-preferences"
 import { useInboxShortcuts } from "@/modules/core/preferences/use-inbox-shortcuts"
 import { useCurrentOrganization } from "@/modules/core/organizations/hooks/use-current-organization"
 import { useTranslation } from "@/lib/i18n/use-translation"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { getChannels } from "@/modules/core/channels/actions"
+import { Channel as ChannelType } from "@/modules/core/channels/types"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
+import { Check as CheckIcon, ChevronsUpDown } from "lucide-react"
 
 type FilterTab = 'all' | 'unread' | 'assigned' | 'archived' | 'snoozed'
 
@@ -46,10 +52,13 @@ interface SidebarConversationListProps {
 export function SidebarConversationList({ selectedId, onSelect }: SidebarConversationListProps) {
     const { t } = useTranslation()
     const [conversations, setConversations] = useState<Conversation[]>([])
+    const [channels, setChannels] = useState<ChannelType[]>([])
+    const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null)
     const [searchQuery, setSearchQuery] = useState("")
     const [activeFilter, setActiveFilter] = useState<FilterTab>('all')
     const [loading, setLoading] = useState(true)
     const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+    const [userPermissions, setUserPermissions] = useState<any>(null)
     const [isSettingsOpen, setIsSettingsOpen] = useState(false)
     const searchInputRef = useRef<HTMLInputElement>(null)
     const { preferences, updatePreferences } = useInboxPreferences()
@@ -74,8 +83,16 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
 
     // Initial Fetch
     useEffect(() => {
-        if (!orgLoading) fetchConversations(true)
-    }, [activeFilter, organizationId, orgLoading])
+        if (!orgLoading) {
+            fetchConversations(true)
+            fetchChannels()
+        }
+    }, [activeFilter, organizationId, orgLoading, selectedChannelId])
+
+    const fetchChannels = async () => {
+        const data = await getChannels()
+        setChannels(data)
+    }
 
     const fetchConversations = async (showLoading = false) => {
         if (showLoading) setLoading(true)
@@ -106,6 +123,31 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
                 // Exclude archived AND snoozed by default from main list
                 query = query.neq('state', 'archived').neq('status', 'snoozed')
                 break
+        }
+
+        // Apply channel filter if selected
+        if (selectedChannelId) {
+            query = query.eq('connection_id', selectedChannelId)
+        }
+
+        // Apply strict isolation if active
+        if (preferences.behavior.strict_isolation && currentUserId) {
+            query = query.eq('assigned_to', currentUserId)
+        }
+
+        // Apply Governing Access (Channel Authorization)
+        // If not Admin/Owner, limit to authorized channels
+        const isStaff = userPermissions?.role === 'member'
+        const authorizedChannels = userPermissions?.permissions?.inbox_access || []
+
+        if (isStaff) {
+            if (authorizedChannels.length > 0) {
+                query = query.in('connection_id', authorizedChannels)
+            } else {
+                // If they are staff but have NO authorized channels, they see nothing
+                // We use a dummy filter to ensure empty results
+                query = query.eq('id', '00000000-0000-0000-0000-000000000000')
+            }
         }
 
         // Critical: Filter by Organization
@@ -190,22 +232,67 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
             {/* Header Area */}
             <TooltipProvider>
                 <div className="px-4 pb-2 pt-2 space-y-3">
-                    {/* Search */}
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                            ref={searchInputRef}
-                            placeholder={t('crm.inbox.sidebar.search_placeholder')}
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="pl-9 bg-zinc-50 dark:bg-zinc-900 border-none shadow-none h-9 text-sm focus-visible:ring-1 focus-visible:ring-offset-0"
-                        />
+                    {/* Channel Filter & Search */}
+                    <div className="flex gap-2">
+                        <div className="relative flex-1">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                ref={searchInputRef}
+                                placeholder={t('crm.inbox.sidebar.search_placeholder')}
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="pl-9 bg-zinc-50 dark:bg-zinc-900 border-none shadow-none h-9 text-sm focus-visible:ring-1 focus-visible:ring-offset-0"
+                            />
+                        </div>
+
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className={cn(
+                                        "h-9 px-2 bg-zinc-50 dark:bg-zinc-900 border-none",
+                                        selectedChannelId && "text-brand-pink"
+                                    )}
+                                >
+                                    <Filter className="h-4 w-4" />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[200px] p-0" align="end">
+                                <Command>
+                                    <CommandInput placeholder={t('crm.channels.title')} />
+                                    <CommandList>
+                                        <CommandEmpty>No channel found.</CommandEmpty>
+                                        <CommandGroup>
+                                            <CommandItem
+                                                onSelect={() => setSelectedChannelId(null)}
+                                                className="flex items-center justify-between"
+                                            >
+                                                <span>{t('crm.inbox.sidebar.filters.all')}</span>
+                                                {!selectedChannelId && <CheckIcon className="h-4 w-4" />}
+                                            </CommandItem>
+                                            {channels.map((channel) => (
+                                                <CommandItem
+                                                    key={channel.id}
+                                                    onSelect={() => setSelectedChannelId(channel.id)}
+                                                    className="flex items-center justify-between"
+                                                >
+                                                    <span className="truncate">{channel.connection_name}</span>
+                                                    {selectedChannelId === channel.id && <CheckIcon className="h-4 w-4" />}
+                                                </CommandItem>
+                                            ))}
+                                        </CommandGroup>
+                                    </CommandList>
+                                </Command>
+                            </PopoverContent>
+                        </Popover>
+
                         <Tooltip>
                             <TooltipTrigger asChild>
                                 <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground hover:text-foreground"
+                                    className="h-9 w-9 text-muted-foreground hover:text-foreground shrink-0"
                                     onClick={() => setIsSettingsOpen(true)}
                                 >
                                     <SettingsIcon className="h-3.5 w-3.5" />

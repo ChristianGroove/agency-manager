@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase-server"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
 import { requireOrgRole } from "@/lib/auth/org-roles"
+import { MemberPermissions } from "@/lib/permissions/types"
 import { revalidatePath, revalidateTag } from "next/cache"
 import { headers } from "next/headers"
 
@@ -59,7 +60,8 @@ export async function getOrganizationMembers() {
         .filter(member => !platformAdminIds.has(member.user_id))
         .map(member => ({
             ...member,
-            role_id: member.role_id, // Ensure this is passed
+            permissions: member.permissions as unknown as MemberPermissions, // Ensure type safety
+            role_id: member.role_id,
             // If they have a dynamic role, use its name, otherwise fallback to legacy enum
             // We need to fetch the role name? The query above selected '*' from organization_members.
             // We should join organization_roles to get the name.
@@ -391,7 +393,7 @@ async function _getUserPermissionsInternal(userId: string, orgId: string) {
 
     return {
         role: effectiveRoleName as string,
-        permissions: getEffectivePermissions(member.role, member.permissions)
+        permissions: getEffectivePermissions(member.role, member.permissions as MemberPermissions)
     }
 }
 

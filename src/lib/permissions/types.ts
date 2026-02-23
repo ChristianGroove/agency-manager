@@ -69,6 +69,7 @@ export interface FeaturePermissions {
 export interface MemberPermissions {
     modules?: ModulePermissions
     features?: FeaturePermissions
+    inbox_access?: string[] // Authorized connection IDs for the inbox
 }
 
 /**

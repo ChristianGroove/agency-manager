@@ -254,6 +254,7 @@ export function getEffectivePermissions(
     return {
         modules: { ...defaults.modules, ...customPermissions.modules },
         features: { ...defaults.features, ...customPermissions.features },
+        inbox_access: customPermissions.inbox_access ?? defaults.inbox_access
     }
 }
 

@@ -7,13 +7,15 @@ import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Loader2, Save, Shield, ChevronDown, ChevronRight, User, Crown, Users } from "lucide-react"
+import { Loader2, Save, Shield, ChevronDown, ChevronRight, User, Crown, Users, MessageSquare } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import {
-    updateMemberRole
+    updateMemberRole,
+    updateMemberPermissions
 } from "./actions/team-actions"
 import { RolePicker } from "@/modules/core/iam/components/role-picker"
+import { ChannelAccessSelector } from "@/modules/core/messaging/components/settings/channel-access-selector"
 import { MemberPermissions, FeaturePermissions, ModulePermissions } from "@/lib/permissions/types"
 
 interface MemberEditSheetProps {
@@ -27,6 +29,7 @@ interface MemberEditSheetProps {
             full_name?: string | null
             avatar_url?: string | null
         }
+        permissions?: MemberPermissions
     } | null
     onSave?: () => void
     activeModules?: string[] // Org-level active modules
@@ -42,12 +45,14 @@ export function MemberEditSheet({
     const [viewMode, setViewMode] = useState<'assign' | 'manage_roles'>('assign')
     const [isSaving, setIsSaving] = useState(false)
     const [role, setRole] = useState(member?.role || 'member')
+    const [authorizedChannels, setAuthorizedChannels] = useState<string[]>(member?.permissions?.inbox_access || [])
 
     // Reset view when opening different member
     useEffect(() => {
         if (open) {
             setViewMode('assign')
             setRole(member?.role || 'member')
+            setAuthorizedChannels((member as any)?.permissions?.inbox_access || [])
         }
     }, [open, member])
 
@@ -55,6 +60,7 @@ export function MemberEditSheet({
     useEffect(() => {
         if (member) {
             setRole(member.role)
+            setAuthorizedChannels((member as any)?.permissions?.inbox_access || [])
         }
     }, [member])
 
@@ -62,20 +68,32 @@ export function MemberEditSheet({
         if (!member) return
         setIsSaving(true)
         try {
+            // Update role if changed
             if (role !== member.role) {
                 const result = await updateMemberRole(member.user_id, role)
                 if (!result.success) {
                     toast.error(result.error)
+                    setIsSaving(false)
                     return
                 }
-                toast.success("Rol actualizado correctamente")
-                onSave?.()
-                onOpenChange(false)
-            } else {
-                onOpenChange(false)
             }
+
+            // Update authorized channels
+            const resultPerms = await updateMemberPermissions(member.user_id, {
+                inbox_access: authorizedChannels
+            } as any)
+
+            if (!resultPerms.success) {
+                toast.error("Error al actualizar permisos de canales")
+                setIsSaving(false)
+                return
+            }
+
+            toast.success("Miembro actualizado correctamente")
+            onSave?.()
+            onOpenChange(false)
         } catch (error) {
-            toast.error("Error al actualizar rol")
+            toast.error("Error al guardar cambios")
         } finally {
             setIsSaving(false)
         }
@@ -161,6 +179,21 @@ export function MemberEditSheet({
                                             />
                                             <p className="text-xs text-gray-500">
                                                 El usuario heredará todos los permisos definidos para este rol.
+                                            </p>
+                                        </div>
+
+                                        <div className="space-y-3 pt-2">
+                                            <Label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                                                <MessageSquare className="h-4 w-4 text-brand-pink" />
+                                                Canales Autorizados (Inbox)
+                                            </Label>
+                                            <ChannelAccessSelector
+                                                selectedIds={authorizedChannels}
+                                                onChange={setAuthorizedChannels}
+                                                disabled={isOwner}
+                                            />
+                                            <p className="text-xs text-gray-400">
+                                                Determina qué líneas de WhatsApp podrá ver este agente en su inbox.
                                             </p>
                                         </div>
 

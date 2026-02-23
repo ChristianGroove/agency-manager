@@ -38,19 +38,25 @@ export function MetaEmbeddedSignup({ onSuccess, onError, organizationId: orgIdPr
 
     // Load Facebook SDK
     useEffect(() => {
+        console.log('[EmbeddedSignup] Initializing SDK logic...');
+
+        // If SDK already exists, check if we need to re-init
         if (window.FB) {
+            console.log('[EmbeddedSignup] SDK already exists in window');
             setStatus('ready');
             return;
         }
 
         setStatus('loading-sdk');
 
+        // IMPORTANT: Define this BEFORE loading the script
         window.fbAsyncInit = function () {
+            console.log('[EmbeddedSignup] fbAsyncInit triggered');
             window.FB.init({
                 appId: META_APP_ID,
                 cookie: true,
                 xfbml: false,
-                version: 'v24.0'
+                version: 'v24.0' // Per user request: keep v24.0
             });
             setStatus('ready');
         };
@@ -63,6 +69,7 @@ export function MetaEmbeddedSignup({ onSuccess, onError, organizationId: orgIdPr
             script.async = true;
             script.defer = true;
             script.onerror = () => {
+                console.error('[EmbeddedSignup] SDK script load error');
                 setStatus('error');
                 setErrorMessage(t('meta.embedded_signup.error_sdk'));
             };
@@ -71,19 +78,25 @@ export function MetaEmbeddedSignup({ onSuccess, onError, organizationId: orgIdPr
     }, [t]);
 
     const handleEmbeddedSignup = useCallback(() => {
+        console.log('[EmbeddedSignup] Clicked! Status:', status);
+
         if (!window.FB) {
+            console.error('[EmbeddedSignup] FB SDK NOT FOUND IN WINDOW');
             toast.error(t('meta.embedded_signup.error_sdk'));
             return;
         }
         if (!organizationId) {
+            console.error('[EmbeddedSignup] NO ORGANIZATION ID');
             toast.error(t('meta.embedded_signup.error_generic'));
             return;
         }
 
         setStatus('authenticating');
+        console.log('[EmbeddedSignup] Opening Login Popup with Config:', EMBEDDED_SIGNUP_CONFIG_ID);
 
         window.FB.login(
             function (response: any) {
+                console.log('[EmbeddedSignup] Login response received:', response);
                 if (response.authResponse) {
                     const code = response.authResponse.code;
                     if (!code) {
@@ -94,6 +107,7 @@ export function MetaEmbeddedSignup({ onSuccess, onError, organizationId: orgIdPr
                     }
                     processSignupCode(code);
                 } else {
+                    console.log('[EmbeddedSignup] User cancelled or login failed');
                     setStatus('idle');
                 }
             },
@@ -101,6 +115,7 @@ export function MetaEmbeddedSignup({ onSuccess, onError, organizationId: orgIdPr
                 config_id: EMBEDDED_SIGNUP_CONFIG_ID,
                 response_type: 'code',
                 override_default_response_type: true,
+                scope: 'whatsapp_business_management,whatsapp_business_messaging,business_management',
                 extras: {
                     setup: {},
                     featureType: 'whatsapp_business_app_onboarding',
@@ -108,7 +123,7 @@ export function MetaEmbeddedSignup({ onSuccess, onError, organizationId: orgIdPr
                 }
             }
         );
-    }, [organizationId, t, onError]);
+    }, [organizationId, t, onError, status]);
 
     const processSignupCode = async (code: string) => {
         setStatus('processing');

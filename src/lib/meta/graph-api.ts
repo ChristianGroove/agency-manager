@@ -41,6 +41,11 @@ export class MetaGraphAPI {
      * Exchange short-lived code for long-lived user access token
      */
     async exchangeCodeForToken(code: string): Promise<string> {
+        if (!this.appSecret) {
+            console.error('[MetaGraphAPI] ❌ Cannot exchange token: META_APP_SECRET is not defined in environment.');
+            throw new Error(`Meta Token Exchange Failed: Missing Client Secret in server configuration.`);
+        }
+
         const url = new URL(`${META_GRAPH_URL}/${META_API_VERSION}/oauth/access_token`);
         url.searchParams.append('client_id', this.appId);
         url.searchParams.append('client_secret', this.appSecret);
