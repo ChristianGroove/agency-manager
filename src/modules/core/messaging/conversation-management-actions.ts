@@ -257,9 +257,9 @@ export async function bulkAssignConversations(conversationIds: string[], userId:
  * When a raw phone is provided, it first checks for existing Client/Lead,
  * then creates a new Lead if none found.
  */
-export async function createConversation(input: { lead_id?: string, client_id?: string, phone?: string, channel?: string }) {
+export async function createConversation(input: { lead_id?: string, client_id?: string, phone?: string, channel?: string, connection_id?: string }) {
     const supabase = await createClient()
-    const { lead_id, client_id, phone, channel } = input
+    const { lead_id, client_id, phone, channel, connection_id } = input
 
     if (!lead_id && !client_id && !phone) {
         return { success: false, error: 'Must provide either lead_id, client_id, or phone' }
@@ -386,6 +386,7 @@ export async function createConversation(input: { lead_id?: string, client_id?: 
             lead_id: finalLeadId || null,
             client_id: finalClientId || null,
             channel: channel || 'whatsapp',
+            connection_id: connection_id || null,
             state: 'active',
             status: 'open',
             unread_count: 0,

@@ -109,7 +109,7 @@ export async function sendMessage(conversationId: string, payload: string, id?: 
             .eq('organization_id', conversation.organization_id)
             .in('provider_key', providerKeys)
             .eq('status', 'active')
-            .order('created_at', { ascending: false })
+            .order('created_at', { ascending: true }) // Pick OLDEST (usually the primary/original)
             .limit(1)
             .single();
 
@@ -415,7 +415,7 @@ export async function sendOutboundMessage(conversationId: string, content: any, 
             .eq('organization_id', conversation.organization_id)
             .in('provider_key', providerKeys)
             .eq('status', 'active')
-            .order('created_at', { ascending: false })
+            .order('created_at', { ascending: true }) // Pick OLDEST
             .limit(1)
             .single()
         connection = defaultConn

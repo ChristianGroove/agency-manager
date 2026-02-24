@@ -14,6 +14,11 @@ import { toast } from "sonner"
 import { createConversation } from "@/modules/core/messaging/conversation-management-actions"
 import { useRouter } from "next/navigation"
 import { useTranslation } from "@/lib/i18n/use-translation"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { getChannels } from "@/modules/core/channels/actions"
+import { getCurrentUserPermissions } from "@/modules/core/settings/actions/team-actions"
+import { Channel as ChannelType } from "@/modules/core/channels/types"
+import { supabase } from "@/lib/supabase"
 
 interface SidebarContactListProps {
     onSelectConversation: (id: string) => void
@@ -26,6 +31,41 @@ export function SidebarContactList({ onSelectConversation }: SidebarContactListP
     const [loading, setLoading] = useState(false)
     const timeoutRef = useRef<NodeJS.Timeout | null>(null)
     const router = useRouter()
+
+    // Channel selection state
+    const [channels, setChannels] = useState<ChannelType[]>([])
+    const [selectedChannelId, setSelectedChannelId] = useState<string>("default")
+
+    useEffect(() => {
+        const fetchChannels = async () => {
+            try {
+                const { data } = await supabase.auth.getUser()
+                const allChannels = await getChannels()
+
+                let availableChannels = allChannels
+                if (data.user) {
+                    const perms = await getCurrentUserPermissions()
+                    const isStaff = perms?.role === 'member'
+                    const authorizedChannels = perms?.permissions?.inbox_access || []
+
+                    if (isStaff) {
+                        availableChannels = allChannels.filter(c => authorizedChannels.includes(c.id))
+                    }
+                }
+
+                // Only keep WhatsApp channels for new outbound chats
+                const waChannels = availableChannels.filter(c => c.provider_key === 'whatsapp_cloud' || c.provider_key === 'meta_whatsapp')
+                setChannels(waChannels)
+
+                if (waChannels.length > 0) {
+                    setSelectedChannelId(waChannels[0].id)
+                }
+            } catch (error) {
+                console.error("Failed to load channels", error)
+            }
+        }
+        fetchChannels()
+    }, [])
 
     // Debounced search
     const performSearch = async (query: string) => {
@@ -86,6 +126,10 @@ export function SidebarContactList({ onSelectConversation }: SidebarContactListP
                 payload.phone = phone
             }
 
+            if (selectedChannelId && selectedChannelId !== 'default') {
+                payload.connection_id = selectedChannelId
+            }
+
             const result = await createConversation(payload)
 
             if (result.success && result.data) {
@@ -131,6 +175,27 @@ export function SidebarContactList({ onSelectConversation }: SidebarContactListP
                         className="pl-9 bg-zinc-50 dark:bg-zinc-900 border-none shadow-none h-9 text-sm focus-visible:ring-1 focus-visible:ring-offset-0"
                     />
                 </div>
+
+                {/* Channel Selector */}
+                {channels.length > 0 && (
+                    <div className="flex items-center gap-2 mt-2 bg-zinc-50 dark:bg-zinc-900/50 p-1.5 rounded-md border border-zinc-100 dark:border-zinc-800">
+                        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap pl-1">
+                            {t('crm.inbox.sidebar.send_from' as any) || 'Enviar desde:'}
+                        </span>
+                        <Select value={selectedChannelId} onValueChange={setSelectedChannelId}>
+                            <SelectTrigger className="h-7 text-xs border-none shadow-none bg-transparent focus:ring-0 w-full px-1 justify-end flex-row-reverse gap-1 text-right text-foreground font-medium">
+                                <SelectValue placeholder="Default Line" />
+                            </SelectTrigger>
+                            <SelectContent align="end">
+                                {channels.map(c => (
+                                    <SelectItem key={c.id} value={c.id} className="text-xs">
+                                        {c.connection_name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                )}
             </div>
 
             {/* Contact List */}
