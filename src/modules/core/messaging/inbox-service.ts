@@ -368,18 +368,13 @@ export class InboxService {
             .order('updated_at', { ascending: false });
 
         // CRITICAL: If we resolved a specific connection, filter by it.
-        // If we didn't resolve (legacy/mock), look for one with NULL connection_id OR any (backward compat?)
-        // Strict Mode: If connectionId is known, MUST match.
-        // Strict Mode: If connectionId is known, MUST match.
-        // if (connectionId) {
-        //     convQuery = convQuery.eq('connection_id', connectionId);
-        // } else {
-        // For legacy compatibility, if we have no idea which connection, we might pick the most recent one 
-        // OR specifically look for null. Let's filter for NULL to avoid accidental merging with specific lines.
-        // But for now, to be safe with existing data (which has null), we allow null matching.
-        // Actually, if we want to separate "Legacy" from "New Multi-Account", we should prefer null here.
-        // However, users might migrate. Let's just not filter by connection_id if null, risks merging, but safe for single-account.
-        // }
+        // This prevents merging conversations when the same customer messages multiple distinct WhatsApp numbers.
+        if (connectionId) {
+            convQuery = convQuery.eq('connection_id', connectionId);
+        } else {
+            // For legacy systems without connection_id, we filter explicitly for null to avoid merging with new dedicated lines
+            convQuery = convQuery.is('connection_id', null);
+        }
 
         const { data: existingConvs } = await convQuery.limit(1);
         const existingConv = existingConvs && existingConvs.length > 0 ? existingConvs[0] : null;
@@ -488,12 +483,19 @@ export class InboxService {
             // Handle Race Condition (Unique Violation)
             if (createError.code === '23505') {
                 console.warn('[InboxService] Race condition detected: Conversation already created. Fetching existing one.');
-                const { data: existingRace } = await supabase.from('conversations')
+                let raceQuery = supabase.from('conversations')
                     .select('*')
                     .eq('lead_id', lead.id)
                     .eq('channel', msg.channel)
-                    .eq('state', 'active')
-                    .single();
+                    .eq('state', 'active');
+
+                if (connectionId) {
+                    raceQuery = raceQuery.eq('connection_id', connectionId);
+                } else {
+                    raceQuery = raceQuery.is('connection_id', null);
+                }
+
+                const { data: existingRace } = await raceQuery.single();
 
                 if (existingRace) {
                     console.log('[InboxService] Recovered from race condition using conversation:', existingRace.id);
@@ -541,12 +543,19 @@ export class InboxService {
         let targetConv = newConv;
         // If we had a collision, we need to fetch and set targetConv
         if (!targetConv && createError?.code === '23505') {
-            const { data: recovered } = await supabase.from('conversations')
+            let recoveryQuery = supabase.from('conversations')
                 .select('*')
                 .eq('lead_id', lead.id)
                 .eq('channel', msg.channel)
-                .eq('state', 'active')
-                .single();
+                .eq('state', 'active');
+
+            if (connectionId) {
+                recoveryQuery = recoveryQuery.eq('connection_id', connectionId);
+            } else {
+                recoveryQuery = recoveryQuery.is('connection_id', null);
+            }
+
+            const { data: recovered } = await recoveryQuery.single();
             targetConv = recovered;
         }
 
