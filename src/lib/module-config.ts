@@ -97,7 +97,10 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         href: '/crm/marketing',
         icon: Megaphone,
         isCore: true,
-        category: 'crm'
+        category: 'crm',
+        access: {
+            allowedRoles: ['owner', 'admin']
+        }
     },
     {
         key: 'crm_automations',
@@ -105,7 +108,10 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         href: '/crm/automations',
         icon: Workflow,
         isCore: true,
-        category: 'crm'
+        category: 'crm',
+        access: {
+            allowedRoles: ['owner', 'admin']
+        }
     },
     {
         key: 'crm_reports',
@@ -113,7 +119,10 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         href: '/crm/reports',
         icon: BarChart3,
         isCore: true,
-        category: 'crm'
+        category: 'crm',
+        access: {
+            allowedRoles: ['owner', 'admin']
+        }
     },
     // Quote Designer moved to Inbox Sidebar per user request
     {
@@ -137,7 +146,10 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         href: '/flows',
         icon: BrainCircuit, // Usando BrainCircuit para denotar "Cerebro/IA"
         category: 'operations',
-        isCore: true
+        isCore: true,
+        access: {
+            allowedRoles: ['owner', 'admin']
+        }
     },
 
     {
@@ -146,7 +158,10 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         href: '/quotes',
         icon: FileText,
         category: 'operations',
-        isCore: true
+        isCore: true,
+        access: {
+            allowedRoles: ['owner', 'admin']
+        }
     },
     {
         key: 'module_briefings',
@@ -154,7 +169,10 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         href: '/briefings',
         icon: Briefcase,
         category: 'operations',
-        isCore: true
+        isCore: true,
+        access: {
+            allowedRoles: ['owner', 'admin']
+        }
     },
     {
         key: 'module_catalog',
