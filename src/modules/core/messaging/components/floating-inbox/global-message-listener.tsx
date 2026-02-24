@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import { supabase } from "@/lib/supabase"
 import { usePathname, useRouter } from "next/navigation"
 import { useInboxPreferences } from "@/modules/core/preferences/use-inbox-preferences"
@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useGlobalInbox } from "../../context/global-inbox-context"
 import { MessageSquare, X, Reply, CheckCheck } from "lucide-react"
 import { markConversationAsRead } from "../../actions"
+import { getCurrentUserPermissions } from "@/modules/core/settings/actions/team-actions"
 import { Button } from "@/components/ui/button"
 
 type Message = any // Replace with proper type import
@@ -20,6 +21,19 @@ export function GlobalMessageListener() {
     const processedMessages = useRef<Set<string>>(new Set())
     const pathnameRef = useRef(pathname)
     const preferencesRef = useRef(preferences)
+
+    // RBAC Permissions State
+    const [userPermissions, setUserPermissions] = useState<any>(null)
+    const userPermissionsRef = useRef<any>(null)
+
+    useEffect(() => {
+        const fetchPerms = async () => {
+            const perms = await getCurrentUserPermissions()
+            setUserPermissions(perms)
+            userPermissionsRef.current = perms
+        }
+        fetchPerms()
+    }, [])
 
     // Keep refs updated without triggering useEffect
     useEffect(() => {
@@ -89,9 +103,20 @@ export function GlobalMessageListener() {
                     // This is an optimization trade-off.
                     const { data: conversation } = await supabase
                         .from('conversations')
-                        .select('leads(name, phone), channel, last_message')
+                        .select('leads(name, phone), channel, connection_id, last_message')
                         .eq('id', msg.conversation_id)
                         .single()
+
+                    // Role-Based Access Control for Popups
+                    const perms = userPermissionsRef.current
+                    if (perms?.role === 'member') {
+                        const allowedChannels = perms.permissions?.inbox_access || []
+                        // If the channel is not assigned to this member, silently drop the popup
+                        if (!allowedChannels.includes(conversation?.connection_id)) {
+                            console.log('[GlobalListener] Suppressing toast for unauthorized channel:', conversation?.connection_id)
+                            return
+                        }
+                    }
 
                     // Handle leads being returned as an array or object depending on Supabase type generation
                     const leadData = conversation?.leads
