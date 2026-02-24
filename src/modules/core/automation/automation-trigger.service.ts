@@ -294,7 +294,8 @@ export class AutomationTriggerService {
                     leadName: fullLead?.name,
                     leadId: leadId
                 })
-                this.executeWorkflow(wf, {
+                // MUST AWAIT in Serverless
+                await this.executeWorkflow(wf, {
                     organization_id: orgId,
                     conversation: { id: conversationId, channel },
                     message: { content: messageContent, sender, id: finalMessageId },
@@ -341,15 +342,16 @@ export class AutomationTriggerService {
             const engine = new WorkflowEngine(definition, fullContext)
 
             // 3. Run
-            // Note: start() is async. In a real system, we might offload this to a queue (Redis/Bull).
-            // For MVP, we run it in the background of the request (fire and forget promise).
-            engine.start().then(async () => {
+            // Awaiting engine.start() is REQUIRED in Vercel Serverless environment 
+            // otherwise the lambda will freeze before HTTP requests are dispatched.
+            try {
+                await engine.start()
                 fileLogger.log(`[AutomationTrigger] Workflow ${workflow.id} completed.`)
                 await supabaseAdmin
                     .from('workflow_executions')
                     .update({ status: 'completed', completed_at: new Date().toISOString() })
                     .eq('id', execution.id)
-            }).catch(async (err) => {
+            } catch (err: any) {
                 const supabase = supabaseAdmin;
                 if (err.message === 'WORKFLOW_SUSPENDED') {
                     fileLogger.log(`[AutomationTrigger] Workflow ${workflow.id} suspended to wait for input.`)
@@ -368,7 +370,7 @@ export class AutomationTriggerService {
                         })
                         .eq('id', execution.id)
                 }
-            })
+            }
 
         } catch (err) {
             console.error('[AutomationTrigger] Critical error executing workflow:', err)
