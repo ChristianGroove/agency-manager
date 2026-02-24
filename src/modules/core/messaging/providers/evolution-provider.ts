@@ -143,7 +143,7 @@ export class EvolutionProvider implements MessagingProvider {
      */
     private async processMedia(
         messageId: string,
-        messageType: 'image' | 'audio' | 'video' | 'document',
+        messageType: 'image' | 'audio' | 'video' | 'document' | 'sticker',
         mimeType?: string
     ): Promise<string> {
         const { baseUrl, apiKey, instanceName } = this.config;
@@ -267,6 +267,13 @@ export class EvolutionProvider implements MessagingProvider {
                 type = 'document';
                 mediaUrl = await this.processMedia(messageId, 'document', msg.documentMessage.mimetype);
                 contentText = msg.documentMessage.fileName || msg.documentMessage.caption || '';
+            }
+
+            // Sticker message
+            if (msg.stickerMessage && messageId) {
+                type = 'sticker';
+                mediaUrl = await this.processMedia(messageId, 'sticker', msg.stickerMessage.mimetype || 'image/webp');
+                contentText = '[Sticker]';
             }
 
             // Check for Interactive Responses (Buttons/Lists)

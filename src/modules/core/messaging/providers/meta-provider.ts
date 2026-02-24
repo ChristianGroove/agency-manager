@@ -1,8 +1,8 @@
-import { IncomingMessage, IncomingCall, MessagingProvider, SendMessageOptions, WebhookValidationResult } from './types';
 import * as fs from 'fs';
 import * as path from 'path';
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { decryptObject } from "@/modules/core/integrations/encryption"
+import { validateStickerUrl } from "@/lib/meta/sticker-validator"
 
 function debugLog(msg: string) {
     try {
@@ -10,6 +10,16 @@ function debugLog(msg: string) {
         fs.appendFileSync(logPath, `[${new Date().toISOString()}][MetaProvider] ${msg} \n`);
     } catch (e) { }
 }
+import {
+    MessagingProvider,
+    SendMessageOptions,
+    IncomingMessage,
+    WebhookValidationResult,
+    IncomingCall,
+    InteractiveButtonsContent,
+    InteractiveListContent,
+    InteractiveCTAContent
+} from "./types";
 
 export class MetaProvider implements MessagingProvider {
     name = 'meta';
@@ -49,6 +59,18 @@ export class MetaProvider implements MessagingProvider {
             }
 
             let payload: any;
+
+            // Strict Validation for Stickers
+            if (options.content.type === 'sticker') {
+                const validation = await validateStickerUrl(options.content.mediaUrl);
+                if (!validation.isValid) {
+                    console.error('[MetaProvider] Sticker Validation Failed:', validation.error);
+                    return {
+                        success: false,
+                        error: validation.error
+                    };
+                }
+            }
 
             if (isMessengerOrIg) {
                 // Messenger/Instagram specific payload structure
@@ -157,7 +179,8 @@ export class MetaProvider implements MessagingProvider {
                         if (messagesInChange) {
                             debugLog(`Found ${messagesInChange.length} WA messages/echoes`);
                             for (const msg of messagesInChange) {
-                                debugLog(`Processing WA msg: ${msg.id}`);
+                                debugLog(`Processing WA msg: ${msg.id} Type: ${msg.type}`);
+                                debugLog(`[DEBUG] Full Message Object: ${JSON.stringify(msg, null, 2)}`);
                                 // Extract sender info
                                 const contact = change.value.contacts?.find((c: any) => c.wa_id === msg.from);
                                 const phoneNumberId = change.value.metadata?.phone_number_id;
@@ -553,6 +576,7 @@ export class MetaProvider implements MessagingProvider {
      * Helper to parse message content type
      */
     private async parseMessageContent(msg: any, phoneNumberId?: string): Promise<IncomingMessage['content']> {
+        console.log(`[MetaProvider] Parsing message of type: ${msg.type}`);
         if (msg.type === 'text') {
             return {
                 type: 'text',
@@ -612,6 +636,19 @@ export class MetaProvider implements MessagingProvider {
             } as any;
         }
 
+        if (msg.type === 'sticker') {
+            const mediaId = msg.sticker.id;
+            // Stickers are always webp
+            const publicUrl = await this.processMedia(mediaId, msg.sticker.mime_type || 'image/webp', phoneNumberId);
+
+            return {
+                type: 'sticker',
+                mediaUrl: publicUrl,
+                text: '[Sticker]',
+                raw: msg.sticker
+            } as any;
+        }
+
         if (msg.type === 'interactive') {
             const interactive = msg.interactive;
             let buttonId = '';
@@ -640,8 +677,18 @@ export class MetaProvider implements MessagingProvider {
             } as any;
         }
 
+        if (msg.errors && msg.errors.length > 0) {
+            const error = msg.errors[0];
+            return {
+                type: 'text',
+                text: `[Error: ${error.message || error.details || 'Message unavailable'}]`,
+                raw: msg
+            } as any;
+        }
+
         return {
             type: 'unknown',
+            text: msg.type === 'unknown' ? '[Unsupported/Unavailable]' : '',
             raw: msg
         };
     }
@@ -709,13 +756,21 @@ export class MetaProvider implements MessagingProvider {
                 };
                 break;
 
-            case 'interactive_buttons':
+            case 'sticker':
+                payload.type = 'sticker';
+                payload.sticker = {
+                    link: content.mediaUrl
+                };
+                break;
+
+            case 'interactive_buttons': {
+                const buttonContent = content as InteractiveButtonsContent;
                 payload.type = 'interactive';
                 payload.interactive = {
                     type: 'button',
-                    body: { text: content.body },
+                    body: { text: buttonContent.body },
                     action: {
-                        buttons: content.buttons.slice(0, 3).map(btn => ({
+                        buttons: buttonContent.buttons.slice(0, 3).map(btn => ({
                             type: 'reply',
                             reply: {
                                 id: btn.id,
@@ -725,30 +780,32 @@ export class MetaProvider implements MessagingProvider {
                     }
                 };
                 // Optional header
-                if (content.header) {
-                    if (content.header.type === 'text') {
-                        payload.interactive.header = { type: 'text', text: content.header.text };
-                    } else if (content.header.mediaUrl) {
+                if (buttonContent.header) {
+                    if (buttonContent.header.type === 'text') {
+                        payload.interactive.header = { type: 'text', text: buttonContent.header.text };
+                    } else if (buttonContent.header.mediaUrl) {
                         payload.interactive.header = {
-                            type: content.header.type,
-                            [content.header.type]: { link: content.header.mediaUrl }
+                            type: buttonContent.header.type,
+                            [buttonContent.header.type]: { link: buttonContent.header.mediaUrl }
                         };
                     }
                 }
                 // Optional footer
-                if (content.footer) {
-                    payload.interactive.footer = { text: content.footer };
+                if (buttonContent.footer) {
+                    payload.interactive.footer = { text: buttonContent.footer };
                 }
                 break;
+            }
 
-            case 'interactive_list':
+            case 'interactive_list': {
+                const listContent = content as InteractiveListContent;
                 payload.type = 'interactive';
                 payload.interactive = {
                     type: 'list',
-                    body: { text: content.body },
+                    body: { text: listContent.body },
                     action: {
-                        button: (content.buttonText || 'Ver opciones').substring(0, 20),
-                        sections: content.sections.slice(0, 10).map(section => ({
+                        button: (listContent.buttonText || 'Ver opciones').substring(0, 20),
+                        sections: listContent.sections.slice(0, 10).map(section => ({
                             title: (section.title || 'Sección').substring(0, 24),
                             rows: section.rows.slice(0, 10).map(row => ({
                                 id: row.id,
@@ -758,44 +815,47 @@ export class MetaProvider implements MessagingProvider {
                         }))
                     }
                 };
-                if (content.header) {
-                    const headerText = typeof content.header === 'string' ? content.header : (content.header as any).text;
+                if (listContent.header) {
+                    const headerText = typeof listContent.header === 'string' ? listContent.header : (listContent.header as any).text;
                     if (headerText) {
                         payload.interactive.header = { type: 'text', text: headerText };
                     }
                 }
-                if (content.footer) {
-                    payload.interactive.footer = { text: content.footer };
+                if (listContent.footer) {
+                    payload.interactive.footer = { text: listContent.footer };
                 }
                 break;
+            }
 
-            case 'interactive_cta':
+            case 'interactive_cta': {
+                const ctaContent = content as InteractiveCTAContent;
                 payload.type = 'interactive';
                 payload.interactive = {
                     type: 'cta_url',
-                    body: { text: content.body },
+                    body: { text: ctaContent.body },
                     action: {
                         name: 'cta_url',
                         parameters: {
-                            display_text: content.buttons[0]?.text || 'Ver más',
-                            url: content.buttons[0]?.url || ''
+                            display_text: ctaContent.buttons[0]?.text || 'Ver más',
+                            url: ctaContent.buttons[0]?.url || ''
                         }
                     }
                 };
-                if (content.header) {
-                    if (content.header.type === 'text') {
-                        payload.interactive.header = { type: 'text', text: content.header.text };
-                    } else if (content.header.mediaUrl) {
+                if (ctaContent.header) {
+                    if (ctaContent.header.type === 'text') {
+                        payload.interactive.header = { type: 'text', text: ctaContent.header.text };
+                    } else if (ctaContent.header.mediaUrl) {
                         payload.interactive.header = {
-                            type: content.header.type,
-                            [content.header.type]: { link: content.header.mediaUrl }
+                            type: ctaContent.header.type,
+                            [ctaContent.header.type]: { link: ctaContent.header.mediaUrl }
                         };
                     }
                 }
-                if (content.footer) {
-                    payload.interactive.footer = { text: content.footer };
+                if (ctaContent.footer) {
+                    payload.interactive.footer = { text: ctaContent.footer };
                 }
                 break;
+            }
 
             case 'location_request':
                 payload.type = 'interactive';

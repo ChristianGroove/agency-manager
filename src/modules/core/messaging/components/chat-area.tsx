@@ -31,7 +31,7 @@ import { archiveConversation, snoozeConversation, completeConversation, deleteCo
 
 
 
-const EmojiPicker = dynamic(() => import('emoji-picker-react'), { ssr: false })
+import { EmojiStickerPicker } from "./emoji-sticker-picker"
 
 type Message = Database['public']['Tables']['messages']['Row']
 type Conversation = Database['public']['Tables']['conversations']['Row'] & {
@@ -224,7 +224,7 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
         return () => clearInterval(poll)
     }, [conversationId, messages.length])
 
-    const handleSend = async (contentOverride?: string, type: 'text' | 'image' | 'video' | 'audio' | 'document' | 'note' = 'text', mediaUrl?: string) => {
+    const handleSend = async (contentOverride?: string, type: 'text' | 'image' | 'video' | 'audio' | 'document' | 'note' | 'sticker' = 'text', mediaUrl?: string) => {
         const textContent = contentOverride !== undefined ? contentOverride : inputValue.trim()
         if (!textContent && !mediaUrl && !sending) return
 
@@ -392,6 +392,7 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
             if (fileInputRef.current) fileInputRef.current.value = ''
         }
     }
+
 
     // Contact Name fallback (Lead or Client)
     const leadName = conversation?.clients?.name || conversation?.leads?.name || conversation?.clients?.phone || conversation?.leads?.phone || t('crm.inbox.chat.unknown_user')
@@ -663,16 +664,16 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
                 </div>
 
 
-                {/* Emoji Picker Popover */}
+                {/* Unified Emoji & Sticker Picker Popover */}
                 {showEmojiPicker && (
-                    <div className="absolute bottom-16 left-2 z-50 shadow-xl border rounded-xl overflow-hidden">
-                        <div className="bg-white dark:bg-zinc-800 flex justify-end p-1 border-b">
-                            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setShowEmojiPicker(false)}>
-                                <X className="h-4 w-4" />
-                            </Button>
-                        </div>
-                        <EmojiPicker onEmojiClick={onEmojiClick} width={300} height={400} />
-                    </div>
+                    <EmojiStickerPicker
+                        onClose={() => setShowEmojiPicker(false)}
+                        onEmojiClick={onEmojiClick}
+                        onStickerSelect={(url: string) => {
+                            handleSend('Sticker', 'sticker', url)
+                            setShowEmojiPicker(false)
+                        }}
+                    />
                 )}
 
                 <div className="flex gap-2">

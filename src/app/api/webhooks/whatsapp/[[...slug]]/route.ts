@@ -171,7 +171,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
                         contentType === 'image' ? 'image' :
                             contentType === 'video' ? 'video' :
                                 contentType === 'audio' ? 'audio' :
-                                    contentType === 'document' ? 'document' : 'unknown',
+                                    contentType === 'document' ? 'document' :
+                                        contentType === 'sticker' ? 'sticker' : 'unknown',
                     text: content,
                     raw: message.message
                 }

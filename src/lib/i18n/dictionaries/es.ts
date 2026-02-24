@@ -1006,6 +1006,8 @@ export const es = {
                 note_mode: "Modo Nota",
                 note: "Nota",
                 unknown_user: "Usuario desconocido",
+                emojis: "Emojis",
+                stickers: "Stickers",
                 quick_replies: {
                     title: "Respuestas Rápidas",
                     search: "Buscar respuestas...",

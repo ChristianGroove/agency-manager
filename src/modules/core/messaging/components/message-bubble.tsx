@@ -6,7 +6,7 @@ import { AudioTranscriber } from "./audio-transcriber"
 import { memo } from "react"
 
 interface MessageContent {
-    type: 'text' | 'image' | 'audio' | 'video' | 'document' | 'location' | 'note'
+    type: 'text' | 'image' | 'audio' | 'video' | 'document' | 'location' | 'note' | 'sticker'
     text?: string
     url?: string
     caption?: string
@@ -38,9 +38,11 @@ export const MessageBubble = memo(function MessageBubble({ content, direction, t
         >
             <div className={cn(
                 "relative max-w-[80%] md:max-w-[65%] shadow-sm text-sm overflow-hidden",
-                isOutbound
-                    ? "bg-emerald-100 dark:bg-emerald-900 text-foreground rounded-2xl rounded-tr-none px-3 py-2"
-                    : "bg-white dark:bg-zinc-800 text-foreground rounded-2xl rounded-tl-none px-3 py-2"
+                content?.type === 'sticker' ? "bg-transparent shadow-none" : (
+                    isOutbound
+                        ? "bg-emerald-100 dark:bg-emerald-900 text-foreground rounded-2xl rounded-tr-none px-3 py-2"
+                        : "bg-white dark:bg-zinc-800 text-foreground rounded-2xl rounded-tl-none px-3 py-2"
+                )
             )}>
                 {/* Content Renderer */}
                 <div className="mb-1">
@@ -84,6 +86,19 @@ function renderContent(content: any, isOutbound: boolean, messageId?: string, me
                         onClick={() => window.open(url, '_blank')}
                     />
                     {text && <p className="mt-1 whitespace-pre-wrap">{text}</p>}
+                </div>
+            )
+
+        case 'sticker':
+            return (
+                <div className="my-1 flex justify-center">
+                    <img
+                        src={url}
+                        alt="Sticker"
+                        className="w-32 h-32 md:w-40 md:h-40 object-contain bg-transparent select-none drop-shadow-sm"
+                        draggable="false"
+                        loading="lazy"
+                    />
                 </div>
             )
 
@@ -188,6 +203,6 @@ function renderContent(content: any, isOutbound: boolean, messageId?: string, me
 
         case 'text':
         default:
-            return <p className="whitespace-pre-wrap leading-relaxed text-[15px]">{text || (content as any).raw?.text?.body || (content as any).raw?.body || <span className="text-xs italic opacity-50">{t ? t('inbox.layout.no_visible_text') : 'Message with no visible text'}</span>}</p>
+            return <p className="whitespace-pre-wrap leading-relaxed text-[15px]">{text || (content as any).raw?.text?.body || (content as any).raw?.body || <span className="text-xs italic opacity-50">{t ? t('crm.inbox.layout.no_visible_text') : 'Message with no visible text'}</span>}</p>
     }
 }

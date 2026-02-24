@@ -33,6 +33,7 @@ export type MessageContent =
     | InteractiveListContent
     | InteractiveCTAContent
     | LocationRequestContent
+    | StickerContent
 
 export interface TextContent {
     type: 'text'
@@ -61,6 +62,11 @@ export interface DocumentContent {
     mediaUrl: string
     filename?: string
     caption?: string
+}
+
+export interface StickerContent {
+    type: 'sticker'
+    mediaUrl: string
 }
 
 export interface TemplateContent {
@@ -135,7 +141,7 @@ export interface IncomingMessage {
     senderAvatarUrl?: string;
     buttonId?: string; // ID for interactive responses (buttons/lists)
     content: {
-        type: 'text' | 'image' | 'audio' | 'video' | 'document' | 'interactive' | 'unknown';
+        type: 'text' | 'image' | 'audio' | 'video' | 'document' | 'sticker' | 'interactive' | 'unknown';
         text?: string;
         mediaUrl?: string;
         raw?: unknown;
