@@ -5,11 +5,15 @@ import { Lead, Emitter } from "@/types"
 import { convertLeadToClient, getLeads, updateLeadStatus } from "../leads-actions"
 import { getPipelineStages, PipelineStage } from "../pipeline-actions"
 import { getEmitters } from "@/modules/core/settings/emitters-actions"
+import { getChannels } from "@/modules/core/channels/actions"
+import { getCurrentUserPermissions } from "@/modules/core/settings/actions/team-actions"
+import { Channel } from "@/modules/core/channels/types"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { TagsManagerSheet } from "./tags/tags-manager-sheet"
-import { Plus, Users, XCircle, Settings, Trophy, BarChart3, Upload, TrendingUp, CheckCircle2, ZoomIn, ZoomOut, Mail, Tag, Wrench, Database, Kanban } from "lucide-react"
+import { Plus, Users, XCircle, Settings, Trophy, BarChart3, Upload, TrendingUp, CheckCircle2, ZoomIn, ZoomOut, Mail, Tag, Wrench, Database, Kanban, MessageSquare } from "lucide-react"
 import { SectionHeader } from "@/components/layout/section-header"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -25,7 +29,7 @@ import { AssignLeadSheet } from "./assign-lead-sheet"
 import { ImportLeadsSheet } from "./import-leads-sheet"
 import { getLeadsCount } from "../lead-management-actions"
 import { UnifiedCommunicationModal } from "@/modules/core/communication/components/unified-communication-modal"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, PointerSensor, useSensor, useSensors, closestCorners } from "@dnd-kit/core"
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable"
 import { LeadCard } from "./lead-card"
@@ -106,7 +110,38 @@ export function CRMDashboard({
     const [comLead, setComLead] = useState<Lead | null>(null)
 
     const router = useRouter()
+    const searchParams = useSearchParams()
     const { openInspector } = useLeadInspector()
+
+    // --- Channel Filtering State ---
+    const currentChannelId = searchParams.get('channel') || 'all'
+    const [availableChannels, setAvailableChannels] = useState<Channel[]>([])
+
+    useEffect(() => {
+        const fetchChannelsData = async () => {
+            const data = await getChannels()
+            const perms = await getCurrentUserPermissions()
+
+            if (perms?.role === 'member') {
+                const allowed = perms?.permissions?.inbox_access || []
+                setAvailableChannels(data.filter(c => allowed.includes(c.id)))
+            } else {
+                setAvailableChannels(data)
+            }
+        }
+        fetchChannelsData()
+    }, [])
+
+    const handleChannelChange = useCallback((val: string) => {
+        const url = new URL(window.location.href)
+        if (val === 'all') {
+            url.searchParams.delete('channel')
+        } else {
+            url.searchParams.set('channel', val)
+        }
+        router.push(url.pathname + url.search)
+    }, [router])
+    // -------------------------------
 
     const sensors = useSensors(
         useSensor(PointerSensor, {
@@ -270,9 +305,18 @@ export function CRMDashboard({
         }
     }, [leads, loadData])
 
-    const getLeadsByStage = useCallback((statusKey: string) => {
-        return filteredLeads.filter(lead => (lead.status || 'new') === statusKey)
-    }, [filteredLeads])
+    const getLeadsByStage = useCallback((statusKey: string, isFirstStage: boolean) => {
+        const stageKeys = stages.map(s => s.status_key)
+        return filteredLeads.filter(lead => {
+            const status = lead.status || 'new'
+            if (isFirstStage) {
+                // If the lead's status is completely unrecognized by the current stages,
+                // fall back to dropping it in the first column so it doesn't vanish.
+                return status === statusKey || !stageKeys.includes(status)
+            }
+            return status === statusKey
+        })
+    }, [filteredLeads, stages])
 
     const stats = useMemo(() => ({
         total: leads.length,
@@ -325,6 +369,38 @@ export function CRMDashboard({
                         icon={Kanban}
                         action={
                             <div className="flex items-center gap-2">
+                                {/* Channel Filter Selector */}
+                                {availableChannels.length > 0 && (
+                                    <Select value={currentChannelId} onValueChange={handleChannelChange}>
+                                        <SelectTrigger className="w-[180px] xl:w-[220px] h-9 bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 focus:ring-1 focus:ring-brand-pink/50">
+                                            <div className="flex items-center gap-2 truncate">
+                                                <MessageSquare className="h-4 w-4 text-brand-pink shrink-0" />
+                                                <span className="truncate">
+                                                    {currentChannelId === 'all'
+                                                        ? "Todos los canales"
+                                                        : availableChannels.find(c => c.id === currentChannelId)?.connection_name || "Canal Desconocido"}
+                                                </span>
+                                            </div>
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="all">
+                                                <div className="flex items-center gap-2">
+                                                    <MessageSquare className="h-4 w-4 text-muted-foreground shrink-0" />
+                                                    Todos los canales
+                                                </div>
+                                            </SelectItem>
+                                            {availableChannels.map(c => (
+                                                <SelectItem key={c.id} value={c.id}>
+                                                    <div className="flex flex-col">
+                                                        <span className="font-medium">{c.connection_name}</span>
+                                                        <span className="text-[10px] text-muted-foreground">{c.metadata?.display_phone_number || c.metadata?.phone_number || "WhatsApp"}</span>
+                                                    </div>
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                )}
+
                                 {/* Inline Mini Stats - Preserved in Action Area for now */}
                                 <div className="hidden xl:flex items-center gap-2 mr-4 border-r border-border pr-4">
                                     <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-white/5 border border-transparent dark:border-white/10">
@@ -396,8 +472,9 @@ export function CRMDashboard({
                 <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
                     {/* Columns Container - Horizontal Scroll, Columns Fill Height */}
                     <div className="flex-1 flex overflow-x-auto scrollbar-modern gap-3 px-1 pb-2 h-full">
-                        {stages.map((stage) => {
-                            const stageLeads = getLeadsByStage(stage.status_key)
+                        {stages.map((stage, index) => {
+                            const isFirstStage = index === 0
+                            const stageLeads = getLeadsByStage(stage.status_key, isFirstStage)
                             const columnWidth = Math.round(280 * (columnZoom / 100))
 
                             return (

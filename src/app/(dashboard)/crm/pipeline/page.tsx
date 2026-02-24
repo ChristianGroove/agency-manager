@@ -9,8 +9,13 @@ export const metadata = {
 
 export const dynamic = 'force-dynamic'
 
-export default async function CRMPipelinePage() {
-    const data = await getPipelineData()
+export default async function CRMPipelinePage(props: {
+    searchParams: Promise<{ [key: string]: string | undefined }>
+}) {
+    const params = await props.searchParams
+    const channelId = params.channel || null
+
+    const data = await getPipelineData(channelId)
 
     if (!data) {
         return <div className="p-8 text-center text-red-500">Error: No se pudo cargar el contexto de organización.</div>

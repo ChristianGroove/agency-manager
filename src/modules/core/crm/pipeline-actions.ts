@@ -281,9 +281,18 @@ export async function getCachedPipelineStages(orgId: string) {
  * Aggregated server action to fetch all CRM data in parallel.
  * Reduces 4+ roundtrips to 1.
  */
-export async function getPipelineData() {
+export async function getPipelineData(connectionId?: string | null) {
     const orgId = await getCurrentOrganizationId()
     if (!orgId) return null
+
+    // Require Security Team Permissions
+    const { getCurrentUserPermissions } = await import('@/modules/core/settings/actions/team-actions')
+    const perms = await getCurrentUserPermissions()
+
+    let allowedChannels: string[] | undefined = undefined
+    if (perms?.role === 'member') {
+        allowedChannels = perms.permissions?.inbox_access || []
+    }
 
     // Parallel Fetching
     const { getLeads } = await import('./leads-actions')
@@ -292,7 +301,7 @@ export async function getPipelineData() {
 
     const [stages, leads, emitters, totalCount] = await Promise.all([
         getCachedPipelineStages(orgId),
-        getLeads(300), // Existing limit
+        getLeads(300, connectionId, allowedChannels), // Pass filters
         getEmitters(),
         getLeadsCount()
     ])

@@ -210,7 +210,7 @@ export async function convertLeadToClient(leadId: string): Promise<ActionRespons
     }
 }
 
-export async function getLeads(limit = 300): Promise<Lead[]> {
+export async function getLeads(limit = 300, connectionId?: string | null, allowedChannels?: string[]): Promise<Lead[]> {
     // We use basic client for Auth check if needed, but for data we use Admin to bypass strict RLS
     // Security: We MUST filter by orgId obtained from trusted session.
     const orgId = await getCurrentOrganizationId()
@@ -245,11 +245,30 @@ export async function getLeads(limit = 300): Promise<Lead[]> {
         )
 
         // Use Admin Client to ensure we see ALL leads for this Org
-        const { data, error } = await adminClient
+        let query = adminClient
             .from('leads')
             .select('*') // Select ALL fields to avoid any mapping issues
             .eq('organization_id', orgId)
-            // .or(`status.neq.lost,created_at.gt.${cutoffDate}`)
+
+        // 1. Role-Based Access Control Filtering (If member with restricted channels)
+        if (allowedChannels && allowedChannels.length > 0) {
+            // FIX: Leads without source_connection_id are technically "legacy" or "manual"
+            // We should either restrict them purely, or allow them. Assuming strict isolation:
+            query = query.in('source_connection_id', allowedChannels)
+        } else if (allowedChannels && allowedChannels.length === 0) {
+            // Member with NO valid channels assigned. Return nothing.
+            return []
+        }
+
+        // 2. UI-based Channel Selection Filter
+        if (connectionId) {
+            query = query.eq('source_connection_id', connectionId)
+        } else if (connectionId === null) {
+            // Explicit null requested (e.g., viewing unassigned/legacy leads only)
+            query = query.is('source_connection_id', null)
+        }
+
+        const { data, error } = await query
             .order('created_at', { ascending: false })
             .limit(limit)
 
