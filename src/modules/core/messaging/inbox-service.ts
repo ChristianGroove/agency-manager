@@ -75,8 +75,8 @@ export class InboxService {
         // 5. Trigger Automation (Inbound Only)
         try {
             const { automationTrigger } = await import("../automation/automation-trigger.service")
-            // Fire and forget - don't block the webhook response
-            automationTrigger.evaluateInput(
+            // Must await in Serverless limits or Vercel will freeze the instance and kill the promise
+            await automationTrigger.evaluateInput(
                 typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content),
                 conversation.id,
                 msg.channel,
