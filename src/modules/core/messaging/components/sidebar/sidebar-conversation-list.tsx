@@ -67,7 +67,7 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
     const { organizationId, loading: orgLoading } = useCurrentOrganization()
 
     // Enable Global Notifications (Sound/Push)
-    useMessageNotifications();
+    useMessageNotifications(userPermissions);
 
     // Enable Shortcuts
     useInboxShortcuts({

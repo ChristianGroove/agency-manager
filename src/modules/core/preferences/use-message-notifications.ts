@@ -7,7 +7,8 @@ import { useInboxPreferences } from "./use-inbox-preferences";
 import { SoundPlayer } from "./sound-player";
 import { toast } from "sonner";
 
-export function useMessageNotifications() {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function useMessageNotifications(userPermissions: any) {
     const { preferences } = useInboxPreferences();
     const { notifications } = preferences;
     const lastPlayedRef = useRef<number>(0);
@@ -22,13 +23,28 @@ export function useMessageNotifications() {
                 'postgres_changes',
                 { event: 'INSERT', schema: 'public', table: 'messages' },
                 async (payload) => {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     const msg = payload.new as any;
 
                     // Only notify for inbound messages
                     if (msg.direction !== 'inbound') return;
 
-                    // 1. Check Focus Mode / Active Status (Future: Check "Focus Mode" state if mapped to a store)
-                    // For now, assume if preferences are loaded, we respect them.
+                    // Channel Governance Check
+                    const isStaff = userPermissions?.role === 'member';
+                    if (isStaff) {
+                        const authorizedChannels = userPermissions?.permissions?.inbox_access || [];
+
+                        // Fetch the conversation briefly to check its connection_id
+                        const { data: conv } = await supabase
+                            .from('conversations')
+                            .select('connection_id')
+                            .eq('id', msg.conversation_id)
+                            .single();
+
+                        if (!conv || !authorizedChannels.includes(conv.connection_id)) {
+                            return; // Block notification
+                        }
+                    }
 
                     // Debounce sounds (max 1 per second)
                     const now = Date.now();
@@ -69,5 +85,5 @@ export function useMessageNotifications() {
         return () => {
             channel.unsubscribe();
         };
-    }, [notifications]);
+    }, [notifications, userPermissions]);
 }
