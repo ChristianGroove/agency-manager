@@ -119,6 +119,8 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
     }
 
     const fetchConversations = async (showLoading = false) => {
+        if (!permissionsLoaded || !userPermissions) return // Prevent stale closure bypass
+
         if (showLoading) setLoading(true)
 
         let query = supabase
@@ -219,7 +221,7 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
             channel.unsubscribe()
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [activeFilter, currentUserId])
+    }, [activeFilter, currentUserId, permissionsLoaded, userPermissions])
 
     // Filter and search conversations
     const filteredConversations = useMemo(() => {

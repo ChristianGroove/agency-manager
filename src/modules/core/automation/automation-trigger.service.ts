@@ -208,22 +208,26 @@ export class AutomationTriggerService {
             }
 
 
-            // CHANNEL CHECK
+            // CHANNEL CHECK (ROBUST MULTI-CHANNEL EVALUATION)
             if (match && config.channels && Array.isArray(config.channels) && config.channels.length > 0) {
                 if (finalConnectionId) {
-                    const allowedChannels = config.channels
-                    // Check if current connection is in allowed list (handling "connId" or "connId:assetId")
+                    const allowedChannels = config.channels.map((c: any) => String(c).trim());
+                    const currentId = String(finalConnectionId).trim();
+
                     if (!allowedChannels.includes('all')) {
                         const isAllowed = allowedChannels.some((ch: string) => {
-                            if (ch === finalConnectionId) return true
-                            if (ch.includes(':') && ch.startsWith(finalConnectionId + ':')) return true
-                            return false
-                        })
+                            // Exact match
+                            if (ch === currentId) return true;
+                            // Substring / composite ID fallbacks
+                            if (ch.includes(currentId)) return true;
+                            if (currentId.includes(ch)) return true;
+                            return false;
+                        });
 
                         if (!isAllowed) {
-                            match = false
-                            skipReason = `Channel mismatch (${finalConnectionId})`
-                            fileLogger.log(`[AutomationTrigger]   ❌ SKIPPED Workflow: ${wf.id}. Reason: ${skipReason}`)
+                            match = false;
+                            skipReason = `Channel mismatch (${currentId}) - Allowed: [${allowedChannels.join(', ')}]`;
+                            fileLogger.log(`[AutomationTrigger]   ❌ SKIPPED Workflow: ${wf.id}. Reason: ${skipReason}`);
                         }
                     }
                 }
