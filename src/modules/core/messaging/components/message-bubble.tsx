@@ -88,6 +88,6 @@ function renderContent(content: any, isOutbound: boolean, messageId?: string, me
 
         case 'text':
         default:
-            return <p className="whitespace-pre-wrap leading-relaxed text-[15px]">{text || (content as any).raw?.text?.body || (content as any).raw?.body || <span className="text-xs italic opacity-50">{t ? t('crm.inbox.chat.messages.no_visible_text') : 'Message with no visible text'}</span>}</p>
+            return <p className="whitespace-pre-wrap leading-relaxed text-[15px]">{text || (content as any).raw?.text?.body || (content as any).raw?.body || <span className="text-xs italic opacity-50">{t ? t('inbox.layout.no_visible_text') : 'Message with no visible text'}</span>}</p>
     }
 }
