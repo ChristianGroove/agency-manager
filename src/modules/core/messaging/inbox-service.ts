@@ -35,21 +35,6 @@ export class InboxService {
 
             if (existingMsg) {
                 console.log(`[InboxService] Skipping DUPLICATE message: ${msg.externalId} `)
-                // CRITICAL FIX: Trigger automation even for duplicates (message was already inserted by upsertConversation)
-                try {
-                    const { automationTrigger } = await import("../automation/automation-trigger.service")
-                    automationTrigger.evaluateInput(
-                        typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content),
-                        conversation.id,
-                        msg.channel,
-                        msg.from,
-                        conversation.lead_id,
-                        connectionId || conversation.connection_id,
-                        msg.id || msg.externalId
-                    ).catch(err => console.log('[InboxService] Automation Trigger Error on duplicate:', err))
-                } catch (e) {
-                    console.log('[InboxService] Failed to load automation service on duplicate:', e)
-                }
                 return { success: true, conversationId: conversation.id }
             }
         }

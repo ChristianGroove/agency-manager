@@ -9,6 +9,9 @@ import { WorkflowDefinition } from "./engine"
  * Serves as the "Glue" between Inbox/CRM and the Automation Engine.
  */
 export class AutomationTriggerService {
+    // In-memory lock to prevent immediate webhook race conditions.
+    // In a multi-instance production environment, this should ideally be Redis.
+    private processingLocks: Set<string> = new Set();
 
     /**
      * Evaluate an incoming message to see if it triggers any workflow.
@@ -42,6 +45,18 @@ export class AutomationTriggerService {
         const orgId = conversation.organization_id
         // Prefer passed connectionId (from message), fallback to conversation's
         const finalConnectionId = connectionId || conversation.connection_id
+        const finalMessageId = messageId || (typeof messageContent === 'object' ? (messageContent as any).id : `auto_${Date.now()}`);
+
+        if (finalMessageId) {
+            if (this.processingLocks.has(finalMessageId)) {
+                fileLogger.log(`[AutomationTrigger] Lock active for message ${finalMessageId}. Skipping concurrent execution.`);
+                return;
+            }
+            this.processingLocks.add(finalMessageId);
+
+            // Auto-release lock after 10 seconds just in case
+            setTimeout(() => this.processingLocks.delete(finalMessageId), 10000);
+        }
 
         const { data: workflows } = await supabaseAdmin
             .from('workflows')
