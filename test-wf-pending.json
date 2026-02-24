@@ -1,0 +1,157 @@
+[
+  {
+    "id": "a5b8933b-ac2c-431b-9794-74acd07e35ee",
+    "execution_id": "0c5619f8-f1e7-43df-9ed1-63e09f0b95cd",
+    "node_id": "buttons-1771870727022",
+    "organization_id": "77b09a39-d50f-4b9a-81d4-e7b8b0d05a29",
+    "conversation_id": "3c5b26f2-81de-47f2-991c-332d383a5100",
+    "input_type": "button_click",
+    "config": {
+      "timeout": "24h",
+      "inputType": "button_click",
+      "buttonOptions": [
+        {
+          "id": "btn_6pu92",
+          "title": "✅ Acepto políticas"
+        },
+        {
+          "id": "btn_pta46",
+          "title": "❌ No acepto"
+        },
+        {
+          "id": "btn_61yyq",
+          "title": "Ver politicas"
+        }
+      ],
+      "timeoutAction": "continue",
+      "buttonBranches": {}
+    },
+    "status": "waiting",
+    "response": null,
+    "timeout_at": "2026-02-25T05:27:20.463+00:00",
+    "created_at": "2026-02-24T05:27:20.463+00:00",
+    "completed_at": null
+  },
+  {
+    "id": "58316115-9c3e-4223-a618-d4870112aaab",
+    "execution_id": "0467453b-24b0-46e7-8039-36e97bf891f9",
+    "node_id": "buttons-1771870727022",
+    "organization_id": "77b09a39-d50f-4b9a-81d4-e7b8b0d05a29",
+    "conversation_id": "684dd90f-82e9-402b-bb61-0a5b7b2d765d",
+    "input_type": "button_click",
+    "config": {
+      "timeout": "24h",
+      "inputType": "button_click",
+      "buttonOptions": [
+        {
+          "id": "btn_6pu92",
+          "title": "✅ Acepto políticas"
+        },
+        {
+          "id": "btn_pta46",
+          "title": "❌ No acepto"
+        },
+        {
+          "id": "btn_61yyq",
+          "title": "Ver politicas"
+        }
+      ],
+      "timeoutAction": "continue",
+      "buttonBranches": {}
+    },
+    "status": "completed",
+    "response": {
+      "content": "❌ No acepto",
+      "buttonId": "btn_pta46"
+    },
+    "timeout_at": "2026-02-25T05:25:36.629+00:00",
+    "created_at": "2026-02-24T05:25:36.629+00:00",
+    "completed_at": "2026-02-24T05:25:57.268+00:00"
+  },
+  {
+    "id": "6a12da5a-758b-42fb-b829-d5dd92c854b4",
+    "execution_id": "f860a5c6-6b55-45f9-b419-613f7e47a0a3",
+    "node_id": "buttons-1771870727022",
+    "organization_id": "77b09a39-d50f-4b9a-81d4-e7b8b0d05a29",
+    "conversation_id": "684dd90f-82e9-402b-bb61-0a5b7b2d765d",
+    "input_type": "button_click",
+    "config": {
+      "timeout": "24h",
+      "inputType": "button_click",
+      "buttonOptions": [
+        {
+          "id": "btn_6pu92",
+          "title": "✅ Acepto políticas"
+        },
+        {
+          "id": "btn_pta46",
+          "title": "❌ No acepto"
+        },
+        {
+          "id": "btn_61yyq",
+          "title": "Ver politicas"
+        }
+      ],
+      "timeoutAction": "continue",
+      "buttonBranches": {}
+    },
+    "status": "waiting",
+    "response": null,
+    "timeout_at": "2026-02-25T05:25:33.508+00:00",
+    "created_at": "2026-02-24T05:25:33.508+00:00",
+    "completed_at": null
+  },
+  {
+    "id": "e5b40a33-14cd-43ea-acda-10ae97aadaaa",
+    "execution_id": "855da5d7-9439-4bc6-b111-139d635869fe",
+    "node_id": "wait_input-1771871989177",
+    "organization_id": "77b09a39-d50f-4b9a-81d4-e7b8b0d05a29",
+    "conversation_id": "a3b07f7f-dc78-4e9a-877e-2bedce421f97",
+    "input_type": "text",
+    "config": {
+      "label": "Wait_input",
+      "timeout": "30m",
+      "inputType": "text",
+      "timeoutAction": "branch"
+    },
+    "status": "completed",
+    "response": {
+      "content": "Djdjkd 38474"
+    },
+    "timeout_at": "2026-02-24T05:53:31.282+00:00",
+    "created_at": "2026-02-24T05:23:31.282+00:00",
+    "completed_at": "2026-02-24T05:23:38.007+00:00"
+  },
+  {
+    "id": "45534f1d-e8da-4689-a7de-68377e9bc4c7",
+    "execution_id": "855da5d7-9439-4bc6-b111-139d635869fe",
+    "node_id": "buttons-1771871755003",
+    "organization_id": "77b09a39-d50f-4b9a-81d4-e7b8b0d05a29",
+    "conversation_id": "a3b07f7f-dc78-4e9a-877e-2bedce421f97",
+    "input_type": "button_click",
+    "config": {
+      "timeout": "24h",
+      "inputType": "button_click",
+      "buttonOptions": [
+        {
+          "id": "btn_hzu7a",
+          "title": "✅ Sí, la tengo"
+        },
+        {
+          "id": "btn_x1dh6",
+          "title": "❌ No me interesa"
+        }
+      ],
+      "timeoutAction": "continue",
+      "buttonBranches": {}
+    },
+    "status": "completed",
+    "response": {
+      "content": "✅ Sí, la tengo",
+      "buttonId": "btn_hzu7a"
+    },
+    "timeout_at": "2026-02-25T05:23:24.158+00:00",
+    "created_at": "2026-02-24T05:23:24.158+00:00",
+    "completed_at": "2026-02-24T05:23:29.754+00:00"
+  }
+]

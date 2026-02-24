@@ -125,7 +125,7 @@ export async function resumeSuspendedWorkflow(
                 await supabase
                     .from('workflow_executions')
                     .update({
-                        status: 'running', // Or 'waiting', depending on desired state for suspended workflows
+                        status: 'suspended',
                         context: (engine as any).context // Access the updated context from the engine instance
                     })
                     .eq('id', executionId)

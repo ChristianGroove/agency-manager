@@ -335,15 +335,24 @@ export class AutomationTriggerService {
                     .update({ status: 'completed', completed_at: new Date().toISOString() })
                     .eq('id', execution.id)
             }).catch(async (err) => {
-                console.error(`[AutomationTrigger] Workflow ${workflow.id} failed:`, err)
-                await supabaseAdmin
-                    .from('workflow_executions')
-                    .update({
-                        status: 'failed',
-                        error_message: err.message,
-                        completed_at: new Date().toISOString()
-                    })
-                    .eq('id', execution.id)
+                const supabase = supabaseAdmin;
+                if (err.message === 'WORKFLOW_SUSPENDED') {
+                    fileLogger.log(`[AutomationTrigger] Workflow ${workflow.id} suspended to wait for input.`)
+                    await supabase
+                        .from('workflow_executions')
+                        .update({ status: 'suspended' })
+                        .eq('id', execution.id)
+                } else {
+                    console.error(`[AutomationTrigger] Workflow ${workflow.id} failed:`, err)
+                    await supabase
+                        .from('workflow_executions')
+                        .update({
+                            status: 'failed',
+                            error_message: err.message,
+                            completed_at: new Date().toISOString()
+                        })
+                        .eq('id', execution.id)
+                }
             })
 
         } catch (err) {

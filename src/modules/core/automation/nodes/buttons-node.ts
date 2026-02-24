@@ -156,6 +156,11 @@ export class ButtonsNode {
                     return { success: false, error: `Unknown message type: ${data.messageType}` }
             }
 
+            // LOG EXACT PAYLOAD SENT TO OUTBOUND SERVICE
+            console.log('\n\n[ButtonsNode] ================= OUTPUT PAYLOAD =================');
+            console.log(JSON.stringify(messageContent, null, 2));
+            console.log('=================================================================\n\n');
+
             // Send the message
             const result = await sendOutboundMessage(
                 conversationId,
