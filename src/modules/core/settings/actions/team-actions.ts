@@ -277,6 +277,7 @@ export async function updateMemberPermissions(
     permissions: {
         modules?: Record<string, boolean>
         features?: Record<string, boolean>
+        inbox_access?: string[]
     }
 ) {
     const orgId = await getCurrentOrganizationId()
@@ -308,8 +309,10 @@ export async function updateMemberPermissions(
     // Merge permissions
     const currentPermissions = member.permissions || {}
     const newPermissions = {
+        ...currentPermissions,
         modules: { ...currentPermissions.modules, ...permissions.modules },
         features: { ...currentPermissions.features, ...permissions.features },
+        ...(permissions.inbox_access !== undefined && { inbox_access: permissions.inbox_access })
     }
 
     try {
