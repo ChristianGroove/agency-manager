@@ -7,7 +7,9 @@ import { AssistantModal } from "@/modules/core/caa/components/assistant-modal"
 import { useAssistant } from "@/hooks/use-assistant"
 import { AssistantOverlay } from "@/components/assistant/AssistantOverlay"
 
-export function FabController() {
+export function FabController({ orgSlug }: { orgSlug?: string }) {
+    const isInternalOrg = orgSlug === 'pixy-agency'
+
     const [isMetaOpen, setIsMetaOpen] = useState(false)
     const [isHelpOpen, setIsHelpOpen] = useState(false)
 
@@ -20,21 +22,24 @@ export function FabController() {
                 onOpenMeta={() => setIsMetaOpen(true)}
                 onOpenHelp={() => setIsHelpOpen(true)}
                 onOpenAssistant={() => setIsAssistantOpen(true)}
+                orgSlug={orgSlug}
             />
 
             {/* Controlled Components */}
-            <MetaControlSheet open={isMetaOpen} onOpenChange={setIsMetaOpen} />
+            {isInternalOrg && <MetaControlSheet open={isMetaOpen} onOpenChange={setIsMetaOpen} />}
             <AssistantModal open={isHelpOpen} onOpenChange={setIsHelpOpen} />
 
             {/* New Pixy Assistant */}
-            <AssistantOverlay
-                messages={messages}
-                status={status}
-                isOpen={isAssistantOpen}
-                setIsOpen={setIsAssistantOpen}
-                submitMessage={submitMessage}
-                toggleVoice={toggleVoice}
-            />
+            {isInternalOrg && (
+                <AssistantOverlay
+                    messages={messages}
+                    status={status}
+                    isOpen={isAssistantOpen}
+                    setIsOpen={setIsAssistantOpen}
+                    submitMessage={submitMessage}
+                    toggleVoice={toggleVoice}
+                />
+            )}
         </>
     )
 }

@@ -12,9 +12,12 @@ interface UnifiedFloatingFabProps {
     onOpenMeta: () => void
     onOpenHelp: () => void
     onOpenAssistant: () => void
+    orgSlug?: string
 }
 
-export function UnifiedFloatingFab({ onOpenMeta, onOpenHelp, onOpenAssistant }: UnifiedFloatingFabProps) {
+export function UnifiedFloatingFab({ onOpenMeta, onOpenHelp, onOpenAssistant, orgSlug }: UnifiedFloatingFabProps) {
+    const isInternalOrg = orgSlug === 'pixy-agency'
+
     const [isExpanded, setIsExpanded] = useState(false)
     const { theme, setTheme } = useTheme()
 
@@ -83,24 +86,26 @@ export function UnifiedFloatingFab({ onOpenMeta, onOpenHelp, onOpenAssistant }: 
                         >
 
                             {/* 4. PIXY ASSISTANT (Top) */}
-                            <motion.button
-                                variants={itemVariants}
-                                onClick={() => {
-                                    onOpenAssistant()
-                                    setIsExpanded(false)
-                                }}
-                                className={cn(
-                                    "relative group flex items-center justify-center w-10 h-10 rounded-full",
-                                    "bg-gradient-to-tr from-pink-500 to-indigo-600 text-white shadow-lg",
-                                    "hover:scale-110 transition-transform hover:shadow-[0_0_20px_rgba(236,72,153,0.5)]"
-                                )}
-                            >
-                                <Sparkles className="w-5 h-5" />
-                                {/* Label */}
-                                <span className="absolute right-12 px-3 py-1.5 bg-background/80 backdrop-blur-md text-foreground text-xs font-medium rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none custom-shadow border border-border/50">
-                                    Pixy Assistant
-                                </span>
-                            </motion.button>
+                            {isInternalOrg && (
+                                <motion.button
+                                    variants={itemVariants}
+                                    onClick={() => {
+                                        onOpenAssistant()
+                                        setIsExpanded(false)
+                                    }}
+                                    className={cn(
+                                        "relative group flex items-center justify-center w-10 h-10 rounded-full",
+                                        "bg-gradient-to-tr from-pink-500 to-indigo-600 text-white shadow-lg",
+                                        "hover:scale-110 transition-transform hover:shadow-[0_0_20px_rgba(236,72,153,0.5)]"
+                                    )}
+                                >
+                                    <Sparkles className="w-5 h-5" />
+                                    {/* Label */}
+                                    <span className="absolute right-12 px-3 py-1.5 bg-background/80 backdrop-blur-md text-foreground text-xs font-medium rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none custom-shadow border border-border/50">
+                                        Pixy Assistant
+                                    </span>
+                                </motion.button>
+                            )}
 
                             {/* 3. HELP */}
                             <motion.button
@@ -123,24 +128,26 @@ export function UnifiedFloatingFab({ onOpenMeta, onOpenHelp, onOpenAssistant }: 
                             </motion.button>
 
                             {/* 2. META */}
-                            <motion.button
-                                variants={itemVariants}
-                                onClick={() => {
-                                    onOpenMeta()
-                                    setIsExpanded(false)
-                                }}
-                                className={cn(
-                                    "relative group flex items-center justify-center w-10 h-10 rounded-full",
-                                    "bg-white/80 dark:bg-black/80 backdrop-blur-md shadow-lg border border-white/20 dark:border-white/10",
-                                    "hover:bg-gradient-to-br hover:from-emerald-400 hover:to-teal-600 hover:text-white hover:border-transparent",
-                                    "hover:scale-110 transition-all duration-300"
-                                )}
-                            >
-                                <Rocket className="w-5 h-5" />
-                                <span className="absolute right-12 px-3 py-1.5 bg-background/80 backdrop-blur-md text-foreground text-xs font-medium rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none custom-shadow border border-border/50">
-                                    Meta Control
-                                </span>
-                            </motion.button>
+                            {isInternalOrg && (
+                                <motion.button
+                                    variants={itemVariants}
+                                    onClick={() => {
+                                        onOpenMeta()
+                                        setIsExpanded(false)
+                                    }}
+                                    className={cn(
+                                        "relative group flex items-center justify-center w-10 h-10 rounded-full",
+                                        "bg-white/80 dark:bg-black/80 backdrop-blur-md shadow-lg border border-white/20 dark:border-white/10",
+                                        "hover:bg-gradient-to-br hover:from-emerald-400 hover:to-teal-600 hover:text-white hover:border-transparent",
+                                        "hover:scale-110 transition-all duration-300"
+                                    )}
+                                >
+                                    <Rocket className="w-5 h-5" />
+                                    <span className="absolute right-12 px-3 py-1.5 bg-background/80 backdrop-blur-md text-foreground text-xs font-medium rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none custom-shadow border border-border/50">
+                                        Meta Control
+                                    </span>
+                                </motion.button>
+                            )}
 
                             {/* 1. THEME */}
                             <motion.button

@@ -1,7 +1,7 @@
 import { DashboardShell } from "@/components/layout/dashboard-shell"
 import { createClient } from "@/lib/supabase-server"
 import { redirect } from "next/navigation"
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getCurrentOrganizationId, getCurrentOrgDetails } from "@/modules/core/organizations/actions"
 import { getActiveModules } from "@/modules/core/saas/actions"
 import { isSuperAdmin } from "@/lib/auth/platform-roles"
 import { SystemAlertBanner } from "@/components/layout/system-alert-banner"
@@ -25,9 +25,10 @@ export default async function DashboardLayout({
     const supabase = await createClient()
 
     // OPTIMIZED: Parallel fetch with minimal dependencies
-    const [userResponse, currentOrgId] = await Promise.all([
+    const [userResponse, currentOrgId, orgDetails] = await Promise.all([
         supabase.auth.getUser(),
-        getCurrentOrganizationId()
+        getCurrentOrganizationId(),
+        getCurrentOrgDetails()
     ])
 
     const { data: { user }, error: authError } = userResponse
@@ -76,7 +77,7 @@ export default async function DashboardLayout({
                 <GlobalInboxProvider>
                     <GlobalMessageListener />
                     <InboxOverlay />
-                    <FabController />
+                    <FabController orgSlug={orgDetails?.slug} />
                     <SystemAlertBanner />
                     <Suspense fallback={<GlobalLoader />}>
                         {children}
