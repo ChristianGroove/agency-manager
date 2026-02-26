@@ -3,6 +3,94 @@ import * as BillingUtils from "@/lib/billing-utils"
 import { logDomainEvent } from "@/lib/event-logger"
 
 /**
+ * STEP 0 — Self-Healing
+ * Scans all active recurring services that have an overdue `next_billing_date`
+ * and NO pending billing_cycle. Creates the missing cycle so the main loop
+ * can process it and generate the invoice with the correct retroactive date.
+ *
+ * This guarantees continuity: the billing day (e.g. 19th, 26th) is always
+ * preserved because `next_billing_date` IS the correct end_date for the cycle.
+ */
+async function repairOrphanedCycles(): Promise<number> {
+    const now = new Date()
+
+    // Find recurring active services where next_billing_date has already passed
+    const { data: services, error } = await supabase
+        .from('services')
+        .select('id, name, frequency, amount, next_billing_date, organization_id')
+        .eq('type', 'recurring')
+        .eq('status', 'active')
+        .is('deleted_at', null)
+        .not('next_billing_date', 'is', null)
+        .lte('next_billing_date', now.toISOString())
+
+    if (error || !services || services.length === 0) return 0
+
+    let repairedCount = 0
+
+    for (const svc of services) {
+        // Skip services that already have a pending cycle
+        const { data: existingPending } = await supabase
+            .from('billing_cycles')
+            .select('id')
+            .eq('service_id', svc.id)
+            .eq('status', 'pending')
+            .maybeSingle()
+
+        if (existingPending) continue
+
+        // Use next_billing_date as the cycle's end_date — this preserves the billing day
+        const cycleEnd = new Date(svc.next_billing_date)
+
+        // Determine cycle start from the last existing cycle, or derive from frequency
+        const { data: lastCycle } = await supabase
+            .from('billing_cycles')
+            .select('end_date')
+            .eq('service_id', svc.id)
+            .order('end_date', { ascending: false })
+            .limit(1)
+            .maybeSingle()
+
+        let cycleStart: Date
+        if (lastCycle) {
+            cycleStart = new Date(lastCycle.end_date)
+        } else {
+            cycleStart = new Date(cycleEnd)
+            switch (svc.frequency) {
+                case 'biweekly': cycleStart.setDate(cycleStart.getDate() - 14); break
+                case 'quarterly': cycleStart.setMonth(cycleStart.getMonth() - 3); break
+                case 'semiannual': cycleStart.setMonth(cycleStart.getMonth() - 6); break
+                case 'yearly': cycleStart.setFullYear(cycleStart.getFullYear() - 1); break
+                default: cycleStart.setMonth(cycleStart.getMonth() - 1)
+            }
+        }
+
+        const dueDate = new Date(cycleEnd)
+        dueDate.setDate(dueDate.getDate() + 5)
+
+        const { error: insertError } = await supabase
+            .from('billing_cycles')
+            .insert({
+                service_id: svc.id,
+                start_date: cycleStart.toISOString(),
+                end_date: cycleEnd.toISOString(),
+                due_date: dueDate.toISOString(),
+                amount: svc.amount,
+                status: 'pending'
+            })
+
+        if (!insertError) {
+            console.log(`[SelfHeal] Repaired missing cycle for service "${svc.name}" (${svc.id}), end=${cycleEnd.toISOString().substring(0, 10)}`)
+            repairedCount++
+        } else {
+            console.error(`[SelfHeal] Failed to repair cycle for service ${svc.id}:`, insertError)
+        }
+    }
+
+    return repairedCount
+}
+
+/**
  * Checks for pending billing cycles that are due (end_date <= now)
  * and generates invoices for them.
  * 
@@ -11,6 +99,12 @@ import { logDomainEvent } from "@/lib/event-logger"
 export async function checkAndGenerateCycles() {
     try {
         const now = new Date()
+
+        // STEP 0: Self-healing — create missing pending cycles before processing
+        const repairedCount = await repairOrphanedCycles()
+        if (repairedCount > 0) {
+            console.log(`[BillingAuto] Self-healed ${repairedCount} service(s) with missing pending cycles.`)
+        }
 
         // 1. Fetch pending cycles that have ended
         const { data: cycles, error } = await supabase
@@ -58,13 +152,16 @@ export async function checkAndGenerateCycles() {
 
             // A. Generate Invoice for this cycle
             const invoiceNumber = `INV-${Date.now().toString().slice(-6)}-${Math.floor(Math.random() * 100)}`
-            const issueDate = new Date()
             const cycleEndDate = new Date(cycle.end_date)
+            // Use the cycle's end_date as invoice date for retroactive billing.
+            // This preserves the original billing day (e.g. 19th, 26th) even when
+            // the automator runs late or self-heals overdue cycles.
+            const issueDate = cycleEndDate < now ? cycleEndDate : now
 
             // Check for Late Issuance (Retroactive)
             // Rule: If cycle ended more than 4 days ago, mark as late.
-            // This handles "Generate Overdue" (months ago) and prevents flagging normal daily/weekend delays.
-            const diffTime = Math.abs(issueDate.getTime() - cycleEndDate.getTime())
+            // Compare cycleEndDate vs now (not issueDate) because issueDate IS cycleEndDate for retroactive cycles.
+            const diffTime = Math.abs(now.getTime() - cycleEndDate.getTime())
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
             const isLateIssued = diffDays > 4
 
@@ -156,7 +253,6 @@ export async function checkAndGenerateCycles() {
                 nextDue.setDate(nextDue.getDate() + 5)
 
                 const { data: nextCycleData, error: nextCycleError } = await supabase.from('billing_cycles').insert({
-                    organization_id: service.organization_id, // CRITICAL FIX
                     service_id: service.id,
                     start_date: nextStart.toISOString(),
                     end_date: nextEnd.toISOString(),

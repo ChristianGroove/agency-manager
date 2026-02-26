@@ -10,6 +10,7 @@ import { useGlobalInbox } from "../../context/global-inbox-context"
 import { MessageSquare, X, Reply, CheckCheck } from "lucide-react"
 import { markConversationAsRead } from "../../actions"
 import { getCurrentUserPermissions } from "@/modules/core/settings/actions/team-actions"
+import { getOrgConnectionIds } from "@/modules/core/messaging/conversation-actions"
 import { Button } from "@/components/ui/button"
 
 type Message = any // Replace with proper type import
@@ -26,11 +27,18 @@ export function GlobalMessageListener() {
     const [userPermissions, setUserPermissions] = useState<any>(null)
     const userPermissionsRef = useRef<any>(null)
 
+    // Tenant isolation: only show popups for connections that belong to the active org
+    const orgConnectionIdsRef = useRef<Set<string>>(new Set())
+
     useEffect(() => {
         const fetchPerms = async () => {
-            const perms = await getCurrentUserPermissions()
+            const [perms, connectionIds] = await Promise.all([
+                getCurrentUserPermissions(),
+                getOrgConnectionIds()
+            ])
             setUserPermissions(perms)
             userPermissionsRef.current = perms
+            orgConnectionIdsRef.current = new Set(connectionIds)
         }
         fetchPerms()
     }, [])
@@ -107,7 +115,20 @@ export function GlobalMessageListener() {
                         .eq('id', msg.conversation_id)
                         .single()
 
-                    // Role-Based Access Control for Popups
+                    // STEP 1: Tenant isolation — only show popups for this org's connections
+                    // conversation.connection_id identifies which WhatsApp channel received the message
+                    if (conversation?.connection_id) {
+                        if (!orgConnectionIdsRef.current.has(conversation.connection_id)) {
+                            console.log('[GlobalListener] Suppressing cross-tenant message from connection:', conversation.connection_id)
+                            return
+                        }
+                    } else if (orgConnectionIdsRef.current.size > 0) {
+                        // If org has known connections but conversation has no connection_id, it's likely legacy/other tenant
+                        console.log('[GlobalListener] Suppressing message with no connection_id while org has connections')
+                        return
+                    }
+
+                    // STEP 2: Role-Based Access Control for Popups
                     const perms = userPermissionsRef.current
                     if (perms?.role === 'member') {
                         const allowedChannels = perms.permissions?.inbox_access || []

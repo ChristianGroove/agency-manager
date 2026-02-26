@@ -1,7 +1,27 @@
 "use server"
 
 import { createClient } from "@/lib/supabase-server"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
 import { revalidatePath } from "next/cache"
+
+/**
+ * Returns the active integration_connection IDs for the current org.
+ * Used by GlobalMessageListener to filter cross-tenant message popups.
+ */
+export async function getOrgConnectionIds(): Promise<string[]> {
+    const supabase = await createClient()
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) return []
+
+    const { data } = await supabase
+        .from('integration_connections')
+        .select('id')
+        .eq('organization_id', orgId)
+        .eq('status', 'active')
+
+    return (data || []).map((c: { id: string }) => c.id)
+}
+
 
 /**
  * Archive a conversation
