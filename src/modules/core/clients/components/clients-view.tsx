@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo, useCallback } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Plus, Phone, ArrowRight, AlertTriangle, CheckCircle2, Clock, CreditCard, FileText, Globe, MoreVertical, Wifi, Shield, Trash2, Copy, Users } from "lucide-react"
@@ -56,14 +56,30 @@ import { PortalGovernanceSheet } from "@/components/sheets/portal-governance-she
 import { useRegisterView } from "@/modules/core/caa/context/view-context"
 import { useTranslation } from "@/lib/i18n/use-translation"
 import { SectionHeader } from "@/components/layout/section-header"
+import { useRouter, useSearchParams } from "next/navigation"
 
 interface ClientsViewProps {
-    initialClients: Client[]
+    initialData: {
+        clients: any[]
+        totalCount: number
+        counts: {
+            all: number
+            overdue: number
+            urgent: number
+            active: number
+            inactive: number
+        }
+    }
     initialSettings: any
+    currentPage: number
+    currentSearch: string
+    currentFilter: string
 }
 
-export function ClientsView({ initialClients, initialSettings }: ClientsViewProps) {
+export function ClientsView({ initialData, initialSettings, currentPage, currentSearch, currentFilter }: ClientsViewProps) {
     const { t } = useTranslation()
+    const router = useRouter()
+    const searchParamsOrigin = useSearchParams()
 
     // Register View Context for Help Assistant
     useRegisterView({
@@ -75,9 +91,14 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
         topics: ["clients-overview", "contact-card-guide"]
     })
 
-    const [clients, setClients] = useState<Client[]>(initialClients || [])
+    const [clients, setClients] = useState<any[]>(initialData.clients || [])
+    const [counts, setCounts] = useState(initialData.counts || { all: 0, overdue: 0, urgent: 0, active: 0, inactive: 0 })
+    const [totalCount, setTotalCount] = useState(initialData.totalCount || 0)
+
     const [loading, setLoading] = useState(false)
-    const [searchTerm, setSearchTerm] = useState("")
+    const [searchTerm, setSearchTerm] = useState(currentSearch)
+    const [activeFilter, setActiveFilter] = useState(currentFilter)
+
     const [settings, setSettings] = useState<any>(initialSettings)
     // Bulk Actions State
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -158,98 +179,81 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
         }
     }
 
-    const fetchClients = async () => {
-        // Only show loading if strictly necessary, or maybe a background refresh indicator
-        // For now, keeping it simple but maybe without full page loader if we want smoothness
-        // setLoading(true) 
-        try {
-            const data = await getClients()
-            if (data) {
-                setClients(data)
-            }
-        } catch (error) {
-            console.error("Error fetching clients:", error)
-        } finally {
-            // setLoading(false)
+    const fetchClients = () => {
+        router.refresh()
+    }
+
+    // SSR Trigger for Search and Filter (Debounced manually in UI or triggered on Enter)
+    const applyFiltersAndSearch = (newSearch: string, newFilter: string) => {
+        const params = new URLSearchParams(searchParamsOrigin.toString())
+        params.set('page', '1') // Reset to page 1 on new filter
+        params.set('search', newSearch)
+        params.set('filter', newFilter)
+        router.push(`?${params.toString()}`)
+    }
+
+    // SSR Trigger for Pagination
+    const goToPage = (pageNumber: number) => {
+        const params = new URLSearchParams(searchParamsOrigin.toString())
+        params.set('page', pageNumber.toString())
+        router.push(`?${params.toString()}`)
+    }
+
+    const { getNextPayment, getDaysDiff } = useMemo(() => {
+        // Keeping these helpers for UI rendering (e.g., Next Payment Badge formatting)
+        // despite the DB already calculating `daysToPay` and `status`. 
+        // Note: The RPC returns `active_services_count`, `debt`, `future_debt`, `computed_status` 
+        // directly at the root of the client object!
+        const getNextPaymentHelper = (client: any) => {
+            const dates: { date: Date, source: string }[] = []
+            client.hosting_accounts?.forEach((h: any) => {
+                if (h.status === 'active' && h.renewal_date) dates.push({ date: new Date(h.renewal_date), source: 'Hosting' })
+            })
+            client.subscriptions?.forEach((s: any) => {
+                if (s.status === 'active' && s.next_billing_date) dates.push({ date: new Date(s.next_billing_date), source: s.name })
+            })
+            if (dates.length === 0) return null
+            dates.sort((a, b) => a.date.getTime() - b.date.getTime())
+            return dates[0]
         }
-    }
 
-    const getNextPayment = (client: Client) => {
-        const dates: { date: Date, source: string }[] = []
+        const getDaysDiffHelper = (targetDate: Date) => {
+            const now = new Date()
+            const diffTime = targetDate.getTime() - now.getTime()
+            return Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+        }
 
-        // Add hosting renewals
-        client.hosting_accounts?.forEach(h => {
-            if (h.status === 'active' && h.renewal_date) dates.push({ date: new Date(h.renewal_date), source: 'Hosting' })
-        })
+        return { getNextPayment: getNextPaymentHelper, getDaysDiff: getDaysDiffHelper }
+    }, [])
 
-        // Add subscriptions
-        client.subscriptions?.forEach(s => {
-            if (s.status === 'active' && s.next_billing_date) dates.push({ date: new Date(s.next_billing_date), source: s.name })
-        })
+    // Since filtering is done in DB, filteredClients = clients
+    // We just map the complex Date objects for the UI
+    const filteredClients = useMemo(() => {
+        if (!initialData || !initialData.clients) return []
 
-        if (dates.length === 0) return null
-
-        // Sort by date asc
-        dates.sort((a, b) => a.date.getTime() - b.date.getTime())
-        return dates[0]
-    }
-
-    const getDaysDiff = (targetDate: Date) => {
-        const now = new Date()
-        const diffTime = targetDate.getTime() - now.getTime()
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-        return diffDays
-    }
-
-    const [activeFilter, setActiveFilter] = useState('all') // 'all' | 'overdue' | 'urgent' | 'active' | 'inactive'
-
-    // Process clients with status logic for filtering
-    const clientsWithStatus = clients.map(client => {
-        let futureDebt = 0
-        const debt = client.invoices?.reduce((acc, inv: any) => {
-            if (inv.deleted_at) return acc // Skip deleted
-            if (inv.status !== 'pending' && inv.status !== 'overdue') return acc
-
-            if (inv.due_date) {
-                const dueDate = new Date(inv.due_date)
-                const today = new Date()
-                today.setHours(0, 0, 0, 0)
-                dueDate.setHours(0, 0, 0, 0)
-
-                if (today > dueDate) return acc + inv.total
-                else {
-                    futureDebt += inv.total
-                    return acc
-                }
+        return initialData.clients.map((client: any) => {
+            const nextPayment = getNextPayment(client)
+            const daysToPay = nextPayment ? getDaysDiff(nextPayment.date) : null
+            return {
+                ...client,
+                id: client.client_id || client.id,
+                companyName: client.company_name || client.companyName,
+                logoUrl: client.logo_url || client.logoUrl,
+                createdAt: client.created_at || client.createdAt,
+                activeServicesCount: client.active_services_count ?? client.activeServicesCount ?? 0,
+                futureDebt: client.future_debt ?? client.futureDebt ?? 0,
+                debt: client.debt ?? 0,
+                nextPayment,
+                daysToPay
             }
+        })
+    }, [initialData, getNextPayment, getDaysDiff])
 
-            // If no due date, treat as pending/future, not overdue
-            futureDebt += inv.total
-            return acc
-        }, 0) || 0
-
-        const activeServicesCount = (client.services ? client.services.filter((s: any) => s.status === 'active' && !s.deleted_at).length : 0) +
-            (client.subscriptions ? client.subscriptions.filter((s: any) => s.status === 'active' && !s.deleted_at).length : 0)
-
-        let status = 'active' // Default
-        if (debt > 0) status = 'overdue'
-        else if (futureDebt > 0) status = 'urgent'
-        else if (activeServicesCount === 0) status = 'inactive'
-
-        const nextPayment = getNextPayment(client)
-        const daysToPay = nextPayment ? getDaysDiff(nextPayment.date) : null
-
-        return { ...client, debt, futureDebt, status, activeServicesCount, nextPayment, daysToPay }
-    })
-
-    const filteredClients = clientsWithStatus.filter(client => {
-        const matchesSearch = client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (client.company_name && client.company_name.toLowerCase().includes(searchTerm.toLowerCase()))
-
-        if (!matchesSearch) return false
-        if (activeFilter === 'all') return true
-        return client.status === activeFilter
-    })
+    // Pagination Math
+    const PAGE_SIZE = 50;
+    const totalPages = Math.ceil(totalCount / PAGE_SIZE)
+    const hasNextPage = currentPage < totalPages
+    const hasPrevPage = currentPage > 1
 
     // Bulk Actions Handlers
     const toggleSelection = (id: string) => {
@@ -266,7 +270,7 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
         if (selectedIds.size === filteredClients.length) {
             setSelectedIds(new Set())
         } else {
-            setSelectedIds(new Set(filteredClients.map(client => client.id)))
+            setSelectedIds(new Set(filteredClients.map((client: any) => client.id)))
         }
     }
 
@@ -314,14 +318,7 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
 
 
 
-    // Counts for tabs
-    const counts = {
-        all: clients.length,
-        overdue: clientsWithStatus.filter(c => c.status === 'overdue').length,
-        urgent: clientsWithStatus.filter(c => c.status === 'urgent').length,
-        active: clientsWithStatus.filter(c => c.status === 'active').length,
-        inactive: clientsWithStatus.filter(c => c.status === 'inactive').length,
-    }
+
 
     const filterOptions: FilterOption[] = [
         { id: 'all', label: t('clients.tabs.all'), count: counts.all, color: 'gray' },
@@ -358,11 +355,17 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
                 <div className="flex flex-col md:flex-row gap-3 z-30">
                     <SearchFilterBar
                         searchTerm={searchTerm}
-                        onSearchChange={setSearchTerm}
+                        onSearchChange={(val) => {
+                            setSearchTerm(val)
+                            applyFiltersAndSearch(val, activeFilter)
+                        }}
                         searchPlaceholder={t('clients.search_placeholder')}
                         filters={filterOptions}
                         activeFilter={activeFilter}
-                        onFilterChange={setActiveFilter}
+                        onFilterChange={(val) => {
+                            setActiveFilter(val)
+                            applyFiltersAndSearch(searchTerm, val)
+                        }}
                     />
 
                     <ViewToggle
@@ -801,6 +804,34 @@ export function ClientsView({ initialClients, initialSettings }: ClientsViewProp
                                     </TableBody>
                                 </Table>
                             </div>
+
+                            {/* SSR Table Pagination Controls */}
+                            {totalPages > 1 && (
+                                <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 bg-white/50 backdrop-blur-md sticky bottom-0 z-20">
+                                    <span className="text-sm font-medium text-gray-500">
+                                        Página {currentPage} de {totalPages} ({totalCount} contactos est.)
+                                    </span>
+                                    <div className="flex gap-2">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            disabled={!hasPrevPage}
+                                            onClick={() => goToPage(currentPage - 1)}
+                                        >
+                                            Anterior
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            disabled={!hasNextPage}
+                                            onClick={() => goToPage(currentPage + 1)}
+                                        >
+                                            Siguiente
+                                        </Button>
+                                    </div>
+                                </div>
+                            )}
+
                         </div>
                     </div>
                 )}

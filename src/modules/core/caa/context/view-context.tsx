@@ -1,6 +1,6 @@
 "use client"
 
-import React, { createContext, useContext, useEffect, useState } from "react"
+import React, { createContext, useContext, useEffect, useState, useMemo } from "react"
 import { ActionDefinition, ViewContextState } from "../types"
 
 interface ViewContextType {
@@ -26,8 +26,14 @@ export function ViewContextProvider({ children }: { children: React.ReactNode })
         setCurrentContext(null)
     }
 
+    const contextValue = useMemo(() => ({
+        currentContext,
+        registerView,
+        clearContext
+    }), [currentContext])
+
     return (
-        <ViewContext.Provider value={{ currentContext, registerView, clearContext }}>
+        <ViewContext.Provider value={contextValue}>
             {children}
         </ViewContext.Provider>
     )

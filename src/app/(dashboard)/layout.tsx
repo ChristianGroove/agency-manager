@@ -24,17 +24,8 @@ export default async function DashboardLayout({
 }) {
     const supabase = await createClient()
 
-    // OPTIMIZED: Parallel fetch with minimal dependencies
-    const [userResponse, currentOrgId, orgDetails] = await Promise.all([
-        supabase.auth.getUser(),
-        getCurrentOrganizationId(),
-        getCurrentOrgDetails()
-    ])
-
-    const { data: { user }, error: authError } = userResponse
-
-    // Fetch settings separately since it doesn't block auth flow
-    const settings = await getSettings()
+    // 1. Fetch User First (Required for auth check and subsequent queries)
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
 
     if (authError || !user) {
         console.error("❌ [LAYOUT] Auth Error details:", {
@@ -44,17 +35,18 @@ export default async function DashboardLayout({
         redirect('/login')
     }
 
-    // Determine Language & Load Dictionary
-    // 1. Settings from DB
-    // 2. Default to 'es'
-    const locale = (settings?.default_language as Locale) || 'es'
-    const dictionary = getDictionary(locale)
-
-
-    // OPTIMIZED: Parallel non-blocking fetches
-    const [isAdmin] = await Promise.all([
+    // 2. PARALLEL FETCH: Now that we have the user, fetch everything else simultaneously.
+    // getCurrentOrganizationId is wrapped in React cache() so it won't duplicate DB calls.
+    const [currentOrgId, orgDetails, settings, isAdmin] = await Promise.all([
+        getCurrentOrganizationId(),
+        getCurrentOrgDetails(),
+        getSettings(),
         isSuperAdmin(user.id)
     ])
+
+    // Determine Language & Load Dictionary (Default to 'es')
+    const locale = (settings?.default_language as Locale) || 'es'
+    const dictionary = getDictionary(locale)
 
     return (
         // Key forces a complete remount of the shell when organization changes,

@@ -122,6 +122,31 @@ export async function getClients() {
     return data as unknown as Client[]
 }
 
+export async function getPaginatedClients(page: number = 1, pageSize: number = 50, search: string = '', status: string = 'all') {
+    const supabase = await createClient()
+    const orgId = await getCurrentOrganizationId()
+
+    if (!orgId) {
+        return { clients: [], totalCount: 0, counts: { all: 0, overdue: 0, urgent: 0, active: 0, inactive: 0 } }
+    }
+
+    // Call the newly created Postgres RPC function
+    const { data, error } = await supabase.rpc('get_paginated_clients', {
+        p_org_id: orgId,
+        p_search: search,
+        p_status: status,
+        p_page: page,
+        p_page_size: pageSize
+    })
+
+    if (error) {
+        console.error("❌ RPC get_paginated_clients error:", error)
+        return { clients: [], totalCount: 0, counts: { all: 0, overdue: 0, urgent: 0, active: 0, inactive: 0 } }
+    }
+
+    return data
+}
+
 export async function deleteClients(ids: string[]) {
     const supabase = await createClient()
     const orgId = await getCurrentOrganizationId()

@@ -1,6 +1,6 @@
 "use client"
 
-import React, { createContext, useContext, useState, useEffect } from "react"
+import React, { createContext, useContext, useState, useEffect, useMemo } from "react"
 
 interface SidebarContextType {
     isCollapsed: boolean
@@ -35,8 +35,14 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
     // Prevent hydration mismatch by rendering default until mounted
     // OR just live with it for a frame. Layout shift is minimal if default is expanded.
 
+    const contextValue = useMemo(() => ({
+        isCollapsed,
+        toggleCollapse,
+        setIsCollapsed
+    }), [isCollapsed])
+
     return (
-        <SidebarContext.Provider value={{ isCollapsed, toggleCollapse, setIsCollapsed }}>
+        <SidebarContext.Provider value={contextValue}>
             {children}
         </SidebarContext.Provider>
     )

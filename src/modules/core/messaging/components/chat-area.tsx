@@ -70,6 +70,14 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
     const scrollContainerRef = useRef<HTMLDivElement>(null)
     const fileInputRef = useRef<HTMLInputElement>(null)
     const virtuosoRef = useRef<VirtuosoHandle>(null)
+    const markAsReadTimeout = useRef<NodeJS.Timeout | null>(null)
+
+    const debouncedMarkAsRead = (id: string) => {
+        if (markAsReadTimeout.current) clearTimeout(markAsReadTimeout.current)
+        markAsReadTimeout.current = setTimeout(() => {
+            markConversationAsRead(id)
+        }, 2000) // Wait 2s before firing DB update
+    }
 
     const scrollToBottom = (index?: number) => {
         // We allow passing an explicit index to handle optimistic updates 
@@ -131,7 +139,7 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
 
         if (data) {
             setConversation(data as any)
-            if (data.unread_count > 0) markConversationAsRead(conversationId)
+            if (data.unread_count > 0) debouncedMarkAsRead(conversationId)
         }
     }
 
@@ -175,7 +183,7 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
                         return [...prev, newMsg]
                     })
                     // Virtuoso 'followOutput' handles scrolling automatically
-                    if (newMsg.direction === 'inbound') markConversationAsRead(conversationId)
+                    if (newMsg.direction === 'inbound') debouncedMarkAsRead(conversationId)
                 }
             )
             .on('postgres_changes',

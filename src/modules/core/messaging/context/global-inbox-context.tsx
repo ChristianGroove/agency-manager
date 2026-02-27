@@ -1,6 +1,6 @@
 "use client"
 
-import React, { createContext, useContext, useState, useCallback, ReactNode } from "react"
+import React, { createContext, useContext, useState, useCallback, ReactNode, useMemo } from "react"
 import { usePathname, useRouter } from "next/navigation"
 
 interface GlobalInboxContextType {
@@ -46,8 +46,16 @@ export function GlobalInboxProvider({ children }: { children: ReactNode }) {
         setIsOpen(prev => !prev)
     }, [pathname])
 
+    const contextValue = useMemo(() => ({
+        isOpen,
+        activeConversationId,
+        openInbox,
+        closeInbox,
+        toggleInbox
+    }), [isOpen, activeConversationId, openInbox, closeInbox, toggleInbox])
+
     return (
-        <GlobalInboxContext.Provider value={{ isOpen, activeConversationId, openInbox, closeInbox, toggleInbox }}>
+        <GlobalInboxContext.Provider value={contextValue}>
             {children}
         </GlobalInboxContext.Provider>
     )

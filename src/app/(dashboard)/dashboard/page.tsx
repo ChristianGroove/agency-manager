@@ -30,7 +30,7 @@ export default function DashboardPage() {
     const { t, tArray } = useTranslation()
     const [dashboardData, setDashboardData] = useState<DashboardDataProps | null>(null)
     const [loading, setLoading] = useState(true)
-    const [orgType, setOrgType] = useState<'agency' | 'cleaning'>('agency') // Default to agency
+    const [orgType, setOrgType] = useState<'agency' | 'cleaning' | 'reseller'>('agency') // Default to agency
 
     // Modal States
     const [isClientModalOpen, setIsClientModalOpen] = useState(false)
@@ -59,28 +59,22 @@ export default function DashboardPage() {
 
     const loadDashboard = async () => {
         try {
-            const orgId = await getCurrentOrganizationId()
-            if (!orgId) return
+            const { getDashboardPayload } = await import("@/modules/core/dashboard/actions")
+            const payload = await getDashboardPayload()
+            if (!payload) {
+                setLoading(false)
+                return
+            }
 
-            // 1. Detect Type
-            const { getCurrentOrgDetails } = await import("@/modules/core/organizations/actions")
-            const [modules, orgDetails] = await Promise.all([
-                getOrganizationModules(orgId),
-                getCurrentOrgDetails()
-            ])
+            const { orgType, dashboardData, extraData } = payload
+            setOrgType(orgType as 'agency' | 'cleaning' | 'reseller')
 
-            console.log("🔍 DASHBOARD DEBUG:", { orgId, modules, type: orgDetails?.organization_type })
-
-            const isCleaning = modules.includes('module_cleaning') || modules.includes('vertical_cleaning')
-            const isReseller = orgDetails?.organization_type === 'reseller' || orgDetails?.organization_type === 'platform'
-
-            // 2. Load Data
-            if (isReseller) {
-                await loadResellerData(orgId)
-            } else if (isCleaning) {
-                await loadCleaningData(orgId)
+            if (orgType === 'reseller') {
+                mapResellerData(dashboardData, extraData)
+            } else if (orgType === 'cleaning') {
+                mapCleaningData(dashboardData, extraData)
             } else {
-                await loadAgencyData()
+                mapAgencyData(dashboardData)
             }
         } catch (error) {
             console.error("Dashboard Load Error", error)
@@ -90,29 +84,9 @@ export default function DashboardPage() {
     }
 
     // --- RESELLER ADAPTER ---
-    const loadResellerData = async (orgId: string) => {
-        setLoading(false) // ⚡ Show UI immediately with Skeletons if needed (or partial data)
-        // Note: For now we keep simple fetch but unblock UI if we had structure.
-        // To truly unblock, we need to minimize the rendering block.
-        // But since we are waiting for data to render the Layout, we need data.
-        // We will enable 'partial' rendering in future.
-        // For now, let's just make the fetch fast.
-
-        const { supabase } = await import("@/lib/supabase")
-
-        // Parallel Fetching for SPEED
-        const { getDashboardData } = await import("@/modules/core/dashboard/actions")
-
-        const [tenantsRes, dashboardRes] = await Promise.all([
-            supabase
-                .from('organizations')
-                .select('id, name, logo_url, status', { count: 'exact' })
-                .eq('parent_organization_id', orgId),
-            getDashboardData()
-        ])
-
-        const { count: tenantCount } = tenantsRes
+    const mapResellerData = (dashboardRes: any, extraData: any) => {
         const { invoices, settings, metrics } = dashboardRes
+        const tenantCount = extraData?.tenantCount || 0
 
         // Use Pre-Calculated Metrics from RPC if available
         let totalRevenue = 0
@@ -143,7 +117,7 @@ export default function DashboardPage() {
                 }
             })
 
-            const { clients } = await getDashboardData()
+            const { clients } = dashboardRes
 
             debtors = Array.from(clientsWithOverdueMap.entries()).map(([clientId, amount]) => {
                 const client = clients.find((c: any) => c.id === clientId)
@@ -220,11 +194,8 @@ export default function DashboardPage() {
     }
 
     // --- AGENCY ADAPTER ---
-    const loadAgencyData = async () => {
-        setLoading(false) // ⚡ Show Shell Immediately
-
-        const { getDashboardData } = await import("@/modules/core/dashboard/actions")
-        const { clients, invoices, services, settings, metrics } = await getDashboardData()
+    const mapAgencyData = (dashboardRes: any) => {
+        const { clients, invoices, services, settings, metrics } = dashboardRes
 
         // Calculate Agency Stats (Use RPC if available)
         let totalRevenue = 0
@@ -355,16 +326,9 @@ export default function DashboardPage() {
     }
 
     // --- CLEANING ADAPTER (Enhanced) ---
-    const loadCleaningData = async (orgId: string) => {
-        const { getOperationsMetrics, getWeeklyRevenue } = await import("@/modules/core/work-orders/actions/operation-actions")
-        const { getDashboardData } = await import("@/modules/core/dashboard/actions")
-
-        const [metrics, revenueData, coreData] = await Promise.all([
-            getOperationsMetrics(new Date().toISOString()),
-            getWeeklyRevenue(),
-            getDashboardData() // We still fetch this for settings/socials
-        ])
-
+    const mapCleaningData = (coreData: any, extraData: any) => {
+        const metrics = extraData?.cleaningMetrics || { total: 0, in_progress: 0, pending: 0, completed: 0 }
+        const revenueData = extraData?.cleaningRevenue || []
         const totalRevenueWeek = revenueData.reduce((acc: any, curr: any) => acc + curr.revenue, 0)
 
         // Define Cleaning Actions that make sense

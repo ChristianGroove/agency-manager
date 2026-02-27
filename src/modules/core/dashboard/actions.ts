@@ -109,3 +109,52 @@ const fallbackData = {
         debtors: []
     }
 }
+
+/**
+ * OPTIMIZATION: Unified payload fetcher for DashboardPage.
+ * Resolves the client-side waterfall by doing everything in a single parallel server execution.
+ */
+export async function getDashboardPayload() {
+    noStore()
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) return null
+
+    const { getOrganizationModules, getCurrentOrgDetails } = await import("@/modules/core/organizations/actions")
+
+    // 1. Parallel fetch of identity and baseline data
+    const [modules, orgDetails, dashboardData] = await Promise.all([
+        getOrganizationModules(orgId),
+        getCurrentOrgDetails(),
+        getDashboardData()
+    ])
+
+    const isCleaning = modules.includes('module_cleaning') || modules.includes('vertical_cleaning')
+    const isReseller = orgDetails?.organization_type === 'reseller' || orgDetails?.organization_type === 'platform'
+    const orgType = isReseller ? 'reseller' : (isCleaning ? 'cleaning' : 'agency')
+
+    let extraData: any = null
+
+    // 2. Conditional parallel fetch of specific vertical data
+    if (orgType === 'cleaning') {
+        const { getOperationsMetrics, getWeeklyRevenue } = await import("@/modules/core/work-orders/actions/operation-actions")
+        const [cleaningMetrics, cleaningRevenue] = await Promise.all([
+            getOperationsMetrics(new Date().toISOString()),
+            getWeeklyRevenue()
+        ])
+        extraData = { cleaningMetrics, cleaningRevenue }
+    } else if (orgType === 'reseller') {
+        const supabase = await createClient()
+        const { count: tenantCount } = await supabase
+            .from('organizations')
+            .select('id', { count: 'exact', head: true })
+            .eq('parent_organization_id', orgId)
+        extraData = { tenantCount }
+    }
+
+    return {
+        orgType,
+        dashboardData,
+        extraData
+    }
+}
+

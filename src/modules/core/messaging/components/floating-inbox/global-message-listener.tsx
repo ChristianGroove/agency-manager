@@ -31,16 +31,21 @@ export function GlobalMessageListener() {
     const orgConnectionIdsRef = useRef<Set<string>>(new Set())
 
     useEffect(() => {
-        const fetchPerms = async () => {
-            const [perms, connectionIds] = await Promise.all([
-                getCurrentUserPermissions(),
-                getOrgConnectionIds()
-            ])
-            setUserPermissions(perms)
-            userPermissionsRef.current = perms
-            orgConnectionIdsRef.current = new Set(connectionIds)
-        }
-        fetchPerms()
+        // PERFORMANCE: Delay websocket connection by 2.5s to let the main dashboard render without CPU contention
+        const timer = setTimeout(() => {
+            const fetchPerms = async () => {
+                const [perms, connectionIds] = await Promise.all([
+                    getCurrentUserPermissions(),
+                    getOrgConnectionIds()
+                ])
+                setUserPermissions(perms)
+                userPermissionsRef.current = perms
+                orgConnectionIdsRef.current = new Set(connectionIds)
+            }
+            fetchPerms()
+        }, 2500)
+
+        return () => clearTimeout(timer)
     }, [])
 
     // Keep refs updated without triggering useEffect
