@@ -2,7 +2,6 @@
 
 import React, { useState } from "react"
 import { PortalAccessWidget } from "./portal-access-widget"
-import { useTranslation } from "@/lib/i18n/use-translation"
 
 interface RestoDashboardProps {
     dashboardData: any
@@ -11,7 +10,6 @@ interface RestoDashboardProps {
 }
 
 export function RestoDashboard({ dashboardData, extraData, onReload }: RestoDashboardProps) {
-    const { t } = useTranslation()
     const { orgDetails } = extraData || {}
 
     // Configurar URL del portal público
@@ -24,7 +22,7 @@ export function RestoDashboard({ dashboardData, extraData, onReload }: RestoDash
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mt-6">
                     <div>
                         <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-gray-900 dark:text-white animate-in slide-in-from-bottom-2 duration-500">
-                            {t('dashboard.welcome_back', { name: orgDetails?.name || 'Restaurante' })} 👋
+                            ¡Hola, {orgDetails?.name || 'Restaurante'}! 👋
                         </h1>
                         <p className="text-gray-500 dark:text-gray-400 mt-1 animate-in slide-in-from-bottom-3 duration-700">
                             Desde aquí puedes acceder a las herramientas principales de tu negocio.

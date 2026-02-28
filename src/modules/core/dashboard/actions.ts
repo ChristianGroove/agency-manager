@@ -129,7 +129,7 @@ export async function getDashboardPayload() {
 
     const isCleaning = modules.includes('module_cleaning') || modules.includes('vertical_cleaning')
     const isReseller = orgDetails?.organization_type === 'reseller' || orgDetails?.organization_type === 'platform'
-    const isResto = orgDetails?.active_app_id === 'resto-workspace'
+    const isResto = orgDetails?.active_app_id === 'app_resto_workspace' || orgDetails?.active_app_id === 'resto-workspace'
 
     const orgType = isReseller ? 'reseller' : (isCleaning ? 'cleaning' : (isResto ? 'resto' : 'agency'))
 
