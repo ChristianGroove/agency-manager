@@ -131,7 +131,7 @@ export async function dispatchRestoOrder(payload: CheckoutPayload) {
             customer_notes: payload.notes
         }
 
-        const { error: msgError } = await supabase
+        const { data: newMessage, error: msgError } = await supabase
             .from('messages')
             .insert({
                 organization_id: payload.orgId,
@@ -142,10 +142,12 @@ export async function dispatchRestoOrder(payload: CheckoutPayload) {
                 metadata: orderData, // <-- La Magia Real está aquí
                 status: 'delivered'
             })
+            .select('id')
+            .single()
 
         if (msgError) throw msgError
 
-        return { success: true, conversationId }
+        return { success: true, conversationId, messageId: newMessage.id }
 
     } catch (error: any) {
         console.error("[Resto Checkout] Error:", error)

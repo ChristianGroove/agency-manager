@@ -21,8 +21,10 @@ interface RestoCartState {
     items: CartItem[]
     orgId: string | null
     customerProfile: CustomerProfile
+    recentOrders: string[]
     setOrgId: (id: string) => void
     setCustomerProfile: (profile: Partial<CustomerProfile>) => void
+    addRecentOrder: (orderId: string) => void
     addItem: (item: Omit<CartItem, 'id'>) => void
     removeItem: (id: string) => void
     updateQuantity: (id: string, quantity: number) => void
@@ -37,11 +39,16 @@ export const useRestoCart = create<RestoCartState>()(
             items: [],
             orgId: null,
             customerProfile: { name: '', phone: '', address: '' },
+            recentOrders: [],
 
             setOrgId: (id) => set({ orgId: id }),
 
             setCustomerProfile: (profile) => set(state => ({
                 customerProfile: { ...state.customerProfile, ...profile }
+            })),
+
+            addRecentOrder: (orderId) => set(state => ({
+                recentOrders: [orderId, ...state.recentOrders].slice(0, 10) // Keep last 10
             })),
 
             addItem: (item) => {

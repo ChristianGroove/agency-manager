@@ -7,7 +7,7 @@ import { Trash2, Plus, Minus, Send } from "lucide-react"
 import { dispatchRestoOrder } from "../actions/checkout-actions"
 
 export function RestoCartView({ orgId }: { orgId: string }) {
-    const { items, updateQuantity, removeItem, getTotal, clearCart, customerProfile, setCustomerProfile } = useRestoCart()
+    const { items, updateQuantity, removeItem, getTotal, clearCart, customerProfile, setCustomerProfile, addRecentOrder } = useRestoCart()
 
     const [customerName, setCustomerName] = useState(customerProfile?.name || "")
     const [customerPhone, setCustomerPhone] = useState(customerProfile?.phone || "")
@@ -41,8 +41,9 @@ export function RestoCartView({ orgId }: { orgId: string }) {
         const res = await dispatchRestoOrder(payload)
         setIsSubmitting(false)
 
-        if (res.success) {
+        if (res.success && res.messageId) {
             setSuccessMessage("¡Tu pedido ha sido enviado a la cocina! Te avisaremos vía WhatsApp.")
+            addRecentOrder(res.messageId) // Guarda localmente el Tracker ID del Pedido
             clearCart()
         } else {
             alert("Hubo un error enviando tu pedido: " + res.error)
