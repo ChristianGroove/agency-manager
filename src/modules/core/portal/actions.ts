@@ -71,7 +71,8 @@ export async function getPortalData(token: string) {
                 { data: services },
                 { data: hostingAccounts },
                 { data: paymentMethods },
-                { data: appPortalConfig }
+                { data: appPortalConfig },
+                { data: appData } // NEW: Fetch app portal config
             ] = await Promise.all([
                 // Invoices: Filter out cancelled and deleted
                 supabaseAdmin.from('invoices').select('*').eq('client_id', client.id).is('deleted_at', null).neq('status', 'cancelled').order('created_at', { ascending: false }),
@@ -88,8 +89,13 @@ export async function getPortalData(token: string) {
                 // Payment Methods: Active only (for manual transfers etc)
                 supabaseAdmin.from('organization_payment_methods').select('*').eq('organization_id', client.organization_id).eq('is_active', true).order('display_order', { ascending: true }),
                 // Portal Modules Config: From app-based configuration (V2 Multivertical)
-                supabaseAdmin.from('saas_apps_portal_config').select('*').eq('app_id', rawSettings?.active_app_id || '').eq('is_enabled', true).eq('target_portal', 'client').order('display_order', { ascending: true })
+                supabaseAdmin.from('saas_apps_portal_config').select('*').eq('app_id', rawSettings?.active_app_id || '').eq('is_enabled', true).eq('target_portal', 'client').order('display_order', { ascending: true }),
+                // App Config: Portal Template
+                supabaseAdmin.from('saas_apps').select('portal_template').eq('id', rawSettings?.active_app_id || '').single()
             ])
+
+            // Inject the Template Key
+            settings.portal_template = appData?.portal_template || 'b2b_dashboard'
 
             // ---------------------------------------------------------
             // 3. SMART MODULE RESOLUTION (Hierarchical)
