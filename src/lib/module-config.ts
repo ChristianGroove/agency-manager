@@ -49,6 +49,7 @@ export interface ModuleRoute {
         excludedSpaces?: string[]
         requiredCapabilities?: string[] // New: e.g. ['CAN_MANAGE_CLIENTS']
     }
+    parentModule?: string // NEW: Maps this UI route to the actual System Module key in Database (e.g. 'core_crm', 'module_messaging')
 }
 
 /**
@@ -72,32 +73,32 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         label: 'Inbox',
         href: '/crm/inbox',
         icon: Inbox,
-        isCore: true,
-        category: 'crm'
+        category: 'crm',
+        parentModule: 'module_messaging'
     },
     {
         key: 'crm_clients',
         label: 'Contactos',
         href: '/crm/contacts',
         icon: UserSquare,
-        isCore: true,
-        category: 'crm'
+        category: 'crm',
+        parentModule: 'core_clients'
     },
     {
         key: 'crm_pipeline',
         label: 'Pipeline',
         href: '/crm/pipeline',
         icon: Kanban,
-        isCore: true,
-        category: 'crm'
+        category: 'crm',
+        parentModule: 'core_crm'
     },
     {
         key: 'crm_broadcasts',
         label: 'Marketing',
         href: '/crm/marketing',
         icon: Megaphone,
-        isCore: true,
         category: 'crm',
+        parentModule: 'core_crm',
         access: {
             allowedRoles: ['owner', 'admin']
         }
@@ -107,8 +108,8 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         label: 'Automatizaciones',
         href: '/crm/automations',
         icon: Workflow,
-        isCore: true,
         category: 'crm',
+        parentModule: 'module_automation',
         access: {
             allowedRoles: ['owner', 'admin']
         }
@@ -118,8 +119,8 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         label: 'Reportes',
         href: '/crm/reports',
         icon: BarChart3,
-        isCore: true,
         category: 'crm',
+        parentModule: 'core_crm',
         access: {
             allowedRoles: ['owner', 'admin']
         }
@@ -130,8 +131,8 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         label: 'CRM Settings',
         href: '/crm/settings',
         icon: Settings,
-        isCore: true,
         category: 'crm',
+        parentModule: 'core_crm',
         access: {
             allowedRoles: ['owner', 'admin']
         }
@@ -146,7 +147,7 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         href: '/flows',
         icon: BrainCircuit, // Usando BrainCircuit para denotar "Cerebro/IA"
         category: 'operations',
-        isCore: true,
+        parentModule: 'module_automation',
         access: {
             allowedRoles: ['owner', 'admin']
         }
@@ -158,7 +159,7 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         href: '/quotes',
         icon: FileText,
         category: 'operations',
-        isCore: true,
+        parentModule: 'module_quotes',
         access: {
             allowedRoles: ['owner', 'admin']
         }
@@ -169,18 +170,18 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         href: '/briefings',
         icon: Briefcase,
         category: 'operations',
-        isCore: true,
+        parentModule: 'module_briefings',
         access: {
             allowedRoles: ['owner', 'admin']
         }
     },
     {
         key: 'module_catalog',
-        label: 'CatÃ¡logo',
+        label: 'Catálogo',
         href: '/portfolio',
         icon: Store,
         category: 'operations',
-        isCore: true
+        parentModule: 'module_catalog'
     },
     // HIDDEN FOR REGULAR USERS
     {
@@ -189,6 +190,7 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         href: '/hosting',
         icon: FileText,
         category: 'operations',
+        parentModule: 'module_contracts',
         access: {
             allowedRoles: ['owner', 'admin']
         }
@@ -200,6 +202,7 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         href: '/platform/hosting-accounts',
         icon: Server,
         category: 'operations',
+        parentModule: 'module_hosting',
         access: {
             allowedRoles: ['owner', 'admin']
         }
@@ -211,6 +214,7 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         href: '/cleaning',
         icon: Sparkles,
         category: 'operations',
+        parentModule: 'module_cleaning',
         access: {
             excludedSpaces: ['agency']
         }
@@ -259,7 +263,7 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         href: '/tools/contract-generator',
         icon: Sparkles, // Or custom icon
         category: 'tools',
-        isCore: true,
+        parentModule: 'module_contracts',
         access: {
             allowedRoles: ['owner', 'admin']
         }
@@ -270,7 +274,7 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         href: '/tools/email-engine',
         icon: Mail,
         category: 'tools',
-        isCore: true,
+        parentModule: 'module_messaging',
         access: {
             allowedRoles: ['owner', 'admin']
         }
@@ -279,10 +283,11 @@ export const MODULE_ROUTES: ModuleRoute[] = [
     // --- FINANZAS ---
     {
         key: 'module_invoicing',
-        label: 'Centro de FacturaciÃ³n',
+        label: 'Centro de Facturación',
         href: '/invoices',
         icon: FileText,
         category: 'finance',
+        parentModule: 'module_invoicing',
         access: {
             allowedRoles: ['owner', 'admin']
         }
@@ -293,12 +298,13 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         href: '/payments',
         icon: CreditCard,
         category: 'finance',
+        parentModule: 'module_payments',
         access: {
             allowedRoles: ['owner', 'admin']
         }
     },
 
-    // --- CONFIGURACIÃ“N ---
+    // --- CONFIGURACIÓN ---
     // HIDDEN FOR REGULAR USERS
     {
         key: 'core_adn',
@@ -314,7 +320,7 @@ export const MODULE_ROUTES: ModuleRoute[] = [
     // HIDDEN FOR REGULAR USERS
     {
         key: 'core_settings',
-        label: 'ConfiguraciÃ³n',
+        label: 'Configuración',
         href: '/platform/settings',
         icon: Settings,
         isCore: true,
@@ -394,17 +400,16 @@ export function filterRoutesByModules(
             }
         }
 
-        // 2. Vertical-based "Auto-Core" logic (Legacy support)
-        if (vertical === 'agency' && route.category === 'operations' && route.key !== 'module_cleaning') return true
-
-
+        // 2. Dashboard and explicit Core configs are always true
         if (route.isCore) return true
 
-        // 4. Module subscription
+        // 3. Evaluate Module subscription using strict parentModule mapping or direct key
+        const checkKey = route.parentModule || route.key
+
         // NUCLEAR OPTION: Explicitly block reseller_tenants for clients, bypassing any other logic fallthrough
         if (route.key === 'reseller_tenants' && orgType === 'client') return false
 
-        return activeModules.includes(route.key)
+        return activeModules.includes(checkKey)
     })
 }
 

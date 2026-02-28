@@ -12,8 +12,9 @@ import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Switch } from "@/components/ui/switch"
 import { Package, Users, DollarSign, Settings, Save, Loader2, AlertCircle, LayoutGrid, CheckCircle2, Globe, ChevronUp, ChevronDown } from "lucide-react"
-import { updateApp } from "@/modules/core/saas/app-management-actions"
+import { updateApp, addModuleToApp, removeModuleFromApp } from "@/modules/core/saas/app-management-actions"
 import { getAppPortalConfig, updateAppPortalModule, reorderAppPortalModules } from "@/modules/core/saas/portal-config-actions"
+import { getAllSystemModules } from "@/modules/core/admin/actions"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 
@@ -29,6 +30,8 @@ export function AppDetailsSheet({ app, isOpen, onClose, dict }: AppDetailsSheetP
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [portalModules, setPortalModules] = useState<any[]>([])
     const [portalLoading, setPortalLoading] = useState(false)
+    const [allSystemModules, setAllSystemModules] = useState<any[]>([])
+    const [modulesLoading, setModulesLoading] = useState(false)
 
     // Fetch portal modules when sheet opens
     useEffect(() => {
@@ -38,8 +41,46 @@ export function AppDetailsSheet({ app, isOpen, onClose, dict }: AppDetailsSheetP
                 .then(modules => setPortalModules(modules || []))
                 .catch(console.error)
                 .finally(() => setPortalLoading(false))
+
+            setModulesLoading(true)
+            getAllSystemModules()
+                .then(modules => setAllSystemModules(modules || []))
+                .catch(console.error)
+                .finally(() => setModulesLoading(false))
         }
     }, [isOpen, app?.id])
+
+    const handleModuleToggle = async (moduleKey: string, isCurrentlyEnabled: boolean, appModuleId?: string) => {
+        setIsSubmitting(true)
+        try {
+            if (isCurrentlyEnabled && appModuleId) {
+                const res = await removeModuleFromApp(appModuleId)
+                if (res.success) {
+                    toast.success("Módulo removido del Space")
+                    router.refresh()
+                } else {
+                    toast.error(res.error)
+                }
+            } else {
+                const res = await addModuleToApp({
+                    app_id: app.id,
+                    module_key: moduleKey,
+                    auto_enable: true,
+                    is_core: false
+                })
+                if (res.success) {
+                    toast.success("Módulo añadido al Space")
+                    router.refresh()
+                } else {
+                    toast.error(res.error)
+                }
+            }
+        } catch (error: any) {
+            toast.error(error.message)
+        } finally {
+            setIsSubmitting(false)
+        }
+    }
 
     // Reorder handler
     const handleReorder = async (moduleId: string, direction: 'up' | 'down', targetPortal: string) => {
@@ -155,8 +196,12 @@ export function AppDetailsSheet({ app, isOpen, onClose, dict }: AppDetailsSheetP
 
                     <Tabs defaultValue="overview" className="flex-1 flex flex-col overflow-hidden">
                         <div className="px-8 pt-6 pb-2">
-                            <TabsList className="grid w-full max-w-md grid-cols-3 bg-muted/50 p-1 rounded-xl">
+                            <TabsList className="grid w-full max-w-2xl grid-cols-4 bg-muted/50 p-1 rounded-xl">
                                 <TabsTrigger value="overview" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">Resumen</TabsTrigger>
+                                <TabsTrigger value="modules" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                                    <LayoutGrid className="h-4 w-4 mr-1.5" />
+                                    Módulos
+                                </TabsTrigger>
                                 <TabsTrigger value="portal" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
                                     <Globe className="h-4 w-4 mr-1.5" />
                                     Portal
@@ -197,30 +242,6 @@ export function AppDetailsSheet({ app, isOpen, onClose, dict }: AppDetailsSheetP
                                         </Card>
                                     </div>
 
-                                    {/* Included Modules */}
-                                    <div>
-                                        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-900 dark:text-white">
-                                            <LayoutGrid className="h-5 w-5 text-gray-400" />
-                                            Módulos Incluidos ({app.modules?.length || 0})
-                                        </h3>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                            {app.modules?.map((module: any) => (
-                                                <div key={module.id} className="flex items-center justify-between p-4 rounded-xl border border-border/50 bg-white/60 dark:bg-white/5 hover:bg-white/80 transition-colors">
-                                                    <div className="font-medium text-base">{module.module_key}</div>
-                                                    <div className="flex gap-2">
-                                                        {module.is_core && <Badge variant="secondary" className="text-[10px] bg-gray-100 text-gray-600">Core</Badge>}
-                                                        {module.auto_enable && <Badge variant="outline" className="text-[10px] border-blue-200 text-blue-600 bg-blue-50">Auto</Badge>}
-                                                    </div>
-                                                </div>
-                                            ))}
-                                            {(!app.modules || app.modules.length === 0) && (
-                                                <div className="col-span-2 p-8 text-center rounded-xl border border-dashed border-gray-200">
-                                                    <p className="text-muted-foreground italic">No hay módulos configurados para esta aplicación.</p>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-
                                     {/* Recomended Addons */}
                                     {app.recommended_add_ons && app.recommended_add_ons.length > 0 && (
                                         <div>
@@ -237,6 +258,58 @@ export function AppDetailsSheet({ app, isOpen, onClose, dict }: AppDetailsSheetP
                                                     </div>
                                                 ))}
                                             </div>
+                                        </div>
+                                    )}
+                                </TabsContent>
+
+                                {/* MODULES TAB */}
+                                <TabsContent value="modules" className="space-y-6 mt-0 animate-in fade-in-50 duration-500 slide-in-from-bottom-2">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Gestor de Módulos</h3>
+                                            <p className="text-sm text-muted-foreground">Configura los módulos que heredarán las organizaciones asignadas a este Space.</p>
+                                        </div>
+                                    </div>
+
+                                    {modulesLoading ? (
+                                        <div className="flex items-center justify-center py-12">
+                                            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                                        </div>
+                                    ) : (
+                                        <div className="grid gap-3">
+                                            {allSystemModules.map((sysModule) => {
+                                                const relatedAppModule = app.modules?.find((m: any) => m.module_key === sysModule.key)
+                                                const isEnabled = !!relatedAppModule
+
+                                                return (
+                                                    <div key={sysModule.key} className={`flex items-center justify-between p-4 rounded-xl border transition-all ${isEnabled ? 'border-indigo-200 bg-indigo-50/30' : 'border-gray-200 bg-white'}`}>
+                                                        <div className="flex gap-4">
+                                                            <div className={`p-2 rounded-lg h-min ${isEnabled ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 text-gray-500'}`}>
+                                                                <Package className="h-5 w-5" />
+                                                            </div>
+                                                            <div>
+                                                                <div className="font-medium">{sysModule.name}</div>
+                                                                <div className="text-xs text-muted-foreground mt-0.5 max-w-md">{sysModule.description || 'Sin descripción'}</div>
+                                                                <div className="flex gap-2 mt-2">
+                                                                    <Badge variant="outline" className="text-[10px] uppercase font-mono">{sysModule.category}</Badge>
+                                                                    {sysModule.dependencies?.length > 0 && (
+                                                                        <Badge variant="secondary" className="text-[10px] bg-amber-50 text-amber-600">
+                                                                            Deps: {sysModule.dependencies.join(', ')}
+                                                                        </Badge>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex items-center ml-4 shrink-0">
+                                                            <Switch
+                                                                checked={isEnabled}
+                                                                disabled={isSubmitting}
+                                                                onCheckedChange={() => handleModuleToggle(sysModule.key, isEnabled, relatedAppModule?.id)}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                )
+                                            })}
                                         </div>
                                     )}
                                 </TabsContent>

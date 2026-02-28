@@ -64,7 +64,7 @@ export function CreateAppDialog({ dict }: CreateAppDialogProps) {
             <DialogTrigger asChild>
                 <Button className="gap-2 shadow-md hover:shadow-lg transition-all">
                     <Plus className="h-4 w-4" />
-                    {dict?.create_button || 'Crear Nueva Plantilla'}
+                    {dict?.create_button || 'Crear Nuevo Space'}
                 </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[550px] p-0 overflow-hidden gap-0">
@@ -74,7 +74,7 @@ export function CreateAppDialog({ dict }: CreateAppDialogProps) {
                             <Package className="h-5 w-5" />
                         </div>
                         <DialogTitle className="text-xl">
-                            {dict?.create_dialog_title || 'Crear Plantilla de Solución'}
+                            {dict?.create_dialog_title || 'Crear Vertical Base (Space)'}
                         </DialogTitle>
                     </div>
                     <DialogDescription className="text-base">
@@ -87,7 +87,7 @@ export function CreateAppDialog({ dict }: CreateAppDialogProps) {
                     <div className="grid grid-cols-2 gap-4">
                         <div className="grid gap-2">
                             <Label htmlFor="name" className="font-medium text-gray-700">
-                                {dict?.form?.name || 'Nombre de la Plantilla'}
+                                {dict?.form?.name || 'Nombre del Space'}
                             </Label>
                             <Input
                                 id="name"
@@ -238,7 +238,7 @@ export function CreateAppDialog({ dict }: CreateAppDialogProps) {
                         </Button>
                         <Button type="submit" disabled={isSubmitting} className="min-w-[120px]">
                             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            {isSubmitting ? (dict?.form?.creating || 'Creando...') : (dict?.form?.create || 'Crear Plantilla')}
+                            {isSubmitting ? (dict?.form?.creating || 'Creando...') : (dict?.form?.create || 'Crear Space')}
                         </Button>
                     </div>
                 </form>

@@ -72,7 +72,7 @@ export function AppsList({ initialApps, dict }: AppsListProps) {
                 <SearchFilterBar
                     searchTerm={searchTerm}
                     onSearchChange={setSearchTerm}
-                    searchPlaceholder={dict.form.search_placeholder || "Search templates..."}
+                    searchPlaceholder={dict.form.search_placeholder || "Search spaces..."}
                     filters={filterOptions}
                     activeFilter={activeFilter}
                     onFilterChange={setActiveFilter}
@@ -195,7 +195,7 @@ export function AppsList({ initialApps, dict }: AppsListProps) {
                                 onClick={() => handleManageClick(app)}
                             >
                                 <Settings className="mr-2 h-4 w-4" />
-                                {dict.form.manage || "Gestionar Plantilla"}
+                                {dict.form.manage || "Gestionar Space"}
                             </Button>
                         </CardFooter>
                     </Card>
@@ -207,7 +207,7 @@ export function AppsList({ initialApps, dict }: AppsListProps) {
                     <div className="inline-flex justify-center items-center w-16 h-16 rounded-full bg-white shadow-sm mb-4">
                         <Search className="h-6 w-6 text-slate-400" />
                     </div>
-                    <h3 className="text-lg font-medium text-slate-900">No templates found</h3>
+                    <h3 className="text-lg font-medium text-slate-900">No spaces found</h3>
                     <p className="text-slate-500 mt-1 max-w-xs mx-auto">
                         No matches for "{searchTerm}". Try adjusting your filters or search terms.
                     </p>

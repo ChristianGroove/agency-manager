@@ -118,6 +118,7 @@ export async function getOrganizationActiveModules(organizationId?: string): Pro
     const { data } = await supabaseAdmin
         .from('organizations')
         .select(`
+            active_app_id,
             manual_module_overrides,
             subscription_product:saas_products!subscription_product_id (
                 modules:saas_product_modules (
@@ -132,6 +133,19 @@ export async function getOrganizationActiveModules(organizationId?: string): Pro
 
     const manualModules = (data?.manual_module_overrides as string[]) || []
 
+    // Extract Space (App) modules
+    const spaceModules: string[] = []
+    if (data?.active_app_id) {
+        const { data: appModulesData } = await supabaseAdmin
+            .from('saas_app_modules')
+            .select('module_key')
+            .eq('app_id', data.active_app_id)
+
+        if (appModulesData) {
+            appModulesData.forEach(m => spaceModules.push(m.module_key))
+        }
+    }
+
     // Extract product modules
     const productModules: string[] = []
     if (data?.subscription_product && Array.isArray((data.subscription_product as any).modules)) {
@@ -143,11 +157,11 @@ export async function getOrganizationActiveModules(organizationId?: string): Pro
         })
     }
 
-    // Always include core modules
-    const coreModules = ['dashboard', 'clients', 'billing']
+    // Always include core modules. Note: 'dashboard' is handled client-side via isCore: true
+    const coreModules = ['core_settings', 'core_clients']
 
     // Merge unique
-    return Array.from(new Set([...coreModules, ...manualModules, ...productModules]))
+    return Array.from(new Set([...coreModules, ...spaceModules, ...manualModules, ...productModules]))
 }
 
 // ============================================

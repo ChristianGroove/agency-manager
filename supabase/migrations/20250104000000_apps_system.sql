@@ -301,9 +301,10 @@ BEGIN
     
     -- Update organization manual_module_overrides
     -- (This will be processed by the module system)
+    -- Cast TEXT[] to JSONB because the column is jsonb
     UPDATE public.organizations
     SET 
-        manual_module_overrides = v_modules_to_enable,
+        manual_module_overrides = to_jsonb(v_modules_to_enable),
         updated_at = NOW()
     WHERE id = p_organization_id;
     

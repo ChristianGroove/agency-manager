@@ -154,52 +154,44 @@ export async function seedSystemModules() {
     return { success: true }
 }
 
-/**
- * Gets the list of active module keys for the current organization
- * Uses the strict Verticals Architecture (with manual overrides fallback)
- * PERF: Cached with unstable_cache for 5 minutes
- * NOTE: Uses supabaseAdmin to avoid cookies() inside cache scope
- */
 async function _getActiveModulesInternal(organizationId: string): Promise<string[]> {
     try {
         // NOTE: Using supabaseAdmin instead of createClient because
         // unstable_cache cannot use dynamic data sources like cookies()
 
-        // 1. Get Organization Vertical & Overrides
+        // 1. Get Organization Space & Overrides
         const { data: org, error: orgError } = await supabaseAdmin
             .from('organizations')
-            .select('vertical_key, manual_module_overrides')
+            .select('active_app_id, manual_module_overrides')
             .eq('id', organizationId)
             .single()
 
         if (orgError || !org) {
             console.error('Error fetching organization config:', orgError)
-            // Fallback to core if org fetch fails
             return ['core_clients', 'core_settings']
         }
 
-        const verticalKey = org.vertical_key
+        const activeAppId = org.active_app_id
         const manualOverrides = org.manual_module_overrides as string[] || []
 
-        // 2. Fetch Vertical Modules (also using admin to stay within cache scope)
-        let verticalModules: string[] = []
-        if (verticalKey) {
-            const { data: vModules, error: vmError } = await supabaseAdmin
-                .from('vertical_modules')
+        // 2. Fetch Space (App) Modules
+        let spaceModules: string[] = []
+        if (activeAppId) {
+            const { data: appModulesData, error: amError } = await supabaseAdmin
+                .from('saas_app_modules')
                 .select('module_key')
-                .eq('vertical_key', verticalKey)
+                .eq('app_id', activeAppId)
 
-            if (!vmError && vModules) {
-                verticalModules = vModules.map(m => m.module_key)
+            if (!amError && appModulesData) {
+                spaceModules = appModulesData.map(m => m.module_key)
             }
         } else {
-            // Legacy/No-Vertical fallback
-            console.warn('Organization has no vertical assigned. Falling back to core.')
-            verticalModules = ['core_clients', 'core_settings']
+            console.warn('Organization has no Space (App) assigned. Falling back to core.')
+            spaceModules = ['core_clients', 'core_settings']
         }
 
         // 3. Merge & Deduplicate
-        const allModules = [...verticalModules, ...manualOverrides]
+        const allModules = [...spaceModules, ...manualOverrides]
         const uniqueKeys = Array.from(new Set(allModules))
 
         // 4. Ensure Core Modules are always present (Safety Net)

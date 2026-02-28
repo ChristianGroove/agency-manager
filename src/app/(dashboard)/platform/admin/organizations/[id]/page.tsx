@@ -7,22 +7,21 @@ import { Separator } from "@/components/ui/separator"
 import { Activity, Box, Sparkles, ShieldCheck } from "lucide-react"
 import { AdminOrgHeader } from "./_components/org-header"
 import { AdminOrgUsers } from "./_components/org-users"
-import { OrgModulesManager } from "./_components/org-modules-manager"
-// import { FeatureFlagsManager } from "./_components/feature-flags-manager"
 import { OrgSecurityManager } from "./_components/org-security-manager"
-// import { RateLimitConfigCard } from "./_components/rate-limit-config-card"
-import { getOrganizationDetails, getOrganizationUsers, getAllSystemModules, getBrandingTiers } from '@/modules/core/admin/actions'
+import { getOrganizationDetails, getOrganizationUsers, getBrandingTiers } from '@/modules/core/admin/actions'
 import { OrgTierManager } from "./_components/org-tier-manager"
+import { ExternalLink, Database, Blocks } from "lucide-react"
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
 
 export default async function AdminOrgDetailsPage(props: { params: Promise<{ id: string }> }) {
     const params = await props.params
     const { id } = params
 
     // Parallel Fetching
-    const [details, users, allModules, tiers] = await Promise.all([
+    const [details, users, tiers] = await Promise.all([
         getOrganizationDetails(id).catch(() => null),
         getOrganizationUsers(id).catch(() => []),
-        getAllSystemModules().catch(() => []),
         getBrandingTiers().catch(() => [])
     ])
 
@@ -44,13 +43,9 @@ export default async function AdminOrgDetailsPage(props: { params: Promise<{ id:
                         <Activity className="h-4 w-4 mr-2" />
                         Visión General
                     </TabsTrigger>
-                    <TabsTrigger value="features">
-                        <Box className="h-4 w-4 mr-2" />
-                        Módulos
-                    </TabsTrigger>
-                    <TabsTrigger value="flags">
-                        <Sparkles className="h-4 w-4 mr-2" />
-                        Feature Flags
+                    <TabsTrigger value="modules">
+                        <Blocks className="h-4 w-4 mr-2" />
+                        Accesos y Módulos
                     </TabsTrigger>
                     <TabsTrigger value="security">
                         <ShieldCheck className="h-4 w-4 mr-2" />
@@ -109,23 +104,28 @@ export default async function AdminOrgDetailsPage(props: { params: Promise<{ id:
                     </div>
                 </TabsContent>
 
-                {/* ... other tabs ... */}
-                {/* FEATURES TAB */}
-                <TabsContent value="features">
-                    <OrgModulesManager
-                        orgId={organization.id}
-                        allModules={allModules}
-                        manualOverrides={(organization as any).manual_module_overrides}
-                    />
-                </TabsContent>
-
-                {/* FEATURE FLAGS TAB */}
-                <TabsContent value="flags">
-                    {/* <FeatureFlagsManager
-                        organizationId={organization.id}
-                        organizationName={organization.name}
-                    /> */}
-                    <div className="p-4 text-muted-foreground text-sm">Feature Flags Manager coming soon.</div>
+                {/* MODULES TAB - REDIRECT TO FULL MANAGER */}
+                <TabsContent value="modules">
+                    <Card className="border-dashed">
+                        <CardHeader className="text-center py-8">
+                            <div className="mx-auto bg-primary/10 w-16 h-16 rounded-full flex items-center justify-center mb-4">
+                                <Database className="h-8 w-8 text-primary" />
+                            </div>
+                            <CardTitle className="text-2xl">Gestor de Espacio / Módulos</CardTitle>
+                            <p className="text-muted-foreground max-w-lg mx-auto mt-2">
+                                Para garantizar la integridad de las dependencias, la configuración de módulos y características de este tenant ha sido trasladada al Gestor Principal de Espacios.
+                            </p>
+                            <div className="mt-8">
+                                <Link href={`/platform/admin/organizations/${organization.id}/modules`}>
+                                    <Button size="lg" className="w-full md:w-auto">
+                                        <Blocks className="mr-2 h-5 w-5" />
+                                        Abrir Gestor de Accesos
+                                        <ExternalLink className="ml-2 h-4 w-4 opacity-50" />
+                                    </Button>
+                                </Link>
+                            </div>
+                        </CardHeader>
+                    </Card>
                 </TabsContent>
 
                 {/* SECURITY TAB */}

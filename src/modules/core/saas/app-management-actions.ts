@@ -2,9 +2,10 @@
 
 import { createClient } from "@/lib/supabase-server"
 import { supabaseAdmin } from "@/lib/supabase-admin"
-import { revalidatePath } from "next/cache"
+import { revalidatePath, revalidateTag } from "next/cache"
 import { requireSuperAdmin } from "@/lib/auth/platform-roles"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { moduleValidator } from "@/lib/module-validator"
 
 // ============================================
 // TYPES
@@ -467,6 +468,8 @@ export async function addModuleToApp(input: {
         if (error) throw error
 
         revalidatePath('/platform/admin/apps')
+        // @ts-ignore
+        revalidateTag('org-modules') // Purge tenant caches to show new module instantly
 
         return { success: true }
 
@@ -486,6 +489,38 @@ export async function removeModuleFromApp(appModuleId: string) {
     await requireSuperAdmin()
 
     try {
+        // 1. Get the module context
+        const { data: moduleToDelete } = await supabaseAdmin
+            .from('saas_app_modules')
+            .select('app_id, module_key')
+            .eq('id', appModuleId)
+            .single()
+
+        if (!moduleToDelete) throw new Error("Módulo de Space no encontrado")
+
+        // 2. Get all modules currently in this app
+        const { data: appModules } = await supabaseAdmin
+            .from('saas_app_modules')
+            .select('module_key')
+            .eq('app_id', moduleToDelete.app_id)
+
+        const activeModules = appModules?.map(m => m.module_key) || []
+
+        // 3. Validate deactivation
+        const plan = await moduleValidator.createDeactivationPlan(
+            moduleToDelete.module_key,
+            activeModules
+        )
+
+        if (plan.modules_to_disable.length > 1) {
+            const dependents = plan.modules_to_disable.filter(m => m !== moduleToDelete.module_key)
+            return {
+                success: false,
+                error: `No puedes desactivar este módulo. Otros módulos activos de este Space dependen de él: ${dependents.join(', ')}. Desactívalos primero.`
+            }
+        }
+
+        // 4. Proceed with deletion
         const { error } = await supabaseAdmin
             .from('saas_app_modules')
             .delete()
@@ -494,6 +529,8 @@ export async function removeModuleFromApp(appModuleId: string) {
         if (error) throw error
 
         revalidatePath('/platform/admin/apps')
+        // @ts-ignore
+        revalidateTag('org-modules') // Purge tenant caches to apply removal instantly
 
         return { success: true }
 
@@ -528,6 +565,8 @@ export async function assignAppToOrganization(input: {
 
         revalidatePath(`/platform/admin/organizations/${input.organization_id}`)
         revalidatePath('/platform/admin/apps')
+        // @ts-ignore
+        revalidateTag('org-modules') // Purge tenant specific cache to ensure correct modules
 
         return {
             success: true,
