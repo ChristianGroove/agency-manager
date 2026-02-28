@@ -94,56 +94,59 @@ export function ModulesAddonsManager({ modulesData }: ModulesAddonsManagerProps)
                     filteredModules.map((item) => (
                         <Card key={item.module.key} className="overflow-hidden hover:shadow-md transition-shadow duration-200 bg-white dark:bg-zinc-950/50 border-slate-200 dark:border-zinc-800 flex flex-col">
                             {/* Card Header & Main Info */}
-                            <div className="p-5 border-b border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.02]">
-                                <div className="flex justify-between items-start mb-3">
-                                    <div className="p-2.5 bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400 rounded-lg shadow-sm shrink-0">
-                                        <Package className="h-5 w-5" />
+                            <div className="p-3.5 border-b border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.02]">
+                                <div className="flex justify-between items-center mb-2">
+                                    <div className="flex items-center gap-2">
+                                        <div className="p-1.5 bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400 rounded-md shadow-sm shrink-0">
+                                            <Package className="h-4 w-4" />
+                                        </div>
+                                        <h3 className="font-semibold text-sm leading-tight truncate max-w-[150px]" title={item.module.name || item.module.key}>
+                                            {item.module.name || item.module.key}
+                                        </h3>
                                     </div>
-                                    <Badge variant="outline" className="text-[10px] uppercase font-mono tracking-wider bg-white dark:bg-zinc-900">
+                                    <Badge variant="outline" className="text-[9px] uppercase font-mono tracking-wider bg-white dark:bg-zinc-900 px-1.5 py-0 h-4">
                                         {item.module.category}
                                     </Badge>
                                 </div>
-                                <h3 className="font-semibold text-base leading-tight">
-                                    {item.module.name || item.module.key}
-                                </h3>
-                                <p className="text-xs font-mono text-muted-foreground mt-1 mb-2 bg-slate-100 dark:bg-zinc-900 inline-block px-1.5 py-0.5 rounded">
-                                    {item.module.key}
+
+                                <p className="text-xs text-muted-foreground line-clamp-1 min-h-[16px] mb-2" title={item.module.description}>
+                                    {item.module.description || <span className="italic">Sin descripción.</span>}
                                 </p>
-                                <p className="text-sm text-muted-foreground line-clamp-2 min-h-[40px]">
-                                    {item.module.description || 'Sin descripción disponible para este módulo.'}
+                                <p className="text-[10px] font-mono text-slate-400 dark:text-zinc-500 bg-slate-100/50 dark:bg-zinc-900/50 px-1.5 py-0.5 rounded inline-block truncate max-w-full">
+                                    {item.module.key}
                                 </p>
                             </div>
 
                             {/* Metrics Strip */}
                             <div className="flex divide-x divide-slate-100 dark:divide-white/5 border-b border-slate-100 dark:border-white/5 bg-white dark:bg-transparent">
-                                <div className="flex-1 p-3 text-center flex flex-col justify-center">
-                                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Tenants Activos</span>
-                                    <span className="font-bold flex items-center justify-center gap-1.5 text-slate-800 dark:text-slate-200">
-                                        <Users className="h-3.5 w-3.5 text-slate-400" />
+                                <div className="flex-1 p-2 text-center flex flex-col justify-center">
+                                    <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground/70 mb-0.5">Tenants Act.</span>
+                                    <span className="text-xs font-bold flex items-center justify-center gap-1 text-slate-800 dark:text-slate-200">
+                                        <Users className="h-3 w-3 text-slate-400" />
                                         {item.metrics.active_tenants}
                                     </span>
                                 </div>
-                                <div className="flex-1 p-3 text-center flex flex-col justify-center">
-                                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Costo Estimado</span>
-                                    <span className="font-bold flex items-center justify-center gap-1.5 text-slate-800 dark:text-slate-200">
-                                        {item.module.price_monthly ? `$${item.module.price_monthly}/mo` : 'Gratuito'}
+                                <div className="flex-1 p-2 text-center flex flex-col justify-center">
+                                    <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground/70 mb-0.5">Costo (MRR)</span>
+                                    <span className="text-xs font-bold flex items-center justify-center gap-1 text-slate-800 dark:text-slate-200">
+                                        {item.module.price_monthly ? `$${item.module.price_monthly}` : 'Free'}
                                     </span>
                                 </div>
                             </div>
 
                             {/* Relationships Area */}
-                            <CardContent className="p-5 flex-1 flex flex-col gap-4">
+                            <CardContent className="p-3.5 flex-1 flex flex-col gap-3">
                                 {/* Spaces Mapping */}
                                 <div>
-                                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5">
-                                        <LayoutGrid className="h-3.5 w-3.5" /> Incluido en Spaces
+                                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5 flex items-center gap-1">
+                                        <LayoutGrid className="h-3 w-3" /> Incluido en Spaces
                                     </p>
-                                    <div className="flex flex-wrap gap-1.5">
+                                    <div className="flex flex-wrap gap-1">
                                         {item.spaces.length === 0 ? (
-                                            <span className="text-xs text-muted-foreground/70 italic">Core/No asignado a ningún Space.</span>
+                                            <span className="text-[10px] text-muted-foreground/70 italic">Core / No asignado.</span>
                                         ) : (
                                             item.spaces.map(space => (
-                                                <Badge key={space.id} variant="secondary" className="bg-slate-100 dark:bg-zinc-800 text-xs font-normal">
+                                                <Badge key={space.id} variant="secondary" className="bg-slate-100 dark:bg-zinc-800 text-[10px] font-normal px-1.5 py-0 h-4">
                                                     {space.name}
                                                 </Badge>
                                             ))
@@ -153,15 +156,15 @@ export function ModulesAddonsManager({ modulesData }: ModulesAddonsManagerProps)
 
                                 {/* Custom Overrides / Tenants Mapping */}
                                 {item.tenants_override.length > 0 && (
-                                    <div className="mt-auto pt-4 border-t border-dashed border-slate-200 dark:border-zinc-800">
-                                        <p className="text-xs font-semibold uppercase tracking-wider text-amber-600/80 dark:text-amber-400/80 mb-2 flex items-center gap-1.5">
-                                            <Wrench className="h-3.5 w-3.5" /> Asignación Personalizada
+                                    <div className="mt-auto pt-3 border-t border-dashed border-slate-200 dark:border-zinc-800">
+                                        <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-600/80 dark:text-amber-400/80 mb-1.5 flex items-center gap-1">
+                                            <Wrench className="h-3 w-3" /> Asignación Directa
                                         </p>
-                                        <div className="flex flex-col gap-1.5">
+                                        <div className="flex flex-col gap-1">
                                             {item.tenants_override.map(tenant => (
-                                                <div key={tenant.id} className="text-xs flex items-center justify-between bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30 px-2 py-1.5 rounded-md">
+                                                <div key={tenant.id} className="text-[10px] flex items-center justify-between bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30 px-1.5 py-1 rounded">
                                                     <span className="font-medium text-amber-900 dark:text-amber-200 truncate pr-2">{tenant.name}</span>
-                                                    <span className="font-mono text-[9px] text-amber-700/60 dark:text-amber-400/60 shrink-0">{tenant.slug}</span>
+                                                    <span className="font-mono text-[8px] text-amber-700/60 dark:text-amber-400/60 shrink-0">{tenant.slug}</span>
                                                 </div>
                                             ))}
                                         </div>

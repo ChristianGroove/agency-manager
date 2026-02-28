@@ -33,6 +33,16 @@ export function AppDetailsSheet({ app, isOpen, onClose, dict }: AppDetailsSheetP
     const [allSystemModules, setAllSystemModules] = useState<any[]>([])
     const [modulesLoading, setModulesLoading] = useState(false)
 
+    // Local state for immediate UI feedback on module toggles
+    const [localAppModules, setLocalAppModules] = useState<any[]>(app?.modules || [])
+
+    // Sync external prop changes to local state
+    useEffect(() => {
+        if (app?.modules) {
+            setLocalAppModules(app.modules)
+        }
+    }, [app?.modules])
+
     // Fetch portal modules when sheet opens
     useEffect(() => {
         if (isOpen && app?.id) {
@@ -57,6 +67,8 @@ export function AppDetailsSheet({ app, isOpen, onClose, dict }: AppDetailsSheetP
                 const res = await removeModuleFromApp(appModuleId)
                 if (res.success) {
                     toast.success("Módulo removido del Space")
+                    // Immediate UI Update
+                    setLocalAppModules(prev => prev.filter(m => m.id !== appModuleId))
                     router.refresh()
                 } else {
                     toast.error(res.error)
@@ -70,6 +82,8 @@ export function AppDetailsSheet({ app, isOpen, onClose, dict }: AppDetailsSheetP
                 })
                 if (res.success) {
                     toast.success("Módulo añadido al Space")
+                    // Immediate UI Update (Optimistic appModuleId since DB generates it, but isEnabled only checks existence of module_key)
+                    setLocalAppModules(prev => [...prev, { id: 'temp-' + Date.now(), module_key: moduleKey }])
                     router.refresh()
                 } else {
                     toast.error(res.error)
@@ -276,40 +290,54 @@ export function AppDetailsSheet({ app, isOpen, onClose, dict }: AppDetailsSheetP
                                             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                                         </div>
                                     ) : (
-                                        <div className="grid gap-3">
-                                            {allSystemModules.map((sysModule) => {
-                                                const relatedAppModule = app.modules?.find((m: any) => m.module_key === sysModule.key)
-                                                const isEnabled = !!relatedAppModule
+                                        <div className="gap-6">
+                                            {Object.entries(
+                                                allSystemModules.reduce((acc, sysModule) => {
+                                                    const cat = sysModule.category || 'otros'
+                                                    if (!acc[cat]) acc[cat] = []
+                                                    acc[cat].push(sysModule)
+                                                    return acc
+                                                }, {} as Record<string, any[]>)
+                                            ).sort(([catA], [catB]) => catA.localeCompare(catB)).map(([category, modules]) => (
+                                                <div key={category} className="mb-6">
+                                                    <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3 border-b pb-2">{category}</h4>
+                                                    <div className="grid gap-3">
+                                                        {(modules as any[]).map((sysModule: any) => {
+                                                            const relatedAppModule = localAppModules.find((m: any) => m.module_key === sysModule.key)
+                                                            const isEnabled = !!relatedAppModule
 
-                                                return (
-                                                    <div key={sysModule.key} className={`flex items-center justify-between p-4 rounded-xl border transition-all ${isEnabled ? 'border-indigo-200 bg-indigo-50/30' : 'border-gray-200 bg-white'}`}>
-                                                        <div className="flex gap-4">
-                                                            <div className={`p-2 rounded-lg h-min ${isEnabled ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 text-gray-500'}`}>
-                                                                <Package className="h-5 w-5" />
-                                                            </div>
-                                                            <div>
-                                                                <div className="font-medium">{sysModule.name}</div>
-                                                                <div className="text-xs text-muted-foreground mt-0.5 max-w-md">{sysModule.description || 'Sin descripción'}</div>
-                                                                <div className="flex gap-2 mt-2">
-                                                                    <Badge variant="outline" className="text-[10px] uppercase font-mono">{sysModule.category}</Badge>
-                                                                    {sysModule.dependencies?.length > 0 && (
-                                                                        <Badge variant="secondary" className="text-[10px] bg-amber-50 text-amber-600">
-                                                                            Deps: {sysModule.dependencies.join(', ')}
-                                                                        </Badge>
-                                                                    )}
+                                                            return (
+                                                                <div key={sysModule.key} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${isEnabled ? 'border-indigo-200 bg-indigo-50/50 dark:bg-indigo-900/10' : 'border-gray-200 bg-white dark:bg-zinc-950/50 dark:border-zinc-800'}`}>
+                                                                    <div className="flex gap-4">
+                                                                        <div className={`p-2 rounded-lg h-min ${isEnabled ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-400' : 'bg-gray-100 text-gray-500 dark:bg-zinc-900/50'}`}>
+                                                                            <Package className="h-5 w-5" />
+                                                                        </div>
+                                                                        <div>
+                                                                            <div className="font-medium text-sm">{sysModule.name || sysModule.key}</div>
+                                                                            <div className="text-xs text-muted-foreground mt-0.5 max-w-md line-clamp-1" title={sysModule.description}>{sysModule.description || 'Sin descripción'}</div>
+                                                                            <div className="flex gap-2 mt-2">
+                                                                                <Badge variant="outline" className="text-[9px] uppercase font-mono px-1.5 py-0 h-4 bg-white dark:bg-zinc-900">{sysModule.key}</Badge>
+                                                                                {sysModule.dependencies?.length > 0 && (
+                                                                                    <Badge variant="secondary" className="text-[9px] bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400 px-1.5 py-0 h-4">
+                                                                                        Deps: {sysModule.dependencies.join(', ')}
+                                                                                    </Badge>
+                                                                                )}
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="flex items-center ml-4 shrink-0">
+                                                                        <Switch
+                                                                            checked={isEnabled}
+                                                                            disabled={isSubmitting}
+                                                                            onCheckedChange={() => handleModuleToggle(sysModule.key, isEnabled, relatedAppModule?.id)}
+                                                                        />
+                                                                    </div>
                                                                 </div>
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex items-center ml-4 shrink-0">
-                                                            <Switch
-                                                                checked={isEnabled}
-                                                                disabled={isSubmitting}
-                                                                onCheckedChange={() => handleModuleToggle(sysModule.key, isEnabled, relatedAppModule?.id)}
-                                                            />
-                                                        </div>
+                                                            )
+                                                        })}
                                                     </div>
-                                                )
-                                            })}
+                                                </div>
+                                            ))}
                                         </div>
                                     )}
                                 </TabsContent>

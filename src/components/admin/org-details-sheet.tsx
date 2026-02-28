@@ -255,34 +255,48 @@ export function OrgDetailsSheet({ orgId, isOpen, onClose }: OrgDetailsSheetProps
                                                 </Button>
                                             </div>
 
-                                            <div className="grid gap-3">
-                                                {allModules.map((sysModule) => {
-                                                    const isEnabled = activeModules.includes(sysModule.key)
+                                            <div className="gap-6">
+                                                {Object.entries(
+                                                    allModules.reduce((acc, sysModule) => {
+                                                        const cat = sysModule.category || 'otros'
+                                                        if (!acc[cat]) acc[cat] = []
+                                                        acc[cat].push(sysModule)
+                                                        return acc
+                                                    }, {} as Record<string, any[]>)
+                                                ).sort(([catA], [catB]) => catA.localeCompare(catB)).map(([category, modules]) => (
+                                                    <div key={category} className="mb-6">
+                                                        <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3 border-b pb-2">{category}</h4>
+                                                        <div className="grid gap-3">
+                                                            {(modules as any[]).map((sysModule) => {
+                                                                const isEnabled = activeModules.includes(sysModule.key)
 
-                                                    return (
-                                                        <div key={sysModule.key} className={`flex items-center justify-between p-4 rounded-xl border transition-all ${isEnabled ? 'border-indigo-200 bg-indigo-50/30 dark:bg-indigo-900/10 dark:border-indigo-900/30' : 'border-gray-200 bg-white dark:bg-slate-900/50 dark:border-gray-800'}`}>
-                                                            <div className="flex gap-4">
-                                                                <div className={`p-2 rounded-lg h-min ${isEnabled ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-400' : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'}`}>
-                                                                    <Package className="h-5 w-5" />
-                                                                </div>
-                                                                <div>
-                                                                    <div className="font-medium text-gray-900 dark:text-white">{sysModule.name}</div>
-                                                                    <div className="text-xs text-muted-foreground mt-0.5 max-w-md">{sysModule.description || 'Sin descripción'}</div>
-                                                                    <div className="flex gap-2 mt-2">
-                                                                        <Badge variant="outline" className="text-[10px] uppercase font-mono bg-background/50">{sysModule.category}</Badge>
+                                                                return (
+                                                                    <div key={sysModule.key} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${isEnabled ? 'border-indigo-200 bg-indigo-50/50 dark:bg-indigo-900/10 dark:border-indigo-900/30' : 'border-gray-200 bg-white dark:bg-slate-900/50 dark:border-gray-800'}`}>
+                                                                        <div className="flex gap-4">
+                                                                            <div className={`p-2 rounded-lg h-min ${isEnabled ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-400' : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'}`}>
+                                                                                <Package className="h-5 w-5" />
+                                                                            </div>
+                                                                            <div>
+                                                                                <div className="font-medium text-sm text-gray-900 dark:text-white">{sysModule.name || sysModule.key}</div>
+                                                                                <div className="text-xs text-muted-foreground mt-0.5 max-w-md line-clamp-1" title={sysModule.description}>{sysModule.description || 'Sin descripción'}</div>
+                                                                                <div className="flex gap-2 mt-2">
+                                                                                    <Badge variant="outline" className="text-[9px] uppercase font-mono px-1.5 py-0 h-4 bg-background/50">{sysModule.key}</Badge>
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                        <div className="flex items-center ml-4 shrink-0 overflow-hidden">
+                                                                            {/* Only visual toggle for now, overrides require extra backend logic */}
+                                                                            <Switch
+                                                                                checked={isEnabled}
+                                                                                disabled={true}
+                                                                            />
+                                                                        </div>
                                                                     </div>
-                                                                </div>
-                                                            </div>
-                                                            <div className="flex items-center ml-4 shrink-0 overflow-hidden">
-                                                                {/* Only visual toggle for now, overrides require extra backend logic */}
-                                                                <Switch
-                                                                    checked={isEnabled}
-                                                                    disabled={true}
-                                                                />
-                                                            </div>
+                                                                )
+                                                            })}
                                                         </div>
-                                                    )
-                                                })}
+                                                    </div>
+                                                ))}
                                             </div>
 
                                             {/* Info Box */}

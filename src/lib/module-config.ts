@@ -207,16 +207,15 @@ export const MODULE_ROUTES: ModuleRoute[] = [
             allowedRoles: ['owner', 'admin']
         }
     },
-    // EXCLUDED FROM AGENCY SPACE
+    // EXCLUDED FROM AGENCY SPACE (Legacy - Now managed purely by DB Space config)
     {
         key: 'module_cleaning',
         label: 'Limpieza (Ops)',
         href: '/cleaning',
         icon: Sparkles,
         category: 'operations',
-        parentModule: 'module_cleaning',
         access: {
-            excludedSpaces: ['agency']
+            allowedRoles: ['owner', 'admin']
         }
     },
     // CUSTOM: MANIFIESTOS IMEI (Activated via Manual Override)
@@ -256,14 +255,12 @@ export const MODULE_ROUTES: ModuleRoute[] = [
     },
 
     // --- HERRAMIENTAS ---
-    // HIDDEN FOR REGULAR USERS
     {
         key: 'module_contract_generator',
         label: 'Generador de Contratos',
         href: '/tools/contract-generator',
         icon: Sparkles, // Or custom icon
         category: 'tools',
-        parentModule: 'module_contracts',
         access: {
             allowedRoles: ['owner', 'admin']
         }
@@ -274,12 +271,10 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         href: '/tools/email-engine',
         icon: Mail,
         category: 'tools',
-        parentModule: 'module_messaging',
         access: {
             allowedRoles: ['owner', 'admin']
         }
     },
-
     // --- FINANZAS ---
     {
         key: 'module_invoicing',
