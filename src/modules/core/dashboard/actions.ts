@@ -121,34 +121,47 @@ export async function getDashboardPayload() {
 
     const { getOrganizationModules, getCurrentOrgDetails } = await import("@/modules/core/organizations/actions")
 
-    // 1. Parallel fetch of identity and baseline data
-    const [modules, orgDetails, dashboardData] = await Promise.all([
+    // 1. Fetch only identity first to determine Space/Vertical
+    const [modules, orgDetails] = await Promise.all([
         getOrganizationModules(orgId),
-        getCurrentOrgDetails(),
-        getDashboardData()
+        getCurrentOrgDetails()
     ])
 
     const isCleaning = modules.includes('module_cleaning') || modules.includes('vertical_cleaning')
     const isReseller = orgDetails?.organization_type === 'reseller' || orgDetails?.organization_type === 'platform'
-    const orgType = isReseller ? 'reseller' : (isCleaning ? 'cleaning' : 'agency')
+    const isResto = orgDetails?.active_app_id === 'resto-workspace'
 
+    const orgType = isReseller ? 'reseller' : (isCleaning ? 'cleaning' : (isResto ? 'resto' : 'agency'))
+
+    let dashboardData: any = null
     let extraData: any = null
 
-    // 2. Conditional parallel fetch of specific vertical data
-    if (orgType === 'cleaning') {
-        const { getOperationsMetrics, getWeeklyRevenue } = await import("@/modules/core/work-orders/actions/operation-actions")
-        const [cleaningMetrics, cleaningRevenue] = await Promise.all([
-            getOperationsMetrics(new Date().toISOString()),
-            getWeeklyRevenue()
-        ])
-        extraData = { cleaningMetrics, cleaningRevenue }
-    } else if (orgType === 'reseller') {
+    // 2. Fetch specific vertical data ONLY if needed
+    if (orgType === 'resto') {
         const supabase = await createClient()
-        const { count: tenantCount } = await supabase
-            .from('organizations')
-            .select('id', { count: 'exact', head: true })
-            .eq('parent_organization_id', orgId)
-        extraData = { tenantCount }
+        // Resto no necesita facturas ni MRR. Tal vez solo Settings para el Logo.
+        const { data: settings } = await supabase.from('organization_settings').select('*').eq('organization_id', orgId).single()
+        dashboardData = { settings }
+        extraData = { orgDetails }
+    } else {
+        // Agencia, Limpieza o Reseller si requieren el MRR y Servicios
+        dashboardData = await getDashboardData()
+
+        if (orgType === 'cleaning') {
+            const { getOperationsMetrics, getWeeklyRevenue } = await import("@/modules/core/work-orders/actions/operation-actions")
+            const [cleaningMetrics, cleaningRevenue] = await Promise.all([
+                getOperationsMetrics(new Date().toISOString()),
+                getWeeklyRevenue()
+            ])
+            extraData = { cleaningMetrics, cleaningRevenue }
+        } else if (orgType === 'reseller') {
+            const supabase = await createClient()
+            const { count: tenantCount } = await supabase
+                .from('organizations')
+                .select('id', { count: 'exact', head: true })
+                .eq('parent_organization_id', orgId)
+            extraData = { tenantCount }
+        }
     }
 
     return {

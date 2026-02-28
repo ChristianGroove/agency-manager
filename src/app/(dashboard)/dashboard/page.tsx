@@ -1,46 +1,24 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { Users, DollarSign, FileText, CreditCard, TrendingUp, AlertCircle, UserPlus, FilePlus, ClipboardCheck, Receipt, Sparkles, Calendar, PlayCircle, CheckCircle2, Clock, Building2 } from "lucide-react"
-import CountUp from "react-countup"
-import { GlobalLoader } from "@/components/ui/global-loader"
-
-// Modular System
-import { ModularDashboardLayout, DashboardDataProps } from "@/modules/core/dashboard/modular-dashboard-layout"
-import { getOrganizationModules } from "@/modules/core/organizations/actions"
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { useEffect, useState, Suspense } from "react"
+import { GlobalDashboardBanner } from "@/modules/core/dashboard/components/global-dashboard-banner"
+import { AgencyDashboard } from "@/modules/core/dashboard/components/agency-dashboard"
+import { CleaningDashboard } from "@/modules/core/dashboard/components/cleaning-dashboard"
+import { ResellerDashboard } from "@/modules/core/dashboard/components/reseller-dashboard"
+import { RestoDashboard } from "@/modules/core/dashboard/components/resto-dashboard"
 import { DashboardSkeleton } from "@/modules/core/dashboard/dashboard-skeleton"
 
-// Modals
-import { CreateClientSheet } from "@/modules/core/clients/create-client-sheet"
-import { CreateQuoteSheet } from "@/modules/core/quotes/create-quote-sheet"
-import { CreateInvoiceSheet } from "@/modules/core/billing/create-invoice-sheet"
-import { CreateFormSheet } from "@/modules/core/forms/create-form-sheet"
-import { NewJobModal } from "@/modules/core/work-orders/components/new-job-modal"
-import { CreateOrganizationSheet } from "@/components/organizations/create-organization-sheet"
-
-// Utils
-import { resolveDocumentState, resolveServiceState } from "@/domain/state"
-
+// Interceptores Globales del Dashboard Original
 import { useRegisterView } from "@/modules/core/caa/context/view-context"
-
 import { useTranslation } from "@/lib/i18n/use-translation"
+import { UserPlus, FilePlus, Receipt, TrendingUp } from "lucide-react"
 
 export default function DashboardPage() {
-    const { t, tArray } = useTranslation()
-    const [dashboardData, setDashboardData] = useState<DashboardDataProps | null>(null)
+    const { t } = useTranslation()
+    const [payload, setPayload] = useState<any>(null)
     const [loading, setLoading] = useState(true)
-    const [orgType, setOrgType] = useState<'agency' | 'cleaning' | 'reseller'>('agency') // Default to agency
 
-    // Modal States
-    const [isClientModalOpen, setIsClientModalOpen] = useState(false)
-    const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false)
-    const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false)
-    const [isBriefingModalOpen, setIsBriefingModalOpen] = useState(false)
-    const [isNewJobModalOpen, setIsNewJobModalOpen] = useState(false)
-    const [isNewOrgModalOpen, setIsNewOrgModalOpen] = useState(false)
-
-    // CAA Registration
+    // CAA Registration (Global context commands)
     useRegisterView({
         viewId: "dashboard",
         label: "Dashboard",
@@ -58,24 +36,11 @@ export default function DashboardPage() {
     }, [])
 
     const loadDashboard = async () => {
+        setLoading(true)
         try {
             const { getDashboardPayload } = await import("@/modules/core/dashboard/actions")
-            const payload = await getDashboardPayload()
-            if (!payload) {
-                setLoading(false)
-                return
-            }
-
-            const { orgType, dashboardData, extraData } = payload
-            setOrgType(orgType as 'agency' | 'cleaning' | 'reseller')
-
-            if (orgType === 'reseller') {
-                mapResellerData(dashboardData, extraData)
-            } else if (orgType === 'cleaning') {
-                mapCleaningData(dashboardData, extraData)
-            } else {
-                mapAgencyData(dashboardData)
-            }
+            const data = await getDashboardPayload()
+            setPayload(data)
         } catch (error) {
             console.error("Dashboard Load Error", error)
         } finally {
@@ -83,387 +48,32 @@ export default function DashboardPage() {
         }
     }
 
-    // --- RESELLER ADAPTER ---
-    const mapResellerData = (dashboardRes: any, extraData: any) => {
-        const { invoices, settings, metrics } = dashboardRes
-        const tenantCount = extraData?.tenantCount || 0
-
-        // Use Pre-Calculated Metrics from RPC if available
-        let totalRevenue = 0
-        let pendingPayments = 0
-        let totalOverdue = 0
-        let debtors = []
-
-        if (metrics && metrics.revenue !== undefined) {
-            // RPC Path (Fast)
-            totalRevenue = metrics.revenue
-            pendingPayments = metrics.pending
-            totalOverdue = metrics.overdue
-            debtors = metrics.debtors
-        } else {
-            // Legacy Path (Fail-safe)
-            const clientsWithOverdueMap = new Map<string, number>()
-
-            invoices.forEach((inv: any) => {
-                const { status } = resolveDocumentState(inv)
-                const amount = inv.total || 0
-
-                if (status === 'paid') totalRevenue += amount
-                else if (status === 'pending') pendingPayments += amount
-                else if (status === 'overdue') {
-                    pendingPayments += amount
-                    totalOverdue += amount
-                    clientsWithOverdueMap.set(inv.client_id, (clientsWithOverdueMap.get(inv.client_id) || 0) + amount)
-                }
-            })
-
-            const { clients } = dashboardRes
-
-            debtors = Array.from(clientsWithOverdueMap.entries()).map(([clientId, amount]) => {
-                const client = clients.find((c: any) => c.id === clientId)
-                if (!client) return null
-
-                const firstName = client.first_name || ''
-                const lastName = client.last_name || ''
-                const fullName = `${firstName} ${lastName}`.trim()
-
-                return {
-                    id: clientId,
-                    name: fullName || client.company_name || 'Cliente',
-                    image: client.logo_url || client.avatar_url,
-                    debt: amount
-                }
-            }).filter(Boolean) as any[]
-        }
-
-        const data: DashboardDataProps = {
-            stats: [
-                {
-                    title: t('dashboard.stats.active_tenants'),
-                    value: tenantCount || 0,
-                    icon: Building2,
-                    subtext: t('dashboard.stats.active_tenants_sub')
-                },
-                {
-                    title: t('dashboard.stats.total_revenue'),
-                    value: <CountUp end={totalRevenue} duration={2} separator="," prefix="$" />,
-                    icon: DollarSign,
-                    subtext: t('dashboard.stats.total_revenue_sub')
-                },
-                {
-                    title: t('dashboard.stats.receivable'),
-                    value: <CountUp end={pendingPayments} duration={2} separator="," prefix="$" />,
-                    icon: AlertCircle,
-                    subtext: t('dashboard.stats.receivable_sub')
-                },
-                {
-                    title: t('dashboard.stats.avg_ticket'),
-                    value: <CountUp end={(tenantCount ?? 0) > 0 ? totalRevenue / (tenantCount ?? 1) : 0} duration={2} separator="," prefix="$" />,
-                    icon: CreditCard,
-                    subtext: t('dashboard.stats.avg_ticket_sub')
-                }
-            ],
-            revenueHero: {
-                title: t('dashboard.hero.recurring_revenue'),
-                value: <CountUp end={totalRevenue} duration={2} separator="," />,
-                unit: "COP/mes",
-                tips: ["Ofrece planes anuales para mejorar el flujo.", "Revisa el uso de tus clientes top."]
-            },
-            social: {
-                facebook: settings?.social_facebook,
-                instagram: settings?.social_instagram,
-                twitter: settings?.social_twitter,
-                fbFollowers: settings?.social_facebook_followers,
-                igFollowers: settings?.social_instagram_followers
-            },
-            quickActions: [
-                { title: t('dashboard.actions.new_tenant'), icon: Building2, colorClass: "bg-purple-50 text-purple-600 group-hover:bg-purple-600 group-hover:text-white", onClick: () => setIsNewOrgModalOpen(true) },
-                { title: t('dashboard.actions.new_client'), icon: UserPlus, colorClass: "bg-brand-cyan/10 text-brand-cyan group-hover:bg-brand-cyan group-hover:text-white", onClick: () => setIsClientModalOpen(true) },
-                { title: t('dashboard.actions.new_quote'), icon: FilePlus, colorClass: "bg-yellow-50 text-yellow-600 group-hover:bg-yellow-500 group-hover:text-white", onClick: () => setIsQuoteModalOpen(true) },
-                { title: t('dashboard.actions.new_brief'), icon: ClipboardCheck, colorClass: "bg-indigo-50 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white", onClick: () => setIsBriefingModalOpen(true) },
-                { title: t('dashboard.actions.new_invoice'), icon: Receipt, colorClass: "bg-brand-pink/10 text-brand-pink group-hover:bg-brand-pink group-hover:text-white", onClick: () => setIsInvoiceModalOpen(true) }
-            ],
-            smartAlert: totalOverdue > 0 ? {
-                title: t('dashboard.alerts.attention_portfolio'),
-                message: <span>{t('dashboard.alerts.attention_portfolio_msg')} Total: <span className="font-bold text-gray-900 dark:text-white">${totalOverdue.toLocaleString()}</span>.</span>,
-                itemsHeading: t('dashboard.alerts.in_debt'),
-                items: debtors
-            } : undefined
-        }
-        setDashboardData(data)
-    }
-
-    // --- AGENCY ADAPTER ---
-    const mapAgencyData = (dashboardRes: any) => {
-        const { clients, invoices, services, settings, metrics } = dashboardRes
-
-        // Calculate Agency Stats (Use RPC if available)
-        let totalRevenue = 0
-        let pendingPayments = 0
-        let totalOverdue = 0
-        let paidInvoicesCount = 0
-        let debtors = []
-        let activeClientsCount = 0
-
-        if (metrics && metrics.revenue !== undefined) {
-            // RPC Path
-            totalRevenue = metrics.revenue
-            pendingPayments = metrics.pending
-            totalOverdue = metrics.overdue
-            debtors = metrics.debtors
-            activeClientsCount = metrics.clients_count || 0
-            // paidInvoicesCount - not in RPC yet, optional or approximate
-        } else {
-            // Legacy Path (Fallback if RPC fails)
-            activeClientsCount = clients.length
-
-            const clientsWithPendingSet = new Set<string>()
-            const clientsWithOverdueMap = new Map<string, number>()
-
-            invoices.forEach((inv: any) => {
-                const { status } = resolveDocumentState(inv)
-                const amount = inv.total || 0
-                if (status === 'paid') {
-                    totalRevenue += amount
-                    paidInvoicesCount++
-                } else if (status === 'pending') {
-                    pendingPayments += amount
-                    clientsWithPendingSet.add(inv.client_id)
-                } else if (status === 'overdue') {
-                    pendingPayments += amount
-                    totalOverdue += amount
-                    clientsWithPendingSet.add(inv.client_id)
-                    clientsWithOverdueMap.set(inv.client_id, (clientsWithOverdueMap.get(inv.client_id) || 0) + amount)
-                }
-            })
-
-            debtors = Array.from(clientsWithOverdueMap.entries()).map(([clientId, amount]) => {
-                const client = clients.find((c: any) => c.id === clientId)
-                if (!client) return null
-
-                const firstName = client.first_name || ''
-                const lastName = client.last_name || ''
-                const fullName = `${firstName} ${lastName}`.trim()
-
-                return {
-                    id: clientId,
-                    name: fullName || client.company_name || 'Cliente',
-                    image: client.logo_url || client.avatar_url,
-                    debt: amount
-                }
-            }).filter(Boolean) as any[]
-        }
-
-        // Services loop still needed for Subscriptions (unless we add to RPC later)
-        let activeSubscriptions = 0
-        let monthlyRecurring = 0
-        services.forEach((svc: any) => {
-            const { status } = resolveServiceState(svc)
-            if (status === 'active' && svc.type === 'recurring') {
-                activeSubscriptions++
-                if (svc.frequency === 'monthly') monthlyRecurring += (svc.amount || 0)
-            }
-        })
-
-        // Map to Modular Structure
-        const data: DashboardDataProps = {
-            stats: [
-                {
-                    title: t('dashboard.stats.total_clients'),
-                    value: activeClientsCount,
-                    icon: Users,
-                    subtext: pendingPayments > 0
-                        ? <span className="text-indigo-600 flex items-center gap-1"><AlertCircle className="h-3 w-3" /> {t('dashboard.stats.pending_balance')}</span>
-                        : <span className="text-green-600 flex items-center gap-1"><TrendingUp className="h-3 w-3" /> {t('dashboard.stats.all_good')}</span>
-                },
-                {
-                    title: t('dashboard.stats.total_revenue'),
-                    value: <CountUp end={totalRevenue} duration={2} separator="," prefix="$" />,
-                    icon: DollarSign,
-                    subtext: t('dashboard.stats.total_revenue_sub')
-                },
-                {
-                    title: t('dashboard.stats.receivable'),
-                    value: <CountUp end={pendingPayments} duration={2} separator="," prefix="$" />,
-                    icon: AlertCircle,
-                    subtext: t('dashboard.stats.receivable_sub_agency')
-                },
-                {
-                    title: t('dashboard.stats.active_subs'),
-                    value: activeSubscriptions,
-                    icon: CreditCard,
-                    subtext: t('dashboard.stats.active_subs_sub')
-                }
-            ],
-            revenueHero: {
-                title: t('dashboard.hero.mrr_agency'),
-                value: <CountUp end={monthlyRecurring} duration={2} separator="," />,
-                unit: "COP/mes",
-                tips: tArray('dashboard.tips.agency')
-            },
-            social: {
-                facebook: settings?.social_facebook,
-                instagram: settings?.social_instagram,
-                twitter: settings?.social_twitter,
-                fbFollowers: settings?.social_facebook_followers,
-                igFollowers: settings?.social_instagram_followers
-            },
-            quickActions: [
-                { title: t('dashboard.actions.new_client'), icon: UserPlus, colorClass: "bg-brand-cyan/10 text-brand-cyan group-hover:bg-brand-cyan group-hover:text-white", onClick: () => setIsClientModalOpen(true) },
-                { title: t('dashboard.actions.new_quote'), icon: FilePlus, colorClass: "bg-yellow-50 text-yellow-600 group-hover:bg-yellow-500 group-hover:text-white", onClick: () => setIsQuoteModalOpen(true) },
-                { title: t('dashboard.actions.new_brief'), icon: ClipboardCheck, colorClass: "bg-indigo-50 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white", onClick: () => setIsBriefingModalOpen(true) },
-                { title: t('dashboard.actions.new_invoice'), icon: Receipt, colorClass: "bg-brand-pink/10 text-brand-pink group-hover:bg-brand-pink group-hover:text-white", onClick: () => setIsInvoiceModalOpen(true) }
-            ],
-            smartAlert: totalOverdue > 0 ? {
-                title: t('dashboard.alerts.attention_required'),
-                message: <span>{debtors.length} {t('dashboard.alerts.clients_in_debt')}. <span className="font-bold text-gray-900 dark:text-white">${totalOverdue.toLocaleString()}</span>.</span>,
-                itemsHeading: t('dashboard.alerts.in_debt'),
-                items: debtors
-            } : undefined
-        }
-
-        setDashboardData(data)
-    }
-
-    // --- CLEANING ADAPTER (Enhanced) ---
-    const mapCleaningData = (coreData: any, extraData: any) => {
-        const metrics = extraData?.cleaningMetrics || { total: 0, in_progress: 0, pending: 0, completed: 0 }
-        const revenueData = extraData?.cleaningRevenue || []
-        const totalRevenueWeek = revenueData.reduce((acc: any, curr: any) => acc + curr.revenue, 0)
-
-        // Define Cleaning Actions that make sense
-        const quickActions = [
-            {
-                title: t('dashboard.actions.new_job'),
-                icon: Sparkles,
-                colorClass: "bg-green-50 text-green-600 group-hover:bg-green-600 group-hover:text-white",
-                onClick: () => setIsNewJobModalOpen(true)
-            },
-            {
-                title: t('dashboard.actions.view_calendar'),
-                icon: Calendar,
-                colorClass: "bg-indigo-50 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white",
-                onClick: () => window.location.href = '/cleaning' // Redirects to calendar view implicitly
-            },
-            {
-                title: t('dashboard.actions.staff'),
-                icon: Users,
-                colorClass: "bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white",
-                onClick: () => window.location.href = '/cleaning?tab=staff'
-            },
-            {
-                title: t('dashboard.actions.new_client'),
-                icon: UserPlus,
-                colorClass: "bg-brand-cyan/10 text-brand-cyan group-hover:bg-brand-cyan group-hover:text-white",
-                onClick: () => setIsClientModalOpen(true)
-            }
-        ]
-
-        // Map pending jobs to Smart Alert if high
-        let smartAlert = undefined
-        if (metrics.pending > 0) {
-            smartAlert = {
-                title: t('dashboard.alerts.pending_ops'),
-                message: <span>{t('dashboard.alerts.pending_ops_msg')}</span>,
-                items: [], // We could fetch specific jobs/staff here if we wanted deeper integration
-            }
-        }
-
-        const data: DashboardDataProps = {
-            stats: [
-                {
-                    title: t('dashboard.stats.jobs_today'),
-                    value: metrics.total,
-                    icon: Calendar,
-                    subtext: t('dashboard.stats.jobs_today_sub')
-                },
-                {
-                    title: t('dashboard.stats.in_progress'),
-                    value: metrics.in_progress,
-                    icon: PlayCircle,
-                    gradientColor: "#F97316",
-                    subtext: t('dashboard.stats.in_progress_sub')
-                },
-                {
-                    title: t('dashboard.stats.pending'),
-                    value: metrics.pending,
-                    icon: Clock,
-                    gradientColor: "#EAB308",
-                    subtext: t('dashboard.stats.pending_sub')
-                },
-                {
-                    title: t('dashboard.stats.completed'),
-                    value: metrics.completed,
-                    icon: CheckCircle2,
-                    gradientColor: "#22C55E",
-                    subtext: t('dashboard.stats.completed_sub')
-                }
-            ],
-            revenueHero: {
-                title: t('dashboard.hero.revenue_7d'),
-                value: <CountUp end={totalRevenueWeek} duration={2} separator="," />,
-                unit: "COP",
-                tips: tArray('dashboard.tips.cleaning')
-            },
-            social: {
-                facebook: coreData.settings?.social_facebook,
-                instagram: coreData.settings?.social_instagram,
-                twitter: coreData.settings?.social_twitter,
-                fbFollowers: coreData.settings?.social_facebook_followers,
-                igFollowers: coreData.settings?.social_instagram_followers
-            },
-            quickActions: quickActions,
-            smartAlert: smartAlert
-        }
-        setDashboardData(data)
-    }
-
-    if (loading || !dashboardData) {
+    if (loading || !payload) {
         return <DashboardSkeleton />
     }
 
+    const { orgType, dashboardData, extraData } = payload
+
     return (
-        <>
-            <ModularDashboardLayout data={dashboardData} />
+        <div className="flex flex-col w-full h-full">
+            {/* Banner Global Preparado para pautas / avisos en todos los tenants */}
+            <GlobalDashboardBanner />
 
-            {/* Global Modals */}
-            <CreateClientSheet
-                open={isClientModalOpen}
-                onOpenChange={setIsClientModalOpen}
-                trigger={<span className="hidden" />}
-                onSuccess={() => { setIsClientModalOpen(false); loadDashboard() }}
-            />
-            <CreateQuoteSheet
-                open={isQuoteModalOpen}
-                onOpenChange={setIsQuoteModalOpen}
-                trigger={<span className="hidden" />}
-                onSuccess={() => { setIsQuoteModalOpen(false); loadDashboard() }}
-            />
-            <CreateFormSheet
-                open={isBriefingModalOpen}
-                onOpenChange={setIsBriefingModalOpen}
-                onSuccess={() => setIsBriefingModalOpen(false)}
-            />
-            <CreateInvoiceSheet
-                open={isInvoiceModalOpen}
-                onOpenChange={setIsInvoiceModalOpen}
-                trigger={<span className="hidden" />}
-                onSuccess={() => { setIsInvoiceModalOpen(false); loadDashboard() }}
-            />
+            {/* 
+              Motor de Enrutamiento Pluggable de Carga Ligera: 
+              Evita que el restaurante tenga que descargar JS de facturación B2B o el Reseller de catálogos B2C. 
+            */}
+            <Suspense fallback={<DashboardSkeleton />}>
+                {orgType === 'agency' && <AgencyDashboard dashboardData={dashboardData} extraData={extraData} onReload={loadDashboard} />}
+                {orgType === 'cleaning' && <CleaningDashboard dashboardData={dashboardData} extraData={extraData} onReload={loadDashboard} />}
+                {orgType === 'reseller' && <ResellerDashboard dashboardData={dashboardData} extraData={extraData} onReload={loadDashboard} />}
+                {orgType === 'resto' && <RestoDashboard dashboardData={dashboardData} extraData={extraData} onReload={loadDashboard} />}
 
-            {/* Cleaning Modals */}
-            <NewJobModal
-                open={isNewJobModalOpen}
-                onOpenChange={setIsNewJobModalOpen}
-            />
-
-
-            {/* Platform Modals */}
-            <CreateOrganizationSheet
-                open={isNewOrgModalOpen}
-                onOpenChange={setIsNewOrgModalOpen}
-                onSuccess={() => { setIsNewOrgModalOpen(false); loadDashboard() }}
-            />
-        </>
+                {/* Fallback de Seguridad en caso de que un workspace huérfano llegue hasta acá */}
+                {!['agency', 'cleaning', 'reseller', 'resto'].includes(orgType) && (
+                    <AgencyDashboard dashboardData={dashboardData} extraData={extraData} onReload={loadDashboard} />
+                )}
+            </Suspense>
+        </div>
     )
 }
