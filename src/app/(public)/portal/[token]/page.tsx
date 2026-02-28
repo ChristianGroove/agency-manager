@@ -6,7 +6,7 @@ import { getPortalData, acceptQuote, rejectQuote } from "@/modules/core/portal/a
 import { Client, Invoice, Quote, Briefing, ClientEvent, Service } from "@/types"
 import { Loader2, AlertTriangle, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { getPublicPortalTemplate } from "@/components/portals/portal-registry"
+import { getPublicPortalTemplate } from "@/components/portals/public-registry"
 import { WorkerPortalLayout } from "@/modules/core/portal/worker-portal-layout"
 import { QuoteDetailModal } from "@/modules/core/portal/quote-detail-modal"
 import { PaymentOptionsModal } from "@/modules/core/portal/payment-options-modal"
