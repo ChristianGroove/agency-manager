@@ -208,6 +208,38 @@ export async function updateOrganization(orgId: string, data: { name: string, sl
     return { success: true }
 }
 
+export async function updateAdvancedOrganizationOptions(orgId: string, options: { created_at?: string, new_email?: string, new_password?: string }) {
+    await requireSuperAdmin()
+
+    // 1. Get current Org to find Owner
+    const { data: org, error: orgError } = await supabaseAdmin.from('organizations').select('owner_id, created_at').eq('id', orgId).single()
+    if (orgError) throw new Error("Org not found")
+
+    // 2. Update created_at if provided
+    if (options.created_at && options.created_at !== org.created_at) {
+        const { error: tsError } = await supabaseAdmin.from('organizations').update({ created_at: options.created_at }).eq('id', orgId)
+        if (tsError) throw new Error("Error actualizando fecha de creación")
+    }
+
+    // 3. Update Auth/Profile details if owner exists
+    if (org.owner_id && (options.new_email || options.new_password)) {
+        const authUpdates: any = {}
+        if (options.new_email) authUpdates.email = options.new_email
+        if (options.new_password) authUpdates.password = options.new_password
+
+        const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(org.owner_id, authUpdates)
+        if (authError) throw new Error(`Auth Error: ${authError.message}`)
+
+        if (options.new_email) {
+            const { error: profileError } = await supabaseAdmin.from('profiles').update({ email: options.new_email }).eq('id', org.owner_id)
+            if (profileError) throw new Error("Error actualizando perfil")
+        }
+    }
+
+    revalidatePath('/platform/admin/organizations')
+    return { success: true }
+}
+
 export async function getSaasProducts() {
     await requireSuperAdmin()
     const { data } = await supabaseAdmin.from('saas_products').select('*').eq('is_active', true).order('name')
