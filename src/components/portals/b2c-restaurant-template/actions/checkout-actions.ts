@@ -48,13 +48,15 @@ export async function dispatchRestoOrder(payload: CheckoutPayload) {
                     organization_id: payload.orgId,
                     name: payload.customerName,
                     phone: payload.customerPhone,
-                    type: 'lead',
-                    status: 'lead'
+                    type: 'lead'
                 })
                 .select()
                 .single()
 
-            if (clientError) throw new Error("Error creando cliente")
+            if (clientError) {
+                console.error("Detalle Error Creando Cliente:", clientError)
+                throw new Error("Error creando cliente")
+            }
             clientIdToUse = newClient.id
         }
 

@@ -8,7 +8,8 @@ export interface FoodCardProps {
         id: string
         name: string
         description?: string
-        price: number
+        price?: number
+        base_price?: number
         currency?: string
         images?: string[]
         has_variants?: boolean
@@ -18,6 +19,9 @@ export interface FoodCardProps {
 
 export function FoodCard({ item, orgId }: FoodCardProps) {
     const { addItem, setOrgId, orgId: currentCartOrgId, clearCart } = useRestoCart()
+
+    // Manejar incompatibilidad de columnas entre catálogo universal y B2C
+    const itemPrice = item.price || item.base_price || 0
 
     const handleAdd = () => {
         // Prevent mixing items from different restaurants
@@ -33,7 +37,7 @@ export function FoodCard({ item, orgId }: FoodCardProps) {
         addItem({
             catalogItemId: item.id,
             title: item.name,
-            price: item.price,
+            price: itemPrice,
             quantity: 1,
             image: item.images?.[0]
         })
@@ -43,7 +47,7 @@ export function FoodCard({ item, orgId }: FoodCardProps) {
         style: 'currency',
         currency: item.currency || 'COP',
         maximumFractionDigits: 0
-    }).format(item.price)
+    }).format(itemPrice)
 
     return (
         <div className="flex flex-row bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800 p-3 gap-3 overflow-hidden h-36 relative">
