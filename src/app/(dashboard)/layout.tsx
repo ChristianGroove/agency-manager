@@ -1,17 +1,8 @@
-import { DashboardShell } from "@/components/layout/dashboard-shell"
+import { getPortalTemplate } from "@/components/portals/portal-registry"
 import { createClient } from "@/lib/supabase-server"
 import { redirect } from "next/navigation"
 import { getCurrentOrganizationId, getCurrentOrgDetails } from "@/modules/core/organizations/actions"
-import { getActiveModules } from "@/modules/core/saas/actions"
 import { isSuperAdmin } from "@/lib/auth/platform-roles"
-import { SystemAlertBanner } from "@/components/layout/system-alert-banner"
-import { Suspense } from "react"
-import { GlobalLoader } from "@/components/ui/global-loader"
-import { GlobalInboxProvider } from "@/modules/core/messaging/context/global-inbox-context"
-import { InboxOverlay } from "@/modules/core/messaging/components/floating-inbox/inbox-overlay"
-import { GlobalMessageListener } from "@/modules/core/messaging/components/floating-inbox/global-message-listener"
-import { FabController } from "@/components/layout/fab-controller"
-import { SidebarLoader } from "@/components/layout/sidebar-loader"
 import { getSettings } from "@/modules/core/settings/actions"
 import { getDictionary } from "@/lib/i18n/dictionaries"
 import { I18nProvider } from "@/lib/i18n/context"
@@ -44,6 +35,23 @@ export default async function DashboardLayout({
         isSuperAdmin(user.id)
     ])
 
+    // 3. Obtener el layout correcto basándose en el "Space" actual
+    let portalTemplateKey = 'b2b_dashboard'
+    if (orgDetails?.active_app_id) {
+        const { data: appData } = await supabase
+            .from('saas_apps')
+            .select('portal_template')
+            .eq('id', orgDetails.active_app_id)
+            .single()
+
+        if (appData?.portal_template) {
+            portalTemplateKey = appData.portal_template
+        }
+    }
+
+    // 4. Instanciar la plantilla dinámicamente
+    const PortalLayoutComponent = getPortalTemplate(portalTemplateKey)
+
     // Determine Language & Load Dictionary (Default to 'es')
     const locale = (settings?.default_language as Locale) || 'es'
     const dictionary = getDictionary(locale)
@@ -56,26 +64,14 @@ export default async function DashboardLayout({
             dict={dictionary}
             locale={locale}
         >
-            <DashboardShell
+            <PortalLayoutComponent
                 user={user}
                 currentOrgId={currentOrgId}
-                isSuperAdmin={isAdmin}
-                sidebarSlot={
-                    <Suspense fallback={<div className="w-64 h-full bg-white/50 dark:bg-black/20 animate-pulse border-r" />}>
-                        <SidebarLoader />
-                    </Suspense>
-                }
+                isAdmin={isAdmin}
+                orgData={orgDetails}
             >
-                <GlobalInboxProvider>
-                    <GlobalMessageListener />
-                    <InboxOverlay />
-                    <FabController orgSlug={orgDetails?.slug} />
-                    <SystemAlertBanner />
-                    <Suspense fallback={<GlobalLoader />}>
-                        {children}
-                    </Suspense>
-                </GlobalInboxProvider>
-            </DashboardShell>
+                {children}
+            </PortalLayoutComponent>
         </I18nProvider>
     )
 }
