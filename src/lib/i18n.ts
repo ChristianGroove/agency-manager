@@ -28,7 +28,7 @@ const dictionaries = {
                 description: "Descripción",
                 category: "Categoría",
                 price: "Precio Mensual",
-                search_placeholder: "Buscar plantillas...",
+                search_placeholder: "Buscar Spaces...",
                 save: "Guardar Cambios",
                 create: "Crear"
             },

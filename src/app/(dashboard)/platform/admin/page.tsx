@@ -1,4 +1,4 @@
-import { getAdminDashboardStats, getActiveBroadcasts, getAllSystemModules } from '@/modules/core/admin/actions'
+import { getAdminDashboardStats, getActiveBroadcasts, getAllSystemModules, getModules360Data } from '@/modules/core/admin/actions'
 import { getAdminOrganizations } from '@/modules/core/admin/actions'
 import { getAllAppsAdmin } from "@/modules/core/saas/app-management-actions"
 import { requireSuperAdmin } from '@/lib/auth/platform-roles'
@@ -21,12 +21,13 @@ export default async function AdminDashboardPage() {
     await requireSuperAdmin()
     const t = await getDictionary()
 
-    const [stats, activeBroadcasts, organizations, allModules, apps] = await Promise.all([
+    const [stats, activeBroadcasts, organizations, allModules, apps, modules360] = await Promise.all([
         getAdminDashboardStats(),
         getActiveBroadcasts(),
         getAdminOrganizations(),
         getAllSystemModules(),
-        getAllAppsAdmin()
+        getAllAppsAdmin(),
+        getModules360Data()
     ])
 
     return (
@@ -91,7 +92,7 @@ export default async function AdminDashboardPage() {
                                 </Card>
                                 <Card>
                                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                        <CardTitle className="text-sm font-medium text-muted-foreground">Catálogo Apps</CardTitle>
+                                        <CardTitle className="text-sm font-medium text-muted-foreground">Catálogo Spaces</CardTitle>
                                         <Box className="h-4 w-4 text-gray-500" />
                                     </CardHeader>
                                     <CardContent>
@@ -185,7 +186,12 @@ export default async function AdminDashboardPage() {
 
                 {/* TAB 3: SAAS ENGINE */}
                 <TabsContent value="saas" className="focus-visible:outline-none">
-                    <SaasEngineManager allModules={allModules} apps={apps} dict={t.admin} />
+                    <SaasEngineManager
+                        allModules={allModules}
+                        apps={apps}
+                        dict={t.admin}
+                        modules360={modules360}
+                    />
                 </TabsContent>
 
                 {/* TAB 4: SECURITY */}

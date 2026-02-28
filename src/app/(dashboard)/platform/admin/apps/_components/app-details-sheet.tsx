@@ -129,7 +129,7 @@ export function AppDetailsSheet({ app, isOpen, onClose, dict }: AppDetailsSheetP
             const result = await updateApp(app.id, updates)
 
             if (result.success) {
-                toast.success(dict.toast?.updated || "Aplicación actualizada", {
+                toast.success(dict.toast?.updated || "Space actualizado", {
                     description: `Los cambios en "${updates.name}" han sido guardados.`
                 })
                 router.refresh()
@@ -453,9 +453,8 @@ export function AppDetailsSheet({ app, isOpen, onClose, dict }: AppDetailsSheetP
 
                                         {/* Info Box */}
                                         <div className="p-4 rounded-xl bg-blue-50/50 border border-blue-100 dark:bg-blue-900/10 dark:border-blue-900/30">
-                                            <p className="text-sm text-blue-700 dark:text-blue-400">
-                                                <strong>💡 Tip:</strong> Los módulos desactivados no aparecerán en el portal de los clientes que usen esta aplicación.
-                                            </p>
+                                            <CardTitle className="text-xl">Módulos del Sistema</CardTitle>
+                                            <CardDescription>Gestiona qué módulos están disponibles de forma predeterminada en este Space. Los módulos desactivados no aparecerán en el portal de los clientes que usen este Space.</CardDescription>
                                         </div>
                                     </div>
                                 </TabsContent>
@@ -466,9 +465,13 @@ export function AppDetailsSheet({ app, isOpen, onClose, dict }: AppDetailsSheetP
                                         <div className="lg:col-span-2 space-y-6">
                                             <Card className="border-none shadow-none bg-transparent p-0">
                                                 <CardContent className="p-0 space-y-6">
+                                                    <div className="space-y-1.5 flex-1">
+                                                        <CardTitle className="text-xl">Configuración del Space</CardTitle>
+                                                        <CardDescription>Ajustes básicos de identidad y costos.</CardDescription>
+                                                    </div>
                                                     <form id="edit-app-form" onSubmit={handleUpdate} className="space-y-6">
                                                         <div className="space-y-3">
-                                                            <Label htmlFor="name" className="text-base font-semibold">Nombre de Aplicación</Label>
+                                                            <Label htmlFor="name" className="text-base font-semibold">Nombre del Space</Label>
                                                             <Input id="name" name="name" defaultValue={app.name} required className="h-12 text-lg" />
                                                             <p className="text-sm text-muted-foreground">Este es el nombre público que verán los clientes.</p>
                                                         </div>
@@ -492,6 +495,10 @@ export function AppDetailsSheet({ app, isOpen, onClose, dict }: AppDetailsSheetP
                                                             </div>
                                                         </div>
 
+                                                        <div className="space-y-1.5 flex-1">
+                                                            <CardTitle className="text-xl">Configuración Regional</CardTitle>
+                                                            <CardDescription>Moneda y visualización del Space.</CardDescription>
+                                                        </div>
                                                         <div className="space-y-3">
                                                             <Label className="text-base font-semibold">Color de Marca</Label>
                                                             <div className="flex items-center gap-4 p-4 rounded-xl border bg-white/50">

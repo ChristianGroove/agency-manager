@@ -4,28 +4,35 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { AppsList } from "../apps/_components/apps-list"
 import { FeatureFlagsManager } from "@/modules/core/admin/components/feature-flags-manager"
-import { Boxes, Settings2, Palette, Crown, DollarSign, CreditCard } from "lucide-react"
+import { Boxes, Settings2, Palette, Crown, DollarSign, CreditCard, LayoutGrid, Package } from "lucide-react"
 import { GlobalBrandingManager } from "./global-branding-manager"
 import { BrandingPlansManager } from "./branding-plans-manager"
 import { SettlementsManager } from "./settlements-manager"
 import { PaymentSettingsManager } from "./payment-settings-manager"
+import { ModulesAddonsManager } from "./modules-addons-manager"
+import type { Module360Data } from "@/modules/core/admin/actions"
 
 interface SaasEngineManagerProps {
     allModules: any[]
     apps: any[]
     dict: any
+    modules360: Module360Data[]
 }
 
-export function SaasEngineManager({ allModules, apps, dict }: SaasEngineManagerProps) {
+export function SaasEngineManager({ allModules, apps, dict, modules360 }: SaasEngineManagerProps) {
     return (
         <Card className="border-none shadow-none bg-transparent">
             {/* Header section removed as it's redundant with tabs */}
 
-            <Tabs defaultValue="apps" className="space-y-6">
-                <TabsList className="bg-muted/50 p-1 h-10 rounded-lg">
-                    <TabsTrigger value="apps" className="gap-2">
-                        <Boxes className="h-4 w-4" />
-                        Apps & Módulos
+            <Tabs defaultValue="spaces" className="space-y-6">
+                <TabsList className="bg-muted/50 p-1 h-10 flex flex-wrap h-auto rounded-lg">
+                    <TabsTrigger value="spaces" className="gap-2">
+                        <LayoutGrid className="h-4 w-4" />
+                        Spaces
+                    </TabsTrigger>
+                    <TabsTrigger value="modules" className="gap-2">
+                        <Package className="h-4 w-4" />
+                        Módulos y Add-ons
                     </TabsTrigger>
                     <TabsTrigger value="branding" className="gap-2">
                         <Palette className="h-4 w-4" />
@@ -49,24 +56,28 @@ export function SaasEngineManager({ allModules, apps, dict }: SaasEngineManagerP
                     </TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="apps" className="space-y-4 focus-visible:outline-none">
+                <TabsContent value="spaces" className="space-y-4 focus-visible:outline-none">
                     <Card>
                         <CardHeader>
-                            <CardTitle>Catálogo de Aplicaciones</CardTitle>
+                            <CardTitle>Gestión de Spaces</CardTitle>
                             <CardDescription>
-                                Diferentes "sabores" del SaaS disponibles para las organizaciones (Agency, Clinic, Real Estate, etc.).
+                                Diferentes configuraciones y "sabores" del SaaS disponibles para las organizaciones (Agency, Clinic, Real Estate, etc.).
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
                             <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-900/30 p-4 rounded-lg mb-4">
                                 <p className="text-sm text-blue-800 dark:text-blue-300">
-                                    💡 Las aplicaciones definen qué módulos se activan por defecto al crear una nueva organización.
+                                    💡 Los Spaces definen qué módulos base se activan por defecto al crear o migrar una organización.
                                 </p>
                             </div>
                             {/* We reuse the existing AppsList but mounted here */}
                             <AppsList initialApps={apps} dict={dict} />
                         </CardContent>
                     </Card>
+                </TabsContent>
+
+                <TabsContent value="modules" className="focus-visible:outline-none">
+                    <ModulesAddonsManager modulesData={modules360} />
                 </TabsContent>
 
                 <TabsContent value="branding" className="focus-visible:outline-none">

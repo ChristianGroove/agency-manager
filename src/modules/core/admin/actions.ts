@@ -302,6 +302,83 @@ export async function getAllSystemModules() {
     return data || []
 }
 
+export interface Module360Data {
+    module: any
+    spaces: any[]
+    tenants_override: any[]
+    metrics: {
+        active_tenants: number
+        mrr: number
+    }
+}
+
+export async function getModules360Data(): Promise<Module360Data[]> {
+    await requireSuperAdmin()
+
+    // 1. Get all modules
+    const { data: modules } = await supabaseAdmin.from('system_modules').select('*').order('category')
+
+    // 2. Get all apps (Spaces) with their modules
+    const { data: apps } = await supabaseAdmin.from('saas_apps').select('id, name, slug')
+    const { data: appModules } = await supabaseAdmin.from('saas_app_modules').select('*')
+
+    // 3. Get all active organizations with their overrides and active App
+    const { data: orgs } = await supabaseAdmin.from('organizations')
+        .select('id, name, slug, active_app_id, manual_module_overrides')
+        .eq('status', 'active')
+
+    if (!modules || !apps || !appModules || !orgs) return []
+
+    // Map apps by ID for quick lookup
+    const appsById = apps.reduce((acc, app) => ({ ...acc, [app.id]: app }), {} as Record<string, any>)
+
+    const coreModules = ['core_settings', 'core_clients']
+
+    const result: Module360Data[] = modules.map(mod => {
+        // Find spaces that explicitly include this module
+        const moduleSpacesLinks = appModules.filter(link => link.module_key === mod.key)
+        const spaces = moduleSpacesLinks.map(link => appsById[link.app_id]).filter(Boolean)
+
+        // Find tenants explicitly overriding this module
+        const tenants_override = orgs.filter(org => {
+            const overrides = (org.manual_module_overrides as string[]) || []
+            return overrides.includes(mod.key)
+        }).map(org => ({ id: org.id, name: org.name, slug: org.slug }))
+
+        // Calculate active tenants & MRR
+        let active_tenants = 0
+        if (coreModules.includes(mod.key)) {
+            // Core modules are active for ALL active tenants
+            active_tenants = orgs.length
+        } else {
+            // How many tenants have this module via Space or Overrides?
+            const spaceIds = spaces.map(s => s.id)
+            orgs.forEach(org => {
+                const inSpace = org.active_app_id && spaceIds.includes(org.active_app_id)
+                const inOverride = tenants_override.some(t => t.id === org.id)
+                if (inSpace || inOverride) {
+                    active_tenants++
+                }
+            })
+        }
+
+        // Calculate MRR (Price Monthly * Active Tenants)
+        const mrr = (mod.price_monthly || 0) * active_tenants
+
+        return {
+            module: mod,
+            spaces,
+            tenants_override,
+            metrics: {
+                active_tenants,
+                mrr
+            }
+        }
+    })
+
+    return result
+}
+
 export async function createBroadcast(data: { title: string, message: string, severity: 'info' | 'warning' | 'critical', expires_at?: string }) {
     await requireSuperAdmin()
     const { error } = await supabaseAdmin.from('system_alerts').insert({ ...data, is_active: true })
