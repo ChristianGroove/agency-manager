@@ -1,4 +1,5 @@
 import { B2BAgencyLayout } from "./b2b-agency-template/b2b-agency-layout";
+import { B2CRestaurantLayout } from "./b2c-restaurant-template/b2c-restaurant-layout";
 
 /**
  * Diccionario Central de Portales Polimórficos
@@ -11,8 +12,8 @@ export const PORTAL_TEMPLATES: Record<string, React.ComponentType<any>> = {
     // Plantilla clásica actual: Dashboard B2B con barra lateral izquierda
     b2b_dashboard: B2BAgencyLayout,
 
-    // Espacio para futuras plantillas:
-    // b2c_commerce: CommerceLayout,
+    // Plantilla Consumidor (PWA Menu/Cart)
+    b2c_commerce: B2CRestaurantLayout,
     // healthcare: ClinicLayout,
 };
 

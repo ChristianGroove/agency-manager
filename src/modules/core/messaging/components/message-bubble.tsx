@@ -3,6 +3,7 @@
 import { cn } from "@/lib/utils"
 import { Check, CheckCheck, FileIcon, Volume2, Play } from "lucide-react"
 import { AudioTranscriber } from "./audio-transcriber"
+import { RestoOrderWidget } from "./resto-order-widget"
 import { memo } from "react"
 
 interface MessageContent {
@@ -70,9 +71,14 @@ export const MessageBubble = memo(function MessageBubble({ content, direction, t
 })
 
 function renderContent(content: any, isOutbound: boolean, messageId?: string, metadata?: any, t?: any) {
-    // Normalize content properties
+    // Normalizar propiedades del contenido
     const url = content.url || content.mediaUrl || content.link;
     const text = content.text || content.caption || content.body;
+
+    // Inyección del Widget B2C
+    if (metadata?.type === 'resto_order') {
+        return <RestoOrderWidget orderData={metadata} isOutbound={isOutbound} />
+    }
 
     switch (content.type) {
         case 'image':
