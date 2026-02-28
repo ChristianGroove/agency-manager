@@ -85,12 +85,11 @@ export const generateInvoicePDF = async (invoice: Invoice, client: Client | any,
     doc.setTextColor(80);
 
     // Use Emitter details strictly for Legal Identity
-    // If no emitter is attached, we prefer to show nothing or a specific placeholder rather than mixing Agency Branding with Legal Data
-    const issuerName = invoice.emitter?.legal_name || invoice.emitter?.display_name || "EMISOR NO IDENTIFICADO";
+    const issuerName = invoice.emitter?.legal_name || invoice.emitter?.display_name || settings?.company_name || settings?.agency_name || "EMISOR NO IDENTIFICADO";
 
-    // Construct ID string correctly
+    // Construct ID string correctly (From Emitter first, fallback to settings)
     let issuerIdString = "";
-    if (invoice.emitter) {
+    if (invoice.emitter && invoice.emitter.identification_number) {
         const idType = invoice.emitter.identification_type || "NIT";
         const idNum = invoice.emitter.identification_number;
         const dv = invoice.emitter.verification_digit;
@@ -100,12 +99,15 @@ export const generateInvoicePDF = async (invoice: Invoice, client: Client | any,
         } else {
             issuerIdString = `${idType}: ${idNum}`;
         }
+    } else if (settings?.company_nit || settings?.agency_nit) {
+        issuerIdString = `NIT: ${settings.company_nit || settings.agency_nit}`;
     }
-    // REMOVED LEGACY FALLBACK to settings.agency_nit per strict requirements
 
-    const issuerAddress = invoice.emitter?.address;
-    const issuerEmail = invoice.emitter?.email;
-    const issuerPhone = invoice.emitter?.phone;
+    // Contact info (Strictly from Business DNA / Settings AS REQUESTED BY USER)
+    const issuerAddress = settings?.company_address || settings?.agency_address || invoice.emitter?.address;
+    const issuerEmail = settings?.company_email || settings?.agency_email || invoice.emitter?.email;
+    const issuerPhone = settings?.company_phone || settings?.agency_phone || invoice.emitter?.phone;
+    const issuerWeb = settings?.agency_website || settings?.website;
 
     // Only render if we have data
     doc.text(issuerName, margin, yPos); yPos += 5;
@@ -115,7 +117,8 @@ export const generateInvoicePDF = async (invoice: Invoice, client: Client | any,
     if (issuerAddress) { doc.text(issuerAddress, margin, yPos); yPos += 5; }
 
     if (issuerEmail) { doc.text(issuerEmail, margin, yPos); yPos += 5; }
-    if (issuerPhone) { doc.text(issuerPhone, margin, yPos); yPos += 5; }
+    if (issuerPhone) { doc.text(`Cel: ${issuerPhone}`, margin, yPos); yPos += 5; }
+    if (issuerWeb) { doc.text(issuerWeb, margin, yPos); yPos += 5; }
 
 
     // --- Client Info ---

@@ -57,15 +57,25 @@ export const QuoteTemplate = forwardRef<HTMLDivElement, QuoteTemplateProps>(
                         {/* Emitido por */}
                         <div>
                             <h3 className="text-[10px] font-bold mb-1.5 uppercase text-gray-500 tracking-wider">Emitido por:</h3>
-                            <p className="font-bold text-base text-gray-900 mb-1">{settings?.agency_name || "Pixy Agency"}</p>
+                            {/* Prioridad: Emisor seleccionado > Nombre de Agencia */}
+                            <p className="font-bold text-base text-gray-900 mb-1">{(quote as any).emitter?.legal_name || (quote as any).emitter?.display_name || settings?.agency_name || "Pixy Agency"}</p>
 
                             <div className="space-y-0.5 text-sm text-gray-600">
-                                {settings?.agency_address && <p>{settings.agency_address}</p>}
-                                {settings?.agency_email && <p>{settings.agency_email}</p>}
-                                {settings?.agency_phone && <p className="font-semibold text-gray-900">Cel: {settings.agency_phone}</p>}
-                                {settings?.agency_website && <p>{settings.agency_website}</p>}
-
-
+                                {((quote as any).emitter?.identification_number || settings?.company_nit) && (
+                                    <p>NIT: {(quote as any).emitter?.identification_number || settings?.company_nit}</p>
+                                )}
+                                {(settings?.agency_address || settings?.company_address || (quote as any).emitter?.address) && (
+                                    <p>{settings?.agency_address || settings?.company_address || (quote as any).emitter?.address}</p>
+                                )}
+                                {(settings?.agency_email || settings?.company_email || (quote as any).emitter?.email) && (
+                                    <p>{settings?.agency_email || settings?.company_email || (quote as any).emitter?.email}</p>
+                                )}
+                                {(settings?.agency_phone || settings?.company_phone || (quote as any).emitter?.phone) && (
+                                    <p className="font-semibold text-gray-900">Cel: {settings?.agency_phone || settings?.company_phone || (quote as any).emitter?.phone}</p>
+                                )}
+                                {(settings?.agency_website || settings?.website) && (
+                                    <p>{settings?.agency_website || settings?.website}</p>
+                                )}
                             </div>
                         </div>
 

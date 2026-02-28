@@ -92,15 +92,16 @@ export const InvoiceTemplate = forwardRef<HTMLDivElement, InvoiceTemplateProps>(
                     <div className="grid grid-cols-2 gap-6 mb-4">
                         <div>
                             <h3 className="text-[10px] font-bold mb-1.5 uppercase text-gray-500 tracking-wider">Emitido por:</h3>
-                            {/* Priority: Settings (Tenant) > Emitter (Invoice Specific) */}
-                            <p className="font-bold text-base text-gray-900">{settings?.company_name || settings?.agency_name || invoice.emitter?.legal_name}</p>
+                            {/* Priority: Emitter (Invoice Specific) > Settings (Tenant) for Legal Info ONLY */}
+                            <p className="font-bold text-base text-gray-900">{invoice.emitter?.legal_name || invoice.emitter?.display_name || settings?.company_name || settings?.agency_name}</p>
 
-                            {(settings?.company_nit || invoice.emitter?.identification_number) &&
-                                <p className="text-sm text-gray-700">NIT: {settings?.company_nit || invoice.emitter?.identification_number}</p>
+                            {(invoice.emitter?.identification_number || settings?.company_nit) &&
+                                <p className="text-sm text-gray-700">NIT: {invoice.emitter?.identification_number || settings?.company_nit}</p>
                             }
 
-                            {(settings?.company_address || invoice.emitter?.address) &&
-                                <p className="text-sm text-gray-700">{settings?.company_address || invoice.emitter?.address}</p>
+                            {/* Contact Priority: Settings > Emitter  (As requested by user) */}
+                            {(settings?.company_address || settings?.agency_address || invoice.emitter?.address) &&
+                                <p className="text-sm text-gray-700">{settings?.company_address || settings?.agency_address || invoice.emitter?.address}</p>
                             }
 
                             {(settings?.company_email || settings?.agency_email || invoice.emitter?.email) &&
@@ -111,8 +112,9 @@ export const InvoiceTemplate = forwardRef<HTMLDivElement, InvoiceTemplateProps>(
                                 <p className="text-sm font-semibold text-gray-900 mt-1">Cel: {settings?.company_phone || settings?.agency_phone || invoice.emitter?.phone}</p>
                             }
 
-                            {(settings?.agency_website) &&
-                                <p className="text-sm text-gray-700 mt-0.5">{settings.agency_website}</p>
+                            {/* Siempre forzar que la web provenga del ADN si existe */}
+                            {(settings?.agency_website || settings?.website) &&
+                                <p className="text-sm text-gray-700 mt-0.5">{settings.agency_website || settings.website}</p>
                             }
                         </div>
                         <div>
