@@ -18,11 +18,27 @@ export const PORTAL_TEMPLATES: Record<string, React.ComponentType<any>> = {
 };
 
 /**
- * Función Helper para obtener la plantilla de forma segura
+ * Función Helper para obtener la plantilla del Dashboard de Administración
  */
-export function getPortalTemplate(templateKey: string | null | undefined): React.ComponentType<any> {
+export function getDashboardTemplate(templateKey: string | null | undefined): React.ComponentType<any> {
+    const defaultTemplate = PORTAL_TEMPLATES['b2b_dashboard'];
+
+    if (!templateKey) return defaultTemplate;
+
+    // Si la Organización tiene asignado el portal PWA de restaurantes, 
+    // el panel de control administrativo seguirá siendo el dashboard clásico por ahora.
+    if (templateKey === 'b2c_commerce') {
+        return defaultTemplate;
+    }
+
+    return PORTAL_TEMPLATES[templateKey] || defaultTemplate;
+}
+
+/**
+ * Función Helper para obtener la plantilla del Portal Público (Cliente/Consumidor)
+ */
+export function getPublicPortalTemplate(templateKey: string | null | undefined): React.ComponentType<any> {
     if (!templateKey || !PORTAL_TEMPLATES[templateKey]) {
-        console.warn(`[PortalRegistry] No template found for key: ${templateKey}. Falling back to b2b_dashboard.`);
         return PORTAL_TEMPLATES['b2b_dashboard'];
     }
 

@@ -1,4 +1,4 @@
-import { getPortalTemplate } from "@/components/portals/portal-registry"
+import { getDashboardTemplate } from "@/components/portals/portal-registry"
 import { createClient } from "@/lib/supabase-server"
 import { redirect } from "next/navigation"
 import { getCurrentOrganizationId, getCurrentOrgDetails } from "@/modules/core/organizations/actions"
@@ -50,7 +50,7 @@ export default async function DashboardLayout({
     }
 
     // 4. Instanciar la plantilla dinámicamente
-    const PortalLayoutComponent = getPortalTemplate(portalTemplateKey)
+    const PortalLayoutComponent = getDashboardTemplate(portalTemplateKey)
 
     // Determine Language & Load Dictionary (Default to 'es')
     const locale = (settings?.default_language as Locale) || 'es'

@@ -6,7 +6,7 @@ import { getPortalData, acceptQuote, rejectQuote } from "@/modules/core/portal/a
 import { Client, Invoice, Quote, Briefing, ClientEvent, Service } from "@/types"
 import { Loader2, AlertTriangle, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { PortalLayout } from "@/modules/core/portal/portal-layout"
+import { getPublicPortalTemplate } from "@/components/portals/portal-registry"
 import { WorkerPortalLayout } from "@/modules/core/portal/worker-portal-layout"
 import { QuoteDetailModal } from "@/modules/core/portal/quote-detail-modal"
 import { PaymentOptionsModal } from "@/modules/core/portal/payment-options-modal"
@@ -239,9 +239,16 @@ export default function PortalPage() {
         .filter(i => paymentInvoiceIds.includes(i.id))
         .reduce((acc, curr) => acc + curr.total, 0)
 
+    // Determinar la plantilla pública
+    // Por el momento tomamos el template directamente de settings si lo exponen allí 
+    // O asumimos b2b_dashboard si no viene. Modificaremos API / portalData si settings no lo tiene.
+    // Vamos a usar el default router (getPublicPortalTemplate)
+    const portalConfig = settings.portal_template || 'b2b_dashboard'
+    const PortalLayoutComponent = getPublicPortalTemplate(portalConfig)
+
     return (
         <div className="min-h-screen" style={brandingStyles}>
-            <PortalLayout
+            <PortalLayoutComponent
                 token={params.token as string}
                 client={client}
                 invoices={invoices}
@@ -256,6 +263,12 @@ export default function PortalPage() {
                 onViewInvoice={setViewInvoice}
                 onViewQuote={setViewQuote}
                 insightsAccess={insightsAccess} // NEW
+
+                // Props adiciones esperadas por RestoLayout
+                user={client}
+                currentOrgId={client?.organization_id || ""}
+                isAdmin={false}
+                orgData={{ name: client?.organization?.name || "Restaurante" }}
             />
 
             {/* Payment Options Modal */}

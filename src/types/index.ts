@@ -7,6 +7,8 @@ export type Client = {
     id: string
     created_at: string
     user_id: string
+    organization_id: string
+    organization?: any
     name: string
     company_name?: string
     nit?: string
