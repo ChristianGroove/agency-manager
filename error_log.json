@@ -1,0 +1,9 @@
+{
+  "error": {
+    "code": "PGRST204",
+    "details": null,
+    "hint": null,
+    "message": "Could not find the 'type' column of 'clients' in the schema cache"
+  },
+  "data": null
+}

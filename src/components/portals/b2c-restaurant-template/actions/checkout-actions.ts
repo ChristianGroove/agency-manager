@@ -47,8 +47,7 @@ export async function dispatchRestoOrder(payload: CheckoutPayload) {
                 .insert({
                     organization_id: payload.orgId,
                     name: payload.customerName,
-                    phone: payload.customerPhone,
-                    type: 'lead'
+                    phone: payload.customerPhone
                 })
                 .select()
                 .single()
