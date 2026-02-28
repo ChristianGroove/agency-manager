@@ -1,6 +1,6 @@
 "use server"
 
-import { createClient } from "@/lib/supabase-server"
+import { supabaseAdmin } from "@/lib/supabase-admin"
 import { CartItem } from "@/hooks/use-resto-cart"
 
 export interface CheckoutPayload {
@@ -14,7 +14,7 @@ export interface CheckoutPayload {
 }
 
 export async function dispatchRestoOrder(payload: CheckoutPayload) {
-    const supabase = await createClient()
+    const supabase = supabaseAdmin
 
     try {
         // En un caso real, buscaríamos la conexión activa de WhatsApp del restaurante 

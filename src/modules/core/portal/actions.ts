@@ -45,6 +45,13 @@ export async function getPortalData(token: string) {
                 .eq('organization_id', client.organization_id)
                 .single()
 
+            // Fetch Organization details to get active_app_id
+            const { data: orgData } = await supabaseAdmin
+                .from('organizations')
+                .select('active_app_id')
+                .eq('id', client.organization_id)
+                .single()
+
             // Fetch Effective Branding (White Label Awareness)
             const branding = await getEffectiveBranding(client.organization_id)
 
@@ -52,12 +59,9 @@ export async function getPortalData(token: string) {
             const settings = {
                 ...(rawSettings || {}),
                 agency_name: branding.name,
-                // Fix: Prefer Secondary (Light) logo for Portal (White Sidebar), then Main, then specific Portal logo
                 portal_logo_url: branding.logos.main_light || branding.logos.main || branding.logos.portal,
                 isotipo_url: branding.logos.favicon,
                 portal_login_background_url: branding.logos.login_bg,
-                // Map colors if used by portal (portal-layout.tsx might use inline styles or css vars, checking...)
-                // Current portal-layout doesn't seem to use colors explicitly in the lines I saw, but let's map them for consistency
                 portal_primary_color: branding.colors.primary,
                 portal_secondary_color: branding.colors.secondary
             }
@@ -74,24 +78,15 @@ export async function getPortalData(token: string) {
                 { data: appPortalConfig },
                 { data: appData } // NEW: Fetch app portal config
             ] = await Promise.all([
-                // Invoices: Filter out cancelled and deleted
                 supabaseAdmin.from('invoices').select('*').eq('client_id', client.id).is('deleted_at', null).neq('status', 'cancelled').order('created_at', { ascending: false }),
-                // Quotes: Add deleted_at filter
                 supabaseAdmin.from('quotes').select('*').eq('client_id', client.id).is('deleted_at', null).order('created_at', { ascending: false }),
-                // Briefings: Add deleted_at filter + organization_id for multi-tenant isolation
                 supabaseAdmin.from('briefings').select('*, template:briefing_templates(name)').eq('client_id', client.id).eq('organization_id', client.organization_id).is('deleted_at', null).order('created_at', { ascending: false }),
-                // Events: Add deleted_at filter
                 supabaseAdmin.from('client_events').select('*').eq('client_id', client.id).order('created_at', { ascending: false }),
-                // Services: Add deleted_at filter
                 supabaseAdmin.from('services').select('*').eq('client_id', client.id).eq('status', 'active').is('deleted_at', null).order('created_at', { ascending: false }),
-                // Hosting: Fetch active accounts
                 supabaseAdmin.from('hosting_accounts').select('*').eq('client_id', client.id).eq('status', 'active').order('created_at', { ascending: false }),
-                // Payment Methods: Active only (for manual transfers etc)
                 supabaseAdmin.from('organization_payment_methods').select('*').eq('organization_id', client.organization_id).eq('is_active', true).order('display_order', { ascending: true }),
-                // Portal Modules Config: From app-based configuration (V2 Multivertical)
-                supabaseAdmin.from('saas_apps_portal_config').select('*').eq('app_id', rawSettings?.active_app_id || '').eq('is_enabled', true).eq('target_portal', 'client').order('display_order', { ascending: true }),
-                // App Config: Portal Template
-                supabaseAdmin.from('saas_apps').select('portal_template').eq('id', rawSettings?.active_app_id || '').single()
+                supabaseAdmin.from('saas_apps_portal_config').select('*').eq('app_id', orgData?.active_app_id || '').eq('is_enabled', true).eq('target_portal', 'client').order('display_order', { ascending: true }),
+                supabaseAdmin.from('saas_apps').select('portal_template').eq('id', orgData?.active_app_id || '').single()
             ])
 
             // Inject the Template Key
