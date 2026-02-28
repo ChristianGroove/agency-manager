@@ -74,9 +74,10 @@ interface ClientsViewProps {
     currentPage: number
     currentSearch: string
     currentFilter: string
+    spaceType?: string
 }
 
-export function ClientsView({ initialData, initialSettings, currentPage, currentSearch, currentFilter }: ClientsViewProps) {
+export function ClientsView({ initialData, initialSettings, currentPage, currentSearch, currentFilter, spaceType = 'agency-workspace' }: ClientsViewProps) {
     const { t } = useTranslation()
     const router = useRouter()
     const searchParamsOrigin = useSearchParams()
@@ -398,8 +399,11 @@ export function ClientsView({ initialData, initialSettings, currentPage, current
                                 filteredClients.map((client: any) => {
                                     const { debt, futureDebt, nextPayment, daysToPay, activeServicesCount } = client
 
-                                    const isOverdue = daysToPay !== null && daysToPay < 0 && debt > 0
-                                    const isUrgent = daysToPay !== null && (
+                                    const isAgency = spaceType === 'agency-workspace'
+                                    const isResto = spaceType === 'resto-workspace'
+
+                                    const isOverdue = isAgency && daysToPay !== null && daysToPay < 0 && debt > 0
+                                    const isUrgent = isAgency && daysToPay !== null && (
                                         (daysToPay <= 5 && daysToPay >= 0) ||
                                         (daysToPay < 0 && debt === 0)
                                     )
@@ -428,13 +432,17 @@ export function ClientsView({ initialData, initialSettings, currentPage, current
                                                             <DropdownMenuContent align="end" className="w-56">
                                                                 <DropdownMenuLabel>{t('clients.actions.administration')}</DropdownMenuLabel>
                                                                 <DropdownMenuSeparator />
-                                                                <DropdownMenuItem onClick={() => { setClientForConnectivity(client); setConnectivityOpen(true); }}>
-                                                                    <Wifi className="mr-2 h-4 w-4" /> {t('clients.actions.connectivity')}
-                                                                </DropdownMenuItem>
-                                                                <DropdownMenuItem onClick={() => { setClientForPortal(client); setPortalOpen(true); }}>
-                                                                    <Shield className="mr-2 h-4 w-4" /> {t('clients.actions.portal_governance')}
-                                                                </DropdownMenuItem>
-                                                                <DropdownMenuSeparator />
+                                                                {isAgency && (
+                                                                    <>
+                                                                        <DropdownMenuItem onClick={() => { setClientForConnectivity(client); setConnectivityOpen(true); }}>
+                                                                            <Wifi className="mr-2 h-4 w-4" /> {t('clients.actions.connectivity')}
+                                                                        </DropdownMenuItem>
+                                                                        <DropdownMenuItem onClick={() => { setClientForPortal(client); setPortalOpen(true); }}>
+                                                                            <Shield className="mr-2 h-4 w-4" /> {t('clients.actions.portal_governance')}
+                                                                        </DropdownMenuItem>
+                                                                        <DropdownMenuSeparator />
+                                                                    </>
+                                                                )}
                                                                 <DropdownMenuItem
                                                                     className="text-red-600 focus:text-red-600 focus:bg-red-50"
                                                                     onClick={() => handleSingleDelete(client.id)}
@@ -476,7 +484,7 @@ export function ClientsView({ initialData, initialSettings, currentPage, current
 
                                                 <CardContent className={cn("px-5 space-y-3 flex-1", "pb-5")}>
                                                     {/* Status Block - Full Width & Single Line */}
-                                                    {!isCompactView && (
+                                                    {!isCompactView && isAgency && (
                                                         <div className={cn(
                                                             "w-full px-4 py-3 rounded-lg border transition-colors flex items-center shadow-sm",
                                                             debt > 0
@@ -516,7 +524,7 @@ export function ClientsView({ initialData, initialSettings, currentPage, current
                                                     )}
 
                                                     {/* Next Payment Section */}
-                                                    {!isCompactView && (
+                                                    {!isCompactView && isAgency && (
                                                         nextPayment ? (
                                                             <div className={cn(
                                                                 "p-3 rounded-lg border transition-all h-[74px] flex flex-col justify-center",
@@ -570,6 +578,20 @@ export function ClientsView({ initialData, initialSettings, currentPage, current
                                                             </div>
                                                         )
                                                     )}
+
+                                                    {/* Resto/Commerce Section */}
+                                                    {!isCompactView && !isAgency && (
+                                                        <div className="p-4 rounded-lg border border-gray-100 bg-gray-50/50 flex flex-col justify-center gap-2">
+                                                            <div className="flex items-center justify-between">
+                                                                <span className="text-xs font-semibold text-gray-500 uppercase">Visitas</span>
+                                                                <span className="text-sm font-bold text-gray-900">{client.activeServicesCount || 0}</span>
+                                                            </div>
+                                                            <div className="flex items-center justify-between">
+                                                                <span className="text-xs font-semibold text-gray-500 uppercase">LTV (Gasto)</span>
+                                                                <span className="text-sm font-bold text-gray-900">${(client.debt || 0).toLocaleString()}</span>
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </CardContent>
 
                                                 {/* Action Buttons - Modernized */}
@@ -588,19 +610,21 @@ export function ClientsView({ initialData, initialSettings, currentPage, current
                                                             <Phone className="h-4 w-4" />
                                                         </Button>
 
-                                                        {/* Quick Documents (Invoices) */}
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="h-8 w-8 rounded-full bg-gray-50 text-gray-400 hover:bg-white hover:text-blue-600 hover:shadow-md hover:-translate-y-0.5 hover:ring-1 hover:ring-blue-100 transition-all duration-300"
-                                                            title={t('clients.actions.quick_docs')}
-                                                            onClick={() => handleOpenInvoices(client)}
-                                                        >
-                                                            <FileText className="h-4 w-4" />
-                                                        </Button>
+                                                        {/* Quick Documents (Invoices) - Agency Only */}
+                                                        {isAgency && (
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-8 w-8 rounded-full bg-gray-50 text-gray-400 hover:bg-white hover:text-blue-600 hover:shadow-md hover:-translate-y-0.5 hover:ring-1 hover:ring-blue-100 transition-all duration-300"
+                                                                title={t('clients.actions.quick_docs')}
+                                                                onClick={() => handleOpenInvoices(client)}
+                                                            >
+                                                                <FileText className="h-4 w-4" />
+                                                            </Button>
+                                                        )}
 
-                                                        {/* Portal Actions */}
-                                                        {(client.portal_short_token || client.portal_token) && (
+                                                        {/* Portal Actions - Agency Only */}
+                                                        {isAgency && (client.portal_short_token || client.portal_token) && (
                                                             <>
                                                                 <Button
                                                                     variant="ghost"
@@ -657,9 +681,18 @@ export function ClientsView({ initialData, initialSettings, currentPage, current
                                                 />
                                             </TableHead>
                                             <TableHead>{t('clients.table.contact')}</TableHead>
-                                            <TableHead className="w-[150px]">{t('clients.table.status')}</TableHead>
-                                            <TableHead className="w-[150px]">{t('clients.table.services')}</TableHead>
-                                            <TableHead className="w-[180px]">{t('clients.table.next_payment')}</TableHead>
+                                            {spaceType === 'agency-workspace' ? (
+                                                <>
+                                                    <TableHead className="w-[150px]">{t('clients.table.status')}</TableHead>
+                                                    <TableHead className="w-[150px]">{t('clients.table.services')}</TableHead>
+                                                    <TableHead className="w-[180px]">{t('clients.table.next_payment')}</TableHead>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <TableHead className="w-[150px]">Visitas</TableHead>
+                                                    <TableHead className="w-[150px]">Gasto Total</TableHead>
+                                                </>
+                                            )}
                                             <TableHead className="text-right w-[100px]">{t('clients.table.actions')}</TableHead>
                                         </TableRow>
                                     </TableHeader>
@@ -685,7 +718,8 @@ export function ClientsView({ initialData, initialSettings, currentPage, current
                                         ) : (
                                             filteredClients.map((client: any) => {
                                                 const { debt, futureDebt, nextPayment, daysToPay, activeServicesCount } = client
-                                                const isOverdue = daysToPay !== null && daysToPay < 0 && debt > 0
+                                                const isAgency = spaceType === 'agency-workspace'
+                                                const isOverdue = isAgency && daysToPay !== null && daysToPay < 0 && debt > 0
 
                                                 return (
                                                     <TableRow key={client.id} className="group hover:bg-gray-50/50 dark:hover:bg-white/5 border-gray-100 dark:border-white/10">
@@ -717,46 +751,59 @@ export function ClientsView({ initialData, initialSettings, currentPage, current
                                                                 </div>
                                                             </div>
                                                         </TableCell>
-                                                        <TableCell className="w-[120px]">
-                                                            <div className="flex">
-                                                                <Badge variant="outline" className={cn(
-                                                                    "border-0 px-2 py-0.5 h-6 whitespace-nowrap",
-                                                                    debt > 0 ? "bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20"
-                                                                        : futureDebt > 0 ? "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/20"
-                                                                            : "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20"
-                                                                )}>
-                                                                    {debt > 0 ? t('clients.status.overdue') : futureDebt > 0 ? t('clients.status.urgent') : t('clients.status.active')}
-                                                                </Badge>
-                                                                {(debt > 0 || futureDebt > 0) && (
-                                                                    <span className={cn(
-                                                                        "ml-2 text-xs font-semibold self-center",
-                                                                        debt > 0 ? "text-red-700" : "text-amber-700"
-                                                                    )}>
-                                                                        ${(debt || futureDebt).toLocaleString()}
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                        </TableCell>
-                                                        <TableCell className="w-[120px]">
-                                                            <div className="flex items-center gap-1.5 text-sm text-gray-600">
-                                                                <CreditCard className="h-4 w-4 text-gray-400" />
-                                                                {t('clients.table.active_services').replace('{count}', activeServicesCount.toString())}
-                                                            </div>
-                                                        </TableCell>
-                                                        <TableCell className="w-[180px]">
-                                                            {nextPayment ? (
-                                                                <div className="flex flex-col text-sm">
-                                                                    <span className="text-gray-900 dark:text-white font-medium">
-                                                                        {new Date(nextPayment.date).toLocaleDateString()}
-                                                                    </span>
-                                                                    <span className="text-xs text-gray-500 truncate max-w-[140px]">
-                                                                        {nextPayment.source}
-                                                                    </span>
-                                                                </div>
-                                                            ) : (
-                                                                <span className="text-xs text-gray-400 italic">--</span>
-                                                            )}
-                                                        </TableCell>
+                                                        {isAgency ? (
+                                                            <>
+                                                                <TableCell className="w-[120px]">
+                                                                    <div className="flex">
+                                                                        <Badge variant="outline" className={cn(
+                                                                            "border-0 px-2 py-0.5 h-6 whitespace-nowrap",
+                                                                            debt > 0 ? "bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20"
+                                                                                : futureDebt > 0 ? "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/20"
+                                                                                    : "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20"
+                                                                        )}>
+                                                                            {debt > 0 ? t('clients.status.overdue') : futureDebt > 0 ? t('clients.status.urgent') : t('clients.status.active')}
+                                                                        </Badge>
+                                                                        {(debt > 0 || futureDebt > 0) && (
+                                                                            <span className={cn(
+                                                                                "ml-2 text-xs font-semibold self-center",
+                                                                                debt > 0 ? "text-red-700" : "text-amber-700"
+                                                                            )}>
+                                                                                ${(debt || futureDebt).toLocaleString()}
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                </TableCell>
+                                                                <TableCell className="w-[120px]">
+                                                                    <div className="flex items-center gap-1.5 text-sm text-gray-600">
+                                                                        <CreditCard className="h-4 w-4 text-gray-400" />
+                                                                        {t('clients.table.active_services').replace('{count}', activeServicesCount.toString())}
+                                                                    </div>
+                                                                </TableCell>
+                                                                <TableCell className="w-[180px]">
+                                                                    {nextPayment ? (
+                                                                        <div className="flex flex-col text-sm">
+                                                                            <span className="text-gray-900 dark:text-white font-medium">
+                                                                                {new Date(nextPayment.date).toLocaleDateString()}
+                                                                            </span>
+                                                                            <span className="text-xs text-gray-500 truncate max-w-[140px]">
+                                                                                {nextPayment.source}
+                                                                            </span>
+                                                                        </div>
+                                                                    ) : (
+                                                                        <span className="text-xs text-gray-400 italic">--</span>
+                                                                    )}
+                                                                </TableCell>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <TableCell className="w-[150px]">
+                                                                    <span className="text-sm font-medium">{activeServicesCount || 0}</span>
+                                                                </TableCell>
+                                                                <TableCell className="w-[150px]">
+                                                                    <span className="text-sm font-medium text-emerald-600">${(debt || 0).toLocaleString()}</span>
+                                                                </TableCell>
+                                                            </>
+                                                        )}
                                                         <TableCell className="text-right w-[100px]">
                                                             <div className="flex items-center justify-end gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
 
@@ -923,6 +970,7 @@ export function ClientsView({ initialData, initialSettings, currentPage, current
                 onOpenChange={setManagementOpen}
                 initialData={selectedClientForManagement || undefined}
                 initialTab={managementInitialTab}
+                spaceType={spaceType}
             />
 
             {clientForConnectivity && (

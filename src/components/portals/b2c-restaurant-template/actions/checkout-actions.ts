@@ -39,15 +39,31 @@ export async function dispatchRestoOrder(payload: CheckoutPayload) {
             .eq('phone', payload.customerPhone)
             .single()
 
+        // Buscar un usuario dueño de la organización para asignarle este contacto/lead
+        const { data: orgMember } = await supabase
+            .from('organization_members')
+            .select('user_id')
+            .eq('organization_id', payload.orgId)
+            .limit(1)
+            .single()
+
+        const fallbackUserId = orgMember?.user_id
+
         if (existingClient) {
             clientIdToUse = existingClient.id
+            // Actualizar nombre en caso de que el cliente (dueño del teléfono) haya proveído uno nuevo en esta compra
+            await supabase
+                .from('clients')
+                .update({ name: payload.customerName })
+                .eq('id', clientIdToUse)
         } else {
             const { data: newClient, error: clientError } = await supabase
                 .from('clients')
                 .insert({
                     organization_id: payload.orgId,
                     name: payload.customerName,
-                    phone: payload.customerPhone
+                    phone: payload.customerPhone,
+                    user_id: fallbackUserId
                 })
                 .select()
                 .single()
@@ -60,17 +76,26 @@ export async function dispatchRestoOrder(payload: CheckoutPayload) {
         }
 
         // 2. Crear o Buscar Conversación Abierta
-        const connId = connection ? connection.id : `virtual-resto-portal-${payload.orgId}`
+        const connId = connection?.id || null
 
         let conversationId = null
-        const { data: activeConv } = await supabase
+
+        // Build query carefully since eq() with null can be tricky, 
+        // but Supabase usually handles eq(null) as IS NULL or we can use match.
+        const query = supabase
             .from('conversations')
             .select('id')
             .eq('organization_id', payload.orgId)
             .eq('client_id', clientIdToUse)
-            .eq('connection_id', connId)
             .eq('status', 'open')
-            .single()
+
+        if (connId) {
+            query.eq('connection_id', connId)
+        } else {
+            query.is('connection_id', null)
+        }
+
+        const { data: activeConv } = await query.single()
 
         if (activeConv) {
             conversationId = activeConv.id
@@ -81,14 +106,17 @@ export async function dispatchRestoOrder(payload: CheckoutPayload) {
                     organization_id: payload.orgId,
                     connection_id: connId,
                     client_id: clientIdToUse,
-                    platform: connection ? connection.platform : 'portal',
+                    channel: connection ? connection.platform : 'whatsapp',
                     status: 'open',
                     unread_count: 1
                 })
                 .select()
                 .single()
 
-            if (convError) throw new Error("Error creando conversación")
+            if (convError) {
+                console.error("Detalle Error Creando Conversación:", convError)
+                throw new Error("Error creando conversación")
+            }
             conversationId = newConv.id
         }
 
@@ -106,10 +134,11 @@ export async function dispatchRestoOrder(payload: CheckoutPayload) {
         const { error: msgError } = await supabase
             .from('messages')
             .insert({
+                organization_id: payload.orgId,
                 conversation_id: conversationId,
                 direction: 'inbound',
                 content: `🛍️ Nuevo Pedido por $${payload.total}\n\nCliente: ${payload.customerName}\nDirección: ${payload.deliveryAddress}\n\nRevisar detalles en Pixy CRM.`,
-                content_type: 'text',
+                channel: connection ? connection.platform : 'whatsapp',
                 metadata: orderData, // <-- La Magia Real está aquí
                 status: 'delivered'
             })

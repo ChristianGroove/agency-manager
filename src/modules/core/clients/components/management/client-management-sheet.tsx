@@ -43,9 +43,10 @@ interface ClientManagementSheetProps {
     onOpenChange: (open: boolean) => void
     initialData?: Client
     initialTab?: string
+    spaceType?: string
 }
 
-export function ClientManagementSheet({ clientId, open, onOpenChange, initialData, initialTab = "overview" }: ClientManagementSheetProps) {
+export function ClientManagementSheet({ clientId, open, onOpenChange, initialData, initialTab = "overview", spaceType = "agency-workspace" }: ClientManagementSheetProps) {
     const { t } = useTranslation()
     const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -372,15 +373,24 @@ export function ClientManagementSheet({ clientId, open, onOpenChange, initialDat
                                     <TabsTrigger value="activity" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-indigo-600 data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 rounded-none px-0 pb-3 pt-2 text-gray-500 font-medium text-sm transition-all">
                                         <CalendarClock className="h-4 w-4 mr-2" /> Actividad
                                     </TabsTrigger>
-                                    <TabsTrigger value="services" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-indigo-600 data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 rounded-none px-0 pb-3 pt-2 text-gray-500 font-medium text-sm transition-all">
-                                        <Server className="h-4 w-4 mr-2" /> Servicios
-                                    </TabsTrigger>
-                                    <TabsTrigger value="billing" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-indigo-600 data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 rounded-none px-0 pb-3 pt-2 text-gray-500 font-medium text-sm transition-all">
-                                        <FileText className="h-4 w-4 mr-2" /> Facturación
-                                    </TabsTrigger>
-                                    <TabsTrigger value="hosting" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-indigo-600 data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 rounded-none px-0 pb-3 pt-2 text-gray-500 font-medium text-sm transition-all">
-                                        <Globe className="h-4 w-4 mr-2" /> Hosting
-                                    </TabsTrigger>
+                                    {spaceType === 'agency-workspace' && (
+                                        <>
+                                            <TabsTrigger value="services" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-indigo-600 data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 rounded-none px-0 pb-3 pt-2 text-gray-500 font-medium text-sm transition-all">
+                                                <Server className="h-4 w-4 mr-2" /> Servicios
+                                            </TabsTrigger>
+                                            <TabsTrigger value="billing" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-indigo-600 data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 rounded-none px-0 pb-3 pt-2 text-gray-500 font-medium text-sm transition-all">
+                                                <FileText className="h-4 w-4 mr-2" /> Facturación
+                                            </TabsTrigger>
+                                            <TabsTrigger value="hosting" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-indigo-600 data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 rounded-none px-0 pb-3 pt-2 text-gray-500 font-medium text-sm transition-all">
+                                                <Globe className="h-4 w-4 mr-2" /> Hosting
+                                            </TabsTrigger>
+                                        </>
+                                    )}
+                                    {spaceType === 'resto-workspace' && (
+                                        <TabsTrigger value="orders" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-indigo-600 data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 rounded-none px-0 pb-3 pt-2 text-gray-500 font-medium text-sm transition-all">
+                                            <FileText className="h-4 w-4 mr-2" /> Pedidos
+                                        </TabsTrigger>
+                                    )}
                                 </TabsList>
                             </div>
 
@@ -480,37 +490,39 @@ export function ClientManagementSheet({ clientId, open, onOpenChange, initialDat
                                             </div>
                                         </div>
 
-                                        <div className="md:col-span-2 pt-4 border-t border-gray-50 space-y-6">
-                                            <h4 className="text-sm font-bold text-indigo-600 uppercase tracking-widest flex items-center gap-2">
-                                                <Globe className="h-4 w-4" /> Presencia Digital
-                                            </h4>
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                                <div className="space-y-2">
-                                                    <Label className="text-xs font-bold text-gray-500">Website</Label>
-                                                    <Input className="bg-gray-50/50 h-10" value={editForm.website} onChange={(e) => setEditForm({ ...editForm, website: e.target.value })} />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <Label className="text-xs font-bold text-gray-500">Instagram</Label>
-                                                    <Input className="bg-gray-50/50 h-10" value={editForm.instagram} onChange={(e) => setEditForm({ ...editForm, instagram: e.target.value })} />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <Label className="text-xs font-bold text-gray-500">Facebook</Label>
-                                                    <Input className="bg-gray-50/50 h-10" value={editForm.facebook} onChange={(e) => setEditForm({ ...editForm, facebook: e.target.value })} />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <Label className="text-xs font-bold text-gray-500">TikTok</Label>
-                                                    <Input className="bg-gray-50/50 h-10" value={editForm.tiktok} onChange={(e) => setEditForm({ ...editForm, tiktok: e.target.value })} />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <Label className="text-xs font-bold text-gray-500">LinkedIn</Label>
-                                                    <Input className="bg-gray-50/50 h-10" value={editForm.linkedin} onChange={(e) => setEditForm({ ...editForm, linkedin: e.target.value })} />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <Label className="text-xs font-bold text-gray-500">YouTube</Label>
-                                                    <Input className="bg-gray-50/50 h-10" value={editForm.youtube} onChange={(e) => setEditForm({ ...editForm, youtube: e.target.value })} />
+                                        {spaceType === 'agency-workspace' && (
+                                            <div className="md:col-span-2 pt-4 border-t border-gray-50 space-y-6">
+                                                <h4 className="text-sm font-bold text-indigo-600 uppercase tracking-widest flex items-center gap-2">
+                                                    <Globe className="h-4 w-4" /> Presencia Digital
+                                                </h4>
+                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                                    <div className="space-y-2">
+                                                        <Label className="text-xs font-bold text-gray-500">Website</Label>
+                                                        <Input className="bg-gray-50/50 h-10" value={editForm.website} onChange={(e) => setEditForm({ ...editForm, website: e.target.value })} />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label className="text-xs font-bold text-gray-500">Instagram</Label>
+                                                        <Input className="bg-gray-50/50 h-10" value={editForm.instagram} onChange={(e) => setEditForm({ ...editForm, instagram: e.target.value })} />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label className="text-xs font-bold text-gray-500">Facebook</Label>
+                                                        <Input className="bg-gray-50/50 h-10" value={editForm.facebook} onChange={(e) => setEditForm({ ...editForm, facebook: e.target.value })} />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label className="text-xs font-bold text-gray-500">TikTok</Label>
+                                                        <Input className="bg-gray-50/50 h-10" value={editForm.tiktok} onChange={(e) => setEditForm({ ...editForm, tiktok: e.target.value })} />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label className="text-xs font-bold text-gray-500">LinkedIn</Label>
+                                                        <Input className="bg-gray-50/50 h-10" value={editForm.linkedin} onChange={(e) => setEditForm({ ...editForm, linkedin: e.target.value })} />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label className="text-xs font-bold text-gray-500">YouTube</Label>
+                                                        <Input className="bg-gray-50/50 h-10" value={editForm.youtube} onChange={(e) => setEditForm({ ...editForm, youtube: e.target.value })} />
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
+                                        )}
                                     </div>
                                 </TabsContent>
 
@@ -590,6 +602,27 @@ export function ClientManagementSheet({ clientId, open, onOpenChange, initialDat
                                     </div>
                                 </TabsContent>
 
+                                {/* TAB 5: ORDERS (RESTO) */}
+                                {spaceType === 'resto-workspace' && (
+                                    <TabsContent value="orders" className="space-y-6 m-0 animate-in fade-in-50">
+                                        <div className="flex justify-between items-center">
+                                            <div>
+                                                <h3 className="font-bold text-gray-900">Historial de Pedidos</h3>
+                                                <p className="text-sm text-gray-500">Consulta los pedidos realizados por este cliente.</p>
+                                            </div>
+                                        </div>
+                                        <div className="bg-white rounded-xl border border-gray-100 p-8 text-center shadow-sm">
+                                            <div className="mx-auto w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mb-3">
+                                                <FileText className="h-6 w-6 text-gray-400" />
+                                            </div>
+                                            <h4 className="text-sm font-semibold text-gray-900">Gestión de Pedidos en Desarrollo</h4>
+                                            <p className="text-xs text-gray-500 mt-1 max-w-sm mx-auto">
+                                                El historial detallado de consumos, LTV, y productos favoritos del cliente para comercio estará conectado aquí.
+                                            </p>
+                                        </div>
+                                    </TabsContent>
+                                )}
+
                             </div>
                         </Tabs>
 
@@ -651,66 +684,68 @@ export function ClientManagementSheet({ clientId, open, onOpenChange, initialDat
                 </div>
 
                 {/* --- ACTION SHEETS --- */}
-                {client && (
-                    <>
-                        <CreateServiceSheet
-                            clientId={client.id}
-                            clientName={client.name}
-                            open={isServiceSheetOpen}
-                            onOpenChange={setIsServiceSheetOpen}
-                            serviceToEdit={serviceToEdit}
-                            onSuccess={fetchClientData}
-                            trigger={<span className="hidden" />}
-                        />
-                        <CreateInvoiceSheet
-                            clientId={client.id}
-                            clientName={client.name}
-                            open={isInvoiceSheetOpen}
-                            onOpenChange={setIsInvoiceSheetOpen}
-                            onSuccess={fetchClientData}
-                            trigger={<span className="hidden" />}
-                        />
-                        <CreateHostingSheet
-                            clientId={client.id}
-                            open={isHostingSheetOpen}
-                            onOpenChange={setIsHostingSheetOpen}
-                            accountToEdit={hostingToEdit}
-                            onSuccess={fetchClientData}
-                        />
-                        <ServiceDetailModal
-                            isOpen={isServiceDetailOpen}
-                            onOpenChange={setIsServiceDetailOpen}
-                            service={selectedService}
-                        />
-                        <UnifiedCommunicationModal
-                            isOpen={isCommunicationModalOpen}
-                            onOpenChange={setIsCommunicationModalOpen}
-                            client={{
-                                id: client.id,
-                                name: client.name,
-                                email: client.email || undefined,
-                                phone: client.phone || undefined,
-                                company_name: client.company_name || undefined,
-                                invoices: client.invoices,
-                                quotes: client.quotes,
-                                portal_token: client.portal_token,
-                                portal_short_token: client.portal_short_token
-                            }}
-                            context={communicationContext}
-                            settings={settings}
-                        />
-                        <NotesModal
-                            clientId={client.id}
-                            initialNotes={client.notes || ""}
-                            isOpen={isNotesOpen}
-                            onClose={() => setIsNotesOpen(false)}
-                            onSuccess={(newNotes) => {
-                                setClient({ ...client, notes: newNotes })
-                            }}
-                        />
-                    </>
-                )}
-            </SheetContent>
-        </Sheet>
+                {
+                    client && (
+                        <>
+                            <CreateServiceSheet
+                                clientId={client!.id}
+                                clientName={client!.name}
+                                open={isServiceSheetOpen}
+                                onOpenChange={setIsServiceSheetOpen}
+                                serviceToEdit={serviceToEdit}
+                                onSuccess={fetchClientData}
+                                trigger={<span className="hidden" />}
+                            />
+                            <CreateInvoiceSheet
+                                clientId={client!.id}
+                                clientName={client!.name}
+                                open={isInvoiceSheetOpen}
+                                onOpenChange={setIsInvoiceSheetOpen}
+                                onSuccess={fetchClientData}
+                                trigger={<span className="hidden" />}
+                            />
+                            <CreateHostingSheet
+                                clientId={client!.id}
+                                open={isHostingSheetOpen}
+                                onOpenChange={setIsHostingSheetOpen}
+                                accountToEdit={hostingToEdit}
+                                onSuccess={fetchClientData}
+                            />
+                            <ServiceDetailModal
+                                isOpen={isServiceDetailOpen}
+                                onOpenChange={setIsServiceDetailOpen}
+                                service={selectedService}
+                            />
+                            <UnifiedCommunicationModal
+                                isOpen={isCommunicationModalOpen}
+                                onOpenChange={setIsCommunicationModalOpen}
+                                client={{
+                                    id: client!.id,
+                                    name: client!.name,
+                                    email: client!.email || undefined,
+                                    phone: client!.phone || undefined,
+                                    company_name: client!.company_name || undefined,
+                                    invoices: client!.invoices,
+                                    quotes: client!.quotes,
+                                    portal_token: client!.portal_token,
+                                    portal_short_token: client!.portal_short_token
+                                }}
+                                context={communicationContext}
+                                settings={settings}
+                            />
+                            <NotesModal
+                                clientId={client!.id}
+                                initialNotes={client!.notes || ""}
+                                isOpen={isNotesOpen}
+                                onClose={() => setIsNotesOpen(false)}
+                                onSuccess={(newNotes) => {
+                                    setClient(prev => prev ? { ...prev, notes: newNotes } : null)
+                                }}
+                            />
+                        </>
+                    )
+                }
+            </SheetContent >
+        </Sheet >
     )
 }

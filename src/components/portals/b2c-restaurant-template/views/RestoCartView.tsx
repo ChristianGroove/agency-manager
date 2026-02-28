@@ -7,14 +7,20 @@ import { Trash2, Plus, Minus, Send } from "lucide-react"
 import { dispatchRestoOrder } from "../actions/checkout-actions"
 
 export function RestoCartView({ orgId }: { orgId: string }) {
-    const { items, updateQuantity, removeItem, getTotal, clearCart } = useRestoCart()
+    const { items, updateQuantity, removeItem, getTotal, clearCart, customerProfile, setCustomerProfile } = useRestoCart()
 
-    const [customerName, setCustomerName] = useState("")
-    const [customerPhone, setCustomerPhone] = useState("")
-    const [address, setAddress] = useState("")
+    const [customerName, setCustomerName] = useState(customerProfile?.name || "")
+    const [customerPhone, setCustomerPhone] = useState(customerProfile?.phone || "")
+    const [address, setAddress] = useState(customerProfile?.address || "")
     const [notes, setNotes] = useState("")
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [successMessage, setSuccessMessage] = useState("")
+
+    // Sincronizar cambios locales al store principal para que no se pierdan si se refresca la página 
+    // antes de hacer el pago.
+    React.useEffect(() => {
+        setCustomerProfile({ name: customerName, phone: customerPhone, address })
+    }, [customerName, customerPhone, address, setCustomerProfile])
 
     const handleCheckout = async (e: React.FormEvent) => {
         e.preventDefault()

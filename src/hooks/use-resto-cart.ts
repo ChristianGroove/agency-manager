@@ -11,10 +11,18 @@ export interface CartItem {
     notes?: string
 }
 
+interface CustomerProfile {
+    name: string
+    phone: string
+    address: string
+}
+
 interface RestoCartState {
     items: CartItem[]
     orgId: string | null
+    customerProfile: CustomerProfile
     setOrgId: (id: string) => void
+    setCustomerProfile: (profile: Partial<CustomerProfile>) => void
     addItem: (item: Omit<CartItem, 'id'>) => void
     removeItem: (id: string) => void
     updateQuantity: (id: string, quantity: number) => void
@@ -28,8 +36,13 @@ export const useRestoCart = create<RestoCartState>()(
         (set, get) => ({
             items: [],
             orgId: null,
+            customerProfile: { name: '', phone: '', address: '' },
 
             setOrgId: (id) => set({ orgId: id }),
+
+            setCustomerProfile: (profile) => set(state => ({
+                customerProfile: { ...state.customerProfile, ...profile }
+            })),
 
             addItem: (item) => {
                 const currentItems = get().items

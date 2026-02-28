@@ -310,7 +310,74 @@ export async function getPortalData(token: string) {
             }
         }
 
-        console.error('Portal Fetch Error: Token not found in Clients or Staff')
+        // ---------------------------------------------------------
+        // 4. If NO Client or Staff, try finding via Organization SLUG
+        // Enables purely "Public/Guest" portals (e.g., QR B2C apps)
+        // ---------------------------------------------------------
+        const { data: org, error: orgError } = await supabaseAdmin
+            .from('organizations')
+            .select('*')
+            .eq('slug', token)
+            .single()
+
+        if (org) {
+            // Fetch basic settings for branding
+            const { data: rawSettings } = await supabaseAdmin
+                .from('organization_settings')
+                .select('*')
+                .eq('organization_id', org.id)
+                .single()
+
+            const branding = await getEffectiveBranding(org.id)
+
+            const settings = {
+                ...(rawSettings || {}),
+                agency_name: branding.name,
+                portal_logo_url: branding.logos.main_light || branding.logos.main || branding.logos.portal,
+                isotipo_url: branding.logos.favicon,
+                portal_login_background_url: branding.logos.login_bg,
+                portal_primary_color: branding.colors.primary,
+                portal_secondary_color: branding.colors.secondary
+            }
+
+            // Detect Active App Template
+            const [
+                { data: appPortalConfig },
+                { data: appData }
+            ] = await Promise.all([
+                supabaseAdmin.from('saas_apps_portal_config').select('*').eq('app_id', org.active_app_id || '').eq('is_enabled', true).eq('target_portal', 'client').order('display_order', { ascending: true }),
+                supabaseAdmin.from('saas_apps').select('portal_template').eq('id', org.active_app_id || '').single()
+            ])
+
+            settings.portal_template = appData?.portal_template || 'b2b_dashboard'
+
+            let computedModules: Array<{ slug: string, portal_tab_label: string, portal_icon_key: string }> = []
+            if (appPortalConfig && appPortalConfig.length > 0) {
+                computedModules = appPortalConfig.map(mod => ({
+                    slug: mod.module_slug,
+                    portal_tab_label: mod.portal_tab_label,
+                    portal_icon_key: mod.portal_icon_key
+                }))
+            }
+
+            return {
+                type: 'guest',
+                client: null,
+                organization: org,
+                settings: settings || {},
+                activePortalModules: computedModules,
+                invoices: [],
+                quotes: [],
+                briefings: [],
+                events: [],
+                services: [],
+                hostingAccounts: [],
+                paymentMethods: [],
+                insightsAccess: { show: false, mode: { organic: false, ads: false } }
+            }
+        }
+
+        console.error('Portal Fetch Error: Token not found in Clients, Staff, or Organizations')
         throw new Error('Invalid token or not found')
 
     } catch (error) {

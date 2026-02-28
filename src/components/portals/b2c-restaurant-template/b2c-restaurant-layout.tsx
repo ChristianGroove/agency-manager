@@ -100,12 +100,38 @@ export function B2CRestaurantLayout({
                         <div className="p-8 text-center text-gray-500">
                             <UserIcon className="w-16 h-16 mx-auto mb-4 opacity-50" />
                             <h2 className="text-xl font-bold text-gray-800 dark:text-gray-200 mb-2">Mi Perfil</h2>
-                            <p>Tus datos están asociados al token de sesión actual.</p>
-                            {client && (
-                                <div className="mt-6 text-left bg-white dark:bg-zinc-900 p-4 rounded-xl border">
-                                    <p><strong>Nombre:</strong> {client.name}</p>
-                                    <p><strong>Teléfono:</strong> {client.phone || 'No registrado'}</p>
-                                </div>
+
+                            {client ? (
+                                <>
+                                    <p>Tus datos están asociados al token de sesión actual.</p>
+                                    <div className="mt-6 text-left bg-white dark:bg-zinc-900 p-4 rounded-xl border">
+                                        <p><strong>Nombre:</strong> {client.name}</p>
+                                        <p><strong>Teléfono:</strong> {client.phone || 'No registrado'}</p>
+                                    </div>
+                                </>
+                            ) : (
+                                // Modo Guest: Leer de Zustand Memory
+                                (() => {
+                                    const { customerProfile } = useRestoCart()
+                                    if (customerProfile?.name || customerProfile?.phone) {
+                                        return (
+                                            <>
+                                                <p>Estos son los datos que ingresaste localmente. Serán recordados para tu próximo carrito.</p>
+                                                <div className="mt-6 text-left bg-white dark:bg-zinc-900 p-4 rounded-xl border">
+                                                    <p><strong>Nombre:</strong> {customerProfile.name || 'Sin especificar'}</p>
+                                                    <p><strong>Teléfono:</strong> {customerProfile.phone || 'Sin especificar'}</p>
+                                                    {customerProfile.address && <p><strong>Dirección:</strong> {customerProfile.address}</p>}
+                                                </div>
+                                            </>
+                                        )
+                                    }
+                                    return (
+                                        <div className="mt-6 space-y-2">
+                                            <p>Aún no tenemos tus datos de contacto.</p>
+                                            <p className="text-sm">Cuando realices tu primer pedido en el carrito, recordaremos tu nombre y dirección en este dispositivo.</p>
+                                        </div>
+                                    )
+                                })()
                             )}
                         </div>
                     )}

@@ -18,10 +18,11 @@ export default function PortalPage() {
     const params = useParams()
 
     // Portal Context
-    const [portalType, setPortalType] = useState<'client' | 'staff'>('client')
+    const [portalType, setPortalType] = useState<'client' | 'staff' | 'guest'>('client')
 
     // Client Data
     const [client, setClient] = useState<Client | null>(null)
+    const [organization, setOrganization] = useState<any>(null)
     const [services, setServices] = useState<Service[]>([])
     const [invoices, setInvoices] = useState<Invoice[]>([])
     const [quotes, setQuotes] = useState<Quote[]>([])
@@ -71,6 +72,12 @@ export default function PortalPage() {
                 setStaff(data.staff)
                 setJobs(data.jobs || [])
                 setSettings(data.settings || {})
+            } else if (data.type === 'guest') {
+                setPortalType('guest')
+                setClient(null)
+                setOrganization(data.organization || null)
+                setSettings(data.settings || {})
+                setActiveModules(data.activePortalModules || [])
             } else {
                 setPortalType('client')
                 setClient(data.client || null)
@@ -219,7 +226,8 @@ export default function PortalPage() {
     // -------------------------------------------------------------
     // RENDER: CLIENT PORTAL (Default)
     // -------------------------------------------------------------
-    if (!client) return null // Should not happen due to error state
+    if (portalType === 'client' && !client) return null // Should not happen due to error state
+    if (portalType === 'guest' && !organization) return null
 
     // Portal Disabled Check (Only for clients maybe? or both?)
     if (settings.portal_enabled === false) {
@@ -266,9 +274,9 @@ export default function PortalPage() {
 
                 // Props adiciones esperadas por RestoLayout
                 user={client}
-                currentOrgId={client?.organization_id || ""}
+                currentOrgId={client?.organization_id || organization?.id || ""}
                 isAdmin={false}
-                orgData={{ name: client?.organization?.name || "Restaurante" }}
+                orgData={{ name: client?.organization?.name || organization?.name || "Restaurante" }}
             />
 
             {/* Payment Options Modal */}
