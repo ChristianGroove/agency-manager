@@ -35,6 +35,7 @@ import { NotesModal } from "@/modules/core/clients/notes-modal"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { useTranslation } from "@/lib/i18n/use-translation"
+import { RestoOrdersTab } from "./resto-orders-tab"
 import { useRef } from "react"
 
 interface ClientManagementSheetProps {
@@ -603,23 +604,9 @@ export function ClientManagementSheet({ clientId, open, onOpenChange, initialDat
                                 </TabsContent>
 
                                 {/* TAB 5: ORDERS (RESTO) */}
-                                {spaceType === 'resto-workspace' && (
+                                {spaceType === 'resto-workspace' && client && (
                                     <TabsContent value="orders" className="space-y-6 m-0 animate-in fade-in-50">
-                                        <div className="flex justify-between items-center">
-                                            <div>
-                                                <h3 className="font-bold text-gray-900">Historial de Pedidos</h3>
-                                                <p className="text-sm text-gray-500">Consulta los pedidos realizados por este cliente.</p>
-                                            </div>
-                                        </div>
-                                        <div className="bg-white rounded-xl border border-gray-100 p-8 text-center shadow-sm">
-                                            <div className="mx-auto w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mb-3">
-                                                <FileText className="h-6 w-6 text-gray-400" />
-                                            </div>
-                                            <h4 className="text-sm font-semibold text-gray-900">Gestión de Pedidos en Desarrollo</h4>
-                                            <p className="text-xs text-gray-500 mt-1 max-w-sm mx-auto">
-                                                El historial detallado de consumos, LTV, y productos favoritos del cliente para comercio estará conectado aquí.
-                                            </p>
-                                        </div>
+                                        <RestoOrdersTab orgId={client.organization_id} clientId={client.id} />
                                     </TabsContent>
                                 )}
 
