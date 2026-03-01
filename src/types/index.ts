@@ -214,25 +214,30 @@ export type Emitter = {
 }
 
 export type ServiceCatalogItem<TMetadata = Record<string, any>> = {
+    // === Core Universal (Todo Space) ===
     id: string
     name: string
     description?: string
     category: string
-    type: 'recurring' | 'one_off'
-    frequency?: 'monthly' | 'biweekly' | 'quarterly' | 'semiannual' | 'yearly'
     base_price: number
+    image_url?: string
     is_visible_in_portal: boolean
+    organization_id: string
+    metadata?: TMetadata
     created_at?: string
+
+    // === Billing Model (Agency/Cleaning: recurring/one_off — Resto/Retail: product) ===
+    type: 'recurring' | 'one_off' | 'product'
+    frequency?: 'monthly' | 'biweekly' | 'quarterly' | 'semiannual' | 'yearly'
     service_start_date?: string
     billing_cycle_start_date?: string
     briefing_template_id?: string // Deprecated: Use metadata.briefing_template_id
-    metadata?: TMetadata
+
+    // === Portal/Visual ===
     is_system_template?: boolean
-    image_url?: string
     ai_generated_image?: boolean
-    cta_type?: 'whatsapp' | 'buy' | 'info' | 'quote' | 'appointment' | 'portfolio'
+    cta_type?: 'whatsapp' | 'buy' | 'info' | 'quote' | 'appointment' | 'portfolio' | 'add_to_cart'
     price_label_type?: 'price' | 'base_price' | 'from'
-    organization_id: string
 }
 
 export type WorkOrder = {

@@ -67,6 +67,7 @@ export async function createCatalogItem(data: Partial<ServiceCatalogItem>) {
         throw error
     }
     revalidatePath('/portfolio')
+    revalidatePath('/dashboard')
     return { success: true, data: newItem }
 }
 
@@ -106,6 +107,7 @@ export async function updateCatalogItem(id: string, data: Partial<ServiceCatalog
         throw error
     }
     revalidatePath('/portfolio')
+    revalidatePath('/dashboard')
     return { success: true, data: updated }
 }
 
@@ -122,6 +124,7 @@ export async function deleteCatalogItem(id: string) {
 
     if (error) throw error
     revalidatePath('/portfolio')
+    revalidatePath('/dashboard')
     return { success: true }
 }
 
@@ -147,6 +150,7 @@ export async function seedCatalogFromTemplate(templateId: string) {
 
     if (error) throw error
     revalidatePath('/portfolio')
+    revalidatePath('/dashboard')
     return { success: true, count: itemsToInsert.length }
 }
 

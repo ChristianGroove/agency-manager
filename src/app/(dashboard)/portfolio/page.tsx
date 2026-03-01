@@ -39,12 +39,15 @@ export default function PortfolioPage() {
     const [isFormOpen, setIsFormOpen] = useState(false)
     const [itemToEdit, setItemToEdit] = useState<ServiceCatalogItem | null>(null)
     const [currentOrgName, setCurrentOrgName] = useState<string>('')
+    const [spaceType, setSpaceType] = useState<string>('agency')
 
     // Filter & View State
     const [searchTerm, setSearchTerm] = useState("")
     const [activeCategory, setActiveCategory] = useState("all")
-    const [activePaymentFilter, setActivePaymentFilter] = useState("all") // 'all' | 'recurring' | 'one_time'
+    const [activePaymentFilter, setActivePaymentFilter] = useState("all")
     const [viewMode, setViewMode] = useState<ViewMode>('grid')
+
+    const isAgency = spaceType === 'agency' || spaceType === 'cleaning'
 
     /**
      * Fetch current organization name
@@ -52,9 +55,17 @@ export default function PortfolioPage() {
      */
     const fetchOrgName = async () => {
         try {
-            const { getCurrentOrgName } = await import('@/modules/core/organizations/actions')
-            const name = await getCurrentOrgName()
+            const { getCurrentOrgName, getCurrentOrgDetails } = await import('@/modules/core/organizations/actions')
+            const [name, orgDetails] = await Promise.all([
+                getCurrentOrgName(),
+                getCurrentOrgDetails()
+            ])
             setCurrentOrgName(name || '')
+            // Determine space type from active app
+            const appId = orgDetails?.active_app_id || ''
+            if (appId.includes('resto')) setSpaceType('resto')
+            else if (appId.includes('cleaning')) setSpaceType('cleaning')
+            else setSpaceType('agency')
         } catch (error) {
             console.error('Error fetching org:', error)
         }
@@ -111,8 +122,8 @@ export default function PortfolioPage() {
             {/* Title Row with Actions */}
             {/* Standardized Header */}
             <SectionHeader
-                title="Catálogo"
-                subtitle="Servicios y productos que ofrece tu negocio."
+                title={isAgency ? 'Catálogo' : 'Menú'}
+                subtitle={isAgency ? 'Servicios y productos que ofrece tu negocio.' : 'Platos y productos de tu establecimiento.'}
                 icon={Store}
                 action={
                     <div className="flex items-center gap-2 w-full md:w-auto">
@@ -122,7 +133,7 @@ export default function PortfolioPage() {
                             onClick={handleCreateService}
                             className="bg-brand-pink hover:bg-brand-pink/90 text-white shadow-lg shadow-gray-200"
                         >
-                            <Plus className="mr-2 h-4 w-4" /> {t('catalog.buttons.new_service')}
+                            <Plus className="mr-2 h-4 w-4" /> {isAgency ? t('catalog.buttons.new_service') : 'Nuevo Plato'}
                         </Button>
                     </div>
                 }
@@ -134,11 +145,13 @@ export default function PortfolioPage() {
                     <SearchFilterBar
                         searchTerm={searchTerm}
                         onSearchChange={setSearchTerm}
-                        searchPlaceholder="Buscar por nombre..."
-                        filters={[
+                        searchPlaceholder={isAgency ? 'Buscar por nombre...' : '¿Qué buscas?'}
+                        filters={isAgency ? [
                             { id: 'all', label: 'Todos', count: items.length, color: 'gray' },
                             { id: 'one_off', label: 'Pago Único', count: items.filter(i => i.type === 'one_off').length, color: 'orange' },
                             { id: 'recurring', label: 'Suscripción', count: items.filter(i => i.type === 'recurring').length, color: 'indigo' },
+                        ] : [
+                            { id: 'all', label: 'Todos', count: items.length, color: 'gray' },
                         ]}
                         activeFilter={activePaymentFilter}
                         onFilterChange={setActivePaymentFilter}
@@ -194,6 +207,7 @@ export default function PortfolioPage() {
                 onOpenChange={setIsFormOpen}
                 itemToEdit={itemToEdit}
                 onSuccess={fetchServices}
+                spaceType={spaceType}
             />
         </div>
     )

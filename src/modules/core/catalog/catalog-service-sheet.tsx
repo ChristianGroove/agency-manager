@@ -29,6 +29,7 @@ interface CatalogServiceSheetProps {
     onOpenChange: (open: boolean) => void
     itemToEdit?: ServiceCatalogItem | null
     onSuccess?: () => void
+    spaceType?: string // 'agency' | 'resto' | 'cleaning'
 }
 
 import { useTranslation } from "@/lib/i18n/use-translation"
@@ -37,9 +38,11 @@ export function CatalogServiceSheet({
     open,
     onOpenChange,
     itemToEdit,
-    onSuccess
+    onSuccess,
+    spaceType = 'agency'
 }: CatalogServiceSheetProps) {
     const { t } = useTranslation()
+    const isAgency = spaceType === 'agency' || spaceType === 'cleaning'
     const [loading, setLoading] = useState(false)
     const [categories, setCategories] = useState<ServiceCategory[]>([])
     const [formTemplates, setFormTemplates] = useState<FormTemplate[]>([])
@@ -90,20 +93,21 @@ export function CatalogServiceSheet({
                 metadata: itemToEdit.metadata || {}
             })
         } else {
+            // Intelligent defaults based on Space
             setFormData({
                 name: "",
                 description: "",
                 category: "",
-                type: "one_off",
+                type: isAgency ? "one_off" : "product",
                 frequency: "monthly",
                 base_price: 0,
                 is_visible_in_portal: true,
-                cta_type: "whatsapp",
+                cta_type: isAgency ? "whatsapp" : "add_to_cart",
                 price_label_type: "price",
                 metadata: {}
             })
         }
-    }, [itemToEdit, open])
+    }, [itemToEdit, open, isAgency])
 
     const handleGenerateAIImage = async () => {
         if (!formData.name) {
@@ -268,106 +272,128 @@ export function CatalogServiceSheet({
                                 </div>
                             </div>
 
-                            {/* Billing & Frequency Grouping */}
-                            <div className="bg-slate-50/50 p-4 rounded-xl border border-slate-100 space-y-4">
-                                <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">
-                                    {t('catalog.section_billing')}
-                                </h3>
+                            {/* Billing & Frequency Grouping — Agency/Cleaning ONLY */}
+                            {isAgency && (
+                                <div className="bg-slate-50/50 p-4 rounded-xl border border-slate-100 space-y-4">
+                                    <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">
+                                        {t('catalog.section_billing')}
+                                    </h3>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label className="text-xs">{t('catalog.form.billing_type_label')}</Label>
-                                        <Select
-                                            value={formData.type}
-                                            onValueChange={(val: any) => setFormData({ ...formData, type: val })}
-                                        >
-                                            <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="recurring">{t('services.summary.active_subscription')}</SelectItem>
-                                                <SelectItem value="one_off">{t('services.summary.one_time_payment')}</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-
-                                    {formData.type === 'recurring' && (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div className="space-y-2">
-                                            <Label className="text-xs">{t('catalog.form.frequency_label')}</Label>
+                                            <Label className="text-xs">{t('catalog.form.billing_type_label')}</Label>
                                             <Select
-                                                value={formData.frequency}
-                                                onValueChange={(val: any) => setFormData({ ...formData, frequency: val })}
+                                                value={formData.type}
+                                                onValueChange={(val: any) => setFormData({ ...formData, type: val })}
                                             >
                                                 <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                                                 <SelectContent>
-                                                    <SelectItem value="monthly">{t('quotes.builder.frequency.monthly')}</SelectItem>
-                                                    <SelectItem value="biweekly">{t('quotes.builder.frequency.biweekly')}</SelectItem>
-                                                    <SelectItem value="quarterly">{t('quotes.builder.frequency.quarterly')}</SelectItem>
-                                                    <SelectItem value="semiannual">{t('quotes.builder.frequency.semiannual')}</SelectItem>
-                                                    <SelectItem value="yearly">{t('quotes.builder.frequency.yearly')}</SelectItem>
+                                                    <SelectItem value="recurring">{t('services.summary.active_subscription')}</SelectItem>
+                                                    <SelectItem value="one_off">{t('services.summary.one_time_payment')}</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                         </div>
-                                    )}
-                                </div>
 
-                                {/* Price & Price Label logic combined */}
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label className="text-xs">{t('catalog.form.base_price_label')}</Label>
-                                        <div className="relative">
-                                            <span className="absolute left-3 top-2 text-gray-400 text-sm">$</span>
-                                            <Input
-                                                type="number"
-                                                min="0"
-                                                value={formData.base_price}
-                                                onChange={(e) => setFormData({ ...formData, base_price: Number(e.target.value) })}
-                                                className="pl-7 h-9"
-                                            />
-                                        </div>
+                                        {formData.type === 'recurring' && (
+                                            <div className="space-y-2">
+                                                <Label className="text-xs">{t('catalog.form.frequency_label')}</Label>
+                                                <Select
+                                                    value={formData.frequency}
+                                                    onValueChange={(val: any) => setFormData({ ...formData, frequency: val })}
+                                                >
+                                                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="monthly">{t('quotes.builder.frequency.monthly')}</SelectItem>
+                                                        <SelectItem value="biweekly">{t('quotes.builder.frequency.biweekly')}</SelectItem>
+                                                        <SelectItem value="quarterly">{t('quotes.builder.frequency.quarterly')}</SelectItem>
+                                                        <SelectItem value="semiannual">{t('quotes.builder.frequency.semiannual')}</SelectItem>
+                                                        <SelectItem value="yearly">{t('quotes.builder.frequency.yearly')}</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                        )}
                                     </div>
 
-                                    <div className="space-y-2">
-                                        <Label className="text-xs">Mostrar Precio como</Label>
+                                    {/* Price & Price Label logic combined */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label className="text-xs">{t('catalog.form.base_price_label')}</Label>
+                                            <div className="relative">
+                                                <span className="absolute left-3 top-2 text-gray-400 text-sm">$</span>
+                                                <Input
+                                                    type="number"
+                                                    min="0"
+                                                    value={formData.base_price}
+                                                    onChange={(e) => setFormData({ ...formData, base_price: Number(e.target.value) })}
+                                                    className="pl-7 h-9"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label className="text-xs">Mostrar Precio como</Label>
+                                            <Select
+                                                value={formData.price_label_type || "base_price"}
+                                                onValueChange={(val: any) => setFormData({ ...formData, price_label_type: val })}
+                                            >
+                                                <SelectTrigger className="text-sm h-9">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="base_price">Precio Base</SelectItem>
+                                                    <SelectItem value="price">Precio</SelectItem>
+                                                    <SelectItem value="from">Desde</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
+                                    <p className="text-[9px] text-muted-foreground italic px-1">
+                                        {t('catalog.form.base_price_hint')}
+                                    </p>
+                                </div>
+                            )}
+
+                            {/* Simplified Pricing for Resto/Retail */}
+                            {!isAgency && (
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-bold uppercase text-gray-400">Precio *</Label>
+                                    <div className="relative">
+                                        <span className="absolute left-3 top-2.5 text-gray-400 text-sm">$</span>
+                                        <Input
+                                            type="number"
+                                            min="0"
+                                            value={formData.base_price}
+                                            onChange={(e) => setFormData({ ...formData, base_price: Number(e.target.value) })}
+                                            className="pl-7 h-10 font-medium"
+                                            placeholder="0"
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                                {/* Section: CTA Button — Agency/Cleaning ONLY */}
+                                {isAgency && (
+                                    <div className="space-y-3">
+                                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Acción Principal</Label>
                                         <Select
-                                            value={formData.price_label_type || "base_price"}
-                                            onValueChange={(val: any) => setFormData({ ...formData, price_label_type: val })}
+                                            value={formData.cta_type || "whatsapp"}
+                                            onValueChange={(val: any) => setFormData({ ...formData, cta_type: val })}
                                         >
-                                            <SelectTrigger className="text-sm h-9">
+                                            <SelectTrigger className="text-sm h-10">
                                                 <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="base_price">Precio Base</SelectItem>
-                                                <SelectItem value="price">Precio</SelectItem>
-                                                <SelectItem value="from">Desde</SelectItem>
+                                                <SelectItem value="whatsapp">Solicitar vía WhatsApp</SelectItem>
+                                                <SelectItem value="buy">Comprar ahora</SelectItem>
+                                                <SelectItem value="info">Más información</SelectItem>
+                                                <SelectItem value="quote">Solicitar cotización</SelectItem>
+                                                <SelectItem value="appointment">Agendar cita</SelectItem>
+                                                <SelectItem value="portfolio">Ver detalles / Portfolio</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>
-                                </div>
-                                <p className="text-[9px] text-muted-foreground italic px-1">
-                                    {t('catalog.form.base_price_hint')}
-                                </p>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
-                                {/* Section: CTA Button */}
-                                <div className="space-y-3">
-                                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Acción Principal</Label>
-                                    <Select
-                                        value={formData.cta_type || "whatsapp"}
-                                        onValueChange={(val: any) => setFormData({ ...formData, cta_type: val })}
-                                    >
-                                        <SelectTrigger className="text-sm h-10">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="whatsapp">Solicitar vía WhatsApp</SelectItem>
-                                            <SelectItem value="buy">Comprar ahora</SelectItem>
-                                            <SelectItem value="info">Más información</SelectItem>
-                                            <SelectItem value="quote">Solicitar cotización</SelectItem>
-                                            <SelectItem value="appointment">Agendar cita</SelectItem>
-                                            <SelectItem value="portfolio">Ver detalles / Portfolio</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
+                                )}
 
                                 {/* Multimedia & AI Logic in 2nd column or below */}
                                 <div className="space-y-3">
@@ -419,27 +445,29 @@ export function CatalogServiceSheet({
                             <Separator className="opacity-50" />
 
                             {/* Briefing & Visibility in Rows of 2 */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label className="text-xs">{t('catalog.form.form_template_label')}</Label>
-                                    <Select
-                                        value={formData.metadata?.form_template_id || "none"}
-                                        onValueChange={(val) => setFormData({
-                                            ...formData,
-                                            metadata: { ...formData.metadata, form_template_id: val === "none" ? null : val }
-                                        })}
-                                    >
-                                        <SelectTrigger className="h-9">
-                                            <SelectValue placeholder={t('catalog.form.form_template_none')} />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="none">{t('catalog.form.form_template_none_item')}</SelectItem>
-                                            {formTemplates.map(t => (
-                                                <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
+                            <div className={`grid grid-cols-1 ${isAgency ? 'md:grid-cols-2' : ''} gap-4`}>
+                                {isAgency && (
+                                    <div className="space-y-2">
+                                        <Label className="text-xs">{t('catalog.form.form_template_label')}</Label>
+                                        <Select
+                                            value={formData.metadata?.form_template_id || "none"}
+                                            onValueChange={(val) => setFormData({
+                                                ...formData,
+                                                metadata: { ...formData.metadata, form_template_id: val === "none" ? null : val }
+                                            })}
+                                        >
+                                            <SelectTrigger className="h-9">
+                                                <SelectValue placeholder={t('catalog.form.form_template_none')} />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="none">{t('catalog.form.form_template_none_item')}</SelectItem>
+                                                {formTemplates.map(t => (
+                                                    <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                )}
 
                                 <div className="flex items-center justify-between rounded-lg border p-3 bg-gray-50/30">
                                     <div className="space-y-0.5">
@@ -455,188 +483,191 @@ export function CatalogServiceSheet({
 
                             <Separator className="opacity-50" />
 
-                            {/* Portal Card Metadata */}
-                            <div className="space-y-5">
-                                <div className="flex items-center gap-2">
-                                    <div className="h-7 w-7 rounded-lg bg-brand-pink/10 flex items-center justify-center">
-                                        <Sparkles className="h-3.5 w-3.5 text-brand-pink" />
+                            {/* Portal Card Metadata — Agency B2B ONLY */}
+                            {isAgency && (
+                                <div className="space-y-5">
+                                    <div className="flex items-center gap-2">
+                                        <div className="h-7 w-7 rounded-lg bg-brand-pink/10 flex items-center justify-center">
+                                            <Sparkles className="h-3.5 w-3.5 text-brand-pink" />
+                                        </div>
+                                        <div>
+                                            <h4 className="text-xs font-black uppercase tracking-tight text-gray-900">Detalles Extendidos</h4>
+                                            <p className="text-[10px] text-gray-400">Información que verán los clientes al girar la tarjeta.</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <h4 className="text-xs font-black uppercase tracking-tight text-gray-900">Detalles Extendidos</h4>
-                                        <p className="text-[10px] text-gray-400">Información que verán los clientes al girar la tarjeta.</p>
-                                    </div>
-                                </div>
 
-                                {/* Descripción Detallada */}
-                                <div className="space-y-2">
-                                    <Label className="text-xs">{t('catalog.form.portal_detailed_label')}</Label>
-                                    <Textarea
-                                        value={formData.metadata?.portal_card?.detailed_description || ""}
-                                        onChange={(e) => setFormData({
-                                            ...formData,
-                                            metadata: {
-                                                ...formData.metadata,
-                                                portal_card: {
-                                                    ...formData.metadata?.portal_card,
-                                                    detailed_description: e.target.value
+                                    {/* Descripción Detallada */}
+                                    <div className="space-y-2">
+                                        <Label className="text-xs">{t('catalog.form.portal_detailed_label')}</Label>
+                                        <Textarea
+                                            value={formData.metadata?.portal_card?.detailed_description || ""}
+                                            onChange={(e) => setFormData({
+                                                ...formData,
+                                                metadata: {
+                                                    ...formData.metadata,
+                                                    portal_card: {
+                                                        ...formData.metadata?.portal_card,
+                                                        detailed_description: e.target.value
+                                                    }
                                                 }
-                                            }
-                                        })}
-                                        placeholder={t('catalog.form.portal_detailed_placeholder')}
-                                        rows={3}
-                                        className="resize-none text-sm"
-                                    />
-                                </div>
-
-                                {/* Features & Highlights in side-by-side or compact list */}
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div className="space-y-3">
-                                        <Label className="text-xs flex items-center gap-2">
-                                            {t('catalog.form.features_label')}
-                                            <Badge variant="outline" className="text-[8px] h-4">{formData.metadata?.portal_card?.features?.length || 0}</Badge>
-                                        </Label>
-                                        <div className="space-y-2">
-                                            {(formData.metadata?.portal_card?.features || []).map((feature: string, idx: number) => (
-                                                <div key={idx} className="flex gap-1.5 px-1 group">
-                                                    <Input
-                                                        value={feature}
-                                                        onChange={(e) => {
-                                                            const features = [...((formData.metadata?.portal_card?.features as string[]) || [])]
-                                                            features[idx] = e.target.value
-                                                            setFormData({
-                                                                ...formData,
-                                                                metadata: {
-                                                                    ...formData.metadata,
-                                                                    portal_card: {
-                                                                        ...formData.metadata?.portal_card,
-                                                                        features
-                                                                    }
-                                                                }
-                                                            })
-                                                        }}
-                                                        placeholder="Item..."
-                                                        className="text-xs h-8 bg-white"
-                                                    />
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        onClick={() => {
-                                                            const features = (formData.metadata?.portal_card?.features || []).filter((_: any, i: number) => i !== idx)
-                                                            setFormData({
-                                                                ...formData,
-                                                                metadata: {
-                                                                    ...formData.metadata,
-                                                                    portal_card: {
-                                                                        ...formData.metadata?.portal_card,
-                                                                        features
-                                                                    }
-                                                                }
-                                                            })
-                                                        }}
-                                                        className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                    >
-                                                        ✕
-                                                    </Button>
-                                                </div>
-                                            ))}
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => {
-                                                    const currentFeatures = (formData.metadata?.portal_card?.features as string[]) || []
-                                                    const features = [...currentFeatures, ""]
-                                                    setFormData({
-                                                        ...formData,
-                                                        metadata: {
-                                                            ...formData.metadata,
-                                                            portal_card: {
-                                                                ...formData.metadata?.portal_card,
-                                                                features
-                                                            }
-                                                        }
-                                                    })
-                                                }}
-                                                className="w-full text-[10px] h-8 border-slate-200 border-dashed text-slate-400 hover:text-brand-pink hover:border-brand-pink/50"
-                                            >
-                                                + Feature
-                                            </Button>
-                                        </div>
+                                            })}
+                                            placeholder={t('catalog.form.portal_detailed_placeholder')}
+                                            rows={3}
+                                            className="resize-none text-sm"
+                                        />
                                     </div>
 
-                                    <div className="space-y-3">
-                                        <Label className="text-xs flex items-center gap-2">
-                                            {t('catalog.form.highlights_label')}
-                                            <Badge variant="outline" className="text-[8px] h-4">{formData.metadata?.portal_card?.highlights?.length || 0}</Badge>
-                                        </Label>
-                                        <div className="space-y-2">
-                                            {(formData.metadata?.portal_card?.highlights || []).map((highlight: string, idx: number) => (
-                                                <div key={idx} className="flex gap-1.5 px-1 group">
-                                                    <Input
-                                                        value={highlight}
-                                                        onChange={(e) => {
-                                                            const highlights = [...((formData.metadata?.portal_card?.highlights as string[]) || [])]
-                                                            highlights[idx] = e.target.value
-                                                            setFormData({
-                                                                ...formData,
-                                                                metadata: {
-                                                                    ...formData.metadata,
-                                                                    portal_card: {
-                                                                        ...formData.metadata?.portal_card,
-                                                                        highlights
+                                    {/* Features & Highlights in side-by-side or compact list */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="space-y-3">
+                                            <Label className="text-xs flex items-center gap-2">
+                                                {t('catalog.form.features_label')}
+                                                <Badge variant="outline" className="text-[8px] h-4">{formData.metadata?.portal_card?.features?.length || 0}</Badge>
+                                            </Label>
+                                            <div className="space-y-2">
+                                                {(formData.metadata?.portal_card?.features || []).map((feature: string, idx: number) => (
+                                                    <div key={idx} className="flex gap-1.5 px-1 group">
+                                                        <Input
+                                                            value={feature}
+                                                            onChange={(e) => {
+                                                                const features = [...((formData.metadata?.portal_card?.features as string[]) || [])]
+                                                                features[idx] = e.target.value
+                                                                setFormData({
+                                                                    ...formData,
+                                                                    metadata: {
+                                                                        ...formData.metadata,
+                                                                        portal_card: {
+                                                                            ...formData.metadata?.portal_card,
+                                                                            features
+                                                                        }
                                                                     }
-                                                                }
-                                                            })
-                                                        }}
-                                                        placeholder="Ex. 24/7..."
-                                                        className="text-xs h-8 bg-white border-amber-100 focus-visible:ring-amber-200"
-                                                    />
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        onClick={() => {
-                                                            const highlights = (formData.metadata?.portal_card?.highlights || []).filter((_: any, i: number) => i !== idx)
-                                                            setFormData({
-                                                                ...formData,
-                                                                metadata: {
-                                                                    ...formData.metadata,
-                                                                    portal_card: {
-                                                                        ...formData.metadata?.portal_card,
-                                                                        highlights
+                                                                })
+                                                            }}
+                                                            placeholder="Item..."
+                                                            className="text-xs h-8 bg-white"
+                                                        />
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() => {
+                                                                const features = (formData.metadata?.portal_card?.features || []).filter((_: any, i: number) => i !== idx)
+                                                                setFormData({
+                                                                    ...formData,
+                                                                    metadata: {
+                                                                        ...formData.metadata,
+                                                                        portal_card: {
+                                                                            ...formData.metadata?.portal_card,
+                                                                            features
+                                                                        }
                                                                     }
+                                                                })
+                                                            }}
+                                                            className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                        >
+                                                            ✕
+                                                        </Button>
+                                                    </div>
+                                                ))}
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => {
+                                                        const currentFeatures = (formData.metadata?.portal_card?.features as string[]) || []
+                                                        const features = [...currentFeatures, ""]
+                                                        setFormData({
+                                                            ...formData,
+                                                            metadata: {
+                                                                ...formData.metadata,
+                                                                portal_card: {
+                                                                    ...formData.metadata?.portal_card,
+                                                                    features
                                                                 }
-                                                            })
-                                                        }}
-                                                        className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                    >
-                                                        ✕
-                                                    </Button>
-                                                </div>
-                                            ))}
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => {
-                                                    const currentHighlights = (formData.metadata?.portal_card?.highlights as string[]) || []
-                                                    const highlights = [...currentHighlights, ""]
-                                                    setFormData({
-                                                        ...formData,
-                                                        metadata: {
-                                                            ...formData.metadata,
-                                                            portal_card: {
-                                                                ...formData.metadata?.portal_card,
-                                                                highlights
                                                             }
-                                                        }
-                                                    })
-                                                }}
-                                                className="w-full text-[10px] h-8 border-amber-100 border-dashed text-amber-500 hover:bg-amber-50"
-                                            >
-                                                + Highlight
-                                            </Button>
+                                                        })
+                                                    }}
+                                                    className="w-full text-[10px] h-8 border-slate-200 border-dashed text-slate-400 hover:text-brand-pink hover:border-brand-pink/50"
+                                                >
+                                                    + Feature
+                                                </Button>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-3">
+                                            <Label className="text-xs flex items-center gap-2">
+                                                {t('catalog.form.highlights_label')}
+                                                <Badge variant="outline" className="text-[8px] h-4">{formData.metadata?.portal_card?.highlights?.length || 0}</Badge>
+                                            </Label>
+                                            <div className="space-y-2">
+                                                {(formData.metadata?.portal_card?.highlights || []).map((highlight: string, idx: number) => (
+                                                    <div key={idx} className="flex gap-1.5 px-1 group">
+                                                        <Input
+                                                            value={highlight}
+                                                            onChange={(e) => {
+                                                                const highlights = [...((formData.metadata?.portal_card?.highlights as string[]) || [])]
+                                                                highlights[idx] = e.target.value
+                                                                setFormData({
+                                                                    ...formData,
+                                                                    metadata: {
+                                                                        ...formData.metadata,
+                                                                        portal_card: {
+                                                                            ...formData.metadata?.portal_card,
+                                                                            highlights
+                                                                        }
+                                                                    }
+                                                                })
+                                                            }}
+                                                            placeholder="Ex. 24/7..."
+                                                            className="text-xs h-8 bg-white border-amber-100 focus-visible:ring-amber-200"
+                                                        />
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() => {
+                                                                const highlights = (formData.metadata?.portal_card?.highlights || []).filter((_: any, i: number) => i !== idx)
+                                                                setFormData({
+                                                                    ...formData,
+                                                                    metadata: {
+                                                                        ...formData.metadata,
+                                                                        portal_card: {
+                                                                            ...formData.metadata?.portal_card,
+                                                                            highlights
+                                                                        }
+                                                                    }
+                                                                })
+                                                            }}
+                                                            className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                        >
+                                                            ✕
+                                                        </Button>
+                                                    </div>
+                                                ))}
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => {
+                                                        const currentHighlights = (formData.metadata?.portal_card?.highlights as string[]) || []
+                                                        const highlights = [...currentHighlights, ""]
+                                                        setFormData({
+                                                            ...formData,
+                                                            metadata: {
+                                                                ...formData.metadata,
+                                                                portal_card: {
+                                                                    ...formData.metadata?.portal_card,
+                                                                    highlights
+                                                                }
+                                                            }
+                                                        })
+                                                    }}
+                                                    className="w-full text-[10px] h-8 border-amber-100 border-dashed text-amber-500 hover:bg-amber-50"
+                                                >
+                                                    + Highlight
+                                                </Button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
+                            )}
+
                         </div>
 
 

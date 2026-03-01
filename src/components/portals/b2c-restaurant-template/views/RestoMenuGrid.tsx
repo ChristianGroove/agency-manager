@@ -3,9 +3,10 @@
 import React, { useState } from "react"
 import { FoodCard } from "../components/FoodCard"
 import { Search } from "lucide-react"
+import { ServiceCatalogItem } from "@/types"
 
 export interface RestoMenuGridProps {
-    items: any[]
+    items: ServiceCatalogItem[]
     orgId: string
 }
 
