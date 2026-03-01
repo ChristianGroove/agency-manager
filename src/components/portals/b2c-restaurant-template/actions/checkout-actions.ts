@@ -31,13 +31,14 @@ export async function dispatchRestoOrder(payload: CheckoutPayload) {
         // 1. Upsert Client (Lead)
         // Buscamos si el teléfono ya existe. Si no, lo creamos.
         let clientIdToUse = null
+        let portalToken = null
 
         const { data: existingClient } = await supabase
             .from('clients')
-            .select('id')
+            .select('id, portal_short_token')
             .eq('organization_id', payload.orgId)
             .eq('phone', payload.customerPhone)
-            .single()
+            .maybeSingle()
 
         // Buscar un usuario dueño de la organización para asignarle este contacto/lead
         const { data: orgMember } = await supabase
@@ -45,25 +46,39 @@ export async function dispatchRestoOrder(payload: CheckoutPayload) {
             .select('user_id')
             .eq('organization_id', payload.orgId)
             .limit(1)
-            .single()
+            .maybeSingle()
 
         const fallbackUserId = orgMember?.user_id
 
         if (existingClient) {
             clientIdToUse = existingClient.id
+            portalToken = existingClient.portal_short_token
+
+            // Asegurar que tenga token si por alguna razón no lo tiene
+            if (!portalToken) {
+                const { data: newToken } = await supabase.rpc('generate_short_token')
+                await supabase.from('clients').update({ portal_short_token: newToken }).eq('id', clientIdToUse)
+                portalToken = newToken
+            }
+
             // Actualizar nombre en caso de que el cliente (dueño del teléfono) haya proveído uno nuevo en esta compra
             await supabase
                 .from('clients')
                 .update({ name: payload.customerName })
                 .eq('id', clientIdToUse)
         } else {
+            // Generar token para el nuevo cliente
+            const { data: newToken } = await supabase.rpc('generate_short_token')
+            portalToken = newToken
+
             const { data: newClient, error: clientError } = await supabase
                 .from('clients')
                 .insert({
                     organization_id: payload.orgId,
                     name: payload.customerName,
                     phone: payload.customerPhone,
-                    user_id: fallbackUserId
+                    user_id: fallbackUserId,
+                    portal_short_token: portalToken
                 })
                 .select()
                 .single()
@@ -95,7 +110,7 @@ export async function dispatchRestoOrder(payload: CheckoutPayload) {
             query.is('connection_id', null)
         }
 
-        const { data: activeConv } = await query.single()
+        const { data: activeConv } = await query.maybeSingle()
 
         if (activeConv) {
             conversationId = activeConv.id
@@ -147,7 +162,7 @@ export async function dispatchRestoOrder(payload: CheckoutPayload) {
 
         if (msgError) throw msgError
 
-        return { success: true, conversationId, messageId: newMessage.id }
+        return { success: true, conversationId, messageId: newMessage.id, portalToken }
 
     } catch (error: any) {
         console.error("[Resto Checkout] Error:", error)

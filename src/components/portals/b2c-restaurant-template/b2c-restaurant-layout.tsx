@@ -58,9 +58,18 @@ export function B2CRestaurantLayout({
     const navItems = [
         { id: 'menu', icon: Store, label: "Menú" },
         { id: 'cart', icon: ShoppingCart, label: "Carrito" },
-        { id: 'orders', icon: ReceiptText, label: "Mis Pedidos" },
-        { id: 'profile', icon: UserIcon, label: "Perfil" },
+        ...(client ? [
+            { id: 'orders', icon: ReceiptText, label: "Mis Pedidos" },
+            { id: 'profile', icon: UserIcon, label: "Perfil" },
+        ] : []),
     ] as const
+
+    // Redirigir si el tab activo deja de existir (seguridad)
+    useEffect(() => {
+        if (!client && (activeTab === 'orders' || activeTab === 'profile')) {
+            setActiveTab('menu')
+        }
+    }, [client, activeTab])
 
     // Calcular Cantidad en Carrito
     const totalCartQuantity = cartItems.reduce((acc, item) => acc + item.quantity, 0)
@@ -146,7 +155,7 @@ export function B2CRestaurantLayout({
                         return (
                             <button
                                 key={item.id}
-                                onClick={() => setActiveTab(item.id)}
+                                onClick={() => setActiveTab(item.id as 'menu' | 'cart' | 'orders' | 'profile')}
                                 className={`relative flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors ${isActive ? '' : 'text-muted-foreground hover:text-foreground'
                                     }`}
                                 style={{ color: isActive ? (settings?.portal_primary_color || '#F205E2') : '' }}

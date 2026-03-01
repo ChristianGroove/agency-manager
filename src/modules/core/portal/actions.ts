@@ -391,24 +391,40 @@ export async function getPortalData(token: string) {
 export async function getPortalMetadata(token: string) {
     // Lightweight fetch for metadata only - NOW WITH SECURITY!
     try {
-        // Step 1: Get client from token to know which organization
         const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)
-        let query = supabaseAdmin.from('clients').select('organization_id')
 
+        // 1. Try finding a CLIENT first
+        let clientQuery = supabaseAdmin.from('clients').select('organization_id')
         if (isUuid) {
-            query = query.or(`portal_short_token.eq.${token},portal_token.eq.${token}`)
+            clientQuery = clientQuery.or(`portal_short_token.eq.${token},portal_token.eq.${token}`)
         } else {
-            query = query.eq('portal_short_token', token)
+            clientQuery = clientQuery.eq('portal_short_token', token)
         }
 
-        const { data: client } = await query.single()
-        if (!client) return {}
+        const { data: client } = await clientQuery.maybeSingle()
 
-        // Step 2: Get settings for THAT organization only
+        let organizationId: string | null = null
+
+        if (client) {
+            organizationId = client.organization_id
+        } else {
+            // 2. Fallback: Try finding an ORGANIZATION by slug (Guest Flow)
+            const { data: org } = await supabaseAdmin
+                .from('organizations')
+                .select('id')
+                .eq('slug', token)
+                .maybeSingle()
+
+            if (org) organizationId = org.id
+        }
+
+        if (!organizationId) return {}
+
+        // 3. Get settings for THAT organization
         const { data: settings } = await supabaseAdmin
             .from('organization_settings')
             .select('*')
-            .eq('organization_id', client.organization_id)
+            .eq('organization_id', organizationId)
             .single()
 
         return settings || {}
@@ -782,26 +798,41 @@ export async function getPortalBriefingResponses(token: string, briefingId: stri
 }
 
 export async function getPortalCatalog(token: string) {
-    // 1. Verify Client
-    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)
+    // 1. Try finding a CLIENT first
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)
 
-    let query = supabaseAdmin.from('clients').select('id, organization_id')
+    let clientQuery = supabaseAdmin.from('clients').select('id, organization_id')
 
     if (isUuid) {
-        query = query.or(`portal_short_token.eq.${token},portal_token.eq.${token}`)
+        clientQuery = clientQuery.or(`portal_short_token.eq.${token},portal_token.eq.${token}`)
     } else {
-        query = query.eq('portal_short_token', token)
+        clientQuery = clientQuery.eq('portal_short_token', token)
     }
 
-    const { data: client, error: clientError } = await query.single()
+    const { data: client } = await clientQuery.maybeSingle()
 
-    if (clientError || !client) throw new Error('Unauthorized')
+    let organizationId: string | null = null
 
-    // 2. Fetch Catalog from service_catalog table (Templates)
+    if (client) {
+        organizationId = client.organization_id
+    } else {
+        // 2. Fallback: Try finding an ORGANIZATION by slug (Guest Flow)
+        const { data: org } = await supabaseAdmin
+            .from('organizations')
+            .select('id')
+            .eq('slug', token)
+            .maybeSingle()
+
+        if (org) organizationId = org.id
+    }
+
+    if (!organizationId) throw new Error('Unauthorized')
+
+    // 3. Fetch Catalog from service_catalog table (Templates)
     const { data, error } = await supabaseAdmin
         .from('service_catalog')  // ✅ Fixed: Was 'services', now 'service_catalog'
         .select('*')
-        .eq('organization_id', client.organization_id)
+        .eq('organization_id', organizationId)
         .eq('is_visible_in_portal', true)
         .order('category')
 

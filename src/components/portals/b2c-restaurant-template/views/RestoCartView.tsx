@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState } from "react"
+import { useRouter } from "next/navigation"
 import { useRestoCart } from "@/hooks/use-resto-cart"
 import { Button } from "@/components/ui/button"
 import { Trash2, Send } from "lucide-react"
@@ -8,6 +9,7 @@ import { QuantitySelector } from "../components/QuantitySelector"
 import { dispatchRestoOrder } from "../actions/checkout-actions"
 
 export function RestoCartView({ orgId, primaryColor }: { orgId: string, primaryColor?: string }) {
+    const router = useRouter()
     const { items, updateQuantity, removeItem, getTotal, clearCart, customerProfile, setCustomerProfile, addRecentOrder } = useRestoCart()
 
     const [customerName, setCustomerName] = useState(customerProfile?.name || "")
@@ -43,9 +45,16 @@ export function RestoCartView({ orgId, primaryColor }: { orgId: string, primaryC
         setIsSubmitting(false)
 
         if (res.success && res.messageId) {
-            setSuccessMessage("¡Tu pedido ha sido enviado a la cocina! Te avisaremos vía WhatsApp.")
             addRecentOrder(res.messageId) // Guarda localmente el Tracker ID del Pedido
             clearCart()
+
+            // Si el backend nos devolvió un token de portal (elevación de Guest a Cliente)
+            // Redirigimos para que el usuario ya vea su portal persistente con historial real.
+            if (res.portalToken) {
+                router.push(`/portal/${res.portalToken}`)
+            } else {
+                setSuccessMessage("¡Tu pedido ha sido enviado a la cocina! Te avisaremos vía WhatsApp.")
+            }
         } else {
             alert("Hubo un error enviando tu pedido: " + res.error)
         }
