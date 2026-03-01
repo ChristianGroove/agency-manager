@@ -4,7 +4,8 @@ import React, { useState, useEffect } from "react"
 import { Suspense } from "react"
 import { GlobalLoader } from "@/components/ui/global-loader"
 import { SystemAlertBanner } from "@/components/layout/system-alert-banner"
-import { Store, ShoppingCart, ReceiptText, User as UserIcon } from "lucide-react"
+import { Store, ShoppingCart, ReceiptText, User as UserIcon, Check } from "lucide-react"
+import { Button } from "@/components/ui/button"
 
 // Importar Componentes de Vistas Internas
 import { RestoMenuGrid } from "./views/RestoMenuGrid"
@@ -37,6 +38,7 @@ export function B2CRestaurantLayout({
     const [activeTab, setActiveTab] = useState<'menu' | 'cart' | 'orders' | 'profile'>('menu')
     const [catalogItems, setCatalogItems] = useState<any[]>([])
     const [loadingCatalog, setLoadingCatalog] = useState(false)
+    const [showSuccessModal, setShowSuccessModal] = useState(false)
     const { items: cartItems, clearCart } = useRestoCart()
     const searchParams = useSearchParams()
 
@@ -45,6 +47,7 @@ export function B2CRestaurantLayout({
         if (searchParams.get('orderSuccess') === 'true') {
             setActiveTab('orders')
             clearCart() // Limpiar el carrito solo al aterrizar con éxito en el portal persistente
+            setShowSuccessModal(true)
 
             // Limpiar el parámetro de la URL sin recargar para estetica
             window.history.replaceState({}, '', window.location.pathname)
@@ -161,7 +164,7 @@ export function B2CRestaurantLayout({
             </main>
 
             {/* BOTTOM NAV BAR (Mobile Only) */}
-            <nav className="fixed bottom-0 z-50 w-full border-t bg-background pb-safe shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
+            <nav className="fixed bottom-0 z-50 w-full border-t bg-background pb-safe shadow-[0_-4_20px_rgba(0,0,0,0.05)]">
                 <div className="flex justify-around items-center h-16 px-2">
                     {navItems.map((item) => {
                         const isActive = activeTab === item.id
@@ -190,6 +193,31 @@ export function B2CRestaurantLayout({
                     })}
                 </div>
             </nav>
+
+            {/* Modal de Pedido Exitoso */}
+            {showSuccessModal && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in duration-300">
+                    <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl p-8 max-w-sm w-full text-center space-y-6 animate-in zoom-in-95 duration-300 border border-white/20">
+                        <div className="h-20 w-20 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-full flex items-center justify-center mx-auto shadow-inner">
+                            <Check className="h-10 w-10 stroke-[3px]" />
+                        </div>
+                        <div className="space-y-2">
+                            <h3 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">¡Pedido Recibido!</h3>
+                            <p className="text-gray-500 dark:text-gray-400 leading-relaxed">
+                                Tu pedido ha sido enviado a la cocina.
+                                <span className="block font-semibold mt-1 text-gray-700 dark:text-gray-300">Te notificaremos por WhatsApp cualquier novedad.</span>
+                            </p>
+                        </div>
+                        <Button
+                            onClick={() => setShowSuccessModal(false)}
+                            className="w-full h-12 rounded-2xl text-white font-bold text-lg shadow-lg hover:opacity-90 active:scale-95 transition-all"
+                            style={{ backgroundColor: settings?.portal_primary_color || '#F205E2' }}
+                        >
+                            ¡Genial!
+                        </Button>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }
