@@ -46,13 +46,13 @@ export function RestoCartView({ orgId, primaryColor }: { orgId: string, primaryC
 
         if (res.success && res.messageId) {
             addRecentOrder(res.messageId) // Guarda localmente el Tracker ID del Pedido
-            clearCart()
 
             // Si el backend nos devolvió un token de portal (elevación de Guest a Cliente)
             // Redirigimos para que el usuario ya vea su portal persistente con historial real.
             if (res.portalToken) {
-                router.push(`/portal/${res.portalToken}`)
+                router.push(`/portal/${res.portalToken}?orderSuccess=true`)
             } else {
+                clearCart()
                 setSuccessMessage("¡Tu pedido ha sido enviado a la cocina! Te avisaremos vía WhatsApp.")
             }
         } else {

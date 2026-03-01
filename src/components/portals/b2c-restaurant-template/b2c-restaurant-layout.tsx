@@ -12,6 +12,7 @@ import { RestoCartView } from "./views/RestoCartView"
 import { RestoOrderTracker } from "./views/RestoOrderTracker"
 import { useRestoCart } from "@/hooks/use-resto-cart"
 import { getPortalCatalog } from "@/modules/core/portal/actions"
+import { useSearchParams } from "next/navigation"
 
 export interface RestoPortalLayoutProps {
     token?: string
@@ -36,7 +37,19 @@ export function B2CRestaurantLayout({
     const [activeTab, setActiveTab] = useState<'menu' | 'cart' | 'orders' | 'profile'>('menu')
     const [catalogItems, setCatalogItems] = useState<any[]>([])
     const [loadingCatalog, setLoadingCatalog] = useState(false)
-    const { items: cartItems } = useRestoCart()
+    const { items: cartItems, clearCart } = useRestoCart()
+    const searchParams = useSearchParams()
+
+    // Detectar éxito de pedido tras redirección
+    useEffect(() => {
+        if (searchParams.get('orderSuccess') === 'true') {
+            setActiveTab('orders')
+            clearCart() // Limpiar el carrito solo al aterrizar con éxito en el portal persistente
+
+            // Limpiar el parámetro de la URL sin recargar para estetica
+            window.history.replaceState({}, '', window.location.pathname)
+        }
+    }, [searchParams, clearCart])
 
     // Fetch Menu Catalog
     useEffect(() => {
@@ -103,7 +116,7 @@ export function B2CRestaurantLayout({
                         <RestoCartView orgId={currentOrgId || ""} primaryColor={settings?.portal_primary_color} />
                     )}
                     {activeTab === 'orders' && (
-                        <RestoOrderTracker orgId={currentOrgId || ""} />
+                        <RestoOrderTracker orgId={currentOrgId || ""} client={client} />
                     )}
                     {activeTab === 'profile' && (
                         <div className="p-8 text-center text-gray-500">

@@ -4,34 +4,38 @@ import React, { useEffect, useState } from "react"
 import { ReceiptText, CheckCircle2, Clock, MapPin, ChefHat, Bike, CalendarDays } from "lucide-react"
 import { useRestoCart } from "@/hooks/use-resto-cart"
 import { getRestoGuestOrders } from "../actions/resto-guest-tracking"
-import { RestoOrderHistoryItem } from "../actions/resto-orders-actions"
+import { getRestoClientOrders, RestoOrderHistoryItem } from "../actions/resto-orders-actions"
 import { RestoOrderWidget } from "@/modules/core/messaging/components/resto-order-widget"
 
-export function RestoOrderTracker({ orgId }: { orgId: string }) {
+export function RestoOrderTracker({ orgId, client }: { orgId: string, client?: any }) {
     const { recentOrders } = useRestoCart()
     const [orders, setOrders] = useState<RestoOrderHistoryItem[]>([])
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
         const fetchOrders = async () => {
-            if (!recentOrders || recentOrders.length === 0) {
-                setLoading(false)
-                return
-            }
-
             setLoading(true)
             try {
-                const fetchedOrders = await getRestoGuestOrders(recentOrders, orgId)
+                let fetchedOrders: RestoOrderHistoryItem[] = []
+
+                if (client?.id) {
+                    // SI SOMOS CLIENTE: Fetch oficial desde la DB vinculada al ID
+                    fetchedOrders = await getRestoClientOrders(orgId, client.id)
+                } else if (recentOrders && recentOrders.length > 0) {
+                    // SI SOMOS GUEST: Fetch por IDs guardados en el navegador
+                    fetchedOrders = await getRestoGuestOrders(recentOrders, orgId)
+                }
+
                 setOrders(fetchedOrders)
             } catch (error) {
-                console.error("Error fetching guest orders:", error)
+                console.error("Error fetching orders:", error)
             } finally {
                 setLoading(false)
             }
         }
 
         fetchOrders()
-    }, [recentOrders, orgId])
+    }, [recentOrders, orgId, client?.id])
 
     if (loading) return <div className="p-8 text-center text-gray-500">Buscando tus pedidos...</div>
 
