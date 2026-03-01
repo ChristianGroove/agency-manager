@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useMemo } from "react"
 import { FoodCard } from "../components/FoodCard"
 import { Search } from "lucide-react"
 import { ServiceCatalogItem } from "@/types"
@@ -18,8 +18,18 @@ export function RestoMenuGrid({ items, orgId }: RestoMenuGridProps) {
         (item.description && item.description.toLowerCase().includes(searchQuery.toLowerCase()))
     )
 
-    // Agrupar por categoría (opcional, si existe el campo category_id o metadata)
-    // Por simplicidad, mostraremos todo en un solo grid, pero con diseño premium B2C
+    // Group by category
+    const groupedByCategory = useMemo(() => {
+        const groups: Record<string, ServiceCatalogItem[]> = {}
+        for (const item of filteredItems) {
+            const cat = item.category || "Otros"
+            if (!groups[cat]) groups[cat] = []
+            groups[cat].push(item)
+        }
+        return groups
+    }, [filteredItems])
+
+    const categoryNames = Object.keys(groupedByCategory)
 
     return (
         <div className="flex flex-col w-full px-4 pt-4 space-y-6">
@@ -35,22 +45,31 @@ export function RestoMenuGrid({ items, orgId }: RestoMenuGridProps) {
                 />
             </div>
 
-            {/* Parrilla de Platos */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-6">
-                {filteredItems.length > 0 ? (
-                    filteredItems.map(item => (
-                        <FoodCard
-                            key={item.id}
-                            item={item}
-                            orgId={orgId}
-                        />
-                    ))
-                ) : (
-                    <div className="col-span-full py-12 text-center text-gray-500">
-                        No encontramos platos que coincidan con tu búsqueda.
+            {/* Menu grouped by category */}
+            {categoryNames.length > 0 ? (
+                categoryNames.map(category => (
+                    <div key={category} className="space-y-3">
+                        <div className="flex items-center gap-3">
+                            <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">{category}</h2>
+                            <span className="text-xs text-gray-400 font-medium">{groupedByCategory[category].length}</span>
+                            <div className="flex-1 h-px bg-gray-100 dark:bg-zinc-800" />
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {groupedByCategory[category].map(item => (
+                                <FoodCard
+                                    key={item.id}
+                                    item={item}
+                                    orgId={orgId}
+                                />
+                            ))}
+                        </div>
                     </div>
-                )}
-            </div>
+                ))
+            ) : (
+                <div className="py-12 text-center text-gray-500">
+                    No encontramos platos que coincidan con tu búsqueda.
+                </div>
+            )}
         </div>
     )
 }
