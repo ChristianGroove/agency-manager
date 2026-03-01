@@ -3,10 +3,11 @@
 import React, { useState } from "react"
 import { useRestoCart } from "@/hooks/use-resto-cart"
 import { Button } from "@/components/ui/button"
-import { Trash2, Plus, Minus, Send } from "lucide-react"
+import { Trash2, Send } from "lucide-react"
+import { QuantitySelector } from "../components/QuantitySelector"
 import { dispatchRestoOrder } from "../actions/checkout-actions"
 
-export function RestoCartView({ orgId }: { orgId: string }) {
+export function RestoCartView({ orgId, primaryColor }: { orgId: string, primaryColor?: string }) {
     const { items, updateQuantity, removeItem, getTotal, clearCart, customerProfile, setCustomerProfile, addRecentOrder } = useRestoCart()
 
     const [customerName, setCustomerName] = useState(customerProfile?.name || "")
@@ -96,15 +97,13 @@ export function RestoCartView({ orgId }: { orgId: string }) {
                         </div>
 
                         <div className="flex items-center gap-3">
-                            <div className="flex items-center bg-gray-100 dark:bg-zinc-800 rounded-full px-2 py-1 gap-3">
-                                <button type="button" onClick={() => updateQuantity(item.id, item.quantity - 1)} className="text-gray-500 active:scale-90">
-                                    <Minus className="w-4 h-4" />
-                                </button>
-                                <span className="text-sm font-bold w-4 text-center">{item.quantity}</span>
-                                <button type="button" onClick={() => updateQuantity(item.id, item.quantity + 1)} className="text-gray-500 active:scale-90">
-                                    <Plus className="w-4 h-4" />
-                                </button>
-                            </div>
+                            <QuantitySelector
+                                quantity={item.quantity}
+                                onIncrement={() => updateQuantity(item.id, item.quantity + 1)}
+                                onDecrement={() => updateQuantity(item.id, Math.max(1, item.quantity - 1))}
+                                size="sm"
+                                primaryColor={primaryColor}
+                            />
                             <button type="button" onClick={() => removeItem(item.id)} className="text-red-400 p-1">
                                 <Trash2 className="w-4 h-4" />
                             </button>

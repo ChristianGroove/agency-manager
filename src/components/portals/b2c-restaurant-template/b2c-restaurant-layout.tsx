@@ -71,7 +71,7 @@ export function B2CRestaurantLayout({
 
             {/* TOP BAR: Branding Inyectado por el Tema Global */}
             <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-sm" style={{ borderBottomColor: settings?.portal_primary_color ? `${settings.portal_primary_color}30` : '' }}>
-                <div className="container flex h-16 items-center flex-row justify-between">
+                <div className="container flex h-16 items-center flex-row justify-center">
                     <div className="flex items-center gap-2">
                         {settings?.portal_logo_url ? (
                             <img src={settings.portal_logo_url} alt="Logo" className="h-8 w-auto object-contain" />
@@ -88,10 +88,10 @@ export function B2CRestaurantLayout({
             <main className="flex-1 w-full flex flex-col pb-20">
                 <Suspense fallback={<GlobalLoader />}>
                     {activeTab === 'menu' && (
-                        loadingCatalog ? <GlobalLoader /> : <RestoMenuGrid items={catalogItems} orgId={currentOrgId || ""} />
+                        loadingCatalog ? <GlobalLoader /> : <RestoMenuGrid items={catalogItems} orgId={currentOrgId || ""} primaryColor={settings?.portal_primary_color} />
                     )}
                     {activeTab === 'cart' && (
-                        <RestoCartView orgId={currentOrgId || ""} />
+                        <RestoCartView orgId={currentOrgId || ""} primaryColor={settings?.portal_primary_color} />
                     )}
                     {activeTab === 'orders' && (
                         <RestoOrderTracker orgId={currentOrgId || ""} />
