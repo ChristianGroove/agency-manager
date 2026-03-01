@@ -272,6 +272,18 @@ export function CatalogServiceSheet({
                                 </div>
                             </div>
 
+                            {/* Description - Universal */}
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold uppercase text-gray-400">{isAgency ? 'Descripción' : 'Descripción del plato'}</Label>
+                                <Textarea
+                                    value={formData.description || ""}
+                                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                    placeholder={isAgency ? "Describe brevemente este servicio..." : "Ej: Hamburguesa doble con queso cheddar, lechuga y salsa especial"}
+                                    rows={2}
+                                    className="resize-none text-sm"
+                                />
+                            </div>
+
                             {/* Billing & Frequency Grouping — Agency/Cleaning ONLY */}
                             {isAgency && (
                                 <div className="bg-slate-50/50 p-4 rounded-xl border border-slate-100 space-y-4">

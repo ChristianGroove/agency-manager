@@ -12,6 +12,7 @@ export interface FoodCardProps {
         base_price?: number
         currency?: string
         images?: string[]
+        image_url?: string    // From service_catalog universal type
         has_variants?: boolean
     }
     orgId: string
@@ -22,6 +23,7 @@ export function FoodCard({ item, orgId }: FoodCardProps) {
 
     // Manejar incompatibilidad de columnas entre catálogo universal y B2C
     const itemPrice = item.price || item.base_price || 0
+    const itemImage = item.image_url || item.images?.[0] || null
 
     const handleAdd = () => {
         // Prevent mixing items from different restaurants
@@ -39,7 +41,7 @@ export function FoodCard({ item, orgId }: FoodCardProps) {
             title: item.name,
             price: itemPrice,
             quantity: 1,
-            image: item.images?.[0]
+            image: itemImage || undefined
         })
     }
 
@@ -53,10 +55,10 @@ export function FoodCard({ item, orgId }: FoodCardProps) {
         <div className="flex flex-row bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800 p-3 gap-3 overflow-hidden h-36 relative">
             {/* Imagen Plegada */}
             <div className="w-28 h-full bg-gray-100 dark:bg-zinc-800 rounded-xl overflow-hidden flex-shrink-0 relative">
-                {item.images && item.images.length > 0 ? (
+                {itemImage ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
-                        src={item.images[0]}
+                        src={itemImage}
                         alt={item.name}
                         className="w-full h-full object-cover"
                     />

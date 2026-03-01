@@ -601,10 +601,21 @@ export function ClientsView({ initialData, initialSettings, currentPage, current
                                                             variant="ghost"
                                                             size="icon"
                                                             className="h-8 w-8 rounded-full bg-gray-50 text-gray-400 hover:bg-white hover:text-green-600 hover:shadow-md hover:-translate-y-0.5 hover:ring-1 hover:ring-green-100 transition-all duration-300"
-                                                            title="Comunicación"
+                                                            title={isAgency ? "Comunicación" : "Chat WhatsApp"}
                                                             onClick={() => {
-                                                                setSelectedClientForCom(client)
-                                                                setIsComModalOpen(true)
+                                                                if (isAgency) {
+                                                                    setSelectedClientForCom(client)
+                                                                    setIsComModalOpen(true)
+                                                                } else {
+                                                                    // Resto: navigate to inbox with phone to start/open conversation
+                                                                    const phone = client.phone?.replace(/\D/g, '')
+                                                                    if (phone) {
+                                                                        router.push(`/inbox?phone=${phone}`)
+                                                                    } else {
+                                                                        setSelectedClientForCom(client)
+                                                                        setIsComModalOpen(true)
+                                                                    }
+                                                                }
                                                             }}
                                                         >
                                                             <Phone className="h-4 w-4" />
@@ -811,10 +822,20 @@ export function ClientsView({ initialData, initialSettings, currentPage, current
                                                                     variant="ghost"
                                                                     size="icon"
                                                                     className="h-8 w-8 text-gray-400 hover:text-green-600"
-                                                                    title="Comunicación"
+                                                                    title={isAgency ? "Comunicación" : "Chat WhatsApp"}
                                                                     onClick={() => {
-                                                                        setSelectedClientForCom(client)
-                                                                        setIsComModalOpen(true)
+                                                                        if (isAgency) {
+                                                                            setSelectedClientForCom(client)
+                                                                            setIsComModalOpen(true)
+                                                                        } else {
+                                                                            const phone = client.phone?.replace(/\D/g, '')
+                                                                            if (phone) {
+                                                                                router.push(`/inbox?phone=${phone}`)
+                                                                            } else {
+                                                                                setSelectedClientForCom(client)
+                                                                                setIsComModalOpen(true)
+                                                                            }
+                                                                        }
                                                                     }}
                                                                 >
                                                                     <Phone className="h-4 w-4" />
