@@ -47,7 +47,7 @@ export const MessageBubble = memo(function MessageBubble({ content, direction, t
             )}>
                 {/* Content Renderer */}
                 <div className="mb-1">
-                    {renderContent(content, isOutbound, messageId, metadata, t)}
+                    {renderContent({ content, isOutbound, messageId, metadata, t, status })}
                 </div>
 
                 {/* Footer: Timestamp & Status */}
@@ -70,14 +70,21 @@ export const MessageBubble = memo(function MessageBubble({ content, direction, t
     )
 })
 
-function renderContent(content: any, isOutbound: boolean, messageId?: string, metadata?: any, t?: any) {
+function renderContent({ content, isOutbound, messageId, metadata, t, status }: {
+    content: any,
+    isOutbound: boolean,
+    messageId?: string,
+    metadata?: any,
+    t?: any,
+    status?: string
+}) {
     // Normalizar propiedades del contenido
     const url = content.url || content.mediaUrl || content.link;
     const text = content.text || content.caption || content.body;
 
     // Inyección del Widget B2C
     if (metadata?.type === 'resto_order') {
-        return <RestoOrderWidget orderData={metadata} isOutbound={isOutbound} />
+        return <RestoOrderWidget messageId={messageId} orderData={metadata} isOutbound={isOutbound} status={status} />
     }
 
     switch (content.type) {

@@ -169,3 +169,21 @@ export async function dispatchRestoOrder(payload: CheckoutPayload) {
         return { success: false, error: error.message }
     }
 }
+
+export async function updateRestoOrderStatus(messageId: string, status: 'read' | 'delivered' | 'failed') {
+    const supabase = supabaseAdmin
+
+    try {
+        const { error } = await supabase
+            .from('messages')
+            .update({ status })
+            .eq('id', messageId)
+
+        if (error) throw error
+
+        return { success: true }
+    } catch (error: any) {
+        console.error("[Resto Update Status] Error:", error)
+        return { success: false, error: error.message }
+    }
+}
