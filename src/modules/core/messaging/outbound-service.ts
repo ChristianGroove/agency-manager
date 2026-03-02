@@ -1,6 +1,7 @@
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { integrationRegistry } from "@/modules/core/integrations/registry"
 import { inboxService } from "./inbox-service"
+import { normalizePhone } from "@/lib/normalize-phone"
 
 export class OutboundService {
     async sendMessage(
@@ -29,11 +30,12 @@ export class OutboundService {
         console.log(`[OutboundService] Sending via ${channel.provider_key} to ${recipientPhone}`)
 
         // 3. Find Conversation Context (Moved before sending to get metadata)
+        const normalizedRecipient = normalizePhone(recipientPhone)
         const { data: conv } = await supabase
             .from('conversations')
             .select('id, channel, metadata')
             .eq('organization_id', organizationId)
-            .eq('phone', recipientPhone)
+            .eq('phone', normalizedRecipient)
             .neq('state', 'archived')
             .order('updated_at', { ascending: false })
             .limit(1)
@@ -62,7 +64,7 @@ export class OutboundService {
                 .from('conversations')
                 .select('id, channel, metadata')
                 .eq('organization_id', organizationId)
-                .eq('phone', recipientPhone)
+                .eq('phone', normalizedRecipient)
                 .order('updated_at', { ascending: false })
                 .limit(1)
                 .single()

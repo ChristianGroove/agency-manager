@@ -132,7 +132,7 @@ export function RestoCartView({ orgId, primaryColor }: { orgId: string, primaryC
 
                 <input
                     required type="tel" placeholder="Tu WhatsApp (ej. 3001234567)"
-                    value={customerPhone} onChange={e => setCustomerPhone(e.target.value)}
+                    value={customerPhone} onChange={e => setCustomerPhone(e.target.value.replace(/[^\d+\-\s]/g, ''))}
                     className="w-full h-12 px-3 rounded-lg bg-gray-50 dark:bg-zinc-800 border-none outline-none focus:ring-2 focus:ring-primary/20"
                 />
 

@@ -2,6 +2,7 @@
 
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { CartItem } from "@/hooks/use-resto-cart"
+import { normalizePhone } from "@/lib/normalize-phone"
 
 export interface CheckoutPayload {
     orgId: string
@@ -16,20 +17,60 @@ export interface CheckoutPayload {
 export async function dispatchRestoOrder(payload: CheckoutPayload) {
     const supabase = supabaseAdmin
 
+    // Normalizar teléfono al formato internacional (ej. 3001234567 → 573001234567)
+    payload.customerPhone = normalizePhone(payload.customerPhone)
+
     try {
-        // En un caso real, buscaríamos la conexión activa de WhatsApp del restaurante 
-        // para que el ID del canal entrante sea correcto.
+        // ═══════════════════════════════════════════════════════════
+        // 0. Resolver el canal WABA principal de la organización
+        // ═══════════════════════════════════════════════════════════
         const { data: connection } = await supabase
             .from('integration_connections')
-            .select('id, platform')
+            .select('id, provider_key, metadata')
             .eq('organization_id', payload.orgId)
-            .eq('platform', 'whatsapp')
+            .in('provider_key', ['whatsapp_cloud', 'meta_whatsapp'])
             .eq('status', 'active')
             .limit(1)
             .single()
 
-        // 1. Upsert Client (Lead)
-        // Buscamos si el teléfono ya existe. Si no, lo creamos.
+        const connId = connection?.id || null
+
+        // ═══════════════════════════════════════════════════════════
+        // 1. PHONE-FIRST: Buscar conversación existente por teléfono
+        //    Esto cruza tanto lead_id como client_id conversations
+        // ═══════════════════════════════════════════════════════════
+        let conversationId: string | null = null
+
+        const { data: existingConvs } = await supabase
+            .from('conversations')
+            .select('id, connection_id, client_id, lead_id, state')
+            .eq('organization_id', payload.orgId)
+            .eq('phone', payload.customerPhone)
+            .order('updated_at', { ascending: false })
+            .limit(5)
+
+        if (existingConvs && existingConvs.length > 0) {
+            // Priorizar: conversación CON canal vinculado (WABA real) > sin canal
+            const withChannel = existingConvs.find(c => c.connection_id !== null)
+            const anyActive = existingConvs.find(c => c.state === 'active')
+
+            const bestMatch = withChannel || anyActive || existingConvs[0]
+            conversationId = bestMatch.id
+
+            // Si la conversación estaba archivada, reactivarla
+            if (bestMatch.state !== 'active') {
+                await supabase
+                    .from('conversations')
+                    .update({ state: 'active', status: 'open', updated_at: new Date().toISOString() })
+                    .eq('id', conversationId)
+            }
+
+            console.log(`[Resto Checkout] ✅ Reutilizando conversación existente: ${conversationId} (connection: ${bestMatch.connection_id || 'none'})`)
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // 2. Upsert Client (para el Portal Token y perfil CRM)
+        // ═══════════════════════════════════════════════════════════
         let clientIdToUse = null
         let portalToken = null
 
@@ -40,7 +81,6 @@ export async function dispatchRestoOrder(payload: CheckoutPayload) {
             .eq('phone', payload.customerPhone)
             .maybeSingle()
 
-        // Buscar un usuario dueño de la organización para asignarle este contacto/lead
         const { data: orgMember } = await supabase
             .from('organization_members')
             .select('user_id')
@@ -54,20 +94,14 @@ export async function dispatchRestoOrder(payload: CheckoutPayload) {
             clientIdToUse = existingClient.id
             portalToken = existingClient.portal_short_token
 
-            // Asegurar que tenga token si por alguna razón no lo tiene
             if (!portalToken) {
                 const { data: newToken } = await supabase.rpc('generate_short_token')
                 await supabase.from('clients').update({ portal_short_token: newToken }).eq('id', clientIdToUse)
                 portalToken = newToken
             }
 
-            // Actualizar nombre en caso de que el cliente (dueño del teléfono) haya proveído uno nuevo en esta compra
-            await supabase
-                .from('clients')
-                .update({ name: payload.customerName })
-                .eq('id', clientIdToUse)
+            await supabase.from('clients').update({ name: payload.customerName }).eq('id', clientIdToUse)
         } else {
-            // Generar token para el nuevo cliente
             const { data: newToken } = await supabase.rpc('generate_short_token')
             portalToken = newToken
 
@@ -90,40 +124,36 @@ export async function dispatchRestoOrder(payload: CheckoutPayload) {
             clientIdToUse = newClient.id
         }
 
-        // 2. Crear o Buscar Conversación Abierta
-        const connId = connection?.id || null
-
-        let conversationId = null
-
-        // Build query carefully since eq() with null can be tricky, 
-        // but Supabase usually handles eq(null) as IS NULL or we can use match.
-        const query = supabase
-            .from('conversations')
-            .select('id')
-            .eq('organization_id', payload.orgId)
-            .eq('client_id', clientIdToUse)
-            .eq('status', 'open')
-
-        if (connId) {
-            query.eq('connection_id', connId)
-        } else {
-            query.is('connection_id', null)
+        // ═══════════════════════════════════════════════════════════
+        // 3. Si encontramos conversación existente, vincular client_id
+        //    (la conversación puede haber sido creada por el webhook con lead_id solamente)
+        // ═══════════════════════════════════════════════════════════
+        if (conversationId && clientIdToUse) {
+            await supabase
+                .from('conversations')
+                .update({ client_id: clientIdToUse })
+                .eq('id', conversationId)
+                .is('client_id', null) // Solo si no tiene client_id aún
         }
 
-        const { data: activeConv } = await query.maybeSingle()
+        // ═══════════════════════════════════════════════════════════
+        // 4. SOLO COMO FALLBACK: Crear conversación si no se encontró ninguna
+        // ═══════════════════════════════════════════════════════════
+        if (!conversationId) {
+            console.log(`[Resto Checkout] No se encontró conversación existente. Creando nueva con connection: ${connId}`)
 
-        if (activeConv) {
-            conversationId = activeConv.id
-        } else {
             const { data: newConv, error: convError } = await supabase
                 .from('conversations')
                 .insert({
                     organization_id: payload.orgId,
-                    connection_id: connId,
+                    connection_id: connId, // Vincular al canal WABA real
                     client_id: clientIdToUse,
-                    channel: connection ? connection.platform : 'whatsapp',
+                    channel: 'whatsapp',
+                    phone: payload.customerPhone,
                     status: 'open',
-                    unread_count: 1
+                    state: 'active',
+                    unread_count: 1,
+                    last_message_at: new Date().toISOString()
                 })
                 .select()
                 .single()
@@ -135,9 +165,9 @@ export async function dispatchRestoOrder(payload: CheckoutPayload) {
             conversationId = newConv.id
         }
 
-        // 3. Crear el Mensaje tipo 'Order Widget'
-        // El contenido será un JSON que el frontend del Inbox podrá interpretar 
-        // para renderizar el "OrderWidget.tsx" en lugar de texto plano.
+        // ═══════════════════════════════════════════════════════════
+        // 5. Insertar Mensaje tipo Order Widget
+        // ═══════════════════════════════════════════════════════════
         const orderData = {
             type: "resto_order",
             total: payload.total,
@@ -153,8 +183,8 @@ export async function dispatchRestoOrder(payload: CheckoutPayload) {
                 conversation_id: conversationId,
                 direction: 'inbound',
                 content: `🛍️ Nuevo Pedido por $${payload.total}\n\nCliente: ${payload.customerName}\nDirección: ${payload.deliveryAddress}\n\nRevisar detalles en Pixy CRM.`,
-                channel: connection ? connection.platform : 'whatsapp',
-                metadata: orderData, // <-- La Magia Real está aquí
+                channel: 'whatsapp',
+                metadata: orderData,
                 status: 'delivered'
             })
             .select('id')

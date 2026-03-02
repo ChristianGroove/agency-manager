@@ -2,6 +2,7 @@ import { supabaseAdmin } from "@/lib/supabase-admin"
 import { IncomingMessage } from "./providers/types"
 import { ChannelType } from "@/types/messaging"
 import { SupabaseClient } from "@supabase/supabase-js"
+import { normalizePhone } from "@/lib/normalize-phone"
 import { createClient } from '@supabase/supabase-js'
 
 export class InboxService {
@@ -308,12 +309,13 @@ export class InboxService {
         console.log(`Matched Org: ${orgId}, Connection: ${connectionId} `);
 
         // 2. Find or create Lead by phone (now using correct org)
+        const normalizedPhone = normalizePhone(msg.from)
         let lead = null;
         let existingLead = null;
         const { data: foundLeads } = await supabase
             .from('leads')
             .select('id, phone, name')
-            .eq('phone', msg.from)
+            .eq('phone', normalizedPhone)
             .eq('organization_id', orgId)
             .limit(1);
 
@@ -338,11 +340,11 @@ export class InboxService {
                 console.log('[InboxService] Updated lead info:', updates);
             }
         } else {
-            console.log('[InboxService] Creating new lead for:', msg.from);
+            console.log('[InboxService] Creating new lead for:', normalizedPhone);
             const { data: newLead, error: leadError } = await supabase.from('leads').insert({
                 organization_id: orgId,
-                phone: msg.from,
-                name: msg.senderName || msg.from,
+                phone: normalizedPhone,
+                name: msg.senderName || normalizedPhone,
                 avatar_url: msg.senderAvatarUrl,
                 status: 'new',
                 source_connection_id: connectionId // Attribution: Track which line captured this lead
@@ -389,7 +391,7 @@ export class InboxService {
                 updates.status = 'open'
             }
             if (!existingConv.phone) {
-                updates.phone = msg.from
+                updates.phone = normalizedPhone
             }
 
             // Populate preview for sidebar
@@ -465,7 +467,7 @@ export class InboxService {
             organization_id: orgId,
             lead_id: lead.id,
             channel: msg.channel, // Ensure this maps to DB enum
-            phone: msg.from,
+            phone: normalizedPhone,
             status: 'open',
             state: 'active',
             last_message: msg.content,

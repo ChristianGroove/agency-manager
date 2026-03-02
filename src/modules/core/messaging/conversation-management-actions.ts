@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase-server"
 import { revalidatePath } from "next/cache"
+import { normalizePhone } from "@/lib/normalize-phone"
 
 /**
  * Assign a conversation to a specific user/agent
@@ -286,11 +287,12 @@ export async function createConversation(input: { lead_id?: string, client_id?: 
     let resolvedOrgId: string | null = null
 
     if (!finalClientId && !finalLeadId && phone) {
+        const normalizedPhone = normalizePhone(phone)
         // A. Check for existing Client
         const { data: existingClient } = await supabase
             .from('clients')
             .select('id, organization_id')
-            .eq('phone', phone)
+            .eq('phone', normalizedPhone)
             .single()
 
         if (existingClient) {
@@ -301,7 +303,7 @@ export async function createConversation(input: { lead_id?: string, client_id?: 
             const { data: existingLead } = await supabase
                 .from('leads')
                 .select('id, organization_id')
-                .eq('phone', phone)
+                .eq('phone', normalizedPhone)
                 .single()
 
             if (existingLead) {
@@ -316,8 +318,8 @@ export async function createConversation(input: { lead_id?: string, client_id?: 
                     .from('leads')
                     .insert({
                         organization_id: orgId,
-                        name: phone,
-                        phone: phone,
+                        name: normalizedPhone,
+                        phone: normalizedPhone,
                         status: 'new',
                         source: 'direct_chat'
                     })

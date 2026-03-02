@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase-server"
 import { revalidatePath } from "next/cache"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
 import { Quote } from "@/types"
+import { normalizePhone } from "@/lib/normalize-phone"
 
 /**
  * Creates a new Quote using Atomic ID Generation
@@ -363,7 +364,8 @@ export async function sendQuoteViaWhatsApp(quoteId: string, targetPhone?: string
         // Resolve Lead ID
         let leadId = quote.lead_id
         if (!leadId && quote.client_id) {
-            const { data: leadByPhone } = await supabase.from('leads').select('id').eq('phone', phone).eq('organization_id', orgId).single()
+            const normalizedLookup = normalizePhone(phone)
+            const { data: leadByPhone } = await supabase.from('leads').select('id').eq('phone', normalizedLookup).eq('organization_id', orgId).single()
             if (leadByPhone) leadId = leadByPhone.id
         }
 
@@ -400,8 +402,8 @@ export async function sendQuoteViaWhatsApp(quoteId: string, targetPhone?: string
         if (conversationId) {
             // Found existing!
         } else {
-            // Create New: Prefer 57 prefix if 10 digits
-            const finalPhone = (rawPhone.length === 10) ? `57${rawPhone}` : rawPhone
+            // Create New: Use normalizePhone for consistent format
+            const finalPhone = normalizePhone(phone)
 
             // Create Lead if needed
             if (!leadId) {
