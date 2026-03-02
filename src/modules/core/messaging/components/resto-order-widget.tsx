@@ -13,6 +13,7 @@ interface RestoOrderWidgetProps {
         items: { name: string; qty: number; price: number }[]
         address?: string
         customer_notes?: string
+        order_status?: string
     }
     isOutbound: boolean
     status?: string
@@ -23,8 +24,8 @@ export function RestoOrderWidget({ messageId, orderData, isOutbound, status }: R
     const [loading, setLoading] = useState(false)
     const [currentStatus, setCurrentStatus] = useState(status)
 
-    const isAccepted = currentStatus === 'read' || currentStatus === 'shipped' || currentStatus === 'completed'
-    const isShipped = currentStatus === 'shipped' || currentStatus === 'completed'
+    const isAccepted = currentStatus === 'read' || currentStatus === 'shipped' || currentStatus === 'completed' || orderData.order_status === 'read' || orderData.order_status === 'shipped' || orderData.order_status === 'completed'
+    const isShipped = currentStatus === 'shipped' || currentStatus === 'completed' || orderData.order_status === 'shipped' || orderData.order_status === 'completed'
 
     const handleAction = async (nextStatus: 'read' | 'shipped') => {
         if (!messageId) return

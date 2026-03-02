@@ -91,8 +91,8 @@ export function RestoOrderTracker({ orgId, client }: { orgId: string, client?: a
                                 <div className="overflow-hidden h-1.5 mb-4 text-xs flex rounded bg-gray-100 dark:bg-zinc-800">
                                     <div
                                         style={{
-                                            width: order.status === 'shipped' || order.status === 'completed' ? "100%" :
-                                                order.status === 'read' ? "50%" : "15%"
+                                            width: (order.metadata as any)?.order_status === 'shipped' || (order.metadata as any)?.order_status === 'completed' || order.status === 'shipped' || order.status === 'completed' ? "100%" :
+                                                (order.metadata as any)?.order_status === 'read' || order.status === 'read' ? "50%" : "15%"
                                         }}
                                         className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-primary transition-all duration-1000"
                                     ></div>
@@ -104,11 +104,11 @@ export function RestoOrderTracker({ orgId, client }: { orgId: string, client?: a
                                     <CheckCircle2 className="w-5 h-5" />
                                     <span>Recibido</span>
                                 </div>
-                                <div className={`flex flex-col items-center gap-1 ${(order.status === 'read' || order.status === 'shipped' || order.status === 'completed') ? 'text-primary font-bold' : 'opacity-40'}`}>
+                                <div className={`flex flex-col items-center gap-1 ${((order.metadata as any)?.order_status === 'read' || (order.metadata as any)?.order_status === 'shipped' || (order.metadata as any)?.order_status === 'completed' || order.status === 'read' || order.status === 'shipped' || order.status === 'completed') ? 'text-primary font-bold' : 'opacity-40'}`}>
                                     <ChefHat className="w-5 h-5" />
                                     <span>En Cocina</span>
                                 </div>
-                                <div className={`flex flex-col items-center gap-1 ${(order.status === 'shipped' || order.status === 'completed') ? 'text-primary font-bold' : 'opacity-40'}`}>
+                                <div className={`flex flex-col items-center gap-1 ${((order.metadata as any)?.order_status === 'shipped' || (order.metadata as any)?.order_status === 'completed' || order.status === 'shipped' || order.status === 'completed') ? 'text-primary font-bold' : 'opacity-40'}`}>
                                     <Bike className="w-5 h-5" />
                                     <span>En Camino</span>
                                 </div>

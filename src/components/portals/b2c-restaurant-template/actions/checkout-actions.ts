@@ -170,13 +170,34 @@ export async function dispatchRestoOrder(payload: CheckoutPayload) {
     }
 }
 
-export async function updateRestoOrderStatus(messageId: string, status: 'read' | 'delivered' | 'failed' | 'shipped' | 'completed') {
+export async function updateRestoOrderStatus(messageId: string, status: 'read' | 'shipped' | 'completed' | 'failed') {
     const supabase = supabaseAdmin
 
     try {
+        // 1. Obtener metadatos actuales
+        const { data: current, error: fError } = await supabase
+            .from('messages')
+            .select('metadata')
+            .eq('id', messageId)
+            .single()
+
+        if (fError) throw fError
+
+        // 2. Mezclar el nuevo estado logístico
+        const newMetadata = {
+            ...(current?.metadata || {}),
+            order_status: status
+        }
+
+        // 3. Status compatible con DB (read es seguro)
+        const dbStatus = (status === 'shipped' || status === 'completed') ? 'read' : status
+
         const { error } = await supabase
             .from('messages')
-            .update({ status })
+            .update({
+                status: dbStatus,
+                metadata: newMetadata
+            })
             .eq('id', messageId)
 
         if (error) throw error
