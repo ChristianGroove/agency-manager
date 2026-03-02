@@ -219,8 +219,10 @@ export async function updateRestoOrderStatus(messageId: string, status: 'read' |
             order_status: status
         }
 
-        // 3. Status compatible con DB (read es seguro)
-        const dbStatus = (status === 'shipped' || status === 'completed') ? 'read' : status
+        // 3. Status compatible con DB
+        // shipped y completed se almacenan en metadata.order_status
+        // El campo messages.status usa 'read' para shipped, y el status original para completed
+        const dbStatus = (status === 'shipped') ? 'read' : (status === 'completed') ? 'read' : status
 
         const { error } = await supabase
             .from('messages')

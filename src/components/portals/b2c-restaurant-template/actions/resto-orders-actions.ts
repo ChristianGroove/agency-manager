@@ -13,6 +13,7 @@ export interface RestoOrderHistoryItem {
         items: { name: string; qty: number; price: number }[]
         address?: string
         customer_notes?: string
+        order_status?: string
     }
 }
 

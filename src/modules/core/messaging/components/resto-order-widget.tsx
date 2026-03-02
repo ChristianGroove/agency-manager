@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState } from "react"
-import { ShoppingBag, MapPin, Receipt, Check, Loader2, Bike } from "lucide-react"
+import { ShoppingBag, MapPin, Receipt, Check, Loader2, Bike, CircleCheckBig } from "lucide-react"
 import { updateRestoOrderStatus } from "@/components/portals/b2c-restaurant-template/actions/checkout-actions"
 import { toast } from "sonner"
 
@@ -24,10 +24,13 @@ export function RestoOrderWidget({ messageId, orderData, isOutbound, status }: R
     const [loading, setLoading] = useState(false)
     const [currentStatus, setCurrentStatus] = useState(status)
 
-    const isAccepted = currentStatus === 'read' || currentStatus === 'shipped' || currentStatus === 'completed' || orderData.order_status === 'read' || orderData.order_status === 'shipped' || orderData.order_status === 'completed'
-    const isShipped = currentStatus === 'shipped' || currentStatus === 'completed' || orderData.order_status === 'shipped' || orderData.order_status === 'completed'
+    const effectiveStatus = orderData.order_status || currentStatus
 
-    const handleAction = async (nextStatus: 'read' | 'shipped') => {
+    const isAccepted = effectiveStatus === 'read' || effectiveStatus === 'shipped' || effectiveStatus === 'completed'
+    const isShipped = effectiveStatus === 'shipped' || effectiveStatus === 'completed'
+    const isCompleted = effectiveStatus === 'completed'
+
+    const handleAction = async (nextStatus: 'read' | 'shipped' | 'completed') => {
         if (!messageId) return
 
         setLoading(true)
@@ -35,7 +38,11 @@ export function RestoOrderWidget({ messageId, orderData, isOutbound, status }: R
             const result = await updateRestoOrderStatus(messageId, nextStatus)
             if (result.success) {
                 setCurrentStatus(nextStatus)
-                toast.success(nextStatus === 'read' ? "Pedido aceptado" : "Pedido despachado")
+                toast.success(
+                    nextStatus === 'read' ? "Pedido aceptado" :
+                        nextStatus === 'shipped' ? "Pedido despachado" :
+                            "Pedido completado"
+                )
             } else {
                 toast.error("Error al actualizar el pedido")
             }
@@ -46,15 +53,17 @@ export function RestoOrderWidget({ messageId, orderData, isOutbound, status }: R
         }
     }
 
+    const headerLabel = isCompleted ? "Pedido Completado" :
+        isShipped ? "Pedido en Camino" :
+            isAccepted ? "Pedido Tomado" : "Nuevo Pedido"
+
     return (
         <div className="flex flex-col w-64 md:w-72 bg-white dark:bg-zinc-900 rounded-xl overflow-hidden border border-gray-100 dark:border-zinc-800 shadow-sm my-1">
             {/* Header */}
             <div className="bg-primary/10 px-4 py-3 flex items-center justify-between border-b border-primary/10">
                 <div className="flex items-center gap-2 text-primary font-bold text-sm">
                     <ShoppingBag className="w-4 h-4" />
-                    <span>
-                        {isShipped ? "Pedido en Camino" : isAccepted ? "Pedido Tomado" : "Nuevo Pedido"}
-                    </span>
+                    <span>{headerLabel}</span>
                 </div>
                 <span className="font-bold text-gray-900 dark:text-white">
                     ${orderData.total.toLocaleString('es-CO')}
@@ -95,7 +104,7 @@ export function RestoOrderWidget({ messageId, orderData, isOutbound, status }: R
             </div>
 
             {/* Actions for the CRM Agent */}
-            {isRestaurantSide && !isShipped && (
+            {isRestaurantSide && !isCompleted && (
                 <div className="p-2 bg-gray-50 dark:bg-zinc-900 border-t border-gray-100 dark:border-zinc-800">
                     {!isAccepted ? (
                         <button
@@ -105,7 +114,7 @@ export function RestoOrderWidget({ messageId, orderData, isOutbound, status }: R
                         >
                             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Aceptar Pedido"}
                         </button>
-                    ) : (
+                    ) : !isShipped ? (
                         <button
                             onClick={() => handleAction('shipped')}
                             disabled={loading}
@@ -118,14 +127,36 @@ export function RestoOrderWidget({ messageId, orderData, isOutbound, status }: R
                                 </>
                             )}
                         </button>
+                    ) : (
+                        <button
+                            onClick={() => handleAction('completed')}
+                            disabled={loading}
+                            className="w-full font-bold text-sm py-2 rounded-lg transition-all flex items-center justify-center gap-2 bg-violet-600 text-white hover:bg-violet-700 active:scale-[0.98]"
+                        >
+                            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : (
+                                <>
+                                    <CircleCheckBig className="w-4 h-4" />
+                                    Completar Pedido
+                                </>
+                            )}
+                        </button>
                     )}
                 </div>
             )}
 
-            {isShipped && (
+            {isCompleted && (
+                <div className="p-2 bg-violet-50 dark:bg-violet-900/10 border-t border-violet-100 dark:border-violet-900/20">
+                    <div className="flex items-center justify-center gap-2 text-violet-600 dark:text-violet-400 font-bold text-sm py-1">
+                        <CircleCheckBig className="w-4 h-4" />
+                        Pedido completado
+                    </div>
+                </div>
+            )}
+
+            {isShipped && !isCompleted && (
                 <div className="p-2 bg-green-50 dark:bg-emerald-900/10 border-t border-green-100 dark:border-emerald-900/20">
                     <div className="flex items-center justify-center gap-2 text-green-600 dark:text-emerald-400 font-bold text-sm py-1">
-                        <Check className="w-4 h-4" />
+                        <Bike className="w-4 h-4" />
                         En camino al cliente
                     </div>
                 </div>

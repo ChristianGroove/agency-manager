@@ -54,6 +54,16 @@ export function B2CRestaurantLayout({
         }
     }, [searchParams, clearCart])
 
+    // Escuchar evento de navegación interna (usado por "Repetir Pedido")
+    useEffect(() => {
+        const handler = (e: Event) => {
+            const tab = (e as CustomEvent).detail as 'menu' | 'cart' | 'orders' | 'profile'
+            if (tab) setActiveTab(tab)
+        }
+        window.addEventListener('resto-navigate', handler)
+        return () => window.removeEventListener('resto-navigate', handler)
+    }, [])
+
     // Fetch Menu Catalog
     useEffect(() => {
         async function fetchMenu() {
