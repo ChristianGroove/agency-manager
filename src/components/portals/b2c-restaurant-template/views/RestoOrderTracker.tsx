@@ -71,34 +71,44 @@ export function RestoOrderTracker({ orgId, client }: { orgId: string, client?: a
                                 </div>
                                 <span className={
                                     `px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ` +
-                                    (order.status === 'read' ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700")
+                                    (order.status === 'shipped' ? "bg-emerald-100 text-emerald-700" :
+                                        order.status === 'read' ? "bg-blue-100 text-blue-700" :
+                                            "bg-gray-100 text-gray-700")
                                 }>
-                                    {order.status === 'read' ? "Tomado" : "Enviado a Cocina"}
+                                    {order.status === 'shipped' ? "En Camino" :
+                                        order.status === 'read' ? "En Cocina" :
+                                            "Recibido"}
                                 </span>
                             </div>
 
                             {/* Mostrar el detalle de items reusando el Widget ya diseñado para el CRM */}
                             <div className="-mx-5 border-y border-gray-50 dark:border-zinc-800 bg-gray-50/50 dark:bg-zinc-900/50 py-2 flex justify-center scale-95 origin-center pointer-events-none">
-                                <RestoOrderWidget orderData={order.metadata as any} isOutbound={true} />
+                                <RestoOrderWidget orderData={order.metadata as any} isOutbound={true} status={order.status} />
                             </div>
 
-                            {/* Progress Bar Visual (Simulado MVP) */}
+                            {/* Progress Bar Visual (Logística Real) */}
                             <div className="relative pt-6 pb-2">
                                 <div className="overflow-hidden h-1.5 mb-4 text-xs flex rounded bg-gray-100 dark:bg-zinc-800">
-                                    <div style={{ width: order.status === 'read' ? "100%" : "30%" }} className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-primary transition-all duration-1000"></div>
+                                    <div
+                                        style={{
+                                            width: order.status === 'shipped' || order.status === 'completed' ? "100%" :
+                                                order.status === 'read' ? "50%" : "15%"
+                                        }}
+                                        className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-primary transition-all duration-1000"
+                                    ></div>
                                 </div>
                             </div>
 
                             <div className="flex justify-between text-xs text-gray-500 font-medium px-1">
                                 <div className="flex flex-col items-center gap-1 text-primary">
                                     <CheckCircle2 className="w-5 h-5" />
-                                    <span>Enviado</span>
+                                    <span>Recibido</span>
                                 </div>
-                                <div className={`flex flex-col items-center gap-1 ${order.status === 'read' ? 'text-primary' : 'opacity-40'}`}>
+                                <div className={`flex flex-col items-center gap-1 ${(order.status === 'read' || order.status === 'shipped' || order.status === 'completed') ? 'text-primary font-bold' : 'opacity-40'}`}>
                                     <ChefHat className="w-5 h-5" />
-                                    <span>Preparando</span>
+                                    <span>En Cocina</span>
                                 </div>
-                                <div className="flex flex-col items-center gap-1 opacity-40">
+                                <div className={`flex flex-col items-center gap-1 ${(order.status === 'shipped' || order.status === 'completed') ? 'text-primary font-bold' : 'opacity-40'}`}>
                                     <Bike className="w-5 h-5" />
                                     <span>En Camino</span>
                                 </div>

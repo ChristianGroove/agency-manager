@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState } from "react"
-import { ShoppingBag, MapPin, Receipt, Check, Loader2 } from "lucide-react"
+import { ShoppingBag, MapPin, Receipt, Check, Loader2, Bike } from "lucide-react"
 import { updateRestoOrderStatus } from "@/components/portals/b2c-restaurant-template/actions/checkout-actions"
 import { toast } from "sonner"
 
@@ -23,19 +23,20 @@ export function RestoOrderWidget({ messageId, orderData, isOutbound, status }: R
     const [loading, setLoading] = useState(false)
     const [currentStatus, setCurrentStatus] = useState(status)
 
-    const isAccepted = currentStatus === 'read'
+    const isAccepted = currentStatus === 'read' || currentStatus === 'shipped' || currentStatus === 'completed'
+    const isShipped = currentStatus === 'shipped' || currentStatus === 'completed'
 
-    const handleAccept = async () => {
-        if (!messageId || isAccepted) return
+    const handleAction = async (nextStatus: 'read' | 'shipped') => {
+        if (!messageId) return
 
         setLoading(true)
         try {
-            const result = await updateRestoOrderStatus(messageId, 'read')
+            const result = await updateRestoOrderStatus(messageId, nextStatus)
             if (result.success) {
-                setCurrentStatus('read')
-                toast.success("Pedido aceptado exitosamente")
+                setCurrentStatus(nextStatus)
+                toast.success(nextStatus === 'read' ? "Pedido aceptado" : "Pedido despachado")
             } else {
-                toast.error("Error al aceptar el pedido")
+                toast.error("Error al actualizar el pedido")
             }
         } catch (error) {
             toast.error("Error de conexión")
@@ -50,7 +51,9 @@ export function RestoOrderWidget({ messageId, orderData, isOutbound, status }: R
             <div className="bg-primary/10 px-4 py-3 flex items-center justify-between border-b border-primary/10">
                 <div className="flex items-center gap-2 text-primary font-bold text-sm">
                     <ShoppingBag className="w-4 h-4" />
-                    <span>{isAccepted ? "Pedido Tomado" : "Nuevo Pedido"}</span>
+                    <span>
+                        {isShipped ? "Pedido en Camino" : isAccepted ? "Pedido Tomado" : "Nuevo Pedido"}
+                    </span>
                 </div>
                 <span className="font-bold text-gray-900 dark:text-white">
                     ${orderData.total.toLocaleString('es-CO')}
@@ -91,27 +94,39 @@ export function RestoOrderWidget({ messageId, orderData, isOutbound, status }: R
             </div>
 
             {/* Actions for the CRM Agent */}
-            {isRestaurantSide && (
+            {isRestaurantSide && !isShipped && (
                 <div className="p-2 bg-gray-50 dark:bg-zinc-900 border-t border-gray-100 dark:border-zinc-800">
-                    <button
-                        onClick={handleAccept}
-                        disabled={loading || isAccepted}
-                        className={`w-full font-bold text-sm py-2 rounded-lg transition-all flex items-center justify-center gap-2 ${isAccepted
-                            ? "bg-green-500 text-white cursor-default"
-                            : "bg-black dark:bg-white text-white dark:text-black hover:opacity-90 active:scale-[0.98]"
-                            }`}
-                    >
-                        {loading ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : isAccepted ? (
-                            <>
-                                <Check className="w-4 h-4" />
-                                Pedido Aceptado
-                            </>
-                        ) : (
-                            "Aceptar Pedido"
-                        )}
-                    </button>
+                    {!isAccepted ? (
+                        <button
+                            onClick={() => handleAction('read')}
+                            disabled={loading}
+                            className="w-full font-bold text-sm py-2 rounded-lg transition-all flex items-center justify-center gap-2 bg-black dark:bg-white text-white dark:text-black hover:opacity-90 active:scale-[0.98]"
+                        >
+                            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Aceptar Pedido"}
+                        </button>
+                    ) : (
+                        <button
+                            onClick={() => handleAction('shipped')}
+                            disabled={loading}
+                            className="w-full font-bold text-sm py-2 rounded-lg transition-all flex items-center justify-center gap-2 bg-emerald-600 text-white hover:bg-emerald-700 active:scale-[0.98]"
+                        >
+                            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : (
+                                <>
+                                    <Bike className="w-4 h-4" />
+                                    Enviar Pedido
+                                </>
+                            )}
+                        </button>
+                    )}
+                </div>
+            )}
+
+            {isShipped && (
+                <div className="p-2 bg-green-50 dark:bg-emerald-900/10 border-t border-green-100 dark:border-emerald-900/20">
+                    <div className="flex items-center justify-center gap-2 text-green-600 dark:text-emerald-400 font-bold text-sm py-1">
+                        <Check className="w-4 h-4" />
+                        En camino al cliente
+                    </div>
                 </div>
             )}
         </div>

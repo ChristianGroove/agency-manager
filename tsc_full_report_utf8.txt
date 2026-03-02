@@ -1,8 +1,0 @@
-﻿src/modules/core/messaging/components/audio-transcriber.tsx(2,24): error TS2307: Cannot find module '@/components/ui/button' or its corresponding type declarations.
-src/modules/core/messaging/components/audio-transcriber.tsx(4,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
-src/modules/core/messaging/components/message-bubble.tsx(3,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
-src/modules/core/messaging/components/message-bubble.tsx(27,32): error TS2307: Cannot find module '@/lib/i18n/use-translation' or its corresponding type declarations.
-src/modules/core/messaging/components/resto-order-widget.tsx(5,40): error TS2307: Cannot find module '@/components/portals/b2c-restaurant-template/actions/checkout-actions' or its corresponding type declarations.
-src/modules/core/messaging/components/voice-analysis-card.tsx(4,24): error TS2307: Cannot find module '@/components/ui/button' or its corresponding type declarations.
-src/modules/core/messaging/components/voice-analysis-card.tsx(6,20): error TS2307: Cannot find module '@/lib/utils' or its corresponding type declarations.
-src/modules/core/messaging/components/voice-analysis-card.tsx(7,32): error TS2307: Cannot find module '@/lib/i18n/use-translation' or its corresponding type declarations.

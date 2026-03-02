@@ -170,7 +170,7 @@ export async function dispatchRestoOrder(payload: CheckoutPayload) {
     }
 }
 
-export async function updateRestoOrderStatus(messageId: string, status: 'read' | 'delivered' | 'failed') {
+export async function updateRestoOrderStatus(messageId: string, status: 'read' | 'delivered' | 'failed' | 'shipped' | 'completed') {
     const supabase = supabaseAdmin
 
     try {
