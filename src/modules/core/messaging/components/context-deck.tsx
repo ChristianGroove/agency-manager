@@ -7,7 +7,8 @@ import { QuoteDesignerSheet } from "../../crm/components/quote-designer-sheet"
 import {
     User, Phone, Mail, MapPin, ExternalLink,
     CalendarClock, Archive, CheckCircle2,
-    MoreHorizontal, Tag, DollarSign, Palette
+    MoreHorizontal, Tag, DollarSign, Palette,
+    Copy, Send, KeyRound
 } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -45,6 +46,7 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
     const [agents, setAgents] = useState<any[]>([])
     const [lastMessage, setLastMessage] = useState<string | undefined>(undefined)
     const [loading, setLoading] = useState(true)
+    const [portalTemplate, setPortalTemplate] = useState<string | null>(null)
 
     // Tabs State
     const [activeTab, setActiveTab] = useState<TabType>('management')
@@ -62,36 +64,69 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
 
         if (conv) {
             setConversation(conv)
+            let contactData: any = null
+
             if (conv.lead_id) {
                 const { data: leadData } = await supabase
                     .from('leads')
                     .select('*')
                     .eq('id', conv.lead_id)
                     .single()
-                if (leadData) setLead(leadData)
-            } else if (conv.client_id) {
+                if (leadData) contactData = leadData
+            }
+
+            // Si también hay client_id, cargar datos del cliente para address/portal_short_token
+            if (conv.client_id) {
                 const { data: clientData } = await supabase
                     .from('clients')
                     .select('*')
                     .eq('id', conv.client_id)
                     .single()
 
-                // Map client to lead shape for UI compatibility
                 if (clientData) {
-                    setLead({
-                        ...clientData,
-                        title: clientData.name, // Map name to title
-                        company: clientData.company_name, // Map company_name
-                        status: 'client' // Custom status
-                    } as any)
+                    if (contactData) {
+                        // Merge: lead base + client enrichment (address, portal token)
+                        contactData = {
+                            ...contactData,
+                            address: clientData.address || contactData.address,
+                            portal_short_token: clientData.portal_short_token,
+                        }
+                    } else {
+                        // Solo client, mapear a lead shape
+                        contactData = {
+                            ...clientData,
+                            title: clientData.name,
+                            company: clientData.company_name,
+                            status: 'client'
+                        }
+                    }
                 }
-            } else {
-                setLead(null)
             }
+
+            setLead(contactData as any)
 
             const agentsResult = await getAgentsWorkload()
             if (agentsResult.success) {
                 setAgents(agentsResult.data)
+            }
+
+            // Detect space type for conditional UI (portal token visibility)
+            if (conv.organization_id) {
+                const { data: orgData } = await supabase
+                    .from('organizations')
+                    .select('active_app_id')
+                    .eq('id', conv.organization_id)
+                    .single()
+
+                if (orgData?.active_app_id) {
+                    const { data: appData } = await supabase
+                        .from('saas_apps')
+                        .select('portal_template')
+                        .eq('id', orgData.active_app_id)
+                        .single()
+
+                    setPortalTemplate(appData?.portal_template || null)
+                }
             }
         }
 
@@ -280,7 +315,20 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
                                         t={t}
                                     />
                                     <ContactItem icon={Mail} label={t('crm.inbox.context.contact_fields.email')} value={lead.email} t={t} />
-                                    <ContactItem icon={MapPin} label={t('crm.inbox.context.contact_fields.location')} value={t('crm.inbox.context.contact_fields.unknown_location')} t={t} />
+                                    <ContactItem
+                                        icon={MapPin}
+                                        label={t('crm.inbox.context.contact_fields.location')}
+                                        value={(lead as any).address || t('crm.inbox.context.contact_fields.unknown_location')}
+                                        t={t}
+                                    />
+
+                                    {/* Portal Token — Solo visible en Space Resto */}
+                                    {portalTemplate === 'b2c_commerce' && (lead as any).portal_short_token && (
+                                        <PortalTokenItem
+                                            token={(lead as any).portal_short_token}
+                                            t={t}
+                                        />
+                                    )}
                                 </div>
                             </div>
 
@@ -397,6 +445,48 @@ function ContactItem({ icon: Icon, label, value, t }: { icon: any, label: string
             <span className="opacity-0 group-hover:opacity-100 text-[10px] text-indigo-600 font-medium transition-opacity">
                 {t('crm.inbox.context.actions.copy')}
             </span>
+        </div>
+    )
+}
+
+function PortalTokenItem({ token, t }: { token: string, t: any }) {
+    const portalUrl = `${process.env.NEXT_PUBLIC_APP_URL || ''}/portal/${token}`
+
+    const handleSendToChat = (e: React.MouseEvent) => {
+        e.stopPropagation()
+        // Dispatch event para que el inbox input lo recoja
+        window.dispatchEvent(new CustomEvent('inbox-prefill-message', {
+            detail: portalUrl
+        }))
+        toast.success('Enlace precargado en el chat')
+    }
+
+    return (
+        <div className="group flex items-center gap-3 p-1.5 rounded-md hover:bg-muted/50 transition-all">
+            <KeyRound className="h-4 w-4 text-muted-foreground group-hover:text-violet-500 transition-colors" />
+            <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium truncate text-foreground/90">Token de Portal</p>
+                <p className="text-xs text-muted-foreground font-mono">{token}</p>
+            </div>
+            <div className="flex items-center gap-1">
+                <button
+                    onClick={() => {
+                        navigator.clipboard.writeText(portalUrl)
+                        toast.success(t('crm.inbox.context.actions.copied'))
+                    }}
+                    className="p-1 rounded hover:bg-muted transition-colors"
+                    title="Copiar enlace"
+                >
+                    <Copy className="h-3.5 w-3.5 text-muted-foreground hover:text-indigo-500" />
+                </button>
+                <button
+                    onClick={handleSendToChat}
+                    className="p-1 rounded hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-colors"
+                    title="Enviar al chat"
+                >
+                    <Send className="h-3.5 w-3.5 text-muted-foreground hover:text-violet-500" />
+                </button>
+            </div>
         </div>
     )
 }

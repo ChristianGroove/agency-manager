@@ -115,6 +115,25 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
         }
     }, [])
 
+    // Listen for Portal Token "Send to Chat" from context-deck
+    useEffect(() => {
+        const handlePrefill = (event: CustomEvent<string>) => {
+            setInputValue(event.detail)
+            setTimeout(() => {
+                const textarea = document.querySelector('textarea') as HTMLTextAreaElement
+                if (textarea) {
+                    textarea.focus()
+                    textarea.setSelectionRange(textarea.value.length, textarea.value.length)
+                }
+            }, 50)
+        }
+
+        window.addEventListener('inbox-prefill-message' as any, handlePrefill as any)
+        return () => {
+            window.removeEventListener('inbox-prefill-message' as any, handlePrefill as any)
+        }
+    }, [])
+
     const fetchConversation = async () => {
         if (!conversationId) return
         const { data, error } = await supabase

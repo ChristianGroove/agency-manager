@@ -3,6 +3,7 @@
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { CartItem } from "@/hooks/use-resto-cart"
 import { normalizePhone } from "@/lib/normalize-phone"
+import { revalidatePath } from "next/cache"
 
 export interface CheckoutPayload {
     orgId: string
@@ -100,7 +101,10 @@ export async function dispatchRestoOrder(payload: CheckoutPayload) {
                 portalToken = newToken
             }
 
-            await supabase.from('clients').update({ name: payload.customerName }).eq('id', clientIdToUse)
+            await supabase.from('clients').update({
+                name: payload.customerName,
+                ...(payload.deliveryAddress ? { address: payload.deliveryAddress } : {})
+            }).eq('id', clientIdToUse)
         } else {
             const { data: newToken } = await supabase.rpc('generate_short_token')
             portalToken = newToken
@@ -111,6 +115,7 @@ export async function dispatchRestoOrder(payload: CheckoutPayload) {
                     organization_id: payload.orgId,
                     name: payload.customerName,
                     phone: payload.customerPhone,
+                    address: payload.deliveryAddress || null,
                     user_id: fallbackUserId,
                     portal_short_token: portalToken
                 })
@@ -237,6 +242,24 @@ export async function updateRestoOrderStatus(messageId: string, status: 'read' |
         return { success: true }
     } catch (error: any) {
         console.error("[Resto Update Status] Error:", error)
+        return { success: false, error: error.message }
+    }
+}
+
+export async function updateClientAddress(clientId: string, address: string) {
+    const supabase = supabaseAdmin
+
+    try {
+        const { error } = await supabase
+            .from('clients')
+            .update({ address })
+            .eq('id', clientId)
+
+        if (error) throw error
+        revalidatePath('/')
+        return { success: true }
+    } catch (error: any) {
+        console.error("[updateClientAddress] Error:", error)
         return { success: false, error: error.message }
     }
 }

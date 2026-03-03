@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react"
 import { Suspense } from "react"
 import { GlobalLoader } from "@/components/ui/global-loader"
 import { SystemAlertBanner } from "@/components/layout/system-alert-banner"
-import { Store, ShoppingCart, ReceiptText, User as UserIcon, Check } from "lucide-react"
+import { Store, ShoppingCart, ReceiptText, User as UserIcon, Check, MapPin, Pencil } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 // Importar Componentes de Vistas Internas
@@ -14,6 +14,7 @@ import { RestoOrderTracker } from "./views/RestoOrderTracker"
 import { useRestoCart } from "@/hooks/use-resto-cart"
 import { getPortalCatalog } from "@/modules/core/portal/actions"
 import { useSearchParams } from "next/navigation"
+import { updateClientAddress } from "./actions/checkout-actions"
 
 export interface RestoPortalLayoutProps {
     token?: string
@@ -137,13 +138,7 @@ export function B2CRestaurantLayout({
                             <h2 className="text-xl font-bold text-gray-800 dark:text-gray-200 mb-2">Mi Perfil</h2>
 
                             {client ? (
-                                <>
-                                    <p>Tus datos están asociados al token de sesión actual.</p>
-                                    <div className="mt-6 text-left bg-white dark:bg-zinc-900 p-4 rounded-xl border">
-                                        <p><strong>Nombre:</strong> {client.name}</p>
-                                        <p><strong>Teléfono:</strong> {client.phone || 'No registrado'}</p>
-                                    </div>
-                                </>
+                                <RestoClientProfile client={client} primaryColor={settings?.portal_primary_color} />
                             ) : (
                                 // Modo Guest: Leer de Zustand Memory
                                 (() => {
@@ -229,5 +224,93 @@ export function B2CRestaurantLayout({
                 </div>
             )}
         </div>
+    )
+}
+
+function RestoClientProfile({ client, primaryColor }: { client: any, primaryColor?: string }) {
+    const [address, setAddress] = useState(client.address || '')
+    const [isEditing, setIsEditing] = useState(false)
+    const [saving, setSaving] = useState(false)
+    const { setCustomerProfile } = useRestoCart()
+
+    // Pre-cargar dirección en zustand para el carrito
+    useEffect(() => {
+        if (client.address) {
+            setCustomerProfile({ address: client.address })
+        }
+    }, [client.address, setCustomerProfile])
+
+    const handleSave = async () => {
+        setSaving(true)
+        const result = await updateClientAddress(client.id, address)
+        if (result.success) {
+            setCustomerProfile({ address })
+            setIsEditing(false)
+        }
+        setSaving(false)
+    }
+
+    return (
+        <>
+            <p className="text-sm text-gray-500">Tus datos están asociados al token de sesión actual.</p>
+            <div className="mt-6 text-left bg-white dark:bg-zinc-900 p-4 rounded-xl border space-y-3">
+                <div>
+                    <span className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Nombre</span>
+                    <p className="font-medium text-gray-900 dark:text-white">{client.name}</p>
+                </div>
+                <div>
+                    <span className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Teléfono</span>
+                    <p className="font-medium text-gray-900 dark:text-white">{client.phone || 'No registrado'}</p>
+                </div>
+                <div>
+                    <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs text-gray-400 uppercase tracking-wider font-semibold flex items-center gap-1">
+                            <MapPin className="w-3 h-3" /> Dirección
+                        </span>
+                        {!isEditing && (
+                            <button
+                                onClick={() => setIsEditing(true)}
+                                className="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1"
+                            >
+                                <Pencil className="w-3 h-3" /> Editar
+                            </button>
+                        )}
+                    </div>
+                    {isEditing ? (
+                        <div className="space-y-2">
+                            <input
+                                type="text"
+                                value={address}
+                                onChange={(e) => setAddress(e.target.value)}
+                                className="w-full px-3 py-2 text-sm border rounded-lg bg-gray-50 dark:bg-zinc-800 dark:border-zinc-700 focus:ring-2 focus:ring-primary/30 outline-none"
+                                placeholder="Ej: Cra 4g #40-54 apto 101"
+                                autoFocus
+                            />
+                            <div className="flex gap-2">
+                                <Button
+                                    onClick={handleSave}
+                                    disabled={saving}
+                                    className="h-8 text-xs rounded-lg text-white font-bold"
+                                    style={{ backgroundColor: primaryColor || '#F205E2' }}
+                                >
+                                    {saving ? 'Guardando...' : 'Guardar'}
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    onClick={() => { setAddress(client.address || ''); setIsEditing(false) }}
+                                    className="h-8 text-xs"
+                                >
+                                    Cancelar
+                                </Button>
+                            </div>
+                        </div>
+                    ) : (
+                        <p className="font-medium text-gray-900 dark:text-white">
+                            {client.address || <span className="text-gray-400 italic">Sin dirección registrada</span>}
+                        </p>
+                    )}
+                </div>
+            </div>
+        </>
     )
 }
