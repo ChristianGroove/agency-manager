@@ -47,7 +47,7 @@ export default function PortfolioPage() {
     const [activePaymentFilter, setActivePaymentFilter] = useState("all")
     const [viewMode, setViewMode] = useState<ViewMode>('grid')
 
-    const isAgency = spaceType === 'agency' || spaceType === 'cleaning'
+    const isAgency = spaceType === 'agency' || spaceType === 'cleaning' || spaceType === 'platform'
 
     /**
      * Fetch current organization name
@@ -55,17 +55,14 @@ export default function PortfolioPage() {
      */
     const fetchOrgName = async () => {
         try {
-            const { getCurrentOrgName, getCurrentOrgDetails } = await import('@/modules/core/organizations/actions')
-            const [name, orgDetails] = await Promise.all([
+            const { getCurrentOrgName } = await import('@/modules/core/organizations/actions')
+            const { getOrgSpaceCategory } = await import('@/modules/core/organizations/space-helpers')
+            const [name, category] = await Promise.all([
                 getCurrentOrgName(),
-                getCurrentOrgDetails()
+                getOrgSpaceCategory()
             ])
             setCurrentOrgName(name || '')
-            // Determine space type from active app
-            const appId = orgDetails?.active_app_id || ''
-            if (appId.includes('resto')) setSpaceType('resto')
-            else if (appId.includes('cleaning')) setSpaceType('cleaning')
-            else setSpaceType('agency')
+            setSpaceType(category)
         } catch (error) {
             console.error('Error fetching org:', error)
         }

@@ -46,7 +46,7 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
     const [agents, setAgents] = useState<any[]>([])
     const [lastMessage, setLastMessage] = useState<string | undefined>(undefined)
     const [loading, setLoading] = useState(true)
-    const [portalTemplate, setPortalTemplate] = useState<string | null>(null)
+    const [spaceCategory, setSpaceCategory] = useState<string | null>(null)
 
     // Tabs State
     const [activeTab, setActiveTab] = useState<TabType>('management')
@@ -121,11 +121,11 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
                 if (orgData?.active_app_id) {
                     const { data: appData } = await supabase
                         .from('saas_apps')
-                        .select('portal_template')
+                        .select('space_category')
                         .eq('id', orgData.active_app_id)
                         .single()
 
-                    setPortalTemplate(appData?.portal_template || null)
+                    setSpaceCategory(appData?.space_category || null)
                 }
             }
         }
@@ -323,7 +323,7 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
                                     />
 
                                     {/* Portal Token — Solo visible en Space Resto */}
-                                    {portalTemplate === 'b2c_commerce' && (lead as any).portal_short_token && (
+                                    {spaceCategory === 'resto' && (lead as any).portal_short_token && (
                                         <PortalTokenItem
                                             token={(lead as any).portal_short_token}
                                             t={t}

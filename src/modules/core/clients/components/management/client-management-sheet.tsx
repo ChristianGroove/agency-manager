@@ -47,7 +47,7 @@ interface ClientManagementSheetProps {
     spaceType?: string
 }
 
-export function ClientManagementSheet({ clientId, open, onOpenChange, initialData, initialTab = "overview", spaceType = "agency-workspace" }: ClientManagementSheetProps) {
+export function ClientManagementSheet({ clientId, open, onOpenChange, initialData, initialTab = "overview", spaceType = "agency" }: ClientManagementSheetProps) {
     const { t } = useTranslation()
     const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -374,7 +374,7 @@ export function ClientManagementSheet({ clientId, open, onOpenChange, initialDat
                                     <TabsTrigger value="activity" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-indigo-600 data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 rounded-none px-0 pb-3 pt-2 text-gray-500 font-medium text-sm transition-all">
                                         <CalendarClock className="h-4 w-4 mr-2" /> Actividad
                                     </TabsTrigger>
-                                    {spaceType === 'agency-workspace' && (
+                                    {spaceType !== 'resto' && (
                                         <>
                                             <TabsTrigger value="services" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-indigo-600 data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 rounded-none px-0 pb-3 pt-2 text-gray-500 font-medium text-sm transition-all">
                                                 <Server className="h-4 w-4 mr-2" /> Servicios
@@ -387,7 +387,7 @@ export function ClientManagementSheet({ clientId, open, onOpenChange, initialDat
                                             </TabsTrigger>
                                         </>
                                     )}
-                                    {spaceType === 'resto-workspace' && (
+                                    {spaceType === 'resto' && (
                                         <TabsTrigger value="orders" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-indigo-600 data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 rounded-none px-0 pb-3 pt-2 text-gray-500 font-medium text-sm transition-all">
                                             <FileText className="h-4 w-4 mr-2" /> Pedidos
                                         </TabsTrigger>
@@ -491,7 +491,7 @@ export function ClientManagementSheet({ clientId, open, onOpenChange, initialDat
                                             </div>
                                         </div>
 
-                                        {spaceType === 'agency-workspace' && (
+                                        {spaceType !== 'resto' && (
                                             <div className="md:col-span-2 pt-4 border-t border-gray-50 space-y-6">
                                                 <h4 className="text-sm font-bold text-indigo-600 uppercase tracking-widest flex items-center gap-2">
                                                     <Globe className="h-4 w-4" /> Presencia Digital
@@ -604,7 +604,7 @@ export function ClientManagementSheet({ clientId, open, onOpenChange, initialDat
                                 </TabsContent>
 
                                 {/* TAB 5: ORDERS (RESTO) */}
-                                {spaceType === 'resto-workspace' && client && (
+                                {spaceType === 'resto' && client && (
                                     <TabsContent value="orders" className="space-y-6 m-0 animate-in fade-in-50">
                                         <RestoOrdersTab orgId={client.organization_id} clientId={client.id} />
                                     </TabsContent>

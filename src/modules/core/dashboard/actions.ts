@@ -120,16 +120,18 @@ export async function getDashboardPayload() {
     if (!orgId) return null
 
     const { getOrganizationModules, getCurrentOrgDetails } = await import("@/modules/core/organizations/actions")
+    const { getOrgSpaceCategory } = await import("@/modules/core/organizations/space-helpers")
 
     // 1. Fetch only identity first to determine Space/Vertical
-    const [modules, orgDetails] = await Promise.all([
+    const [modules, orgDetails, spaceCategory] = await Promise.all([
         getOrganizationModules(orgId),
-        getCurrentOrgDetails()
+        getCurrentOrgDetails(),
+        getOrgSpaceCategory(orgId)
     ])
 
-    const isCleaning = modules.includes('module_cleaning') || modules.includes('vertical_cleaning')
+    const isCleaning = spaceCategory === 'cleaning' || modules.includes('module_cleaning') || modules.includes('vertical_cleaning')
     const isReseller = orgDetails?.organization_type === 'reseller' || orgDetails?.organization_type === 'platform'
-    const isResto = orgDetails?.active_app_id === 'app_resto_workspace' || orgDetails?.active_app_id === 'resto-workspace'
+    const isResto = spaceCategory === 'resto'
 
     const orgType = isReseller ? 'reseller' : (isCleaning ? 'cleaning' : (isResto ? 'resto' : 'agency'))
 

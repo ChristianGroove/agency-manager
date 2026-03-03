@@ -77,7 +77,7 @@ interface ClientsViewProps {
     spaceType?: string
 }
 
-export function ClientsView({ initialData, initialSettings, currentPage, currentSearch, currentFilter, spaceType = 'agency-workspace' }: ClientsViewProps) {
+export function ClientsView({ initialData, initialSettings, currentPage, currentSearch, currentFilter, spaceType = 'agency' }: ClientsViewProps) {
     const { t } = useTranslation()
     const router = useRouter()
     const searchParamsOrigin = useSearchParams()
@@ -399,8 +399,8 @@ export function ClientsView({ initialData, initialSettings, currentPage, current
                                 filteredClients.map((client: any) => {
                                     const { debt, futureDebt, nextPayment, daysToPay, activeServicesCount } = client
 
-                                    const isAgency = spaceType === 'agency-workspace'
-                                    const isResto = spaceType === 'resto-workspace'
+                                    const isAgency = spaceType !== 'resto'
+                                    const isResto = spaceType === 'resto'
 
                                     const isOverdue = isAgency && daysToPay !== null && daysToPay < 0 && debt > 0
                                     const isUrgent = isAgency && daysToPay !== null && (
@@ -692,7 +692,7 @@ export function ClientsView({ initialData, initialSettings, currentPage, current
                                                 />
                                             </TableHead>
                                             <TableHead>{t('clients.table.contact')}</TableHead>
-                                            {spaceType === 'agency-workspace' ? (
+                                            {spaceType !== 'resto' ? (
                                                 <>
                                                     <TableHead className="w-[150px]">{t('clients.table.status')}</TableHead>
                                                     <TableHead className="w-[150px]">{t('clients.table.services')}</TableHead>
@@ -729,7 +729,7 @@ export function ClientsView({ initialData, initialSettings, currentPage, current
                                         ) : (
                                             filteredClients.map((client: any) => {
                                                 const { debt, futureDebt, nextPayment, daysToPay, activeServicesCount } = client
-                                                const isAgency = spaceType === 'agency-workspace'
+                                                const isAgency = spaceType !== 'resto'
                                                 const isOverdue = isAgency && daysToPay !== null && daysToPay < 0 && debt > 0
 
                                                 return (

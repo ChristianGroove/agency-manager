@@ -30,6 +30,7 @@ export interface SaasApp {
     metadata?: Record<string, any>
     created_at: string
     status?: string
+    space_category?: 'agency' | 'resto' | 'cleaning' | 'platform'
 }
 
 export interface AppModule {
