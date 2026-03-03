@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase-server"
 import { AutomationsView } from "@/modules/core/automation/components/automations-view"
 import { getWorkflowStats, getExecutionHistory } from "@/modules/core/automation/actions"
 import { GrowthEcosystemShell } from "@/modules/core/layout/growth-ecosystem-shell"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
 
 export const metadata = {
     title: "Centro de Control - Automations",
@@ -10,12 +11,14 @@ export const metadata = {
 
 export default async function AutomationsPage() {
     const supabase = await createClient()
+    const orgId = await getCurrentOrganizationId()
 
     // Parallel data fetching for maximum performance
     const [workflowsResult, stats, executions] = await Promise.all([
         supabase
             .from('workflows')
             .select('*')
+            .eq('organization_id', orgId)
             .order('updated_at', { ascending: false }),
         getWorkflowStats().catch(() => null),
         getExecutionHistory(10).catch(() => [])

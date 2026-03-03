@@ -160,13 +160,18 @@ export class AutomationTriggerService {
                     match = true
                     fileLogger.log(`[AutomationTrigger] First contact confirmed for lead: ${leadId} (No prior executions)`)
                 } else {
-                    // Was executed before — only re-trigger if conversation was resolved/closed AFTER last execution
+                    // Was executed before — only re-trigger if:
+                    // 1. Conversation was resolved/closed AFTER last execution
+                    // 2. OR this is a fresh conversation (bot never replied here = old conv was deleted)
                     const lastExecTime = new Date(lastExecution.started_at).getTime()
-                    if (resolvedAt > lastExecTime) {
+                    const wasResolved = resolvedAt > lastExecTime
+                    const isFreshConversation = lastAutoReply === 0 // Bot never replied in current conversation (deleted & recreated)
+
+                    if (wasResolved || isFreshConversation) {
                         match = true
-                        fileLogger.log(`[AutomationTrigger] First contact re-enabled for lead: ${leadId} (Conversation resolved at ${new Date(resolvedAt).toISOString()} > last exec ${lastExecution.started_at})`)
+                        fileLogger.log(`[AutomationTrigger] First contact re-enabled for lead: ${leadId} (Resolved: ${wasResolved}, Fresh: ${isFreshConversation})`)
                     } else {
-                        skipReason = `Already triggered for this lead (Last exec: ${lastExecution.started_at}). Resolve the conversation to re-enable.`
+                        skipReason = `Already triggered for this lead (Last exec: ${lastExecution.started_at}). Resolve or delete the conversation to re-enable.`
                     }
                 }
             }

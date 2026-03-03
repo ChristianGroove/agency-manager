@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase-server"
 import { AutomationsView } from "@/modules/core/automation/components/automations-view"
 import { getWorkflowStats, getExecutionHistory } from "@/modules/core/automation/actions"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
 
 export const metadata = {
     title: "Automatizaciones | CRM",
@@ -9,11 +10,13 @@ export const metadata = {
 
 export default async function CRMAutomationsPage() {
     const supabase = await createClient()
+    const orgId = await getCurrentOrganizationId()
 
     const [workflowsResult, stats, executions] = await Promise.all([
         supabase
             .from('workflows')
             .select('*')
+            .eq('organization_id', orgId)
             .order('updated_at', { ascending: false }),
         getWorkflowStats().catch(() => null),
         getExecutionHistory(10).catch(() => [])

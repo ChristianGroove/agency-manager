@@ -35,7 +35,23 @@ export class InboxService {
                 .single()
 
             if (existingMsg) {
-                console.log(`[InboxService] Skipping DUPLICATE message: ${msg.externalId}`)
+                console.log(`[InboxService] Message already saved by upsertConversation: ${msg.externalId}. Evaluating triggers.`)
+                // NOTE: This is the NORMAL path — upsertConversation inserts the message,
+                // so this check finds it. We still need to evaluate automation triggers.
+                try {
+                    const { automationTrigger } = await import("../automation/automation-trigger.service")
+                    await automationTrigger.evaluateInput(
+                        typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content),
+                        conversation.id,
+                        msg.channel,
+                        msg.from,
+                        conversation.lead_id,
+                        connectionId || conversation.connection_id,
+                        msg.id || msg.externalId
+                    ).catch(err => console.log('[InboxService] Automation Trigger Error:', err))
+                } catch (e) {
+                    console.log('[InboxService] Failed to load automation service:', e)
+                }
                 return { success: true, conversationId: conversation.id }
             }
         }
@@ -349,7 +365,7 @@ export class InboxService {
         // 3. Find existing conversation (regardless of state/status)
         let convQuery = supabase
             .from('conversations')
-            .select('id, phone, state, status, connection_id, metadata')
+            .select('id, phone, state, status, connection_id, metadata, lead_id')
             .eq('channel', msg.channel)
             .eq('lead_id', lead.id)
             .order('updated_at', { ascending: false });
