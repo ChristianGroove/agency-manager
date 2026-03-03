@@ -143,13 +143,31 @@ export class AutomationTriggerService {
                 }
             }
 
-            // 3. "First Contact"
+            // 3. "First Contact" — TRUE once-per-lead with reset on resolve/delete
             else if (wf.trigger_type === 'first_contact') {
-                match = isSessionExpired;
-                if (!match) {
-                    skipReason = `Already in an active session (Last reply: ${new Date(lastAutoReply).toISOString()})`
+                // Check if this workflow has EVER run for this lead
+                const { data: lastExecution } = await supabaseAdmin
+                    .from('workflow_executions')
+                    .select('started_at')
+                    .eq('workflow_id', wf.id)
+                    .contains('context', { lead: { id: leadId } })
+                    .order('started_at', { ascending: false })
+                    .limit(1)
+                    .single()
+
+                if (!lastExecution) {
+                    // Never executed → first contact confirmed
+                    match = true
+                    fileLogger.log(`[AutomationTrigger] First contact confirmed for lead: ${leadId} (No prior executions)`)
                 } else {
-                    fileLogger.log(`[AutomationTrigger] New session detected for lead: ${leadId} (Resolved: ${resolvedAt > lastAutoReply}, Cooldown: ${(now - lastAutoReply) > (12 * 60 * 60 * 1000)})`)
+                    // Was executed before — only re-trigger if conversation was resolved/closed AFTER last execution
+                    const lastExecTime = new Date(lastExecution.started_at).getTime()
+                    if (resolvedAt > lastExecTime) {
+                        match = true
+                        fileLogger.log(`[AutomationTrigger] First contact re-enabled for lead: ${leadId} (Conversation resolved at ${new Date(resolvedAt).toISOString()} > last exec ${lastExecution.started_at})`)
+                    } else {
+                        skipReason = `Already triggered for this lead (Last exec: ${lastExecution.started_at}). Resolve the conversation to re-enable.`
+                    }
                 }
             }
 
