@@ -187,7 +187,7 @@ export function B2CRestaurantLayout({
                                 {/* Badge de Notificación para el Carrito */}
                                 {item.id === 'cart' && totalCartQuantity > 0 && (
                                     <span
-                                        className="absolute top-1 max-sm:right-2 right-6 flex items-center justify-center min-w-[18px] h-[18px] text-[10px] font-bold text-white rounded-full px-1"
+                                        className="absolute top-1 left-1/2 ml-2 flex items-center justify-center min-w-[18px] h-[18px] text-[10px] font-bold text-white rounded-full px-1"
                                         style={{ backgroundColor: '#EF4444' }} // Siempre rojo para urgencia o primary
                                     >
                                         {totalCartQuantity}

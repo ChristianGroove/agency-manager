@@ -828,16 +828,43 @@ export async function getPortalCatalog(token: string) {
 
     if (!organizationId) throw new Error('Unauthorized')
 
-    // 3. Fetch Catalog from service_catalog table (Templates)
-    const { data, error } = await supabaseAdmin
-        .from('service_catalog')  // ✅ Fixed: Was 'services', now 'service_catalog'
-        .select('*')
-        .eq('organization_id', organizationId)
-        .eq('is_visible_in_portal', true)
-        .order('category')
+    // 3. Fetch Catalog AND Categories in parallel
+    const [
+        { data: catalogItems, error: catalogError },
+        { data: categories, error: categoryError }
+    ] = await Promise.all([
+        supabaseAdmin
+            .from('service_catalog')
+            .select('*')
+            .eq('organization_id', organizationId)
+            .eq('is_visible_in_portal', true),
+        supabaseAdmin
+            .from('service_categories')
+            .select('id, name')
+            .eq('organization_id', organizationId)
+    ])
 
-    if (error) throw error
-    return data
+    if (catalogError) throw catalogError
+    if (categoryError) {
+        console.error('Error fetching categories for portal catalog:', categoryError)
+        // Non-blocking: we still have the catalog items
+    }
+
+    // 4. Map IDs to Names
+    const categoryMap = (categories || []).reduce((acc: Record<string, string>, cat) => {
+        acc[cat.id] = cat.name
+        return acc
+    }, {})
+
+    const itemsWithName = (catalogItems || []).map(item => ({
+        ...item,
+        // If it's a UUID and we have a name in the map, use it. 
+        // Otherwise keep original (might be legacy hardcoded string)
+        category: categoryMap[item.category] || item.category
+    }))
+
+    // 5. Order by resolved category name
+    return itemsWithName.sort((a, b) => (a.category || '').localeCompare(b.category || ''))
 }
 
 export async function getPortalQuote(token: string, quoteId: string) {

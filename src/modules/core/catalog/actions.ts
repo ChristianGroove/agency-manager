@@ -159,18 +159,39 @@ export async function getCatalogItems() {
     const orgId = await getCurrentOrganizationId()
     if (!orgId) return []
 
-    const { data, error } = await supabase
-        .from('service_catalog')
-        .select('*')
-        .eq('organization_id', orgId)
-        .order('created_at', { ascending: false })
+    // Fetch Catalog AND Categories in parallel
+    const [
+        { data: catalogItems, error: catalogError },
+        { data: categories, error: categoryError }
+    ] = await Promise.all([
+        supabase
+            .from('service_catalog')
+            .select('*')
+            .eq('organization_id', orgId),
+        supabase
+            .from('service_categories')
+            .select('id, name')
+            .eq('organization_id', orgId)
+    ])
 
-    if (error) {
-        console.error('Error fetching catalog items:', error)
+    if (catalogError) {
+        console.error('Error fetching catalog items:', catalogError)
         return []
     }
 
-    return data as ServiceCatalogItem[]
+    // Map IDs to Names
+    const categoryMap = (categories || []).reduce((acc: Record<string, string>, cat) => {
+        acc[cat.id] = cat.name
+        return acc
+    }, {})
+
+    const itemsWithName = (catalogItems || []).map(item => ({
+        ...item,
+        category: categoryMap[item.category] || item.category
+    }))
+
+    // Order by resolved category name
+    return itemsWithName.sort((a, b) => (a.category || '').localeCompare(b.category || '')) as ServiceCatalogItem[]
 }
 
 
