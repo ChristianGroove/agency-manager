@@ -96,11 +96,10 @@ export function CleaningDashboard({ dashboardData: coreData, extraData, onReload
             }
         ],
         social: {
+            title: "Cleaning/Space",
             facebook: coreData?.settings?.social_facebook,
             instagram: coreData?.settings?.social_instagram,
             twitter: coreData?.settings?.social_twitter,
-            fbFollowers: coreData?.settings?.social_facebook_followers,
-            igFollowers: coreData?.settings?.social_instagram_followers
         },
         quickActions: quickActions,
         smartAlert: smartAlert

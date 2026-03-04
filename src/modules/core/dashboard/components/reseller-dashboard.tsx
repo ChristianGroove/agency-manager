@@ -101,11 +101,10 @@ export function ResellerDashboard({ dashboardData: dashboardRes, extraData, onRe
             }
         ],
         social: {
+            title: "Platform/Space",
             facebook: settings?.social_facebook,
             instagram: settings?.social_instagram,
             twitter: settings?.social_twitter,
-            fbFollowers: settings?.social_facebook_followers,
-            igFollowers: settings?.social_instagram_followers
         },
         quickActions: [
             { title: t('dashboard.actions.new_tenant'), icon: Building2, colorClass: "bg-purple-50 text-purple-600 group-hover:bg-purple-600 group-hover:text-white", onClick: () => setIsNewOrgModalOpen(true) },

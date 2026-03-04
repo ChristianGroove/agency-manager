@@ -7,21 +7,19 @@ import GlassCard3D from "@/components/ui/glass-card-3d"
 // For consistency, let's export it here.
 
 export interface SocialGlassWidgetProps {
+    title?: string
     facebook?: string
     instagram?: string
     twitter?: string
-    fbFollowers?: number
-    igFollowers?: number
 }
 
-export function SocialGlassWidget({ facebook, instagram, twitter, fbFollowers, igFollowers }: SocialGlassWidgetProps) {
+export function SocialGlassWidget({ title, facebook, instagram, twitter }: SocialGlassWidgetProps) {
     return (
         <GlassCard3D
+            title={title}
             socialFacebook={facebook}
             socialInstagram={instagram}
             socialTwitter={twitter}
-            facebookFollowers={fbFollowers || 0}
-            instagramFollowers={igFollowers || 0}
         />
     )
 }

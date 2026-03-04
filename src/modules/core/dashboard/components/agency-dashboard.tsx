@@ -121,11 +121,10 @@ export function AgencyDashboard({ dashboardData: dashboardRes, extraData, onRelo
             // }
         ],
         social: {
+            title: "Agency/Space",
             facebook: settings?.social_facebook,
             instagram: settings?.social_instagram,
             twitter: settings?.social_twitter,
-            fbFollowers: settings?.social_facebook_followers,
-            igFollowers: settings?.social_instagram_followers
         },
         quickActions: [
             { title: t('dashboard.actions.new_client'), icon: UserPlus, colorClass: "bg-brand-cyan/10 text-brand-cyan group-hover:bg-brand-cyan group-hover:text-white", onClick: () => setIsClientModalOpen(true) },
