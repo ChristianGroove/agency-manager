@@ -77,15 +77,18 @@ export function GlobalDashboardBanner({ config }: { config?: GlobalBannerConfig 
     }
 
     // Lógica de Layout (Flex direction y alineaciones)
-    let containerFlex = "flex-row"
+    let containerFlex = "flex-row justify-between"
     let textAlignment = "text-left items-start"
+    let mediaAlignment = "justify-end"
 
     if (config.layout_pos === 'left') {
-        containerFlex = "flex-row-reverse"
+        containerFlex = "flex-row-reverse justify-between"
         textAlignment = "text-left items-start"
+        mediaAlignment = "justify-start"
     } else if (config.layout_pos === 'center') {
         containerFlex = "flex-col md:flex-row justify-center"
         textAlignment = "text-center items-center"
+        mediaAlignment = "justify-center"
     }
 
     return (
@@ -155,8 +158,8 @@ export function GlobalDashboardBanner({ config }: { config?: GlobalBannerConfig 
 
                 {/* Media Element (Lottie / Image) */}
                 {config.media_url && (
-                    <div className={`relative flex items-center justify-center w-full md:w-[35%] min-h-[150px] md:min-h-full pointer-events-none z-10 
-                                     ${config.layout_pos === 'center' ? 'opacity-20 absolute inset-0 !w-full' : ''}`}
+                    <div className={`relative flex items-center ${mediaAlignment} w-full md:w-[35%] min-h-[150px] md:min-h-full pointer-events-none z-10 
+                                     ${config.layout_pos === 'center' ? 'opacity-20 absolute inset-0 !w-full !justify-center' : ''}`}
                     >
                         {config.media_type === 'image' ? (
                             <img src={config.media_url} alt="Banner Graphic" className="max-w-full max-h-[220px] object-contain drop-shadow-2xl" />
