@@ -74,17 +74,18 @@ export function AgencyDashboard({ dashboardData: dashboardRes, extraData, onRelo
         }).filter(Boolean) as any[]
     }
 
-    let activeSubscriptions = 0
-    let monthlyRecurring = 0
-        ; (services || []).forEach((svc: any) => {
-            const { status } = resolveServiceState(svc)
-            if (status === 'active' && svc.type === 'recurring') {
-                activeSubscriptions++
-                if (svc.frequency === 'monthly') monthlyRecurring += (svc.amount || 0)
-            }
-        })
+    // let activeSubscriptions = 0
+    // let monthlyRecurring = 0
+    //     ; (services || []).forEach((svc: any) => {
+    //         const { status } = resolveServiceState(svc)
+    //         if (status === 'active' && svc.type === 'recurring') {
+    //             activeSubscriptions++
+    //             if (svc.frequency === 'monthly') monthlyRecurring += (svc.amount || 0)
+    //         }
+    //     })
 
     const data: DashboardDataProps = {
+        globalBannerConfig: dashboardRes?.bannerConfig,
         stats: [
             {
                 title: t('dashboard.stats.total_clients'),
@@ -100,25 +101,25 @@ export function AgencyDashboard({ dashboardData: dashboardRes, extraData, onRelo
                 icon: DollarSign,
                 subtext: t('dashboard.stats.total_revenue_sub')
             },
+            // {
+            //     title: t('dashboard.hero.mrr_agency'), // MRR Ocultado
+            //     value: <CountUp end={monthlyRecurring} duration={2} separator="," prefix="$" />,
+            //     icon: TrendingUp,
+            //     subtext: "Ingresos Recurrentes"
+            // },
             {
                 title: t('dashboard.stats.receivable'),
                 value: <CountUp end={pendingPayments} duration={2} separator="," prefix="$" />,
                 icon: AlertCircle,
                 subtext: t('dashboard.stats.receivable_sub_agency')
             },
-            {
-                title: t('dashboard.stats.active_subs'),
-                value: activeSubscriptions,
-                icon: CreditCard,
-                subtext: t('dashboard.stats.active_subs_sub')
-            }
+            // {
+            //     title: t('dashboard.stats.active_subs'),
+            //     value: activeSubscriptions,
+            //     icon: CreditCard,
+            //     subtext: t('dashboard.stats.active_subs_sub')
+            // }
         ],
-        revenueHero: {
-            title: t('dashboard.hero.mrr_agency'),
-            value: <CountUp end={monthlyRecurring} duration={2} separator="," />,
-            unit: "COP/mes",
-            tips: tArray('dashboard.tips.agency')
-        },
         social: {
             facebook: settings?.social_facebook,
             instagram: settings?.social_instagram,

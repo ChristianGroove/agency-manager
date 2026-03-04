@@ -36,22 +36,22 @@ export async function getDashboardData() {
         console.error('Error fetching settings:', settingsError)
     }
 
-    // 3. Services (mantenemos para funcionalidad existente)
-    const { data: services, error: servicesError } = await supabase
-        .from('services')
-        .select('id, status, type, frequency, amount, organization_id')
-        .is('deleted_at', null)
-        .eq('organization_id', orgId)
+    // // 3. Services (mantenemos para funcionalidad existente)
+    // const { data: services, error: servicesError } = await supabase
+    //     .from('services')
+    //     .select('id, status, type, frequency, amount, organization_id')
+    //     .is('deleted_at', null)
+    //     .eq('organization_id', orgId)
 
-    if (servicesError) {
-        console.error('Error fetching services:', servicesError)
-    }
+    // if (servicesError) {
+    //     console.error('Error fetching services:', servicesError)
+    // }
 
     // 4. Mapear respuesta para compatibilidad con UI existente
     return {
         clients: [], // Lista vacía ya que no se necesita para renderizado inicial
         invoices: [], // Lista vacía - los totales vienen en metrics
-        services: services || [],
+        services: [], // Services ocultos para optimizar DB Call
         settings: settings || null,
         // Nuevos datos pre-calculados para el dashboard
         metrics: metrics || {
@@ -130,10 +130,12 @@ export async function getDashboardPayload() {
     ])
 
     const isCleaning = spaceCategory === 'cleaning' || modules.includes('module_cleaning') || modules.includes('vertical_cleaning')
-    const isReseller = orgDetails?.organization_type === 'reseller' || orgDetails?.organization_type === 'platform'
+    const isPlatform = orgDetails?.organization_type === 'platform'
+    const isReseller = orgDetails?.organization_type === 'reseller'
     const isResto = spaceCategory === 'resto'
 
-    const orgType = isReseller ? 'reseller' : (isCleaning ? 'cleaning' : (isResto ? 'resto' : 'agency'))
+    // Hierarchy check: Platform and Resellers manage organizations, so they share the Reseller engine UI unless a specific vertical forces otherwise.
+    const orgType = (isPlatform || isReseller) ? 'reseller' : (isCleaning ? 'cleaning' : (isResto ? 'resto' : 'agency'))
 
     let dashboardData: any = null
     let extraData: any = null
@@ -146,7 +148,7 @@ export async function getDashboardPayload() {
         dashboardData = { settings }
         extraData = { orgDetails }
     } else {
-        // Agencia, Limpieza o Reseller si requieren el MRR y Servicios
+        // Agencia, Limpieza, o Reseller si requieren el MRR y Servicios
         dashboardData = await getDashboardData()
 
         if (orgType === 'cleaning') {
@@ -164,6 +166,23 @@ export async function getDashboardPayload() {
                 .eq('parent_organization_id', orgId)
             extraData = { tenantCount }
         }
+    }
+
+    // 3. Fetch Global Dashboard Banner Configuration
+    const supabase = await createClient()
+    const bannerSpaceType = orgDetails?.organization_type === 'platform' ? 'platform' : orgType
+
+    const { data: bannerData } = await supabase
+        .from('global_dashboard_banners')
+        .select('*')
+        .in('space_type', [bannerSpaceType, 'all'])
+        .eq('is_active', true)
+        .order('is_active', { ascending: false }) // Prioritize if multiple (edge case)
+        .limit(1)
+        .maybeSingle()
+
+    if (dashboardData && bannerData) {
+        dashboardData.bannerConfig = bannerData
     }
 
     return {

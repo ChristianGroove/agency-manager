@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState, Suspense } from "react"
-import { GlobalDashboardBanner } from "@/modules/core/dashboard/components/global-dashboard-banner"
 import { AgencyDashboard } from "@/modules/core/dashboard/components/agency-dashboard"
 import { CleaningDashboard } from "@/modules/core/dashboard/components/cleaning-dashboard"
 import { ResellerDashboard } from "@/modules/core/dashboard/components/reseller-dashboard"
@@ -56,8 +55,6 @@ export default function DashboardPage() {
 
     return (
         <div className="flex flex-col w-full h-full">
-            {/* Banner Global Preparado para pautas / avisos en todos los tenants */}
-            <GlobalDashboardBanner />
 
             {/* 
               Motor de Enrutamiento Pluggable de Carga Ligera: 

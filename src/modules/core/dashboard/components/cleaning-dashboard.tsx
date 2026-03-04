@@ -65,6 +65,7 @@ export function CleaningDashboard({ dashboardData: coreData, extraData, onReload
     }
 
     const data: DashboardDataProps = {
+        globalBannerConfig: coreData?.bannerConfig,
         stats: [
             {
                 title: t('dashboard.stats.jobs_today'),
@@ -94,12 +95,6 @@ export function CleaningDashboard({ dashboardData: coreData, extraData, onReload
                 subtext: t('dashboard.stats.completed_sub')
             }
         ],
-        revenueHero: {
-            title: t('dashboard.hero.revenue_7d'),
-            value: <CountUp end={totalRevenueWeek} duration={2} separator="," />,
-            unit: "COP",
-            tips: tArray('dashboard.tips.cleaning')
-        },
         social: {
             facebook: coreData?.settings?.social_facebook,
             instagram: coreData?.settings?.social_instagram,

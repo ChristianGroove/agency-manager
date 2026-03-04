@@ -2,7 +2,6 @@
 "use client"
 
 import { MagicStatCard, MagicStatCardProps } from "@/modules/core/dashboard/widgets/smart-cards/magic-stat-card"
-import { RevenueHero, RevenueHeroProps } from "@/modules/core/dashboard/widgets/smart-cards/revenue-hero"
 import { QuickAction, QuickActionProps } from "@/modules/core/dashboard/widgets/smart-cards/quick-action"
 import { SmartAlert, SmartAlertProps } from "@/modules/core/dashboard/widgets/smart-cards/smart-alert"
 import { SocialGlassWidget, SocialGlassWidgetProps } from "@/modules/core/dashboard/widgets/smart-cards/social-glass-widget"
@@ -10,12 +9,14 @@ import { SplitText } from "@/components/ui/split-text"
 import { SectionHeader } from "@/components/layout/section-header"
 import { LayoutDashboard } from "lucide-react"
 
+import { GlobalBannerConfig, GlobalDashboardBanner } from "@/modules/core/dashboard/components/global-dashboard-banner"
+
 export interface DashboardDataProps {
     stats: MagicStatCardProps[]
-    revenueHero: RevenueHeroProps
     social?: SocialGlassWidgetProps
     quickActions: QuickActionProps[]
     smartAlert?: SmartAlertProps
+    globalBannerConfig?: GlobalBannerConfig | null
 }
 
 export function ModularDashboardLayout({ data }: { data: DashboardDataProps }) {
@@ -36,18 +37,6 @@ export function ModularDashboardLayout({ data }: { data: DashboardDataProps }) {
                 ))}
             </div>
 
-            {/* 2. Hero Section (Revenue + Social) */}
-            <div className="flex gap-8 flex-col lg:flex-row">
-                {/* Revenue Hero (Flex 1) */}
-                <RevenueHero {...data.revenueHero} />
-
-                {/* Social Card (Fixed Width handled by internal component usually) */}
-                {data.social && (
-                    <div className="flex items-center justify-center lg:justify-start">
-                        <SocialGlassWidget {...data.social} />
-                    </div>
-                )}
-            </div>
 
             {/* 3. Quick Actions (Dynamic Grid) */}
             <div className="grid gap-6 grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-5">
@@ -60,6 +49,25 @@ export function ModularDashboardLayout({ data }: { data: DashboardDataProps }) {
             {data.smartAlert && (
                 <div className="mt-8">
                     <SmartAlert {...data.smartAlert} />
+                </div>
+            )}
+
+            {/* 5. Hero Section (Global Banner + Social) - Movido al fondo por petición del usuario */}
+            {(data.globalBannerConfig?.is_active || data.social) && (
+                <div className="flex gap-8 flex-col lg:flex-row">
+                    {/* Global Banner (Flex 1) */}
+                    {data.globalBannerConfig?.is_active && (
+                        <div className="flex-1 min-w-0">
+                            <GlobalDashboardBanner config={data.globalBannerConfig} />
+                        </div>
+                    )}
+
+                    {/* Social Card (Fixed Width handled by internal component usually) */}
+                    {data.social && (
+                        <div className="flex items-center justify-center lg:justify-start shrink-0">
+                            <SocialGlassWidget {...data.social} />
+                        </div>
+                    )}
                 </div>
             )}
         </div>

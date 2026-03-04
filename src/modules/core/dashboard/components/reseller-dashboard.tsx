@@ -73,6 +73,7 @@ export function ResellerDashboard({ dashboardData: dashboardRes, extraData, onRe
     }
 
     const data: DashboardDataProps = {
+        globalBannerConfig: dashboardRes?.bannerConfig,
         stats: [
             {
                 title: t('dashboard.stats.active_tenants'),
@@ -99,12 +100,6 @@ export function ResellerDashboard({ dashboardData: dashboardRes, extraData, onRe
                 subtext: t('dashboard.stats.avg_ticket_sub')
             }
         ],
-        revenueHero: {
-            title: t('dashboard.hero.recurring_revenue'),
-            value: <CountUp end={totalRevenue} duration={2} separator="," />,
-            unit: "COP/mes",
-            tips: ["Ofrece planes anuales para mejorar el flujo.", "Revisa el uso de tus clientes top."]
-        },
         social: {
             facebook: settings?.social_facebook,
             instagram: settings?.social_instagram,

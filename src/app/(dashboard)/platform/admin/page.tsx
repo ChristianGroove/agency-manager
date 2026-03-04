@@ -4,7 +4,7 @@ import { getAllAppsAdmin } from "@/modules/core/saas/app-management-actions"
 import { requireSuperAdmin } from '@/lib/auth/platform-roles'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { LayoutDashboard, Globe, Codepen, ShieldAlert, Activity, Server, Box, Building2, Users } from 'lucide-react'
+import { LayoutDashboard, Globe, Codepen, ShieldAlert, Activity, Server, Box, Building2, Users, LayoutTemplate } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -16,6 +16,7 @@ import { TenantsManager } from './_components/tenants-manager'
 import { SaasEngineManager } from "./_components/saas-engine-manager"
 import { SecurityCenter } from "./_components/security-center"
 import { DomainsManager } from "./_components/domains-manager"
+import { GlobalBannersManager } from "./_components/global-banners-manager"
 
 export default async function AdminDashboardPage() {
     await requireSuperAdmin()
@@ -173,6 +174,10 @@ export default async function AdminDashboardPage() {
                                 <Globe className="h-4 w-4" />
                                 Dominios & DNS
                             </TabsTrigger>
+                            <TabsTrigger value="banners" className="gap-2">
+                                <LayoutTemplate className="h-4 w-4" />
+                                Banner Global
+                            </TabsTrigger>
                         </TabsList>
 
                         <TabsContent value="tenants" className="focus-visible:outline-none">
@@ -180,6 +185,9 @@ export default async function AdminDashboardPage() {
                         </TabsContent>
                         <TabsContent value="domains" className="focus-visible:outline-none">
                             <DomainsManager initialOrgs={organizations} />
+                        </TabsContent>
+                        <TabsContent value="banners" className="focus-visible:outline-none">
+                            <GlobalBannersManager />
                         </TabsContent>
                     </Tabs>
                 </TabsContent>
