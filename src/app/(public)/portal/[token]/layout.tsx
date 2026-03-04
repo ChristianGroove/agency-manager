@@ -53,10 +53,40 @@ export async function generateMetadata(
     }
 }
 
-export default function PortalLayout({
+import { BrandingProvider } from "@/components/providers/branding-provider"
+import { BrandingConfig } from "@/types/branding"
+
+export default async function PortalLayout({
     children,
+    params
 }: {
     children: React.ReactNode
+    params: Promise<{ token: string }>
 }) {
-    return <>{children}</>
+    const resolvedParams = await params
+    const token = resolvedParams.token
+    const settings = await getPortalMetadata(token)
+
+    const brandingConfig: BrandingConfig = {
+        name: settings.agency_name || "Portal",
+        logos: {
+            main: settings.main_logo_url || null,
+            main_light: settings.main_logo_light_url || null,
+            portal: settings.portal_logo_url || null,
+            favicon: settings.portal_favicon_url || settings.isotipo_url || "/pixy-isotipo.png",
+            login_bg: settings.portal_login_background_url || null
+        },
+        colors: {
+            primary: settings.portal_primary_color || "#F205E2",
+            secondary: settings.portal_secondary_color || "#00E0FF"
+        },
+        font_family: settings.brand_font_family || "Inter",
+        socials: {}
+    }
+
+    return (
+        <BrandingProvider initialBranding={brandingConfig}>
+            {children}
+        </BrandingProvider>
+    )
 }

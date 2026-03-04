@@ -11,6 +11,7 @@ import { WorkerPortalLayout } from "@/modules/core/portal/worker-portal-layout"
 import { QuoteDetailModal } from "@/modules/core/portal/quote-detail-modal"
 import { PaymentOptionsModal } from "@/modules/core/portal/payment-options-modal"
 import { InvoiceDetailModal } from "@/modules/core/portal/invoice-detail-modal"
+import { GlobalLoader } from "@/components/ui/global-loader"
 
 // ... existing imports
 
@@ -191,7 +192,7 @@ export default function PortalPage() {
         }
     }
 
-    if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-pink-500" /></div>
+    if (loading) return <GlobalLoader />
     if (error) return <div className="min-h-screen flex items-center justify-center text-red-500">{error}</div>
 
     // Branding Colors Injection + White-Label Phase 3

@@ -124,7 +124,17 @@ export function B2CRestaurantLayout({
             <main className="flex-1 w-full flex flex-col pb-20">
                 <Suspense fallback={<GlobalLoader />}>
                     {activeTab === 'menu' && (
-                        loadingCatalog ? <GlobalLoader /> : <RestoMenuGrid items={catalogItems} orgId={currentOrgId || ""} primaryColor={settings?.portal_primary_color} />
+                        loadingCatalog ? (
+                            <div className="flex-1 flex flex-col items-center justify-center p-8 min-h-[50vh]">
+                                <div
+                                    className="w-12 h-12 border-4 border-t-transparent rounded-full animate-spin mb-4"
+                                    style={{ borderColor: `${settings?.portal_primary_color || '#F205E2'}40`, borderTopColor: settings?.portal_primary_color || '#F205E2' }}
+                                />
+                                <p className="text-gray-500 font-medium animate-pulse">
+                                    {settings?.portal_catalog_loading_text || 'Cargando catálogo...'}
+                                </p>
+                            </div>
+                        ) : <RestoMenuGrid items={catalogItems} orgId={currentOrgId || ""} primaryColor={settings?.portal_primary_color} />
                     )}
                     {activeTab === 'cart' && (
                         <RestoCartView orgId={currentOrgId || ""} primaryColor={settings?.portal_primary_color} />
