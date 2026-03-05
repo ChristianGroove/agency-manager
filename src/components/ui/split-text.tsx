@@ -44,6 +44,7 @@ export function SplitText({
 
     return (
         <motion.span
+            key={children}
             className={className}
             variants={container}
             initial="hidden"

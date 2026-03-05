@@ -10,6 +10,7 @@ import { SectionHeader } from "@/components/layout/section-header"
 import { LayoutDashboard } from "lucide-react"
 
 import { GlobalBannerConfig, GlobalDashboardBanner } from "@/modules/core/dashboard/components/global-dashboard-banner"
+import { DynamicGreetingHeader } from "@/components/layout/dynamic-greeting-header"
 
 export interface DashboardDataProps {
     stats: MagicStatCardProps[]
@@ -23,12 +24,8 @@ export function ModularDashboardLayout({ data }: { data: DashboardDataProps }) {
     return (
         <div className="space-y-6">
             {/* Header - Could be dynamic later */}
-            {/* Standardized Header */}
-            <SectionHeader
-                title="Dashboard"
-                subtitle="Resumen en tiempo real de tu negocio"
-                icon={LayoutDashboard}
-            />
+            {/* dynamic Standardized Header */}
+            <DynamicGreetingHeader />
 
             {/* 1. Stats Grid (Dynamic) */}
             <div className={`grid gap-8 grid-cols-1 md:grid-cols-2 lg:grid-cols-${Math.min(data.stats.length, 4)}`}>
