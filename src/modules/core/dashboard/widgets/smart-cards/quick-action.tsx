@@ -26,7 +26,7 @@ export function QuickAction({ title, icon: Icon, colorClass, onClick }: QuickAct
     return (
         <div onClick={onClick}>
             <motion.div whileHover="hover" initial="rest" className="h-full">
-                <Card className="h-full group hover:shadow-lg transition-all duration-300 cursor-pointer border-gray-100 hover:border-gray-300 dark:border-white/10 dark:bg-white/5 dark:hover:border-white/20 hover:-translate-y-1 rounded-[30px]">
+                <Card className="h-full group hover:shadow-lg transition-all duration-300 cursor-pointer border-gray-100 hover:border-gray-300 dark:border-white/10 dark:bg-white/5 dark:hover:border-white/20 hover:-translate-y-1 rounded-[30px] shadow-[inset_0_0_24px_#00000033] dark:shadow-[inset_0_0_24px_#ffffff0D]">
                     <CardHeader>
                         <CardTitle className="text-base flex items-center gap-3 text-gray-700 dark:text-gray-200">
                             {/* The icon container needs dynamic coloring. We accept it as a prop or render prop? 

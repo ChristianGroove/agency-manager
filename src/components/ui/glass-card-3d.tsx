@@ -23,7 +23,7 @@ export default function GlassCard3D({
 
     return (
         <div className="w-[290px] h-[250px] [perspective:1000px] group">
-            <div className="h-full rounded-[30px] bg-white dark:bg-brand-dark transition-all duration-500 ease-in-out [transform-style:preserve-3d] shadow-[0_25px_25px_-5px_#0000001A,0_40px_50px_-20px_#0000000D,inset_0_0_12px_#00000040] dark:shadow-[0_25px_25px_-5px_#00000080,40px_50px_25px_-40px_#ffffff1A,inset_0_0_12px_#ffffff0D] group-hover:shadow-[0_25px_25px_-5px_#0000001A,0_40px_50px_-20px_#0000000D,inset_0_0_12px_#00000040] dark:group-hover:shadow-[0_25px_25px_-5px_#00000080,40px_50px_25px_-40px_#ffffff1A,inset_0_0_12px_#ffffff0D] group-hover:[transform:rotate3d(1,1,0,30deg)] relative">
+            <div className="h-full rounded-[30px] bg-white dark:bg-brand-dark transition-all duration-500 ease-in-out [transform-style:preserve-3d] shadow-[0_25px_25px_-5px_#0000001A,0_40px_50px_-20px_#0000000D,inset_0_0_24px_#00000033] dark:shadow-[0_25px_25px_-5px_#00000080,40px_50px_25px_-40px_#ffffff1A,inset_0_0_24px_#ffffff0D] group-hover:shadow-[0_25px_25px_-5px_#0000001A,0_40px_50px_-20px_#0000000D,inset_0_0_24px_#00000033] dark:group-hover:shadow-[0_25px_25px_-5px_#00000080,40px_50px_25px_-40px_#ffffff1A,inset_0_0_24px_#ffffff0D] group-hover:[transform:rotate3d(1,1,0,30deg)] relative">
                 {/* Glass effect with pink/cyan gradient border */}
                 <div className="[transform-style:preserve-3d] absolute inset-2 rounded-[35px] rounded-tr-[100%] bg-gradient-to-b from-gray-100/[0.15] to-gray-100/[0.05] dark:from-white/[0.15] dark:to-white/[0.05] [transform:translate3d(0px,0px,25px)] border-l border-b border-gray-200 dark:border-white/30 transition-all duration-500 ease-in-out" />
 

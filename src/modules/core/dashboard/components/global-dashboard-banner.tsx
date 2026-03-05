@@ -55,22 +55,22 @@ export function GlobalDashboardBanner({ config }: { config?: GlobalBannerConfig 
     }, [config.media_url, config.media_type, tips.length, hasMultipleTips])
 
     // Lógica de Temas / Colores
-    let bgClasses = "bg-white dark:bg-white/5 border-0 shadow-lg text-gray-900 dark:text-white"
+    let bgClasses = "bg-white dark:bg-white/5 border-0 shadow-[inset_0_0_24px_#00000033] dark:shadow-[inset_0_0_24px_#ffffff0D] text-gray-900 dark:text-white"
     let titleClasses = "text-gray-900 dark:text-white"
     let descClasses = "text-gray-500 dark:text-gray-400"
     let customStyles = {}
 
     if (config.theme === 'dark') {
-        bgClasses = "bg-zinc-950 border border-white/10 text-white shadow-xl"
+        bgClasses = "bg-zinc-950 border border-white/10 text-white shadow-[inset_0_0_24px_#ffffff0D]"
         titleClasses = "text-white"
         descClasses = "text-gray-400"
     } else if (config.theme === 'brand_primary') {
-        bgClasses = "text-white shadow-xl border-0"
+        bgClasses = "text-white border-0 shadow-[inset_0_0_24px_#00000040]"
         titleClasses = "text-white drop-shadow-sm"
         descClasses = "text-white/80"
         customStyles = { backgroundColor: 'var(--portal-primary, var(--primary))' }
     } else if (config.theme === 'brand_secondary') {
-        bgClasses = "text-white shadow-xl border-0"
+        bgClasses = "text-white border-0 shadow-[inset_0_0_24px_#00000066]"
         titleClasses = "text-white drop-shadow-sm"
         descClasses = "text-white/80"
         customStyles = { backgroundColor: 'var(--portal-secondary, var(--secondary))' }
