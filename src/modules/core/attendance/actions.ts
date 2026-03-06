@@ -64,7 +64,9 @@ export interface Staff {
 export async function registerAttendanceMark(payload: AttendancePayload) {
     try {
         const validated = AttendancePayloadSchema.parse(payload)
-        const supabase = await createClient()
+        // Usamos supabaseAdmin para el lookup del staff porque el portal funciona con tokens anónimos 
+        // que el RLS del cliente estándar bloquea por defecto.
+        const supabase = supabaseAdmin
 
         // 1. Conseguir el Staff usando el Token
         const { data: staff, error: staffError } = await supabase
