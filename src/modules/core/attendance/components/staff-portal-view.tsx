@@ -10,7 +10,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { toast } from 'sonner'
 import { registerAttendanceMark, uploadAttendancePhoto, getDailyAttendanceState } from '../actions'
 import { processAttendancePhoto } from '../utils/photo-processor'
-import { cn } from '@/lib/utils'
+import { cn, calculateDistanceInMeters } from '@/lib/utils'
 
 interface AttendanceStaffPortalProps {
     staff: any
@@ -29,7 +29,18 @@ export function AttendanceStaffPortal({ staff, settings, token }: AttendanceStaf
     const [view, setView] = useState<'camera' | 'preview' | 'success'>('camera')
 
     // Shift State Machine
-    const [shiftData, setShiftData] = useState<{ state: number, shiftType: 'continuous' | 'split', lastActionTimestamp?: string, breakDurationMinutes?: number, nextBlockStartTime?: string, expectedBreakReturnTime?: string, timezone?: string } | null>(null)
+    const [shiftData, setShiftData] = useState<{
+        state: number,
+        shiftType: 'continuous' | 'split',
+        lastActionTimestamp?: string,
+        breakDurationMinutes?: number,
+        nextBlockStartTime?: string,
+        expectedBreakReturnTime?: string,
+        timezone?: string,
+        geofence_lat?: number,
+        geofence_lng?: number,
+        geofence_radius?: number
+    } | null>(null)
     const [isLoadingState, setIsLoadingState] = useState(true)
     const [isBreakScreenActive, setIsBreakScreenActive] = useState(false)
     const [breakTimeRemainingMs, setBreakTimeRemainingMs] = useState<number | null>(null)
@@ -40,6 +51,22 @@ export function AttendanceStaffPortal({ staff, settings, token }: AttendanceStaf
     const [coordinates, setCoordinates] = useState<{ lat: number, lng: number, accuracy: number } | null>(null)
     const [gpsErrorMsg, setGpsErrorMsg] = useState('')
     const [cameraError, setCameraError] = useState<string | null>(null)
+    const [distanceToLocation, setDistanceToLocation] = useState<number | null>(null)
+
+    // Calculate distance to location in real-time
+    useEffect(() => {
+        if (coordinates && shiftData?.geofence_lat && shiftData?.geofence_lng) {
+            const dist = calculateDistanceInMeters(
+                coordinates.lat,
+                coordinates.lng,
+                shiftData.geofence_lat,
+                shiftData.geofence_lng
+            )
+            setDistanceToLocation(dist)
+        } else {
+            setDistanceToLocation(null)
+        }
+    }, [coordinates, shiftData])
 
     // Initialization (Clock & State)
     useEffect(() => {
@@ -54,7 +81,10 @@ export function AttendanceStaffPortal({ staff, settings, token }: AttendanceStaf
                     breakDurationMinutes: res.breakDurationMinutes,
                     nextBlockStartTime: res.nextBlockStartTime,
                     expectedBreakReturnTime: res.expectedBreakReturnTime,
-                    timezone: res.timezone
+                    timezone: res.timezone,
+                    geofence_lat: res.geofence_lat,
+                    geofence_lng: res.geofence_lng,
+                    geofence_radius: res.geofence_radius
                 })
                 // Activar la pantalla de Break "Zen Mode" inmediatamente si está en estado 2 al cargar
                 if (res.state === 2) {
@@ -200,6 +230,9 @@ export function AttendanceStaffPortal({ staff, settings, token }: AttendanceStaf
     }
 
     const isShiftComplete = shiftData ? (shiftData.shiftType === 'continuous' ? shiftData.state >= 2 : shiftData.state >= 4) : false
+
+    const allowedMaxDistance = shiftData?.geofence_radius ? shiftData.geofence_radius + Math.max(shiftData.geofence_radius * 0.15, 15) : 300 // default or fallback
+    const isOutOfGeofence = distanceToLocation !== null && distanceToLocation > allowedMaxDistance
 
     const handleSubmit = async () => {
         if (!capturedImage) return
@@ -406,21 +439,26 @@ export function AttendanceStaffPortal({ staff, settings, token }: AttendanceStaf
                             </span>
                         </div>
 
-                        {/* Status Bar (GPS) */}
+                        {/* Status Bar (GPS + Distance) */}
                         <div className="px-4 py-3 text-xs font-semibold flex items-center justify-between border-b border-slate-100 dark:border-slate-800">
                             <div className="flex items-center gap-1.5 flex-1 w-full truncate">
                                 <MapPin className={cn(
                                     "w-3.5 h-3.5 shrink-0",
-                                    gpsStatus === 'success' ? "text-emerald-500" :
+                                    gpsStatus === 'success' && (!distanceToLocation || !shiftData?.geofence_radius || distanceToLocation <= (shiftData.geofence_radius + Math.max(shiftData.geofence_radius * 0.15, 15)))
+                                        ? "text-emerald-500" :
                                         gpsStatus === 'locating' ? "text-amber-500 animate-pulse" : "text-red-500"
                                 )} />
                                 <span className={cn(
                                     "truncate",
-                                    gpsStatus === 'success' ? "text-emerald-700 dark:text-emerald-400" :
+                                    gpsStatus === 'success' && (!distanceToLocation || !shiftData?.geofence_radius || distanceToLocation <= (shiftData.geofence_radius + Math.max(shiftData.geofence_radius * 0.15, 15)))
+                                        ? "text-emerald-700 dark:text-emerald-400" :
                                         gpsStatus === 'locating' ? "text-amber-700 dark:text-amber-400" : "text-red-700 dark:text-red-400"
                                 )}>
-                                    {gpsStatus === 'success' ? `GPS Listo (${Math.round(coordinates!.accuracy)}m)` :
-                                        gpsStatus === 'locating' ? "Calculando ubicación precisa..." : gpsErrorMsg}
+                                    {gpsStatus === 'locating' ? "Calculando ubicación precisa..." :
+                                        gpsStatus === 'error' ? gpsErrorMsg :
+                                            distanceToLocation && shiftData?.geofence_radius && distanceToLocation > (shiftData.geofence_radius + Math.max(shiftData.geofence_radius * 0.15, 15))
+                                                ? `Fuera de Sede (${distanceToLocation}m)`
+                                                : `GPS Listo (${Math.round(coordinates?.accuracy || 0)}m)`}
                                 </span>
                             </div>
 
@@ -506,7 +544,7 @@ export function AttendanceStaffPortal({ staff, settings, token }: AttendanceStaf
 
                             {view === 'camera' && (
                                 <div className="absolute bottom-6 left-0 w-full flex justify-center">
-                                    {gpsStatus === 'success' ? (
+                                    {gpsStatus === 'success' && !isOutOfGeofence ? (
                                         <button
                                             onClick={capture}
                                             className="w-20 h-20 rounded-full border-4 border-white/80 bg-white/30 backdrop-blur flex items-center justify-center group-hover:bg-white/50 transition-all hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(0,0,0,0.3)]"
@@ -516,9 +554,17 @@ export function AttendanceStaffPortal({ staff, settings, token }: AttendanceStaf
                                             </div>
                                         </button>
                                     ) : (
-                                        <div className="bg-black/60 backdrop-blur-md text-white px-4 py-3 rounded-xl border border-white/10 text-sm flex items-center gap-2 max-w-[80%] text-center shadow-lg">
-                                            <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
-                                            Esperando señal GPS precisa para habilitar cámara...
+                                        <div className="bg-black/60 backdrop-blur-md text-white px-4 py-3 rounded-xl border border-white/10 text-sm flex flex-col items-center gap-1 max-w-[80%] text-center shadow-lg">
+                                            <div className="flex items-center gap-2">
+                                                <AlertTriangle className={cn("w-4 h-4 shrink-0", isOutOfGeofence ? "text-red-400" : "text-amber-400")} />
+                                                <span>
+                                                    {gpsStatus !== 'success' ? "Esperando señal GPS precisa..." :
+                                                        isOutOfGeofence ? "Fuera de zona permitida" : "Validando..."}
+                                                </span>
+                                            </div>
+                                            {isOutOfGeofence && (
+                                                <span className="text-[10px] opacity-70">Debes estar a menos de {Math.round(allowedMaxDistance)}m de la sede.</span>
+                                            )}
                                         </div>
                                     )}
                                 </div>

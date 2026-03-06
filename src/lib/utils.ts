@@ -97,3 +97,21 @@ export function formatCurrency(amount: number) {
     maximumFractionDigits: 0,
   }).format(amount)
 }
+
+/**
+ * Formula de Haversine para calcular distancia entre dos puntos geográficos en metros.
+ */
+export function calculateDistanceInMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371e3; // Radio de la Tierra en metros
+  const p1 = lat1 * Math.PI / 180;
+  const p2 = lat2 * Math.PI / 180;
+  const dp = (lat2 - lat1) * Math.PI / 180;
+  const dl = (lon2 - lon1) * Math.PI / 180;
+
+  const a = Math.sin(dp / 2) * Math.sin(dp / 2) +
+    Math.cos(p1) * Math.cos(p2) *
+    Math.sin(dl / 2) * Math.sin(dl / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return Math.round(R * c);
+}

@@ -144,16 +144,14 @@ export function AttendanceDashboard({ logs: initialLogs, staff: initialStaff, lo
                 }
             />
 
-            <Tabs defaultValue="staff" className="w-full space-y-8">
+            <Tabs defaultValue="lifecycles" className="w-full space-y-8">
                 <TabsList className="bg-white dark:bg-zinc-900 p-1 rounded-xl border border-gray-100 dark:border-white/10 h-auto">
+                    <TabsTrigger value="lifecycles" className="rounded-lg px-6 py-2.5 data-[state=active]:bg-gray-100 dark:data-[state=active]:bg-white/10 font-bold">
+                        <Activity className="w-4 h-4 mr-2" /> Turnos (Monitor)
+                    </TabsTrigger>
+
                     <TabsTrigger value="staff" className="rounded-lg px-6 py-2.5 data-[state=active]:bg-gray-100 dark:data-[state=active]:bg-white/10 font-bold">
                         <User className="w-4 h-4 mr-2" /> Colaboradores
-                    </TabsTrigger>
-                    <TabsTrigger value="logs" className="rounded-lg px-6 py-2.5 data-[state=active]:bg-gray-100 dark:data-[state=active]:bg-white/10 font-bold">
-                        <Clock className="w-4 h-4 mr-2" /> Historial
-                    </TabsTrigger>
-                    <TabsTrigger value="lifecycles" className="rounded-lg px-6 py-2.5 data-[state=active]:bg-gray-100 dark:data-[state=active]:bg-white/10 font-bold">
-                        <Activity className="w-4 h-4 mr-2" /> Turnos (Línea de Vida)
                     </TabsTrigger>
 
                     <TabsTrigger value="payroll" className="rounded-lg px-6 py-2.5 data-[state=active]:bg-gray-100 dark:data-[state=active]:bg-emerald-500/10 data-[state=active]:text-emerald-700 dark:data-[state=active]:text-emerald-400 font-bold transition-all">
@@ -165,186 +163,46 @@ export function AttendanceDashboard({ logs: initialLogs, staff: initialStaff, lo
                     </TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="logs" className="space-y-8 mt-0">
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <Card className="p-5 bg-white dark:bg-zinc-900/50 backdrop-blur-md border-gray-100 dark:border-white/5 shadow-sm hover:shadow-md transition-all group">
-                            <div className="flex items-center gap-4">
-                                <div className="p-3 bg-blue-50 dark:bg-blue-500/10 rounded-xl">
-                                    <Clock className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                                </div>
-                                <div>
-                                    <p className="text-3xl font-bold text-gray-900 dark:text-white">{logs.length}</p>
-                                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Registros Hoy</p>
-                                </div>
+                {/* Estadísticas Rápidas */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <Card className="p-5 bg-white dark:bg-zinc-900/50 backdrop-blur-md border-gray-100 dark:border-white/5 shadow-sm hover:shadow-md transition-all group">
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 bg-blue-50 dark:bg-blue-500/10 rounded-xl">
+                                <Clock className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                             </div>
-                        </Card>
-
-                        <Card className="p-5 bg-white dark:bg-zinc-900/50 backdrop-blur-md border-gray-100 dark:border-white/5 shadow-sm hover:shadow-md transition-all group">
-                            <div className="flex items-center gap-4">
-                                <div className="p-3 bg-red-50 dark:bg-red-500/10 rounded-xl">
-                                    <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400" />
-                                </div>
-                                <div>
-                                    <p className="text-3xl font-bold text-red-600 dark:text-red-500">{logs.filter(l => !l.is_valid).length}</p>
-                                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Alertas</p>
-                                </div>
+                            <div>
+                                <p className="text-3xl font-bold text-gray-900 dark:text-white">{logs.length}</p>
+                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Registros Hoy</p>
                             </div>
-                        </Card>
-
-                        <Card className="p-5 bg-white dark:bg-zinc-900/50 backdrop-blur-md border-gray-100 dark:border-white/5 shadow-sm hover:shadow-md transition-all group">
-                            <div className="flex items-center gap-4">
-                                <div className="p-3 bg-emerald-50 dark:bg-emerald-500/10 rounded-xl">
-                                    <CheckCircle2 className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
-                                </div>
-                                <div>
-                                    <p className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">
-                                        {new Set(logs.map(l => l.staff_id)).size} / {initialStaff.length}
-                                    </p>
-                                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">En Turno</p>
-                                </div>
-                            </div>
-                        </Card>
-                    </div>
-
-                    <Card className="border-gray-100 dark:border-white/5 overflow-hidden">
-                        <CardHeader className="border-b bg-slate-50/30 dark:bg-zinc-900/30 p-4 md:p-6">
-                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                                <div>
-                                    <CardTitle>Historial de Marcas</CardTitle>
-                                    <CardDescription>Auditoría completa con validación GPS y fotográfica.</CardDescription>
-                                </div>
-                                <div className="flex flex-col md:flex-row items-center gap-3">
-                                    <div className="relative w-full md:w-64">
-                                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
-                                        <Input
-                                            placeholder="Buscar colaborador..."
-                                            value={searchTerm}
-                                            onChange={e => setSearchTerm(e.target.value)}
-                                            className="pl-9 bg-white dark:bg-zinc-900 shadow-none"
-                                        />
-                                    </div>
-                                    <div className="flex items-center gap-2 w-full md:w-auto">
-                                        <Filter className="w-4 h-4 text-slate-400 hidden md:block" />
-                                        <Select value={filterLocationId} onValueChange={setFilterLocationId}>
-                                            <SelectTrigger className="w-full md:w-[160px] bg-white dark:bg-zinc-900">
-                                                <SelectValue placeholder="Sede" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="all">Todas las sedes</SelectItem>
-                                                {locations.map(loc => (
-                                                    <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div className="flex items-center gap-2 w-full md:w-auto">
-                                        <CalendarIcon className="w-4 h-4 text-slate-400 hidden md:block" />
-                                        <Input
-                                            type="date"
-                                            value={filterDate}
-                                            onChange={e => setFilterDate(e.target.value)}
-                                            className="w-full md:w-[150px] bg-white dark:bg-zinc-900"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        </CardHeader>
-                        <CardContent className="p-0">
-                            <Table>
-                                <TableHeader className="bg-slate-50">
-                                    <TableRow>
-                                        <TableHead className="w-[80px]">Foto</TableHead>
-                                        <TableHead>Colaborador</TableHead>
-                                        <TableHead>Sede</TableHead>
-                                        <TableHead>Acción</TableHead>
-                                        <TableHead>Hora Origen (Zero-Trust)</TableHead>
-                                        <TableHead>Validación GPS</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {filteredLogs.length === 0 ? (
-                                        <TableRow>
-                                            <TableCell colSpan={6} className="text-center py-8 text-slate-500">
-                                                No hay registros de asistencia.
-                                            </TableCell>
-                                        </TableRow>
-                                    ) : (
-                                        filteredLogs.map((log) => (
-                                            <TableRow key={log.id} className={!log.is_valid ? "bg-red-50/50" : ""}>
-                                                <TableCell>
-                                                    <div
-                                                        className="w-10 h-10 rounded-lg overflow-hidden border bg-slate-100 flex items-center justify-center relative group cursor-pointer"
-                                                        onClick={() => { if (log.photo_url) setSelectedPhoto(log.photo_url) }}
-                                                    >
-                                                        {log.photo_url ? (
-                                                            <>
-                                                                <img src={log.photo_url} alt="Evidencia" className="w-full h-full object-cover" />
-                                                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                                    <Search className="w-4 h-4 text-white" />
-                                                                </div>
-                                                            </>
-                                                        ) : (
-                                                            <Camera className="w-4 h-4 text-slate-400" />
-                                                        )}
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <div className="font-medium text-slate-900">
-                                                        {log.staff?.first_name} {log.staff?.last_name}
-                                                    </div>
-                                                    <div className="text-xs text-slate-500">{log.staff?.role || 'Staff'}</div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <div className="flex items-center gap-1.5 text-sm text-slate-600">
-                                                        <MapPin className="w-3.5 h-3.5" />
-                                                        {log.location?.name || 'Sede Central'}
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    {getTypeLabel(log.type)}
-                                                </TableCell>
-                                                <TableCell>
-                                                    <div className="flex flex-col">
-                                                        <span className="font-medium">
-                                                            {format(new Date(log.timestamp), 'h:mm a')}
-                                                        </span>
-                                                        <span className="text-xs text-slate-500">
-                                                            {format(new Date(log.timestamp), 'dd MMM yyyy', { locale: es })}
-                                                        </span>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <div className="flex flex-col items-start gap-1">
-                                                        {log.is_valid ? (
-                                                            <div className="flex items-center gap-1.5 text-emerald-600 text-sm font-medium">
-                                                                <CheckCircle2 className="w-4 h-4" /> Válido
-                                                            </div>
-                                                        ) : (
-                                                            <div className="flex items-center gap-1.5 text-red-600 text-sm font-medium">
-                                                                <AlertTriangle className="w-4 h-4" /> Irregular
-                                                            </div>
-                                                        )}
-                                                        {getFraudBadges(log.fraud_flags)}
-                                                        {log.distance_to_location !== null && log.distance_to_location !== undefined && (
-                                                            <div className="text-[10px] text-slate-500 font-mono">
-                                                                Distancia Sede: {log.distance_to_location}m
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </CardContent>
+                        </div>
                     </Card>
-                </TabsContent>
 
-                <TabsContent value="staff">
-                    <StaffManagement staff={initialStaff} locations={locations} />
-                </TabsContent>
+                    <Card className="p-5 bg-white dark:bg-zinc-900/50 backdrop-blur-md border-gray-100 dark:border-white/5 shadow-sm hover:shadow-md transition-all group">
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 bg-red-50 dark:bg-red-500/10 rounded-xl">
+                                <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400" />
+                            </div>
+                            <div>
+                                <p className="text-3xl font-bold text-red-600 dark:text-red-500">{logs.filter(l => !l.is_valid).length}</p>
+                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Alertas</p>
+                            </div>
+                        </div>
+                    </Card>
+
+                    <Card className="p-5 bg-white dark:bg-zinc-900/50 backdrop-blur-md border-gray-100 dark:border-white/5 shadow-sm hover:shadow-md transition-all group">
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 bg-emerald-50 dark:bg-emerald-500/10 rounded-xl">
+                                <CheckCircle2 className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+                            </div>
+                            <div>
+                                <p className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">
+                                    {new Set(logs.map(l => l.staff_id)).size} / {initialStaff.length}
+                                </p>
+                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">En Turno</p>
+                            </div>
+                        </div>
+                    </Card>
+                </div>
 
                 <TabsContent value="lifecycles" className="space-y-6 mt-0">
                     <div className="flex flex-col md:flex-row gap-4 bg-white dark:bg-zinc-900/50 p-4 rounded-xl border border-gray-100 dark:border-white/5 shadow-sm">
@@ -361,7 +219,10 @@ export function AttendanceDashboard({ logs: initialLogs, staff: initialStaff, lo
                             <Filter className="w-4 h-4 text-slate-400" />
                             <Select value={filterLocationId} onValueChange={setFilterLocationId}>
                                 <SelectTrigger className="w-[180px] bg-white dark:bg-zinc-900 border-slate-200">
-                                    <SelectValue placeholder="Todas las sedes" />
+                                    <div className="flex items-center gap-2">
+                                        <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                                        <SelectValue placeholder="Todas las sedes" />
+                                    </div>
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="all">Todas las sedes</SelectItem>
@@ -398,10 +259,10 @@ export function AttendanceDashboard({ logs: initialLogs, staff: initialStaff, lo
                             <div className="flex flex-col md:flex-row items-center p-4 gap-4 bg-white dark:bg-slate-950">
                                 {/* Informacción Staff */}
                                 <div className="flex-1 min-w-[200px]">
-                                    <h4 className="font-bold text-slate-900 dark:text-white leading-tight">
+                                    <h4 className="font-bold text-slate-900 dark:text-white leading-tight underline decoration-indigo-500/30 underline-offset-4">
                                         {cycle.staff?.first_name} {cycle.staff?.last_name}
                                     </h4>
-                                    <p className="text-xs text-slate-500 mt-0.5">
+                                    <p className="text-xs text-slate-500 mt-0.5 font-medium">
                                         {format(cycle.date, "EEEE, d 'de' MMMM", { locale: es })} • <span className="capitalize">{cycle.shiftType}</span>
                                     </p>
                                 </div>
@@ -418,8 +279,9 @@ export function AttendanceDashboard({ logs: initialLogs, staff: initialStaff, lo
                                             onClick={() => { if (log.photo_url) setSelectedPhoto(log.photo_url) }}
                                         >
                                             <div className={cn(
-                                                "w-full rounded-xl overflow-hidden border transition-all shadow-sm group-hover:shadow-md group-hover:scale-[1.02] duration-200",
-                                                log.photo_url ? "group-hover:ring-2 group-hover:ring-slate-400" : "",
+                                                "w-full rounded-xl overflow-hidden border transition-all shadow-sm group-hover:shadow-md group-hover:scale-[1.05] duration-200",
+                                                log.photo_url ? "group-hover:ring-2 group-hover:ring-indigo-400" : "",
+                                                !log.is_valid ? "ring-2 ring-red-500 ring-offset-2 dark:ring-offset-zinc-950 border-red-500 shadow-[0_0_15px_rgba(239,68,68,0.2)]" : "",
                                                 log.type === 'check_in' ? 'bg-emerald-50/50 border-emerald-200' :
                                                     log.type === 'check_out' ? 'bg-red-50/50 border-red-200' :
                                                         log.type === 'break_start' ? 'bg-amber-50/50 border-amber-200' : 'bg-blue-50/50 border-blue-200'
@@ -427,36 +289,46 @@ export function AttendanceDashboard({ logs: initialLogs, staff: initialStaff, lo
                                                 {/* Etiqueta superior */}
                                                 <div className={cn(
                                                     "py-1 px-2 text-[9px] font-black uppercase tracking-widest text-center border-b",
-                                                    log.type === 'check_in' ? 'bg-emerald-100/50 text-emerald-700 border-emerald-200' :
-                                                        log.type === 'check_out' ? 'bg-red-100/50 text-red-700 border-red-200' :
-                                                            log.type === 'break_start' ? 'bg-amber-100/50 text-amber-700 border-amber-200' : 'bg-blue-100/50 text-blue-700 border-blue-200'
+                                                    !log.is_valid ? 'bg-red-500 text-white border-red-600' :
+                                                        log.type === 'check_in' ? 'bg-emerald-100/50 text-emerald-700 border-emerald-200' :
+                                                            log.type === 'check_out' ? 'bg-red-100/50 text-red-700 border-red-200' :
+                                                                log.type === 'break_start' ? 'bg-amber-100/50 text-amber-700 border-amber-200' : 'bg-blue-100/50 text-blue-700 border-blue-200'
                                                 )}>
-                                                    {log.type === 'check_in' ? 'Entrada' : log.type === 'check_out' ? 'Salida' : log.type === 'break_start' ? 'Inic. Break' : 'Fin Break'}
+                                                    {!log.is_valid ? '⚠️ Anomalía' :
+                                                        log.type === 'check_in' ? 'Entrada' : log.type === 'check_out' ? 'Salida' : log.type === 'break_start' ? 'Inic. Break' : 'Fin Break'}
                                                 </div>
                                                 {/* Hora principal */}
-                                                <div className="py-2 text-center">
+                                                <div className="py-2 text-center flex flex-col items-center">
                                                     <span className={cn(
                                                         "text-sm font-black font-mono tracking-tighter",
-                                                        log.type === 'check_in' ? 'text-emerald-700' :
-                                                            log.type === 'check_out' ? 'text-red-700' :
-                                                                log.type === 'break_start' ? 'text-amber-700' : 'text-blue-700'
+                                                        !log.is_valid ? 'text-red-700' :
+                                                            log.type === 'check_in' ? 'text-emerald-700' :
+                                                                log.type === 'check_out' ? 'text-red-700' :
+                                                                    log.type === 'break_start' ? 'text-amber-700' : 'text-blue-700'
                                                     )}>
                                                         {format(new Date(log.timestamp), 'HH:mm')}
                                                     </span>
+                                                    {log.distance_to_location && !log.is_valid && (
+                                                        <span className="text-[8px] font-bold text-red-600 uppercase">
+                                                            A {log.distance_to_location}m
+                                                        </span>
+                                                    )}
                                                 </div>
                                             </div>
 
-                                            {/* Alerta de distancia GPS */}
-                                            {log.distance_to_location > 200 && (
-                                                <div className="absolute -top-1.5 -right-1.5 w-3 h-3 rounded-full bg-red-500 animate-pulse border-2 border-white shadow-md z-10" />
+                                            {/* Indicador de fraude/GPS flotante enriquecido */}
+                                            {!log.is_valid && (
+                                                <div className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-red-600 animate-pulse border-2 border-white dark:border-zinc-900 shadow-lg z-10 flex items-center justify-center">
+                                                    <AlertTriangle className="w-3 h-3 text-white" />
+                                                </div>
                                             )}
                                         </div>
                                     ))}
 
                                     {/* Placeholders para pasos faltantes distribuidos */}
                                     {Array.from({ length: Math.max(0, cycle.expectedMarks - cycle.logs.length) }).map((_, i) => (
-                                        <div key={`missing-${i}`} className="flex-1 flex flex-col items-center opacity-30 max-w-[180px] min-w-[120px]">
-                                            <div className="w-full rounded-xl border border-dashed border-slate-300 bg-slate-50/50 overflow-hidden">
+                                        <div key={`missing-${i}`} className="flex-1 flex flex-col items-center opacity-40 max-w-[180px] min-w-[120px]">
+                                            <div className="w-full rounded-xl border-2 border-dashed border-slate-300 bg-slate-50/30 overflow-hidden">
                                                 <div className="py-1 px-2 text-[9px] font-black uppercase tracking-widest text-center border-b border-dashed border-slate-300 text-slate-400">
                                                     Pendiente
                                                 </div>
@@ -477,7 +349,7 @@ export function AttendanceDashboard({ logs: initialLogs, staff: initialStaff, lo
                                     <Badge
                                         variant="outline"
                                         className={cn(
-                                            "capitalize text-[10px] px-2 py-0.5",
+                                            "capitalize text-[10px] px-2 py-0.5 font-black",
                                             cycle.isComplete ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-amber-50 text-amber-700 border-amber-200"
                                         )}
                                     >
@@ -491,9 +363,13 @@ export function AttendanceDashboard({ logs: initialLogs, staff: initialStaff, lo
                         <div className="p-12 text-center text-slate-500 bg-white dark:bg-slate-900 border rounded-2xl">
                             <Activity className="w-12 h-12 mx-auto mb-4 opacity-20" />
                             <h3 className="text-lg font-medium">No hay turnos registrados</h3>
-                            <p className="text-sm">Las marcaciones de hoy aparecerán aquí organizadas por colaborador.</p>
+                            <p className="text-sm">Las marcaciones aparecerán aquí organizadas por colaborador.</p>
                         </div>
                     )}
+                </TabsContent>
+
+                <TabsContent value="staff">
+                    <StaffManagement staff={initialStaff} locations={locations} />
                 </TabsContent>
 
                 <TabsContent value="payroll" className="space-y-6 mt-0">
@@ -514,10 +390,10 @@ export function AttendanceDashboard({ logs: initialLogs, staff: initialStaff, lo
                 <DialogContent className="max-w-3xl p-0 overflow-hidden bg-black/95 border-none shadow-2xl rounded-2xl">
                     <DialogHeader className="p-4 absolute top-0 left-0 right-0 bg-gradient-to-b from-black/60 to-transparent z-20 pointer-events-none">
                         <DialogTitle className="text-white flex items-center gap-2 drop-shadow-md">
-                            <Camera className="w-5 h-5" /> Evidencia Asistencia
+                            <Camera className="w-5 h-5 font-black" /> Evidencia Asistencia
                         </DialogTitle>
                     </DialogHeader>
-                    <div className="flex items-center justify-center min-h-[500px] w-full p-2 text-white">
+                    <div className="flex items-center justify-center min-h-[500px] w-full p-4 text-white">
                         {selectedPhoto ? (
                             <img
                                 src={selectedPhoto}
@@ -532,5 +408,4 @@ export function AttendanceDashboard({ logs: initialLogs, staff: initialStaff, lo
             </Dialog>
         </div>
     )
-
 }

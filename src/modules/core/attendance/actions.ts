@@ -8,22 +8,7 @@ import { z } from "zod"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
 import { trackStorageUpload, validateStorageLimit } from "@/modules/core/storage/actions"
 import { requireOrgRole } from "@/lib/auth/org-roles"
-
-// Haversine formula to calculate distance between two lat/lng points in meters
-function calculateDistanceInMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
-    const R = 6371e3; // Earth's radius in meters
-    const p1 = lat1 * Math.PI / 180; // φ, λ in radians
-    const p2 = lat2 * Math.PI / 180;
-    const dp = (lat2 - lat1) * Math.PI / 180;
-    const dl = (lon2 - lon1) * Math.PI / 180;
-
-    const a = Math.sin(dp / 2) * Math.sin(dp / 2) +
-        Math.cos(p1) * Math.cos(p2) *
-        Math.sin(dl / 2) * Math.sin(dl / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-    return Math.round(R * c); // Distance in meters
-}
+import { calculateDistanceInMeters } from "@/lib/utils"
 
 // Helper global para restar 5 minutos a un formato HH:mm
 const subtractGraceMins = (timeStr: string) => {
@@ -546,7 +531,7 @@ export async function getDailyAttendanceState(staffToken: string) {
                 shift_type,
                 break_duration_minutes,
                 work_schedule,
-                location:organization_locations(business_hours, timezone)
+                location:organization_locations(business_hours, timezone, latitude, longitude, geofence_radius_meters)
             `)
             .eq('access_token', staffToken)
             .single()
@@ -659,6 +644,9 @@ export async function getDailyAttendanceState(staffToken: string) {
             breakDurationMinutes: staff.break_duration_minutes || 120, // DB Config fallback
             expectedBreakReturnTime, // Formato "HH:mm" si usa block_2
             timezone: tz,
+            geofence_lat: locationInfo?.latitude,
+            geofence_lng: locationInfo?.longitude,
+            geofence_radius: locationInfo?.geofence_radius_meters,
             logs
         }
     } catch (err: any) {
