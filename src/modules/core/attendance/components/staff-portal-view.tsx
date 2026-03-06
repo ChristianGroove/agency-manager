@@ -29,7 +29,7 @@ export function AttendanceStaffPortal({ staff, settings, token }: AttendanceStaf
     const [view, setView] = useState<'camera' | 'preview' | 'success'>('camera')
 
     // Shift State Machine
-    const [shiftData, setShiftData] = useState<{ state: number, shiftType: 'continuous' | 'split', lastActionTimestamp?: string, breakDurationMinutes?: number } | null>(null)
+    const [shiftData, setShiftData] = useState<{ state: number, shiftType: 'continuous' | 'split', lastActionTimestamp?: string, breakDurationMinutes?: number, nextBlockStartTime?: string, expectedBreakReturnTime?: string, timezone?: string } | null>(null)
     const [isLoadingState, setIsLoadingState] = useState(true)
     const [isBreakScreenActive, setIsBreakScreenActive] = useState(false)
     const [breakTimeRemainingMs, setBreakTimeRemainingMs] = useState<number | null>(null)
@@ -51,7 +51,10 @@ export function AttendanceStaffPortal({ staff, settings, token }: AttendanceStaf
                     state: res.state,
                     shiftType: res.shiftType as 'continuous' | 'split',
                     lastActionTimestamp: res.lastActionTimestamp,
-                    breakDurationMinutes: res.breakDurationMinutes
+                    breakDurationMinutes: res.breakDurationMinutes,
+                    nextBlockStartTime: res.nextBlockStartTime,
+                    expectedBreakReturnTime: res.expectedBreakReturnTime,
+                    timezone: res.timezone
                 })
                 // Activar la pantalla de Break "Zen Mode" inmediatamente si está en estado 2 al cargar
                 if (res.state === 2) {
@@ -70,11 +73,23 @@ export function AttendanceStaffPortal({ staff, settings, token }: AttendanceStaf
     useEffect(() => {
         if (shiftData?.state === 2 && isBreakScreenActive && shiftData.lastActionTimestamp) {
             const checkTimer = () => {
-                const startMs = new Date(shiftData.lastActionTimestamp!).getTime()
+                let targetMs = 0
+
+                if (shiftData.expectedBreakReturnTime && shiftData.timezone) {
+                    const [h, m] = shiftData.expectedBreakReturnTime.split(':').map(Number)
+                    const d = new Date()
+                    // Usamos la fecha actual (navegador) pero inyectamos la hora absoluta de retorno. 
+                    // No es perfecto para husos horarios cruzados agresivos en cliente, pero suficiente para la UI.
+                    d.setHours(h, m - 5, 0, 0)
+                    targetMs = d.getTime()
+                } else {
+                    const startMs = new Date(shiftData.lastActionTimestamp!).getTime()
+                    const breakDuration = shiftData.breakDurationMinutes || 120
+                    // Habilitamos el retorno 5 minutos ANTES de la duración total para gracia
+                    targetMs = startMs + ((breakDuration - 5) * 60000)
+                }
+
                 const nowMs = new Date().getTime()
-                const breakDuration = shiftData.breakDurationMinutes || 120
-                // Habilitamos el retorno 5 minutos ANTES de la duración total para gracia
-                const targetMs = startMs + ((breakDuration - 5) * 60000)
                 const diff = targetMs - nowMs
 
                 if (diff <= 0) {
@@ -309,7 +324,9 @@ export function AttendanceStaffPortal({ staff, settings, token }: AttendanceStaf
                             <Clock className="w-10 h-10" />
                         </div>
                         <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Fuera de Horario</h2>
-                        <p className="text-slate-500 text-sm">El portal de asistencia solo puede ser iniciado durante el horario de operación de tu Sede.</p>
+                        <p className="text-slate-500 text-sm">
+                            {shiftData?.nextBlockStartTime ? `Tu turno inicia a las ${shiftData.nextBlockStartTime}.` : "El portal de asistencia solo funciona durante tu turno programado."}
+                        </p>
                     </div>
                 ) : isShiftComplete ? (
                     <div className="flex flex-col items-center justify-center p-12 text-center animate-in zoom-in spin-in-2 duration-500">

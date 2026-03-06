@@ -25,6 +25,15 @@ function calculateDistanceInMeters(lat1: number, lon1: number, lat2: number, lon
     return Math.round(R * c); // Distance in meters
 }
 
+// Helper global para restar 5 minutos a un formato HH:mm
+const subtractGraceMins = (timeStr: string) => {
+    if (!timeStr) return "00:00"
+    const [h, m] = timeStr.split(':').map(Number)
+    const d = new Date()
+    d.setHours(h, m - 5, 0, 0)
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
 const AttendancePayloadSchema = z.object({
     staffToken: z.string().uuid(),
     type: z.enum(['check_in', 'check_out', 'break_start', 'break_end']),
@@ -51,6 +60,7 @@ export interface Staff {
     is_active: boolean
     photo_url: string | null
     shift_type: 'continuous' | 'split'
+    work_schedule?: any
     created_at: string
     updated_at: string
 }
@@ -140,22 +150,39 @@ export async function registerAttendanceMark(payload: AttendancePayload) {
             clientTimeReported: new Date().toISOString() // Solo para auditoría si hay desfase masivo
         }
 
-        // D. Verificación de Duración de Break Mandatorio (Zero-Trust Server Time)
-        if (validated.type === 'break_end') {
-            // Obtener el estado real actual para prevenir doble-marca y revisar tiempo
+        // D. Verificación Estricta (Zero-Trust Server Time)
+        if (validated.type === 'check_in' || validated.type === 'break_end') {
             const currentState = await getDailyAttendanceState(validated.staffToken)
-            if (currentState.success && currentState.state === 2 && currentState.lastActionTimestamp) {
-                const breakDurationMinutes = currentState.breakDurationMinutes || 120
-                const breakStartTime = new Date(currentState.lastActionTimestamp).getTime()
-                const now = new Date().getTime()
-                // Permitir regreso hasta 5 minutos antes del total
-                const minimumReturnTime = breakStartTime + ((breakDurationMinutes - 5) * 60000)
 
-                if (now < minimumReturnTime) {
-                    return { success: false, error: "Aún te encuentras en tu horario de descanso obligatorio. No puedes regresar antes." }
+            // 1. Validar Gracia de Entrada (Check-In)
+            if (currentState.success && currentState.state === -1) {
+                return { success: false, error: currentState.nextBlockStartTime ? `Tu turno inicia a las ${currentState.nextBlockStartTime}.` : `Estás fuera de horario.` }
+            }
+
+            // 2. Validar Gracia de Break (Regreso)
+            if (validated.type === 'break_end') {
+                if (currentState.success && currentState.state === 2 && currentState.lastActionTimestamp) {
+                    if (currentState.expectedBreakReturnTime && currentState.timezone) {
+                        const graceReturn = subtractGraceMins(currentState.expectedBreakReturnTime)
+                        const nowInTz = new Date().toLocaleTimeString('en-US', { timeZone: currentState.timezone as string, hour12: false, hour: '2-digit', minute: '2-digit' })
+
+                        if (nowInTz < graceReturn) {
+                            return { success: false, error: `Aún estás en horario de descanso. Debes regresar a partir de las ${graceReturn}.` }
+                        }
+                    } else {
+                        // Fallback a hora configurada global
+                        const breakDurationMinutes = currentState.breakDurationMinutes || 120
+                        const breakStartTime = new Date(currentState.lastActionTimestamp).getTime()
+                        const now = new Date().getTime()
+                        const minimumReturnTime = breakStartTime + ((breakDurationMinutes - 5) * 60000)
+
+                        if (now < minimumReturnTime) {
+                            return { success: false, error: "Aún te encuentras en tu horario de descanso obligatorio. No puedes regresar antes." }
+                        }
+                    }
+                } else if (currentState.success && currentState.state !== 2) {
+                    return { success: false, error: "No puedes registrar un regreso de descanso en este momento." }
                 }
-            } else if (currentState.success && currentState.state !== 2) {
-                return { success: false, error: "No puedes registrar un regreso de descanso en este momento." }
             }
         }
 
@@ -518,6 +545,7 @@ export async function getDailyAttendanceState(staffToken: string) {
                 id, 
                 shift_type,
                 break_duration_minutes,
+                work_schedule,
                 location:organization_locations(business_hours, timezone)
             `)
             .eq('access_token', staffToken)
@@ -545,33 +573,51 @@ export async function getDailyAttendanceState(staffToken: string) {
         const validLogsCount = logs?.length || 0
         const shiftType = staff.shift_type || 'split'
 
-        // 3. Evaluar horario de operación (Business Hours)
+        // 3. Evaluar horario de operación personalizado (Individual > Location fallback)
         let isOutofHours = false
-        const locationInfo = staff.location as any
+        let nextBlockStartTime = null
+        let expectedBreakReturnTime = null
 
-        if (locationInfo && !Array.isArray(locationInfo) && locationInfo.business_hours) {
+        const locationInfo = staff.location as any
+        const tz = typeof locationInfo?.timezone === 'string' ? locationInfo.timezone : 'America/Bogota'
+        const schedule = staff.work_schedule || locationInfo?.business_hours
+
+        if (schedule) {
             const todayIndex = new Date().getDay() // 0 = Sun, 1 = Mon...
             const daysMap = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
             const todayKey = daysMap[todayIndex]
 
-            const hours = locationInfo.business_hours[todayKey]
+            const hours = schedule[todayKey]
 
             if (hours) {
-                if (hours.is_closed) {
+                // If the day is explicitly marked as inactive or closed
+                if (hours.is_active === false || hours.is_closed === true) {
                     isOutofHours = true
-                } else if (hours.open && hours.close) {
-                    // Check local time against open/close
-                    const tz = typeof locationInfo.timezone === 'string' ? locationInfo.timezone : 'America/Bogota'
+                } else {
                     const nowInTz = new Date().toLocaleTimeString('en-US', { timeZone: tz, hour12: false, hour: '2-digit', minute: '2-digit' })
 
-                    // Solo bloqueamos si no ha iniciado el turno. 
-                    // Si ya empezó a marcar, dejamos que termine (por flexbilidad de horas extra).
-                    if (validLogsCount === 0) {
-                        if (nowInTz < hours.open || nowInTz > hours.close) {
+                    // Soportar el nuevo JSON (block_X_start) o el viejo (open/close)
+                    const openTime = hours.block_1_start || hours.open
+                    const closeTime = hours.block_2_end || hours.block_1_end || hours.close
+                    const block2Start = hours.block_2_start
+
+                    // Gracia de Entrada
+                    if (validLogsCount === 0 && openTime) {
+                        const graceOpen = subtractGraceMins(openTime)
+                        if (nowInTz < graceOpen || nowInTz > closeTime) {
                             isOutofHours = true
+                            nextBlockStartTime = openTime
                         }
                     }
+
+                    // Gracia de Regreso de Break (Señalar meta estricta a la UI)
+                    if (validLogsCount === 2 && shiftType === 'split' && block2Start) {
+                        expectedBreakReturnTime = block2Start
+                    }
                 }
+            } else {
+                // Si el día no existe en el JSON
+                isOutofHours = true
             }
         }
 
@@ -585,6 +631,7 @@ export async function getDailyAttendanceState(staffToken: string) {
                 shiftType,
                 marksCount: 0,
                 lastActionTimestamp: null,
+                nextBlockStartTime,
                 logs: []
             }
         }
@@ -609,7 +656,9 @@ export async function getDailyAttendanceState(staffToken: string) {
             shiftType,
             marksCount: validLogsCount,
             lastActionTimestamp: validLogsCount > 0 ? logs[validLogsCount - 1].timestamp : null,
-            breakDurationMinutes: staff.break_duration_minutes || 120, // DB Config or fallback
+            breakDurationMinutes: staff.break_duration_minutes || 120, // DB Config fallback
+            expectedBreakReturnTime, // Formato "HH:mm" si usa block_2
+            timezone: tz,
             logs
         }
     } catch (err: any) {

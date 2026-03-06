@@ -46,6 +46,37 @@ export function StaffManagement({ staff: initialStaff, locations }: StaffManagem
     const [isUploading, setIsUploading] = useState(false)
     const [copiedId, setCopiedId] = useState<string | null>(null)
 
+    // Schedule Customization State
+    const [useCustomSchedule, setUseCustomSchedule] = useState(false)
+    const [scheduleBlocks, setScheduleBlocks] = useState({
+        block_1_start: '08:00',
+        block_1_end: '12:00',
+        block_2_start: '14:00',
+        block_2_end: '18:00'
+    })
+
+    const openDialogForStaff = (person?: Staff) => {
+        if (person) {
+            setEditingStaff(person)
+            if (person.work_schedule && person.work_schedule.monday) {
+                setUseCustomSchedule(true)
+                setScheduleBlocks({
+                    block_1_start: person.work_schedule.monday.block_1_start || '08:00',
+                    block_1_end: person.work_schedule.monday.block_1_end || '12:00',
+                    block_2_start: person.work_schedule.monday.block_2_start || '14:00',
+                    block_2_end: person.work_schedule.monday.block_2_end || '18:00',
+                })
+            } else {
+                setUseCustomSchedule(false)
+            }
+        } else {
+            setEditingStaff({ role: 'staff', shift_type: 'split' })
+            setUseCustomSchedule(false)
+            setScheduleBlocks({ block_1_start: '08:00', block_1_end: '12:00', block_2_start: '14:00', block_2_end: '18:00' })
+        }
+        setIsDialogOpen(true)
+    }
+
     const filteredStaff = staff.filter(s => {
         const fullName = `${s.first_name} ${s.last_name}`.toLowerCase()
         const term = searchTerm.toLowerCase()
@@ -101,8 +132,27 @@ export function StaffManagement({ staff: initialStaff, locations }: StaffManagem
 
         setIsSubmitting(true)
         try {
-            if (editingStaff.id) {
-                const res = await updateStaff(editingStaff.id, editingStaff)
+            const staffToSave = { ...editingStaff } as any
+
+            // Serialize work_schedule matrix logic
+            if (useCustomSchedule) {
+                const wk = {
+                    is_active: true,
+                    block_1_start: scheduleBlocks.block_1_start,
+                    block_1_end: scheduleBlocks.block_1_end,
+                    block_2_start: staffToSave.shift_type === 'split' ? scheduleBlocks.block_2_start : undefined,
+                    block_2_end: staffToSave.shift_type === 'split' ? scheduleBlocks.block_2_end : undefined,
+                }
+                staffToSave.work_schedule = {
+                    monday: wk, tuesday: wk, wednesday: wk, thursday: wk, friday: wk,
+                    saturday: { is_active: false }, sunday: { is_active: false }
+                }
+            } else {
+                staffToSave.work_schedule = null
+            }
+
+            if (staffToSave.id) {
+                const res = await updateStaff(staffToSave.id, staffToSave)
                 if (res.success) {
                     setStaff(prev => prev.map(s => s.id === editingStaff.id ? { ...s, ...res.data } : s))
                     toast.success("Colaborador actualizado")
@@ -149,7 +199,7 @@ export function StaffManagement({ staff: initialStaff, locations }: StaffManagem
             <div className="flex justify-between items-center">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white leading-tight">Gestión de Personal</h3>
                 <Button
-                    onClick={() => { setEditingStaff({}); setIsDialogOpen(true) }}
+                    onClick={() => openDialogForStaff()}
                     className="bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20 rounded-xl"
                 >
                     <UserPlus className="w-4 h-4 mr-2" /> Nuevo Colaborador
@@ -240,7 +290,7 @@ export function StaffManagement({ staff: initialStaff, locations }: StaffManagem
                                                     </Button>
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end">
-                                                    <DropdownMenuItem onClick={() => { setEditingStaff(person); setIsDialogOpen(true) }}>
+                                                    <DropdownMenuItem onClick={() => openDialogForStaff(person)}>
                                                         <Edit className="w-4 h-4 mr-2" /> Editar
                                                     </DropdownMenuItem>
                                                     <DropdownMenuItem onClick={() => handleCopyToken(person.id, person.access_token)}>
@@ -385,6 +435,63 @@ export function StaffManagement({ staff: initialStaff, locations }: StaffManagem
                                     <SelectItem value="split">Jornada Dividida / Break (4 marcaciones)</SelectItem>
                                 </SelectContent>
                             </Select>
+                        </div>
+
+                        <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+                            <div className="flex items-center gap-2 mb-4">
+                                <input
+                                    type="checkbox"
+                                    id="use_custom_schedule"
+                                    checked={useCustomSchedule}
+                                    onChange={(e) => setUseCustomSchedule(e.target.checked)}
+                                    className="rounded text-primary focus:ring-primary w-4 h-4 cursor-pointer"
+                                />
+                                <Label htmlFor="use_custom_schedule" className="cursor-pointer">Asignar Horario Personalizado (Lun-Vie)</Label>
+                            </div>
+
+                            {useCustomSchedule && (
+                                <div className="space-y-4 p-4 bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-100 dark:border-slate-800">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label className="text-xs">Turno Inicia</Label>
+                                            <Input
+                                                type="time"
+                                                value={scheduleBlocks.block_1_start}
+                                                onChange={e => setScheduleBlocks(prev => ({ ...prev, block_1_start: e.target.value }))}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label className="text-xs">{editingStaff?.shift_type === 'continuous' ? 'Turno Termina' : 'Break Inicia'}</Label>
+                                            <Input
+                                                type="time"
+                                                value={scheduleBlocks.block_1_end}
+                                                onChange={e => setScheduleBlocks(prev => ({ ...prev, block_1_end: e.target.value }))}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {editingStaff?.shift_type === 'split' && (
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <Label className="text-xs">Break Termina (Regreso)</Label>
+                                                <Input
+                                                    type="time"
+                                                    value={scheduleBlocks.block_2_start}
+                                                    onChange={e => setScheduleBlocks(prev => ({ ...prev, block_2_start: e.target.value }))}
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label className="text-xs">Turno Termina</Label>
+                                                <Input
+                                                    type="time"
+                                                    value={scheduleBlocks.block_2_end}
+                                                    onChange={e => setScheduleBlocks(prev => ({ ...prev, block_2_end: e.target.value }))}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
 
                         <div className="space-y-2">
