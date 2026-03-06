@@ -18,6 +18,12 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog"
 import { StaffManagement } from './staff-management'
 import { PayrollDashboard } from './payroll-dashboard'
 import { Staff } from '../../actions'
@@ -36,6 +42,7 @@ export function AttendanceDashboard({ logs: initialLogs, staff: initialStaff, lo
     const [logs, setLogs] = useState(initialLogs)
     const [filterLocationId, setFilterLocationId] = useState<string>('all')
     const [filterDate, setFilterDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'))
+    const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null)
 
     const filteredLogs = logs.filter(log => {
         // Search Term
@@ -201,20 +208,45 @@ export function AttendanceDashboard({ logs: initialLogs, staff: initialStaff, lo
                     </div>
 
                     <Card className="border-gray-100 dark:border-white/5 overflow-hidden">
-                        <CardHeader className="border-b bg-slate-50/30 dark:bg-zinc-900/30 p-6">
-                            <div className="flex items-center justify-between">
+                        <CardHeader className="border-b bg-slate-50/30 dark:bg-zinc-900/30 p-4 md:p-6">
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                                 <div>
                                     <CardTitle>Historial de Marcas</CardTitle>
                                     <CardDescription>Auditoría completa con validación GPS y fotográfica.</CardDescription>
                                 </div>
-                                <div className="relative w-64">
-                                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
-                                    <Input
-                                        placeholder="Buscar colaborador o sede..."
-                                        value={searchTerm}
-                                        onChange={e => setSearchTerm(e.target.value)}
-                                        className="pl-9 bg-white"
-                                    />
+                                <div className="flex flex-col md:flex-row items-center gap-3">
+                                    <div className="relative w-full md:w-64">
+                                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
+                                        <Input
+                                            placeholder="Buscar colaborador..."
+                                            value={searchTerm}
+                                            onChange={e => setSearchTerm(e.target.value)}
+                                            className="pl-9 bg-white dark:bg-zinc-900 shadow-none"
+                                        />
+                                    </div>
+                                    <div className="flex items-center gap-2 w-full md:w-auto">
+                                        <Filter className="w-4 h-4 text-slate-400 hidden md:block" />
+                                        <Select value={filterLocationId} onValueChange={setFilterLocationId}>
+                                            <SelectTrigger className="w-full md:w-[160px] bg-white dark:bg-zinc-900">
+                                                <SelectValue placeholder="Sede" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="all">Todas las sedes</SelectItem>
+                                                {locations.map(loc => (
+                                                    <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="flex items-center gap-2 w-full md:w-auto">
+                                        <CalendarIcon className="w-4 h-4 text-slate-400 hidden md:block" />
+                                        <Input
+                                            type="date"
+                                            value={filterDate}
+                                            onChange={e => setFilterDate(e.target.value)}
+                                            className="w-full md:w-[150px] bg-white dark:bg-zinc-900"
+                                        />
+                                    </div>
                                 </div>
                             </div>
                         </CardHeader>
@@ -241,7 +273,10 @@ export function AttendanceDashboard({ logs: initialLogs, staff: initialStaff, lo
                                         filteredLogs.map((log) => (
                                             <TableRow key={log.id} className={!log.is_valid ? "bg-red-50/50" : ""}>
                                                 <TableCell>
-                                                    <div className="w-10 h-10 rounded-lg overflow-hidden border bg-slate-100 flex items-center justify-center relative group cursor-pointer">
+                                                    <div
+                                                        className="w-10 h-10 rounded-lg overflow-hidden border bg-slate-100 flex items-center justify-center relative group cursor-pointer"
+                                                        onClick={() => { if (log.photo_url) setSelectedPhoto(log.photo_url) }}
+                                                    >
                                                         {log.photo_url ? (
                                                             <>
                                                                 <img src={log.photo_url} alt="Evidencia" className="w-full h-full object-cover" />
@@ -371,35 +406,64 @@ export function AttendanceDashboard({ logs: initialLogs, staff: initialStaff, lo
                                     </p>
                                 </div>
 
-                                {/* Timeline de Marcas Compacta - Distribución Equitativa */}
-                                <div className="flex-1 flex items-center justify-between gap-2 px-2 md:px-6 w-full overflow-hidden">
+                                {/* Timeline de Marcas Compacta - Distribución Equitativa y Simétrica */}
+                                <div className="flex-[3] flex items-center justify-around gap-4 px-6 md:px-12 w-full overflow-visible">
                                     {cycle.logs.map((log) => (
-                                        <div key={log.id} className="flex-1 flex flex-col items-center group relative max-w-[140px]">
+                                        <div
+                                            key={log.id}
+                                            className={cn(
+                                                "flex-1 flex flex-col items-center group relative max-w-[180px] min-w-[120px]",
+                                                log.photo_url ? "cursor-pointer" : ""
+                                            )}
+                                            onClick={() => { if (log.photo_url) setSelectedPhoto(log.photo_url) }}
+                                        >
                                             <div className={cn(
-                                                "w-full py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider mb-1 border transition-all text-center",
-                                                log.type === 'check_in' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                                                    log.type === 'check_out' ? 'bg-red-50 text-red-700 border-red-200' :
-                                                        log.type === 'break_start' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-blue-50 text-blue-700 border-blue-200'
+                                                "w-full rounded-xl overflow-hidden border transition-all shadow-sm group-hover:shadow-md group-hover:scale-[1.02] duration-200",
+                                                log.photo_url ? "group-hover:ring-2 group-hover:ring-slate-400" : "",
+                                                log.type === 'check_in' ? 'bg-emerald-50/50 border-emerald-200' :
+                                                    log.type === 'check_out' ? 'bg-red-50/50 border-red-200' :
+                                                        log.type === 'break_start' ? 'bg-amber-50/50 border-amber-200' : 'bg-blue-50/50 border-blue-200'
                                             )}>
-                                                {log.type === 'check_in' ? 'Entrada' : log.type === 'check_out' ? 'Salida' : log.type === 'break_start' ? 'Inic. Break' : 'Fin Break'}
+                                                {/* Etiqueta superior */}
+                                                <div className={cn(
+                                                    "py-1 px-2 text-[9px] font-black uppercase tracking-widest text-center border-b",
+                                                    log.type === 'check_in' ? 'bg-emerald-100/50 text-emerald-700 border-emerald-200' :
+                                                        log.type === 'check_out' ? 'bg-red-100/50 text-red-700 border-red-200' :
+                                                            log.type === 'break_start' ? 'bg-amber-100/50 text-amber-700 border-amber-200' : 'bg-blue-100/50 text-blue-700 border-blue-200'
+                                                )}>
+                                                    {log.type === 'check_in' ? 'Entrada' : log.type === 'check_out' ? 'Salida' : log.type === 'break_start' ? 'Inic. Break' : 'Fin Break'}
+                                                </div>
+                                                {/* Hora principal */}
+                                                <div className="py-2 text-center">
+                                                    <span className={cn(
+                                                        "text-sm font-black font-mono tracking-tighter",
+                                                        log.type === 'check_in' ? 'text-emerald-700' :
+                                                            log.type === 'check_out' ? 'text-red-700' :
+                                                                log.type === 'break_start' ? 'text-amber-700' : 'text-blue-700'
+                                                    )}>
+                                                        {format(new Date(log.timestamp), 'HH:mm')}
+                                                    </span>
+                                                </div>
                                             </div>
-                                            <span className="text-xs font-bold font-mono text-slate-700 dark:text-slate-300">
-                                                {format(new Date(log.timestamp), 'HH:mm')}
-                                            </span>
+
                                             {/* Alerta de distancia GPS */}
                                             {log.distance_to_location > 200 && (
-                                                <div className="absolute -top-1.5 -right-1 w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse border-2 border-white shadow-sm" />
+                                                <div className="absolute -top-1.5 -right-1.5 w-3 h-3 rounded-full bg-red-500 animate-pulse border-2 border-white shadow-md z-10" />
                                             )}
                                         </div>
                                     ))}
 
                                     {/* Placeholders para pasos faltantes distribuidos */}
                                     {Array.from({ length: Math.max(0, cycle.expectedMarks - cycle.logs.length) }).map((_, i) => (
-                                        <div key={`missing-${i}`} className="flex-1 flex flex-col items-center opacity-30 max-w-[140px]">
-                                            <div className="w-full py-1.5 rounded-lg text-[10px] font-bold uppercase border border-dashed border-slate-300 bg-slate-50 text-slate-400 mb-1 text-center">
-                                                Pendiente
+                                        <div key={`missing-${i}`} className="flex-1 flex flex-col items-center opacity-30 max-w-[180px] min-w-[120px]">
+                                            <div className="w-full rounded-xl border border-dashed border-slate-300 bg-slate-50/50 overflow-hidden">
+                                                <div className="py-1 px-2 text-[9px] font-black uppercase tracking-widest text-center border-b border-dashed border-slate-300 text-slate-400">
+                                                    Pendiente
+                                                </div>
+                                                <div className="py-2 text-center">
+                                                    <span className="text-sm font-black font-mono text-slate-300 tracking-tighter">--:--</span>
+                                                </div>
                                             </div>
-                                            <span className="text-xs font-mono text-slate-400">--:--</span>
                                         </div>
                                     ))}
                                 </div>
@@ -444,6 +508,28 @@ export function AttendanceDashboard({ logs: initialLogs, staff: initialStaff, lo
                     </div>
                 </TabsContent>
             </Tabs>
+
+            {/* Modal de Previsualización de Foto (Evidencia) */}
+            <Dialog open={!!selectedPhoto} onOpenChange={(open) => !open && setSelectedPhoto(null)}>
+                <DialogContent className="max-w-3xl p-0 overflow-hidden bg-black/95 border-none shadow-2xl rounded-2xl">
+                    <DialogHeader className="p-4 absolute top-0 left-0 right-0 bg-gradient-to-b from-black/60 to-transparent z-20 pointer-events-none">
+                        <DialogTitle className="text-white flex items-center gap-2 drop-shadow-md">
+                            <Camera className="w-5 h-5" /> Evidencia Asistencia
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="flex items-center justify-center min-h-[500px] w-full p-2 text-white">
+                        {selectedPhoto ? (
+                            <img
+                                src={selectedPhoto}
+                                alt="Evidencia Full"
+                                className="max-w-full max-h-[85vh] object-contain shadow-2xl rounded-lg animate-in zoom-in-95 duration-200"
+                            />
+                        ) : (
+                            <Activity className="w-12 h-12 animate-pulse opacity-20" />
+                        )}
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 
