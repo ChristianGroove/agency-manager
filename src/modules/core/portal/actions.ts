@@ -308,6 +308,39 @@ export async function getPortalData(token: string) {
                     jobs: jobs || []
                 }
             }
+
+            // 3.5 Try finding a RETAIL/ATTENDANCE STAFF member
+            const { data: retailStaff, error: retailStaffError } = await supabaseAdmin
+                .from('organization_staff')
+                .select('*, organization_locations(*)')
+                .eq('access_token', token)
+                .is('is_active', true)
+                .maybeSingle()
+
+            if (retailStaff) {
+                const { data: settings } = await supabaseAdmin
+                    .from('organization_settings')
+                    .select('*')
+                    .eq('organization_id', retailStaff.organization_id)
+                    .single()
+
+                const branding = await getEffectiveBranding(retailStaff.organization_id)
+                const effectiveSettings = {
+                    ...(settings || {}),
+                    agency_name: branding.name,
+                    portal_logo_url: branding.logos.main_light || branding.logos.main || branding.logos.portal,
+                    isotipo_url: branding.logos.favicon,
+                    portal_login_background_url: branding.logos.login_bg,
+                    portal_primary_color: branding.colors.primary,
+                    portal_secondary_color: branding.colors.secondary
+                }
+
+                return {
+                    type: 'attendance_staff',
+                    staff: retailStaff,
+                    settings: effectiveSettings
+                }
+            }
         }
 
         // ---------------------------------------------------------
@@ -393,22 +426,40 @@ export async function getPortalMetadata(token: string) {
     try {
         const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)
 
-        // 1. Try finding a CLIENT first
-        let clientQuery = supabaseAdmin.from('clients').select('organization_id')
+        let organizationId: string | null = null
+        let isAttendance = false
+
+        // 1. Try Staff Token (Attendance Portal)
         if (isUuid) {
-            clientQuery = clientQuery.or(`portal_short_token.eq.${token},portal_token.eq.${token}`)
-        } else {
-            clientQuery = clientQuery.eq('portal_short_token', token)
+            const { data: staff } = await supabaseAdmin
+                .from('organization_staff')
+                .select('organization_id')
+                .eq('access_token', token)
+                .maybeSingle()
+
+            if (staff) {
+                organizationId = staff.organization_id
+                isAttendance = true
+            }
         }
 
-        const { data: client } = await clientQuery.maybeSingle()
+        // 2. Try finding a CLIENT
+        if (!organizationId) {
+            let clientQuery = supabaseAdmin.from('clients').select('organization_id')
+            if (isUuid) {
+                clientQuery = clientQuery.or(`portal_short_token.eq.${token},portal_token.eq.${token}`)
+            } else {
+                clientQuery = clientQuery.eq('portal_short_token', token)
+            }
 
-        let organizationId: string | null = null
+            const { data: client } = await clientQuery.maybeSingle()
+            if (client) {
+                organizationId = client.organization_id
+            }
+        }
 
-        if (client) {
-            organizationId = client.organization_id
-        } else {
-            // 2. Fallback: Try finding an ORGANIZATION by slug (Guest Flow)
+        // 3. Fallback: Try finding an ORGANIZATION by slug (Guest Flow)
+        if (!organizationId) {
             const { data: org } = await supabaseAdmin
                 .from('organizations')
                 .select('id')
@@ -427,7 +478,7 @@ export async function getPortalMetadata(token: string) {
             .eq('organization_id', organizationId)
             .single()
 
-        return settings || {}
+        return { ...(settings || {}), isAttendance }
     } catch {
         return {}
     }

@@ -12,6 +12,7 @@ import { QuoteDetailModal } from "@/modules/core/portal/quote-detail-modal"
 import { PaymentOptionsModal } from "@/modules/core/portal/payment-options-modal"
 import { InvoiceDetailModal } from "@/modules/core/portal/invoice-detail-modal"
 import { GlobalLoader } from "@/components/ui/global-loader"
+import { AttendanceStaffPortal } from "@/modules/core/attendance/components/staff-portal-view"
 
 // ... existing imports
 
@@ -19,7 +20,7 @@ export default function PortalPage() {
     const params = useParams()
 
     // Portal Context
-    const [portalType, setPortalType] = useState<'client' | 'staff' | 'guest'>('client')
+    const [portalType, setPortalType] = useState<'client' | 'staff' | 'attendance_staff' | 'guest'>('client')
 
     // Client Data
     const [client, setClient] = useState<Client | null>(null)
@@ -72,6 +73,10 @@ export default function PortalPage() {
                 setPortalType('staff')
                 setStaff(data.staff)
                 setJobs(data.jobs || [])
+                setSettings(data.settings || {})
+            } else if (data.type === 'attendance_staff') {
+                setPortalType('attendance_staff')
+                setStaff(data.staff)
                 setSettings(data.settings || {})
             } else if (data.type === 'guest') {
                 setPortalType('guest')
@@ -217,6 +222,18 @@ export default function PortalPage() {
                 <WorkerPortalLayout
                     staff={staff}
                     jobs={jobs}
+                    settings={settings}
+                    token={params.token as string}
+                />
+            </div>
+        )
+    }
+
+    if (portalType === 'attendance_staff' && staff) {
+        return (
+            <div className="min-h-screen" style={brandingStyles}>
+                <AttendanceStaffPortal
+                    staff={staff}
                     settings={settings}
                     token={params.token as string}
                 />

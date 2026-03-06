@@ -15,7 +15,13 @@ export async function generateMetadata(
         const settings = await getPortalMetadata(token)
 
         const brandName = settings.agency_name || "Pixy"
-        const title = settings.portal_og_title || `${brandName} - Portal de Clientes`
+        const isAttendance = (settings as any).isAttendance === true
+
+        let title = settings.portal_og_title || `${brandName} - Portal de Clientes`
+        if (isAttendance) {
+            title = "Control"
+        }
+
         const description = settings.portal_og_description || "Accede a tus facturas, cotizaciones y servicios de forma segura."
         const favicon = settings.portal_favicon_url || settings.isotipo_url || "/pixy-isotipo.png"
 
@@ -25,6 +31,11 @@ export async function generateMetadata(
         return {
             title: title,
             description: description,
+            appleWebApp: {
+                title: title,
+                statusBarStyle: "default",
+                capable: true,
+            },
             icons: {
                 icon: favicon + "?v=2",
                 shortcut: favicon + "?v=2",

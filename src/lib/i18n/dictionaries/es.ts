@@ -68,6 +68,8 @@ export const es = {
         module_contract_generator: "Generador de Contratos",
         reseller_tenants: "Organizaciones",
         tool_email_engine: "Motor de Correos",
+        core_locations: "Sedes",
+        module_attendance: "Asistencia",
         // Categories
         cat_core: "Principal",
         cat_crm: "CRM",

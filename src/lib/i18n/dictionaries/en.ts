@@ -68,6 +68,8 @@ export const en = {
         module_manifests: "Manifests",
         reseller_tenants: "Organizations",
         tool_email_engine: "Email Engine",
+        core_locations: "Locations",
+        module_attendance: "Attendance",
         // Categories
         cat_core: "Main",
         cat_crm: "CRM",

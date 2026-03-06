@@ -142,6 +142,22 @@ export const MODULE_ROUTES: ModuleRoute[] = [
     // --- OPERACIONES / PROYECTOS ---
 
     {
+        key: 'core_locations',
+        label: 'Sedes',
+        href: '/platform/locations',
+        icon: Store,
+        category: 'operations',
+        parentModule: 'core_locations'
+    },
+    {
+        key: 'module_attendance',
+        label: 'Asistencia',
+        href: '/attendance',
+        icon: ScanFace,
+        category: 'operations',
+        parentModule: 'module_attendance'
+    },
+    {
         key: 'pixy_flows',
         label: 'Pixy Flows',
         href: '/flows',
