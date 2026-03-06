@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { StaffManagement } from './staff-management'
 import { Staff } from '../../actions'
 import { SectionHeader } from '@/components/layout/section-header'
-import { Shield } from 'lucide-react'
+import { Shield, Activity } from 'lucide-react'
 
 interface AttendanceDashboardProps {
     logs: any[]
@@ -31,6 +31,48 @@ export function AttendanceDashboard({ logs: initialLogs, staff: initialStaff, lo
         const term = searchTerm.toLowerCase()
         return staffName.includes(term) || locationName.includes(term)
     })
+
+    // Group logs by Day + Staff -> Lifecycle
+    const lifecycles = React.useMemo(() => {
+        const groups: Record<string, any[]> = {}
+        filteredLogs.forEach(log => {
+            const dateStr = format(new Date(log.timestamp), 'yyyy-MM-dd')
+            const key = `${log.staff_id}_${dateStr}`
+            if (!groups[key]) groups[key] = []
+            groups[key].push(log)
+        })
+
+        return Object.values(groups).map(dayLogs => {
+            // Sort by timestamp asc so entry is first
+            const sorted = dayLogs.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+            const staff = sorted[0].staff
+            const dateStr = format(new Date(sorted[0].timestamp), 'yyyy-MM-dd')
+            const shiftType = staff?.shift_type || 'split'
+
+            const firstEntry = sorted.find(l => l.type === 'check_in')
+            const lastExit = sorted.find(l => l.type === 'check_out')
+
+            // Worked hours calculation (approx, naive)
+            let workedHours = 0
+            if (firstEntry && lastExit) {
+                workedHours = (new Date(lastExit.timestamp).getTime() - new Date(firstEntry.timestamp).getTime()) / (1000 * 60 * 60)
+            }
+
+            const expectedMarks = shiftType === 'continuous' ? 2 : 4
+            const isComplete = sorted.length >= expectedMarks
+
+            return {
+                id: `${staff?.id}_${dateStr}`,
+                staff,
+                date: new Date(sorted[0].timestamp),
+                shiftType,
+                logs: sorted,
+                workedHours,
+                isComplete,
+                expectedMarks
+            }
+        }).sort((a, b) => b.date.getTime() - a.date.getTime())
+    }, [filteredLogs])
 
     const getTypeLabel = (type: string) => {
         switch (type) {
@@ -81,6 +123,10 @@ export function AttendanceDashboard({ logs: initialLogs, staff: initialStaff, lo
                     <TabsTrigger value="logs" className="rounded-lg px-6 py-2.5 data-[state=active]:bg-gray-100 dark:data-[state=active]:bg-white/10 font-bold">
                         <Clock className="w-4 h-4 mr-2" /> Historial
                     </TabsTrigger>
+                    <TabsTrigger value="lifecycles" className="rounded-lg px-6 py-2.5 data-[state=active]:bg-gray-100 dark:data-[state=active]:bg-white/10 font-bold">
+                        <Activity className="w-4 h-4 mr-2" /> Turnos (Línea de Vida)
+                    </TabsTrigger>
+
                     <TabsTrigger value="reports" className="rounded-lg px-6 py-2.5 data-[state=active]:bg-gray-100 dark:data-[state=active]:bg-white/10 font-bold">
                         <AlertTriangle className="w-4 h-4 mr-2" /> Anomalías
                     </TabsTrigger>
@@ -237,6 +283,63 @@ export function AttendanceDashboard({ logs: initialLogs, staff: initialStaff, lo
 
                 <TabsContent value="staff">
                     <StaffManagement staff={initialStaff} locations={locations} />
+                </TabsContent>
+
+                <TabsContent value="lifecycles" className="space-y-6 mt-0">
+                    {lifecycles.map(cycle => (
+                        <Card key={cycle.id} className="overflow-hidden border-slate-200 dark:border-slate-800">
+                            <div className={`h-2 w-full ${cycle.isComplete ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                            <CardHeader className="pb-3 bg-slate-50/50 dark:bg-slate-900/50">
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <CardTitle className="text-lg">{cycle.staff?.first_name} {cycle.staff?.last_name}</CardTitle>
+                                        <CardDescription>{format(cycle.date, "EEEE, d 'de' MMMM", { locale: es })} • {cycle.shiftType === 'continuous' ? 'Jornada Continua' : 'Jornada Dividida'}</CardDescription>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <div className="text-right">
+                                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest">Horas</p>
+                                            <p className="font-bold text-slate-900 dark:text-white">{cycle.workedHours.toFixed(1)}h</p>
+                                        </div>
+                                        <Badge variant="outline" className={cycle.isComplete ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-amber-50 text-amber-700 border-amber-200"}>
+                                            {cycle.isComplete ? "Completado" : "Incompleto"} ({cycle.logs.length}/{cycle.expectedMarks})
+                                        </Badge>
+                                    </div>
+                                </div>
+                            </CardHeader>
+                            <CardContent className="pt-4 bg-white dark:bg-slate-950">
+                                <div className="flex flex-col md:flex-row gap-4">
+                                    {cycle.logs.map((log, idx) => (
+                                        <div key={log.id} className="flex-1 min-w-[120px] p-3 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900">
+                                            <div className="flex items-center justify-between mb-2">
+                                                {getTypeLabel(log.type)}
+                                                <span className="text-xs font-bold font-mono text-slate-500">{format(new Date(log.timestamp), 'HH:mm')}</span>
+                                            </div>
+                                            <div className="mt-2 flex items-center justify-between">
+                                                <div className="flex items-center gap-1 text-[10px] text-slate-400 font-medium">
+                                                    <MapPin className="w-3 h-3" /> {log.distance_to_location ? `${log.distance_to_location}m` : 'N/A'}
+                                                </div>
+                                                {log.is_valid ? <CheckCircle2 className="w-3 h-3 text-emerald-500" /> : <AlertTriangle className="w-3 h-3 text-red-500" />}
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {/* Placeholders correspondientes a los faltantes para el tooltip visual */}
+                                    {Array.from({ length: Math.max(0, cycle.expectedMarks - cycle.logs.length) }).map((_, i) => (
+                                        <div key={`missing-${i}`} className="flex-1 min-w-[120px] p-3 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center opacity-50 bg-slate-50/50 dark:bg-slate-900/50">
+                                            <Activity className="w-4 h-4 text-slate-400 mb-1" />
+                                            <span className="text-[10px] uppercase font-bold text-slate-400 text-center">Pendiente</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    ))}
+                    {lifecycles.length === 0 && (
+                        <div className="p-12 text-center text-slate-500 bg-white dark:bg-slate-900 border rounded-2xl">
+                            <Activity className="w-12 h-12 mx-auto mb-4 opacity-20" />
+                            <h3 className="text-lg font-medium">No hay turnos registrados</h3>
+                            <p className="text-sm">Las marcaciones de hoy aparecerán aquí organizadas por colaborador.</p>
+                        </div>
+                    )}
                 </TabsContent>
 
                 <TabsContent value="reports">

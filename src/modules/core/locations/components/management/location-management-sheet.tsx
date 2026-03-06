@@ -73,11 +73,13 @@ export function LocationManagementSheet({ open, onOpenChange, location, onSucces
     const [isActive, setIsActive] = useState(true)
     const [businessHours, setBusinessHours] = useState<BusinessHours>(defaultHours)
     const [isSearching, setIsSearching] = useState(false)
+    const [isInitialLoad, setIsInitialLoad] = useState(false)
 
     // Cargar datos al abrir
     useEffect(() => {
         if (open) {
             if (location) {
+                setIsInitialLoad(true)
                 setName(location.name)
                 setAddress(location.address || '')
                 setCountry(location.country || 'Colombia')
@@ -88,7 +90,11 @@ export function LocationManagementSheet({ open, onOpenChange, location, onSucces
                 setRadius(location.geofence_radius_meters.toString())
                 setIsActive(location.is_active)
                 setBusinessHours(location.business_hours || defaultHours)
+
+                // Allow state to settle, then disable the initial load flag
+                setTimeout(() => setIsInitialLoad(false), 100)
             } else {
+                setIsInitialLoad(false)
                 // Reset form
                 setName('')
                 setAddress('')
@@ -142,7 +148,7 @@ export function LocationManagementSheet({ open, onOpenChange, location, onSucces
     // Centrar mapa automáticamente al elegir ciudad
     useEffect(() => {
         const centerOnCity = async () => {
-            if (!city || !state) return
+            if (!city || !state || isInitialLoad) return
 
             // Si ya tenemos coordenadas de una sede existente y no hemos cambiado la ciudad manualmente
             // quizás no queramos saltar, pero el usuario pidió "cuando elija una ciudad"

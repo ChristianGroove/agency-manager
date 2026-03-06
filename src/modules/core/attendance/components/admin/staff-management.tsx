@@ -372,6 +372,22 @@ export function StaffManagement({ staff: initialStaff, locations }: StaffManagem
                         </div>
 
                         <div className="space-y-2">
+                            <Label htmlFor="shift_type">Tipo de Turno</Label>
+                            <Select
+                                value={editingStaff?.shift_type || "split"}
+                                onValueChange={val => setEditingStaff(prev => ({ ...prev, shift_type: val as 'continuous' | 'split' }))}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Seleccionar tipo de turno..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="continuous">Jornada Continua (2 marcaciones)</SelectItem>
+                                    <SelectItem value="split">Jornada Dividida / Break (4 marcaciones)</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="space-y-2">
                             <Label htmlFor="role">Rol</Label>
                             <Select
                                 value={editingStaff?.role || "staff"}

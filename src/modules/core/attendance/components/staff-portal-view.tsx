@@ -8,7 +8,7 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { toast } from 'sonner'
-import { registerAttendanceMark, uploadAttendancePhoto } from '../actions'
+import { registerAttendanceMark, uploadAttendancePhoto, getDailyAttendanceState } from '../actions'
 import { processAttendancePhoto } from '../utils/photo-processor'
 import { cn } from '@/lib/utils'
 
@@ -27,7 +27,11 @@ export function AttendanceStaffPortal({ staff, settings, token }: AttendanceStaf
     const [isLoading, setIsLoading] = useState(false)
     const [capturedImage, setCapturedImage] = useState<string | null>(null)
     const [view, setView] = useState<'camera' | 'preview' | 'success'>('camera')
-    const [actionType, setActionType] = useState<'check_in' | 'check_out' | 'break_start' | 'break_end'>('check_in')
+
+    // Shift State Machine
+    const [shiftData, setShiftData] = useState<{ state: number, shiftType: 'continuous' | 'split', lastActionTimestamp?: string } | null>(null)
+    const [isLoadingState, setIsLoadingState] = useState(true)
+    const [isBreakScreenActive, setIsBreakScreenActive] = useState(false)
 
     // GPS State
     const [gpsStatus, setGpsStatus] = useState<'pending' | 'locating' | 'success' | 'error'>('pending')
@@ -35,12 +39,25 @@ export function AttendanceStaffPortal({ staff, settings, token }: AttendanceStaf
     const [gpsErrorMsg, setGpsErrorMsg] = useState('')
     const [cameraError, setCameraError] = useState<string | null>(null)
 
-    // Clock
+    // Initialization (Clock & State)
     useEffect(() => {
         setIsClient(true)
+        const loadState = async () => {
+            const res = await getDailyAttendanceState(token)
+            if (res.success && res.state !== undefined && res.shiftType) {
+                setShiftData({ state: res.state, shiftType: res.shiftType as 'continuous' | 'split', lastActionTimestamp: res.lastActionTimestamp })
+                // Activar la pantalla de Break "Zen Mode" inmediatamente si está en estado 2 al cargar
+                if (res.state === 2) {
+                    setIsBreakScreenActive(true)
+                }
+            }
+            setIsLoadingState(false)
+        }
+        loadState()
+
         const timer = setInterval(() => setCurrentTime(new Date()), 1000)
         return () => clearInterval(timer)
-    }, [])
+    }, [token])
 
     // Fetch GPS continuously while in camera mode
     useEffect(() => {
@@ -113,6 +130,29 @@ export function AttendanceStaffPortal({ staff, settings, token }: AttendanceStaf
         setView('camera')
     }
 
+    const nextAction = React.useMemo(() => {
+        if (!shiftData) return 'check_in'
+        if (shiftData.shiftType === 'continuous') {
+            return shiftData.state === 0 ? 'check_in' : 'check_out'
+        } else {
+            return shiftData.state === 0 ? 'check_in' :
+                shiftData.state === 1 ? 'break_start' :
+                    shiftData.state === 2 ? 'break_end' : 'check_out'
+        }
+    }, [shiftData])
+
+    const getActionLabel = (action: string) => {
+        switch (action) {
+            case 'check_in': return 'Entrada'
+            case 'break_start': return 'Inicio Break'
+            case 'break_end': return 'Regreso'
+            case 'check_out': return 'Salida'
+            default: return 'Marca'
+        }
+    }
+
+    const isShiftComplete = shiftData ? (shiftData.shiftType === 'continuous' ? shiftData.state >= 2 : shiftData.state >= 4) : false
+
     const handleSubmit = async () => {
         if (!capturedImage) return
 
@@ -144,10 +184,10 @@ export function AttendanceStaffPortal({ staff, settings, token }: AttendanceStaf
                 throw new Error(uploadRes.error || "Error al subir la evidencia fotográfica.")
             }
 
-            // 2. Registrar en Base de Datos vía Server Action Zero-Trust
+            // 3. Registrar en Base de Datos vía Server Action Zero-Trust
             const res = await registerAttendanceMark({
                 staffToken: token,
-                type: actionType,
+                type: nextAction as any,
                 photoUrl: uploadRes.url,
                 deviceLat: coordinates.lat,
                 deviceLng: coordinates.lng,
@@ -156,11 +196,26 @@ export function AttendanceStaffPortal({ staff, settings, token }: AttendanceStaf
 
             if (res.success) {
                 if (res.warning) {
-                    toast.warning("Registro Interceptado", { description: res.warning, duration: 8000 })
+                    toast.warning("Registro Interceptado", {
+                        description: res.warning,
+                        duration: 8000,
+                        id: "attendance_action"
+                    })
                 } else {
                     toast.success("Asistencia registrada exitosamente", { id: "attendance_action" })
                 }
                 setView('success')
+
+                // Actualizar estado localmente para no tener que recargar
+                if (shiftData) {
+                    const newState = shiftData.state + 1
+                    setShiftData({ ...shiftData, state: newState, lastActionTimestamp: new Date().toISOString() })
+                    // Si el nuevo estado es 2 (Reacien comenzó el break), activar la pantalla
+                    if (newState === 2) {
+                        setIsBreakScreenActive(true)
+                    }
+                }
+
                 setTimeout(() => {
                     setView('camera')
                     setCapturedImage(null)
@@ -208,7 +263,30 @@ export function AttendanceStaffPortal({ staff, settings, token }: AttendanceStaf
 
             <Card className="w-full max-w-md overflow-hidden bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-xl rounded-2xl">
 
-                {view === 'success' ? (
+                {isLoadingState ? (
+                    <div className="flex flex-col items-center justify-center p-12 text-center animate-pulse">
+                        <div className="w-20 h-20 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-6">
+                            <Clock className="w-8 h-8 text-slate-300 dark:text-slate-600" />
+                        </div>
+                        <h2 className="text-xl font-bold text-slate-400 dark:text-slate-500 mb-2">Sincronizando Turno...</h2>
+                    </div>
+                ) : shiftData?.state === -1 ? (
+                    <div className="flex flex-col items-center justify-center p-12 text-center animate-in zoom-in spin-in-2 duration-500">
+                        <div className="w-20 h-20 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 flex items-center justify-center mb-6">
+                            <Clock className="w-10 h-10" />
+                        </div>
+                        <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Fuera de Horario</h2>
+                        <p className="text-slate-500 text-sm">El portal de asistencia solo puede ser iniciado durante el horario de operación de tu Sede.</p>
+                    </div>
+                ) : isShiftComplete ? (
+                    <div className="flex flex-col items-center justify-center p-12 text-center animate-in zoom-in spin-in-2 duration-500">
+                        <div className="w-20 h-20 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mb-6">
+                            <CheckCircle2 className="w-10 h-10" />
+                        </div>
+                        <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Jornada Completada</h2>
+                        <p className="text-slate-500 text-sm">Has realizado todas tus marcaciones requeridas del día. ¡Nos vemos mañana!</p>
+                    </div>
+                ) : view === 'success' ? (
                     <div className="flex flex-col items-center justify-center p-12 text-center animate-in zoom-in spin-in-2 duration-500">
                         <div className="w-20 h-20 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mb-6">
                             <CheckCircle2 className="w-10 h-10" />
@@ -216,26 +294,51 @@ export function AttendanceStaffPortal({ staff, settings, token }: AttendanceStaf
                         <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">¡Marca Exitosa!</h2>
                         <p className="text-slate-500">Tu registro ha sido guardado oficialmente en el servidor.</p>
                     </div>
+                ) : shiftData?.state === 2 && isBreakScreenActive ? (
+                    <div className="flex flex-col items-center justify-center p-8 text-center animate-in zoom-in spin-in-2 duration-500 min-h-[400px]">
+                        <div className="w-24 h-24 rounded-full bg-orange-50 text-orange-500 flex items-center justify-center mb-6 shadow-sm border border-orange-100">
+                            <Coffee className="w-12 h-12" />
+                        </div>
+                        <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Modo Descanso</h2>
+                        <p className="text-slate-500 text-sm mb-6 max-w-[250px]">
+                            Disfruta tu tiempo libre. La cámara y los registros han sido pausados temporalmente.
+                        </p>
+                        <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800 w-full mb-8">
+                            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider mb-1">Hora de Salida</p>
+                            <p className="text-lg font-mono font-bold text-slate-700 dark:text-slate-300">
+                                {shiftData.lastActionTimestamp ? new Date(shiftData.lastActionTimestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+                            </p>
+                        </div>
+                        <Button
+                            onClick={() => setIsBreakScreenActive(false)}
+                            className="bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-800 dark:hover:bg-slate-700 w-full h-12 shadow-md border border-slate-700/50 uppercase tracking-widest text-xs font-bold"
+                        >
+                            <Camera className="w-4 h-4 mr-2" />
+                            Reanudar Jornada
+                        </Button>
+                    </div>
                 ) : (
                     <>
-                        {/* Selector de Acción */}
-                        <div className="grid grid-cols-2 gap-2 p-4 border-b border-slate-100 dark:border-slate-800">
-                            <Button
-                                variant={actionType === 'check_in' ? 'default' : 'outline'}
-                                className={cn("h-12 border-2", actionType === 'check_in' && "shadow-md")}
-                                style={actionType === 'check_in' ? { backgroundColor: primaryColor, borderColor: primaryColor } : {}}
-                                onClick={() => setActionType('check_in')}
+                        {/* Selector de Acción Determinado Matemáticamente */}
+                        <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex flex-col justify-center items-center gap-2 bg-slate-50 dark:bg-slate-900/50">
+                            <Badge
+                                variant="outline"
+                                className="px-5 py-2.5 border-2 text-sm font-bold shadow-sm uppercase tracking-wider"
+                                style={
+                                    nextAction === 'check_in' || nextAction === 'break_end' ? { backgroundColor: `${primaryColor}15`, color: primaryColor, borderColor: primaryColor } :
+                                        nextAction === 'check_out' ? { backgroundColor: '#fef2f2', color: '#ef4444', borderColor: '#ef4444' } :
+                                            { backgroundColor: '#eff6ff', color: '#3b82f6', borderColor: '#3b82f6' }
+                                }
                             >
-                                <LogIn className="w-4 h-4 mr-2" /> Entrada
-                            </Button>
-                            <Button
-                                variant={actionType === 'check_out' ? 'default' : 'outline'}
-                                className={cn("h-12 border-2", actionType === 'check_out' && "shadow-md")}
-                                style={actionType === 'check_out' ? { backgroundColor: '#ef4444', borderColor: '#ef4444' } : {}} // Siempre rojo salida
-                                onClick={() => setActionType('check_out')}
-                            >
-                                Salida <LogOut className="w-4 h-4 ml-2" />
-                            </Button>
+                                <span className="flex items-center gap-2">
+                                    {nextAction === 'check_in' || nextAction === 'break_end' ? <LogIn className="w-4 h-4" /> :
+                                        nextAction === 'break_start' ? <Coffee className="w-4 h-4" /> : <LogOut className="w-4 h-4" />}
+                                    {getActionLabel(nextAction)}
+                                </span>
+                            </Badge>
+                            <span className="text-[10px] text-slate-400 font-medium uppercase tracking-widest mt-1 text-center">
+                                Marcación {shiftData ? shiftData.state + 1 : 1} de {shiftData?.shiftType === 'continuous' ? 2 : 4}
+                            </span>
                         </div>
 
                         {/* Status Bar (GPS) */}
@@ -325,12 +428,12 @@ export function AttendanceStaffPortal({ staff, settings, token }: AttendanceStaf
                                         onClick={handleSubmit}
                                         disabled={isLoading || gpsStatus !== 'success'}
                                         className="rounded-full shadow-lg px-8 text-white min-w-[140px]"
-                                        style={{ backgroundColor: primaryColor }}
+                                        style={nextAction === 'check_out' ? { backgroundColor: '#ef4444' } : { backgroundColor: primaryColor }}
                                     >
                                         {isLoading ? (
                                             <RefreshCw className="w-5 h-5 animate-spin" />
                                         ) : (
-                                            <>Confirmar {actionType === 'check_in' ? 'Entrada' : 'Salida'}</>
+                                            <>Confirmar {getActionLabel(nextAction)}</>
                                         )}
                                     </Button>
                                 </div>
@@ -358,7 +461,8 @@ export function AttendanceStaffPortal({ staff, settings, token }: AttendanceStaf
                         </div>
 
                     </>
-                )}
+                )
+                }
             </Card>
 
             {/* Zero-Trust Time Display (Repositioned to Footer) */}

@@ -50,6 +50,7 @@ export interface Staff {
     access_token: string
     is_active: boolean
     photo_url: string | null
+    shift_type: 'continuous' | 'split'
     created_at: string
     updated_at: string
 }
@@ -111,7 +112,11 @@ export async function registerAttendanceMark(payload: AttendancePayload) {
                 location.longitude
             )
 
-            if (distanceToLocation > location.geofence_radius_meters) {
+            // Margen de tolerancia del 15% (mínimo 15m) para jitter de GPS y deriva de sensores
+            const toleranceBuffer = Math.max(location.geofence_radius_meters * 0.15, 15)
+            const allowedMaxDistance = location.geofence_radius_meters + toleranceBuffer
+
+            if (distanceToLocation > allowedMaxDistance) {
                 isValid = false
                 fraudFlags.push(`out_of_geofence_${distanceToLocation}m`)
             }
@@ -392,6 +397,7 @@ export async function createStaff(payload: Partial<Staff>) {
                 role: payload.role || 'staff',
                 location_id: payload.location_id || null,
                 photo_url: payload.photo_url || null,
+                shift_type: payload.shift_type || 'split',
                 is_active: payload.is_active ?? true
             })
             .select()
@@ -427,6 +433,7 @@ export async function updateStaff(id: string, payload: Partial<Staff>) {
             role: payload.role,
             location_id: payload.location_id,
             photo_url: payload.photo_url,
+            shift_type: payload.shift_type,
             is_active: payload.is_active,
             updated_at: new Date().toISOString()
         }
@@ -472,6 +479,119 @@ export async function deleteStaff(id: string) {
     } catch (err: any) {
         console.error("Error deleting staff:", err)
         return { success: false, error: err.message }
+    }
+}
+
+// ==========================================
+// INTELLIGENT STATE MACHINE LOGIC
+// ==========================================
+
+export async function getDailyAttendanceState(staffToken: string) {
+    try {
+        const supabase = supabaseAdmin
+
+        // 1. Conseguir el Staff, su configuración de turno y su sede para horarios
+        const { data: staff, error: staffError } = await supabase
+            .from('organization_staff')
+            .select(`
+                id, 
+                shift_type,
+                location:organization_locations(business_hours, timezone)
+            `)
+            .eq('access_token', staffToken)
+            .single()
+
+        if (staffError || !staff) {
+            return { success: false, error: "Token inválido." }
+        }
+
+        // 2. Calcular las fronteras del día actual en hora local de Colombia (ej. Bogota)
+        // Como el portal lo consume un cliente asume que el backend evalúa el hoy del servidor, 
+        // usaremos postgres time interval para simplificar
+
+        // Obtener todos los registros exitosos del staff de "HOY"
+        const { data: logs, error: logsError } = await supabase
+            .from('attendance_logs')
+            .select('type, timestamp')
+            .eq('staff_id', staff.id)
+            .gte('timestamp', new Date(new Date().setHours(0, 0, 0, 0)).toISOString())
+            .lte('timestamp', new Date(new Date().setHours(23, 59, 59, 999)).toISOString())
+            .order('timestamp', { ascending: true })
+
+        if (logsError) throw logsError
+
+        const validLogsCount = logs?.length || 0
+        const shiftType = staff.shift_type || 'split'
+
+        // 3. Evaluar horario de operación (Business Hours)
+        let isOutofHours = false
+        const locationInfo = staff.location as any
+
+        if (locationInfo && !Array.isArray(locationInfo) && locationInfo.business_hours) {
+            const todayIndex = new Date().getDay() // 0 = Sun, 1 = Mon...
+            const daysMap = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
+            const todayKey = daysMap[todayIndex]
+
+            const hours = locationInfo.business_hours[todayKey]
+
+            if (hours) {
+                if (hours.is_closed) {
+                    isOutofHours = true
+                } else if (hours.open && hours.close) {
+                    // Check local time against open/close
+                    const tz = typeof locationInfo.timezone === 'string' ? locationInfo.timezone : 'America/Bogota'
+                    const nowInTz = new Date().toLocaleTimeString('en-US', { timeZone: tz, hour12: false, hour: '2-digit', minute: '2-digit' })
+
+                    // Solo bloqueamos si no ha iniciado el turno. 
+                    // Si ya empezó a marcar, dejamos que termine (por flexbilidad de horas extra).
+                    if (validLogsCount === 0) {
+                        if (nowInTz < hours.open || nowInTz > hours.close) {
+                            isOutofHours = true
+                        }
+                    }
+                }
+            }
+        }
+
+        let state = 0 // Estado inicial (Nuevo Día)
+
+        // Si bloqueamos por fuera de horario ANTES de iniciar marcas:
+        if (isOutofHours && validLogsCount === 0) {
+            return {
+                success: true,
+                state: -1, // -1 means Blocked (Out of Hours)
+                shiftType,
+                marksCount: 0,
+                lastActionTimestamp: null,
+                logs: []
+            }
+        }
+
+        if (shiftType === 'continuous') {
+            // Modalidad Jornada Continua (2 Marcas: Entrada, Salida Final)
+            if (validLogsCount === 0) state = 0 // Necesita [Entrada]
+            else if (validLogsCount === 1) state = 1 // Necesita [Salida Final]
+            else state = 2 // Jornada Finalizada
+        } else {
+            // Modalidad Jornada Dividida (4 Marcas: Entrada, Break, Regreso, Salida Final)
+            if (validLogsCount === 0) state = 0      // Necesita [Entrada]
+            else if (validLogsCount === 1) state = 1 // Necesita [Break]
+            else if (validLogsCount === 2) state = 2 // Necesita [Regreso]
+            else if (validLogsCount === 3) state = 3 // Necesita [Salida Final]
+            else state = 4                           // Jornada Finalizada
+        }
+
+        return {
+            success: true,
+            state,
+            shiftType,
+            marksCount: validLogsCount,
+            lastActionTimestamp: validLogsCount > 0 ? logs[validLogsCount - 1].timestamp : null,
+            logs
+        }
+    } catch (err: any) {
+        console.error("Error getting attendance state:", err)
+        return { success: false, error: "Error interno determinando estado de turno." }
     }
 }
 
