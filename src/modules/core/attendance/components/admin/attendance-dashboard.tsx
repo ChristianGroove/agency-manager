@@ -9,12 +9,20 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { AlertTriangle, Clock, MapPin, Search, User, CheckCircle2, XCircle, Camera, Download } from 'lucide-react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { cn } from '@/lib/utils'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
 import { StaffManagement } from './staff-management'
 import { PayrollDashboard } from './payroll-dashboard'
 import { Staff } from '../../actions'
 import { SectionHeader } from '@/components/layout/section-header'
-import { Shield, Activity, DollarSign } from 'lucide-react'
+import { Shield, Activity, DollarSign, Filter, Calendar as CalendarIcon } from 'lucide-react'
 
 interface AttendanceDashboardProps {
     logs: any[]
@@ -26,12 +34,24 @@ interface AttendanceDashboardProps {
 export function AttendanceDashboard({ logs: initialLogs, staff: initialStaff, locations, shifts: initialShifts }: AttendanceDashboardProps) {
     const [searchTerm, setSearchTerm] = useState('')
     const [logs, setLogs] = useState(initialLogs)
+    const [filterLocationId, setFilterLocationId] = useState<string>('all')
+    const [filterDate, setFilterDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'))
 
     const filteredLogs = logs.filter(log => {
+        // Search Term
         const staffName = `${log.staff?.first_name || ''} ${log.staff?.last_name || ''}`.toLowerCase()
         const locationName = (log.location?.name || '').toLowerCase()
         const term = searchTerm.toLowerCase()
-        return staffName.includes(term) || locationName.includes(term)
+        const matchesSearch = staffName.includes(term) || locationName.includes(term)
+
+        // Location Filter
+        const matchesLocation = filterLocationId === 'all' || log.location_id === filterLocationId
+
+        // Date Filter (timestamp is ISO string from DB)
+        const logDate = format(new Date(log.timestamp), 'yyyy-MM-dd')
+        const matchesDate = !filterDate || logDate === filterDate
+
+        return matchesSearch && matchesLocation && matchesDate
     })
 
     // Group logs by Day + Staff -> Lifecycle
@@ -292,51 +312,115 @@ export function AttendanceDashboard({ logs: initialLogs, staff: initialStaff, lo
                 </TabsContent>
 
                 <TabsContent value="lifecycles" className="space-y-6 mt-0">
+                    <div className="flex flex-col md:flex-row gap-4 bg-white dark:bg-zinc-900/50 p-4 rounded-xl border border-gray-100 dark:border-white/5 shadow-sm">
+                        <div className="flex-1 relative">
+                            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
+                            <Input
+                                placeholder="Filtrar por nombre..."
+                                value={searchTerm}
+                                onChange={e => setSearchTerm(e.target.value)}
+                                className="pl-9 bg-white dark:bg-zinc-900 shadow-none border-slate-200"
+                            />
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Filter className="w-4 h-4 text-slate-400" />
+                            <Select value={filterLocationId} onValueChange={setFilterLocationId}>
+                                <SelectTrigger className="w-[180px] bg-white dark:bg-zinc-900 border-slate-200">
+                                    <SelectValue placeholder="Todas las sedes" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">Todas las sedes</SelectItem>
+                                    {locations.map(loc => (
+                                        <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <CalendarIcon className="w-4 h-4 text-slate-400" />
+                            <Input
+                                type="date"
+                                value={filterDate}
+                                onChange={e => setFilterDate(e.target.value)}
+                                className="w-[160px] bg-white dark:bg-zinc-900 border-slate-200"
+                            />
+                        </div>
+                        {(searchTerm || filterLocationId !== 'all' || filterDate !== format(new Date(), 'yyyy-MM-dd')) && (
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => { setSearchTerm(''); setFilterLocationId('all'); setFilterDate(format(new Date(), 'yyyy-MM-dd')) }}
+                                className="text-xs text-slate-500 hover:text-red-500 transition-colors"
+                            >
+                                Limpiar
+                            </Button>
+                        )}
+                    </div>
+
                     {lifecycles.map(cycle => (
-                        <Card key={cycle.id} className="overflow-hidden border-slate-200 dark:border-slate-800">
-                            <div className={`h-2 w-full ${cycle.isComplete ? 'bg-emerald-500' : 'bg-amber-500'}`} />
-                            <CardHeader className="pb-3 bg-slate-50/50 dark:bg-slate-900/50">
-                                <div className="flex justify-between items-start">
-                                    <div>
-                                        <CardTitle className="text-lg">{cycle.staff?.first_name} {cycle.staff?.last_name}</CardTitle>
-                                        <CardDescription>{format(cycle.date, "EEEE, d 'de' MMMM", { locale: es })} • {cycle.shiftType === 'continuous' ? 'Jornada Continua' : 'Jornada Dividida'}</CardDescription>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        <div className="text-right">
-                                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest">Horas</p>
-                                            <p className="font-bold text-slate-900 dark:text-white">{cycle.workedHours.toFixed(1)}h</p>
-                                        </div>
-                                        <Badge variant="outline" className={cycle.isComplete ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-amber-50 text-amber-700 border-amber-200"}>
-                                            {cycle.isComplete ? "Completado" : "Incompleto"} ({cycle.logs.length}/{cycle.expectedMarks})
-                                        </Badge>
-                                    </div>
+                        <Card key={cycle.id} className="overflow-hidden border-slate-200 dark:border-slate-800 hover:border-slate-300 transition-colors">
+                            <div className={`h-1.5 w-full ${cycle.isComplete ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                            <div className="flex flex-col md:flex-row items-center p-4 gap-4 bg-white dark:bg-slate-950">
+                                {/* Informacción Staff */}
+                                <div className="flex-1 min-w-[200px]">
+                                    <h4 className="font-bold text-slate-900 dark:text-white leading-tight">
+                                        {cycle.staff?.first_name} {cycle.staff?.last_name}
+                                    </h4>
+                                    <p className="text-xs text-slate-500 mt-0.5">
+                                        {format(cycle.date, "EEEE, d 'de' MMMM", { locale: es })} • <span className="capitalize">{cycle.shiftType}</span>
+                                    </p>
                                 </div>
-                            </CardHeader>
-                            <CardContent className="pt-4 bg-white dark:bg-slate-950">
-                                <div className="flex flex-col md:flex-row gap-4">
-                                    {cycle.logs.map((log, idx) => (
-                                        <div key={log.id} className="flex-1 min-w-[120px] p-3 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900">
-                                            <div className="flex items-center justify-between mb-2">
-                                                {getTypeLabel(log.type)}
-                                                <span className="text-xs font-bold font-mono text-slate-500">{format(new Date(log.timestamp), 'HH:mm')}</span>
+
+                                {/* Timeline de Marcas Compacta - Distribución Equitativa */}
+                                <div className="flex-1 flex items-center justify-between gap-2 px-2 md:px-6 w-full overflow-hidden">
+                                    {cycle.logs.map((log) => (
+                                        <div key={log.id} className="flex-1 flex flex-col items-center group relative max-w-[140px]">
+                                            <div className={cn(
+                                                "w-full py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider mb-1 border transition-all text-center",
+                                                log.type === 'check_in' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                                    log.type === 'check_out' ? 'bg-red-50 text-red-700 border-red-200' :
+                                                        log.type === 'break_start' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-blue-50 text-blue-700 border-blue-200'
+                                            )}>
+                                                {log.type === 'check_in' ? 'Entrada' : log.type === 'check_out' ? 'Salida' : log.type === 'break_start' ? 'Inic. Break' : 'Fin Break'}
                                             </div>
-                                            <div className="mt-2 flex items-center justify-between">
-                                                <div className="flex items-center gap-1 text-[10px] text-slate-400 font-medium">
-                                                    <MapPin className="w-3 h-3" /> {log.distance_to_location ? `${log.distance_to_location}m` : 'N/A'}
-                                                </div>
-                                                {log.is_valid ? <CheckCircle2 className="w-3 h-3 text-emerald-500" /> : <AlertTriangle className="w-3 h-3 text-red-500" />}
-                                            </div>
+                                            <span className="text-xs font-bold font-mono text-slate-700 dark:text-slate-300">
+                                                {format(new Date(log.timestamp), 'HH:mm')}
+                                            </span>
+                                            {/* Alerta de distancia GPS */}
+                                            {log.distance_to_location > 200 && (
+                                                <div className="absolute -top-1.5 -right-1 w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse border-2 border-white shadow-sm" />
+                                            )}
                                         </div>
                                     ))}
-                                    {/* Placeholders correspondientes a los faltantes para el tooltip visual */}
+
+                                    {/* Placeholders para pasos faltantes distribuidos */}
                                     {Array.from({ length: Math.max(0, cycle.expectedMarks - cycle.logs.length) }).map((_, i) => (
-                                        <div key={`missing-${i}`} className="flex-1 min-w-[120px] p-3 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center opacity-50 bg-slate-50/50 dark:bg-slate-900/50">
-                                            <Activity className="w-4 h-4 text-slate-400 mb-1" />
-                                            <span className="text-[10px] uppercase font-bold text-slate-400 text-center">Pendiente</span>
+                                        <div key={`missing-${i}`} className="flex-1 flex flex-col items-center opacity-30 max-w-[140px]">
+                                            <div className="w-full py-1.5 rounded-lg text-[10px] font-bold uppercase border border-dashed border-slate-300 bg-slate-50 text-slate-400 mb-1 text-center">
+                                                Pendiente
+                                            </div>
+                                            <span className="text-xs font-mono text-slate-400">--:--</span>
                                         </div>
                                     ))}
                                 </div>
-                            </CardContent>
+
+                                {/* Estadísticas */}
+                                <div className="flex items-center gap-4 border-l pl-4 border-slate-100 dark:border-slate-800">
+                                    <div className="text-right">
+                                        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest leading-none mb-1">Horas</p>
+                                        <p className="text-sm font-bold text-slate-900 dark:text-white">{cycle.workedHours.toFixed(1)}h</p>
+                                    </div>
+                                    <Badge
+                                        variant="outline"
+                                        className={cn(
+                                            "capitalize text-[10px] px-2 py-0.5",
+                                            cycle.isComplete ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-amber-50 text-amber-700 border-amber-200"
+                                        )}
+                                    >
+                                        {cycle.isComplete ? "OK" : `${cycle.logs.length}/${cycle.expectedMarks}`}
+                                    </Badge>
+                                </div>
+                            </div>
                         </Card>
                     ))}
                     {lifecycles.length === 0 && (
