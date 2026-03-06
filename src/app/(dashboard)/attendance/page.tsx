@@ -3,7 +3,7 @@ import { Metadata } from "next"
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase-server"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
-import { getAttendanceLogs, getStaff } from "@/modules/core/attendance/actions"
+import { getAttendanceLogs, getStaff, getAttendanceShifts } from "@/modules/core/attendance/actions"
 import { getLocations } from "@/modules/core/locations/actions"
 import { AttendanceDashboard } from "@/modules/core/attendance/components/admin/attendance-dashboard"
 import { GlobalLoader } from "@/components/ui/global-loader"
@@ -22,10 +22,11 @@ export default async function AttendanceAdminPage() {
     if (!orgId) redirect("/setup/wizard")
 
     // Parallel fetch for speed
-    const [logsRes, staffRes, locationsRes] = await Promise.all([
+    const [logsRes, staffRes, locationsRes, shiftsRes] = await Promise.all([
         getAttendanceLogs(orgId),
         getStaff(),
-        getLocations()
+        getLocations(),
+        getAttendanceShifts(orgId)
     ])
 
     return (
@@ -35,6 +36,7 @@ export default async function AttendanceAdminPage() {
                     logs={logsRes.data || []}
                     staff={staffRes.data || []}
                     locations={locationsRes.data || []}
+                    shifts={shiftsRes.data || []}
                 />
             </div>
         </Suspense>

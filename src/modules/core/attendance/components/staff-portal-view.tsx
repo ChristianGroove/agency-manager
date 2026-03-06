@@ -29,9 +29,11 @@ export function AttendanceStaffPortal({ staff, settings, token }: AttendanceStaf
     const [view, setView] = useState<'camera' | 'preview' | 'success'>('camera')
 
     // Shift State Machine
-    const [shiftData, setShiftData] = useState<{ state: number, shiftType: 'continuous' | 'split', lastActionTimestamp?: string } | null>(null)
+    const [shiftData, setShiftData] = useState<{ state: number, shiftType: 'continuous' | 'split', lastActionTimestamp?: string, breakDurationMinutes?: number } | null>(null)
     const [isLoadingState, setIsLoadingState] = useState(true)
     const [isBreakScreenActive, setIsBreakScreenActive] = useState(false)
+    const [breakTimeRemainingMs, setBreakTimeRemainingMs] = useState<number | null>(null)
+    const [canReturnFromBreak, setCanReturnFromBreak] = useState(false)
 
     // GPS State
     const [gpsStatus, setGpsStatus] = useState<'pending' | 'locating' | 'success' | 'error'>('pending')
@@ -45,7 +47,12 @@ export function AttendanceStaffPortal({ staff, settings, token }: AttendanceStaf
         const loadState = async () => {
             const res = await getDailyAttendanceState(token)
             if (res.success && res.state !== undefined && res.shiftType) {
-                setShiftData({ state: res.state, shiftType: res.shiftType as 'continuous' | 'split', lastActionTimestamp: res.lastActionTimestamp })
+                setShiftData({
+                    state: res.state,
+                    shiftType: res.shiftType as 'continuous' | 'split',
+                    lastActionTimestamp: res.lastActionTimestamp,
+                    breakDurationMinutes: res.breakDurationMinutes
+                })
                 // Activar la pantalla de Break "Zen Mode" inmediatamente si está en estado 2 al cargar
                 if (res.state === 2) {
                     setIsBreakScreenActive(true)
@@ -58,6 +65,32 @@ export function AttendanceStaffPortal({ staff, settings, token }: AttendanceStaf
         const timer = setInterval(() => setCurrentTime(new Date()), 1000)
         return () => clearInterval(timer)
     }, [token])
+
+    // Break Timer Calculation
+    useEffect(() => {
+        if (shiftData?.state === 2 && isBreakScreenActive && shiftData.lastActionTimestamp) {
+            const checkTimer = () => {
+                const startMs = new Date(shiftData.lastActionTimestamp!).getTime()
+                const nowMs = new Date().getTime()
+                const breakDuration = shiftData.breakDurationMinutes || 120
+                // Habilitamos el retorno 5 minutos ANTES de la duración total para gracia
+                const targetMs = startMs + ((breakDuration - 5) * 60000)
+                const diff = targetMs - nowMs
+
+                if (diff <= 0) {
+                    setCanReturnFromBreak(true)
+                    setBreakTimeRemainingMs(0)
+                } else {
+                    setCanReturnFromBreak(false)
+                    setBreakTimeRemainingMs(diff)
+                }
+            }
+
+            checkTimer() // initial check
+            const interval = setInterval(checkTimer, 1000)
+            return () => clearInterval(interval)
+        }
+    }, [shiftData, isBreakScreenActive])
 
     // Fetch GPS continuously while in camera mode
     useEffect(() => {
@@ -311,10 +344,25 @@ export function AttendanceStaffPortal({ staff, settings, token }: AttendanceStaf
                         </div>
                         <Button
                             onClick={() => setIsBreakScreenActive(false)}
-                            className="bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-800 dark:hover:bg-slate-700 w-full h-12 shadow-md border border-slate-700/50 uppercase tracking-widest text-xs font-bold"
+                            disabled={!canReturnFromBreak}
+                            className={cn(
+                                "w-full h-12 shadow-md uppercase tracking-widest text-xs font-bold transition-all",
+                                canReturnFromBreak
+                                    ? "bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-700/50"
+                                    : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed dark:bg-slate-800 dark:text-slate-500 dark:border-slate-700"
+                            )}
                         >
-                            <Camera className="w-4 h-4 mr-2" />
-                            Reanudar Jornada
+                            {!canReturnFromBreak && breakTimeRemainingMs !== null ? (
+                                <span className="flex items-center">
+                                    <Clock className="w-4 h-4 mr-2 animate-pulse" />
+                                    Restan {Math.ceil(breakTimeRemainingMs / 60000)} min
+                                </span>
+                            ) : (
+                                <span className="flex items-center animate-in fade-in zoom-in duration-300">
+                                    <Camera className="w-4 h-4 mr-2" />
+                                    Reanudar Jornada
+                                </span>
+                            )}
                         </Button>
                     </div>
                 ) : (

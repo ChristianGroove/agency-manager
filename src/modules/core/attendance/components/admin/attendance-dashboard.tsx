@@ -11,17 +11,19 @@ import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { StaffManagement } from './staff-management'
+import { PayrollDashboard } from './payroll-dashboard'
 import { Staff } from '../../actions'
 import { SectionHeader } from '@/components/layout/section-header'
-import { Shield, Activity } from 'lucide-react'
+import { Shield, Activity, DollarSign } from 'lucide-react'
 
 interface AttendanceDashboardProps {
     logs: any[]
     staff: (Staff & { location: { name: string } | null })[]
     locations: any[]
+    shifts: any[]
 }
 
-export function AttendanceDashboard({ logs: initialLogs, staff: initialStaff, locations }: AttendanceDashboardProps) {
+export function AttendanceDashboard({ logs: initialLogs, staff: initialStaff, locations, shifts: initialShifts }: AttendanceDashboardProps) {
     const [searchTerm, setSearchTerm] = useState('')
     const [logs, setLogs] = useState(initialLogs)
 
@@ -125,6 +127,10 @@ export function AttendanceDashboard({ logs: initialLogs, staff: initialStaff, lo
                     </TabsTrigger>
                     <TabsTrigger value="lifecycles" className="rounded-lg px-6 py-2.5 data-[state=active]:bg-gray-100 dark:data-[state=active]:bg-white/10 font-bold">
                         <Activity className="w-4 h-4 mr-2" /> Turnos (Línea de Vida)
+                    </TabsTrigger>
+
+                    <TabsTrigger value="payroll" className="rounded-lg px-6 py-2.5 data-[state=active]:bg-gray-100 dark:data-[state=active]:bg-emerald-500/10 data-[state=active]:text-emerald-700 dark:data-[state=active]:text-emerald-400 font-bold transition-all">
+                        <DollarSign className="w-4 h-4 mr-2" /> Nómina y Extras
                     </TabsTrigger>
 
                     <TabsTrigger value="reports" className="rounded-lg px-6 py-2.5 data-[state=active]:bg-gray-100 dark:data-[state=active]:bg-white/10 font-bold">
@@ -340,6 +346,10 @@ export function AttendanceDashboard({ logs: initialLogs, staff: initialStaff, lo
                             <p className="text-sm">Las marcaciones de hoy aparecerán aquí organizadas por colaborador.</p>
                         </div>
                     )}
+                </TabsContent>
+
+                <TabsContent value="payroll" className="space-y-6 mt-0">
+                    <PayrollDashboard shifts={initialShifts} />
                 </TabsContent>
 
                 <TabsContent value="reports">

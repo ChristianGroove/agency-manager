@@ -72,7 +72,7 @@ export async function registerAttendanceMark(payload: AttendancePayload) {
         // 1. Conseguir el Staff usando el Token
         const { data: staff, error: staffError } = await supabase
             .from('organization_staff')
-            .select('id, organization_id, location_id, is_active, organization_locations(latitude, longitude, geofence_radius_meters, is_active)')
+            .select('id, organization_id, location_id, is_active, expected_hours_per_day, organization_locations(latitude, longitude, geofence_radius_meters, is_active)')
             .eq('access_token', validated.staffToken)
             .single()
 
@@ -140,6 +140,25 @@ export async function registerAttendanceMark(payload: AttendancePayload) {
             clientTimeReported: new Date().toISOString() // Solo para auditoría si hay desfase masivo
         }
 
+        // D. Verificación de Duración de Break Mandatorio (Zero-Trust Server Time)
+        if (validated.type === 'break_end') {
+            // Obtener el estado real actual para prevenir doble-marca y revisar tiempo
+            const currentState = await getDailyAttendanceState(validated.staffToken)
+            if (currentState.success && currentState.state === 2 && currentState.lastActionTimestamp) {
+                const breakDurationMinutes = currentState.breakDurationMinutes || 120
+                const breakStartTime = new Date(currentState.lastActionTimestamp).getTime()
+                const now = new Date().getTime()
+                // Permitir regreso hasta 5 minutos antes del total
+                const minimumReturnTime = breakStartTime + ((breakDurationMinutes - 5) * 60000)
+
+                if (now < minimumReturnTime) {
+                    return { success: false, error: "Aún te encuentras en tu horario de descanso obligatorio. No puedes regresar antes." }
+                }
+            } else if (currentState.success && currentState.state !== 2) {
+                return { success: false, error: "No puedes registrar un regreso de descanso en este momento." }
+            }
+        }
+
         // 2. Insertar el Log (Postgres pondrá el timestamp real EXACTAMENTE AHORA)
         const { data: log, error: logError } = await supabase
             .from('attendance_logs')
@@ -165,10 +184,12 @@ export async function registerAttendanceMark(payload: AttendancePayload) {
             return { success: false, error: "Error en el servidor al registrar asistencia." }
         }
 
-        // Todo ha ido bien (incluso si is_valid false, guardamos el log para registro/castigo)
-        // Se recomienda revalidar algo si hubiese dashboards en vivo
-        // revalidatePath('/dashboard/attendance') // Podria ser costoso
+        // 3. MASTER SHIFT CONTROLLER (Payroll Engine Hub)
+        // Whenever a log is created successfully, we trigger a stateless recalculation of exactly the whole day
+        // This ensures zero-technical-debt and mathematical perfection regardless of device crashes.
+        await processDailyShift(staff.id, staff.organization_id, staff.location_id, staff.expected_hours_per_day || 8.0)
 
+        // Todo ha ido bien (incluso si is_valid false, guardamos el log para registro/castigo)
         return {
             success: true,
             data: log,
@@ -496,6 +517,7 @@ export async function getDailyAttendanceState(staffToken: string) {
             .select(`
                 id, 
                 shift_type,
+                break_duration_minutes,
                 location:organization_locations(business_hours, timezone)
             `)
             .eq('access_token', staffToken)
@@ -587,6 +609,7 @@ export async function getDailyAttendanceState(staffToken: string) {
             shiftType,
             marksCount: validLogsCount,
             lastActionTimestamp: validLogsCount > 0 ? logs[validLogsCount - 1].timestamp : null,
+            breakDurationMinutes: staff.break_duration_minutes || 120, // DB Config or fallback
             logs
         }
     } catch (err: any) {
@@ -594,4 +617,128 @@ export async function getDailyAttendanceState(staffToken: string) {
         return { success: false, error: "Error interno determinando estado de turno." }
     }
 }
+
+// ==========================================
+// PAYROLL ENGINE LOGIC ($$$)
+// ==========================================
+
+/**
+ * Motor Matemático de Nómina
+ * Lee todos los logs del día de un Colaborador y sobre-escribe su Turno Maestro (Shifts).
+ * Separa automáticamente Horas Ordinarias de Horas Extras basadas en su contrato.
+ */
+async function processDailyShift(staffId: string, orgId: string, locationId: string | null, expectedHours: number) {
+    try {
+        const supabase = supabaseAdmin
+
+        // 1. Obtener los logs de validación de HOY de la Sede/Persona
+        // (En producción global debería usar el timezone de la sede en vez de UTC)
+        const todayStart = new Date(new Date().setHours(0, 0, 0, 0)).toISOString()
+        const todayEnd = new Date(new Date().setHours(23, 59, 59, 999)).toISOString()
+        const localDateString = new Date().toLocaleDateString('sv-SE') // yyyy-mm-dd ISO sin T
+
+        const { data: logs, error: logsError } = await supabase
+            .from('attendance_logs')
+            .select('*')
+            .eq('staff_id', staffId)
+            .gte('timestamp', todayStart)
+            .lte('timestamp', todayEnd)
+            .order('timestamp', { ascending: true })
+
+        if (logsError || !logs || logs.length === 0) return
+
+        let firstIn: string | null = null
+        let lastOut: string | null = null
+        let totalBreakMs = 0
+        let totalWorkedMs = 0
+
+        const checkIn = logs.find(l => l.type === 'check_in')
+        const breakStart = logs.find(l => l.type === 'break_start')
+        const breakEnd = logs.find(l => l.type === 'break_end')
+        const checkOut = logs.find(l => l.type === 'check_out')
+
+        if (checkIn) firstIn = checkIn.timestamp
+        if (checkOut) lastOut = checkOut.timestamp
+
+        // Calcular minutos de break si existen las 2 marcas
+        if (breakStart && breakEnd) {
+            totalBreakMs = new Date(breakEnd.timestamp).getTime() - new Date(breakStart.timestamp).getTime()
+        }
+
+        // Si tenemos In y Out, calculamos el total restando el break
+        if (firstIn && lastOut) {
+            const grossWorkedMs = new Date(lastOut).getTime() - new Date(firstIn).getTime()
+            totalWorkedMs = Math.max(0, grossWorkedMs - totalBreakMs)
+        }
+
+        const totalBreakMinutes = Math.floor(totalBreakMs / 60000)
+        let totalWorkedMinutes = Math.floor(totalWorkedMs / 60000)
+
+        // Separar entre Ordinarias y Extras
+        const expectedMinutes = expectedHours * 60
+        let ordinaryMinutes = totalWorkedMinutes
+        let extraMinutesPending = 0
+
+        if (totalWorkedMinutes > expectedMinutes) {
+            ordinaryMinutes = expectedMinutes
+            extraMinutesPending = totalWorkedMinutes - expectedMinutes
+        }
+
+        let shiftStatus = checkOut ? 'completed' : 'open'
+
+        // 2. Guardar el consolidado
+        // Usamos ON CONFLICT(staff_id, date) DO UPDATE (El UNIQUE de nuestra BD)
+        const { error: upsertError } = await supabase
+            .from('attendance_shifts')
+            .upsert({
+                organization_id: orgId,
+                staff_id: staffId,
+                location_id: locationId,
+                date: localDateString, // Clave única junto a staff_id
+                first_in: firstIn,
+                last_out: lastOut,
+                total_break_minutes: totalBreakMinutes,
+                total_worked_minutes: totalWorkedMinutes,
+                ordinary_minutes: ordinaryMinutes,
+                extra_minutes_pending: extraMinutesPending,
+                status: shiftStatus,
+                updated_at: new Date().toISOString()
+            }, { onConflict: 'staff_id, date' })
+
+        if (upsertError) {
+            console.error("Error upserting shift:", upsertError)
+        }
+
+    } catch (err) {
+        console.error("Shift processing crash:", err)
+    }
+}
+
+/**
+ * Obtener todos los turnos calculados de una organización para Nómina.
+ */
+export async function getAttendanceShifts(organizationId: string) {
+    try {
+        const supabase = await createClient()
+
+        // Para nómina, necesitamos ver todo el historial de turnos o al menos los más recientes
+        const { data, error } = await supabase
+            .from('attendance_shifts')
+            .select(`
+                *,
+                staff:organization_staff(first_name, last_name, document_id, role)
+            `)
+            .eq('organization_id', organizationId)
+            .order('date', { ascending: false })
+            .limit(1000)
+
+        if (error) throw error
+
+        return { success: true, data }
+    } catch (err: any) {
+        console.error("Error fetching attendance shifts:", err)
+        return { success: false, error: err.message, data: [] }
+    }
+}
+
 
