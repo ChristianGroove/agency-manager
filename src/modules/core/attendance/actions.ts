@@ -2,6 +2,7 @@
 
 import { headers } from "next/headers"
 import { createClient } from "@/lib/supabase-server"
+import { supabaseAdmin } from "@/lib/supabase-admin"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
@@ -178,19 +179,24 @@ export async function registerAttendanceMark(payload: AttendancePayload) {
  */
 export async function uploadAttendancePhoto(base64Image: string, staffId: string): Promise<{ success: boolean, url?: string, error?: string }> {
     try {
-        const supabase = await createClient()
+        // Usamos supabaseAdmin para evadir RLS, ya que el personal entrando via token no tiene sesión de Auth tradicional.
+        const supabase = supabaseAdmin
+
+        // Detect format or default to webp
+        const mimeType = base64Image.match(/data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+).*,.*/)?.[1] || 'image/webp'
+        const extension = mimeType.split('/')[1] || 'webp'
 
         // Extract base64 data
         const base64Data = base64Image.replace(/^data:image\/\w+;base64,/, "")
         const buffer = Buffer.from(base64Data, 'base64')
 
-        const fileName = `attendance/${staffId}/${Date.now()}.jpg`
+        const fileName = `attendance/${staffId}/${Date.now()}.${extension}`
 
         const { data, error } = await supabase
             .storage
             .from('public_assets')
             .upload(fileName, buffer, {
-                contentType: 'image/jpeg',
+                contentType: mimeType,
                 upsert: true
             })
 

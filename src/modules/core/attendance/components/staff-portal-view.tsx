@@ -9,6 +9,8 @@ import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { toast } from 'sonner'
 import { registerAttendanceMark, uploadAttendancePhoto } from '../actions'
+import { processAttendancePhoto } from '../utils/photo-processor'
+import { cn } from '@/lib/utils'
 
 interface AttendanceStaffPortalProps {
     staff: any
@@ -124,8 +126,20 @@ export function AttendanceStaffPortal({ staff, settings, token }: AttendanceStaf
         toast.loading("Procesando registro...", { id: "attendance_action" })
 
         try {
-            // 1. Subir Foto Probatoria
-            const uploadRes = await uploadAttendancePhoto(capturedImage, staff.id)
+            // 1. Procesar y Optimizar Foto (WebP + Burn-in Metadata)
+            toast.loading("Optimizando evidencia...", { id: "attendance_action" })
+
+            const processedImage = await processAttendancePhoto(capturedImage, {
+                staffName: `${staff.first_name} ${staff.last_name}`,
+                timestamp: new Date().toLocaleString('es-CO'),
+                latitude: coordinates.lat,
+                longitude: coordinates.lng,
+                accuracy: coordinates.accuracy
+            })
+
+            // 2. Subir Foto Probatoria Optimizada
+            toast.loading("Subiendo evidencia...", { id: "attendance_action" })
+            const uploadRes = await uploadAttendancePhoto(processedImage, staff.id)
             if (!uploadRes.success || !uploadRes.url) {
                 throw new Error(uploadRes.error || "Error al subir la evidencia fotográfica.")
             }
@@ -363,7 +377,3 @@ export function AttendanceStaffPortal({ staff, settings, token }: AttendanceStaf
     )
 }
 
-// Simple utility inside file
-function cn(...classes: (string | undefined | null | false)[]) {
-    return classes.filter(Boolean).join(' ')
-}
