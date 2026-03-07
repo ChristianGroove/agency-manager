@@ -28,7 +28,8 @@ import { StaffManagement } from './staff-management'
 import { PayrollDashboard } from './payroll-dashboard'
 import { Staff } from '../../actions'
 import { SectionHeader } from '@/components/layout/section-header'
-import { Shield, Activity, DollarSign, Filter, Calendar as CalendarIcon } from 'lucide-react'
+import { Shield, Activity, DollarSign, Filter, Calendar as CalendarIcon, Store } from 'lucide-react'
+import { MagicStatCard } from '@/modules/core/dashboard/widgets/smart-cards/magic-stat-card'
 
 interface AttendanceDashboardProps {
     logs: any[]
@@ -163,45 +164,40 @@ export function AttendanceDashboard({ logs: initialLogs, staff: initialStaff, lo
                     </TabsTrigger>
                 </TabsList>
 
-                {/* Estadísticas Rápidas */}
+                {/* Operómetro Retail - Magic Card Style */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <Card className="p-5 bg-white dark:bg-zinc-900/50 backdrop-blur-md border-gray-100 dark:border-white/5 shadow-sm hover:shadow-md transition-all group">
-                        <div className="flex items-center gap-4">
-                            <div className="p-3 bg-blue-50 dark:bg-blue-500/10 rounded-xl">
-                                <Clock className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                    <MagicStatCard
+                        title="Operómetro Retail"
+                        value={
+                            <div className="flex items-baseline gap-2">
+                                <span>{new Set(logs.filter(l => l.type === 'check_in').map(l => l.location_id)).size}</span>
+                                <span className="text-sm font-normal text-muted-foreground">/ {locations.length} Sedes Activas</span>
                             </div>
-                            <div>
-                                <p className="text-3xl font-bold text-gray-900 dark:text-white">{logs.length}</p>
-                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Registros Hoy</p>
+                        }
+                        icon={Store}
+                        gradientColor="var(--primary)"
+                        subtext={
+                            <div className="flex items-center gap-2 mt-2">
+                                <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-none font-bold">
+                                    {new Set(logs.filter(l => l.type === 'check_in').map(l => l.staff_id)).size} Staff en sitio
+                                </Badge>
+                                {new Set(logs.filter(l => l.type === 'check_in').map(l => l.location_id)).size < locations.length && (
+                                    <Badge variant="outline" className="bg-red-500/10 text-red-600 border-none font-bold">
+                                        Faltan sedes
+                                    </Badge>
+                                )}
                             </div>
-                        </div>
-                    </Card>
+                        }
+                        className="md:col-span-2"
+                    />
 
-                    <Card className="p-5 bg-white dark:bg-zinc-900/50 backdrop-blur-md border-gray-100 dark:border-white/5 shadow-sm hover:shadow-md transition-all group">
-                        <div className="flex items-center gap-4">
-                            <div className="p-3 bg-red-50 dark:bg-red-500/10 rounded-xl">
-                                <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400" />
-                            </div>
-                            <div>
-                                <p className="text-3xl font-bold text-red-600 dark:text-red-500">{logs.filter(l => !l.is_valid).length}</p>
-                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Alertas</p>
-                            </div>
-                        </div>
-                    </Card>
-
-                    <Card className="p-5 bg-white dark:bg-zinc-900/50 backdrop-blur-md border-gray-100 dark:border-white/5 shadow-sm hover:shadow-md transition-all group">
-                        <div className="flex items-center gap-4">
-                            <div className="p-3 bg-emerald-50 dark:bg-emerald-500/10 rounded-xl">
-                                <CheckCircle2 className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
-                            </div>
-                            <div>
-                                <p className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">
-                                    {new Set(logs.map(l => l.staff_id)).size} / {initialStaff.length}
-                                </p>
-                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">En Turno</p>
-                            </div>
-                        </div>
-                    </Card>
+                    <MagicStatCard
+                        title="Alertas de Seguridad"
+                        value={logs.filter(l => !l.is_valid).length}
+                        icon={AlertTriangle}
+                        gradientColor="#ef4444"
+                        subtext="Anomalías GPS o biometría hoy"
+                    />
                 </div>
 
                 <TabsContent value="lifecycles" className="space-y-6 mt-0">

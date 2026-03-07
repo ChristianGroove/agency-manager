@@ -133,9 +133,15 @@ export async function getDashboardPayload() {
     const isPlatform = orgDetails?.organization_type === 'platform'
     const isReseller = orgDetails?.organization_type === 'reseller'
     const isResto = spaceCategory === 'resto'
+    const isRetail = spaceCategory === 'retail' ||
+        modules.includes('module_attendance') ||
+        modules.includes('core_locations') ||
+        modules.includes('vertical_retail') ||
+        orgDetails?.name?.toLowerCase().includes('retail') ||
+        orgDetails?.slug?.toLowerCase().includes('retail')
 
-    // Hierarchy check: Platform and Resellers manage organizations, so they share the Reseller engine UI unless a specific vertical forces otherwise.
-    const orgType = (isPlatform || isReseller) ? 'reseller' : (isCleaning ? 'cleaning' : (isResto ? 'resto' : 'agency'))
+    // Hierarchy check: Retail and Vertical spaces take precedence over the generic Reseller/Agency view if detected.
+    const orgType = isRetail ? 'retail' : (isCleaning ? 'cleaning' : (isResto ? 'resto' : ((isPlatform || isReseller) ? 'reseller' : 'agency')))
 
     let dashboardData: any = null
     let extraData: any = null
@@ -147,6 +153,31 @@ export async function getDashboardPayload() {
         const { data: settings } = await supabase.from('organization_settings').select('*').eq('organization_id', orgId).single()
         dashboardData = { settings }
         extraData = { orgDetails }
+    } else if (orgType === 'retail') {
+        const supabase = await createClient()
+        const { data: settings } = await supabase.from('organization_settings').select('*').eq('organization_id', orgId).single()
+
+        // Fetch Attendance metrics for Operómetro
+        const today = new Date().toISOString().split('T')[0]
+
+        const { data: locations } = await supabase.from('locations').select('id, name').eq('organization_id', orgId).is('deleted_at', null)
+        const { data: logs } = await supabase
+            .from('attendance_logs')
+            .select('id, staff_id, location_id, type, is_valid')
+            .eq('organization_id', orgId)
+            .gte('timestamp', `${today}T00:00:00`)
+            .lte('timestamp', `${today}T23:59:59`)
+
+        dashboardData = { settings }
+        extraData = {
+            orgDetails,
+            retailMetrics: {
+                totalLocations: locations?.length || 0,
+                activeLocations: new Set(logs?.filter(l => l.type === 'check_in').map(l => l.location_id)).size,
+                staffOnSite: new Set(logs?.filter(l => l.type === 'check_in').map(l => l.staff_id)).size,
+                alerts: logs?.filter(l => !l.is_valid).length || 0
+            }
+        }
     } else {
         // Agencia, Limpieza, o Reseller si requieren el MRR y Servicios
         dashboardData = await getDashboardData()

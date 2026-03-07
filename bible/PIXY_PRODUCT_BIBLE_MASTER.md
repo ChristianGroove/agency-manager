@@ -24,6 +24,7 @@ Pixy es un **Ecosistema Universal** diseñado para escalar horizontalmente a mú
 - **Capa 3: Spaces Especializados**: Módulos verticales con lógica operativa exclusiva.
     - **Space Agency**: Enfoque en creatividad, briefings y gestión de portales.
     - **Space Service Ops**: Enfoque en logística de campo, órdenes de trabajo y nómina.
+    - **Space Retail**: Enfoque en gestión de puntos de venta física, geocercas y control de asistencia zero-trust.
 
 ---
 
@@ -83,7 +84,8 @@ El White Label no es un simple interruptor, sino un sistema de **Branding Tiers*
 - **Basic (Heredado)**: Muestra la marca Pixy global (Logos, colores e isotipos predeterminados de la plataforma).
 - **Pro Branding**: Permite configurar `custom_logo` y `custom_colors` (paleta primaria/secundaria).
 - **Full Agency (Marca Blanca Total)**:
-    - Activa emove_pixy_branding, eliminando watermarks en documentos PDF y referencias en el footer.
+    - Activa 
+emove_pixy_branding, eliminando watermarks en documentos PDF y referencias en el footer.
     - **Branding Total (Upgrade Directo)**: Los clientes pueden adquirir el tier White Label pagando a Pixy vía Wompi (Checkout Directo). Activation automática vía webhook. 
     - Activa `remove_pixy_branding`, eliminando watermarks en documentos PDF y referencias en el footer de la UI.
     - El cliente final jamás ve la marca Pixy.
@@ -231,7 +233,7 @@ Pixy gestiona múltiples capas de comunicación tanto internas (notificaciones i
 
 **Sonner Toasts** (Feedback Reactivo):
 - **Retroalimentación Inmediata**: Notificaciones toast efímeras que aparecen tras acciones del usuario.
-- **Variantes**: Success (✓), Error (✗), Warning (!), Info (i).
+- **Variantes**: Success (?), Error (?), Warning (!), Info (i).
 - **Auto-dismiss**: Se desvanecen automáticamente tras 3-5 segundos para no interrumpir el flujo.
 
 **Smart Alerts (Dashboard)**:
@@ -713,7 +715,7 @@ El dashboard detecta automáticamente el tipo de organización y el Space para a
 
 #### 1. Smart Cards & Stats
 - **Conteo Animado**: Uso de `react-countup` para animar los números al actualizar.
-- **Micro-gráficas de Tendencia**: Indicadores visuales (↑↓) mostrando si la métrica mejoró o empeoró vs. período anterior.
+- **Micro-gráficas de Tendencia**: Indicadores visuales (??) mostrando si la métrica mejoró o empeoró vs. período anterior.
 - **Color Coding**: Verde para métricas positivas, rojo para alertas, amarillo para advertencias.
 
 #### 2. Revenue Hero Widget
@@ -935,6 +937,34 @@ Este Space está diseñado para empresas de servicios físicos (limpieza, manten
 
 ---
 
+
+### C. Retail Space: Gestión de Puntos de Venta & Staff de Campo
+
+Este Space está diseñado para organizaciones con múltiples sedes físicas (tiendas, agencias de servicios, puntos de distribución) que requieren un control quirúrgico de la asistencia y cumplimiento operativo.
+
+#### 1. Gestión Inteligente de Sedes (Locations)
+- **Geocercas Dinámicas**: Cada sede puede configurar un radio de acción específico (geofence_radius_meters).
+- **Horarios Operativos Multi-Zona**: Soporte para usiness_hours y `timezone` por sede.
+- **Live Status Engine**: Algoritmo `isLocationOpenNow()` que determina el estado operativo sin dependencias externas.
+
+#### 2. Control de Asistencia Zero-Trust
+El estándar más alto de seguridad biometríca y geográfica de Pixy:
+- **Validación Geo-Espacial**: Bloqueo de captura fotográfica si el dispositivo está fuera de la geocerca.
+- **Biometría en Vivo**: Captura obligatoria con React Webcam.
+- **Watermarking Criptográfico**: Inyección de metadata indisoluble (Nombre, Fecha/Hora, GPS) en la imagen.
+- **Time Integrity**: Sincronización absoluta con el reloj atómico de la base de datos.
+
+#### 3. Monitor de Turnos (Lifecycles)
+- **Visual Lifecycle**: Cronología horizontal compacta que muestra el progreso del turno.
+- **Detección de Anomalías**: IA que resalta marcaciones irregulares con visuales de alta visibilidad.
+- **Zen Mode**: Interfaz de "Modo Descanso" para el personal en break.
+
+#### 4. Motor de Nómina & Horas Extras (Retail Payroll)
+- **Horarios Individualizados**: Gestión de `work_schedule` (JSONB) por colaborador.
+- **Periodos de Gracia**: Bloqueo de marcaciones anticipadas (5 mins).
+- **Liquidación Automática**: Cálculo diario de minutos ordinarios y extras pendientes.
+
+
 ## 9. Motor de Automatización: "Pixy Flows"
 
 Pixy Flows es el motor de automatización narrativa diseñado para ser lineal, intuitivo y "blindado" contra errores de lógica del usuario.
@@ -1015,10 +1045,10 @@ Pixy Flows es el motor de automatización narrativa diseñado para ser lineal, i
 
 - **Propósito**: Registrar en lenguaje natural lo que la IA "hizo" durante cada ejecución.
 - **Ejemplos**:
-    - "✓ Factura #INV-123 detectada como vencida"
-    - "⏳ Esperando 2 días antes de enviar recordatorio"
-    - "📤 WhatsApp enviado a +57 300 123 4567: 'Hola Juan, te recordamos...'"
-    - "✓ Tarea creada y asignada a María (Admin)"
+    - "? Factura #INV-123 detectada como vencida"
+    - "? Esperando 2 días antes de enviar recordatorio"
+    - "?? WhatsApp enviado a +57 300 123 4567: 'Hola Juan, te recordamos...'"
+    - "? Tarea creada y asignada a María (Admin)"
 - **Vista de Usuario**: El admin puede ver el historial completo de acciones de cada rutina en un timeline legible.
 
 ### E. AI Engine (Copilot Mode)
@@ -1128,23 +1158,23 @@ El sistema ajusta el porcentaje de comisión según la "edad" del cliente, incen
 
 Pixy Flows v1 se centra en 5 rutinas quirúrgicas pre-construidas que resuelven dolores inmediatos:
 
-1. **💰 Cobrador Amable**:
+1. **?? Cobrador Amable**:
    - **Trigger**: `invoice.overdue`
    - **Flujo**: Espera n días → Envía recordatorio por WhatsApp con link de pago directo.
    
-2. **📝 Seguimiento de Presupuesto**:
+2. **?? Seguimiento de Presupuesto**:
    - **Trigger**: `quote.sent`
    - **Flujo**: Espera 48h sin respuesta → Email de seguimiento "¿Tienes dudas sobre la propuesta?".
    
-3. **🤝 Reactivación de Clientes**:
+3. **?? Reactivación de Clientes**:
    - **Trigger**: `client.inactive_60d`
    - **Flujo**: Oferta especial de retorno con descuento exclusivo.
    
-4. **⭐ Pedido de Reseña**:
+4. **? Pedido de Reseña**:
    - **Trigger**: `project.completed`
    - **Flujo**: Esperar 2 días → Enviar link de Google Maps/Trustpilot para review.
    
-5. **🚀 Onboarding de Cliente**:
+5. **?? Onboarding de Cliente**:
    - **Trigger**: `client.created`
    - **Flujo**: Crear carpeta en Google Drive + Email de bienvenida con recursos útiles.
 
@@ -1160,7 +1190,7 @@ Pixy Flows v1 se centra en 5 rutinas quirúrgicas pre-construidas que resuelven 
 
 ---
 
-## 🔗 INFRAESTRUCTURA DE COMUNICACIONES (WhatsApp Business API - Meta 2026)
+## ?? INFRAESTRUCTURA DE COMUNICACIONES (WhatsApp Business API - Meta 2026)
 
 > **Tech Provider Validation Ready**: Esta sección documenta la implementación completa de WhatsApp Business API con compliance total a Meta 2026 standards.
 
@@ -1186,10 +1216,10 @@ Pixy implementa una plataforma enterprise-grade de WhatsApp Business API con cap
 
 **Arquitectura**:
 ```
-Redis ← BullMQ Worker Pool ← Webhook Endpoint Meta
-  ↓
+Redis → BullMQ Worker Pool → Webhook Endpoint Meta
+  ?
 Process 10k+ msgs concurrently
-  ↓
+  ?
 Meta Cloud API (send/status)
 ```
 
@@ -1497,8 +1527,8 @@ AES Key → RSA-2048-OAEP → Encrypted Key → Base64
 #### Encriptación de Calling (Fase 4)
 
 **End-to-End**:
-- User ↔ Meta: E2EE automático (protocolo WhatsApp)
-- Meta ↔ Pixy: TLS 1.3 + SRTP (AES-128)
+- User → Meta: E2EE automático (protocolo WhatsApp)
+- Meta → Pixy: TLS 1.3 + SRTP (AES-128)
 
 **Seguridad RTP**:
 - **SRTP**: Secure RTP con encriptación AES
@@ -1651,7 +1681,7 @@ GOOGLE_AI_API_KEY=...
 
 ### Status de Implementación
 
-**Infraestructura de Comunicaciones**: ✅ **100% Complete - Tech Provider Validation Ready**
+**Infraestructura de Comunicaciones**: → **100% Complete - Tech Provider Validation Ready**
 
 - ✅ **Infraestructura**: BullMQ queue, error handling, rate limiting
 - ✅ **IA**: Task-oriented (80-90% ratio), zero data retention
@@ -1663,7 +1693,7 @@ GOOGLE_AI_API_KEY=...
 
 ---
 
-## 🎯 Conclusión & Próximos Pasos
+## 🚀 Conclusión & Próximos Pasos
 
 Este documento constituye la **Fuente de Verdad Absoluta** sobre Pixy. Ha sido construido mediante la síntesis exhaustiva de:
 - Documentación técnica original
@@ -1697,47 +1727,47 @@ El modelo de "Capas y Spaces" garantiza que Pixy puede expandirse infinitamente 
 ## 11. Meta Validation Kit & Control Center (Fase 6)
 
 ### A. Meta Control Sheet (The Reviewer's Cockpit)
-Interfaz centralizada dise�ada para controlar granularmente la integraci�n con Meta, facilitando la auditor�a y los screencasts de validaci�n.
+Interfaz centralizada dise?ada para controlar granularmente la integraci?n con Meta, facilitando la auditor?a y los screencasts de validaci?n.
 
-**Ubicaci�n**: /admin/meta-control (Acceso v�a bot�n de cohete o men� de configuraci�n)
+**Ubicaci?n**: /admin/meta-control (Acceso v?a bot?n de cohete o men? de configuraci?n)
 
 #### 1. Tabs Funcionales
 - **Calling (P0)**:
-    - **Toggle de Activaci�n**: Interruptor maestro que se comunica con la API real (POST /whatsapp_business_calling_settings).
-    - **Feedback Visual**: Confirma si la API de Meta respondi� 'ENABLED' o 'DISABLED' en tiempo real.
-    - **Icon Visibility**: Control de permiso de visualizaci�n del �cono de llamada.
+    - **Toggle de Activaci?n**: Interruptor maestro que se comunica con la API real (POST /whatsapp_business_calling_settings).
+    - **Feedback Visual**: Confirma si la API de Meta respondi? 'ENABLED' o 'DISABLED' en tiempo real.
+    - **Icon Visibility**: Control de permiso de visualizaci?n del ?cono de llamada.
 
 - **Flows (P0)**:
-    - **Gesti�n de Versiones**: Publicaci�n directa de esquemas v5.0 a Meta Sandbox.
-    - **One-Click Publish**: Bot�n que env�a el JSON del flow a /api/meta/flows para su validaci�n inmediata.
+    - **Gesti?n de Versiones**: Publicaci?n directa de esquemas v5.0 a Meta Sandbox.
+    - **One-Click Publish**: Bot?n que env?a el JSON del flow a /api/meta/flows para su validaci?n inmediata.
 
 - **Review (Credentials)**:
-    - **Modo Seguro**: Visualizaci�n ofuscada de tokens y IDs en uso.
-    - **Copy-Paste**: Facilita la extracci�n de credenciales para debugging.
+    - **Modo Seguro**: Visualizaci?n ofuscada de tokens y IDs en uso.
+    - **Copy-Paste**: Facilita la extracci?n de credenciales para debugging.
 
 - **Infra & AI**:
-    - Visores de estado del sistema, m�tricas de latencia simuladas y configuraci�n de modelos de IA (temperatura, modelo).
+    - Visores de estado del sistema, m?tricas de latencia simuladas y configuraci?n de modelos de IA (temperatura, modelo).
 
 ### B. Reviewer Mode & Wiring (Real Sandwich)
-Configuraci�n especial para superar el Meta App Review sin tener acceso Tier 2 de producci�n.
+Configuraci?n especial para superar el Meta App Review sin tener acceso Tier 2 de producci?n.
 
 #### 1. Estrategia de 'Cableado Real'
-A diferencia de un mock total, Pixy conecta (wires) los controles cr�ticos de la UI a endpoints reales de Meta Sandbox/Test Numbers.
+A diferencia de un mock total, Pixy conecta (wires) los controles cr?ticos de la UI a endpoints reales de Meta Sandbox/Test Numbers.
 
-- **Conector Extendido**: MetaConnector ahora soporta m�todos nativos de WABA Management.
-- **API Routes**: /api/meta/calling y /api/meta/flows act�an como proxys seguros.
-- **Beneficio**: El revisor de Meta ve un cambio real en el cliente de WhatsApp (�cono aparece/desaparece) al interactuar con el dashboard de Pixy.
+- **Conector Extendido**: MetaConnector ahora soporta m?todos nativos de WABA Management.
+- **API Routes**: /api/meta/calling y /api/meta/flows act?an como proxys seguros.
+- **Beneficio**: El revisor de Meta ve un cambio real en el cliente de WhatsApp (?cono aparece/desaparece) al interactuar con el dashboard de Pixy.
 
 #### 2. Webhook 'Anti-Shadow'
-Endpoint oculto (/api/meta/webhook/subscribe) que fuerza la suscripci�n a eventos messages y calls para evitar que las notificaciones caigan en el limbo ('shadow delivery') durante las pruebas.
+Endpoint oculto (/api/meta/webhook/subscribe) que fuerza la suscripci?n a eventos messages y calls para evitar que las notificaciones caigan en el limbo ('shadow delivery') durante las pruebas.
 
 ### C. Legal & Compliance Bundle
-Kit documental listo para despliegue p�blico requerido por Meta.
+Kit documental listo para despliegue p?blico requerido por Meta.
 
-1.  **Privacy Policy**: Cl�usulas espec�ficas sobre 'Zero Data Retention' y tratamiento de datos de usuarios de WhatsApp.
-2.  **Terms of Service**: Definici�n de uso aceptable de la IA.
-3.  **Data Deletion Instructions**: Gu�a paso a paso para que un usuario solicite el borrado de sus datos (requisito GDPR/CCPA).
-4.  **Reviewer Instructions**: Gu�a markdown con credenciales de prueba y pasos de reproducci�n para el auditor de Meta.
+1.  **Privacy Policy**: Cl?usulas espec?ficas sobre 'Zero Data Retention' y tratamiento de datos de usuarios de WhatsApp.
+2.  **Terms of Service**: Definici?n de uso aceptable de la IA.
+3.  **Data Deletion Instructions**: Gu?a paso a paso para que un usuario solicite el borrado de sus datos (requisito GDPR/CCPA).
+4.  **Reviewer Instructions**: Gu?a markdown con credenciales de prueba y pasos de reproducci?n para el auditor de Meta.
 
 
 ---

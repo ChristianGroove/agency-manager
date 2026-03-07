@@ -5,6 +5,7 @@ import { AgencyDashboard } from "@/modules/core/dashboard/components/agency-dash
 import { CleaningDashboard } from "@/modules/core/dashboard/components/cleaning-dashboard"
 import { ResellerDashboard } from "@/modules/core/dashboard/components/reseller-dashboard"
 import { RestoDashboard } from "@/modules/core/dashboard/components/resto-dashboard"
+import { RetailDashboard } from "@/modules/core/dashboard/components/retail-dashboard"
 import { DashboardSkeleton } from "@/modules/core/dashboard/dashboard-skeleton"
 
 // Interceptores Globales del Dashboard Original
@@ -65,9 +66,10 @@ export default function DashboardPage() {
                 {orgType === 'cleaning' && <CleaningDashboard dashboardData={dashboardData} extraData={extraData} onReload={loadDashboard} />}
                 {orgType === 'reseller' && <ResellerDashboard dashboardData={dashboardData} extraData={extraData} onReload={loadDashboard} />}
                 {orgType === 'resto' && <RestoDashboard dashboardData={dashboardData} extraData={extraData} onReload={loadDashboard} />}
+                {orgType === 'retail' && <RetailDashboard dashboardData={dashboardData} extraData={extraData} onReload={loadDashboard} />}
 
                 {/* Fallback de Seguridad en caso de que un workspace huérfano llegue hasta acá */}
-                {!['agency', 'cleaning', 'reseller', 'resto'].includes(orgType) && (
+                {!['agency', 'cleaning', 'reseller', 'resto', 'retail'].includes(orgType) && (
                     <AgencyDashboard dashboardData={dashboardData} extraData={extraData} onReload={loadDashboard} />
                 )}
             </Suspense>

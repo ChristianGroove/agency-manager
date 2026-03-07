@@ -1,0 +1,103 @@
+"use client"
+
+import React, { useState } from "react"
+import { Store, Users, AlertTriangle, ShieldCheck, UserPlus, MapPin, ClipboardCheck, Receipt } from "lucide-react"
+import { ModularDashboardLayout, DashboardDataProps } from "@/modules/core/dashboard/modular-dashboard-layout"
+import { useTranslation } from "@/lib/i18n/use-translation"
+import { Badge } from "@/components/ui/badge"
+
+// Import Modals
+import { CreateClientSheet } from "@/modules/core/clients/create-client-sheet"
+import { CreateQuoteSheet } from "@/modules/core/quotes/create-quote-sheet"
+import { CreateInvoiceSheet } from "@/modules/core/billing/create-invoice-sheet"
+import { CreateFormSheet } from "@/modules/core/forms/create-form-sheet"
+
+interface RetailDashboardProps {
+    dashboardData: any
+    extraData: any
+    onReload: () => void
+}
+
+export function RetailDashboard({ dashboardData, extraData, onReload }: RetailDashboardProps) {
+    const { t } = useTranslation()
+    const { settings } = dashboardData
+    const { retailMetrics } = extraData
+
+    // Modals internal state
+    const [isClientModalOpen, setIsClientModalOpen] = useState(false)
+    const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false)
+    const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false)
+    const [isBriefingModalOpen, setIsBriefingModalOpen] = useState(false)
+
+    const data: DashboardDataProps = {
+        globalBannerConfig: dashboardData?.bannerConfig,
+        stats: [
+            {
+                title: "Operómetro Retail",
+                value: (
+                    <div className="flex items-baseline gap-2">
+                        <span>{retailMetrics.activeLocations}</span>
+                        <span className="text-sm font-normal text-muted-foreground">/ {retailMetrics.totalLocations} Sedes Activas</span>
+                    </div>
+                ),
+                icon: Store,
+                subtext: (
+                    <div className="flex items-center gap-2 mt-1">
+                        <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-none font-bold py-0 h-5">
+                            {retailMetrics.staffOnSite} Staff en sitio
+                        </Badge>
+                        {retailMetrics.activeLocations < retailMetrics.totalLocations && (
+                            <Badge variant="outline" className="bg-red-500/10 text-red-600 border-none font-bold py-0 h-5">
+                                Faltan sedes
+                            </Badge>
+                        )}
+                    </div>
+                )
+            },
+            {
+                title: "Alertas de Seguridad",
+                value: retailMetrics.alerts,
+                icon: AlertTriangle,
+                subtext: (
+                    <span className={retailMetrics.alerts > 0 ? "text-red-500 font-bold" : "text-emerald-500"}>
+                        {retailMetrics.alerts > 0 ? "Anomalías detectadas hoy" : "Todo bajo control"}
+                    </span>
+                )
+            },
+            {
+                title: "Estado de Protección",
+                value: "Activo",
+                icon: ShieldCheck,
+                subtext: "Validación Zero-Trust activa"
+            }
+        ],
+        social: {
+            title: "Retail/Space",
+            facebook: settings?.social_facebook,
+            instagram: settings?.social_instagram,
+            twitter: settings?.social_twitter,
+        },
+        quickActions: [
+            { title: t('dashboard.actions.new_client'), icon: UserPlus, colorClass: "bg-brand-cyan/10 text-brand-cyan group-hover:bg-brand-cyan group-hover:text-white", onClick: () => setIsClientModalOpen(true) },
+            { title: "Gestión Asistencia", icon: ClipboardCheck, colorClass: "bg-emerald-50 text-emerald-600 group-hover:bg-emerald-500 group-hover:text-white", onClick: () => window.location.href = "/attendance" },
+            { title: "Ficha de Sedes", icon: MapPin, colorClass: "bg-yellow-50 text-yellow-600 group-hover:bg-yellow-500 group-hover:text-white", onClick: () => window.location.href = "/attendance" },
+            { title: "Nueva Factura", icon: Receipt, colorClass: "bg-brand-pink/10 text-brand-pink group-hover:bg-brand-pink group-hover:text-white", onClick: () => setIsInvoiceModalOpen(true) }
+        ],
+        smartAlert: retailMetrics.alerts > 0 ? {
+            title: "Atención Requerida",
+            message: <span>Se han detectado {retailMetrics.alerts} anomalías en las marcaciones de hoy.</span>,
+            itemsHeading: "Sedes con alertas",
+            items: [] // Podriamos poblar esto si quisiéramos más detalle
+        } : undefined
+    }
+
+    return (
+        <>
+            <ModularDashboardLayout data={data} />
+            <CreateClientSheet open={isClientModalOpen} onOpenChange={setIsClientModalOpen} trigger={<span className="hidden" />} onSuccess={() => { setIsClientModalOpen(false); onReload() }} />
+            <CreateQuoteSheet open={isQuoteModalOpen} onOpenChange={setIsQuoteModalOpen} trigger={<span className="hidden" />} onSuccess={() => { setIsQuoteModalOpen(false); onReload() }} />
+            <CreateFormSheet open={isBriefingModalOpen} onOpenChange={setIsBriefingModalOpen} onSuccess={() => setIsBriefingModalOpen(false)} />
+            <CreateInvoiceSheet open={isInvoiceModalOpen} onOpenChange={setIsInvoiceModalOpen} trigger={<span className="hidden" />} onSuccess={() => { setIsInvoiceModalOpen(false); onReload() }} />
+        </>
+    )
+}
