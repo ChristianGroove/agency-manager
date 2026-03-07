@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { getPipelineStages, type PipelineStage } from '@/modules/core/crm/pipeline-actions';
+import { getTags, type Tag as CRMTag } from '@/modules/core/crm/tags-actions';
 import { VariableSelector } from './variable-selector';
 import {
     Sheet,
@@ -17,10 +18,23 @@ import { MediaUpload } from '@/components/ui/media-upload';
 import { uploadAutomationMedia } from '@/modules/core/automation/actions';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Node } from '@xyflow/react';
-import { Trash2, Copy, Zap, Box, Settings2, X, Check, Database, Globe, Mail, MessageSquare, Plus, AlertCircle, MousePointer, Clock, Tag, ArrowRightCircle, HelpCircle, GitBranch } from 'lucide-react';
+import { Trash2, Copy, Zap, Box, Settings2, X, Check, Database, Globe, Mail, MessageSquare, Plus, AlertCircle, MousePointer, Clock, Tag as TagIcon, ArrowRightCircle, HelpCircle, GitBranch } from 'lucide-react';
 import { ChannelSelector } from './channel-selector';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+    Command,
+    CommandEmpty,
+    CommandGroup,
+    CommandInput,
+    CommandItem,
+    CommandList,
+} from "@/components/ui/command";
 import { toast } from 'sonner';
 import {
     Tooltip,
@@ -60,15 +74,22 @@ export function PropertiesSheet({ node, isOpen, onClose, onUpdate, onDelete, onD
     const [formData, setFormData] = useState<Record<string, unknown>>({});
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [stages, setStages] = useState<PipelineStage[]>([]);
+    const [availableTags, setAvailableTags] = useState<CRMTag[]>([]);
 
     // Fetch pipeline stages when needed
     useEffect(() => {
-        if (node?.type === 'stage') {
+        if (node?.type === 'stage' || (node?.type === 'crm' && (node.data as any)?.actionType === 'update_stage')) {
             getPipelineStages()
                 .then(data => setStages(data))
                 .catch(err => console.error("Failed to load stages", err));
         }
-    }, [node?.type]);
+
+        if (node?.type === 'tag' || (node?.type === 'crm' && (node.data as any)?.actionType === 'add_tag')) {
+            getTags()
+                .then(data => setAvailableTags(data))
+                .catch(err => console.error("Failed to load tags", err));
+        }
+    }, [node?.type, (node?.data as any)?.actionType]);
 
     useEffect(() => {
         if (node) {
@@ -446,7 +467,7 @@ export function PropertiesSheet({ node, isOpen, onClose, onUpdate, onDelete, onD
         headerColor = "bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400";
         typeLabel = "Wait For Input";
     } else if (node.type === 'tag') {
-        HeaderIcon = Tag;
+        HeaderIcon = TagIcon;
         headerColor = "bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400";
         typeLabel = "Manage Tags";
     } else if (node.type === 'stage') {
@@ -1272,24 +1293,84 @@ export function PropertiesSheet({ node, isOpen, onClose, onUpdate, onDelete, onD
 
                             {formData.actionType === 'add_tag' && (
                                 <div className="space-y-3 p-4 bg-indigo-50/50 dark:bg-indigo-950/20 rounded-lg border border-indigo-100 dark:border-indigo-900/50">
-                                    <div className="space-y-2">
-                                        <Label>Lead ID<span className="text-red-500 ml-1">*</span></Label>
-                                        <Input
-                                            value={(formData.leadId as string) || ''}
-                                            onChange={(e) => handleChange('leadId', e.target.value)}
-                                            placeholder="{'{{leadId}}'}"
-                                            className="bg-white dark:bg-slate-900 font-mono text-sm"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Nombre de Etiqueta<span className="text-red-500 ml-1">*</span></Label>
-                                        <Input
-                                            value={(formData.tagName as string) || ''}
-                                            onChange={(e) => handleChange('tagName', e.target.value)}
-                                            placeholder="bot-qualified"
-                                            className="bg-white dark:bg-slate-900"
-                                        />
-                                    </div>
+
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                            <Button
+                                                variant="outline"
+                                                className="w-full justify-between bg-white dark:bg-slate-900 h-10 px-3 font-normal"
+                                            >
+                                                <div className="flex items-center gap-2 truncate">
+                                                    {formData.tagName ? (
+                                                        <>
+                                                            {availableTags.find(t => t.name === formData.tagName) ? (
+                                                                <div
+                                                                    className="w-2 h-2 rounded-full flex-shrink-0"
+                                                                    style={{ backgroundColor: availableTags.find(t => t.name === formData.tagName)?.color }}
+                                                                />
+                                                            ) : (
+                                                                <TagIcon size={14} className="text-slate-400" />
+                                                            )}
+                                                            <span className="truncate">{formData.tagName as string}</span>
+                                                        </>
+                                                    ) : (
+                                                        <span className="text-slate-400">Seleccionar o escribir...</span>
+                                                    )}
+                                                </div>
+                                                <Plus size={14} className="opacity-50" />
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-[300px] p-0" align="start">
+                                            <Command>
+                                                <CommandInput
+                                                    placeholder="Buscar o crear etiqueta..."
+                                                    onValueChange={(v) => {
+                                                        // Optional: we can update tagName as they type if we want search-to-create
+                                                    }}
+                                                />
+                                                <CommandList>
+                                                    <CommandEmpty>
+                                                        <div className="p-2 text-xs text-center text-muted-foreground">
+                                                            Presiona Enter para usar una etiqueta personalizada
+                                                        </div>
+                                                    </CommandEmpty>
+                                                    <CommandGroup heading="Etiquetas del CRM">
+                                                        {availableTags.map((tag) => (
+                                                            <CommandItem
+                                                                key={tag.id}
+                                                                onSelect={() => handleChange('tagName', tag.name)}
+                                                                className="flex items-center gap-2 cursor-pointer"
+                                                            >
+                                                                <div
+                                                                    className="w-3 h-3 rounded-full flex-shrink-0"
+                                                                    style={{ backgroundColor: tag.color }}
+                                                                />
+                                                                <span className="flex-1 truncate">{tag.name}</span>
+                                                                {formData.tagName === tag.name && <Check size={14} className="text-blue-500" />}
+                                                            </CommandItem>
+                                                        ))}
+                                                    </CommandGroup>
+
+                                                    <Separator />
+                                                    <div className="p-2">
+                                                        <Input
+                                                            placeholder="Nombre personalizado..."
+                                                            className="h-8 text-xs"
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === 'Enter') {
+                                                                    handleChange('tagName', e.currentTarget.value);
+                                                                    // Note: ideally close popover here, but Command handles it usually
+                                                                }
+                                                            }}
+                                                        />
+                                                    </div>
+                                                </CommandList>
+                                            </Command>
+                                        </PopoverContent>
+                                    </Popover>
+                                    <p className="text-[10px] text-muted-foreground">
+                                        Selecciona una existente o escribe una nueva.
+                                    </p>
                                 </div>
                             )}
                         </div>
@@ -2441,15 +2522,87 @@ export function PropertiesSheet({ node, isOpen, onClose, onUpdate, onDelete, onD
                             </div>
 
                             <div className="space-y-2">
-                                <Label>Nombre de la Etiqueta</Label>
-                                <Input
-                                    value={(formData.tagName as string) || ''}
-                                    onChange={(e) => handleChange('tagName', e.target.value)}
-                                    placeholder="Ej. Interesado, VIP"
-                                    className="bg-slate-50 dark:bg-slate-900"
-                                />
+                                <div className="flex justify-between items-center">
+                                    <Label>Nombre de la Etiqueta<span className="text-red-500 ml-1">*</span></Label>
+                                    <VariableSelector onSelect={(v) => handleChange('tagName', (formData.tagName as string || '') + v)}>
+                                        <span className="text-[10px] text-blue-500 cursor-pointer hover:underline flex items-center gap-1">
+                                            <Zap size={10} /> Variable
+                                        </span>
+                                    </VariableSelector>
+                                </div>
+
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            variant="outline"
+                                            className="w-full justify-between bg-white dark:bg-slate-900 h-10 px-3 font-normal"
+                                        >
+                                            <div className="flex items-center gap-2 truncate">
+                                                {formData.tagName ? (
+                                                    <>
+                                                        {availableTags.find(t => t.name === formData.tagName) ? (
+                                                            <div
+                                                                className="w-2 h-2 rounded-full flex-shrink-0"
+                                                                style={{ backgroundColor: availableTags.find(t => t.name === formData.tagName)?.color }}
+                                                            />
+                                                        ) : (
+                                                            <TagIcon size={14} className="text-slate-400" />
+                                                        )}
+                                                        <span className="truncate">{formData.tagName as string}</span>
+                                                    </>
+                                                ) : (
+                                                    <span className="text-slate-400">Seleccionar o escribir...</span>
+                                                )}
+                                            </div>
+                                            <Plus size={14} className="opacity-50" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-[300px] p-0" align="start">
+                                        <Command>
+                                            <CommandInput
+                                                placeholder="Buscar o crear etiqueta..."
+                                            />
+                                            <CommandList>
+                                                <CommandEmpty>
+                                                    <div className="p-2 text-xs text-center text-muted-foreground">
+                                                        Presiona Enter para usar una etiqueta personalizada
+                                                    </div>
+                                                </CommandEmpty>
+                                                <CommandGroup heading="Etiquetas del CRM">
+                                                    {availableTags.map((tag) => (
+                                                        <CommandItem
+                                                            key={tag.id}
+                                                            onSelect={() => handleChange('tagName', tag.name)}
+                                                            className="flex items-center gap-2 cursor-pointer"
+                                                        >
+                                                            <div
+                                                                className="w-3 h-3 rounded-full flex-shrink-0"
+                                                                style={{ backgroundColor: tag.color }}
+                                                            />
+                                                            <span className="flex-1 truncate">{tag.name}</span>
+                                                            {formData.tagName === tag.name && <Check size={14} className="text-blue-500" />}
+                                                        </CommandItem>
+                                                    ))}
+                                                </CommandGroup>
+
+                                                <Separator />
+                                                <div className="p-2">
+                                                    <Input
+                                                        placeholder="Nombre personalizado o {{variable}}..."
+                                                        className="h-8 text-xs"
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === 'Enter') {
+                                                                handleChange('tagName', e.currentTarget.value);
+                                                            }
+                                                        }}
+                                                    />
+                                                </div>
+                                            </CommandList>
+                                        </Command>
+                                    </PopoverContent>
+                                </Popover>
                                 <p className="text-xs text-muted-foreground">
-                                    Escribe el nombre exacto de la etiqueta. Si no existe, se creará automáticamente en "Añadir".
+                                    Si la etiqueta no existe, se creará automáticamente al ejecutar el flujo.
                                 </p>
                             </div>
                         </div>
