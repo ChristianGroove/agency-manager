@@ -10,6 +10,7 @@ import {
     MoreHorizontal, Tag, DollarSign, Palette,
     Copy, Send, KeyRound
 } from "lucide-react"
+import { TagsPicker } from "../../crm/components/tags/tags-picker"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
@@ -281,19 +282,12 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
 
                             <Separator className="opacity-50" />
 
-                            {/* Tags - Reordered to top, title removed */}
+                            {/* Tags - Now using the unified TagsPicker */}
                             <div className="space-y-2">
-                                <div className="flex flex-wrap gap-1.5 p-2 bg-white/50 dark:bg-zinc-900/50 rounded-xl border border-white/20 dark:border-white/5">
-                                    {(lead.tags as string[] || ['lead']).map(tag => (
-                                        <Badge key={tag} variant="secondary" className="bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 border border-transparent hover:border-border transition-colors px-2 py-0.5 text-[11px] font-normal shadow-sm">
-                                            <Tag className="h-3 w-3 mr-1 opacity-50" />
-                                            {tag}
-                                        </Badge>
-                                    ))}
-                                    <Button variant="outline" size="sm" className="h-5 rounded-full px-2 text-[10px] border-dashed text-muted-foreground hover:text-foreground">
-                                        + {t('crm.inbox.context.actions.add')}
-                                    </Button>
-                                </div>
+                                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">
+                                    {t('crm.inbox.context.sections.tags') || 'Etiquetas'}
+                                </h4>
+                                <TagsPicker leadId={lead.id} organizationId={conversation?.organization_id} />
                             </div>
 
                             <Separator className="opacity-50" />

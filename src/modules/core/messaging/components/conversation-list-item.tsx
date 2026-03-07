@@ -10,6 +10,7 @@ import { UserCheck, MessageSquare, Facebook, Instagram } from "lucide-react"
 import { ConversationActionsMenu } from "./conversation-actions-menu"
 import { useTranslation } from "@/lib/i18n/use-translation"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { getTagColorClass } from "../../crm/components/tags/tag-colors"
 
 // Redefine type or import if shared. Using local definition for now or basic shape.
 type Conversation = any // Simplify for prototype component
@@ -178,10 +179,22 @@ export const ConversationListItem = memo(function ConversationListItem({ conv, i
                             }
                         </span>
 
-                        {conv.tags && conv.tags.length > 0 && (
+                        {conv.tags && conv.tags.length > 0 && typeof conv.tags[0] === 'string' && (
                             <div className="flex gap-1">
                                 {conv.tags.slice(0, 2).map((tag: string, idx: number) => (
-                                    <Badge key={idx} variant="outline" className="text-[10px] px-1 py-0 border-dashed">
+                                    <Badge
+                                        key={idx}
+                                        variant="secondary"
+                                        className={cn(
+                                            "text-[10px] px-1 py-0 border-0 text-white shadow-sm",
+                                            // Since we only have the name in conversations.tags, 
+                                            // we might need a lookup or just a generic color if 
+                                            // we don't want to join every time. 
+                                            // However, for "Perfect Label System", let's use a default 
+                                            // unless we pass metadata.
+                                            "bg-zinc-400 dark:bg-zinc-600"
+                                        )}
+                                    >
                                         {tag}
                                     </Badge>
                                 ))}

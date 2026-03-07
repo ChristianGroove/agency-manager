@@ -13,6 +13,10 @@ export type Tag = {
     created_at: string
 }
 
+export type LeadTag = Tag & {
+    linked_at: string
+}
+
 // --- USER ACTIONS (For UI) ---
 
 export async function getTags(): Promise<Tag[]> {
@@ -93,6 +97,64 @@ export async function deleteTag(id: string): Promise<ActionResponse<void>> {
 
         if (error) throw error
         return { success: true }
+    } catch (e: any) {
+        return { success: false, error: e.message }
+    }
+}
+
+export async function getLeadTags(leadId: string): Promise<LeadTag[]> {
+    const supabase = await createClient()
+    try {
+        const { data, error } = await supabase
+            .from('crm_lead_tags')
+            .select(`
+                created_at,
+                tag:crm_tags (*)
+            `)
+            .eq('lead_id', leadId)
+
+        if (error) throw error
+
+        return data.map((item: any) => ({
+            ...item.tag,
+            linked_at: item.created_at
+        })) as LeadTag[]
+    } catch (e) {
+        console.error("Error fetching lead tags:", e)
+        return []
+    }
+}
+
+export async function toggleLeadTag(leadId: string, tagId: string): Promise<ActionResponse<{ action: 'added' | 'removed' }>> {
+    const supabase = await createClient()
+    try {
+        // Check if exists
+        const { data: existing } = await supabase
+            .from('crm_lead_tags')
+            .select('*')
+            .eq('lead_id', leadId)
+            .eq('tag_id', tagId)
+            .single()
+
+        if (existing) {
+            // Remove
+            const { error: delError } = await supabase
+                .from('crm_lead_tags')
+                .delete()
+                .eq('lead_id', leadId)
+                .eq('tag_id', tagId)
+
+            if (delError) throw delError
+            return { success: true, data: { action: 'removed' } }
+        } else {
+            // Add
+            const { error: insError } = await supabase
+                .from('crm_lead_tags')
+                .insert({ lead_id: leadId, tag_id: tagId })
+
+            if (insError) throw insError
+            return { success: true, data: { action: 'added' } }
+        }
     } catch (e: any) {
         return { success: false, error: e.message }
     }
