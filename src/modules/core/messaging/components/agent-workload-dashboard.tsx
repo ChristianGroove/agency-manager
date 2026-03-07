@@ -9,7 +9,7 @@ import { Slider } from "@/components/ui/slider"
 import { Switch } from "@/components/ui/switch"
 import { updateAgentStatus, toggleAutoAssign, updateAgentCapacity, getAgentsWorkload } from "../assignment-actions"
 import { simulateInboundMessage } from "../actions"
-import { Circle, User, Zap, Info } from "lucide-react"
+import { Circle, User, Zap, Info, Loader2, MessageSquare } from "lucide-react"
 import { toast } from "sonner"
 import {
     Tooltip,
@@ -154,57 +154,14 @@ export function AgentWorkloadDashboard() {
         return <div className="p-6 text-center text-muted-foreground">Cargando estado...</div>
     }
 
-    const handleInitializeProfile = async () => {
-        setLoading(true)
-        // Auto-create agent profile by setting status which upserts in backend
-        const result = await updateAgentStatus('online')
-        if (result.success) {
-            toast.success(t('crm.inbox.settings.sections.profile_init_success'))
-            // Force reload to ensure RLS and server state are fully propagated
-            window.location.reload()
-        } else {
-            toast.error(t('crm.inbox.settings.sections.profile_init_error', { error: result.error || 'Unknown error' }))
-        }
-        setLoading(false)
-    }
-
-    if (loading) {
-        return <div className="p-6 text-center text-muted-foreground">Cargando estado...</div>
-    }
-
-    // Fallback if current user has no agent profile yet
+    // Provisioning is now handled by DB trigger, we just check if it exists
     if (!currentAgent && currentUser) {
         return (
-            <div className="space-y-6">
-                <Card className="p-8 text-center border-dashed border-2">
-                    <div className="mx-auto w-12 h-12 bg-indigo-50 rounded-full flex items-center justify-center mb-4">
-                        <User className="h-6 w-6 text-indigo-600" />
-                    </div>
-                    <h3 className="text-lg font-semibold mb-2">{t('crm.inbox.settings.sections.profile_not_found')}</h3>
-                    <p className="text-sm text-muted-foreground mb-6 max-w-sm mx-auto">
-                        {t('crm.inbox.settings.sections.profile_not_found_desc')}
-                    </p>
-                    <Button onClick={handleInitializeProfile}>
-                        {t('crm.inbox.settings.sections.activate_profile')}
-                    </Button>
+            <div className="p-6 text-center">
+                <Card className="p-8 border-dashed">
+                    <Loader2 className="h-8 w-8 animate-spin mx-auto text-indigo-500 mb-2" />
+                    <p className="text-sm text-muted-foreground">Sincronizando perfil de agente...</p>
                 </Card>
-                {/* Still show team workload if available */}
-                {agents.length > 0 && (
-                    <Card className="p-6">
-                        <h3 className="text-lg font-semibold mb-4">{t('crm.inbox.settings.sections.team_workload')}</h3>
-                        {/* ... existing team list code ... */}
-                        <div className="space-y-3">
-                            {agents.map(agent => (
-                                <div key={agent.agent_id} className="flex items-center gap-3 p-3 rounded-lg border">
-                                    <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
-                                        <User className="h-4 w-4 text-gray-500" />
-                                    </div>
-                                    <span className="text-sm">{getUserName(agent)}</span>
-                                </div>
-                            ))}
-                        </div>
-                    </Card>
-                )}
             </div>
         )
     }
@@ -214,7 +171,15 @@ export function AgentWorkloadDashboard() {
             {/* Current Agent Status Card */}
             {currentAgent && (
                 <Card className="p-6">
-                    <h3 className="text-lg font-semibold mb-4">{t('crm.inbox.settings.sections.your_status')}</h3>
+                    <div className="flex items-center justify-between mb-6">
+                        <div>
+                            <h3 className="text-lg font-semibold">{t('crm.inbox.settings.sections.your_status')}</h3>
+                            <p className="text-xs text-muted-foreground">Controla cómo te ven los clientes y el sistema de asignación.</p>
+                        </div>
+                        <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-100">
+                            Perfil Activo
+                        </Badge>
+                    </div>
 
                     {/* Status Selector */}
                     <div className="flex gap-2 mb-4">

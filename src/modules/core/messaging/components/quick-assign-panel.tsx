@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { assignConversation } from "../conversation-management-actions"
 import { User, Circle, ChevronDown, Check, Users } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
 import {
     Popover,
@@ -18,6 +19,8 @@ interface Agent {
     status: string
     current_load: number
     max_capacity: number
+    role?: string
+    agent_channels?: Array<{ channel_type: string }>
     users: {
         email: string
         raw_user_meta_data: any
@@ -26,12 +29,14 @@ interface Agent {
 
 interface QuickAssignPanelProps {
     conversationId: string
+    channel?: string
+    connectionId?: string
     currentAssignee?: string | null
     agents: Agent[]
     onAssigned?: () => void
 }
 
-export function QuickAssignPanel({ conversationId, currentAssignee, agents, onAssigned }: QuickAssignPanelProps) {
+export function QuickAssignPanel({ conversationId, channel, connectionId, currentAssignee, agents, onAssigned }: QuickAssignPanelProps) {
     const { t } = useTranslation()
     const [open, setOpen] = useState(false)
     const [assigning, setAssigning] = useState(false)
@@ -111,20 +116,35 @@ export function QuickAssignPanel({ conversationId, currentAssignee, agents, onAs
                                 .map(agent => {
                                     const name = agent.users?.raw_user_meta_data?.name || agent.users?.email || t('crm.inbox.context.sections.unknown_agent')
                                     const loadPercentage = (agent.current_load / agent.max_capacity) * 100
+
+                                    // Eligibility Check
+                                    const isAdmin = ['admin', 'owner'].includes(agent.role?.toLowerCase() || '');
+                                    const hasChannelAccess = agent.agent_channels?.some(c =>
+                                        c.channel_type === channel || c.channel_type === connectionId
+                                    );
+                                    const isEligible = isAdmin || hasChannelAccess;
+
                                     return (
                                         <CommandItem
                                             key={agent.agent_id}
                                             value={name}
                                             onSelect={() => handleAssign(agent.agent_id)}
                                             className="flex flex-col items-start gap-1 py-2"
+                                            disabled={assigning}
                                         >
                                             <div className="flex items-center w-full">
                                                 <div className={cn("h-2 w-2 rounded-full mr-2", getStatusColor(agent.status))} />
-                                                <span className="flex-1 truncate">{name}</span>
+                                                <span className="flex-1 truncate font-medium">{name}</span>
                                                 {agent.agent_id === currentAssignee && (
                                                     <Check className="ml-auto h-4 w-4 opacity-50" />
                                                 )}
+                                                {!isEligible && (
+                                                    <Badge variant="outline" className="ml-2 text-[9px] px-1 py-0 text-amber-600 border-amber-200 bg-amber-50 dark:bg-amber-900/10">
+                                                        Acceso Individual
+                                                    </Badge>
+                                                )}
                                             </div>
+
                                             {/* Load Bar */}
                                             <div className="w-full pl-4 pr-1 flex items-center gap-2">
                                                 <div className="h-1 flex-1 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">

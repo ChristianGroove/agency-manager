@@ -31,7 +31,7 @@ export async function assignConversation(conversationId: string, metadata?: any)
 
     if (!rule) {
         console.log('[AssignmentEngine] No matching rule found, using default load-balance')
-        return await loadBalanceAssignment()
+        return await loadBalanceAssignment(undefined, conv.channel, conv.connection_id)
     }
 
     console.log(`[AssignmentEngine] Matched rule: ${rule.name} (strategy: ${rule.strategy})`)
@@ -132,11 +132,11 @@ function matchesConditions(conv: any, conditions: any): boolean {
 async function executeStrategy(rule: any, conv: any): Promise<string | null> {
     switch (rule.strategy) {
         case 'round-robin':
-            return await roundRobinAssignment(rule.assign_to)
+            return await roundRobinAssignment(rule.assign_to, conv.channel, conv.connection_id)
         case 'load-balance':
-            return await loadBalanceAssignment(rule.assign_to)
+            return await loadBalanceAssignment(rule.assign_to, conv.channel, conv.connection_id)
         case 'skills-based':
-            return await skillsBasedAssignment(conv, rule.assign_to)
+            return await skillsBasedAssignment(conv, rule.assign_to, conv.channel, conv.connection_id)
         case 'specific-agent':
             return rule.assign_to?.[0] || null
         default:
@@ -145,7 +145,7 @@ async function executeStrategy(rule: any, conv: any): Promise<string | null> {
     }
 }
 
-async function roundRobinAssignment(agentPool?: string[]): Promise<string | null> {
+async function roundRobinAssignment(agentPool?: string[], channelType?: string, connectionId?: string): Promise<string | null> {
     // Get last assigned agent from this pool
     let lastQuery = supabaseAdmin
         .from('assignment_history')
@@ -158,12 +158,12 @@ async function roundRobinAssignment(agentPool?: string[]): Promise<string | null
         lastQuery = lastQuery.in('assigned_to', agentPool)
     }
 
-    const { data: lastAssignment } = await lastQuery.single()
+    const { data: lastAssignment } = await lastQuery.select().single()
 
     // Get available agents
     let agentQuery = supabaseAdmin
         .from('agent_availability')
-        .select('agent_id')
+        .select('agent_id, organization_id')
         .eq('status', 'online')
         .eq('auto_assign_enabled', true)
 
@@ -175,16 +175,33 @@ async function roundRobinAssignment(agentPool?: string[]): Promise<string | null
 
     if (!agents || agents.length === 0) return null
 
+    // Filter by Channel Access AND Admin Role
+    let qualifiedAgents = [];
+
+    // Fetch roles and channel access in parallel
+    const [rolesResult, accessResult] = await Promise.all([
+        supabaseAdmin.from('organization_members').select('user_id, role').in('user_id', agents.map(a => a.agent_id)),
+        channelType ? supabaseAdmin.from('agent_channels').select('agent_id').or(`channel_type.eq.${channelType},channel_type.eq.${connectionId}`).eq('is_active', true) : Promise.resolve({ data: [] })
+    ]);
+
+    const adminUserIds = new Set((rolesResult.data || []).filter(m => ['admin', 'owner'].includes(m.role?.toLowerCase())).map(m => m.user_id));
+    const authorizedAgentIds = new Set((accessResult.data || []).map(ca => ca.agent_id));
+
+    qualifiedAgents = agents.filter(a => adminUserIds.has(a.agent_id) || authorizedAgentIds.has(a.agent_id));
+
+    if (qualifiedAgents.length === 0) return null;
+
     // Find next agent in rotation
-    const lastIndex = agents.findIndex(a => a.agent_id === lastAssignment?.assigned_to)
-    const nextIndex = (lastIndex + 1) % agents.length
-    return agents[nextIndex].agent_id
+    const lastIndex = qualifiedAgents.findIndex(a => a.agent_id === lastAssignment?.assigned_to)
+    const nextIndex = (lastIndex + 1) % qualifiedAgents.length
+    return qualifiedAgents[nextIndex].agent_id
 }
 
-async function loadBalanceAssignment(agentPool?: string[]): Promise<string | null> {
+async function loadBalanceAssignment(agentPool?: string[], channelType?: string, connectionId?: string): Promise<string | null> {
+    // 1. Get online agents with capacity
     let query = supabaseAdmin
         .from('agent_availability')
-        .select('agent_id, current_load, max_capacity, status')
+        .select('agent_id, current_load, max_capacity, status, organization_id')
         .eq('status', 'online')
         .eq('auto_assign_enabled', true)
 
@@ -196,8 +213,27 @@ async function loadBalanceAssignment(agentPool?: string[]): Promise<string | nul
 
     if (!agents || agents.length === 0) return null
 
-    // Find agent with lowest load percentage
-    const sorted = agents
+    // 2. Filter by Channel Access AND Admin Role
+    let qualifiedAgents = [];
+
+    // Fetch roles and channel access in parallel
+    const [rolesResult, accessResult] = await Promise.all([
+        supabaseAdmin.from('organization_members').select('user_id, role').in('user_id', agents.map(a => a.agent_id)),
+        channelType ? supabaseAdmin.from('agent_channels').select('agent_id').or(`channel_type.eq.${channelType},channel_type.eq.${connectionId}`).eq('is_active', true) : Promise.resolve({ data: [] })
+    ]);
+
+    const adminUserIds = new Set((rolesResult.data || []).filter(m => ['admin', 'owner'].includes(m.role?.toLowerCase())).map(m => m.user_id));
+    const authorizedAgentIds = new Set((accessResult.data || []).map(ca => ca.agent_id));
+
+    qualifiedAgents = agents.filter(a => adminUserIds.has(a.agent_id) || authorizedAgentIds.has(a.agent_id));
+
+    if (qualifiedAgents.length === 0) {
+        console.warn(`[AssignmentEngine] No agents found with access to channel: ${channelType} or connection: ${connectionId}`);
+        return null;
+    }
+
+    // 3. Find agent with lowest load percentage
+    const sorted = qualifiedAgents
         .filter(a => a.current_load < a.max_capacity) // Only agents below capacity
         .map(a => ({
             ...a,
@@ -208,13 +244,13 @@ async function loadBalanceAssignment(agentPool?: string[]): Promise<string | nul
     return sorted[0]?.agent_id || null
 }
 
-async function skillsBasedAssignment(conv: any, agentPool?: string[]): Promise<string | null> {
+async function skillsBasedAssignment(conv: any, agentPool?: string[], channelType?: string, connectionId?: string): Promise<string | null> {
     // Extract required skills from conversation tags
     const requiredSkills = conv.tags || []
 
     if (requiredSkills.length === 0) {
         // No skills required, fallback to load balance
-        return await loadBalanceAssignment(agentPool)
+        return await loadBalanceAssignment(agentPool, channelType, connectionId)
     }
 
     // Find agents with matching skills
@@ -231,7 +267,7 @@ async function skillsBasedAssignment(conv: any, agentPool?: string[]): Promise<s
 
     if (!matches || matches.length === 0) {
         // No skilled agents, fallback to load balance
-        return await loadBalanceAssignment(agentPool)
+        return await loadBalanceAssignment(agentPool, channelType, connectionId)
     }
 
     // Group by agent and calculate total proficiency score
@@ -246,8 +282,31 @@ async function skillsBasedAssignment(conv: any, agentPool?: string[]): Promise<s
         .sort(([, a], [, b]) => b - a)
         .map(([agentId]) => agentId)
 
-    // Check availability of top agents
+    // Check availability and CHANNEL ACCESS of top agents
+    // Fetch roles for bypass
+    const { data: members } = await supabaseAdmin
+        .from('organization_members')
+        .select('user_id, role')
+        .in('user_id', sortedAgents)
+
+    const adminUserIds = new Set((members || []).filter(m => ['admin', 'owner'].includes(m.role?.toLowerCase())).map(m => m.user_id));
+
     for (const agentId of sortedAgents) {
+        const isAdmin = adminUserIds.has(agentId)
+
+        // Validation: Channel Access (Skip if Admin)
+        if (channelType && !isAdmin) {
+            const { data: hasAccess } = await supabaseAdmin
+                .from('agent_channels')
+                .select('agent_id')
+                .eq('agent_id', agentId)
+                .or(`channel_type.eq.${channelType},channel_type.eq.${connectionId}`)
+                .eq('is_active', true)
+                .limit(1)
+
+            if (!hasAccess || hasAccess.length === 0) continue;
+        }
+
         const { data: availability } = await supabaseAdmin
             .from('agent_availability')
             .select('agent_id, current_load, max_capacity')

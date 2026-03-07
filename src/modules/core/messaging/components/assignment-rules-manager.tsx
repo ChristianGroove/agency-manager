@@ -191,10 +191,10 @@ export function AssignmentRulesManager() {
                                         <div>
                                             <div className="flex items-center gap-2">
                                                 <h3 className="font-semibold">{rule.name}</h3>
-                                                <Badge variant="outline" className="capitalize">
-                                                    {rule.strategy}
+                                                <Badge variant="outline" className="capitalize text-[10px]">
+                                                    {rule.strategy === 'load-balance' ? 'Equitativo' : 'Rotativo'}
                                                 </Badge>
-                                                <Badge variant="secondary">
+                                                <Badge variant="secondary" className="text-[10px]">
                                                     {t('crm.inbox.chat.templates.color')}: {rule.priority}
                                                 </Badge>
                                             </div>
@@ -326,8 +326,8 @@ function RuleEditor({ rule, agents, channels, onSave, onCancel, t }: any) {
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="load-balance">Load Balance</SelectItem>
-                            <SelectItem value="round-robin">Round Robin</SelectItem>
+                            <SelectItem value="load-balance">Balanceo Inteligente (Carga Equitativa)</SelectItem>
+                            <SelectItem value="round-robin">Turno Rotativo (Siguiente de la fila)</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>

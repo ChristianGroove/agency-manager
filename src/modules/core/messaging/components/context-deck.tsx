@@ -340,6 +340,8 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
                                 <div className="bg-white/50 dark:bg-zinc-900/50 rounded-xl border border-white/20 dark:border-white/5 p-1 shadow-sm">
                                     <QuickAssignPanel
                                         conversationId={conversationId}
+                                        channel={conversation?.channel}
+                                        connectionId={conversation?.connection_id}
                                         currentAssignee={conversation?.assigned_to}
                                         agents={agents}
                                         onAssigned={() => {

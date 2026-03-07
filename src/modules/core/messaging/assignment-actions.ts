@@ -165,32 +165,42 @@ export async function getAgentsWorkload() {
         return { success: false, error: 'No organization found', data: [] }
     }
 
-    // Use Admin Client to bypass RLS for reading (since RLS on SELECT seems flaky)
-    // We enforce security by manually filtering by organization_id
-    // REMOVED JOIN with auth.users because it's not exposed in PostgREST and causes failure
-    const { data, error } = await supabaseAdmin
-        .from('agent_availability')
-        .select('*')
-        .eq('organization_id', memberData.organization_id)
-        .order('status', { ascending: false })
+    // Fetch availability with channels, and members separately to avoid complex joins across schemas
+    const [availabilityResult, membersResult] = await Promise.all([
+        supabaseAdmin
+            .from('agent_availability')
+            .select('*, agent_channels(channel_type)')
+            .eq('organization_id', memberData.organization_id)
+            .order('status', { ascending: false }),
+        supabaseAdmin
+            .from('organization_members')
+            .select('user_id, role')
+            .eq('organization_id', memberData.organization_id)
+    ])
 
-    if (error) {
-        console.error('Failed to fetch agents workload:', error)
-        return { success: false, error: error.message, data: [] }
+    if (availabilityResult.error) {
+        console.error('Failed to fetch agents workload:', availabilityResult.error)
+        return { success: false, error: availabilityResult.error.message, data: [] }
     }
 
+    const membersLookup = new Map((membersResult.data || []).map(m => [m.user_id, m.role]));
+
     // Attempt to map users manually since we can't join with auth.users directly
-    const agentsWithUsers = await Promise.all(data.map(async (agent) => {
+    const agentsWithUsers = await Promise.all(availabilityResult.data.map(async (agent) => {
         try {
             const { data: userData, error: userError } = await supabaseAdmin.auth.admin.getUserById(agent.agent_id)
+            const role = membersLookup.get(agent.agent_id) || 'member';
+
             if (userError || !userData?.user) {
                 return {
                     ...agent,
+                    role,
                     users: { email: 'Unknown', raw_user_meta_data: { name: 'Unknown Agent' } }
                 }
             }
             return {
                 ...agent,
+                role,
                 users: {
                     email: userData.user.email,
                     raw_user_meta_data: userData.user.user_metadata
@@ -199,6 +209,7 @@ export async function getAgentsWorkload() {
         } catch (e) {
             return {
                 ...agent,
+                role: membersLookup.get(agent.agent_id) || 'member',
                 users: { email: 'Unknown', raw_user_meta_data: { name: 'Unknown Agent' } }
             }
         }

@@ -7,7 +7,7 @@ import { RestoOrderWidget } from "./resto-order-widget"
 import { memo } from "react"
 
 interface MessageContent {
-    type: 'text' | 'image' | 'audio' | 'video' | 'document' | 'location' | 'note' | 'sticker'
+    type: 'text' | 'image' | 'audio' | 'video' | 'document' | 'location' | 'note' | 'sticker' | 'system'
     text?: string
     url?: string
     caption?: string
@@ -29,6 +29,17 @@ import { useTranslation } from "@/lib/i18n/use-translation"
 export const MessageBubble = memo(function MessageBubble({ content, direction, timestamp, status, messageId, metadata }: MessageBubbleProps) {
     const { t } = useTranslation()
     const isOutbound = direction === 'outbound'
+    const isSystem = content?.type === 'system'
+
+    if (isSystem) {
+        return (
+            <div className="flex w-full justify-center my-4 px-4">
+                <div className="bg-zinc-100 dark:bg-zinc-800/50 text-[11px] text-muted-foreground font-medium px-4 py-1.5 rounded-full border border-black/5 dark:border-white/5 uppercase tracking-wider text-center max-w-[85%]">
+                    {content.text}
+                </div>
+            </div>
+        )
+    }
 
     return (
         <div
@@ -213,6 +224,9 @@ function renderContent({ content, isOutbound, messageId, metadata, t, status }: 
                     <p className="whitespace-pre-wrap leading-relaxed text-[15px] italic text-zinc-600 dark:text-zinc-400">{text}</p>
                 </div>
             )
+
+        case 'system':
+            return null; // Handled at early return in MessageBubble
 
         case 'text':
         default:

@@ -8,19 +8,30 @@ import { normalizePhone } from "@/lib/normalize-phone"
  * Assign a conversation to a specific user/agent
  */
 export async function assignConversation(conversationId: string, userId: string | null) {
-    const supabase = await createClient()
+    if (!userId) {
+        const supabase = await createClient()
+        const { error } = await supabase
+            .from('conversations')
+            .update({ assigned_to: null, updated_at: new Date().toISOString() })
+            .eq('id', conversationId)
 
-    const { error } = await supabase
-        .from('conversations')
-        .update({ assigned_to: userId, updated_at: new Date().toISOString() })
-        .eq('id', conversationId)
-
-    if (error) {
-        console.error("Failed to assign conversation:", error)
-        return { success: false, error: error.message }
+        if (error) return { success: false, error: error.message }
+        revalidatePath('/inbox')
+        return { success: true }
     }
 
-    revalidatePath('/inbox')
+    const { transferConversation } = await import("./transfer-service")
+
+    // Get current sender if possible (authenticated user)
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    const result = await transferConversation(conversationId, user?.id || null, userId, "Manual assignment")
+
+    if (!result.success) {
+        return { success: false, error: result.error }
+    }
+
     return { success: true }
 }
 

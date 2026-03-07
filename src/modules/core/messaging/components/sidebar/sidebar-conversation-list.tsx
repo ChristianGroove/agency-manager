@@ -169,10 +169,13 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
 
         if (isStaff) {
             if (authorizedChannels.length > 0) {
-                query = query.in('connection_id', authorizedChannels)
+                // Individual Priority: Show authorized channels OR specifically assigned chats
+                query = query.or(`connection_id.in.(${authorizedChannels.map((id: string) => `"${id}"`).join(',')}),assigned_to.eq.${currentUserId}`)
+            } else if (currentUserId) {
+                // If they have no authorized channels but have assigned chats
+                query = query.eq('assigned_to', currentUserId)
             } else {
-                // If they are staff but have NO authorized channels, they see nothing
-                // We use a dummy filter to ensure empty results
+                // No channels and no user ID (shouldn't happen for staff)
                 query = query.eq('id', '00000000-0000-0000-0000-000000000000')
             }
         }
