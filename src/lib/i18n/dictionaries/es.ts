@@ -21,6 +21,7 @@ export const es = {
         unexpected_error: "Ocurrió un error inesperado",
         connection_error: "Error de conexión con el servidor",
         recently: "Recientemente",
+        n_a: "N/A",
         actions: {
             create: "Crear",
             update: "Actualizar",
