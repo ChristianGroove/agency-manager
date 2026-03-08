@@ -6,7 +6,15 @@ import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { formatDistanceToNow } from "date-fns"
 import { es, enUS } from "date-fns/locale"
-import { UserCheck, MessageSquare, Facebook, Instagram } from "lucide-react"
+import { UserCheck, MessageSquare, Facebook, Instagram, Clock, Bot } from "lucide-react"
+import { clsx, type ClassValue } from "clsx"
+import { twMerge } from "tailwind-merge"
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { ConversationActionsMenu } from "./conversation-actions-menu"
 import { useTranslation } from "@/lib/i18n/use-translation"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -52,6 +60,43 @@ export const ConversationListItem = memo(function ConversationListItem({ conv, i
 
     // Pulse Effect for New Messages
     const [isNew, setIsNew] = useState(false)
+    const [pulse, setPulse] = useState(false)
+    const [waitTime, setWaitTime] = useState<string | null>(null)
+    const [waitLevel, setWaitLevel] = useState<'none' | 'warning' | 'critical'>('none')
+
+    // Response time indicators logic
+    useEffect(() => {
+        if (!conv.waiting_since || conv.status === 'closed') {
+            setWaitTime(null)
+            setWaitLevel('none')
+            return
+        }
+
+        const updateWaitStatus = () => {
+            const start = new Date(conv.waiting_since).getTime()
+            const now = Date.now()
+            const diffMin = Math.floor((now - start) / 60000)
+
+            if (diffMin >= 10) {
+                setWaitLevel('critical')
+            } else if (diffMin >= 5) {
+                setWaitLevel('warning')
+            } else {
+                setWaitLevel('none')
+            }
+
+            // Human readable wait time
+            if (diffMin < 1) {
+                setWaitTime('< 1m')
+            } else {
+                setWaitTime(`${diffMin}m`)
+            }
+        }
+
+        updateWaitStatus()
+        const interval = setInterval(updateWaitStatus, 30000) // Update every 30s
+        return () => clearInterval(interval)
+    }, [conv.waiting_since, conv.status])
 
     useEffect(() => {
         const timeDiff = new Date().getTime() - new Date(conv.last_message_at).getTime()
@@ -116,13 +161,32 @@ export const ConversationListItem = memo(function ConversationListItem({ conv, i
 
                 <div className="flex-1 min-w-0 pointer-events-none flex flex-col gap-1 pr-6">
                     <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 min-w-0">
+                        <div className="flex items-center gap-1.5 min-w-0">
                             <span className={cn(
-                                "font-medium truncate text-sm",
-                                isUnread && "font-bold text-foreground"
+                                "font-semibold truncate text-[15px]",
+                                conv.unread_count > 0 ? "text-foreground" : "text-foreground/90"
                             )}>
                                 {contactName}
                             </span>
+                            {conv.is_bot_active && (
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Bot className="h-3.5 w-3.5 text-indigo-500 shrink-0" />
+                                        </TooltipTrigger>
+                                        <TooltipContent>Atendido por Bot</TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                            )}
+                            {waitLevel !== 'none' && (
+                                <div className={cn(
+                                    "flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold animate-pulse",
+                                    waitLevel === 'critical' ? "bg-red-100 text-red-600 border border-red-200" : "bg-orange-100 text-orange-600 border border-orange-200"
+                                )}>
+                                    <Clock className="h-2.5 w-2.5" />
+                                    {waitTime}
+                                </div>
+                            )}
                             {/* Priority Inline */}
                             {conv.priority && conv.priority !== 'normal' && (
                                 <div className={cn("h-2 w-2 rounded-full flex-shrink-0", getPriorityColor(conv.priority))} />

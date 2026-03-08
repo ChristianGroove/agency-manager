@@ -494,7 +494,7 @@ export async function sendOutboundMessage(conversationId: string, content: any, 
         if (!result.success) throw new Error(result.error)
 
         // 4. Save to DB (As System/Bot)
-        const senderId = 'Automation Bot'
+        const senderId = 'System'
         const messageId = result.messageId || `auto_${Date.now()}`
 
         await inboxService.saveOutboundMessage(

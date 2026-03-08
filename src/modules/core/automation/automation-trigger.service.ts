@@ -242,6 +242,7 @@ export class AutomationTriggerService {
 
             // Logs for matching or skipping
             if (!match) {
+                console.log(`[AutomationTrigger] ❌ SKIPPED Workflow: ${wf.id} (${wf.name}). Reason: ${skipReason}`)
                 fileLogger.log(`[AutomationTrigger]   ❌ SKIPPED Workflow: ${wf.id} (${wf.name}). Reason: ${skipReason}`)
             }
 
@@ -290,6 +291,7 @@ export class AutomationTriggerService {
             }
 
             if (match) {
+                console.log(`[AutomationTrigger] ✅ MATCH found for flow ${wf.name} (${wf.id})`)
                 // Fetch lead details for richer context (e.g. {{lead.name}})
                 const { data: fullLead } = await supabaseAdmin
                     .from('leads')
@@ -317,6 +319,12 @@ export class AutomationTriggerService {
                     leadName: fullLead?.name,
                     leadId: leadId
                 })
+                // SURGICAL: Mark bot as active during execution to pause agent response timer
+                await supabaseAdmin
+                    .from('conversations')
+                    .update({ is_bot_active: true, updated_at: new Date().toISOString() })
+                    .eq('id', conversationId)
+
                 // MUST AWAIT in Serverless
                 await this.executeWorkflow(wf, {
                     organization_id: orgId,

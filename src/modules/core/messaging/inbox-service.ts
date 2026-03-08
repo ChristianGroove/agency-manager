@@ -57,11 +57,10 @@ export class InboxService {
         }
 
         // 3. Insert Message
-        const isOutbound = msg.origin === 'outbound';
-        const direction = isOutbound ? 'outbound' : 'inbound';
-        const status = isOutbound ? 'sent' : 'delivered';
-        // For outbound echoes, sender should not be the client phone (msg.from)
-        const sender = isOutbound ? 'Agent (Mobile)' : msg.from;
+        const isEcho = msg.origin === 'outbound';
+        const direction = isEcho ? 'outbound' : 'inbound';
+        const status = isEcho ? 'sent' : 'received';
+        const sender = isEcho ? 'System' : (msg.senderName || msg.from);
 
         const { error: msgError } = await supabase.from('messages').insert({
             conversation_id: conversation.id,
@@ -71,7 +70,11 @@ export class InboxService {
             status: status,
             external_id: msg.externalId,
             sender: sender,
-            metadata: msg,
+            metadata: {
+                ...msg,
+                sender_type: isEcho ? 'bot' : 'human',
+                is_echo: isEcho
+            },
             created_at: msg.timestamp ? new Date(msg.timestamp).toISOString() : new Date().toISOString()
         })
 
@@ -84,7 +87,7 @@ export class InboxService {
         // The DB trigger 'update_conversation_last_message' handles unread_count increment and last_message update.
         console.log(`[InboxService] Message saved. Direction: ${direction}`)
 
-        if (isOutbound) {
+        if (isEcho) {
             console.log('[InboxService] Skipping automation for outbound message.')
             return { success: true, conversationId: conversation.id }
         }
@@ -396,7 +399,7 @@ export class InboxService {
             }
 
             // Populate preview for sidebar
-            updates.last_message = msg.content;
+            updates.last_message = typeof msg.content === 'object' ? msg.content : { type: 'text', text: msg.content };
             updates.last_message_preview = typeof msg.content === 'object' ? (msg.content as any).text : msg.content;
 
             // Auto-heal connection_id and metadata if missing and we found one now
@@ -425,14 +428,24 @@ export class InboxService {
                 }
             } catch (e) { }
 
+            // Detect Echo/Direction
+            const isEcho = msg.origin === 'outbound';
+            const direction = isEcho ? 'outbound' : 'inbound';
+            const sender = isEcho ? 'System' : (msg.senderName || msg.from);
+            const status = isEcho ? 'sent' : 'received';
+
             const { error: msgError } = await supabase.from('messages').insert({
                 conversation_id: (existingConv as any).id,
-                direction: 'inbound',
+                direction: direction,
                 channel: msg.channel,
                 content: msg.content,
-                status: 'received',
+                status: status,
                 external_id: msg.id,
-                sender: msg.senderName || msg.from,
+                sender: sender,
+                metadata: {
+                    sender_type: isEcho ? 'bot' : 'human',
+                    is_echo: isEcho
+                },
                 created_at: safeDate
             })
             if (msgError) console.error('[InboxService] Failed to insert message into existing conv:', msgError)
@@ -471,7 +484,7 @@ export class InboxService {
             phone: normalizedPhone,
             status: 'open',
             state: 'active',
-            last_message: msg.content,
+            last_message: typeof msg.content === 'object' ? msg.content : { type: 'text', text: msg.content },
             last_message_preview: typeof msg.content === 'object' ? (msg.content as any).text : msg.content,
             last_message_at: new Date().toISOString(),
             unread_count: 1,
@@ -576,15 +589,25 @@ export class InboxService {
             }
         } catch (e) { }
 
+        // Detect Echo/Direction
+        const isEcho = msg.origin === 'outbound';
+        const direction = isEcho ? 'outbound' : 'inbound';
+        const sender = isEcho ? 'System' : (msg.senderName || msg.from);
+        const status = isEcho ? 'sent' : 'received';
+
         // Avoid duplicate insertion if ID exists? Meta sends IDs.
         const { error: msgError } = await supabase.from('messages').insert({
             conversation_id: targetConv.id,
-            direction: 'inbound',
+            direction: direction,
             channel: msg.channel,
             content: msg.content,
-            status: 'received',
+            status: status,
             external_id: msg.id, // Meta ID
-            sender: msg.senderName || msg.from,
+            sender: sender,
+            metadata: {
+                sender_type: isEcho ? 'bot' : 'human',
+                is_echo: isEcho
+            },
             created_at: safeDate
         })
 
@@ -611,10 +634,13 @@ export class InboxService {
             conversation_id: conversationId,
             direction: 'outbound',
             channel: channel,
-            content: content,
+            content: typeof content === 'string' ? { type: 'text', text: content } : content,
             status: 'sent',
             external_id: externalId,
-            sender: sender
+            sender: sender,
+            metadata: {
+                sender_type: sender === 'System' ? 'bot' : 'human'
+            }
         })
 
         if (error) {

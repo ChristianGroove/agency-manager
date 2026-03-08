@@ -939,7 +939,9 @@ export const en = {
                 avg_deal: "Average",
                 per_deal: "deal",
                 open_conversations: "Open Conversations",
-                pending_response: "Pending response"
+                pending_response: "Pending response",
+                avg_response_time: "Avg. Response Time",
+                target_response: "Target Response"
             },
             funnel: {
                 title: "Sales Funnel",

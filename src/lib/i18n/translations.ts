@@ -142,7 +142,10 @@ export const enTranslations = {
     'stats.average': 'Average',
     'stats.trend_up': 'Trending Up',
     'stats.trend_down': 'Trending Down',
-    'stats.no_change': 'No Change'
+    'stats.no_change': 'No Change',
+    'crm.reports.kpis.avg_response_time': 'Avg. Response Time',
+    'crm.reports.kpis.target_response': 'Target Response',
+    'common.n_a': 'N/A'
 };
 
 export const esTranslations = {
@@ -188,9 +191,7 @@ export const esTranslations = {
     'marketing.send_campaign': 'Enviar Campaña',
     'marketing.eligibility': 'Elegibilidad Marketing',
     'marketing.approved': 'Aprobado',
-    'marketing.pending': 'Pendiente',
-
-    // ... resto de traducciones en español
+    'marketing.pending': 'Pendiente'
 };
 
 /**

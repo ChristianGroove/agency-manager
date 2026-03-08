@@ -26,6 +26,7 @@ export interface CRMStats {
     conversionRate: number
     avgDealSize: number
     openConversations: number
+    avgResponseTime?: number
 }
 
 export async function getCRMStats(days: number = 30): Promise<{ success: boolean, stats?: CRMStats, error?: string }> {
@@ -89,6 +90,16 @@ export async function getCRMStats(days: number = 30): Promise<{ success: boolean
             : 0
 
         // Open conversations
+        const { data: convMetrics } = await supabaseAdmin
+            .from('conversations')
+            .select('average_response_time_seconds')
+            .eq('organization_id', orgId)
+            .not('average_response_time_seconds', 'eq', 0)
+
+        const avgResponseTime = convMetrics && convMetrics.length > 0
+            ? Math.round(convMetrics.reduce((sum, c) => sum + (c.average_response_time_seconds || 0), 0) / convMetrics.length)
+            : 0
+
         const { count: openConversations } = await supabaseAdmin
             .from('conversations')
             .select('id', { count: 'exact', head: true })
@@ -103,7 +114,8 @@ export async function getCRMStats(days: number = 30): Promise<{ success: boolean
                 pipelineValue,
                 conversionRate,
                 avgDealSize,
-                openConversations: openConversations || 0
+                openConversations: openConversations || 0,
+                avgResponseTime
             }
         }
     } catch (error) {
@@ -244,6 +256,7 @@ export interface AgentPerformance {
     dealsWon: number
     conversionRate: number
     totalValue: number
+    avgResponseTime?: number
 }
 
 export async function getAgentPerformance(): Promise<{ success: boolean, data?: AgentPerformance[], error?: string }> {
@@ -269,13 +282,25 @@ export async function getAgentPerformance(): Promise<{ success: boolean, data?: 
                 .eq('organization_id', orgId)
                 .eq('assigned_to', member.user_id)
 
-            // Count won deals
-            const { data: wonData } = await supabaseAdmin
-                .from('leads')
-                .select('value')
+            // Count won deals and calculate avg response time
+            const { data: convData } = await supabaseAdmin
+                .from('conversations')
+                .select('average_response_time_seconds, state, last_message_direction, waiting_since')
                 .eq('organization_id', orgId)
                 .eq('assigned_to', member.user_id)
-                .eq('status', 'won')
+
+            const wonDeals = convData?.filter(c => c.state === 'closed').length || 0 // Simplified won check if we use state
+            // Let's stick to leads table for value but use conversations for speed/response metrics
+            const { data: leadsData } = await supabaseAdmin
+                .from('leads')
+                .select('value, status')
+                .eq('organization_id', orgId)
+                .eq('assigned_to', member.user_id)
+
+            const wonLeads = leadsData?.filter(l => l.status === 'won') || []
+            const avgResponseTime = convData && convData.length > 0
+                ? Math.round(convData.reduce((sum, c) => sum + (c.average_response_time_seconds || 0), 0) / convData.length)
+                : 0
 
             // Use shortened user_id as name placeholder
             const name = `Agente ${member.user_id.slice(0, 6)}`
@@ -284,11 +309,12 @@ export async function getAgentPerformance(): Promise<{ success: boolean, data?: 
                 agentId: member.user_id,
                 agentName: name,
                 leadsAssigned: assigned || 0,
-                dealsWon: wonData?.length || 0,
+                dealsWon: wonLeads.length,
                 conversionRate: assigned && assigned > 0
-                    ? Math.round(((wonData?.length || 0) / assigned) * 100)
+                    ? Math.round((wonLeads.length / assigned) * 100)
                     : 0,
-                totalValue: wonData?.reduce((sum, d) => sum + (d.value || 0), 0) || 0
+                totalValue: wonLeads.reduce((sum, l) => sum + (l.value || 0), 0) || 0,
+                avgResponseTime: avgResponseTime // NEW metric
             })
         }
 

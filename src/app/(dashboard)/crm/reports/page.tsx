@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/select"
 import {
     Users, DollarSign, TrendingUp, MessageSquare, Target, Award,
-    BarChart3, PieChart, Activity, RefreshCw
+    BarChart3, PieChart, Activity, RefreshCw, Clock
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
@@ -160,16 +160,16 @@ export default function ReportsPage() {
                 <Card className="p-6 bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 border-orange-200 dark:border-orange-800/30">
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-sm text-orange-600 dark:text-orange-400 font-medium">{t('crm.reports.kpis.open_conversations')}</p>
+                            <p className="text-sm text-orange-600 dark:text-orange-400 font-medium">{t('crm.reports.kpis.avg_response_time')}</p>
                             <p className="text-3xl font-bold text-orange-900 dark:text-white mt-1">
-                                {loading ? '...' : stats?.openConversations || 0}
+                                {loading ? '...' : stats?.avgResponseTime ? `${Math.round(stats.avgResponseTime / 60)} min` : t('common.n_a')}
                             </p>
                             <p className="text-xs text-orange-600/70 dark:text-orange-400/70 mt-1">
-                                {t('crm.reports.kpis.pending_response')}
+                                {t('crm.reports.kpis.target_response')}: {'< 5m'}
                             </p>
                         </div>
                         <div className="p-3 bg-orange-500/10 rounded-2xl">
-                            <MessageSquare className="w-8 h-8 text-orange-600 dark:text-orange-400" />
+                            <Clock className="w-8 h-8 text-orange-600 dark:text-orange-400" />
                         </div>
                     </div>
                 </Card>
@@ -275,7 +275,20 @@ export default function ReportsPage() {
                                 </div>
                                 <div className="text-right">
                                     <p className="font-bold text-green-600">{formatCurrency(agent.totalValue)}</p>
-                                    <p className="text-xs text-muted-foreground">{agent.dealsWon} {t('crm.reports.team.deals')} ({agent.conversionRate}%)</p>
+                                    <div className="flex flex-col items-end gap-1">
+                                        <p className="text-xs text-muted-foreground">{agent.dealsWon} {t('crm.reports.team.deals')} ({agent.conversionRate}%)</p>
+                                        {agent.avgResponseTime !== undefined && (
+                                            <Badge variant="outline" className={cn(
+                                                "text-[10px] px-1 py-0 h-4",
+                                                agent.avgResponseTime > 600 ? "text-red-600 border-red-200 bg-red-50" :
+                                                    agent.avgResponseTime > 300 ? "text-orange-600 border-orange-200 bg-orange-50" :
+                                                        "text-green-600 border-green-200 bg-green-50"
+                                            )}>
+                                                <Clock className="w-2.5 h-2.5 mr-1" />
+                                                {Math.round(agent.avgResponseTime / 60)} min avg
+                                            </Badge>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         ))}

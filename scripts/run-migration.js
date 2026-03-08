@@ -4,14 +4,14 @@ const path = require('path');
 require('dotenv').config({ path: '.env.local' });
 
 // TARGET MIGRATION FILE
-const migrationFile = 'supabase/migrations/20260130133000_add_smtp_configs.sql';
+const migrationFile = process.argv[2] || 'supabase/migrations/20260130133000_add_smtp_configs.sql';
 
 async function run() {
     let connectionString = process.env.DATABASE_URL;
 
     // IF DATABASE_URL is missing, try to construct it from standard Supabase vars
     if (!connectionString) {
-        const password = process.env.POSTGRES_PASSWORD || process.env.SUPABASE_DB_PASSWORD || process.env.SUPABASE_PASSWORD;
+        const password = process.env.SUPABASE_PASSWORD || process.env.POSTGRES_PASSWORD || process.env.SUPABASE_DB_PASSWORD;
         const projectUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 
         if (password && projectUrl) {

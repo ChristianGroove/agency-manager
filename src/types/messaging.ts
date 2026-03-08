@@ -17,6 +17,10 @@ export interface Conversation {
     last_message_at: string
     last_message_preview?: string
     unread_count: number
+    waiting_since?: string | null
+    is_bot_active?: boolean
+    average_response_time_seconds?: number
+    last_message_direction?: string | null
     created_at: string
     updated_at: string
     // Relations (Hydrated)

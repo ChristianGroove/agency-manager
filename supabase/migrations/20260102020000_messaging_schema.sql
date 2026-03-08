@@ -146,7 +146,11 @@ BEGIN
   SET 
     last_message_at = NEW.created_at,
     last_message_preview = COALESCE(NEW.content, 'Multimedia attachment'),
-    -- Increment unread if inbound ? (Logic usually handled by app, but can be here)
+    -- SURGICAL: Pass metadata for direction and sender type to conversation
+    metadata = conversations.metadata || jsonb_build_object(
+        'direction', NEW.direction,
+        'sender_type', COALESCE(NEW.metadata->>'sender_type', 'human')
+    ),
     updated_at = NOW()
   WHERE id = NEW.conversation_id;
   RETURN NEW;

@@ -49,7 +49,7 @@ export async function updateConversationState(
     if (updates.state) safeUpdates.state = updates.state
     if (updates.status) safeUpdates.status = updates.status
 
-    if (updates.status === 'closed') {
+    if (updates.status === 'closed' || updates.state === 'archived') {
         const { data: current } = await supabaseAdmin
             .from('conversations')
             .select('metadata')
@@ -60,6 +60,8 @@ export async function updateConversationState(
             ...(current?.metadata || {}),
             resolved_at: new Date().toISOString()
         }
+        safeUpdates.is_bot_active = false
+        safeUpdates.waiting_since = null
     }
 
     const { data, error } = await supabaseAdmin
@@ -84,9 +86,25 @@ export async function updateConversationState(
 export async function archiveConversation(conversationId: string) {
     const supabase = await createClient()
 
+    const { data: current } = await supabase
+        .from('conversations')
+        .select('metadata')
+        .eq('id', conversationId)
+        .single()
+
     const { error } = await supabase
         .from('conversations')
-        .update({ state: 'archived', updated_at: new Date().toISOString() })
+        .update({
+            state: 'archived',
+            status: 'closed',
+            is_bot_active: false,
+            waiting_since: null,
+            metadata: {
+                ...(current?.metadata || {}),
+                resolved_at: new Date().toISOString()
+            },
+            updated_at: new Date().toISOString()
+        })
         .eq('id', conversationId)
 
     if (error) {

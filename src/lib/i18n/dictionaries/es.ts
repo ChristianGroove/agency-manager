@@ -939,7 +939,9 @@ export const es = {
                 avg_deal: "Promedio",
                 per_deal: "deal",
                 open_conversations: "Conversaciones Abiertas",
-                pending_response: "Pendientes de respuesta"
+                pending_response: "Pendientes de respuesta",
+                avg_response_time: "Tiempo Prom. de Respuesta",
+                target_response: "Objetivo de Respuesta"
             },
             funnel: {
                 title: "Embudo de Ventas",
