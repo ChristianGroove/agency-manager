@@ -296,8 +296,8 @@ export async function getOrganizationCardDetails(orgId: string | null) {
 
     const supabase = await createClient()
 
-    // Parallel fetch: Branding + Org Details with Plan
-    const [branding, orgResult] = await Promise.all([
+    // Parallel fetch: Branding + Legacy Org Details + New Saas Subscription
+    const [branding, orgResult, saasSubResult] = await Promise.all([
         getEffectiveBranding(orgId),
         supabase
             .from('organizations')
@@ -309,36 +309,47 @@ export async function getOrganizationCardDetails(orgId: string | null) {
                 active_app:saas_apps!active_app_id (name)
             `)
             .eq('id', orgId)
-            .single()
+            .single(),
+        supabaseAdmin
+            .from('saas_subscriptions')
+            .select(`
+                status,
+                plan:saas_products(name)
+            `)
+            .eq('organization_id', orgId)
+            .maybeSingle()
     ])
 
     const org = orgResult.data
+    const saasSub = saasSubResult.data
 
-    // Determine Plan Name
+    // Determine Plan Name (Priority to new SaasSubscription)
     const subProduct = org?.subscription_product as any
     const activeApp = org?.active_app as any
-    const subName = Array.isArray(subProduct) ? subProduct[0]?.name : subProduct?.name
-
+    const legacySubName = Array.isArray(subProduct) ? subProduct[0]?.name : subProduct?.name
     const appName = Array.isArray(activeApp) ? activeApp[0]?.name : activeApp?.name
+    const saasPlanName = saasSub?.plan ? (Array.isArray(saasSub.plan) ? (saasSub.plan[0] as any)?.name : (saasSub.plan as any)?.name) : null
 
-    const planName = subName || appName || "Plan Gratuito"
+    const planName = saasPlanName || legacySubName || appName || "Plan Gratuito"
 
-    // Map Status to Label
+    // Map Status to Label (Priority to new SaasSubscription)
     const statusMap: Record<string, string> = {
         'active': 'Activo',
+        'legacy_manual': 'Legacy',
         'trialing': 'Prueba',
         'past_due': 'Vencido',
         'canceled': 'Cancelado',
         'incomplete': 'Incompleto'
     }
 
-    const statusLabel = statusMap[org?.subscription_status || ''] || 'Desconocido'
+    const currentStatus = saasSub?.status || org?.subscription_status || ''
+    const statusLabel = statusMap[currentStatus] || 'Desconocido'
 
     return {
         branding,
         subscription: {
             planName,
-            status: org?.subscription_status,
+            status: currentStatus,
             statusLabel
         },
         type: org?.organization_type || 'client',

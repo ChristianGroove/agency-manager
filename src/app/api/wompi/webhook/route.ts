@@ -130,7 +130,34 @@ export async function POST(request: Request) {
                 if (paymentTx.metadata?.type === 'subscription_payment' && paymentTx.organization_id) {
                     console.log(`[Webhook] Processing Subscription Payment for Org: ${paymentTx.organization_id}`)
 
-                    // Register Billable Event (This is the revenue)
+                    // 1. Update saas_subscriptions table
+                    const { data: subscription } = await supabaseAdmin
+                        .from('saas_subscriptions')
+                        .select('id, current_period_end')
+                        .eq('organization_id', paymentTx.organization_id)
+                        .maybeSingle()
+
+                    if (subscription) {
+                        // Advance period by 1 month
+                        const currentEnd = subscription.current_period_end ? new Date(subscription.current_period_end) : new Date()
+                        const newEnd = new Date(currentEnd)
+                        newEnd.setMonth(newEnd.getMonth() + 1)
+
+                        await supabaseAdmin
+                            .from('saas_subscriptions')
+                            .update({
+                                status: 'active',
+                                current_period_start: currentEnd.toISOString(),
+                                current_period_end: newEnd.toISOString(),
+                                last_payment_at: new Date().toISOString(),
+                                updated_at: new Date().toISOString()
+                            })
+                            .eq('id', subscription.id)
+
+                        console.log(`[Webhook] ✅ Updated saas_subscription ${subscription.id} for Org ${paymentTx.organization_id}`)
+                    }
+
+                    // 2. Register Billable Event (This is the revenue)
                     const { registerBillableEvent } = await import('@/modules/core/revenue/actions')
                     await registerBillableEvent({
                         organization_id: paymentTx.organization_id,
@@ -140,10 +167,7 @@ export async function POST(request: Request) {
                         currency: paymentTx.currency as any
                     })
 
-                    // TODO: Update organization.subscription_valid_until if we enforce hard blocks
-                    // For now, we assume payment keeps them active. Use Audit Logs.
-
-                    // Send Notification
+                    // 3. Send Notification
                     await supabaseAdmin.from('notifications').insert({
                         organization_id: paymentTx.organization_id,
                         type: 'system',

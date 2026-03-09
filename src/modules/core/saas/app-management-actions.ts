@@ -189,66 +189,57 @@ export async function getCurrentOrganizationApp() {
 
     const supabase = await createClient()
 
-    // 1. Fetch Vertical Key
+    // 1. Fetch Organization Details (Vertical + Active App)
     const { data: org } = await supabase
         .from('organizations')
-        .select('vertical_key')
+        .select('vertical_key, active_app_id')
         .eq('id', organizationId)
         .single()
 
-    if (!org || !org.vertical_key) {
-        // Fallback for organizations not yet migrated
-        return {
-            app: {
-                id: 'legacy_fallback',
-                name: 'Legacy Workspace',
-                slug: 'legacy',
-                category: 'general',
-                icon: 'Box',
-                color: '#64748b',
-                created_at: new Date().toISOString(),
-                status: 'published',
-                price_monthly: 0,
-                trial_days: 0,
-                is_active: true,
-                is_featured: false,
-                sort_order: 0,
-                vertical_compatibility: [],
-                description: 'Legacy Workspace',
+    if (!org) return null
 
-            } as SaasApp,
-            activated_at: new Date().toISOString(),
-            metadata: {}
+    // 2. Fetch App Definition from DB
+    // Priority 1: active_app_id (Explicit assignment)
+    // Priority 2: vertical_key (Legacy/Implicit mapping)
+    const appId = org.active_app_id || (org.vertical_key ? `app_${org.vertical_key}` : null)
+
+    if (appId) {
+        const { data: appData } = await supabase
+            .from('saas_apps')
+            .select('*')
+            .eq('id', appId)
+            .single()
+
+        if (appData) {
+            return {
+                app: appData as SaasApp,
+                activated_at: new Date().toISOString(),
+                metadata: { type: 'dynamic', appId }
+            }
         }
     }
 
-    // 2. Return Vertical Definition disguised as an "App"
-    // This allows the existing UI to render "Agency OS" without a full rewrite
-    // In future, we should rename the UI components.
-
-    // Hardcoded definition based on seed, could be fetched from 'verticals' table
-    if (org.vertical_key === 'agency') {
-        return {
-            app: {
-                id: 'vertical_agency',
-                name: 'Agency OS',
-                slug: 'agency-os',
-                description: 'Operating System for Marketing Agencies',
-                category: 'agency',
-                icon: 'Briefcase',
-                color: '#ec4899', // Pink brand
-                vertical_compatibility: ['agency'],
-                price_monthly: 29,
-                trial_days: 0,
-                is_active: true,
-                is_featured: true,
-                sort_order: 1,
-                created_at: new Date().toISOString(),
-                status: 'published'
-            } as SaasApp,
-            activated_at: new Date().toISOString(), // Todo: Fetch actual vertical assignment time if needed
-            metadata: { type: 'vertical', key: 'agency' }
-        }
+    // 3. Ultimate Fallback (Legacy/Unknown)
+    return {
+        app: {
+            id: 'legacy_fallback',
+            name: 'Legacy Workspace',
+            slug: 'legacy',
+            category: 'general',
+            icon: 'Box',
+            color: '#64748b',
+            created_at: new Date().toISOString(),
+            status: 'published',
+            price_monthly: 0,
+            trial_days: 0,
+            is_active: true,
+            is_featured: false,
+            sort_order: 0,
+            vertical_compatibility: [],
+            description: 'Legacy Workspace',
+        } as SaasApp,
+        activated_at: new Date().toISOString(),
+        metadata: {}
     }
 
     return null

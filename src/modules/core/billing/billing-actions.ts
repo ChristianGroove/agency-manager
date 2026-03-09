@@ -38,22 +38,29 @@ export async function createSubscriptionPaymentTransaction() {
 
     if (!orgId) throw new Error("No organization context")
 
-    // 1. Get Plan Details (Standard Pixy Price)
-    const amount = 29 // USD
+    // 1. Get current plan details dynamically
+    const { getCurrentOrganizationApp } = require("@/modules/core/saas/app-management-actions")
+    const currentApp = await getCurrentOrganizationApp()
+
+    if (!currentApp?.app) throw new Error("No hay un plan activo configurado para esta organización")
+
+    const app = currentApp.app
+    const amount = app.price_monthly || 29
+    const currency = 'USD' // For now we keep USD as standard for the catalog price
     const reference = `SUBSCRIPTION-PAY-${orgId.slice(0, 8)}-${Date.now()}`
 
-    // 2. Generate Integrity Signature (Logged for verification, but not returned yet)
+    // 2. Generate Integrity Signature
     const integritySecret = process.env.WOMPI_INTEGRITY_SECRET || ''
-    const signatureRaw = `${reference}${amount * 100}USD${integritySecret}`
+    const amountInCents = amount * 100
+    const signatureRaw = `${reference}${amountInCents}${currency}${integritySecret}`
     const signature = crypto.createHash('sha256').update(signatureRaw).digest('hex')
 
-    const publicKey = process.env.NEXT_PUBLIC_WOMPI_PUBLIC_KEY || 'pub_prod_yLQNKtKrUhFcIu1HLcLsVjJO3zLWbZBT'
+    const publicKey = process.env.NEXT_PUBLIC_WOMPI_PUBLIC_KEY || ''
 
-    console.log('[Wompi Debug] Transaction Data:')
+    console.log('[Wompi Debug] Dynamic Transaction Data:')
+    console.log(`- Plan: ${app.name}`)
     console.log(`- Reference: ${reference}`)
-    console.log(`- Amount: ${amount * 100} cents`)
-    console.log(`- Currency: USD`)
-    console.log(`- Signature Length: ${signature.length}`)
+    console.log(`- Amount: ${amountInCents} ${currency}`)
 
     // 3. Create Transaction in DB
     const { data: tx, error } = await supabaseAdmin
@@ -67,7 +74,8 @@ export async function createSubscriptionPaymentTransaction() {
             invoice_ids: [],
             metadata: {
                 type: 'subscription_payment',
-                concept: 'Suscripción Mensual: Agency OS'
+                concept: `Suscripción Mensual: ${app.name}`,
+                app_id: app.id
             }
         })
         .select()
@@ -78,12 +86,14 @@ export async function createSubscriptionPaymentTransaction() {
         throw new Error("No se pudo iniciar el pago: " + (error.message || "Unknown error"))
     }
 
-    // 4. Return Wompi parameters
+    // 4. Return Wompi parameters (Converted to whatever gateway needs)
+    // Note: If Wompi requires COP, we should have a conversion logic, 
+    // but the DB price is usually in USD. Assuming the widget handles the currency passed.
     return {
         success: true,
         reference,
-        amountInCents: 11500000, // 115,000 COP in cents
-        currency: 'COP',
+        amountInCents,
+        currency,
         publicKey,
         signature,
     }
