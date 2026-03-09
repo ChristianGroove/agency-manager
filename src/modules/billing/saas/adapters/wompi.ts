@@ -55,7 +55,10 @@ export class WompiSaasAdapter implements BillingAdapter {
     async chargeRecurring(subscriptionId: string): Promise<boolean> {
         const { data: sub, error } = await supabaseAdmin
             .from('saas_subscriptions')
-            .select('*, organizations(name)')
+            .select(`
+                *,
+                organizations(name)
+            `)
             .eq('id', subscriptionId)
             .single();
 
@@ -64,14 +67,25 @@ export class WompiSaasAdapter implements BillingAdapter {
             return false;
         }
 
-        // 1. Get Plan price
-        const { data: plan } = await supabaseAdmin
-            .from('saas_products')
-            .select('base_price')
-            .eq('id', sub.plan_id)
-            .single();
+        // 1. Validate Bypass
+        if (sub.bypass_until && new Date(sub.bypass_until) > new Date()) {
+            console.log(`[Wompi] Bypassing charge for Sub: ${subscriptionId} (Active bypass until ${sub.bypass_until})`);
+            return true; // Consider success but skip transaction
+        }
 
-        const amountInCents = Math.round((plan?.base_price || 0) * 100);
+        // 2. Get Price (Custom Priority)
+        let amount = sub.custom_price;
+
+        if (!amount) {
+            const { data: plan } = await supabaseAdmin
+                .from('saas_products')
+                .select('base_price')
+                .eq('id', sub.plan_id)
+                .single();
+            amount = plan?.base_price || 0;
+        }
+
+        const amountInCents = Math.round((amount || 0) * 100);
         const reference = `SUB-${sub.id.split('-')[0]}-${Date.now()}`;
 
         console.log(`[Wompi] Charging ${amountInCents} cents for Sub: ${subscriptionId} (Ref: ${reference})`);

@@ -8,24 +8,54 @@ export type SystemModule = {
     created_at: string
 }
 
-export type SaaSProduct = {
+export interface SaasApp {
     id: string
     name: string
     slug: string
-    description: string | null
+    description: string
+    long_description?: string
     category: string
-    logo?: string
-    image?: string
+    vertical_compatibility: string[]
+    icon: string
+    color: string
+    banner_image_url?: string
     price_monthly: number
-    pricing_model?: string
+    trial_days: number
     features?: string[]
-    metadata?: any
+    pricing_plans?: Record<string, number>
     is_active: boolean
+    is_featured: boolean
+    sort_order: number
+    metadata?: Record<string, any>
     created_at: string
+    status?: string
+    space_category?: 'agency' | 'resto' | 'cleaning' | 'platform'
 }
 
-export type SaaSProductModule = {
-    product_id: string
-    module_id: string
-    is_default_enabled: boolean
+export interface AppModule {
+    id: string
+    app_id: string
+    module_key: string
+    auto_enable: boolean
+    is_core: boolean
+    is_optional: boolean
+    sort_order: number
+}
+
+export interface AppAddOn {
+    id: string
+    app_id: string
+    add_on_type: string
+    tier_id?: string
+    is_recommended: boolean
+    is_required: boolean
+    discount_percent: number
+    display_order: number
+}
+
+export interface AppWithDetails extends SaasApp {
+    modules: AppModule[]
+    recommended_add_ons: AppAddOn[]
+    module_count: number
+    active_org_count: number
 }

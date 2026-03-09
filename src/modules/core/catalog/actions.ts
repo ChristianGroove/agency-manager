@@ -4,7 +4,8 @@ import { createClient } from "@/lib/supabase-server"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
 import { revalidatePath } from "next/cache"
 import { ServiceCatalogItem } from "@/types"
-import { getCurrentOrganizationApp, SaasApp } from "@/modules/core/saas/app-management-actions"
+import { getCurrentOrganizationApp } from "@/modules/core/saas/app-data-actions"
+import { SaasApp } from "@/types/saas"
 
 // ... existing code ...
 

@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase-server"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { revalidatePath } from "next/cache"
-import { SaaSProduct, SystemModule } from "@/types/saas"
+import { SaasApp, AppModule } from "@/types/saas"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
 
 import { unstable_cache } from "next/cache"
@@ -27,7 +27,7 @@ export const getSystemModules = unstable_cache(
             return []
         }
 
-        return data as SystemModule[]
+        return data as AppModule[]
     },
     ['system-modules-list'], // Cache Key
     {
@@ -40,7 +40,6 @@ export const getSystemModules = unstable_cache(
  * Fetch all SaaS products with their associated modules.
  */
 // Re-export type from admin module for consistency
-import { SaasApp } from './app-management-actions'
 
 /**
  * Fetch all SaaS products (Now Solution Templates from saas_apps).
@@ -85,7 +84,7 @@ export async function getAvailableApps() {
 /**
  * Create a new SaaS Product (App) and link selected modules.
  */
-export async function createSaaSProduct(productData: Partial<SaaSProduct>, moduleIds: string[]) {
+export async function createSaaSProduct(productData: Partial<SaasApp>, moduleIds: string[]) {
     try {
         // 1. Create Product
         const { data: product, error: productError } = await supabaseAdmin

@@ -10,19 +10,27 @@ export const monthlySubscriptionBilling = inngest.createFunction(
     { id: "monthly-subscription-billing" },
     { cron: "0 5 * * *" }, // Run daily at 5 AM
     async ({ step }) => {
-        // 1. Find all active subscriptions that are expiring today or have already expired
+        // 1. Find all active subscriptions that are due for renewal
+        // Exclusion: active bypasses (access is granted without charge)
         const today = new Date().toISOString();
 
         const dueSubscriptions = await step.run("fetch-due-subscriptions", async () => {
             const { data, error } = await supabaseAdmin
                 .from("saas_subscriptions")
-                .select("id, organization_id, payment_gateway")
+                .select("id, organization_id, payment_gateway, billing_cycle, bypass_until")
                 .eq("status", "active")
                 .lte("current_period_end", today)
                 .is("cancel_at_period_end", false);
 
             if (error) throw error;
-            return data || [];
+
+            // Filter out those with active bypasses
+            return (data || []).filter(sub => {
+                if (sub.bypass_until && new Date(sub.bypass_until) > new Date()) {
+                    return false;
+                }
+                return true;
+            });
         });
 
         // 2. Process each subscription
@@ -32,6 +40,26 @@ export const monthlySubscriptionBilling = inngest.createFunction(
                 if (sub.payment_gateway === 'wompi') {
                     const adapter = new WompiSaasAdapter();
                     const success = await adapter.chargeRecurring(sub.id);
+
+                    if (success) {
+                        // Calculate next renewal date based on cycle
+                        const nextDate = new Date();
+                        const cycle = sub.billing_cycle || 'monthly';
+
+                        if (cycle === 'monthly') nextDate.setMonth(nextDate.getMonth() + 1);
+                        else if (cycle === 'quarterly') nextDate.setMonth(nextDate.getMonth() + 3);
+                        else if (cycle === 'semi_annual') nextDate.setMonth(nextDate.getMonth() + 6);
+                        else if (cycle === 'annual') nextDate.setFullYear(nextDate.getFullYear() + 1);
+
+                        await supabaseAdmin
+                            .from('saas_subscriptions')
+                            .update({
+                                current_period_end: nextDate.toISOString(),
+                                last_payment_at: new Date().toISOString()
+                            })
+                            .eq('id', sub.id);
+                    }
+
                     return { id: sub.id, success };
                 }
                 return { id: sub.id, success: false, reason: "Unsupported gateway" };

@@ -1,0 +1,182 @@
+.premium-badge-container {
+  --btn-color: var(--brand-pink);
+  --corner-color: rgba(0, 0, 0, 0.1);
+  --corner-dist: 18px;
+  --corner-multiplier: 1.5;
+  --timing-function: cubic-bezier(0, 0, 0, 2.5);
+  --duration: 250ms;
+
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.premium-badge-btn {
+  position: relative;
+  min-width: 140px;
+  min-height: calc(var(--corner-dist) * 2.2);
+  border-radius: 14px;
+  border: none;
+  padding: 0.25em 1em;
+  z-index: 10;
+
+  background: linear-gradient(rgba(255, 255, 255, 0.1), rgba(0, 0, 0, 0.05)), var(--btn-color);
+  box-shadow:
+    1px 1px 2px -1px rgba(255, 255, 255, 0.5) inset,
+    0 2px 1px rgba(0, 0, 0, 0.05),
+    0 4px 2px rgba(0, 0, 0, 0.05),
+    0 8px 4px rgba(0, 0, 0, 0.05);
+
+  transition:
+    transform var(--duration) var(--timing-function),
+    filter var(--duration) var(--timing-function);
+  cursor: pointer;
+}
+
+.premium-badge-drawer {
+  position: absolute;
+  display: flex;
+  justify-content: center;
+  z-index: 5;
+
+  min-height: 28px;
+  border-radius: 12px;
+  border: none;
+  padding: 0.25em 1em;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: rgba(0, 0, 0, 0.6);
+
+  background: linear-gradient(rgba(255, 255, 255, 0.1), rgba(0, 0, 0, 0.05)), var(--drawer-color, #fbff13);
+  opacity: 0;
+
+  transition:
+    transform calc(0.5 * var(--duration)) ease,
+    filter var(--duration) var(--timing-function),
+    opacity calc(0.5 * var(--duration)) ease;
+  filter: blur(2px);
+}
+
+.premium-badge-drawer.top {
+  top: 0;
+  left: 0;
+  border-radius: 10px 10px 0 0;
+  align-items: start;
+}
+
+.premium-badge-drawer.bottom {
+  bottom: 0;
+  right: 0;
+  border-radius: 0 0 10px 10px;
+  align-items: end;
+}
+
+.premium-badge-text {
+  display: inline-block;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--btn-text-color, rgba(0, 0, 0, 0.7));
+
+  filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.2)) drop-shadow(0 -1px 0 rgba(0, 0, 0, 0.1));
+
+  transition:
+    transform var(--duration) var(--timing-function),
+    filter var(--duration) var(--timing-function),
+    color var(--duration) var(--timing-function);
+}
+
+.premium-badge-corner {
+  position: absolute;
+  width: 24px;
+  fill: none;
+  stroke: var(--corner-color);
+  z-index: 1;
+
+  transition:
+    transform var(--duration) var(--timing-function),
+    filter var(--duration) var(--timing-function);
+}
+
+.premium-badge-corner:nth-of-type(1) {
+  top: 0;
+  left: 0;
+  transform: translate(calc(-1 * var(--corner-dist)), calc(-1 * var(--corner-dist))) rotate(90deg);
+}
+
+.premium-badge-corner:nth-of-type(2) {
+  top: 0;
+  right: 0;
+  transform: translate(var(--corner-dist), calc(-1 * var(--corner-dist))) rotate(180deg);
+}
+
+.premium-badge-corner:nth-of-type(3) {
+  bottom: 0;
+  right: 0;
+  transform: translate(var(--corner-dist), var(--corner-dist)) rotate(-90deg);
+}
+
+.premium-badge-corner:nth-of-type(4) {
+  bottom: 0;
+  left: 0;
+  transform: translate(calc(-1 * var(--corner-dist)), var(--corner-dist)) rotate(0deg);
+}
+
+/* Hover States */
+.premium-badge-container:hover .premium-badge-btn {
+  transform: scale(1.05);
+  filter: drop-shadow(0 12px 12px rgba(0, 0, 0, 0.1));
+}
+
+.premium-badge-container:hover .premium-badge-drawer.top {
+  transform: translateY(-20px) rotateZ(3deg);
+  filter: blur(0px);
+  opacity: 1;
+  animation: badge-hue-anim 3s infinite linear;
+}
+
+.premium-badge-container:hover .premium-badge-drawer.bottom {
+  transform: translateY(20px) rotateZ(3deg);
+  filter: blur(0px);
+  opacity: 1;
+  animation: badge-hue-anim 3s infinite linear;
+}
+
+.premium-badge-container:hover .premium-badge-text {
+  filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.4)) drop-shadow(0 -1px 0 rgba(0, 0, 0, 0.2)) drop-shadow(0px 4px 2px rgba(0, 0, 0, 0.2));
+  transform: scale(1.05);
+  color: var(--btn-text-color);
+  opacity: 0.8;
+}
+
+.premium-badge-container:hover {
+  --corner-color: rgba(0, 0, 0, 0.2);
+}
+
+.premium-badge-container:hover .premium-badge-corner:nth-of-type(1) {
+  transform: translate(calc(-1 * var(--corner-multiplier) * var(--corner-dist)), calc(-1 * var(--corner-multiplier) * var(--corner-dist))) rotate(90deg);
+}
+
+.premium-badge-container:hover .premium-badge-corner:nth-of-type(2) {
+  transform: translate(calc(var(--corner-multiplier) * var(--corner-dist)), calc(-1 * var(--corner-multiplier) * var(--corner-dist))) rotate(180deg);
+}
+
+.premium-badge-container:hover .premium-badge-corner:nth-of-type(3) {
+  transform: translate(calc(var(--corner-multiplier) * var(--corner-dist)), calc(var(--corner-multiplier) * var(--corner-dist))) rotate(-90deg);
+}
+
+.premium-badge-container:hover .premium-badge-corner:nth-of-type(4) {
+  transform: translate(calc(-1 * var(--corner-multiplier) * var(--corner-dist)), calc(var(--corner-multiplier) * var(--corner-dist))) rotate(0deg);
+}
+
+@keyframes badge-hue-anim {
+
+  0%,
+  100% {
+    filter: hue-rotate(0deg);
+  }
+
+  50% {
+    filter: hue-rotate(-30deg);
+  }
+}

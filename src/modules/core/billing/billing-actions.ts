@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase-server"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { cache } from "react"
 
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import crypto from "crypto"
@@ -39,7 +40,7 @@ export async function createSubscriptionPaymentTransaction() {
     if (!orgId) throw new Error("No organization context")
 
     // 1. Get current plan details dynamically
-    const { getCurrentOrganizationApp } = require("@/modules/core/saas/app-management-actions")
+    const { getCurrentOrganizationApp } = require("@/modules/core/saas/app-data-actions")
     const currentApp = await getCurrentOrganizationApp()
 
     if (!currentApp?.app) throw new Error("No hay un plan activo configurado para esta organización")
@@ -121,3 +122,25 @@ export async function getSubscriptionHistory() {
 
     return data
 }
+
+export const getOrganizationSubscription = cache(async () => {
+    const orgId = await getCurrentOrganizationId()
+
+    if (!orgId) return null
+
+    const { data, error } = await supabaseAdmin
+        .from('saas_subscriptions')
+        .select(`
+            *,
+            saas_apps(name, price_monthly)
+        `)
+        .eq('organization_id', orgId)
+        .maybeSingle()
+
+    if (error) {
+        console.error("Error fetching organization subscription:", error)
+        return null
+    }
+
+    return data
+})

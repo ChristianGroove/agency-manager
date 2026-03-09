@@ -10,7 +10,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Loader2, Rocket, Building2, Package, Check, User } from "lucide-react"
 import { toast } from "sonner"
 import { getSaaSProducts } from "@/modules/core/saas/actions" // Assuming backend logic is here
-import { SaasApp } from "@/modules/core/saas/app-management-actions"
+import { SaasApp } from "@/types/saas"
 import { createOrganization, getCurrentOrgDetails } from "@/modules/core/organizations/actions"
 
 interface CreateOrganizationSheetProps {

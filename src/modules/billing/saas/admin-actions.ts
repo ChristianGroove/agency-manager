@@ -16,13 +16,18 @@ export async function getAllPlatformSubscriptions() {
             id,
             name,
             slug,
-            subscription:saas_subscriptions(
+            active_app_id,
+            saas_subscriptions(
                 id,
                 status,
                 current_period_end,
                 payment_gateway,
                 last_payment_at,
-                plan:saas_products(name, base_price)
+                custom_price,
+                billing_cycle,
+                bypass_until,
+                admin_notes,
+                saas_apps(id, name, price_monthly)
             )
         `)
         .order('name')
@@ -36,7 +41,56 @@ export async function getAllPlatformSubscriptions() {
 }
 
 /**
- * Manual action: Update subscription status
+ * Advanced Admin Action: Update subscription details including bypass and custom prices
+ */
+export async function adminUpdateSubscription(subscriptionId: string, updates: {
+    status?: string
+    custom_price?: number | null
+    billing_cycle?: string
+    bypass_until?: string | null
+    admin_notes?: string
+}) {
+    await requireSuperAdmin()
+
+    const { error } = await supabaseAdmin
+        .from('saas_subscriptions')
+        .update({
+            ...updates,
+            updated_at: new Date().toISOString()
+        })
+        .eq('id', subscriptionId)
+
+    if (error) throw error
+
+    revalidatePath('/platform/admin')
+    return { success: true }
+}
+
+/**
+ * Admin Action: Update Space (App) details including features and pricing plans
+ */
+export async function adminUpdateSpaceDetails(appId: string, updates: {
+    features?: string[]
+    pricing_plans?: Record<string, number>
+}) {
+    await requireSuperAdmin()
+
+    const { error } = await supabaseAdmin
+        .from('saas_apps')
+        .update({
+            ...updates,
+            updated_at: new Date().toISOString()
+        })
+        .eq('id', appId)
+
+    if (error) throw error
+
+    revalidatePath('/platform/admin')
+    return { success: true }
+}
+
+/**
+ * Manual action: Update subscription status (Legacy compatibility)
  */
 export async function updateSubscriptionStatusAdmin(subscriptionId: string, status: any) {
     await requireSuperAdmin()

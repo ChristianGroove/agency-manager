@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { CreditCard, Calendar, Check, Package, Zap, History, Download, ExternalLink } from "lucide-react"
-import { SaasApp } from "@/modules/core/saas/app-management-actions"
+import { SaasApp } from "@/types/saas"
 import { createSubscriptionPaymentTransaction, getSubscriptionHistory } from "@/modules/core/billing/billing-actions"
 import { toast } from "sonner"
 import { useState, useEffect } from "react"

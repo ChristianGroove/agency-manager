@@ -5,61 +5,8 @@ import { supabaseAdmin } from "@/lib/supabase-admin"
 import { revalidatePath, revalidateTag } from "next/cache"
 import { requireSuperAdmin } from "@/lib/auth/platform-roles"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { SaasApp, AppModule, AppAddOn, AppWithDetails } from "@/types/saas"
 import { moduleValidator } from "@/lib/module-validator"
-
-// ============================================
-// TYPES
-// ============================================
-
-export interface SaasApp {
-    id: string
-    name: string
-    slug: string
-    description: string
-    long_description?: string
-    category: string
-    vertical_compatibility: string[]
-    icon: string
-    color: string
-    banner_image_url?: string
-    price_monthly: number
-    trial_days: number
-    is_active: boolean
-    is_featured: boolean
-    sort_order: number
-    metadata?: Record<string, any>
-    created_at: string
-    status?: string
-    space_category?: 'agency' | 'resto' | 'cleaning' | 'platform'
-}
-
-export interface AppModule {
-    id: string
-    app_id: string
-    module_key: string
-    auto_enable: boolean
-    is_core: boolean
-    is_optional: boolean
-    sort_order: number
-}
-
-export interface AppAddOn {
-    id: string
-    app_id: string
-    add_on_type: string
-    tier_id?: string
-    is_recommended: boolean
-    is_required: boolean
-    discount_percent: number
-    display_order: number
-}
-
-export interface AppWithDetails extends SaasApp {
-    modules: AppModule[]
-    recommended_add_ons: AppAddOn[]
-    module_count: number
-    active_org_count: number
-}
 
 // ============================================
 // PUBLIC ACTIONS - App Browsing
@@ -178,72 +125,7 @@ export async function getAppsForVertical(vertical: string): Promise<SaasApp[]> {
 /**
  * Get current organization's active app
  */
-/**
- * Get current organization's active app (Vertical)
- * BRIDGE: Maps the new Vertical System to the old "App" interface for frontend compatibility
- */
-export async function getCurrentOrganizationApp() {
-    const organizationId = await getCurrentOrganizationId()
-
-    if (!organizationId) return null
-
-    const supabase = await createClient()
-
-    // 1. Fetch Organization Details (Vertical + Active App)
-    const { data: org } = await supabase
-        .from('organizations')
-        .select('vertical_key, active_app_id')
-        .eq('id', organizationId)
-        .single()
-
-    if (!org) return null
-
-    // 2. Fetch App Definition from DB
-    // Priority 1: active_app_id (Explicit assignment)
-    // Priority 2: vertical_key (Legacy/Implicit mapping)
-    const appId = org.active_app_id || (org.vertical_key ? `app_${org.vertical_key}` : null)
-
-    if (appId) {
-        const { data: appData } = await supabase
-            .from('saas_apps')
-            .select('*')
-            .eq('id', appId)
-            .single()
-
-        if (appData) {
-            return {
-                app: appData as SaasApp,
-                activated_at: new Date().toISOString(),
-                metadata: { type: 'dynamic', appId }
-            }
-        }
-    }
-
-    // 3. Ultimate Fallback (Legacy/Unknown)
-    return {
-        app: {
-            id: 'legacy_fallback',
-            name: 'Legacy Workspace',
-            slug: 'legacy',
-            category: 'general',
-            icon: 'Box',
-            color: '#64748b',
-            created_at: new Date().toISOString(),
-            status: 'published',
-            price_monthly: 0,
-            trial_days: 0,
-            is_active: true,
-            is_featured: false,
-            sort_order: 0,
-            vertical_compatibility: [],
-            description: 'Legacy Workspace',
-        } as SaasApp,
-        activated_at: new Date().toISOString(),
-        metadata: {}
-    }
-
-    return null
-}
+// getCurrentOrganizationApp has been moved to app-data-actions.ts for lightweight UI access
 
 // ============================================
 // SUPER ADMIN ACTIONS

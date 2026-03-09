@@ -1,6 +1,6 @@
 "use client"
 
-import { SaasApp } from "./app-management-actions"
+import { SaasApp } from "@/types/saas"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"

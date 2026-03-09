@@ -4,17 +4,23 @@ import { useEffect, useState } from "react"
 import { SectionHeader } from "@/components/layout/section-header"
 import { LayoutDashboard } from "lucide-react"
 import { supabase } from "@/lib/supabase"
+import { SpaceStatusBadge } from "@/components/dashboard/SpaceStatusBadge"
+import { useBranding } from "@/components/providers/branding-provider"
+import { useSaaSData } from "@/components/providers/saas-provider"
 
 export function DynamicGreetingHeader() {
     const [greeting, setGreeting] = useState("Dashboard")
     const [subtitle, setSubtitle] = useState("Resumen en tiempo real de tu negocio")
+
+    // Obtener datos instantáneamente del Contexto (Pre-cargados en el Layout)
+    const { app: appData, subscription, orgDetails } = useSaaSData()
+    const branding = useBranding()
 
     useEffect(() => {
         let mounted = true
 
         const setupGreeting = async () => {
             try {
-                // 1. Calcular el saludo exacto basado en la zona horaria del Navegador del usuario
                 const currentHour = new Date().getHours()
                 let timeGreeting = "Hola"
 
@@ -26,7 +32,6 @@ export function DynamicGreetingHeader() {
                     timeGreeting = "Buenas noches"
                 }
 
-                // 2. Extraer el nombre de perfil desde la sesión hidratada localmente del cliente
                 const { data: { session }, error } = await supabase.auth.getSession()
 
                 if (mounted && session?.user && !error) {
@@ -49,7 +54,6 @@ export function DynamicGreetingHeader() {
         setupGreeting()
 
         return () => {
-            // Cleanup para prevenir state updates en unmount
             mounted = false
         }
     }, [])
@@ -59,6 +63,14 @@ export function DynamicGreetingHeader() {
             title={greeting}
             subtitle={subtitle}
             icon={LayoutDashboard}
+            action={
+                <SpaceStatusBadge
+                    app={appData}
+                    subscription={subscription}
+                    orgName={orgDetails?.name || ""}
+                    brandColor={branding?.colors?.primary}
+                />
+            }
         />
     )
 }

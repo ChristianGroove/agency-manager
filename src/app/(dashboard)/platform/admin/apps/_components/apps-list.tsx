@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { SaasApp } from "@/modules/core/saas/app-management-actions"
+import { SaasApp } from "@/types/saas"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"

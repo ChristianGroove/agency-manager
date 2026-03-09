@@ -23,7 +23,7 @@ interface DashboardShellProps {
     sidebarContext?: any
 }
 
-function DashboardContent({ children, sidebarSlot }: { children: React.ReactNode, sidebarSlot: React.ReactNode }) {
+function DashboardContent({ children, sidebarSlot, currentOrgId }: { children: React.ReactNode, sidebarSlot: React.ReactNode, currentOrgId: string | null | undefined }) {
     const { isCollapsed } = useSidebar()
 
     return (
@@ -36,10 +36,17 @@ function DashboardContent({ children, sidebarSlot }: { children: React.ReactNode
             {/* Main Content Area */}
             <main
                 className={cn(
-                    "transition-all duration-300 ease-in-out min-h-[100dvh] flex flex-col print:pl-0 print:p-0 pl-0",
-                    isCollapsed ? "md:pl-[88px]" : "md:pl-[280px]" // sidebar width (w-64=256px) + gap (16px left + 8px gap)
+                    "transition-all duration-300 ease-in-out min-h-[100dvh] flex flex-col print:pl-0 print:p-0 pl-0 relative",
+                    isCollapsed ? "md:pl-[88px]" : "md:pl-[280px]"
                 )}
             >
+                {/* Desktop Header - Hidden by user request to maintain original layout */}
+                {/* 
+                <div className="hidden md:block sticky top-0 z-40 h-16 w-full">
+                    <Header currentOrgId={currentOrgId} />
+                </div>
+                */}
+
                 {/* Mobile Header logic would go here, utilizing context as well */}
 
                 <div className="flex-1 p-4 md:p-8 print:p-0">
@@ -65,7 +72,7 @@ export function DashboardShell({ children, sidebarSlot, user, currentOrgId, isSu
             <div className="h-full relative bg-gray-50/50 dark:bg-transparent min-h-screen">
                 <BillingAutomator />
 
-                <DashboardContent sidebarSlot={sidebarSlot}>
+                <DashboardContent sidebarSlot={sidebarSlot} currentOrgId={currentOrgId}>
                     {/* Mobile header rendering logic duplicated or extracted? 
                          Let's keep Mobile Header here for now, passing props.
                          Ideally Mobile Sidebar also uses Context.

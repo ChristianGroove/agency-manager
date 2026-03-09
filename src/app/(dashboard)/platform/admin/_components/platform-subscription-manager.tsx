@@ -12,9 +12,17 @@ import {
     DropdownMenu, DropdownMenuContent, DropdownMenuItem,
     DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu"
-import { Loader2, Search, MoreHorizontal, ShieldAlert, CreditCard, ExternalLink } from "lucide-react"
+import { Loader2, Search, MoreHorizontal, ShieldAlert, CreditCard, ExternalLink, Package } from "lucide-react"
 import { toast } from "sonner"
-import { getAllPlatformSubscriptions, updateSubscriptionStatusAdmin } from "@/modules/billing/saas/admin-actions"
+import { getAllPlatformSubscriptions, adminUpdateSubscription } from "@/modules/billing/saas/admin-actions"
+import {
+    Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger
+} from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import {
+    Select, SelectContent, SelectItem, SelectTrigger, SelectValue
+} from "@/components/ui/select"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 
@@ -39,13 +47,13 @@ export function PlatformSubscriptionManager() {
         }
     }
 
-    const handleStatusUpdate = async (subId: string, newStatus: string) => {
+    const handleAdminUpdate = async (subId: string, updates: any) => {
         try {
-            await updateSubscriptionStatusAdmin(subId, newStatus)
-            toast.success(`Estado actualizado a ${newStatus}`)
+            await adminUpdateSubscription(subId, updates)
+            toast.success("Suscripción actualizada correctamente")
             loadData()
         } catch (error) {
-            toast.error("Error al actualizar estado")
+            toast.error("Error al actualizar suscripción")
         }
     }
 
@@ -99,7 +107,7 @@ export function PlatformSubscriptionManager() {
                 </TableHeader>
                 <TableBody>
                     {filteredOrgs.map((org) => {
-                        const sub = org.subscription?.[0]
+                        const sub = org.saas_subscriptions // It's an object now, not array
                         return (
                             <TableRow key={org.id}>
                                 <TableCell>
@@ -109,7 +117,7 @@ export function PlatformSubscriptionManager() {
                                     </div>
                                 </TableCell>
                                 <TableCell>
-                                    {sub?.plan?.name || <span className="text-muted-foreground italic">Sin plan</span>}
+                                    {sub?.saas_apps?.name || <span className="text-muted-foreground italic">Sin plan</span>}
                                 </TableCell>
                                 <TableCell>
                                     {sub ? (
@@ -135,13 +143,20 @@ export function PlatformSubscriptionManager() {
                                             <DropdownMenuContent align="end">
                                                 <DropdownMenuLabel>Acciones de Control</DropdownMenuLabel>
                                                 <DropdownMenuSeparator />
-                                                <DropdownMenuItem onClick={() => handleStatusUpdate(sub.id, 'active')}>
+
+                                                <AdminEditSubscriptionDialog
+                                                    sub={sub}
+                                                    onUpdate={(updates) => handleAdminUpdate(sub.id, updates)}
+                                                />
+
+                                                <DropdownMenuSeparator />
+                                                <DropdownMenuItem onClick={() => handleAdminUpdate(sub.id, { status: 'active' })}>
                                                     Activar Acceso
                                                 </DropdownMenuItem>
-                                                <DropdownMenuItem onClick={() => handleStatusUpdate(sub.id, 'past_due')} className="text-amber-600">
+                                                <DropdownMenuItem onClick={() => handleAdminUpdate(sub.id, { status: 'past_due' })} className="text-amber-600">
                                                     Marcar como Mora
                                                 </DropdownMenuItem>
-                                                <DropdownMenuItem onClick={() => handleStatusUpdate(sub.id, 'canceled')} className="text-red-600">
+                                                <DropdownMenuItem onClick={() => handleAdminUpdate(sub.id, { status: 'canceled' })} className="text-red-600">
                                                     Suspender Acceso
                                                 </DropdownMenuItem>
                                             </DropdownMenuContent>
@@ -154,5 +169,107 @@ export function PlatformSubscriptionManager() {
                 </TableBody>
             </Table>
         </Card>
+    )
+}
+
+function AdminEditSubscriptionDialog({
+    sub,
+    onUpdate
+}: {
+    sub: any,
+    onUpdate: (updates: any) => Promise<void>
+}) {
+    const [open, setOpen] = useState(false)
+    const [submitting, setSubmitting] = useState(false)
+
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault()
+        setSubmitting(true)
+        const formData = new FormData(e.currentTarget)
+        const updates = {
+            status: formData.get('status'),
+            custom_price: formData.get('custom_price') ? parseFloat(formData.get('custom_price') as string) : null,
+            billing_cycle: formData.get('billing_cycle'),
+            bypass_until: formData.get('bypass_until') || null,
+            admin_notes: formData.get('admin_notes')
+        }
+        await onUpdate(updates)
+        setSubmitting(false)
+        setOpen(false)
+    }
+
+    return (
+        <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+                <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                    <ShieldAlert className="h-4 w-4 mr-2" />
+                    Gestión Avanzada
+                </DropdownMenuItem>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[500px]">
+                <DialogHeader>
+                    <DialogTitle>Gestión Administrativa</DialogTitle>
+                    <DialogDescription>
+                        Control total sobre el acceso y cobros de esta suscripción.
+                    </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleSubmit} className="space-y-4 py-4">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="status">Estado de Acceso</Label>
+                            <Select name="status" defaultValue={sub.status}>
+                                <SelectTrigger>
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="active">Activo</SelectItem>
+                                    <SelectItem value="past_due">Mora</SelectItem>
+                                    <SelectItem value="canceled">Suspendido</SelectItem>
+                                    <SelectItem value="legacy_manual">Manual Legacy</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="billing_cycle">Ciclo de Cobro</Label>
+                            <Select name="billing_cycle" defaultValue={sub.billing_cycle || 'monthly'}>
+                                <SelectTrigger>
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="monthly">Mensual</SelectItem>
+                                    <SelectItem value="quarterly">Trimestral</SelectItem>
+                                    <SelectItem value="semi_annual">Semestral</SelectItem>
+                                    <SelectItem value="annual">Anual</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="custom_price">Precio Personalizado (USD)</Label>
+                            <Input name="custom_price" type="number" step="0.01" defaultValue={sub.custom_price || ""} placeholder="Dejar vacío para base" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="bypass_until">Bypass Hasta (Cortesía)</Label>
+                            <Input name="bypass_until" type="date" defaultValue={sub.bypass_until ? sub.bypass_until.split('T')[0] : ""} />
+                        </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="admin_notes">Notas Administrativas</Label>
+                        <Textarea name="admin_notes" defaultValue={sub.admin_notes || ""} placeholder="Razón del precio especial, bypass, etc." />
+                    </div>
+
+                    <DialogFooter>
+                        <Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>
+                        <Button type="submit" disabled={submitting}>
+                            {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Guardar Cambios
+                        </Button>
+                    </DialogFooter>
+                </form>
+            </DialogContent>
+        </Dialog>
     )
 }

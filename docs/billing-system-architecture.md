@@ -53,6 +53,11 @@ Se eliminaron todos los valores **hardcoded**.
 - El **nombre del Space** y el **precio** se obtienen dinámicamente del catálogo de productos.
 - Si una organización se cambia de "Resto Space" a "Agency Space", su panel de billing reflejará el nuevo nombre y precio automáticamente.
 
-## 7. Escalabilidad Futura
-- **Stripe**: La interfaz `BillingAdapter` ya está preparada para recibir `StripeSaasAdapter`.
-- **Módulos Granulares**: La tabla de suscripciones soporta metadata para activar/desactivar módulos específicos en el futuro basado en add-ons pagados.
+### 8. Ciclos de Cobro y Precios Pro
+- **Multi-Ciclo**: Soporte para `monthly`, `quarterly`, `semi_annual` y `annual`. Inngest calcula la próxima fecha basándose en este campo.
+- **Bypass Administrativo**: Campo `bypass_until` que permite omitir cobros automáticos mientras mantiene el acceso activo. Ideal para periodos de cortesía o resolución de disputas.
+- **Precios Personalizados**: Prioridad de cobro al campo `custom_price` en `saas_subscriptions` sobre el precio base del producto.
+
+### 9. Experiencia de Usuario (Dashboard)
+- **SpaceStatusBadge**: Componente ubicado en el Header que muestra el nombre del Space, días restantes y estado (Activo, Bypass, etc.).
+- **Detalle de Plan**: Modal dinámico que lista los beneficios específicos configurados en `saas_apps.features`.

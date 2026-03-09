@@ -8,6 +8,10 @@ import { getDictionary } from "@/lib/i18n/dictionaries"
 import { I18nProvider } from "@/lib/i18n/context"
 import { Locale } from "@/lib/i18n/dictionaries"
 
+import { getCurrentOrganizationApp } from "@/modules/core/saas/app-data-actions"
+import { getOrganizationSubscription } from "@/modules/core/billing/billing-actions"
+import { SaaSProvider } from "@/components/providers/saas-provider"
+
 export default async function DashboardLayout({
     children,
 }: {
@@ -15,7 +19,7 @@ export default async function DashboardLayout({
 }) {
     const supabase = await createClient()
 
-    // 1. Fetch User First (Required for auth check and subsequent queries)
+    // 1. Fetch User First
     const { data: { user }, error: authError } = await supabase.auth.getUser()
 
     if (authError || !user) {
@@ -26,16 +30,17 @@ export default async function DashboardLayout({
         redirect('/login')
     }
 
-    // 2. PARALLEL FETCH: Now that we have the user, fetch everything else simultaneously.
-    // getCurrentOrganizationId is wrapped in React cache() so it won't duplicate DB calls.
-    const [currentOrgId, orgDetails, settings, isAdmin] = await Promise.all([
+    // 2. PARALLEL FETCH: All critical data including subscription and app
+    const [currentOrgId, orgDetails, settings, isAdmin, appResult, subscription] = await Promise.all([
         getCurrentOrganizationId(),
         getCurrentOrgDetails(),
         getSettings(),
-        isSuperAdmin(user.id)
+        isSuperAdmin(user.id),
+        getCurrentOrganizationApp(),
+        getOrganizationSubscription()
     ])
 
-    // 3. Obtener el layout correcto basándose en el "Space" actual
+    // ... Correct layout detection basándose en el "Space" actual
     let portalTemplateKey = 'b2b_dashboard'
     if (orgDetails?.active_app_id) {
         const { data: appData } = await supabase
@@ -49,29 +54,26 @@ export default async function DashboardLayout({
         }
     }
 
-    // 4. Instanciar la plantilla dinámicamente
     const PortalLayoutComponent = getDashboardTemplate(portalTemplateKey)
-
-    // Determine Language & Load Dictionary (Default to 'es')
     const locale = (settings?.default_language as Locale) || 'es'
     const dictionary = getDictionary(locale)
 
     return (
-        // Key forces a complete remount of the shell when organization changes,
-        // solving the "stale UI" issue without needing a full browser reload.
-        // WRAP with I18nProvider
-        <I18nProvider
-            dict={dictionary}
-            locale={locale}
-        >
-            <PortalLayoutComponent
-                user={user}
-                currentOrgId={currentOrgId}
-                isAdmin={isAdmin}
-                orgData={orgDetails}
-            >
-                {children}
-            </PortalLayoutComponent>
+        <I18nProvider dict={dictionary} locale={locale}>
+            <SaaSProvider initialData={{
+                app: appResult?.app || null,
+                subscription,
+                orgDetails
+            }}>
+                <PortalLayoutComponent
+                    user={user}
+                    currentOrgId={currentOrgId}
+                    isAdmin={isAdmin}
+                    orgData={orgDetails}
+                >
+                    {children}
+                </PortalLayoutComponent>
+            </SaaSProvider>
         </I18nProvider>
     )
 }

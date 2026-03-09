@@ -35,7 +35,7 @@ import { COMMUNICATION_VARIABLES, DEFAULT_TEMPLATES } from "@/lib/communication-
 import { BrandingConfig } from "@/types/branding"
 import { OrganizationRole } from "@/lib/auth/org-roles"
 import { DataSnapshot, VaultConfig } from "@/modules/core/data-vault/types"
-import { SaasApp } from "@/modules/core/saas/app-management-actions"
+import { SaasApp } from "@/types/saas"
 
 interface SettingsFormProps {
     initialSettings: any
