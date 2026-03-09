@@ -390,6 +390,7 @@ export class InboxService {
 
             // Reopen if archived and ensure phone is set
             const updates: any = {}
+            const isEcho = msg.origin === 'outbound';
             if (existingConv.state !== 'active') {
                 updates.state = 'active'
                 updates.status = 'open'
@@ -415,8 +416,15 @@ export class InboxService {
             }
 
             if (Object.keys(updates).length > 0) {
-                await supabase.from('conversations').update(updates).eq('id', (existingConv as any).id)
-                console.log('[InboxService] Updated conversation:', updates)
+                // SURGICAL: Do NOT update the conversation if this is an outbound echo.
+                // This prevents redundant triggers from re-activating the bot or resetting status
+                // if the bot has already been deactivated by a workflow node.
+                if (!isEcho) {
+                    await supabase.from('conversations').update(updates).eq('id', (existingConv as any).id)
+                    console.log('[InboxService] Updated conversation:', updates)
+                } else {
+                    console.log('[InboxService] Skipping conversation update for outbound echo.')
+                }
             }
 
             // INSERT MESSAGE (Missing Link)
@@ -428,8 +436,6 @@ export class InboxService {
                 }
             } catch (e) { }
 
-            // Detect Echo/Direction
-            const isEcho = msg.origin === 'outbound';
             const direction = isEcho ? 'outbound' : 'inbound';
             const sender = isEcho ? 'System' : (msg.senderName || msg.from);
             const status = isEcho ? 'sent' : 'received';
@@ -466,6 +472,14 @@ export class InboxService {
             return { success: false, error: new Error('Lead ID missing') };
         }
 
+        // Fetch lead's current tags to initialize the conversation's denormalized tags field
+        const { data: leadTags } = await supabase
+            .from('crm_lead_tags')
+            .select('tag:crm_tags(name)')
+            .eq('lead_id', lead.id);
+
+        const initialTags = leadTags ? leadTags.map((t: any) => t.tag.name) : [];
+
         const newConvMetadata = {
             ...(metadata?.phoneNumberId && { phoneNumberId: metadata.phoneNumberId }),
             ...(metadata?.pageId && { pageId: metadata.pageId }),
@@ -489,7 +503,8 @@ export class InboxService {
             last_message_at: new Date().toISOString(),
             unread_count: 1,
             connection_id: connectionId,
-            metadata: newConvMetadata // FIXED: Include all metadata
+            metadata: newConvMetadata, // FIXED: Include all metadata
+            tags: initialTags // Initialize with current lead tags
         };
 
         const { data: newConv, error: createError } = await supabase.from('conversations').insert(insertPayload).select().single()

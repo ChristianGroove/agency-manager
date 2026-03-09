@@ -52,8 +52,9 @@ export async function archiveConversation(conversationId: string) {
 export async function deleteConversation(conversationId: string) {
     const supabase = await createClient()
 
-    // Messages will be deleted automatically by CASCADE
-    // Messages will be deleted automatically by CASCADE
+    // CLEAR TAGS BEFORE DELETE (Surgical cleanup to avoid DB locks)
+    await clearLeadTagsOnEvent(conversationId)
+
     const { error, count } = await supabase
         .from('conversations')
         .delete({ count: 'exact' })
@@ -178,16 +179,17 @@ export async function getLeadConversationPreview(leadId: string, limit: number =
     // Return reversed so they appear chronologically if needed
     return { success: true, messages: messages.reverse(), conversationId: conversation.id }
 }
+
 /**
  * Resolve and close a conversation
  */
 export async function completeConversation(conversationId: string) {
     const supabase = await createClient()
 
-    // Fetch current metadata to preserve it
+    // 1. Fetch current metadata to preserve it
     const { data: conv } = await supabase
         .from('conversations')
-        .select('metadata')
+        .select('metadata, lead_id, organization_id')
         .eq('id', conversationId)
         .single()
 
@@ -196,6 +198,7 @@ export async function completeConversation(conversationId: string) {
         resolved_at: new Date().toISOString()
     }
 
+    // 2. Perform the update
     const { error } = await supabase
         .from('conversations')
         .update({
@@ -211,6 +214,29 @@ export async function completeConversation(conversationId: string) {
         return { success: false, error: error.message }
     }
 
+    // 3. CLEAR TAGS AFTER RESOLVE (Surgical cleanup)
+    if (conv?.lead_id && conv?.organization_id) {
+        const { clearLeadTagsSystem } = await import("@/modules/core/crm/tags-actions")
+        await clearLeadTagsSystem(conv.lead_id, conv.organization_id)
+    }
+
     revalidatePath('/inbox')
     return { success: true }
+}
+
+/**
+ * Internal helper to clear tags for a lead during resolution/deletion
+ */
+async function clearLeadTagsOnEvent(conversationId: string) {
+    const supabase = await createClient()
+    const { data: conv } = await supabase
+        .from('conversations')
+        .select('lead_id, organization_id')
+        .eq('id', conversationId)
+        .single()
+
+    if (conv?.lead_id && conv?.organization_id) {
+        const { clearLeadTagsSystem } = await import("@/modules/core/crm/tags-actions")
+        await clearLeadTagsSystem(conv.lead_id, conv.organization_id)
+    }
 }

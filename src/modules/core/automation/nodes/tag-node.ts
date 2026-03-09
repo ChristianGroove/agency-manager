@@ -12,6 +12,23 @@ export class TagNode {
     constructor(private contextManager: ContextManager) { }
 
     async execute(data: TagNodeData): Promise<{ success: boolean; error?: string }> {
+        const { supabaseAdmin } = await import('@/lib/supabase-admin');
+        const executionId = this.contextManager.get('executionId') as string;
+        const orgId = this.contextManager.get('organization_id') as string || this.contextManager.get('organizationId') as string;
+
+        const logToDb = async (level: string, message: string, details?: any) => {
+            if (!executionId || !orgId) return;
+            await supabaseAdmin.from('workflow_logs').insert({
+                organization_id: orgId,
+                execution_id: executionId,
+                node_id: 'tag-node-internal',
+                level,
+                message,
+                details,
+                created_at: new Date().toISOString()
+            });
+        };
+
         try {
             const action = data.action || 'add';
             const tagName = this.contextManager.resolve(data.tagName || '');
@@ -20,36 +37,44 @@ export class TagNode {
             // Fallback to Context Lead ID if not specified
             if (!leadId) {
                 const contextLead = this.contextManager.get('lead') as any;
-                leadId = contextLead?.id;
+                leadId = contextLead?.id || this.contextManager.get('leadId') as string || this.contextManager.get('id') as string;
             }
 
             if (!leadId) {
+                console.error('[TagNode] ❌ Lead ID required');
+                await logToDb('error', 'Missing Lead ID', { action, tagName });
                 return { success: false, error: 'Lead ID required' };
             }
 
             if (!tagName) {
+                console.error('[TagNode] ❌ Tag Name required');
+                await logToDb('error', 'Missing Tag Name', { leadId });
                 return { success: false, error: 'Tag Name required' };
             }
 
-            const organizationId = this.contextManager.get('organization_id') as string;
-            if (!organizationId) {
+            if (!orgId) {
+                console.error('[TagNode] ❌ Organization Context missing');
                 return { success: false, error: 'Organization Context missing' };
             }
 
-            console.log(`[TagNode] ${action.toUpperCase()} Tag '${tagName}' for Lead ${leadId}`);
+            console.log(`[TagNode] 🚀 ${action.toUpperCase()} Tag '${tagName}' for Lead ${leadId}`);
+            await logToDb('info', `Executing node: ${action} tag ${tagName}`, { leadId, tagName, action });
 
             if (action === 'add') {
-                const res = await addLeadTagSystem(leadId, tagName, organizationId);
+                const res = await addLeadTagSystem(leadId, tagName, orgId, executionId);
                 if (!res.success) throw new Error(res.error);
+                await logToDb('info', `Tag added successfully`, { leadId, tagName });
             } else if (action === 'remove') {
-                const res = await removeLeadTagSystem(leadId, tagName, organizationId);
+                const res = await removeLeadTagSystem(leadId, tagName, orgId, executionId);
                 if (!res.success) throw new Error(res.error);
+                await logToDb('info', `Tag removed successfully`, { leadId, tagName });
             }
 
             return { success: true };
 
         } catch (error: any) {
-            console.error('[TagNode] Error:', error);
+            console.error('[TagNode] ❌ Critical Error:', error);
+            await logToDb('error', `Execution failed: ${error.message}`, error);
             return { success: false, error: error.message };
         }
     }

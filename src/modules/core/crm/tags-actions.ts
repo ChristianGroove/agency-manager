@@ -145,7 +145,6 @@ export async function toggleLeadTag(leadId: string, tagId: string): Promise<Acti
                 .eq('tag_id', tagId)
 
             if (delError) throw delError
-            return { success: true, data: { action: 'removed' } }
         } else {
             // Add
             const { error: insError } = await supabase
@@ -153,8 +152,23 @@ export async function toggleLeadTag(leadId: string, tagId: string): Promise<Acti
                 .insert({ lead_id: leadId, tag_id: tagId })
 
             if (insError) throw insError
-            return { success: true, data: { action: 'added' } }
         }
+
+        // --- SURGICAL: Sync Tags to Conversations table for UI display on cards ---
+        // We use the same supabase client (user context) for consistency/RLS
+        const { data: leadTags } = await supabase
+            .from('crm_lead_tags')
+            .select('tag:crm_tags(name)')
+            .eq('lead_id', leadId);
+
+        const tagNames = leadTags ? leadTags.map((t: any) => t.tag.name) : [];
+        await supabase
+            .from('conversations')
+            .update({ tags: tagNames })
+            .eq('lead_id', leadId)
+            .neq('state', 'archived');
+
+        return { success: true, data: { action: existing ? 'removed' : 'added' } }
     } catch (e: any) {
         return { success: false, error: e.message }
     }
@@ -167,7 +181,19 @@ export async function toggleLeadTag(leadId: string, tagId: string): Promise<Acti
  * 1. Finds existing tag by name OR creates it if it doesn't exist.
  * 2. Links it to the lead.
  */
-export async function addLeadTagSystem(leadId: string, tagName: string, organizationId: string): Promise<ActionResponse<void>> {
+export async function addLeadTagSystem(leadId: string, tagName: string, organizationId: string, executionId?: string): Promise<ActionResponse<void>> {
+    const logToDb = async (level: string, message: string, details?: any) => {
+        if (!executionId || !organizationId) return;
+        await supabaseAdmin.from('workflow_logs').insert({
+            organization_id: organizationId,
+            execution_id: executionId,
+            node_id: 'tag-node-internal',
+            level,
+            message,
+            details,
+            created_at: new Date().toISOString()
+        });
+    };
     try {
         if (!organizationId) throw new Error("Organization ID required")
 
@@ -212,6 +238,39 @@ export async function addLeadTagSystem(leadId: string, tagName: string, organiza
             throw linkError
         }
 
+        // 3. SURGICAL: Sync Tags to Conversations table for UI display on cards
+        // Find active conversations for this lead and update their denormalized 'tags' field
+        const { data: leadTags } = await supabaseAdmin
+            .from('crm_lead_tags')
+            .select('tag:crm_tags(name)')
+            .eq('lead_id', leadId);
+
+        if (leadTags) {
+            const tagNames = leadTags.map((t: any) => t.tag.name);
+            const { fileLogger } = require('@/lib/file-logger');
+            fileLogger.log(`[TagSync] Syncing tags for lead ${leadId}: ${tagNames.join(', ')}`);
+            await logToDb('info', 'Syncing tags to conversations', { leadId, tagNames });
+
+            const { error: syncError, data: syncData } = await supabaseAdmin
+                .from('conversations')
+                .update({ tags: tagNames })
+                .eq('lead_id', leadId)
+                .neq('state', 'archived')
+                .select('id, tags');
+
+            if (syncError) {
+                fileLogger.log(`[TagSync] Error syncing to conversations: ${syncError.message}`);
+                await logToDb('error', 'Sync failed', syncError);
+            } else {
+                fileLogger.log(`[TagSync] Successfully updated ${syncData?.length} conversations`);
+                await logToDb('info', `Successfully updated ${syncData?.length} conversations`, { conversations: syncData?.map(c => c.id) });
+            }
+        } else {
+            const { fileLogger } = require('@/lib/file-logger');
+            fileLogger.log(`[TagSync] No tags found for lead ${leadId} after adding`);
+            await logToDb('warn', 'No tags found for lead after addition', { leadId });
+        }
+
         return { success: true }
 
     } catch (e: any) {
@@ -220,7 +279,19 @@ export async function addLeadTagSystem(leadId: string, tagName: string, organiza
     }
 }
 
-export async function removeLeadTagSystem(leadId: string, tagName: string, organizationId: string): Promise<ActionResponse<void>> {
+export async function removeLeadTagSystem(leadId: string, tagName: string, organizationId: string, executionId?: string): Promise<ActionResponse<void>> {
+    const logToDb = async (level: string, message: string, details?: any) => {
+        if (!executionId || !organizationId) return;
+        await supabaseAdmin.from('workflow_logs').insert({
+            organization_id: organizationId,
+            execution_id: executionId,
+            node_id: 'tag-node-internal-remove',
+            level,
+            message,
+            details,
+            created_at: new Date().toISOString()
+        });
+    };
     try {
         // 1. Find Tag ID
         const { data: existingTag } = await supabaseAdmin
@@ -240,10 +311,79 @@ export async function removeLeadTagSystem(leadId: string, tagName: string, organ
             .eq('tag_id', existingTag.id)
 
         if (error) throw error
+
+        // 3. SURGICAL: Sync Tags to Conversations table for UI display on cards
+        const { data: leadTags } = await supabaseAdmin
+            .from('crm_lead_tags')
+            .select('tag:crm_tags(name)')
+            .eq('lead_id', leadId);
+
+        const tagNames = leadTags ? leadTags.map((t: any) => t.tag.name) : [];
+        console.error(`[TagSync] Syncing tags (remove) for lead ${leadId}:`, tagNames);
+        await logToDb('info', 'Syncing tags (remove) to conversations', { leadId, tagNames });
+
+        const { error: syncError, data: syncData } = await supabaseAdmin
+            .from('conversations')
+            .update({ tags: tagNames })
+            .eq('lead_id', leadId)
+            .neq('state', 'archived')
+            .select('id, tags');
+
+        if (syncError) {
+            console.error(`[TagSync] Error syncing to conversations:`, syncError);
+            await logToDb('error', 'Sync failed (remove)', syncError);
+        } else {
+            console.error(`[TagSync] Successfully updated (remove) ${syncData?.length} conversations`);
+            await logToDb('info', `Successfully updated (remove) ${syncData?.length} conversations`, { conversations: syncData?.map(c => c.id) });
+        }
+
         return { success: true }
 
     } catch (e: any) {
         console.error("[System] Error removing tag:", e)
+        return { success: false, error: e.message }
+    }
+}
+
+/**
+ * Remove ALL tags from a lead (System/Automation)
+ * Used when a conversation is resolved or deleted.
+ */
+export async function clearLeadTagsSystem(leadId: string, organizationId: string, executionId?: string): Promise<ActionResponse<void>> {
+    try {
+        if (!organizationId) throw new Error("Organization ID required")
+
+        const { fileLogger } = require('@/lib/file-logger');
+        fileLogger.log(`[TagSync] CLEARING ALL TAGS for lead ${leadId}`);
+
+        // 1. Delete all relational links
+        const { error: delError } = await supabaseAdmin
+            .from('crm_lead_tags')
+            .delete()
+            .eq('lead_id', leadId);
+
+        if (delError) throw delError;
+
+        // 2. Clear leads table array
+        const { error: leadError } = await supabaseAdmin
+            .from('leads')
+            .update({ tags: [] })
+            .eq('id', leadId);
+
+        if (leadError) throw leadError;
+
+        // 3. Clear all active conversations for this lead
+        const { error: convError } = await supabaseAdmin
+            .from('conversations')
+            .update({ tags: [] })
+            .eq('lead_id', leadId)
+            .neq('state', 'archived');
+
+        if (convError) throw convError;
+
+        return { success: true }
+    } catch (e: any) {
+        console.error("[System] Error clearing tags:", e)
         return { success: false, error: e.message }
     }
 }

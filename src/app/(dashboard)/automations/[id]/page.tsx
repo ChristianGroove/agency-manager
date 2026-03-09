@@ -45,6 +45,7 @@ import WaitInputNode from '@/modules/core/automation/components/nodes/WaitInputN
 import TagNode from '@/modules/core/automation/components/nodes/TagNode';
 import ConditionNode from '@/modules/core/automation/components/nodes/ConditionNode';
 import StageNode from '@/modules/core/automation/components/nodes/StageNode';
+import ConversationNode from '@/modules/core/automation/components/nodes/ConversationNode';
 import { PropertiesSheet } from '@/modules/core/automation/components/properties-sheet';
 import DeletableEdge from '@/modules/core/automation/components/edges/DeletableEdge';
 import { AISuggestionsPanel } from '@/modules/core/automation/components/ai-suggestions-panel';
@@ -72,6 +73,7 @@ const nodeTypes = {
     tag: TagNode,
     condition: ConditionNode,
     stage: StageNode,
+    conversation: ConversationNode,
 };
 
 const edgeTypes = {
@@ -675,6 +677,10 @@ function WorkflowEditorContent({ id }: { id: string }) {
                                         <div draggable onDragStart={(e) => onDragStart(e, 'stage')} className="flex items-center p-1.5 rounded-lg border border-slate-100 bg-white dark:bg-slate-800 hover:border-rose-500 hover:bg-rose-50 cursor-grab transition-all">
                                             <ArrowRightCircle className="h-4 w-4 text-rose-600 mr-1.5" />
                                             <span className="text-xs font-medium">Etapa</span>
+                                        </div>
+                                        <div draggable onDragStart={(e) => onDragStart(e, 'conversation')} className="flex items-center p-1.5 rounded-lg border border-slate-100 bg-white dark:bg-slate-800 hover:border-sky-500 hover:bg-sky-50 cursor-grab transition-all">
+                                            <MessageSquare className="h-4 w-4 text-sky-600 mr-1.5" />
+                                            <span className="text-xs font-medium">Conversación</span>
                                         </div>
                                     </div>
                                 </div>

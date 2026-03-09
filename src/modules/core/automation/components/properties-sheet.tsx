@@ -116,6 +116,10 @@ export function PropertiesSheet({ node, isOpen, onClose, onUpdate, onDelete, onD
                 data.actionType = 'create_invoice';
             }
 
+            if (node.type === 'conversation' && !data.actionType) {
+                data.actionType = 'deactivate_bot';
+            }
+
             if (node.type === 'wait_input') {
                 if (!data.inputType) data.inputType = 'any';
                 if (!data.timeout) data.timeout = '1h';
@@ -474,6 +478,10 @@ export function PropertiesSheet({ node, isOpen, onClose, onUpdate, onDelete, onD
         HeaderIcon = ArrowRightCircle;
         headerColor = "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400";
         typeLabel = "Change Stage";
+    } else if (node.type === 'conversation') {
+        HeaderIcon = MessageSquare;
+        headerColor = "bg-sky-100 text-sky-600 dark:bg-sky-900/30 dark:text-sky-400";
+        typeLabel = "Conversación";
     } else if (node.type === 'wait') {
         HeaderIcon = Clock;
         headerColor = "bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400";
@@ -737,6 +745,53 @@ export function PropertiesSheet({ node, isOpen, onClose, onUpdate, onDelete, onD
                                         <p className="text-[10px] text-muted-foreground text-center">Ej: <code>{`{{ score }}`} + 10</code></p>
                                     </div>
                                 )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Conversation Node Config */}
+                    {node.type === 'conversation' && (
+                        <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                            <Separator className="bg-slate-100 dark:bg-slate-800" />
+                            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Lógica de Conversación</Label>
+
+                            <div className="space-y-3">
+                                <Label>Acción</Label>
+                                <Select
+                                    value={(formData.actionType as string) || 'deactivate_bot'}
+                                    onValueChange={(v) => handleChange('actionType', v)}
+                                >
+                                    <SelectTrigger className="h-10 bg-slate-50 dark:bg-slate-900">
+                                        <SelectValue placeholder="Seleccionar acción" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="deactivate_bot">🤖 Desactivar Bot (Handover)</SelectItem>
+                                        <SelectItem value="resolve_conversation">✅ Resolver Conversación</SelectItem>
+                                        <SelectItem value="resolve_and_clear_tags">♻️ Resolver y Limpiar Etiquetas</SelectItem>
+                                        <SelectItem value="set_unread">📩 Marcar como no leído</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <p className="text-xs text-muted-foreground">
+                                    {formData.actionType === 'deactivate_bot'
+                                        ? 'Desactiva el icono del bot y detiene su procesamiento para que un humano tome el control.'
+                                        : formData.actionType === 'resolve_conversation'
+                                            ? 'Cierra la conversación y la marca como resuelta.'
+                                            : formData.actionType === 'resolve_and_clear_tags'
+                                                ? 'Cierra la conversación y ELIMINA todas las etiquetas del lead para un inicio limpio en el próximo contacto.'
+                                                : 'Mueve la conversación a la pestaña de no leídos.'
+                                    }
+                                </p>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label>Conversation ID (Opcional)</Label>
+                                <Input
+                                    value={(formData.conversationId as string) || ''}
+                                    onChange={(e) => handleChange('conversationId', e.target.value)}
+                                    placeholder="{{conversation.id}}"
+                                    className="font-mono text-sm bg-slate-50 dark:bg-slate-900"
+                                />
+                                <p className="text-[10px] text-muted-foreground">Si se deja vacío, se usará la conversación actual del flujo.</p>
                             </div>
                         </div>
                     )}

@@ -1,37 +1,34 @@
--- Final Robust Bot Triggers Fix
--- 1. Function to extract clean text from JSON content
-CREATE OR REPLACE FUNCTION public.get_content_text(content jsonb)
-RETURNS text AS $$
-BEGIN
-    -- Handle strings
-    IF jsonb_typeof(content) = 'string' THEN
-        RETURN content#>>'{}';
-    END IF;
-    
-    -- Handle objects
-    IF jsonb_typeof(content) = 'object' THEN
-        RETURN COALESCE(
-            content->>'body', 
-            content->>'text', 
-            content->>'content', -- Some flows use content.content
-            content::text -- fallback to stringified JSON if nothing found
-        );
-    END IF;
-    
-    RETURN content::text;
-END;
-$$ LANGUAGE plpgsql IMMUTABLE;
 
--- 2. Update last message trigger
+import { createClient } from '@supabase/supabase-js';
+import * as dotenv from 'dotenv';
+import * as path from 'path';
+import * as fs from 'fs';
+
+const envPath = path.join(process.cwd(), '.env.local');
+if (fs.existsSync(envPath)) {
+    const envConfig = dotenv.parse(fs.readFileSync(envPath));
+    for (const k in envConfig) {
+        process.env[k] = envConfig[k];
+    }
+}
+
+const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
+const sql = `
+-- 2. Update last message trigger (REFINED to ignore echoes for activation)
 CREATE OR REPLACE FUNCTION public.update_conversation_last_message()
 RETURNS TRIGGER AS $$
 DECLARE
     clean_text text;
     sender_type_val text;
+    is_echo_val boolean;
 BEGIN
     clean_text := public.get_content_text(NEW.content);
+    is_echo_val := COALESCE((NEW.metadata->>'is_echo')::boolean, false);
     
-    -- Fail-Safe detection based on sender name if metadata is missing
     sender_type_val := COALESCE(
         NEW.metadata->>'sender_type', 
         CASE WHEN NEW.sender IN ('System', 'Automation Bot') THEN 'bot' ELSE 'human' END
@@ -42,16 +39,17 @@ BEGIN
         last_message_at = NEW.created_at,
         last_message_preview = clean_text,
         last_message = NEW.content,
-        -- SURGICAL: Update is_bot_active automatically if outbound is from bot
+        -- SURGICAL: Only activate bot if it's NOT an echo
         is_bot_active = CASE 
-            WHEN NEW.direction = 'outbound' AND sender_type_val = 'bot' THEN true
+            WHEN NEW.direction = 'outbound' AND sender_type_val = 'bot' AND NOT is_echo_val THEN true
             WHEN NEW.direction = 'outbound' AND sender_type_val = 'human' THEN false
             ELSE is_bot_active
         END,
         -- Propagate metadata
         metadata = conversations.metadata || jsonb_build_object(
             'direction', NEW.direction,
-            'sender_type', sender_type_val
+            'sender_type', sender_type_val,
+            'is_echo', is_echo_val
         ),
         updated_at = NOW()
     WHERE id = NEW.conversation_id;
@@ -59,7 +57,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- 3. Update metrics trigger (Refined)
+-- 3. Update metrics trigger (REFINED to respect manual deactivation)
 CREATE OR REPLACE FUNCTION public.update_conversation_metrics()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -79,6 +77,7 @@ BEGIN
     IF NEW.last_message_direction = 'outbound' THEN
         -- If human agent replied
         IF current_sender_type = 'human' THEN
+            -- Check if we are responding to a wait
             IF NEW.waiting_since IS NOT NULL THEN
                 last_wait_duration := NOW() - NEW.waiting_since;
                 NEW.last_responded_at := NOW();
@@ -92,11 +91,17 @@ BEGIN
                 NEW.waiting_since := NULL;
                 NEW.is_bot_active := FALSE;
             END IF;
+            
+            -- Ensure bot deactivated on human reply even if no wait
+            NEW.is_bot_active := FALSE;
+            
         ELSIF current_sender_type = 'bot' THEN
-            -- Bot replied. We don't force is_bot_active = TRUE here because it's already handled
-            -- in update_conversation_last_message() trigger when a new message arrives.
-            -- Forcing it here would override manual/automation deactivations during simple updates.
-            NULL; 
+            -- Bot replied.
+            -- SURGICAL FIX: Only force TRUE if it wasn't EXPLICITLY set to FALSE in this update
+            -- OR if it's a NEW message being recorded (last_message_at changed)
+            IF NEW.is_bot_active IS NOT FALSE OR (NEW.last_message_at IS DISTINCT FROM OLD.last_message_at) THEN
+                NEW.is_bot_active := TRUE;
+            END IF;
         END IF;
     END IF;
 
@@ -109,3 +114,18 @@ BEGIN
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+`;
+
+async function applyFix() {
+    console.log('Applying Robust SQL Fix via direct SQL command (if possible)...');
+    // Using supabase.rpc('run_sql') failed, so we try something else?
+    // Actually, without a direct DB connection or a working RPC, we can't run raw SQL.
+    // I will check if I can use the 'supabase' CLI if the user has it.
+
+    // Fallback: If I can't run SQL, I will suggest to the user to run it manually.
+    // But I'll try ONE more thing: Checking if there is another way to run SQL in this project.
+
+    console.log('SQL to apply:\n', sql);
+}
+
+applyFix();

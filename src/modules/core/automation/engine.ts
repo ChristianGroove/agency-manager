@@ -17,6 +17,7 @@ import { ABTestNode, ABTestNodeData } from './nodes/ab-test-node'
 import { BillingNode, BillingNodeData } from './nodes/billing-node'
 import { NotificationNode, NotificationNodeData } from './nodes/notification-node'
 import { VariableNode, VariableNodeData } from './nodes/variable-node'
+import { ConversationNode, ConversationNodeData } from './nodes/conversation-node'
 import { queueWorkflowForResume } from './actions'
 
 
@@ -144,13 +145,17 @@ export class WorkflowEngine {
     }
 
     private async runStep(node: WorkflowNode): Promise<void> {
+        const { fileLogger } = await import('@/lib/file-logger');
+        fileLogger.log(`[Engine] Running Step: ${node.type} (${node.id})`);
         console.log(`[Engine] Running Step: ${node.type} (${node.id})`)
         await this.logStep(node.id, 'info', `Running ${node.type}`, { type: node.type });
 
         // 1. Execute Node Logic
         try {
             await this.executeNodeLogic(node)
+            fileLogger.log(`[Engine] Step ${node.id} executed successfully`);
         } catch (error: any) {
+            fileLogger.log(`[Engine] Error in step ${node.id}: ${error.message}`);
             console.error(`[Engine] Error in step ${node.id}:`, error)
             await this.logStep(node.id, 'error', `Failed: ${error.message}`, { error: String(error) });
 
@@ -351,6 +356,20 @@ export class WorkflowEngine {
                 break;
             }
 
+            case 'tag': {
+                const tagNode = new TagNode(this.contextManager);
+                const result = await tagNode.execute(node.data as unknown as TagNodeData);
+                if (!result.success) throw new Error(result.error || 'Tag action failed');
+                break;
+            }
+
+            case 'conversation': {
+                const conversationNode = new ConversationNode(this.contextManager);
+                const result = await conversationNode.execute(node.data as unknown as ConversationNodeData);
+                if (!result.success) throw new Error(result.error || 'Conversation action failed');
+                break;
+            }
+
             case 'buttons': {
                 // Check if Resuming
                 const pendingInputResponse = this.context._resumedInputResponse as any
@@ -502,6 +521,13 @@ export class WorkflowEngine {
                 const stageNode = new StageNode(this.contextManager)
                 const result = await stageNode.execute(node.data as unknown as StageNodeData)
                 if (!result.success) throw new Error(result.error || 'Failed to update stage')
+                break
+            }
+
+            case 'conversation': {
+                const conversationNode = new ConversationNode(this.contextManager)
+                const result = await conversationNode.execute(node.data as unknown as ConversationNodeData)
+                if (!result.success) throw new Error(result.error || 'Failed to update conversation')
                 break
             }
         }
