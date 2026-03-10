@@ -1,8 +1,6 @@
 "use client"
 
-import { useState } from "react"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { useState, useEffect } from "react"
 import {
     Dialog,
     DialogContent,
@@ -12,9 +10,23 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog"
 import { Card, CardContent } from "@/components/ui/card"
-import { CheckCircle2, Clock, Crown, Package, AlertCircle } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow
+} from "@/components/ui/table"
+import { CheckCircle2, Clock, Crown, Package, AlertCircle, FileText, Download, Receipt, History } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { differenceInDays, parseISO } from "date-fns"
+import { format, differenceInDays, parseISO } from "date-fns"
+import { es } from "date-fns/locale"
+import { getSubscriptionHistory } from "@/modules/core/billing/billing-actions"
+import { SubscriptionTicket } from "./SubscriptionTicket"
 import "./SpaceStatusBadge.css"
 
 interface SpaceStatusBadgeProps {
@@ -40,6 +52,26 @@ function getContrastColor(hexColor: string) {
 
 export function SpaceStatusBadge({ app, subscription, orgName, brandColor }: SpaceStatusBadgeProps) {
     const [isOpen, setIsOpen] = useState(false)
+    const [history, setHistory] = useState<any[]>([])
+    const [isLoadingHistory, setIsLoadingHistory] = useState(false)
+    const [selectedTransaction, setSelectedTransaction] = useState<any>(null)
+
+    useEffect(() => {
+        if (isOpen) {
+            const fetchHistory = async () => {
+                setIsLoadingHistory(true)
+                try {
+                    const data = await getSubscriptionHistory()
+                    setHistory(data)
+                } catch (error) {
+                    // Silently fail or handle gracefully in UI
+                } finally {
+                    setIsLoadingHistory(false)
+                }
+            }
+            fetchHistory()
+        }
+    }, [isOpen])
 
     // Fallback if app data is not yet loaded
     const displayApp = app || subscription?.saas_apps || { name: "Space Plan", color: "#F205E2" }
@@ -84,72 +116,211 @@ export function SpaceStatusBadge({ app, subscription, orgName, brandColor }: Spa
                     ))}
                 </div>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[450px] p-0 overflow-hidden rounded-3xl border-none shadow-2xl">
-                <div className="relative h-32 w-full overflow-hidden" style={{ backgroundColor: `${displayApp.color || '#6366f1'}20` }}>
-                    <div className="absolute top-6 left-8 flex items-center gap-4">
-                        <div className="p-3 bg-white rounded-2xl shadow-sm text-primary" style={{ color: displayApp.color || "#6366f1" }}>
-                            <Package className="h-8 w-8" />
-                        </div>
-                        <div className="text-white drop-shadow-sm">
-                            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{displayApp.name}</h2>
-                            <p className="text-gray-600 dark:text-gray-400 text-sm font-medium">{orgName}</p>
-                        </div>
-                    </div>
-                </div>
+            <DialogContent className="sm:max-w-[800px] p-0 overflow-hidden rounded-[2rem] border-none shadow-2xl bg-white dark:bg-slate-950">
+                {selectedTransaction ? (
+                    <SubscriptionTicket
+                        transaction={selectedTransaction}
+                        organization={{ name: orgName }}
+                        onClose={() => setSelectedTransaction(null)}
+                    />
+                ) : (
+                    <>
+                        <div className="relative h-40 w-full overflow-hidden flex items-center px-10" style={{
+                            background: `linear-gradient(135deg, ${finalBtnColor}20 0%, ${finalBtnColor}05 100%)`
+                        }}>
+                            {/* Decorative Background Element */}
+                            <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full blur-3xl opacity-20" style={{ backgroundColor: finalBtnColor }}></div>
 
-                <div className="p-8 pt-6 space-y-6">
-                    <div className="grid grid-cols-2 gap-4">
-                        <Card className="border-none bg-slate-50 dark:bg-white/5">
-                            <CardContent className="p-4 flex flex-col items-center gap-1">
-                                <Clock className="h-4 w-4 text-slate-400" />
-                                <span className="text-xs text-slate-500 uppercase font-bold tracking-tighter">Estado</span>
-                                <Badge variant="secondary" className={cn(
-                                    "uppercase text-[10px]",
-                                    isActive ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-700"
-                                )}>
-                                    {isBypass ? 'PRO CORTESÍA' : (isActive ? 'ACTIVO' : 'SIN PLAN')}
-                                </Badge>
-                            </CardContent>
-                        </Card>
-                        <Card className="border-none bg-slate-50 dark:bg-white/5">
-                            <CardContent className="p-4 flex flex-col items-center gap-1">
-                                <Clock className="h-4 w-4 text-slate-400" />
-                                <span className="text-xs text-slate-500 uppercase font-bold tracking-tighter">Renovación</span>
-                                <span className="text-sm font-bold">
-                                    {daysRemaining !== null ? `${daysRemaining} días` : 'N/A'}
-                                </span>
-                            </CardContent>
-                        </Card>
-                    </div>
-
-                    <div className="space-y-3">
-                        <h3 className="text-sm font-bold uppercase tracking-widest text-slate-400">Beneficios Activos</h3>
-                        <div className="grid gap-2">
-                            {(displayApp.features || ["Gestión Completa", "Soporte Prioritario", "Multi-Agente"]).map((feature: string, i: number) => (
-                                <div key={i} className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
-                                    <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                                    {feature}
+                            <div className="relative flex items-center gap-6 z-10">
+                                <div className="p-4 bg-white dark:bg-slate-900 rounded-[1.5rem] shadow-xl text-primary border border-white/20" style={{ color: finalBtnColor }}>
+                                    <Package className="h-10 w-10" />
                                 </div>
-                            ))}
+                                <div>
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">{displayApp.name}</h2>
+                                        {isActive && <Crown className="h-5 w-5 text-amber-400 fill-amber-400" />}
+                                    </div>
+                                    <p className="text-slate-500 dark:text-slate-400 font-semibold flex items-center gap-2">
+                                        <span className="p-1 bg-slate-100 dark:bg-white/5 rounded-md text-[10px] uppercase tracking-widest">{orgName}</span>
+                                        <span className="h-1 w-1 rounded-full bg-slate-300"></span>
+                                        <span className="text-xs uppercase tracking-widest opacity-70">Portal de Gestión</span>
+                                    </p>
+                                </div>
+                            </div>
                         </div>
-                    </div>
 
-                    {isBypass && (
-                        <div className="p-3 rounded-xl bg-amber-50 border border-amber-100 text-amber-800 text-xs flex gap-3 items-start">
-                            <AlertCircle className="h-4 w-4 shrink-0" />
-                            <p>Tu organización tiene un beneficio de **Cortesía Administrativa**. No se realizarán cobros automáticos hasta el vencimiento del bypass.</p>
+                        <div className="p-2">
+                            <Tabs defaultValue="plan" className="w-full">
+                                <div className="px-8 pt-2">
+                                    <TabsList className="grid w-full grid-cols-2 bg-slate-100/50 dark:bg-white/5 p-1 rounded-2xl h-12">
+                                        <TabsTrigger value="plan" className="rounded-xl font-bold text-xs uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                                            <Package className="h-3.5 w-3.5 mr-2" />
+                                            Mi Plan
+                                        </TabsTrigger>
+                                        <TabsTrigger value="billing" className="rounded-xl font-bold text-xs uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                                            <History className="h-3.5 w-3.5 mr-2" />
+                                            Facturación
+                                        </TabsTrigger>
+                                    </TabsList>
+                                </div>
+
+                                <TabsContent value="plan" className="p-6 pt-4 focus-visible:outline-none animate-in fade-in-50 slide-in-from-bottom-2">
+                                    <div className="space-y-6">
+                                        <div className="grid grid-cols-3 gap-4">
+                                            <Card className="border-none bg-slate-50 dark:bg-white/5 rounded-2xl overflow-hidden group hover:scale-[1.02] transition-transform shadow-sm">
+                                                <CardContent className="p-5 flex flex-col items-center gap-2">
+                                                    <div className={cn(
+                                                        "p-2 rounded-xl mb-1",
+                                                        isActive ? "bg-emerald-100 text-emerald-600" : "bg-red-100 text-red-600"
+                                                    )}>
+                                                        <CheckCircle2 className="h-5 w-5" />
+                                                    </div>
+                                                    <span className="text-[10px] text-slate-400 uppercase font-black tracking-widest">Estatus</span>
+                                                    <span className="text-[11px] font-black text-slate-800 dark:text-white uppercase">
+                                                        {isBypass ? 'PRO CORTESÍA' : (isActive ? 'ACTIVO' : 'SUSPENDIDO')}
+                                                    </span>
+                                                </CardContent>
+                                            </Card>
+
+                                            <Card className="border-none bg-slate-50 dark:bg-white/5 rounded-2xl overflow-hidden group hover:scale-[1.02] transition-transform shadow-sm">
+                                                <CardContent className="p-5 flex flex-col items-center gap-2">
+                                                    <div className="p-2 rounded-xl mb-1 bg-blue-100 text-blue-600">
+                                                        <Clock className="h-5 w-5" />
+                                                    </div>
+                                                    <span className="text-[10px] text-slate-400 uppercase font-black tracking-widest">Renovación</span>
+                                                    <span className="text-[11px] font-black text-slate-800 dark:text-white uppercase">
+                                                        {daysRemaining !== null ? `${daysRemaining} días` : 'Ilimitado'}
+                                                    </span>
+                                                </CardContent>
+                                            </Card>
+
+                                            <Card className="border-none bg-slate-50 dark:bg-white/5 rounded-2xl overflow-hidden group hover:scale-[1.02] transition-transform shadow-sm">
+                                                <CardContent className="p-5 flex flex-col items-center gap-2">
+                                                    <div className="p-2 rounded-xl mb-1 bg-amber-100 text-amber-600">
+                                                        <Receipt className="h-5 w-5" />
+                                                    </div>
+                                                    <span className="text-[10px] text-slate-400 uppercase font-black tracking-widest">Valor Space</span>
+                                                    <span className="text-[11px] font-black text-slate-800 dark:text-white uppercase text-center">
+                                                        {subscription?.saas_apps?.price_monthly
+                                                            ? (subscription.saas_apps.price_monthly / 100).toLocaleString('es-CO', {
+                                                                style: 'currency',
+                                                                currency: 'USD',
+                                                                minimumFractionDigits: 0
+                                                            }) + ' / mes'
+                                                            : '$0 / mes'}
+                                                    </span>
+                                                </CardContent>
+                                            </Card>
+                                        </div>
+
+                                        <div className="bg-slate-50/50 dark:bg-white/5 p-6 rounded-3xl border border-slate-100 dark:border-white/5">
+                                            <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-400 mb-4">Beneficios del Plan</h3>
+                                            <div className="grid grid-cols-2 gap-y-4 gap-x-6">
+                                                {(displayApp.features || ["Gestión Completa", "Soporte Prioritario", "Multi-Agente", "Personalización"]).map((feature: string, i: number) => (
+                                                    <div key={i} className="flex items-center gap-3 text-sm font-medium text-slate-600 dark:text-slate-300">
+                                                        <div className="h-5 w-5 rounded-full bg-emerald-500/10 flex items-center justify-center">
+                                                            <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+                                                        </div>
+                                                        {feature}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        {isBypass && (
+                                            <div className="p-4 rounded-[1.5rem] bg-amber-500/10 border border-amber-200/50 text-amber-800 dark:text-amber-200 text-xs flex gap-4 items-center">
+                                                <div className="p-2 bg-amber-500 rounded-lg text-white">
+                                                    <AlertCircle className="h-4 w-4" />
+                                                </div>
+                                                <p className="font-medium">Tu organización tiene un beneficio de **Cortesía**. Sin cobros automáticos activos.</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </TabsContent>
+
+                                <TabsContent value="billing" className="p-6 pt-4 focus-visible:outline-none animate-in fade-in-50 slide-in-from-bottom-2">
+                                    <div className="space-y-4">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Historial de Transacciones</h3>
+                                            <Button variant="outline" size="sm" className="h-8 rounded-lg text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                                                <Download className="h-3 w-3 mr-2" />
+                                                Exportar
+                                            </Button>
+                                        </div>
+
+                                        <div className="rounded-2xl border border-slate-100 dark:border-white/5 overflow-hidden">
+                                            <Table>
+                                                <TableHeader className="bg-slate-50 dark:bg-white/5">
+                                                    <TableRow>
+                                                        <TableHead className="text-[10px] font-black uppercase tracking-widest h-10">Fecha</TableHead>
+                                                        <TableHead className="text-[10px] font-black uppercase tracking-widest h-10">Concepto</TableHead>
+                                                        <TableHead className="text-[10px] font-black uppercase tracking-widest h-10">Monto</TableHead>
+                                                        <TableHead className="text-[10px] font-black uppercase tracking-widest h-10">Estado</TableHead>
+                                                        <TableHead className="text-right text-[10px] font-black uppercase tracking-widest h-10">Recibo</TableHead>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody className="text-xs">
+                                                    {isLoadingHistory ? (
+                                                        <TableRow>
+                                                            <TableCell colSpan={5} className="text-center py-10 text-slate-400">Cargando transacciones...</TableCell>
+                                                        </TableRow>
+                                                    ) : history.length === 0 ? (
+                                                        <TableRow>
+                                                            <TableCell colSpan={5} className="text-center py-10 text-slate-400">No hay pagos registrados.</TableCell>
+                                                        </TableRow>
+                                                    ) : history.map((row: any) => (
+                                                        <TableRow key={row.id} className="hover:bg-slate-50/50 dark:hover:bg-white/5 transition-colors">
+                                                            <TableCell className="font-medium text-slate-500">
+                                                                {format(parseISO(row.created_at), 'dd MMM, yyyy', { locale: es })}
+                                                            </TableCell>
+                                                            <TableCell className="font-bold text-slate-700 dark:text-slate-200">
+                                                                {row.metadata?.concept || 'Suscripción'}
+                                                            </TableCell>
+                                                            <TableCell className="font-bold">
+                                                                {(row.amount_in_cents / 100).toLocaleString('es-CO', { style: 'currency', currency: 'USD' })}
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                <Badge variant="outline" className="text-[10px] uppercase font-bold bg-emerald-50 text-emerald-600 border-emerald-100">
+                                                                    {row.status}
+                                                                </Badge>
+                                                            </TableCell>
+                                                            <TableCell className="text-right">
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="h-8 w-8 rounded-lg text-slate-400 hover:text-primary hover:bg-primary/5"
+                                                                    onClick={() => setSelectedTransaction(row)}
+                                                                >
+                                                                    <Receipt className="h-4 w-4" />
+                                                                </Button>
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </TableBody>
+                                            </Table>
+                                        </div>
+                                    </div>
+                                </TabsContent>
+                            </Tabs>
                         </div>
-                    )}
 
-                    <div className="pt-4 border-t border-slate-100 dark:border-white/5 flex gap-3">
-                        <Button variant="ghost" className="flex-1 rounded-xl" onClick={() => setIsOpen(false)}>
-                            Cerrar
-                        </Button>
-                        <Button className="flex-1 rounded-xl shadow-lg shadow-primary/20" style={{ backgroundColor: displayApp.color || "#6366f1" }}>
-                            Gestionar Plan
-                        </Button>
-                    </div>
-                </div>
+                        <div className="p-6 pt-2 pb-8 border-t border-slate-50 dark:border-white/10 bg-slate-50/30 dark:bg-transparent flex gap-4">
+                            <Button
+                                variant="ghost"
+                                className="flex-1 rounded-2xl font-bold uppercase tracking-widest text-xs h-12 hover:bg-slate-100"
+                                onClick={() => setIsOpen(false)}
+                            >
+                                Volver
+                            </Button>
+                            <Button
+                                className="flex-1 rounded-2xl font-black uppercase tracking-widest text-xs h-12 shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all text-white"
+                                style={{ backgroundColor: finalBtnColor }}
+                            >
+                                {isActive ? 'Mejorar Plan' : 'Reactivar Ahora'}
+                            </Button>
+                        </div>
+                    </>
+                )}
             </DialogContent>
         </Dialog>
     )

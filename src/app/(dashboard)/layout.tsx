@@ -11,6 +11,7 @@ import { Locale } from "@/lib/i18n/dictionaries"
 import { getCurrentOrganizationApp } from "@/modules/core/saas/app-data-actions"
 import { getOrganizationSubscription } from "@/modules/core/billing/billing-actions"
 import { SaaSProvider } from "@/components/providers/saas-provider"
+import { SuspendedDashboardView } from "@/components/dashboard/SuspendedDashboardView"
 
 export default async function DashboardLayout({
     children,
@@ -39,6 +40,10 @@ export default async function DashboardLayout({
         getCurrentOrganizationApp(),
         getOrganizationSubscription()
     ])
+
+    // Lógica de Suspensión (Canceled / Unpaid)
+    // El SuperAdmin siempre tiene bypass
+    const isSuspended = !isAdmin && (subscription?.status === 'canceled' || subscription?.status === 'unpaid')
 
     // ... Correct layout detection basándose en el "Space" actual
     let portalTemplateKey = 'b2b_dashboard'
@@ -71,7 +76,11 @@ export default async function DashboardLayout({
                     isAdmin={isAdmin}
                     orgData={orgDetails}
                 >
-                    {children}
+                    {isSuspended ? (
+                        <SuspendedDashboardView />
+                    ) : (
+                        children
+                    )}
                 </PortalLayoutComponent>
             </SaaSProvider>
         </I18nProvider>

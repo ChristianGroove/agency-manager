@@ -120,6 +120,22 @@ export class WompiSaasAdapter implements BillingAdapter {
             const result = await response.json();
             if (!response.ok) throw new Error(result.error?.type || 'Wompi API Error');
 
+            // 3. Record Successful Transaction in History
+            await supabaseAdmin.from('payment_transactions').insert({
+                organization_id: sub.organization_id,
+                reference: reference,
+                amount_in_cents: amountInCents,
+                currency: 'USD',
+                status: 'APPROVED',
+                metadata: {
+                    type: 'subscription_payment',
+                    concept: `Renovación Automática: ${sub.organizations?.name}`,
+                    subscription_id: sub.id,
+                    gateway: 'wompi',
+                    transaction_id: result.data?.id
+                }
+            });
+
             return true;
         } catch (err) {
             console.error(`[Wompi] Recurring charge failed:`, err);
