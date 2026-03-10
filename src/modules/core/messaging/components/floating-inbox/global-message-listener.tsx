@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { supabase } from "@/lib/supabase"
-import { usePathname, useRouter } from "next/navigation"
+import { usePathname } from "next/navigation"
 import { useInboxPreferences } from "@/modules/core/preferences/use-inbox-preferences"
 import { toast } from "sonner"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -13,14 +13,14 @@ import { getCurrentUserPermissions } from "@/modules/core/settings/actions/team-
 import { getOrgConnectionIds } from "@/modules/core/messaging/conversation-actions"
 import { Button } from "@/components/ui/button"
 import { SoundPlayer } from "@/modules/core/preferences/sound-player"
-
-type Message = any // Replace with proper type import
+import { useCurrentOrganization } from "@/modules/core/organizations/hooks/use-current-organization"
 
 export function GlobalMessageListener() {
     const pathname = usePathname()
     const { preferences } = useInboxPreferences()
     const { openInbox } = useGlobalInbox()
-    const processedMessages = useRef<Set<string>>(new Set())
+    const { organizationId } = useCurrentOrganization()
+    const processedConvs = useRef<Set<string>>(new Set())
     const pathnameRef = useRef(pathname)
     const preferencesRef = useRef(preferences)
     const lastSoundPlayedRef = useRef<number>(0)
@@ -61,6 +61,8 @@ export function GlobalMessageListener() {
     }, [preferences])
 
     useEffect(() => {
+        if (!organizationId) return
+
         // Define channel colors
         const getChannelColor = (channel: string) => {
             switch (channel) {
@@ -71,33 +73,48 @@ export function GlobalMessageListener() {
             }
         }
 
-        const getChannelIcon = (channel: string) => {
+        const getChannelIcon = () => {
             return <MessageSquare className="h-3 w-3" />
         }
 
         // Unique channel name avoids Supabase collision after removeChannel
         globalChannelCounter.current += 1
-        const channelName = `global-messages-${globalChannelCounter.current}`
+        const channelName = `global-conv-${organizationId.slice(0, 8)}-${globalChannelCounter.current}`
 
+        // CRITICAL FIX: Listen to `conversations` table with organization_id filter
+        // instead of unfiltered `messages` table. The `messages` table has NO organization_id,
+        // so every INSERT was broadcast to every tenant globally.
+        // The DB trigger `update_conversation_last_message` updates conversations on every new message,
+        // so this captures the same event with proper tenant scoping.
         const channel = supabase
             .channel(channelName)
             .on('postgres_changes',
-                { event: 'INSERT', schema: 'public', table: 'messages' },
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'conversations',
+                    filter: `organization_id=eq.${organizationId}`
+                },
                 async (payload) => {
-                    const msg = payload.new as Message
+                    const conv = payload.new as any
+                    const oldConv = payload.old as any
 
-                    // Filter inbound messages client-side
-                    if (msg.direction !== 'inbound') return
+                    // Only react to NEW messages (last_message_at changed)
+                    if (!conv.last_message_at || conv.last_message_at === oldConv?.last_message_at) return
 
-                    // 1. Deduplication
-                    if (processedMessages.current.has(msg.id)) return
-                    processedMessages.current.add(msg.id)
-                    setTimeout(() => processedMessages.current.delete(msg.id), 10000)
+                    // Only react to inbound (unread_count increased)
+                    if ((conv.unread_count || 0) <= (oldConv?.unread_count || 0)) return
 
-                    // 2. Suppress if on Inbox Page
+                    // Deduplication (1 notification per conversation per 5s window)
+                    const dedupeKey = `${conv.id}-${conv.last_message_at}`
+                    if (processedConvs.current.has(dedupeKey)) return
+                    processedConvs.current.add(dedupeKey)
+                    setTimeout(() => processedConvs.current.delete(dedupeKey), 5000)
+
+                    // Suppress if on Inbox Page
                     if (pathnameRef.current?.includes('/inbox')) return
 
-                    // 3. Play Sound (absorbed from use-message-notifications)
+                    // Play Sound
                     const currentPrefs = preferencesRef.current
                     if (currentPrefs.notifications.sound_enabled) {
                         const now = Date.now()
@@ -112,28 +129,22 @@ export function GlobalMessageListener() {
                         }
                     }
 
-                    // 4. Push Notification (absorbed from use-message-notifications)
+                    // Push Notification
                     if (currentPrefs.notifications.push_enabled) {
                         if (document.hidden) {
                             if (Notification.permission === 'granted') {
-                                new Notification(`New message from ${msg.sender || 'Contact'}`, {
-                                    body: typeof msg.content === 'string' ? msg.content?.substring(0, 50) : (msg.content?.text || '').substring(0, 50),
+                                const preview = conv.last_message_preview || ''
+                                new Notification('Nuevo mensaje', {
+                                    body: preview.substring(0, 50),
                                     icon: '/icons/icon-192x192.png'
                                 })
                             }
                         }
                     }
 
-                    // 5. Fetch conversation for toast context
-                    const { data: conversation } = await supabase
-                        .from('conversations')
-                        .select('leads(name, phone), channel, connection_id, last_message')
-                        .eq('id', msg.conversation_id)
-                        .single()
-
                     // Tenant isolation — only show popups for this org's connections
-                    if (conversation?.connection_id) {
-                        if (!orgConnectionIdsRef.current.has(conversation.connection_id)) {
+                    if (conv.connection_id) {
+                        if (!orgConnectionIdsRef.current.has(conv.connection_id)) {
                             return
                         }
                     } else if (orgConnectionIdsRef.current.size > 0) {
@@ -144,20 +155,21 @@ export function GlobalMessageListener() {
                     const perms = userPermissionsRef.current
                     if (perms?.role === 'member') {
                         const allowedChannels = perms.permissions?.inbox_access || []
-                        if (!allowedChannels.includes(conversation?.connection_id)) {
+                        if (!allowedChannels.includes(conv.connection_id)) {
                             return
                         }
                     }
 
-                    const leadData = conversation?.leads
-                    const lead = Array.isArray(leadData) ? leadData[0] : leadData
+                    // Fetch lead name for the toast
+                    const { data: leadData } = await supabase
+                        .from('leads')
+                        .select('name, phone')
+                        .eq('id', conv.lead_id)
+                        .single()
 
-                    const senderName = lead?.name || lead?.phone || "Unknown Sender"
-                    const messageText = typeof msg.content === 'string'
-                        ? msg.content
-                        : (msg.content?.text || msg.content?.body || "Sent a media file")
-
-                    const channelColorClass = getChannelColor(msg.channel)
+                    const senderName = leadData?.name || leadData?.phone || "Unknown Sender"
+                    const messageText = conv.last_message_preview || "Nuevo mensaje"
+                    const channelColorClass = getChannelColor(conv.channel)
 
                     toast.custom((t) => (
                         <div className="w-full max-w-md bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-2xl p-4 flex gap-4 pointer-events-auto ring-1 ring-black/5 animate-in slide-in-from-top-2">
@@ -170,7 +182,7 @@ export function GlobalMessageListener() {
                                     </AvatarFallback>
                                 </Avatar>
                                 <div className={`absolute -bottom-1 -right-1 h-5 w-5 rounded-full border-2 border-white dark:border-zinc-900 flex items-center justify-center ${channelColorClass}`}>
-                                    {getChannelIcon(msg.channel)}
+                                    {getChannelIcon()}
                                 </div>
                             </div>
 
@@ -191,7 +203,7 @@ export function GlobalMessageListener() {
                                         className="h-7 px-3 text-xs bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900"
                                         onClick={() => {
                                             toast.dismiss(t)
-                                            openInbox(msg.conversation_id)
+                                            openInbox(conv.id)
                                         }}
                                     >
                                         <Reply className="h-3 w-3 mr-1.5" />
@@ -203,7 +215,7 @@ export function GlobalMessageListener() {
                                         className="h-7 px-3 text-xs text-muted-foreground hover:text-foreground"
                                         onClick={async () => {
                                             toast.dismiss(t)
-                                            const result = await markConversationAsRead(msg.conversation_id)
+                                            const result = await markConversationAsRead(conv.id)
                                             if (result.success) {
                                                 toast.success('Marcado como leído')
                                             } else {
@@ -226,7 +238,7 @@ export function GlobalMessageListener() {
                             </button>
                         </div>
                     ), {
-                        id: `global-notification-${msg.conversation_id}`,
+                        id: `global-notification-${conv.id}`,
                         duration: 8000,
                         position: 'top-right'
                     })
@@ -237,8 +249,7 @@ export function GlobalMessageListener() {
         return () => {
             supabase.removeChannel(channel)
         }
-        // Run only once on mount - refs handle dynamic values
-    }, [openInbox])
+    }, [organizationId, openInbox])
 
     return null
 }

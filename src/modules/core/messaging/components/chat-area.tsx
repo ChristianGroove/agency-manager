@@ -134,6 +134,10 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
         }
     }, [])
 
+    const [hasMoreMessages, setHasMoreMessages] = useState(false)
+    const [loadingOlder, setLoadingOlder] = useState(false)
+    const MESSAGE_PAGE_SIZE = 50
+
     const fetchConversation = async () => {
         if (!conversationId) return
         const { data, error } = await supabase
@@ -164,16 +168,42 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
 
     const fetchMessages = async () => {
         if (!conversationId) return
+        // Load only the LAST N messages (cursor-based, most recent first, then reverse)
         const { data, error } = await supabase
             .from('messages')
             .select('*')
             .eq('conversation_id', conversationId)
-            .order('created_at', { ascending: true })
+            .order('created_at', { ascending: false })
+            .limit(MESSAGE_PAGE_SIZE)
 
         if (data) {
-            setMessages(data)
-            // Initial scroll handled by useEffect below
+            const sorted = data.reverse() // Back to chronological order for display
+            setMessages(sorted)
+            setHasMoreMessages(data.length === MESSAGE_PAGE_SIZE)
         }
+    }
+
+    const loadOlderMessages = async () => {
+        if (!conversationId || loadingOlder || !hasMoreMessages || messages.length === 0) return
+        setLoadingOlder(true)
+
+        const oldestMessage = messages[0]
+        const { data, error } = await supabase
+            .from('messages')
+            .select('*')
+            .eq('conversation_id', conversationId)
+            .lt('created_at', oldestMessage.created_at)
+            .order('created_at', { ascending: false })
+            .limit(MESSAGE_PAGE_SIZE)
+
+        if (data && data.length > 0) {
+            const sorted = data.reverse()
+            setMessages(prev => [...sorted, ...prev])
+            setHasMoreMessages(data.length === MESSAGE_PAGE_SIZE)
+        } else {
+            setHasMoreMessages(false)
+        }
+        setLoadingOlder(false)
     }
 
     const chatChannelCounter = useRef(0)
@@ -207,7 +237,6 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
                 { event: '*', schema: 'public', table: 'conversations', filter: `id=eq.${conversationId}` },
                 () => {
                     fetchConversation()
-                    fetchMessages()
                 }
             )
             .subscribe((status, error) => {
@@ -599,6 +628,20 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
                         alignToBottom
                         followOutput="auto"
                         atBottomThreshold={50}
+                        startReached={() => {
+                            if (hasMoreMessages && !loadingOlder) loadOlderMessages()
+                        }}
+                        components={{
+                            Header: () => loadingOlder ? (
+                                <div className="flex justify-center py-3">
+                                    <div className="h-5 w-5 border-2 border-muted-foreground/30 border-t-muted-foreground rounded-full animate-spin" />
+                                </div>
+                            ) : hasMoreMessages ? (
+                                <div className="flex justify-center py-2">
+                                    <span className="text-[10px] text-muted-foreground/50">Scroll para cargar más</span>
+                                </div>
+                            ) : null
+                        }}
                         itemContent={(index: number, msg: Message) => {
                             const currentDate = new Date(msg.created_at).toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })
                             const prevDate = index > 0 ? new Date(messages[index - 1].created_at).toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' }) : null
