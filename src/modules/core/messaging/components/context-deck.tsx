@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { supabase } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 import { QuoteDesignerSheet } from "../../crm/components/quote-designer-sheet"
@@ -159,12 +159,13 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
         fetchContext()
     }, [fetchContext])
 
-    // Real-time Subscription
+    const contextChannelCounter = useRef(0)
     useEffect(() => {
         if (!conversationId) return
 
+        contextChannelCounter.current += 1
         const channel = supabase
-            .channel(`context-deck-${conversationId}`)
+            .channel(`context-deck-${conversationId}-${contextChannelCounter.current}`)
             .on('postgres_changes', {
                 event: 'UPDATE',
                 schema: 'public',
@@ -176,7 +177,7 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
             .subscribe()
 
         return () => {
-            channel.unsubscribe()
+            supabase.removeChannel(channel)
         }
     }, [conversationId])
 

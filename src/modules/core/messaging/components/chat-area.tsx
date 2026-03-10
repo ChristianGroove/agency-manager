@@ -176,16 +176,16 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
         }
     }
 
+    const chatChannelCounter = useRef(0)
     useEffect(() => {
         fetchConversation()
         fetchMessages()
 
-        // Realtime Subscriptions
         if (!conversationId) return
-        console.log('[ChatArea] Mounting subscription for:', conversationId)
 
+        chatChannelCounter.current += 1
         const channel = supabase
-            .channel(`chat-area-${conversationId}`)
+            .channel(`chat-area-${conversationId}-${chatChannelCounter.current}`)
             .on('postgres_changes',
                 {
                     event: 'INSERT',
@@ -195,26 +195,17 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
                 },
                 (payload) => {
                     const newMsg = payload.new as Message
-                    console.log('[ChatArea] INSERT received', newMsg.id)
 
                     setMessages((prev) => {
                         if (prev.some(m => m.id === newMsg.id)) return prev
                         return [...prev, newMsg]
                     })
-                    // Virtuoso 'followOutput' handles scrolling automatically
                     if (newMsg.direction === 'inbound') debouncedMarkAsRead(conversationId)
                 }
             )
             .on('postgres_changes',
-                { event: '*', schema: 'public', table: 'conversations' },
-                (payload) => {
-                    const updated = payload.new as any
-                    if (!updated || updated.id !== conversationId) return
-                    console.log('[ChatArea] Conversation change received, refreshing messages')
-
-                    // Refetch both conversation details AND messages
-                    // The messages INSERT subscription may not fire if the table
-                    // lacks Realtime publication, so this is the reliable fallback
+                { event: '*', schema: 'public', table: 'conversations', filter: `id=eq.${conversationId}` },
+                () => {
                     fetchConversation()
                     fetchMessages()
                 }
@@ -226,30 +217,9 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
             })
 
         return () => {
-            console.log('[ChatArea] Unsubscribing:', conversationId)
             supabase.removeChannel(channel)
         }
     }, [conversationId])
-
-    // Polling fallback: check for new messages every 3 seconds
-    // Guarantees updates even if Realtime subscriptions don't fire
-    useEffect(() => {
-        if (!conversationId) return
-
-        const poll = setInterval(async () => {
-            const { count, error } = await supabase
-                .from('messages')
-                .select('*', { count: 'exact', head: true })
-                .eq('conversation_id', conversationId)
-
-            if (!error && count !== null && count !== messages.length) {
-                fetchMessages()
-                fetchConversation()
-            }
-        }, 3000)
-
-        return () => clearInterval(poll)
-    }, [conversationId, messages.length])
 
     const handleSend = async (contentOverride?: string, type: 'text' | 'image' | 'video' | 'audio' | 'document' | 'note' | 'sticker' = 'text', mediaUrl?: string) => {
         const textContent = contentOverride !== undefined ? contentOverride : inputValue.trim()

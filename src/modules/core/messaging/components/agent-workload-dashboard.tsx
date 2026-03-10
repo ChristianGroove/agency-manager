@@ -45,20 +45,13 @@ export function AgentWorkloadDashboard() {
             setCurrentUser(data.user)
         })
 
-        // Subscribe to agent_availability changes
-        const channel = supabase
-            .channel('agent-workload')
-            .on('postgres_changes', {
-                event: '*',
-                schema: 'public',
-                table: 'agent_availability'
-            }, () => {
-                loadWorkload()
-            })
-            .subscribe()
+        // Poll agent_availability every 30s (not time-critical, avoids unfiltered realtime)
+        const pollInterval = setInterval(() => {
+            loadWorkload()
+        }, 30000)
 
         return () => {
-            channel.unsubscribe()
+            clearInterval(pollInterval)
         }
     }, [])
 

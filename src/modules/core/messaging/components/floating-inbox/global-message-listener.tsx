@@ -12,6 +12,7 @@ import { markConversationAsRead } from "../../actions"
 import { getCurrentUserPermissions } from "@/modules/core/settings/actions/team-actions"
 import { getOrgConnectionIds } from "@/modules/core/messaging/conversation-actions"
 import { Button } from "@/components/ui/button"
+import { SoundPlayer } from "@/modules/core/preferences/sound-player"
 
 type Message = any // Replace with proper type import
 
@@ -22,6 +23,8 @@ export function GlobalMessageListener() {
     const processedMessages = useRef<Set<string>>(new Set())
     const pathnameRef = useRef(pathname)
     const preferencesRef = useRef(preferences)
+    const lastSoundPlayedRef = useRef<number>(0)
+    const globalChannelCounter = useRef(0)
 
     // RBAC Permissions State
     const [userPermissions, setUserPermissions] = useState<any>(null)
@@ -69,14 +72,17 @@ export function GlobalMessageListener() {
         }
 
         const getChannelIcon = (channel: string) => {
-            // Simplified icon logic, could use actual SVGs
             return <MessageSquare className="h-3 w-3" />
         }
 
+        // Unique channel name avoids Supabase collision after removeChannel
+        globalChannelCounter.current += 1
+        const channelName = `global-messages-${globalChannelCounter.current}`
+
         const channel = supabase
-            .channel('global-messages')
+            .channel(channelName)
             .on('postgres_changes',
-                { event: 'INSERT', schema: 'public', table: 'messages' }, // Removed filter to avoid binding mismatch errors
+                { event: 'INSERT', schema: 'public', table: 'messages' },
                 async (payload) => {
                     const msg = payload.new as Message
 
@@ -86,65 +92,63 @@ export function GlobalMessageListener() {
                     // 1. Deduplication
                     if (processedMessages.current.has(msg.id)) return
                     processedMessages.current.add(msg.id)
-                    // Cleanup set periodically if needed
                     setTimeout(() => processedMessages.current.delete(msg.id), 10000)
 
                     // 2. Suppress if on Inbox Page
-                    // Note: This matches /platform/inbox or similar. Adjust based on real route.
                     if (pathnameRef.current?.includes('/inbox')) return
 
-                    console.log('[GlobalListener] New Inbound Message:', msg)
-
-                    // 3. Play Sound
-                    if (preferencesRef.current.notifications.sound_enabled) {
-                        try {
-                            const audio = new Audio('/sounds/notification.mp3') // Ensure this file exists
-                            audio.volume = 0.5
-                            await audio.play()
-                        } catch (e) {
-                            // Audio blocked depending on interaction policies
+                    // 3. Play Sound (absorbed from use-message-notifications)
+                    const currentPrefs = preferencesRef.current
+                    if (currentPrefs.notifications.sound_enabled) {
+                        const now = Date.now()
+                        if (now - lastSoundPlayedRef.current >= 1000) {
+                            try {
+                                const volume = currentPrefs.notifications.sound_volume ?? 0.5
+                                SoundPlayer.getInstance().play(currentPrefs.notifications.sound_selection || 'subtle', volume)
+                                lastSoundPlayedRef.current = now
+                            } catch (e) {
+                                // Audio blocked
+                            }
                         }
                     }
 
-                    // 4. Show Custom Toast
-                    // Fetch sender info context here or just show partial?
-                    // We might need the lead name. For now, use "New Message" or try to infer.
-                    // Ideally we'd join with conversations, but realtime payload is just the row.
-                    // We can do a quick fetch or just generic.
+                    // 4. Push Notification (absorbed from use-message-notifications)
+                    if (currentPrefs.notifications.push_enabled) {
+                        if (document.hidden) {
+                            if (Notification.permission === 'granted') {
+                                new Notification(`New message from ${msg.sender || 'Contact'}`, {
+                                    body: typeof msg.content === 'string' ? msg.content?.substring(0, 50) : (msg.content?.text || '').substring(0, 50),
+                                    icon: '/icons/icon-192x192.png'
+                                })
+                            }
+                        }
+                    }
 
-                    // For "Super App" feel, let's fetch the conversation briefly to get the name
-                    // This is an optimization trade-off.
+                    // 5. Fetch conversation for toast context
                     const { data: conversation } = await supabase
                         .from('conversations')
                         .select('leads(name, phone), channel, connection_id, last_message')
                         .eq('id', msg.conversation_id)
                         .single()
 
-                    // STEP 1: Tenant isolation — only show popups for this org's connections
-                    // conversation.connection_id identifies which WhatsApp channel received the message
+                    // Tenant isolation — only show popups for this org's connections
                     if (conversation?.connection_id) {
                         if (!orgConnectionIdsRef.current.has(conversation.connection_id)) {
-                            console.log('[GlobalListener] Suppressing cross-tenant message from connection:', conversation.connection_id)
                             return
                         }
                     } else if (orgConnectionIdsRef.current.size > 0) {
-                        // If org has known connections but conversation has no connection_id, it's likely legacy/other tenant
-                        console.log('[GlobalListener] Suppressing message with no connection_id while org has connections')
                         return
                     }
 
-                    // STEP 2: Role-Based Access Control for Popups
+                    // RBAC check
                     const perms = userPermissionsRef.current
                     if (perms?.role === 'member') {
                         const allowedChannels = perms.permissions?.inbox_access || []
-                        // If the channel is not assigned to this member, silently drop the popup
                         if (!allowedChannels.includes(conversation?.connection_id)) {
-                            console.log('[GlobalListener] Suppressing toast for unauthorized channel:', conversation?.connection_id)
                             return
                         }
                     }
 
-                    // Handle leads being returned as an array or object depending on Supabase type generation
                     const leadData = conversation?.leads
                     const lead = Array.isArray(leadData) ? leadData[0] : leadData
 
@@ -222,7 +226,7 @@ export function GlobalMessageListener() {
                             </button>
                         </div>
                     ), {
-                        id: `global-notification-${msg.conversation_id}`, // Updates existing toast instead of creating new one
+                        id: `global-notification-${msg.conversation_id}`,
                         duration: 8000,
                         position: 'top-right'
                     })
@@ -231,7 +235,7 @@ export function GlobalMessageListener() {
             .subscribe()
 
         return () => {
-            channel.unsubscribe()
+            supabase.removeChannel(channel)
         }
         // Run only once on mount - refs handle dynamic values
     }, [openInbox])

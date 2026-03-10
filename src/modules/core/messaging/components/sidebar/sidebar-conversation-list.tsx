@@ -12,7 +12,7 @@ import { Database } from "@/types/supabase"
 import { InboxSettingsSheet } from "../inbox-settings-sheet"
 import { Button } from "@/components/ui/button"
 import { ConversationListItem } from "../conversation-list-item"
-import { useMessageNotifications } from "@/modules/core/preferences/use-message-notifications"
+
 import { getCurrentUserPermissions } from "@/modules/core/settings/actions/team-actions"
 import { useInboxPreferences } from "@/modules/core/preferences/use-inbox-preferences"
 import { useInboxShortcuts } from "@/modules/core/preferences/use-inbox-shortcuts"
@@ -66,8 +66,7 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
     const { preferences, updatePreferences } = useInboxPreferences()
     const { organizationId, loading: orgLoading } = useCurrentOrganization()
 
-    // Enable Global Notifications (Sound/Push)
-    useMessageNotifications(userPermissions);
+    // Notifications are handled by GlobalMessageListener — no duplicate hook needed
 
     // Enable Shortcuts
     useInboxShortcuts({
@@ -208,10 +207,15 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [conversations, loading, selectedId, activeFilter, searchQuery])
 
-    // Real-time subscription
+    // Real-time subscription + polling fallback for sidebar
+    const channelCounter = useRef(0)
     useEffect(() => {
+        // Unique channel name avoids Supabase collision after removeChannel
+        channelCounter.current += 1
+        const channelName = `conversations-list-${channelCounter.current}`
+
         const channel = supabase
-            .channel('conversations-list')
+            .channel(channelName)
             .on('postgres_changes',
                 { event: '*', schema: 'public', table: 'conversations' },
                 () => {
@@ -221,10 +225,10 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
             .subscribe()
 
         return () => {
-            channel.unsubscribe()
+            supabase.removeChannel(channel)
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [activeFilter, currentUserId, permissionsLoaded, userPermissions])
+    }, [activeFilter, currentUserId, permissionsLoaded, userPermissions, selectedChannelId])
 
     // Filter and search conversations
     const filteredConversations = useMemo(() => {
