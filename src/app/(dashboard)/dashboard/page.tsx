@@ -71,7 +71,7 @@ export default function DashboardPage() {
                 {orgType === 'saas' && <DefaultDashboard dashboardData={dashboardData} extraData={extraData} onReload={loadDashboard} />}
 
                 {/* Fallback de Seguridad en caso de que un workspace huérfano llegue hasta acá */}
-                {!['agency', 'cleaning', 'reseller', 'resto', 'retail'].includes(orgType) && (
+                {!['agency', 'cleaning', 'reseller', 'resto', 'retail', 'saas'].includes(orgType) && (
                     <AgencyDashboard dashboardData={dashboardData} extraData={extraData} onReload={loadDashboard} />
                 )}
             </Suspense>
