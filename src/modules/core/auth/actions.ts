@@ -125,8 +125,8 @@ export async function signup(formData: FormData) {
             html: `
                 <h1>¡Bienvenido a Pixy!</h1>
                 <p>Gracias por registrarte. Para comenzar, por favor confirma tu correo electrónico.</p>
-                <p><a href="${actionLink}" style="padding: 12px 24px; background-color: #000; color: #fff; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; margin-top: 10px;">Confirmar Cuenta</a></p>
-                <p>O copia y pega este enlace: <br/> <span style="font-size: 10px; color: #666;">${actionLink}</span></p>
+                <p><a href="${inviteLink}" style="padding: 12px 24px; background-color: #000; color: #fff; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; margin-top: 10px;">Confirmar Cuenta</a></p>
+                <p>O copia y pega este enlace: <br/> <span style="font-size: 10px; color: #666;">${inviteLink}</span></p>
             `,
             organizationId: 'PLATFORM'
         })

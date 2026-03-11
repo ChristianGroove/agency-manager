@@ -665,7 +665,7 @@ export async function createOrganization(formData: {
                         // We need the identity BEFORE sending to build the template
                         const { EmailService } = await import('@/modules/core/notifications/email.service')
                         const identity = await (EmailService as any).getSenderIdentity(creatorOrgId || 'PLATFORM')
-                        const inviteHtml = getAuthInviteEmailHtml(formData.name, actionLink, identity.branding, identity.style)
+                        const inviteHtml = getAuthInviteEmailHtml(formData.name, inviteLink, identity.branding, identity.style)
 
                         const finalEmailResult = await EmailService.send({
                             to: formData.admin_email,

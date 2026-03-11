@@ -20,12 +20,8 @@ export function getSecureAuthLink(
     try {
         const url = new URL(actionLink);
         
-        // Supabase links usually have the token_hash in searchParams for verifyOtp flow
-        // Or in some cases it might be a direct link we need to parse.
-        let tokenHash = url.searchParams.get('token_hash');
-        
-        // Fallback: If no token_hash, try to extract it from 'code' if it's a PKCE link
-        // (Though we prefer token_hash for verifyOtp as it's more robust for custom pages)
+        // Supabase links can use token_hash, token, or code
+        const tokenHash = url.searchParams.get('token_hash') || url.searchParams.get('token');
         const code = url.searchParams.get('code');
         
         const targetUrl = new URL(`${redirectBase}/auth/confirm`);
