@@ -79,14 +79,9 @@ export async function signup(formData: FormData) {
     // 1. Sign Up (Custom Flow using Admin to bypass Native SMTP limits & enforce branding)
     const { supabaseAdmin } = await import('@/lib/supabase-admin')
 
-    // NUCLEAR OPTION: Force production URL
-    let redirectBase = 'https://app.pixy.com.co'
-    if (process.env.NEXT_PUBLIC_APP_URL && !process.env.NEXT_PUBLIC_APP_URL.includes('localhost')) {
-        redirectBase = process.env.NEXT_PUBLIC_APP_URL.startsWith('http')
-            ? process.env.NEXT_PUBLIC_APP_URL
-            : `https://${process.env.NEXT_PUBLIC_APP_URL}`
-    }
-    const redirectUrl = `${redirectBase}/auth/callback?next=/onboarding`
+    const { getAuthRedirectBase } = await import('@/lib/auth-utils')
+    const redirectBase = getAuthRedirectBase()
+    const redirectUrl = `${redirectBase}/auth/confirm?next=/onboarding`
 
     try {
         // Generate Signup Link (Creates user if not exists + returns link)
