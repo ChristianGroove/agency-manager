@@ -641,20 +641,15 @@ export async function createOrganization(formData: {
                     if (inviteError) {
                         invitationError = inviteError.message
                     } else if (linkData?.properties?.action_link) {
-                        // 2. Extract Token and Build Custom Link
-                        // This avoids PKCE/Implicit flow issues by using verifyOtp on the server
-                        const originalUrl = new URL(linkData.properties.action_link)
-                        const token_hash = originalUrl.searchParams.get('token_hash')
-                        
-                        if (!token_hash) {
-                            throw new Error("No se pudo generar el token de acceso")
-                        }
-
                         const { getAuthRedirectBase } = await import('@/lib/auth-utils')
+                        const { getSecureAuthLink } = await import('@/lib/auth-link-utils')
                         const redirectBase = getAuthRedirectBase()
-                        const actionLink = `${redirectBase}/auth/confirm?token_hash=${token_hash}&type=invite&next=/update-password`
+                        
+                        const actionLink = (linkData as any).properties?.action_link
+                        const verificationType = (linkData as any).properties?.verification_type || 'invite'
+                        const inviteLink = getSecureAuthLink(actionLink, verificationType, redirectBase, '/update-password')
 
-                        // 3. Ensure User exists and is member (generateLink already handles user creation if needed)
+                        // 3. Ensure User exists and is member
                         const invitedUser = linkData.user
                         if (invitedUser) {
                             await supabaseAdmin.from('organization_members').insert({

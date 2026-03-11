@@ -55,7 +55,14 @@ export async function inviteOrgOwner(email: string, orgId: string) {
         throw new Error('Failed to generate link: User object missing')
     }
     const userId = user.id
-    const inviteLink = (linkData as any).properties?.action_link
+    const props = (linkData as any).properties
+    const actionLink = props?.action_link
+    const verificationType = props?.verification_type || 'invite'
+    
+    const { getSecureAuthLink } = await import('@/lib/auth-link-utils')
+    const { getAuthRedirectBase } = await import('@/lib/auth-utils')
+    const redirectBase = getAuthRedirectBase()
+    const inviteLink = getSecureAuthLink(actionLink, verificationType, redirectBase, '/platform')
 
     // Send Invite Email via Platform SMTP
     if (inviteLink) {

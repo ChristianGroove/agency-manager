@@ -146,8 +146,13 @@ export async function inviteMember(email: string, roleOrRoleId: string = 'member
         if (!user) throw new Error('Failed to generate link: User object missing')
         const userId = user.id
 
-        // Cast to any to get properties
-        const inviteLink = (linkData as any).properties?.action_link
+        const actionLink = (linkData as any).properties?.action_link
+        const verificationType = (linkData as any).properties?.verification_type || 'invite'
+        
+        const { getSecureAuthLink } = await import('@/lib/auth-link-utils')
+        const { getAuthRedirectBase } = await import('@/lib/auth-utils')
+        const redirectBase = getAuthRedirectBase()
+        const inviteLink = getSecureAuthLink(actionLink, verificationType, redirectBase, '/dashboard')
 
         // 2. Ensure Profile Exists
         await supabaseAdmin

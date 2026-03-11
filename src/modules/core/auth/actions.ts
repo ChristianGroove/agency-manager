@@ -108,32 +108,13 @@ export async function signup(formData: FormData) {
             console.error("Signup Link Gen Error:", linkError)
             return { error: linkError.message }
         }
-
-        let actionLink = linkData.properties?.action_link
+        const props = (linkData as any).properties
+        const actionLink = props?.action_link
         if (!actionLink) return { error: "Error generando enlace de confirmación" }
 
         // SANITIZATION & BRANDING: Replace Supabase URL with our Custom Confirm Route
-        // We extract the token and type to build our own link
-        try {
-            const supabaseUrlObj = new URL(actionLink)
-            const token = supabaseUrlObj.searchParams.get('token')
-            const type = supabaseUrlObj.searchParams.get('type') || 'signup'
-            const redirectParam = supabaseUrlObj.searchParams.get('redirect_to')
-
-            if (token) {
-                // Construct our own safe URL using /auth/confirm for maximum reliability
-                const nextPath = '/onboarding'
-                actionLink = `${redirectBase}/auth/confirm?token_hash=${token}&type=${type}&next=${encodeURIComponent(nextPath)}`
-            }
-        } catch (e) {
-            console.error("Error parsing/rewriting Supabase link:", e)
-            // Fallback to simple replacement if URL parsing fails
-            if (actionLink.includes('localhost') || actionLink.includes('127.0.0.1')) {
-                actionLink = actionLink.replace('http://localhost:3000', redirectBase)
-                actionLink = actionLink.replace('http://127.0.0.1:3000', redirectBase)
-                actionLink = actionLink.replace('redirect_to=http%3A%2F%2Flocalhost%3A3000', `redirect_to=${encodeURIComponent(redirectBase)}`)
-            }
-        }
+        const { getSecureAuthLink } = await import('@/lib/auth-link-utils')
+        const inviteLink = getSecureAuthLink(actionLink, 'signup', redirectBase, '/onboarding')
 
         // 2. Send Custom Confirmation Email
         const { EmailService } = await import('@/modules/core/notifications/email.service')
@@ -193,27 +174,14 @@ export async function sendMagicLink(formData: FormData) {
             return { error: linkError.message }
         }
 
-        let actionLink = linkData.properties?.action_link
+        const props = (linkData as any).properties
+        const actionLink = props?.action_link
         if (!actionLink) return { error: "Error generando enlace" }
 
         // SANITIZATION & TOKEN EXTRACTION
         // We extract token_hash to point to /auth/confirm instead of /auth/callback (PKCE)
-        try {
-            const originalUrl = new URL(actionLink)
-            const token_hash = originalUrl.searchParams.get('token_hash')
-            if (token_hash) {
-                actionLink = `${redirectBase}/auth/confirm?token_hash=${token_hash}&type=magiclink&next=${encodeURIComponent('/dashboard')}`
-            } else {
-                // Fallback sanitization
-                if (actionLink.includes('localhost') || actionLink.includes('127.0.0.1')) {
-                    actionLink = actionLink.replace('http://localhost:3000', redirectBase)
-                    actionLink = actionLink.replace('http://127.0.0.1:3000', redirectBase)
-                    actionLink = actionLink.replace('redirect_to=http%3A%2F%2Flocalhost%3A3000', `redirect_to=${encodeURIComponent(redirectBase)}`)
-                }
-            }
-        } catch (e) {
-            console.error("Error parsing magic link:", e)
-        }
+        const { getSecureAuthLink } = await import('@/lib/auth-link-utils')
+        const magicLink = getSecureAuthLink(actionLink, 'magiclink', redirectBase, '/dashboard')
 
         // 2. Send Custom Email
         const { EmailService } = await import('@/modules/core/notifications/email.service')
@@ -221,7 +189,7 @@ export async function sendMagicLink(formData: FormData) {
         
         // Resolve identity to build template with correct style
         const identity = await (EmailService as any).getSenderIdentity('PLATFORM')
-        const magicLinkHtml = getAuthMagicLinkEmailHtml(actionLink, identity.branding, identity.style)
+        const magicLinkHtml = getAuthMagicLinkEmailHtml(magicLink, identity.branding, identity.style)
 
         await EmailService.send({
             to: email,
@@ -270,28 +238,15 @@ export async function resetPasswordRequest(formData: FormData) {
         return { success: false, error: linkError.message }
     }
 
-    let actionLink = linkData.properties?.action_link
+    const props = (linkData as any).properties
+    const actionLink = props?.action_link
     if (!actionLink) {
         return { success: false, error: "Failed to generate recovery link" }
     }
 
     // SANITIZATION & TOKEN EXTRACTION
-    try {
-        const originalUrl = new URL(actionLink)
-        const token_hash = originalUrl.searchParams.get('token_hash')
-        if (token_hash) {
-            actionLink = `${redirectBase}/auth/confirm?token_hash=${token_hash}&type=recovery&next=${encodeURIComponent('/update-password')}`
-        } else {
-            // Fallback sanitization
-            if (actionLink.includes('localhost') || actionLink.includes('127.0.0.1')) {
-                actionLink = actionLink.replace('http://localhost:3000', redirectBase)
-                actionLink = actionLink.replace('http://127.0.0.1:3000', redirectBase)
-                actionLink = actionLink.replace('redirect_to=http%3A%2F%2Flocalhost%3A3000', `redirect_to=${encodeURIComponent(redirectBase)}`)
-            }
-        }
-    } catch (e) {
-        console.error("Error parsing recovery link:", e)
-    }
+    const { getSecureAuthLink } = await import('@/lib/auth-link-utils')
+    const recoveryLink = getSecureAuthLink(actionLink, 'recovery', redirectBase, '/update-password')
 
     try {
         // 2. Send Email (Custom Service)
@@ -300,7 +255,7 @@ export async function resetPasswordRequest(formData: FormData) {
 
         // Resolve identity for template
         const identity = await (EmailService as any).getSenderIdentity('PLATFORM')
-        const recoveryHtml = getAuthRecoveryEmailHtml(actionLink, identity.branding, identity.style)
+        const recoveryHtml = getAuthRecoveryEmailHtml(recoveryLink, identity.branding, identity.style)
 
         const finalSendResult = await EmailService.send({
             to: email,
