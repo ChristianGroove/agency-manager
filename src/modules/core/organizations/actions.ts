@@ -634,7 +634,7 @@ export async function createOrganization(formData: {
                                 invited_org_id: newOrg.id
                             },
                             // Supabase internal redirect (backup)
-                            redirectTo: `https://${process.env.NEXT_PUBLIC_APP_DOMAIN}/auth/callback`
+                            redirectTo: `${(await import('@/lib/auth-utils')).getAuthRedirectBase()}/auth/callback`
                         }
                     })
 
@@ -650,7 +650,9 @@ export async function createOrganization(formData: {
                             throw new Error("No se pudo generar el token de acceso")
                         }
 
-                        const actionLink = `https://${process.env.NEXT_PUBLIC_APP_DOMAIN}/auth/confirm?token_hash=${token_hash}&type=invite&next=/dashboard`
+                        const { getAuthRedirectBase } = await import('@/lib/auth-utils')
+                        const redirectBase = getAuthRedirectBase()
+                        const actionLink = `${redirectBase}/auth/confirm?token_hash=${token_hash}&type=invite&next=/update-password`
 
                         // 3. Ensure User exists and is member (generateLink already handles user creation if needed)
                         const invitedUser = linkData.user

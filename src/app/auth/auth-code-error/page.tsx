@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { AlertCircle } from "lucide-react"
+import { AuthSessionBridge } from "./auth-session-bridge"
 
 export default async function AuthErrorPage(props: {
     searchParams: Promise<{ error?: string; error_description?: string; error_code?: string }>
@@ -10,6 +11,7 @@ export default async function AuthErrorPage(props: {
 
     return (
         <div className="flex min-h-screen flex-col items-center justify-center p-4">
+            <AuthSessionBridge />
             <div className="mx-auto flex w-full max-w-md flex-col items-center space-y-6 text-center">
                 <div className="flex h-20 w-20 items-center justify-center rounded-full bg-destructive/10">
                     <AlertCircle className="h-10 w-10 text-destructive" />

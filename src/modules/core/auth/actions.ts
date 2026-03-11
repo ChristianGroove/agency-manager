@@ -177,13 +177,8 @@ export async function sendMagicLink(formData: FormData) {
     // We reuse the logic from resetPasswordRequest/inviteMember to ensure custom branding
     const { supabaseAdmin } = await import('@/lib/supabase-admin')
 
-    // NUCLEAR OPTION: Force production URL logic strictly
-    let redirectBase = 'https://app.pixy.com.co'
-    if (process.env.NEXT_PUBLIC_APP_URL && !process.env.NEXT_PUBLIC_APP_URL.includes('localhost')) {
-        redirectBase = process.env.NEXT_PUBLIC_APP_URL.startsWith('http')
-            ? process.env.NEXT_PUBLIC_APP_URL
-            : `https://${process.env.NEXT_PUBLIC_APP_URL}`
-    }
+    const { getAuthRedirectBase } = await import('@/lib/auth-utils')
+    const redirectBase = getAuthRedirectBase()
     const redirectUrl = `${redirectBase}/auth/callback?next=/dashboard`
 
     try {
@@ -258,16 +253,8 @@ export async function resetPasswordRequest(formData: FormData) {
     const supabase = await createClient()
     const email = formData.get('email') as string
 
-    // NUCLEAR OPTION: Force production URL logic strictly
-    // We intentionally ignore NODE_ENV=development here to prevent localhost leaks in password emails
-    let redirectBase = 'https://app.pixy.com.co'
-
-    if (process.env.NEXT_PUBLIC_APP_URL && !process.env.NEXT_PUBLIC_APP_URL.includes('localhost')) {
-        redirectBase = process.env.NEXT_PUBLIC_APP_URL.startsWith('http')
-            ? process.env.NEXT_PUBLIC_APP_URL
-            : `https://${process.env.NEXT_PUBLIC_APP_URL}`
-    }
-
+    const { getAuthRedirectBase } = await import('@/lib/auth-utils')
+    const redirectBase = getAuthRedirectBase()
     const redirectUrl = `${redirectBase}/auth/callback?next=/update-password`
 
     // 1. Generate Link (Admin API) - We do NOT ask Supabase to send the email
