@@ -623,27 +623,44 @@ export async function createOrganization(formData: {
                 if (!emailRegex.test(formData.admin_email)) {
                     invitationError = 'Formato de email inválido'
                 } else {
-                    // Invite user via Supabase Auth
-                    const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(
-                        formData.admin_email,
-                        {
+                    // 1. Generate Invite Link (Admin API)
+                    // We generate a recovery/invite link to get the token_hash
+                    const { data: linkData, error: inviteError } = await supabaseAdmin.auth.admin.generateLink({
+                        type: 'invite',
+                        email: formData.admin_email,
+                        options: {
                             data: {
                                 full_name: 'Admin',
                                 invited_org_id: newOrg.id
                             },
+                            // Supabase internal redirect (backup)
                             redirectTo: `https://${process.env.NEXT_PUBLIC_APP_DOMAIN}/auth/callback`
                         }
-                    )
+                    })
 
                     if (inviteError) {
                         invitationError = inviteError.message
-                    } else if (inviteData?.user) {
-                        // Add user to organization
-                        await supabaseAdmin.from('organization_members').insert({
-                            organization_id: newOrg.id,
-                            user_id: inviteData.user.id,
-                            role: 'admin'
-                        })
+                    } else if (linkData?.properties?.action_link) {
+                        // 2. Extract Token and Build Custom Link
+                        // This avoids PKCE/Implicit flow issues by using verifyOtp on the server
+                        const originalUrl = new URL(linkData.properties.action_link)
+                        const token_hash = originalUrl.searchParams.get('token_hash')
+                        
+                        if (!token_hash) {
+                            throw new Error("No se pudo generar el token de acceso")
+                        }
+
+                        const actionLink = `https://${process.env.NEXT_PUBLIC_APP_DOMAIN}/auth/confirm?token_hash=${token_hash}&type=invite&next=/dashboard`
+
+                        // 3. Ensure User exists and is member (generateLink already handles user creation if needed)
+                        const invitedUser = linkData.user
+                        if (invitedUser) {
+                            await supabaseAdmin.from('organization_members').insert({
+                                organization_id: newOrg.id,
+                                user_id: invitedUser.id,
+                                role: 'admin'
+                            })
+                        }
 
                         // Send custom welcome email using CREATOR's SMTP
                         const { EmailService } = await import('@/modules/core/notifications/email.service')
@@ -659,10 +676,14 @@ export async function createOrganization(formData: {
                                         <strong>URL:</strong> <a href="https://${formData.slug}.pixy.com.co">https://${formData.slug}.pixy.com.co</a>
                                     </div>
                                     <p>
-                                        <a href="https://${process.env.NEXT_PUBLIC_APP_DOMAIN}/auth/callback" 
-                                           style="background: #F205E2; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">
+                                        <a href="${actionLink}" 
+                                           style="background: #F205E2; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
                                             Acceder a mi Panel
                                         </a>
+                                    </p>
+                                    <p style="margin-top: 20px; font-size: 12px; color: #999;">
+                                        Este enlace es de un solo uso y expirará pronto. Si el botón no funciona, copia y pega esto: <br/>
+                                        <span style="word-break: break-all;">${actionLink}</span>
                                     </p>
                                     <p style="color: #666; font-size: 14px;">Si no solicitaste este acceso, puedes ignorar este correo.</p>
                                 </div>

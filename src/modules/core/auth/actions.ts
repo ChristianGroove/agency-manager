@@ -126,10 +126,9 @@ export async function signup(formData: FormData) {
             const redirectParam = supabaseUrlObj.searchParams.get('redirect_to')
 
             if (token) {
-                // Construct our own safe URL
-                // We use /auth/verify?token_hash=...&type=signup&next=...
-                const nextPath = '/onboarding' // Default next
-                actionLink = `${redirectBase}/auth/verify?token_hash=${token}&type=${type}&next=${encodeURIComponent(nextPath)}`
+                // Construct our own safe URL using /auth/confirm for maximum reliability
+                const nextPath = '/onboarding'
+                actionLink = `${redirectBase}/auth/confirm?token_hash=${token}&type=${type}&next=${encodeURIComponent(nextPath)}`
             }
         } catch (e) {
             console.error("Error parsing/rewriting Supabase link:", e)
@@ -207,11 +206,23 @@ export async function sendMagicLink(formData: FormData) {
         let actionLink = linkData.properties?.action_link
         if (!actionLink) return { error: "Error generando enlace" }
 
-        // SANITIZATION: If Supabase returns localhost (due to config), force overwrite it to production/env
-        if (actionLink.includes('localhost') || actionLink.includes('127.0.0.1')) {
-            actionLink = actionLink.replace('http://localhost:3000', redirectBase)
-            actionLink = actionLink.replace('http://127.0.0.1:3000', redirectBase)
-            actionLink = actionLink.replace('redirect_to=http%3A%2F%2Flocalhost%3A3000', `redirect_to=${encodeURIComponent(redirectBase)}`)
+        // SANITIZATION & TOKEN EXTRACTION
+        // We extract token_hash to point to /auth/confirm instead of /auth/callback (PKCE)
+        try {
+            const originalUrl = new URL(actionLink)
+            const token_hash = originalUrl.searchParams.get('token_hash')
+            if (token_hash) {
+                actionLink = `${redirectBase}/auth/confirm?token_hash=${token_hash}&type=magiclink&next=${encodeURIComponent('/dashboard')}`
+            } else {
+                // Fallback sanitization
+                if (actionLink.includes('localhost') || actionLink.includes('127.0.0.1')) {
+                    actionLink = actionLink.replace('http://localhost:3000', redirectBase)
+                    actionLink = actionLink.replace('http://127.0.0.1:3000', redirectBase)
+                    actionLink = actionLink.replace('redirect_to=http%3A%2F%2Flocalhost%3A3000', `redirect_to=${encodeURIComponent(redirectBase)}`)
+                }
+            }
+        } catch (e) {
+            console.error("Error parsing magic link:", e)
         }
 
         // 2. Send Custom Email
@@ -262,7 +273,7 @@ export async function resetPasswordRequest(formData: FormData) {
             : `https://${process.env.NEXT_PUBLIC_APP_URL}`
     }
 
-    const redirectUrl = `${redirectBase}/update-password`
+    const redirectUrl = `${redirectBase}/auth/callback?next=/update-password`
 
     // 1. Generate Link (Admin API) - We do NOT ask Supabase to send the email
     // We import admin client dynamically or use a service role helper if available here. 
@@ -287,13 +298,22 @@ export async function resetPasswordRequest(formData: FormData) {
         return { success: false, error: "Failed to generate recovery link" }
     }
 
-    // SANITIZATION: If Supabase returns localhost (due to config), force overwrite it to production/env
-    if (actionLink.includes('localhost') || actionLink.includes('127.0.0.1')) {
-        console.log(`SANITIZE: Replacing localhost in actionLink with ${redirectBase}`)
-        actionLink = actionLink.replace('http://localhost:3000', redirectBase)
-        actionLink = actionLink.replace('http://127.0.0.1:3000', redirectBase)
-        // Also fix encoded redirect_to if present
-        actionLink = actionLink.replace('redirect_to=http%3A%2F%2Flocalhost%3A3000', `redirect_to=${encodeURIComponent(redirectBase)}`)
+    // SANITIZATION & TOKEN EXTRACTION
+    try {
+        const originalUrl = new URL(actionLink)
+        const token_hash = originalUrl.searchParams.get('token_hash')
+        if (token_hash) {
+            actionLink = `${redirectBase}/auth/confirm?token_hash=${token_hash}&type=recovery&next=${encodeURIComponent('/update-password')}`
+        } else {
+            // Fallback sanitization
+            if (actionLink.includes('localhost') || actionLink.includes('127.0.0.1')) {
+                actionLink = actionLink.replace('http://localhost:3000', redirectBase)
+                actionLink = actionLink.replace('http://127.0.0.1:3000', redirectBase)
+                actionLink = actionLink.replace('redirect_to=http%3A%2F%2Flocalhost%3A3000', `redirect_to=${encodeURIComponent(redirectBase)}`)
+            }
+        }
+    } catch (e) {
+        console.error("Error parsing recovery link:", e)
     }
 
     try {
