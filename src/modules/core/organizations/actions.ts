@@ -663,42 +663,28 @@ export async function createOrganization(formData: {
                         }
 
                         // Send custom welcome email using CREATOR's SMTP
+                        const { getAuthInviteEmailHtml } = await import('@/lib/email-templates')
+                        
+                        // We need the identity BEFORE sending to build the template
                         const { EmailService } = await import('@/modules/core/notifications/email.service')
-                        const emailResult = await EmailService.send({
+                        const identity = await (EmailService as any).getSenderIdentity(creatorOrgId || 'PLATFORM')
+                        const inviteHtml = getAuthInviteEmailHtml(formData.name, actionLink, identity.branding, identity.style)
+
+                        const finalEmailResult = await EmailService.send({
                             to: formData.admin_email,
                             subject: `Invitación a ${formData.name}`,
-                            html: `
-                                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                                    <h1 style="color: #F205E2;">¡Bienvenido a ${formData.name}!</h1>
-                                    <p>Has sido invitado como administrador de esta organización.</p>
-                                    <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                                        <strong>Nombre de la organización:</strong> ${formData.name}<br>
-                                        <strong>URL:</strong> <a href="https://${formData.slug}.pixy.com.co">https://${formData.slug}.pixy.com.co</a>
-                                    </div>
-                                    <p>
-                                        <a href="${actionLink}" 
-                                           style="background: #F205E2; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
-                                            Acceder a mi Panel
-                                        </a>
-                                    </p>
-                                    <p style="margin-top: 20px; font-size: 12px; color: #999;">
-                                        Este enlace es de un solo uso y expirará pronto. Si el botón no funciona, copia y pega esto: <br/>
-                                        <span style="word-break: break-all;">${actionLink}</span>
-                                    </p>
-                                    <p style="color: #666; font-size: 14px;">Si no solicitaste este acceso, puedes ignorar este correo.</p>
-                                </div>
-                            `,
-                            organizationId: creatorOrgId || 'PLATFORM', // ✅ Fallback to platform SMTP if creator has none
+                            html: inviteHtml,
+                            organizationId: creatorOrgId || 'PLATFORM',
                             tags: [
                                 { name: 'type', value: 'organization_invitation' },
                                 { name: 'new_org_id', value: newOrg.id }
                             ]
                         })
 
-                        if (emailResult.success) {
+                        if (finalEmailResult.success) {
                             invitationSent = true
                         } else {
-                            console.warn('Email send failed but org created:', emailResult.error)
+                            console.warn('Email send failed but org created:', finalEmailResult.error)
                             invitationError = 'Email no pudo ser enviado'
                         }
                     }

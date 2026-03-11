@@ -349,3 +349,75 @@ export function getPortalInviteEmailHtml(clientName: string, portalUrl: string, 
     `
     return getBaseHtml(`Bienvenido a ${branding.agency_name}`, content, branding, style)
 }
+
+export function getAuthMagicLinkEmailHtml(actionLink: string, branding: EmailBranding, style: EmailStyle = 'minimal'): string {
+    const isNeo = style === 'neo';
+    const isSwiss = style === 'swiss';
+
+    const content = `
+        <h2 style="margin-top: 0; color: ${isSwiss ? '#000' : '#1e293b'}; font-size: 24px;">Acceso Rápido</h2>
+        <p>Has solicitado ingresar a <strong>${branding.agency_name}</strong> sin contraseña.</p>
+        <p>Haz clic en el siguiente botón para entrar de forma segura a tu panel:</p>
+
+        <div style="margin: 40px 0; text-align: ${isSwiss ? 'left' : 'center'};">
+             <a href="${actionLink}" style="${isSwiss ? 'background:#000; color:#fff; padding:18px 36px; text-decoration:none; font-weight:bold; display:inline-block; font-size: 16px;' : `background-color: ${branding.primary_color}; color: #ffffff; padding: 16px 32px; border-radius: ${isNeo ? '50px' : '6px'}; text-decoration: none; font-weight: 600; display:inline-block; box-shadow: ${isNeo ? '0 10px 20px -5px ' + branding.primary_color + '66' : '0 4px 6px rgba(0,0,0,0.1)'};`}">
+                Ingresar Ahora
+            </a>
+            <p style="margin-top: 20px; font-size: 11px; color: #94a3b8;">
+                Este enlace es de un solo uso y expirará pronto. Si el botón no funciona, copia y pega esto: <br/>
+                <span style="word-break: break-all;">${actionLink}</span>
+            </p>
+        </div>
+    `
+    return getBaseHtml(`Ingresa a ${branding.agency_name}`, content, branding, style)
+}
+
+export function getAuthInviteEmailHtml(orgName: string, actionLink: string, branding: EmailBranding, style: EmailStyle = 'minimal'): string {
+    const isNeo = style === 'neo';
+    const isSwiss = style === 'swiss';
+
+    const content = `
+        <h2 style="margin-top: 0; color: ${isSwiss ? '#000' : '#1e293b'}; font-size: 24px;">¡Bienvenido a ${orgName}!</h2>
+        <p>Has sido invitado como administrador para gestionar los servicios en <strong>${orgName}</strong>.</p>
+        
+        <div style="background: ${isSwiss ? 'transparent' : (isNeo ? 'rgba(255,255,255,0.7)' : '#f8fafc')}; border: ${isSwiss ? '2px solid #000' : 'none'}; padding: 24px; border-radius: ${isNeo ? '16px' : '0'}; margin: 24px 0;">
+            <strong>Espacio de Trabajo:</strong> ${orgName}<br>
+            <strong>Plataforma:</strong> ${branding.agency_name}
+        </div>
+
+        <p>Haz clic abajo para aceptar la invitación y configurar tu acceso:</p>
+
+        <div style="margin: 40px 0; text-align: ${isSwiss ? 'left' : 'center'};">
+             <a href="${actionLink}" style="${isSwiss ? 'background:#000; color:#fff; padding:18px 36px; text-decoration:none; font-weight:bold; display:inline-block; font-size: 16px;' : `background-color: ${branding.primary_color}; color: #ffffff; padding: 16px 32px; border-radius: ${isNeo ? '50px' : '6px'}; text-decoration: none; font-weight: 600; display:inline-block; box-shadow: ${isNeo ? '0 10px 20px -5px ' + branding.primary_color + '66' : '0 4px 6px rgba(0,0,0,0.1)'};`}">
+                Acceder a mi Panel
+            </a>
+            <p style="margin-top: 20px; font-size: 11px; color: #94a3b8;">
+                Este enlace es seguro y de un solo uso. Si el botón no funciona, copia y pega esto: <br/>
+                <span style="word-break: break-all;">${actionLink}</span>
+            </p>
+        </div>
+    `
+    return getBaseHtml(`Invitación a ${orgName}`, content, branding, style)
+}
+
+export function getAuthRecoveryEmailHtml(actionLink: string, branding: EmailBranding, style: EmailStyle = 'minimal'): string {
+    const isNeo = style === 'neo';
+    const isSwiss = style === 'swiss';
+
+    const content = `
+        <h2 style="margin-top: 0; color: ${isSwiss ? '#000' : '#1e293b'}; font-size: 24px;">Restablecer Contraseña</h2>
+        <p>Hemos recibido una solicitud para cambiar tu contraseña en <strong>${branding.agency_name}</strong>.</p>
+        <p>Si no realizaste esta solicitud, puedes ignorar este correo de forma segura. De lo contrario, utiliza el siguiente botón:</p>
+
+        <div style="margin: 40px 0; text-align: ${isSwiss ? 'left' : 'center'};">
+             <a href="${actionLink}" style="${isSwiss ? 'background:#000; color:#fff; padding:18px 36px; text-decoration:none; font-weight:bold; display:inline-block; font-size: 16px;' : `background-color: ${branding.primary_color}; color: #ffffff; padding: 16px 32px; border-radius: ${isNeo ? '50px' : '6px'}; text-decoration: none; font-weight: 600; display:inline-block; box-shadow: ${isNeo ? '0 10px 20px -5px ' + branding.primary_color + '66' : '0 4px 6px rgba(0,0,0,0.1)'};`}">
+                Cambiar Contraseña
+            </a>
+            <p style="margin-top: 20px; font-size: 11px; color: #94a3b8;">
+                Este enlace expirará en 24 horas. Si el botón no funciona, copia y pega esto: <br/>
+                <span style="word-break: break-all;">${actionLink}</span>
+            </p>
+        </div>
+    `
+    return getBaseHtml(`Restablecer Contraseña`, content, branding, style)
+}

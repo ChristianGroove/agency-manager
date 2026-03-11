@@ -71,6 +71,7 @@ export async function getPlatformSettings() {
         website: data.social_links?.website || "https://pixy.com.co",
         font_family: "Inter", // Platform default
         login_bg_color: "#F3F4F6", // Platform default
+        email_style: data.email_style || 'neo',
         socials: data.social_links || {}
     } as BrandingConfig
 }
@@ -211,7 +212,8 @@ export async function getEffectiveBranding(orgId?: string | null): Promise<Brand
         language: tenantSettings.default_language,
         portal_language: tenantSettings.portal_language,
         date_format: tenantSettings.date_format,
-        currency_format: tenantSettings.currency_format
+        currency_format: tenantSettings.currency_format,
+        email_style: pickGeneral(tenantSettings.email_style, platformBranding.email_style)
     }
 }
 
@@ -350,6 +352,7 @@ export async function updateOrganizationBranding(settings: BrandingConfig) {
         portal_language: settings.portal_language,
         date_format: settings.date_format,
         currency_format: settings.currency_format,
+        email_style: settings.email_style
     }
 
     // Remove undefined values to avoid overwriting with null if we want partial updates?

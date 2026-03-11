@@ -47,4 +47,5 @@ export interface BrandingConfig {
     portal_language?: string | null
     date_format?: string | null
     currency_format?: string | null
+    email_style?: string | null // 'minimal' | 'corporate' | 'bold' | 'neo' | 'swiss'
 }

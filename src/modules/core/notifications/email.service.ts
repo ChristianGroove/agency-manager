@@ -4,6 +4,7 @@ import { getEffectiveBranding } from '@/modules/core/branding/actions';
 import { EmailBranding } from '@/lib/email-templates';
 import nodemailer from 'nodemailer';
 import { decrypt } from '@/lib/encryption';
+import { EmailStyle } from '@/lib/email-templates';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -27,10 +28,11 @@ export class EmailService {
     static async send(options: EmailOptions) {
         const { to, subject, html, organizationId, userId, attachments, tags } = options;
 
-        try {
-            // 1. Resolve Branding & Identity
-            const { senderName, replyTo, branding } = await this.getSenderIdentity(organizationId);
+        // 1. Resolve Branding & Identity (High priority, available for errors)
+        const identity = await this.getSenderIdentity(organizationId);
+        const { senderName, replyTo, branding } = identity;
 
+        try {
             // 2. Determine Transport Strategy (SMTP vs System/Resend)
             const smtpConfig = await this.getSmtpConfig(organizationId);
 
@@ -116,7 +118,12 @@ export class EmailService {
                         errorMessage: error.message,
                         metadata: { error }
                     });
-                    return { success: false, error };
+                    return { 
+                        success: false, 
+                        error,
+                        branding: identity.branding,
+                        style: identity.style
+                    };
                 }
 
                 messageId = data?.id;
@@ -136,7 +143,12 @@ export class EmailService {
                 }
             });
 
-            return { success: true, data: { id: messageId } };
+            return { 
+                success: true, 
+                data: { id: messageId },
+                branding: identity.branding,
+                style: identity.style
+            };
 
         } catch (err: any) {
             console.error('[EmailService] Unexpected Error:', err);
@@ -150,7 +162,12 @@ export class EmailService {
                 errorMessage: err.message,
                 metadata: { error: err }
             });
-            return { success: false, error: err };
+            return { 
+                success: false, 
+                error: err,
+                branding: identity.branding,
+                style: identity.style
+            };
         }
     }
 
@@ -174,6 +191,7 @@ export class EmailService {
         senderName: string;
         replyTo: string | undefined;
         branding: EmailBranding;
+        style: EmailStyle;
         fromEmail?: string;
     }> {
         // === PLATFORM CONTEXT ===
@@ -182,6 +200,7 @@ export class EmailService {
                 senderName: 'Pixy Platform',
                 replyTo: 'contact@pixy.com.co',
                 fromEmail: 'contact@pixy.com.co',
+                style: 'neo',
                 branding: {
                     agency_name: 'Pixy',
                     primary_color: '#000000', // Black for Pixy
@@ -215,8 +234,9 @@ export class EmailService {
             };
 
             return {
-                senderName: brandingData.name, // Use branding name as sender name
+                senderName: brandingData.name,
                 replyTo: settings?.email_reply_to || undefined,
+                style: brandingData.email_style as EmailStyle || 'minimal',
                 branding: emailBranding
             };
         } catch (error) {
@@ -225,6 +245,7 @@ export class EmailService {
             return {
                 senderName: 'Notificaciones',
                 replyTo: undefined,
+                style: 'minimal',
                 branding: {
                     agency_name: 'Plataforma',
                     primary_color: '#4F46E5',

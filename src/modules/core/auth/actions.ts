@@ -227,21 +227,16 @@ export async function sendMagicLink(formData: FormData) {
 
         // 2. Send Custom Email
         const { EmailService } = await import('@/modules/core/notifications/email.service')
-
-        // We use organizationId='PLATFORM' for generic login, OR try to find user's org?
-        // Let's use 'PLATFORM' unless we want to look up their main org. 
-        // Simpler is better for Login.
+        const { getAuthMagicLinkEmailHtml } = await import('@/lib/email-templates')
+        
+        // Resolve identity to build template with correct style
+        const identity = await (EmailService as any).getSenderIdentity('PLATFORM')
+        const magicLinkHtml = getAuthMagicLinkEmailHtml(actionLink, identity.branding, identity.style)
 
         await EmailService.send({
             to: email,
             subject: 'Ingresa a Pixy (Magic Link)',
-            html: `
-                <h1>Acceso Rápido</h1>
-                <p>Has solicitado ingresar a Pixy sin contraseña.</p>
-                <p>Haz clic en el siguiente enlace para entrar:</p>
-                <p><a href="${actionLink}" style="padding: 12px 24px; background-color: #000; color: #fff; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; margin-top: 10px;">Ingresar Ahora</a></p>
-                <p>Si no solicitaste esto, ignora este mensaje.</p>
-            `,
+            html: magicLinkHtml,
             organizationId: 'PLATFORM'
         })
 
@@ -319,23 +314,22 @@ export async function resetPasswordRequest(formData: FormData) {
     try {
         // 2. Send Email (Custom Service)
         const { EmailService } = await import('@/modules/core/notifications/email.service')
+        const { getAuthRecoveryEmailHtml } = await import('@/lib/email-templates')
 
-        const sendResult = await EmailService.send({
+        // Resolve identity for template
+        const identity = await (EmailService as any).getSenderIdentity('PLATFORM')
+        const recoveryHtml = getAuthRecoveryEmailHtml(actionLink, identity.branding, identity.style)
+
+        const finalSendResult = await EmailService.send({
             to: email,
             subject: 'Restablecer Contraseña - Pixy',
-            html: `
-                <h1>Solicitud de Restablecimiento</h1>
-                <p>Has solicitado restablecer tu contraseña en Pixy.</p>
-                <p>Haz clic en el siguiente enlace para continuar:</p>
-                <p><a href="${actionLink}" style="color: #F205E2; font-weight: bold;">Restablecer Contraseña</a></p>
-                <p>Si no solicitaste esto, ignora este mensaje.</p>
-            `,
+            html: recoveryHtml,
             organizationId: 'PLATFORM' // Password reset is a global/platform action
         })
 
-        if (!sendResult.success) {
-            console.error("Email send failed:", sendResult.error)
-            return { success: false, error: `Error enviando correo: ${sendResult.error}` }
+        if (!finalSendResult.success) {
+            console.error("Email send failed:", finalSendResult.error)
+            return { success: false, error: `Error enviando correo: ${finalSendResult.error}` }
         }
 
         return { success: true }
