@@ -104,7 +104,7 @@ export async function inviteMember(email: string, roleOrRoleId: string = 'member
     }
 
     const { getAdminUrlAsync } = await import('@/lib/utils')
-    const redirectUrl = await getAdminUrlAsync('/auth/callback?next=/dashboard')
+    const redirectUrl = await getAdminUrlAsync('/auth/confirm?next=/dashboard')
 
     try {
         // 1. Generate Invite Link (Handle New vs Existing Users)

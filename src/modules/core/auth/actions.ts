@@ -179,7 +179,7 @@ export async function sendMagicLink(formData: FormData) {
 
     const { getAuthRedirectBase } = await import('@/lib/auth-utils')
     const redirectBase = getAuthRedirectBase()
-    const redirectUrl = `${redirectBase}/auth/callback?next=/dashboard`
+    const redirectUrl = `${redirectBase}/auth/confirm?next=/dashboard`
 
     try {
         const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
@@ -255,7 +255,7 @@ export async function resetPasswordRequest(formData: FormData) {
 
     const { getAuthRedirectBase } = await import('@/lib/auth-utils')
     const redirectBase = getAuthRedirectBase()
-    const redirectUrl = `${redirectBase}/auth/callback?next=/update-password`
+    const redirectUrl = `${redirectBase}/auth/confirm?next=/update-password`
 
     // 1. Generate Link (Admin API) - We do NOT ask Supabase to send the email
     // We import admin client dynamically or use a service role helper if available here. 

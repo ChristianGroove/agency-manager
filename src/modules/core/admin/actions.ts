@@ -17,7 +17,7 @@ export async function inviteOrgOwner(email: string, orgId: string) {
 
     const { getAdminUrlAsync } = await import('@/lib/utils')
     const origin = await getAdminUrlAsync('')
-    const redirectUrl = await getAdminUrlAsync('/auth/callback?next=/platform')
+    const redirectUrl = await getAdminUrlAsync('/auth/confirm?next=/platform')
 
     let linkData, linkError;
 

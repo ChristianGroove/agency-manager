@@ -634,7 +634,7 @@ export async function createOrganization(formData: {
                                 invited_org_id: newOrg.id
                             },
                             // Supabase internal redirect (backup)
-                            redirectTo: `${(await import('@/lib/auth-utils')).getAuthRedirectBase()}/auth/callback`
+                            redirectTo: `${(await import('@/lib/auth-utils')).getAuthRedirectBase()}/auth/confirm`
                         }
                     })
 
