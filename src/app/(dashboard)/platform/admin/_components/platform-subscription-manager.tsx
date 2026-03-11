@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Loader2, Search, MoreHorizontal, ShieldAlert, CreditCard, ExternalLink, Package } from "lucide-react"
 import { toast } from "sonner"
-import { getAllPlatformSubscriptions, adminUpdateSubscription } from "@/modules/billing/saas/admin-actions"
+import { getAllPlatformSubscriptions, adminUpdateSubscription, adminCreateSubscription } from "@/modules/billing/saas/admin-actions"
 import {
     Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger
 } from "@/components/ui/dialog"
@@ -54,6 +54,16 @@ export function PlatformSubscriptionManager() {
             loadData()
         } catch (error) {
             toast.error("Error al actualizar suscripción")
+        }
+    }
+
+    const handleCreateSubscription = async (orgId: string, appId: string) => {
+        try {
+            await adminCreateSubscription(orgId, appId)
+            toast.success("Suscripción creada y plan asignado")
+            loadData()
+        } catch (error) {
+            toast.error("Error al crear suscripción")
         }
     }
 
@@ -135,33 +145,47 @@ export function PlatformSubscriptionManager() {
                                     {sub?.payment_gateway || '-'}
                                 </TableCell>
                                 <TableCell>
-                                    {sub && (
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                <DropdownMenuLabel>Acciones de Control</DropdownMenuLabel>
-                                                <DropdownMenuSeparator />
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                            {sub ? (
+                                                <>
+                                                    <DropdownMenuLabel>Acciones de Control</DropdownMenuLabel>
+                                                    <DropdownMenuSeparator />
 
-                                                <AdminEditSubscriptionDialog
-                                                    sub={sub}
-                                                    onUpdate={(updates) => handleAdminUpdate(sub.id, updates)}
-                                                />
+                                                    <AdminEditSubscriptionDialog
+                                                        sub={sub}
+                                                        onUpdate={(updates) => handleAdminUpdate(sub.id, updates)}
+                                                    />
 
-                                                <DropdownMenuSeparator />
-                                                <DropdownMenuItem onClick={() => handleAdminUpdate(sub.id, { status: 'active' })}>
-                                                    Activar Acceso
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem onClick={() => handleAdminUpdate(sub.id, { status: 'past_due' })} className="text-amber-600">
-                                                    Marcar como Mora
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem onClick={() => handleAdminUpdate(sub.id, { status: 'canceled' })} className="text-red-600">
-                                                    Suspender Acceso
-                                                </DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    )}
+                                                    <DropdownMenuSeparator />
+                                                    <DropdownMenuItem onClick={() => handleAdminUpdate(sub.id, { status: 'active' })}>
+                                                        Activar Acceso
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem onClick={() => handleAdminUpdate(sub.id, { status: 'past_due' })} className="text-amber-600">
+                                                        Marcar como Mora
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem onClick={() => handleAdminUpdate(sub.id, { status: 'canceled' })} className="text-red-600">
+                                                        Suspender Acceso
+                                                    </DropdownMenuItem>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <DropdownMenuLabel>Acceso Inicial</DropdownMenuLabel>
+                                                    <DropdownMenuSeparator />
+                                                    <DropdownMenuItem onClick={() => handleCreateSubscription(org.id, org.active_app_id || 'app_saas_platform')}>
+                                                        <CreditCard className="h-4 w-4 mr-2" />
+                                                        Asignar Plan {org.active_app_id === 'app_saas_platform' ? 'SaaS' : 'Actual'}
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem className="text-muted-foreground italic text-xs">
+                                                        Requiere asignar un plan para ver más opciones.
+                                                    </DropdownMenuItem>
+                                                </>
+                                            )}
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
                                 </TableCell>
                             </TableRow>
                         )

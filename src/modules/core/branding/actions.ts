@@ -111,8 +111,8 @@ export async function updatePlatformSettings(data: Partial<BrandingConfig>) {
         throw new Error(error.message)
     }
 
-    revalidatePath("/")
     revalidatePath("/platform/admin/branding")
+    revalidatePath("/platform/adn")
     return { success: true }
 }
 
@@ -397,6 +397,7 @@ export async function updateOrganizationBranding(settings: BrandingConfig) {
 
     revalidatePath("/platform/settings/branding")
     revalidatePath("/platform/settings")
-    revalidatePath("/platform/identity") // FIX: Ensure this specific route is revalidated
+    revalidatePath("/platform/identity")
+    revalidatePath("/platform/adn")
     return { success: true }
 }

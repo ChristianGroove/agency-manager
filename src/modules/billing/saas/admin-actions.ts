@@ -108,3 +108,45 @@ export async function updateSubscriptionStatusAdmin(subscriptionId: string, stat
     revalidatePath('/platform/admin')
     return { success: true }
 }
+
+/**
+ * Admin Action: Manually create a subscription for an organization
+ */
+export async function adminCreateSubscription(orgId: string, appId: string, initialStatus: string = 'active') {
+    await requireSuperAdmin()
+
+    // 1. Verify organization exists and has no active subscription
+    const { data: existing } = await supabaseAdmin
+        .from('saas_subscriptions')
+        .select('id')
+        .eq('organization_id', orgId)
+        .single()
+
+    if (existing) throw new Error('Esta organización ya tiene una suscripción activa.')
+
+    // 2. Create the subscription
+    const { data: sub, error } = await supabaseAdmin
+        .from('saas_subscriptions')
+        .insert({
+            organization_id: orgId,
+            plan_id: appId,
+            status: initialStatus,
+            current_period_start: new Date().toISOString(),
+            current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+            payment_gateway: 'manual',
+            metadata: { created_by_admin: true }
+        })
+        .select()
+        .single()
+
+    if (error) throw error
+
+    // 3. Ensure the organization has the correct active_app_id
+    await supabaseAdmin
+        .from('organizations')
+        .update({ active_app_id: appId })
+        .eq('id', orgId)
+
+    revalidatePath('/platform/admin')
+    return { success: true, sub }
+}
