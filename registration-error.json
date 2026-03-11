@@ -1,8 +1,0 @@
-{
-  "error": {
-    "message": "Register endpoint is not available for SMB businesses.",
-    "type": "OAuthException",
-    "code": 100,
-    "fbtrace_id": "AHHePSFXd0Af6jZQWEKbYBK"
-  }
-}
