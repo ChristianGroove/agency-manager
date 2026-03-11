@@ -338,6 +338,7 @@ export async function updatePassword(formData: FormData) {
         return { success: false, error: error.message }
     }
 
+    revalidatePath('/', 'layout')
     return { success: true }
 }
 

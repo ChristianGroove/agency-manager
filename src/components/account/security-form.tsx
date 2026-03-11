@@ -6,18 +6,12 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { toast } from "sonner"
-import { createBrowserClient } from "@supabase/ssr"
 import { Loader2, Lock } from "lucide-react"
 
 export function SecurityForm() {
     const [loading, setLoading] = useState(false)
     const [password, setPassword] = useState("")
     const [confirm, setConfirm] = useState("")
-
-    const supabase = createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    )
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -33,8 +27,15 @@ export function SecurityForm() {
 
         setLoading(true)
         try {
-            const { error } = await supabase.auth.updateUser({ password: password })
-            if (error) throw error
+            const { updatePassword } = await import("@/modules/core/auth/actions")
+            const formData = new FormData()
+            formData.append("password", password)
+            
+            const result = await updatePassword(formData)
+            
+            if (!result.success) {
+                throw new Error(result.error || "Error al actualizar contraseña")
+            }
 
             toast.success("Contraseña actualizada exitosamente")
             setPassword("")
