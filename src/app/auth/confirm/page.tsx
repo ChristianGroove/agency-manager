@@ -83,10 +83,25 @@ function ConfirmContent() {
             return
         }
 
+        // Case 3: Implicit Flow Tokens in Hash (#access_token=...)
+        const hash = window.location.hash
+        if (hash.includes('access_token=')) {
+            try {
+                const { data: { session } } = await supabase.auth.getSession()
+                if (session) {
+                    setStatus('success')
+                    setTimeout(() => router.push(next), 1500)
+                    return
+                }
+            } catch (e) {
+                console.error("Hash session detection error:", e)
+            }
+        }
+
         // No valid params
         if (!token_hash && !code) {
             setStatus('error')
-            setErrorMessage('No se encontró un token válido en el enlace. Asegúrate de haber copiado el enlace completo.')
+            setErrorMessage('No se encontró un token de inicio de sesión. Por favor, asegúrate de hacer clic en el botón del correo oficial.')
         }
     }
 
