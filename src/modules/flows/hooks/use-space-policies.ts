@@ -1,11 +1,19 @@
 import { useMemo } from 'react';
 import { VERTICAL_REGISTRY, VerticalType, VerticalConfig } from '@/modules/core/organizations/vertical-registry';
 
+export interface UseSpacePoliciesReturn {
+    spaceType: VerticalType;
+    config: VerticalConfig;
+    policy: VerticalConfig;
+    vocabulary: VerticalConfig['terminology'];
+    t: (text: string) => string;
+}
+
 /**
  * Hook to consume vertical-specific UI policies.
  * Uses the VerticalRegistry to provide terminology, insights, and visibility rules.
  */
-export function useSpacePolicies(spaceType: string = 'agency') {
+export function useSpacePolicies(spaceType: string = 'agency'): UseSpacePoliciesReturn {
     
     // Normalize spaceType to VerticalType
     const verticalKey = useMemo((): VerticalType => {
@@ -21,6 +29,8 @@ export function useSpacePolicies(spaceType: string = 'agency') {
     return {
         spaceType: verticalKey,
         config,
+        policy: config, // Alias for wizard compatibility
+        vocabulary: config.terminology, // Alias for wizard compatibility
         t: (text: string) => {
             let res = text;
             const { terminology } = config;

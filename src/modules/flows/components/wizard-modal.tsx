@@ -12,7 +12,7 @@ interface WizardModalProps {
 }
 
 export function WizardModal({ isOpen, onClose, templateId, onDeploy }: WizardModalProps) {
-    const { policy, t } = useSpacePolicies('space_clinic_demo'); // MOCK for viewing
+    const { config: policy, t } = useSpacePolicies('agency'); // Use standard config alias
     const [days, setDays] = useState(3);
     const [amount, setAmount] = useState(50);
     const [channel, setChannel] = useState(policy.rules.allowedChannels[0]);
@@ -24,7 +24,7 @@ export function WizardModal({ isOpen, onClose, templateId, onDeploy }: WizardMod
             case 'payment_recovery':
                 return (
                     <div className="text-2xl leading-relaxed font-light text-gray-600 dark:text-gray-200">
-                        Cuando una factura del <span className="text-blue-500 dark:text-blue-400 font-medium">{policy.vocabulary.client}</span> venza por más de
+                        Cuando una factura del <span className="text-blue-500 dark:text-blue-400 font-medium">{policy.terminology.client}</span> venza por más de
                         <input
                             type="number"
                             value={days}
@@ -63,7 +63,7 @@ export function WizardModal({ isOpen, onClose, templateId, onDeploy }: WizardMod
             case 'client_reactivation':
                 return (
                     <div className="text-2xl leading-relaxed font-light text-gray-600 dark:text-gray-200">
-                        Si el <span className="text-blue-500 dark:text-blue-400 font-medium">{policy.vocabulary.client}</span> lleva inactivo
+                        Si el <span className="text-blue-500 dark:text-blue-400 font-medium">{policy.terminology.client}</span> lleva inactivo
                         <input type="number" defaultValue={60} className="mx-2 w-16 bg-gray-100 dark:bg-gray-800 border-b-2 border-amber-500 text-center focus:outline-none rounded text-gray-900 dark:text-white" />
                         días, enviar un cupón del
                         <input type="number" defaultValue={15} className="mx-2 w-16 bg-gray-100 dark:bg-gray-800 border-b-2 border-green-500 text-center focus:outline-none rounded text-gray-900 dark:text-white" />
@@ -80,9 +80,9 @@ export function WizardModal({ isOpen, onClose, templateId, onDeploy }: WizardMod
             case 'review_request': // Example of vocabulary injection
                 return (
                     <div className="text-2xl leading-relaxed font-light text-gray-600 dark:text-gray-200">
-                        Cuando finalice el <span className="text-blue-500 dark:text-blue-400 font-medium">{policy.vocabulary.project}</span>, esperar
+                        Cuando finalice el <span className="text-blue-500 dark:text-blue-400 font-medium">{policy.terminology.project}</span>, esperar
                         <input type="number" defaultValue={2} className="mx-2 w-16 bg-gray-100 dark:bg-gray-800 border-b-2 border-blue-500 text-center rounded text-gray-900 dark:text-white" />
-                        días y pedir una reseña al <span className="text-blue-500 dark:text-blue-400 font-medium">{policy.vocabulary.client}</span>.
+                        días y pedir una reseña al <span className="text-blue-500 dark:text-blue-400 font-medium">{policy.terminology.client}</span>.
                     </div>
                 );
             default:

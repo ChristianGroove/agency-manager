@@ -34,6 +34,9 @@ export interface VerticalConfig {
             showOrders: boolean;
         };
     };
+    rules: {
+        allowedChannels: string[];
+    };
 }
 
 export const VERTICAL_REGISTRY: Record<VerticalType, VerticalConfig> = {
@@ -58,6 +61,9 @@ export const VERTICAL_REGISTRY: Record<VerticalType, VerticalConfig> = {
                 showServices: true,
                 showOrders: false
             }
+        },
+        rules: {
+            allowedChannels: ['whatsapp', 'email', 'sms']
         }
     },
     resto: {
@@ -81,6 +87,9 @@ export const VERTICAL_REGISTRY: Record<VerticalType, VerticalConfig> = {
                 showServices: false,
                 showOrders: true
             }
+        },
+        rules: {
+            allowedChannels: ['whatsapp', 'email']
         }
     },
     cleaning: {
@@ -104,6 +113,9 @@ export const VERTICAL_REGISTRY: Record<VerticalType, VerticalConfig> = {
                 showServices: true,
                 showOrders: false
             }
+        },
+        rules: {
+            allowedChannels: ['whatsapp', 'email', 'sms']
         }
     },
     retail: {
@@ -127,6 +139,9 @@ export const VERTICAL_REGISTRY: Record<VerticalType, VerticalConfig> = {
                 showServices: false,
                 showOrders: false
             }
+        },
+        rules: {
+            allowedChannels: ['whatsapp', 'email', 'sms']
         }
     },
     saas: {
@@ -150,6 +165,9 @@ export const VERTICAL_REGISTRY: Record<VerticalType, VerticalConfig> = {
                 showServices: true,
                 showOrders: false
             }
+        },
+        rules: {
+            allowedChannels: ['email', 'whatsapp']
         }
     },
     platform: {
@@ -173,6 +191,9 @@ export const VERTICAL_REGISTRY: Record<VerticalType, VerticalConfig> = {
                 showServices: true,
                 showOrders: false
             }
+        },
+        rules: {
+            allowedChannels: ['email', 'sms']
         }
     }
 };
