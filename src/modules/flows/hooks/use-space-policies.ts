@@ -1,71 +1,33 @@
 import { useMemo } from 'react';
+import { VERTICAL_REGISTRY, VerticalType, VerticalConfig } from '@/modules/core/organizations/vertical-registry';
 
-// In a real app, this would consume the 'SpaceContext' or fetch from DB
-// For MVP, we mock the behavior to demonstrate the architectural pattern
+/**
+ * Hook to consume vertical-specific UI policies.
+ * Uses the VerticalRegistry to provide terminology, insights, and visibility rules.
+ */
+export function useSpacePolicies(spaceType: string = 'agency') {
+    
+    // Normalize spaceType to VerticalType
+    const verticalKey = useMemo((): VerticalType => {
+        const type = spaceType.toLowerCase();
+        if (['agency', 'resto', 'cleaning', 'retail', 'saas', 'platform'].includes(type)) {
+            return type as VerticalType;
+        }
+        return 'agency'; // Fallback
+    }, [spaceType]);
 
-export type SpaceType = 'agency' | 'clinic' | 'restaurant' | 'real_estate' | 'generic';
-
-export interface SpacePolicy {
-    vocabulary: {
-        client: string; // 'Cliente', 'Paciente', 'Comensal'
-        project: string; // 'Proyecto', 'Tratamiento', 'Reserva'
-        sale: string; // 'Venta', 'Consulta', 'Ticket'
-    };
-    rules: {
-        allowedChannels: ('whatsapp' | 'email' | 'sms')[];
-        restrictedDays: number[]; // 0 = Sunday
-        tone: 'formal' | 'casual' | 'warm';
-    };
-}
-
-const DEFAULT_POLICY: SpacePolicy = {
-    vocabulary: { client: 'Cliente', project: 'Proyecto', sale: 'Venta' },
-    rules: { allowedChannels: ['email'], restrictedDays: [], tone: 'formal' }
-};
-
-const POLICIES: Record<SpaceType, SpacePolicy> = {
-    agency: {
-        vocabulary: { client: 'Cliente', project: 'Campaña', sale: 'Contrato' },
-        rules: { allowedChannels: ['email', 'whatsapp', 'sms'], restrictedDays: [0, 6], tone: 'casual' }
-    },
-    clinic: {
-        vocabulary: { client: 'Paciente', project: 'Tratamiento', sale: 'Consulta' },
-        rules: { allowedChannels: ['whatsapp', 'sms'], restrictedDays: [0], tone: 'warm' }
-    },
-    real_estate: {
-        vocabulary: { client: 'Interesado', project: 'Propiedad', sale: 'Operación' },
-        rules: { allowedChannels: ['whatsapp', 'email'], restrictedDays: [], tone: 'formal' }
-    },
-    restaurant: {
-        vocabulary: { client: 'Comensal', project: 'Reserva', sale: 'Cuenta' },
-        rules: { allowedChannels: ['whatsapp'], restrictedDays: [], tone: 'warm' }
-    },
-    generic: DEFAULT_POLICY
-};
-
-export function useSpacePolicies(spaceId: string = 'generic') {
-    // In MVP, we might treat 'spaceId' as the type key directly for demo purposes
-    // Or look up the type from the spaceId
-
-    // MOCK: Infer type from ID for demo (e.g., 'space_clinic_123')
-    const spaceType: SpaceType = useMemo(() => {
-        if (spaceId.includes('clinic')) return 'clinic';
-        if (spaceId.includes('agency')) return 'agency';
-        if (spaceId.includes('food')) return 'restaurant';
-        return 'generic';
-    }, [spaceId]);
-
-    const policy = POLICIES[spaceType] || DEFAULT_POLICY;
+    const config = useMemo(() => VERTICAL_REGISTRY[verticalKey], [verticalKey]);
 
     return {
-        spaceType,
-        policy,
-        // Helper to format text dynamically: t("Nuevo {client}") -> "Nuevo Paciente"
+        spaceType: verticalKey,
+        config,
         t: (text: string) => {
             let res = text;
-            res = res.replace('{client}', policy.vocabulary.client);
-            res = res.replace('{project}', policy.vocabulary.project);
-            res = res.replace('{sale}', policy.vocabulary.sale);
+            const { terminology } = config;
+            res = res.replace('{client}', terminology.client);
+            res = res.replace('{clients}', terminology.clients);
+            res = res.replace('{project}', terminology.project);
+            res = res.replace('{sale}', terminology.sale);
             return res;
         }
     };

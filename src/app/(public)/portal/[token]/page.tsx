@@ -32,6 +32,7 @@ export default function PortalPage() {
     const [events, setEvents] = useState<ClientEvent[]>([])
     const [activeModules, setActiveModules] = useState<any[]>([])
     const [hostingAccounts, setHostingAccounts] = useState<any[]>([])
+    const [catalog, setCatalog] = useState<any[]>([]) // NEW: Optimize B2C initial load
 
     // Payment Methods State (NEW)
     const [paymentMethods, setPaymentMethods] = useState<any[]>([])
@@ -96,6 +97,7 @@ export default function PortalPage() {
                 setHostingAccounts(data.hostingAccounts || [])
                 setActiveModules(data.activePortalModules || [])
                 setPaymentMethods(data.paymentMethods || [])
+                setCatalog(data.catalog || []) // NEW: Catalog from unified fetch
                 setInsightsAccess(data.insightsAccess || { show: false, mode: { organic: false, ads: false } })
             }
         } catch (err) {
@@ -285,6 +287,7 @@ export default function PortalPage() {
                 settings={settings}
                 activeModules={activeModules}
                 hostingAccounts={hostingAccounts}
+                catalog={catalog} // NEW: Pass pre-fetched catalog
                 onPay={handlePayClick}
                 onViewInvoice={setViewInvoice}
                 onViewQuote={setViewQuote}

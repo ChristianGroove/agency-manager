@@ -21,6 +21,7 @@ export interface RestoPortalLayoutProps {
     client?: any
     invoices?: any[]
     settings?: any
+    catalog?: any[] // NEW: Support external injection
 
     user?: any
     currentOrgId?: string
@@ -33,11 +34,12 @@ export function B2CRestaurantLayout({
     client,
     invoices,
     settings,
+    catalog, // Added to destructuring
     currentOrgId,
     orgData
 }: RestoPortalLayoutProps) {
     const [activeTab, setActiveTab] = useState<'menu' | 'cart' | 'orders' | 'profile'>('menu')
-    const [catalogItems, setCatalogItems] = useState<any[]>([])
+    const [catalogItems, setCatalogItems] = useState<any[]>(catalog || [])
     const [loadingCatalog, setLoadingCatalog] = useState(false)
     const [showSuccessModal, setShowSuccessModal] = useState(false)
     const { items: cartItems, clearCart } = useRestoCart()
@@ -65,10 +67,10 @@ export function B2CRestaurantLayout({
         return () => window.removeEventListener('resto-navigate', handler)
     }, [])
 
-    // Fetch Menu Catalog
+    // Fetch Menu Catalog (Only if not provided by parent)
     useEffect(() => {
         async function fetchMenu() {
-            if (!token) return
+            if (!token || (catalog && catalog.length > 0)) return
             setLoadingCatalog(true)
             try {
                 const catalog = await getPortalCatalog(token)

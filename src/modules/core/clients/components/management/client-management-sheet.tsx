@@ -35,6 +35,7 @@ import { NotesModal } from "@/modules/core/clients/notes-modal"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { useTranslation } from "@/lib/i18n/use-translation"
+import { useSpacePolicies } from "@/modules/flows/hooks/use-space-policies"
 import { RestoOrdersTab } from "./resto-orders-tab"
 import { useRef } from "react"
 
@@ -49,6 +50,7 @@ interface ClientManagementSheetProps {
 
 export function ClientManagementSheet({ clientId, open, onOpenChange, initialData, initialTab = "overview", spaceType = "agency" }: ClientManagementSheetProps) {
     const { t } = useTranslation()
+    const { config, t: tVertical } = useSpacePolicies(spaceType)
     const fileInputRef = useRef<HTMLInputElement>(null)
 
     // Data State
@@ -326,8 +328,8 @@ export function ClientManagementSheet({ clientId, open, onOpenChange, initialDat
             >
                 <div className="flex flex-col h-full bg-slate-50/50">
                     <SheetHeader className="sr-only">
-                        <SheetTitle>Gestión del Cliente: {client.name}</SheetTitle>
-                        <SheetDescription>Detalles y gestión del cliente</SheetDescription>
+                        <SheetTitle>Gestión de {config.terminology.client}: {client.name}</SheetTitle>
+                        <SheetDescription>Detalles y gestión de {config.terminology.client}</SheetDescription>
                     </SheetHeader>
                     {/* Header */}
                     <div className="bg-white border-b border-gray-100 px-8 py-6 flex items-start gap-6 flex-none z-10">
@@ -368,26 +370,32 @@ export function ClientManagementSheet({ clientId, open, onOpenChange, initialDat
                         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
                             <div className="px-8 border-b border-gray-100 bg-white/50 backdrop-blur-sm sticky top-0 z-10">
                                 <TabsList className="bg-transparent p-0 w-full justify-start h-auto gap-8">
-                                    <TabsTrigger value="info" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-indigo-600 data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 rounded-none px-0 pb-3 pt-2 text-gray-500 font-medium text-sm transition-all">
-                                        <UserCircle className="h-4 w-4 mr-2" /> Perfil
-                                    </TabsTrigger>
-                                    <TabsTrigger value="activity" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-indigo-600 data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 rounded-none px-0 pb-3 pt-2 text-gray-500 font-medium text-sm transition-all">
-                                        <CalendarClock className="h-4 w-4 mr-2" /> Actividad
-                                    </TabsTrigger>
-                                    {spaceType !== 'resto' && (
-                                        <>
-                                            <TabsTrigger value="services" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-indigo-600 data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 rounded-none px-0 pb-3 pt-2 text-gray-500 font-medium text-sm transition-all">
-                                                <Server className="h-4 w-4 mr-2" /> Servicios
-                                            </TabsTrigger>
-                                            <TabsTrigger value="billing" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-indigo-600 data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 rounded-none px-0 pb-3 pt-2 text-gray-500 font-medium text-sm transition-all">
-                                                <FileText className="h-4 w-4 mr-2" /> Facturación
-                                            </TabsTrigger>
-                                            <TabsTrigger value="hosting" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-indigo-600 data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 rounded-none px-0 pb-3 pt-2 text-gray-500 font-medium text-sm transition-all">
-                                                <Globe className="h-4 w-4 mr-2" /> Hosting
-                                            </TabsTrigger>
-                                        </>
+                                    {config.management.visibleTabs.includes('info') && (
+                                        <TabsTrigger value="info" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-indigo-600 data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 rounded-none px-0 pb-3 pt-2 text-gray-500 font-medium text-sm transition-all">
+                                            <UserCircle className="h-4 w-4 mr-2" /> Perfil
+                                        </TabsTrigger>
                                     )}
-                                    {spaceType === 'resto' && (
+                                    {config.management.visibleTabs.includes('activity') && (
+                                        <TabsTrigger value="activity" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-indigo-600 data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 rounded-none px-0 pb-3 pt-2 text-gray-500 font-medium text-sm transition-all">
+                                            <CalendarClock className="h-4 w-4 mr-2" /> Actividad
+                                        </TabsTrigger>
+                                    )}
+                                    {config.management.visibleTabs.includes('services') && (
+                                        <TabsTrigger value="services" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-indigo-600 data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 rounded-none px-0 pb-3 pt-2 text-gray-500 font-medium text-sm transition-all">
+                                            <Server className="h-4 w-4 mr-2" /> Servicios
+                                        </TabsTrigger>
+                                    )}
+                                    {config.management.visibleTabs.includes('billing') && (
+                                        <TabsTrigger value="billing" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-indigo-600 data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 rounded-none px-0 pb-3 pt-2 text-gray-500 font-medium text-sm transition-all">
+                                            <FileText className="h-4 w-4 mr-2" /> Facturación
+                                        </TabsTrigger>
+                                    )}
+                                    {config.management.visibleTabs.includes('hosting') && (
+                                        <TabsTrigger value="hosting" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-indigo-600 data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 rounded-none px-0 pb-3 pt-2 text-gray-500 font-medium text-sm transition-all">
+                                            <Globe className="h-4 w-4 mr-2" /> Hosting
+                                        </TabsTrigger>
+                                    )}
+                                    {config.management.visibleTabs.includes('orders') && (
                                         <TabsTrigger value="orders" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-indigo-600 data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 rounded-none px-0 pb-3 pt-2 text-gray-500 font-medium text-sm transition-all">
                                             <FileText className="h-4 w-4 mr-2" /> Pedidos
                                         </TabsTrigger>
@@ -491,7 +499,7 @@ export function ClientManagementSheet({ clientId, open, onOpenChange, initialDat
                                             </div>
                                         </div>
 
-                                        {spaceType !== 'resto' && (
+                                        {config.management.profileSections.includes('digital_presence') && (
                                             <div className="md:col-span-2 pt-4 border-t border-gray-50 space-y-6">
                                                 <h4 className="text-sm font-bold text-indigo-600 uppercase tracking-widest flex items-center gap-2">
                                                     <Globe className="h-4 w-4" /> Presencia Digital

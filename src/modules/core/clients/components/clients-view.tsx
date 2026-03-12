@@ -52,9 +52,9 @@ import { ClientManagementSheet } from "@/modules/core/clients/components/managem
 import { ConnectivitySheet } from "@/components/sheets/connectivity-sheet"
 import { PortalGovernanceSheet } from "@/components/sheets/portal-governance-sheet"
 
-// (imports)
 import { useRegisterView } from "@/modules/core/caa/context/view-context"
 import { useTranslation } from "@/lib/i18n/use-translation"
+import { useSpacePolicies } from "@/modules/flows/hooks/use-space-policies"
 import { SectionHeader } from "@/components/layout/section-header"
 import { useRouter, useSearchParams } from "next/navigation"
 
@@ -79,15 +79,16 @@ interface ClientsViewProps {
 
 export function ClientsView({ initialData, initialSettings, currentPage, currentSearch, currentFilter, spaceType = 'agency' }: ClientsViewProps) {
     const { t } = useTranslation()
+    const { config, t: tVertical } = useSpacePolicies(spaceType)
     const router = useRouter()
     const searchParamsOrigin = useSearchParams()
 
     // Register View Context for Help Assistant
     useRegisterView({
         viewId: "clients",
-        label: t('clients.title'),
+        label: config.terminology.clients,
         actions: [
-            { id: "new-client", label: t('clients.new_client'), type: "modal", target: "create-client", keywords: ["crear", "nuevo", "cliente"] }
+            { id: "new-client", label: config.terminology.action_new, type: "modal", target: "create-client", keywords: ["crear", "nuevo", "cliente"] }
         ],
         topics: ["clients-overview", "contact-card-guide"]
     })
@@ -337,16 +338,18 @@ export function ClientsView({ initialData, initialSettings, currentPage, current
             {/* Header Section - Fixed */}
             <div className="flex-none space-y-4 pr-1">
                 <SectionHeader
-                    title={t('clients.title')}
+                    title={config.terminology.clients}
                     icon={Users}
                     action={
                         <div className="flex items-center gap-3 w-full md:w-auto">
-                            <Link href="/debug/tokens">
-                                <Button variant="outline" className="h-9 px-4 border-gray-200 text-gray-600 hover:bg-gray-50">
-                                    <AlertTriangle className="mr-2 h-4 w-4" />
-                                    {t('clients.actions.tokens')}
-                                </Button>
-                            </Link>
+                            {config.management.actions.showHosting && (
+                                <Link href="/debug/tokens">
+                                    <Button variant="outline" className="h-9 px-4 border-gray-200 text-gray-600 hover:bg-gray-50">
+                                        <AlertTriangle className="mr-2 h-4 w-4" />
+                                        {t('clients.actions.tokens')}
+                                    </Button>
+                                </Link>
+                            )}
                             <CreateClientSheet onSuccess={fetchClients} />
                         </div>
                     }
@@ -399,8 +402,8 @@ export function ClientsView({ initialData, initialSettings, currentPage, current
                                 filteredClients.map((client: any) => {
                                     const { debt, futureDebt, nextPayment, daysToPay, activeServicesCount } = client
 
-                                    const isAgency = spaceType !== 'resto'
-                                    const isResto = spaceType === 'resto'
+                                    const isAgency = config.management.actions.showBilling
+                                    const isResto = config.management.actions.showOrders
 
                                     const isOverdue = isAgency && daysToPay !== null && daysToPay < 0 && debt > 0
                                     const isUrgent = isAgency && daysToPay !== null && (
@@ -579,16 +582,34 @@ export function ClientsView({ initialData, initialSettings, currentPage, current
                                                         )
                                                     )}
 
-                                                    {/* Resto/Commerce Section */}
-                                                    {!isCompactView && !isAgency && (
-                                                        <div className="p-4 rounded-lg border border-gray-100 bg-gray-50/50 flex flex-col justify-center gap-2">
+                                                    {/* Dynamic Insights Section */}
+                                                    {!isCompactView && (
+                                                        <div className="p-4 rounded-lg border border-gray-100 dark:border-white/10 bg-gray-50/50 dark:bg-white/5 flex flex-col justify-center gap-2">
                                                             <div className="flex items-center justify-between">
-                                                                <span className="text-xs font-semibold text-gray-500 uppercase">Visitas</span>
-                                                                <span className="text-sm font-bold text-gray-900">{client.activeServicesCount || 0}</span>
+                                                                <span className="text-xs font-semibold text-gray-500 uppercase">
+                                                                    {config.insights.primary.label}
+                                                                </span>
+                                                                <span className="text-sm font-bold text-gray-900 dark:text-gray-100">
+                                                                    {config.insights.primary.key === 'next_payment' && nextPayment 
+                                                                        ? new Date(nextPayment.date).toLocaleDateString()
+                                                                        : config.insights.primary.key === 'visits'
+                                                                        ? (activeServicesCount || 0)
+                                                                        : (client[config.insights.primary.key] || 0)
+                                                                    }
+                                                                </span>
                                                             </div>
                                                             <div className="flex items-center justify-between">
-                                                                <span className="text-xs font-semibold text-gray-500 uppercase">LTV (Gasto)</span>
-                                                                <span className="text-sm font-bold text-gray-900">${(client.debt || 0).toLocaleString()}</span>
+                                                                <span className="text-xs font-semibold text-gray-500 uppercase">
+                                                                    {config.insights.secondary.label}
+                                                                </span>
+                                                                <span className="text-sm font-bold text-gray-900 dark:text-gray-100">
+                                                                    {config.insights.secondary.key === 'active_services'
+                                                                        ? activeServicesCount
+                                                                        : config.insights.secondary.key === 'ltv' || config.insights.secondary.key === 'debt'
+                                                                        ? `$${(debt || 0).toLocaleString()}`
+                                                                        : (client[config.insights.secondary.key] || 0)
+                                                                    }
+                                                                </span>
                                                             </div>
                                                         </div>
                                                     )}
@@ -691,19 +712,9 @@ export function ClientsView({ initialData, initialSettings, currentPage, current
                                                     onCheckedChange={toggleAll}
                                                 />
                                             </TableHead>
-                                            <TableHead>{t('clients.table.contact')}</TableHead>
-                                            {spaceType !== 'resto' ? (
-                                                <>
-                                                    <TableHead className="w-[150px]">{t('clients.table.status')}</TableHead>
-                                                    <TableHead className="w-[150px]">{t('clients.table.services')}</TableHead>
-                                                    <TableHead className="w-[180px]">{t('clients.table.next_payment')}</TableHead>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <TableHead className="w-[150px]">Visitas</TableHead>
-                                                    <TableHead className="w-[150px]">Gasto Total</TableHead>
-                                                </>
-                                            )}
+                                            <TableHead>{config.terminology.client}</TableHead>
+                                            <TableHead className="w-[150px]">{config.insights.primary.label}</TableHead>
+                                            <TableHead className="w-[180px]">{config.insights.secondary.label}</TableHead>
                                             <TableHead className="text-right w-[100px]">{t('clients.table.actions')}</TableHead>
                                         </TableRow>
                                     </TableHeader>
@@ -762,59 +773,26 @@ export function ClientsView({ initialData, initialSettings, currentPage, current
                                                                 </div>
                                                             </div>
                                                         </TableCell>
-                                                        {isAgency ? (
-                                                            <>
-                                                                <TableCell className="w-[120px]">
-                                                                    <div className="flex">
-                                                                        <Badge variant="outline" className={cn(
-                                                                            "border-0 px-2 py-0.5 h-6 whitespace-nowrap",
-                                                                            debt > 0 ? "bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20"
-                                                                                : futureDebt > 0 ? "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/20"
-                                                                                    : "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20"
-                                                                        )}>
-                                                                            {debt > 0 ? t('clients.status.overdue') : futureDebt > 0 ? t('clients.status.urgent') : t('clients.status.active')}
-                                                                        </Badge>
-                                                                        {(debt > 0 || futureDebt > 0) && (
-                                                                            <span className={cn(
-                                                                                "ml-2 text-xs font-semibold self-center",
-                                                                                debt > 0 ? "text-red-700" : "text-amber-700"
-                                                                            )}>
-                                                                                ${(debt || futureDebt).toLocaleString()}
-                                                                            </span>
-                                                                        )}
-                                                                    </div>
-                                                                </TableCell>
-                                                                <TableCell className="w-[120px]">
-                                                                    <div className="flex items-center gap-1.5 text-sm text-gray-600">
-                                                                        <CreditCard className="h-4 w-4 text-gray-400" />
-                                                                        {t('clients.table.active_services').replace('{count}', activeServicesCount.toString())}
-                                                                    </div>
-                                                                </TableCell>
-                                                                <TableCell className="w-[180px]">
-                                                                    {nextPayment ? (
-                                                                        <div className="flex flex-col text-sm">
-                                                                            <span className="text-gray-900 dark:text-white font-medium">
-                                                                                {new Date(nextPayment.date).toLocaleDateString()}
-                                                                            </span>
-                                                                            <span className="text-xs text-gray-500 truncate max-w-[140px]">
-                                                                                {nextPayment.source}
-                                                                            </span>
-                                                                        </div>
-                                                                    ) : (
-                                                                        <span className="text-xs text-gray-400 italic">--</span>
-                                                                    )}
-                                                                </TableCell>
-                                                            </>
-                                                        ) : (
-                                                            <>
-                                                                <TableCell className="w-[150px]">
-                                                                    <span className="text-sm font-medium">{activeServicesCount || 0}</span>
-                                                                </TableCell>
-                                                                <TableCell className="w-[150px]">
-                                                                    <span className="text-sm font-medium text-emerald-600">${(debt || 0).toLocaleString()}</span>
-                                                                </TableCell>
-                                                            </>
-                                                        )}
+                                                        <TableCell className="w-[150px]">
+                                                            <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                                                {config.insights.primary.key === 'next_payment' && nextPayment 
+                                                                    ? new Date(nextPayment.date).toLocaleDateString()
+                                                                    : config.insights.primary.key === 'visits'
+                                                                    ? (activeServicesCount || 0)
+                                                                    : (client[config.insights.primary.key] || 0)
+                                                                }
+                                                            </span>
+                                                        </TableCell>
+                                                        <TableCell className="w-[180px]">
+                                                            <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                                                {config.insights.secondary.key === 'active_services'
+                                                                    ? activeServicesCount
+                                                                    : config.insights.secondary.key === 'ltv' || config.insights.secondary.key === 'debt'
+                                                                    ? `$${(debt || 0).toLocaleString()}`
+                                                                    : (client[config.insights.secondary.key] || 0)
+                                                                }
+                                                            </span>
+                                                        </TableCell>
                                                         <TableCell className="text-right w-[100px]">
                                                             <div className="flex items-center justify-end gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
 

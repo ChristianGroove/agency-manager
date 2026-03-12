@@ -4,6 +4,7 @@ import React, { useState } from "react"
 import { Users, DollarSign, AlertCircle, TrendingUp, CreditCard, UserPlus, FilePlus, ClipboardCheck, Receipt } from "lucide-react"
 import CountUp from "react-countup"
 import { ModularDashboardLayout, DashboardDataProps } from "@/modules/core/dashboard/modular-dashboard-layout"
+import { useRegisterView } from "@/modules/core/caa/context/view-context"
 import { resolveDocumentState, resolveServiceState } from "@/domain/state"
 import { useTranslation } from "@/lib/i18n/use-translation"
 
@@ -27,6 +28,19 @@ export function AgencyDashboard({ dashboardData: dashboardRes, extraData, onRelo
     const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false)
     const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false)
     const [isBriefingModalOpen, setIsBriefingModalOpen] = useState(false)
+
+    // CAA Registration (Context-Aware for Agency)
+    useRegisterView({
+        viewId: "dashboard",
+        label: "Dashboard Agency",
+        topics: ["getting-started", "metrics", "quick-actions"],
+        actions: [
+            { id: "new-client", label: t('dashboard.actions.new_client'), type: "function", target: "open_client_modal", icon: UserPlus, description: t('dashboard.actions.new_client_desc') },
+            { id: "new-quote", label: t('dashboard.actions.new_quote'), type: "function", target: "open_quote_modal", icon: FilePlus, description: t('dashboard.actions.new_quote_desc') },
+            { id: "new-invoice", label: t('dashboard.actions.new_invoice'), type: "function", target: "open_invoice_modal", icon: Receipt, description: t('dashboard.actions.new_invoice_desc') },
+            { id: "view-reports", label: t('dashboard.actions.view_reports'), type: "route", target: "/crm/reports", icon: TrendingUp, description: t('dashboard.actions.view_reports_desc') }
+        ]
+    })
 
     // Mapping Logic natively inside the component
     const { clients, invoices, services, settings, metrics } = dashboardRes || { clients: [], invoices: [], services: [] }

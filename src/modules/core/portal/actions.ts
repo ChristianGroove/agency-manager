@@ -38,18 +38,22 @@ export async function getPortalData(token: string) {
                 }
             }
 
+            // ---------------------------------------------------------
+            // 2b. CORE DATA: Fetch Organization & Base App Info
+            // ---------------------------------------------------------
+            const { data: orgData } = await supabaseAdmin
+                .from('organizations')
+                .select('active_app_id, saas_apps(portal_template)')
+                .eq('id', client.organization_id)
+                .single()
+
+            const portalTemplate = (orgData?.saas_apps as any)?.portal_template || 'b2b_dashboard'
+
             // First, fetch raw settings for functional flags
             const { data: rawSettings } = await supabaseAdmin
                 .from('organization_settings')
                 .select('*')
                 .eq('organization_id', client.organization_id)
-                .single()
-
-            // Fetch Organization details to get active_app_id
-            const { data: orgData } = await supabaseAdmin
-                .from('organizations')
-                .select('active_app_id')
-                .eq('id', client.organization_id)
                 .single()
 
             // Fetch Effective Branding (White Label Awareness)
@@ -63,10 +67,16 @@ export async function getPortalData(token: string) {
                 isotipo_url: branding.logos.favicon,
                 portal_login_background_url: branding.logos.login_bg,
                 portal_primary_color: branding.colors.primary,
-                portal_secondary_color: branding.colors.secondary
+                portal_secondary_color: branding.colors.secondary,
+                portal_template: portalTemplate
             }
 
-            // Fetch Related Data in Parallel
+            // ---------------------------------------------------------
+            // 2c. CONDITIONAL REDUCED FETCHING (Zero Resource Waste)
+            // ---------------------------------------------------------
+            const isB2B = portalTemplate === 'b2b_dashboard'
+            const isB2C = portalTemplate === 'b2c_commerce'
+
             const [
                 { data: invoices },
                 { data: quotes },
@@ -76,21 +86,35 @@ export async function getPortalData(token: string) {
                 { data: hostingAccounts },
                 { data: paymentMethods },
                 { data: appPortalConfig },
-                { data: appData } // NEW: Fetch app portal config
+                { data: catalogItems } // Included for B2C
             ] = await Promise.all([
+                // Invoices: Always needed for history/orders
                 supabaseAdmin.from('invoices').select('*').eq('client_id', client.id).is('deleted_at', null).neq('status', 'cancelled').order('created_at', { ascending: false }),
-                supabaseAdmin.from('quotes').select('*').eq('client_id', client.id).is('deleted_at', null).order('created_at', { ascending: false }),
-                supabaseAdmin.from('briefings').select('*, template:briefing_templates(name)').eq('client_id', client.id).eq('organization_id', client.organization_id).is('deleted_at', null).order('created_at', { ascending: false }),
-                supabaseAdmin.from('client_events').select('*').eq('client_id', client.id).order('created_at', { ascending: false }),
-                supabaseAdmin.from('services').select('*').eq('client_id', client.id).eq('status', 'active').is('deleted_at', null).order('created_at', { ascending: false }),
-                supabaseAdmin.from('hosting_accounts').select('*').eq('client_id', client.id).eq('status', 'active').order('created_at', { ascending: false }),
+                
+                // Quotes: Only B2B
+                isB2B ? supabaseAdmin.from('quotes').select('*').eq('client_id', client.id).is('deleted_at', null).order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
+                
+                // Briefings: Only B2B
+                isB2B ? supabaseAdmin.from('briefings').select('*, template:briefing_templates(name)').eq('client_id', client.id).eq('organization_id', client.organization_id).is('deleted_at', null).order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
+                
+                // Events: Only B2B (Resto uses Order history instead of generic events)
+                isB2B ? supabaseAdmin.from('client_events').select('*').eq('client_id', client.id).order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
+                
+                // Services: Only B2B
+                isB2B ? supabaseAdmin.from('services').select('*').eq('client_id', client.id).eq('status', 'active').is('deleted_at', null).order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
+                
+                // Hosting: Only B2B
+                isB2B ? supabaseAdmin.from('hosting_accounts').select('*').eq('client_id', client.id).eq('status', 'active').order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
+                
+                // Payment Methods: Always needed for Checkout/Billing
                 supabaseAdmin.from('organization_payment_methods').select('*').eq('organization_id', client.organization_id).eq('is_active', true).order('display_order', { ascending: true }),
+                
+                // Portal Modules: Always needed for Sidebar/Nav
                 supabaseAdmin.from('saas_apps_portal_config').select('*').eq('app_id', orgData?.active_app_id || '').eq('is_enabled', true).eq('target_portal', 'client').order('display_order', { ascending: true }),
-                supabaseAdmin.from('saas_apps').select('portal_template').eq('id', orgData?.active_app_id || '').single()
-            ])
 
-            // Inject the Template Key
-            settings.portal_template = appData?.portal_template || 'b2b_dashboard'
+                // Catalog: Only B2C (Included to save 1 request)
+                isB2C ? supabaseAdmin.from('service_catalog').select('*').eq('organization_id', client.organization_id).eq('is_visible_in_portal', true) : Promise.resolve({ data: [] })
+            ])
 
             // ---------------------------------------------------------
             // 3. SMART MODULE RESOLUTION (Hierarchical)
@@ -139,7 +163,7 @@ export async function getPortalData(token: string) {
                 return !!(hasInvoices || hasQuotes)
             })
 
-            // Filter Services (One-Off Logic remains but wrapped in visibility check implies if tab is hidden, services list is moot but good to keep logic)
+            // Filter Services
             const filteredServices = (services || []).filter((service: Service) => {
                 if (service.type === 'one_off') {
                     // One-off: Show ONLY if active AND has pending/overdue invoices
@@ -152,7 +176,7 @@ export async function getPortalData(token: string) {
                 return true
             })
 
-            const showInsights = resolveModuleVisibility('insights', () => {
+            const showInsights = isB2B && resolveModuleVisibility('insights', () => {
                 const activeServices = services || []
                 const portalInsightsSettings = client.portal_insights_settings || { override: null, access_level: 'NONE' }
 
@@ -173,23 +197,18 @@ export async function getPortalData(token: string) {
             })
 
             // BUILD ACTIVE MODULES LIST
-            // V2: Use app-based config if available, fallback to legacy hardcoded
             let computedModules: Array<{ slug: string, portal_tab_label: string, portal_icon_key: string }> = []
 
             if (appPortalConfig && appPortalConfig.length > 0) {
-                // ============================================
-                // V2: CONFIG-DRIVEN MODULE RESOLUTION
-                // ============================================
                 computedModules = appPortalConfig
                     .filter(mod => {
-                        // Apply visibility rules based on component key
                         const key = mod.portal_component_key || mod.module_slug
                         if (key === 'billing') return showBilling
                         if (key === 'services') return showServices
                         if (key === 'hosting') return showHosting
                         if (key === 'insights') return showInsights
                         if (key === 'summary') return resolveModuleVisibility('summary', () => true)
-                        return true // Default show for unknown modules
+                        return true
                     })
                     .map(mod => ({
                         slug: mod.module_slug,
@@ -197,9 +216,6 @@ export async function getPortalData(token: string) {
                         portal_icon_key: mod.portal_icon_key
                     }))
             } else {
-                // ============================================
-                // LEGACY: HARDCODED MODULE RESOLUTION (Fallback)
-                // ============================================
                 if (resolveModuleVisibility('summary', () => true)) {
                     computedModules.push({ slug: 'core_summary', portal_tab_label: 'Resumen', portal_icon_key: 'Layout' })
                 }
@@ -221,19 +237,20 @@ export async function getPortalData(token: string) {
             }
 
             return {
-                type: 'client', // Metadata
+                type: 'client',
                 client: client as Client,
                 invoices: (invoices || []) as Invoice[],
                 quotes: (quotes || []) as Quote[],
                 briefings: (briefings || []) as Briefing[],
                 events: (events || []) as ClientEvent[],
-                settings: settings || {},
+                settings: settings,
                 services: filteredServices as Service[],
                 hostingAccounts: (hostingAccounts || []) as any[],
                 activePortalModules: computedModules,
                 paymentMethods: (paymentMethods || []),
+                catalog: catalogItems || [], // NEW for B2C
                 insightsAccess: {
-                    show: showInsights,
+                    show: !!showInsights,
                     mode: { organic: true, ads: true }
                 }
             }
@@ -373,20 +390,33 @@ export async function getPortalData(token: string) {
                 portal_secondary_color: branding.colors.secondary
             }
 
-            // Detect Active App Template
+            // ---------------------------------------------------------
+            // 4b. Fetch App Template & Portal Config
+            // ---------------------------------------------------------
+            const { data: appData } = await supabaseAdmin
+                .from('saas_apps')
+                .select('portal_template')
+                .eq('id', org.active_app_id || '')
+                .single()
+
+            const portalTemplate = appData?.portal_template || 'b2b_dashboard'
+            settings.portal_template = portalTemplate
+
+            // Parallel fetch for the rest
             const [
                 { data: appPortalConfig },
-                { data: appData }
+                { data: catalogItems }
             ] = await Promise.all([
                 supabaseAdmin.from('saas_apps_portal_config').select('*').eq('app_id', org.active_app_id || '').eq('is_enabled', true).eq('target_portal', 'client').order('display_order', { ascending: true }),
-                supabaseAdmin.from('saas_apps').select('portal_template').eq('id', org.active_app_id || '').single()
+                (portalTemplate === 'b2c_commerce') 
+                    ? supabaseAdmin.from('service_catalog').select('*').eq('organization_id', org.id).eq('is_visible_in_portal', true)
+                    : Promise.resolve({ data: [] })
             ])
 
-            settings.portal_template = appData?.portal_template || 'b2b_dashboard'
-
             let computedModules: Array<{ slug: string, portal_tab_label: string, portal_icon_key: string }> = []
-            if (appPortalConfig && appPortalConfig.length > 0) {
-                computedModules = appPortalConfig.map(mod => ({
+            const safeAppPortalConfig = appPortalConfig || []
+            if (safeAppPortalConfig.length > 0) {
+                computedModules = safeAppPortalConfig.map(mod => ({
                     slug: mod.module_slug,
                     portal_tab_label: mod.portal_tab_label,
                     portal_icon_key: mod.portal_icon_key
@@ -406,6 +436,7 @@ export async function getPortalData(token: string) {
                 services: [],
                 hostingAccounts: [],
                 paymentMethods: [],
+                catalog: catalogItems || [], // NEW: Support Guest B2C
                 insightsAccess: { show: false, mode: { organic: false, ads: false } }
             }
         }

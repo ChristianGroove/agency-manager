@@ -1,8 +1,11 @@
 "use client"
 
-import React, { useState } from "react"
 import { PortalAccessWidget } from "./portal-access-widget"
 import { GlobalDashboardBanner } from "./global-dashboard-banner"
+import { ModularDashboardLayout, DashboardDataProps } from "@/modules/core/dashboard/modular-dashboard-layout"
+import { useRegisterView } from "@/modules/core/caa/context/view-context"
+import { useTranslation } from "@/lib/i18n/use-translation"
+import { Utensils, QrCode, ClipboardList, TrendingUp } from "lucide-react"
 
 interface RestoDashboardProps {
     dashboardData: any
@@ -11,44 +14,67 @@ interface RestoDashboardProps {
 }
 
 export function RestoDashboard({ dashboardData, extraData, onReload }: RestoDashboardProps) {
+    const { t } = useTranslation()
     const { orgDetails } = extraData || {}
     const bannerConfig = dashboardData?.bannerConfig
 
     // Configurar URL del portal público
     const portalUrl = typeof window !== 'undefined' ? `${window.location.origin}/portal/${orgDetails?.slug}` : `https://pixy.do/portal/${orgDetails?.slug}`
 
+    // CAA Registration (Context-Aware for Resto)
+    useRegisterView({
+        viewId: "dashboard",
+        label: "Dashboard Resto",
+        topics: ["resto-intro", "digital-menu-guide"],
+        actions: [
+            { id: "new-order", label: "Nuevo Pedido", type: "function", target: "open_order_modal", icon: ClipboardList, description: "Registrar un pedido manual" },
+            { id: "view-menu", label: "Ver Menú Digital", type: "route", target: portalUrl, icon: QrCode, description: "Abrir el portal del restaurante" }
+        ]
+    })
+
+    const data: DashboardDataProps = {
+        globalBannerConfig: bannerConfig,
+        stats: [
+            {
+                title: "Ventas Hoy",
+                value: "$0",
+                icon: Utensils,
+                subtext: <span className="text-gray-400">Próximamente</span>
+            },
+            {
+                title: "Pedidos Activos",
+                value: "0",
+                icon: ClipboardList,
+                subtext: <span className="text-gray-400">Próximamente</span>
+            }
+        ],
+        social: {
+            title: "Resto/Space",
+            facebook: dashboardData?.settings?.social_facebook,
+            instagram: dashboardData?.settings?.social_instagram,
+            twitter: dashboardData?.settings?.social_twitter,
+        },
+        quickActions: [
+            { title: "Ver Menú Digital", icon: QrCode, colorClass: "bg-brand-cyan/10 text-brand-cyan", onClick: () => window.open(portalUrl, "_blank") },
+            { title: "Nuevo Pedido", icon: ClipboardList, colorClass: "bg-indigo-50 text-indigo-600", onClick: () => {} },
+        ],
+        smartAlert: {
+            title: "Restaurante en Configuración",
+            message: "Tu portal digital ya está activo. Escanea el código QR para verlo.",
+            itemsHeading: "Acciones Recomendadas",
+            items: [
+                { id: "qr", name: "Descargar Código QR", value: 0 }
+            ]
+        }
+    }
+
     return (
-        <div className="w-full flex justify-center pb-24">
-            <div className="max-w-5xl w-full flex flex-col gap-8">
-
-                {/* Saludo */}
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mt-2">
-                    <div>
-                        <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-gray-900 dark:text-white animate-in slide-in-from-bottom-2 duration-500">
-                            ¡Hola, {orgDetails?.name || 'Restaurante'}! 👋
-                        </h1>
-                        <p className="text-gray-500 dark:text-gray-400 mt-1 animate-in slide-in-from-bottom-3 duration-700">
-                            Desde aquí puedes acceder a las herramientas principales de tu negocio.
-                        </p>
-                    </div>
-                </div>
-
-                {/* Main Action Widget */}
-                <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
-                    <PortalAccessWidget url={portalUrl} orgName={orgDetails?.name || "Catálogo"} />
-                </div>
-
-                {/* Futuros componentes de Analíticas de Restaurante irían aquí (Pedidos Hoy, Promedio Ticket, etc). */}
-                <div className="flex items-center justify-center p-12 bg-gray-50/50 dark:bg-zinc-900/50 rounded-2xl border border-dashed border-gray-200 dark:border-zinc-800 text-gray-400">
-                    <span className="text-sm">Analíticas y gestión de comandas estarán disponibles en la próxima actualización.</span>
-                </div>
-
-                {/* Global Banner - Movido al fondo */}
-                {bannerConfig?.is_active && (
-                    <div className="mt-6">
-                        <GlobalDashboardBanner config={bannerConfig} />
-                    </div>
-                )}
+        <div className="space-y-8 pb-24">
+            <ModularDashboardLayout data={data} />
+            
+            {/* Custom Resto Widget */}
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+                <PortalAccessWidget url={portalUrl} orgName={orgDetails?.name || "Catálogo"} />
             </div>
         </div>
     )

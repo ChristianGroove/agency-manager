@@ -1,16 +1,18 @@
 "use client"
 
 import { useEffect, useState, Suspense } from "react"
-import { AgencyDashboard } from "@/modules/core/dashboard/components/agency-dashboard"
-import { CleaningDashboard } from "@/modules/core/dashboard/components/cleaning-dashboard"
-import { ResellerDashboard } from "@/modules/core/dashboard/components/reseller-dashboard"
-import { RestoDashboard } from "@/modules/core/dashboard/components/resto-dashboard"
-import { RetailDashboard } from "@/modules/core/dashboard/components/retail-dashboard"
-import { DefaultDashboard } from "@/modules/core/dashboard/components/default-dashboard"
+import dynamic from "next/dynamic"
 import { DashboardSkeleton } from "@/modules/core/dashboard/dashboard-skeleton"
 
+// Lazy loaded vertical dashboards
+const AgencyDashboard = dynamic(() => import("@/modules/core/dashboard/components/agency-dashboard").then(m => m.AgencyDashboard), { loading: () => <DashboardSkeleton /> })
+const CleaningDashboard = dynamic(() => import("@/modules/core/dashboard/components/cleaning-dashboard").then(m => m.CleaningDashboard), { loading: () => <DashboardSkeleton /> })
+const ResellerDashboard = dynamic(() => import("@/modules/core/dashboard/components/reseller-dashboard").then(m => m.ResellerDashboard), { loading: () => <DashboardSkeleton /> })
+const RestoDashboard = dynamic(() => import("@/modules/core/dashboard/components/resto-dashboard").then(m => m.RestoDashboard), { loading: () => <DashboardSkeleton /> })
+const RetailDashboard = dynamic(() => import("@/modules/core/dashboard/components/retail-dashboard").then(m => m.RetailDashboard), { loading: () => <DashboardSkeleton /> })
+const DefaultDashboard = dynamic(() => import("@/modules/core/dashboard/components/default-dashboard").then(m => m.DefaultDashboard), { loading: () => <DashboardSkeleton /> })
+
 // Interceptores Globales del Dashboard Original
-import { useRegisterView } from "@/modules/core/caa/context/view-context"
 import { useTranslation } from "@/lib/i18n/use-translation"
 import { UserPlus, FilePlus, Receipt, TrendingUp } from "lucide-react"
 
@@ -19,18 +21,8 @@ export default function DashboardPage() {
     const [payload, setPayload] = useState<any>(null)
     const [loading, setLoading] = useState(true)
 
-    // CAA Registration (Global context commands)
-    useRegisterView({
-        viewId: "dashboard",
-        label: "Dashboard",
-        topics: ["getting-started", "metrics", "quick-actions"],
-        actions: [
-            { id: "new-client", label: t('dashboard.actions.new_client'), type: "function", target: "open_client_modal", icon: UserPlus, description: t('dashboard.actions.new_client_desc') },
-            { id: "new-quote", label: t('dashboard.actions.new_quote'), type: "function", target: "open_quote_modal", icon: FilePlus, description: t('dashboard.actions.new_quote_desc') },
-            { id: "new-invoice", label: t('dashboard.actions.new_invoice'), type: "function", target: "open_invoice_modal", icon: Receipt, description: t('dashboard.actions.new_invoice_desc') },
-            { id: "view-reports", label: t('dashboard.actions.view_reports'), type: "route", target: "/crm/reports", icon: TrendingUp, description: t('dashboard.actions.view_reports_desc') }
-        ]
-    })
+    // CAA Registration (Global context commands) removed from here
+    // Moved to individual dashboards for context-awareness
 
     useEffect(() => {
         loadDashboard()

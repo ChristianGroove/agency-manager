@@ -3,6 +3,7 @@
 import React, { useState } from "react"
 import { Store, Users, AlertTriangle, ShieldCheck, UserPlus, MapPin, ClipboardCheck, Receipt } from "lucide-react"
 import { ModularDashboardLayout, DashboardDataProps } from "@/modules/core/dashboard/modular-dashboard-layout"
+import { useRegisterView } from "@/modules/core/caa/context/view-context"
 import { useTranslation } from "@/lib/i18n/use-translation"
 import { Badge } from "@/components/ui/badge"
 
@@ -28,6 +29,18 @@ export function RetailDashboard({ dashboardData, extraData, onReload }: RetailDa
     const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false)
     const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false)
     const [isBriefingModalOpen, setIsBriefingModalOpen] = useState(false)
+
+    // CAA Registration (Context-Aware for Retail)
+    useRegisterView({
+        viewId: "dashboard",
+        label: "Dashboard Retail",
+        topics: ["getting-started", "metrics", "quick-actions"],
+        actions: [
+            { id: "new-client", label: t('dashboard.actions.new_client'), type: "function", target: "open_client_modal", icon: UserPlus, description: t('dashboard.actions.new_client_desc') },
+            { id: "new-invoice", label: "Nueva Factura", type: "function", target: "open_invoice_modal", icon: Receipt, description: t('dashboard.actions.new_invoice_desc') },
+            { id: "attendance", label: "Gestión Asistencia", type: "route", target: "/attendance", icon: ClipboardCheck, description: "Ver asistencia del personal" }
+        ]
+    })
 
     const data: DashboardDataProps = {
         globalBannerConfig: dashboardData?.bannerConfig,
