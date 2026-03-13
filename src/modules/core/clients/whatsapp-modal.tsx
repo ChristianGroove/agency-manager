@@ -156,7 +156,7 @@ export function WhatsAppActionsModal({ isOpen, onOpenChange, client, settings, t
                             <div className="bg-green-100 p-2 rounded-full">
                                 <MessageCircle className="h-5 w-5 text-green-600" />
                             </div>
-                            Contactar Cliente
+                            Contactar
                         </DialogTitle>
                         <DialogDescription className="text-gray-500">
                             Personaliza el mensaje para <span className="font-semibold text-gray-900">{client.name}</span>

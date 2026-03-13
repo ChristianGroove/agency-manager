@@ -20,12 +20,14 @@ export function NotesModal({ clientId, initialNotes, isOpen, onClose, onSuccess 
     const [saving, setSaving] = useState(false)
 
     useEffect(() => {
-        setNotes(initialNotes)
-    }, [initialNotes])
+        setNotes(initialNotes || "")
+    }, [initialNotes, clientId])
 
     const handleSave = async () => {
         setSaving(true)
         try {
+            if (!clientId) throw new Error("No client ID provided")
+
             const { error } = await supabase
                 .from('clients')
                 .update({ notes: notes })
@@ -34,9 +36,9 @@ export function NotesModal({ clientId, initialNotes, isOpen, onClose, onSuccess 
             if (error) throw error
             onSuccess(notes)
             onClose()
-        } catch (error) {
+        } catch (error: any) {
             console.error("Error saving notes:", error)
-            alert("Error al guardar las notas")
+            alert("Error al guardar las notas: " + error.message)
         } finally {
             setSaving(false)
         }
@@ -48,7 +50,7 @@ export function NotesModal({ clientId, initialNotes, isOpen, onClose, onSuccess 
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <StickyNote className="h-5 w-5 text-amber-500" />
-                        Notas del Cliente
+                        Notas del Contacto
                     </DialogTitle>
                     <DialogDescription>
                         Información interna relevante sobre este cliente.

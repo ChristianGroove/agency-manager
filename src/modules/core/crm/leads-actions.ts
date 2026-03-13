@@ -420,84 +420,24 @@ export async function updateLead(
  * - Tasks completed
  * - Positive status movements
  */
+import { calculateLeadScore as coreCalculateLeadScore } from "./logic/scoring"
+
 export async function calculateLeadScore(leadId: string): Promise<ActionResponse<{ score: number, breakdown: Record<string, number> }>> {
     try {
-        const lead = await supabaseAdmin
-            .from('leads')
-            .select('*')
-            .eq('id', leadId)
-            .single()
-
-        if (lead.error || !lead.data) {
-            return { success: false, error: 'Lead not found' }
-        }
-
-        const l = lead.data
-        let score = 0
-        const breakdown: Record<string, number> = {}
-
-        // 1. Profile Completeness (max 20 points)
-        let profileScore = 0
-        if (l.name) profileScore += 5
-        if (l.email) profileScore += 5
-        if (l.phone) profileScore += 5
-        if (l.company_name) profileScore += 5
-        breakdown.profile = profileScore
-        score += profileScore
-
-        // 2. Engagement - Messages (max 30 points)
-        const { count: msgCount } = await supabaseAdmin
-            .from('messages')
-            .select('id', { count: 'exact', head: true })
-            .eq('lead_id', leadId)
-
-        const msgScore = Math.min(30, (msgCount || 0) * 3) // 3 points per message, max 30
-        breakdown.messages = msgScore
-        score += msgScore
-
-        // 3. Activity Recency (max 20 points)
-        const lastActivity = l.last_activity_at || l.updated_at
-        const daysSinceActivity = Math.floor((Date.now() - new Date(lastActivity).getTime()) / (1000 * 60 * 60 * 24))
-        let recencyScore = 20
-        if (daysSinceActivity > 30) recencyScore = 0
-        else if (daysSinceActivity > 14) recencyScore = 5
-        else if (daysSinceActivity > 7) recencyScore = 10
-        else if (daysSinceActivity > 3) recencyScore = 15
-        breakdown.recency = recencyScore
-        score += recencyScore
-
-        // 4. Tasks Completed (max 15 points)
-        const { count: tasksCompleted } = await supabaseAdmin
-            .from('crm_tasks')
-            .select('id', { count: 'exact', head: true })
-            .eq('lead_id', leadId)
-            .eq('status', 'completed')
-
-        const taskScore = Math.min(15, (tasksCompleted || 0) * 3) // 3 points per task, max 15
-        breakdown.tasks = taskScore
-        score += taskScore
-
-        // 5. Status Progression (max 15 points)
-        const statusPoints: Record<string, number> = {
-            new: 0,
-            contacted: 3,
-            qualified: 8,
-            negotiation: 12,
-            won: 15,
-            lost: 0
-        }
-        const statusScore = statusPoints[l.status as string] || 0
-        breakdown.status = statusScore
-        score += statusScore
+        const { score, breakdown } = await coreCalculateLeadScore(leadId)
 
         // Update lead score in DB
         await supabaseAdmin
             .from('leads')
-            .update({ score })
+            .update({ 
+                score,
+                last_scored_at: new Date().toISOString()
+            })
             .eq('id', leadId)
 
         return { success: true, data: { score, breakdown } }
     } catch (error: any) {
+        console.error('[CRM_SCORING] Error calculating score:', error)
         return { success: false, error: error.message }
     }
 }

@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from "@/lib/supabase-server"
+import { supabaseAdmin } from "@/lib/supabase-admin"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
 import { revalidatePath } from "next/cache"
 import type {
@@ -594,114 +595,17 @@ export async function assignLeads(input: AssignLeadInput) {
 // LEAD SCORING
 // ============================================
 
+import { calculateLeadScore as coreCalculateLeadScore } from "./logic/scoring"
+
 export async function calculateLeadScore(leadId: string) {
     try {
-        const supabase = await createClient()
         const orgId = await getCurrentOrganizationId()
-
         if (!orgId) throw new Error("Unauthorized")
 
-        // Get lead
-        const { data: lead, error: leadError } = await supabase
-            .from('leads')
-            .select('*')
-            .eq('id', leadId)
-            .eq('organization_id', orgId)
-            .single()
-
-        if (leadError || !lead) throw new Error("Lead not found")
-
-        // Fetch engagement metrics
-        const [
-            { count: activityCount },
-            { count: completedTasks },
-            { count: emailsExchanged }
-        ] = await Promise.all([
-            supabase.from('lead_activities').select('*', { count: 'exact', head: true }).eq('lead_id', leadId),
-            supabase.from('lead_tasks').select('*', { count: 'exact', head: true }).eq('lead_id', leadId).eq('status', 'completed'),
-            supabase.from('lead_emails').select('*', { count: 'exact', head: true }).eq('lead_id', leadId)
-        ])
-
-        // Calculate score
-        let score = 0
-        const factors: ScoreFactors = {
-            hasEmail: !!lead.email,
-            hasPhone: !!lead.phone,
-            hasCompany: !!lead.company_name,
-            emailDomain: 'unknown',
-            pipelineProgress: 0,
-            engagement: 0
-        }
-
-        // 1. Profile Completeness (Max 45)
-        // Email: +10
-        if (lead.email) {
-            score += 10
-            // Business email: +10
-            const domain = lead.email.split('@')[1]
-            if (domain && !['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com'].includes(domain)) {
-                factors.emailDomain = 'business'
-                score += 10
-            } else {
-                factors.emailDomain = 'personal'
-            }
-        }
-
-        // Phone: +10
-        if (lead.phone) score += 10
-
-        // Company: +5
-        if (lead.company_name) score += 5
-
-        // Source
-        if (lead.source) {
-            factors.source = lead.source
-            if (lead.source === 'referral') score += 10
-            else if (lead.source === 'website') score += 5
-        }
-
-        // Estimated value
-        if (lead.estimated_value) {
-            factors.estimatedValue = lead.estimated_value
-            if (lead.estimated_value > 10000) score += 10
-            else if (lead.estimated_value > 5000) score += 5
-        }
-
-        // 2. Engagement (Max 40)
-        let engagementScore = 0
-
-        // Items
-        engagementScore += (activityCount || 0) * 1 // 1 point per activity
-        engagementScore += (completedTasks || 0) * 5 // 5 points per completed task
-        engagementScore += (emailsExchanged || 0) * 3 // 3 points per email exchanged
-
-        // Recent Activity Bonus
-        if (lead.updated_at) {
-            const daysSinceUpdate = (new Date().getTime() - new Date(lead.updated_at).getTime()) / (1000 * 3600 * 24)
-            if (daysSinceUpdate < 7) engagementScore += 10
-            else if (daysSinceUpdate < 30) engagementScore += 5
-        }
-
-        // Cap Engagement at 40
-        engagementScore = Math.min(40, engagementScore)
-        factors.engagement = engagementScore
-        score += engagementScore
-
-        // 3. Pipeline Progress (Max 15)
-        // Simple heuristic based on status
-        if (lead.status === 'qualified') {
-            score += 10
-            factors.pipelineProgress = 10
-        } else if (lead.status === 'negotiation') {
-            score += 15
-            factors.pipelineProgress = 15
-        }
-
-        // Final Cap at 100
-        score = Math.min(100, score)
+        const { score, factors } = await coreCalculateLeadScore(leadId)
 
         // Update lead
-        const { error: updateError } = await supabase
+        const { error: updateError } = await supabaseAdmin
             .from('leads')
             .update({
                 score,
@@ -716,7 +620,7 @@ export async function calculateLeadScore(leadId: string) {
         revalidatePath('/crm')
         return { success: true, score, factors }
     } catch (error: any) {
-        console.error('calculateLeadScore error:', error)
+        console.error('[CRM_ADV_SCORING] Error calculating score:', error)
         return { success: false, error: error.message }
     }
 }

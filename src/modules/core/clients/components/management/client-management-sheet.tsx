@@ -38,6 +38,7 @@ import { useTranslation } from "@/lib/i18n/use-translation"
 import { useSpacePolicies } from "@/modules/flows/hooks/use-space-policies"
 import { RestoOrdersTab } from "./resto-orders-tab"
 import { useRef } from "react"
+import { CategorySelector } from "../category-selector"
 
 interface ClientManagementSheetProps {
     clientId: string | null
@@ -58,13 +59,13 @@ export function ClientManagementSheet({ clientId, open, onOpenChange, initialDat
     const [loading, setLoading] = useState(false)
     const [saving, setSaving] = useState(false)
     const [settings, setSettings] = useState<any>(null)
-    const [activeTab, setActiveTab] = useState('info')
+    const [activeTab, setActiveTab] = useState(initialTab)
 
     useEffect(() => {
         if (open) {
-            setActiveTab('info') // Always open in Perfil tab
+            setActiveTab(initialTab)
         }
-    }, [open])
+    }, [open, initialTab])
 
     // Form State (Unified from EditClientSheet)
     const [editForm, setEditForm] = useState({
@@ -81,7 +82,8 @@ export function ClientManagementSheet({ clientId, open, onOpenChange, initialDat
         tiktok: "",
         linkedin: "",
         youtube: "",
-        twitter: ""
+        twitter: "",
+        category_id: null as string | null
     })
 
     // Action Sheets State
@@ -147,7 +149,8 @@ export function ClientManagementSheet({ clientId, open, onOpenChange, initialDat
                 tiktok: data.metadata?.tiktok || data.tiktok || "",
                 linkedin: data.metadata?.linkedin || data.linkedin || "",
                 youtube: data.metadata?.youtube || data.youtube || "",
-                twitter: data.metadata?.twitter || data.twitter || ""
+                twitter: data.metadata?.twitter || data.twitter || "",
+                category_id: data.category_id || null
             })
 
             // Fetch Settings
@@ -287,7 +290,8 @@ export function ClientManagementSheet({ clientId, open, onOpenChange, initialDat
                     tiktok: editForm.tiktok,
                     linkedin: editForm.linkedin,
                     youtube: editForm.youtube,
-                    twitter: editForm.twitter
+                    twitter: editForm.twitter,
+                    category_id: editForm.category_id
                 })
                 .eq('id', client.id)
 
@@ -328,8 +332,8 @@ export function ClientManagementSheet({ clientId, open, onOpenChange, initialDat
             >
                 <div className="flex flex-col h-full bg-slate-50/50">
                     <SheetHeader className="sr-only">
-                        <SheetTitle>Gestión de {config.terminology.client}: {client.name}</SheetTitle>
-                        <SheetDescription>Detalles y gestión de {config.terminology.client}</SheetDescription>
+                        <SheetTitle>Gestión de Contacto: {client.name}</SheetTitle>
+                        <SheetDescription>Detalles y gestión de contacto</SheetDescription>
                     </SheetHeader>
                     {/* Header */}
                     <div className="bg-white border-b border-gray-100 px-8 py-6 flex items-start gap-6 flex-none z-10">
@@ -465,6 +469,13 @@ export function ClientManagementSheet({ clientId, open, onOpenChange, initialDat
                                                     className="bg-gray-50/50 border-gray-200 focus:bg-white h-11 font-mono"
                                                     value={editForm.nit}
                                                     onChange={(e) => setEditForm({ ...editForm, nit: e.target.value })}
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label className="text-xs font-bold text-gray-500">Categoría</Label>
+                                                <CategorySelector
+                                                    value={editForm.category_id}
+                                                    onChange={(val: string | null) => setEditForm({ ...editForm, category_id: val })}
                                                 />
                                             </div>
                                         </div>
@@ -631,7 +642,7 @@ export function ClientManagementSheet({ clientId, open, onOpenChange, initialDat
                                 Cerrar
                             </Button>
 
-                            {activeTab === 'services' && (
+                            {activeTab === 'services' && config.management.visibleTabs.includes('services') && (
                                 <Button
                                     onClick={() => { setServiceToEdit(null); setIsServiceSheetOpen(true); }}
                                     className="bg-black text-white hover:bg-gray-800 rounded-xl h-10 shadow-lg shadow-black/10 text-xs font-semibold px-6"
@@ -640,7 +651,7 @@ export function ClientManagementSheet({ clientId, open, onOpenChange, initialDat
                                 </Button>
                             )}
 
-                            {activeTab === 'billing' && (
+                            {activeTab === 'billing' && config.management.visibleTabs.includes('billing') && (
                                 <Button
                                     onClick={() => setIsInvoiceSheetOpen(true)}
                                     className="bg-black text-white hover:bg-gray-800 rounded-xl h-10 shadow-lg shadow-black/10 text-xs font-semibold px-6"
@@ -649,7 +660,7 @@ export function ClientManagementSheet({ clientId, open, onOpenChange, initialDat
                                 </Button>
                             )}
 
-                            {activeTab === 'hosting' && (
+                            {activeTab === 'hosting' && config.management.visibleTabs.includes('hosting') && (
                                 <Button
                                     onClick={() => { setHostingToEdit(null); setIsHostingSheetOpen(true); }}
                                     className="bg-brand-pink text-white hover:bg-brand-pink/90 rounded-xl h-10 shadow-lg shadow-brand-pink/20 text-xs font-semibold px-6 border-0"
@@ -682,30 +693,36 @@ export function ClientManagementSheet({ clientId, open, onOpenChange, initialDat
                 {
                     client && (
                         <>
-                            <CreateServiceSheet
-                                clientId={client!.id}
-                                clientName={client!.name}
-                                open={isServiceSheetOpen}
-                                onOpenChange={setIsServiceSheetOpen}
-                                serviceToEdit={serviceToEdit}
-                                onSuccess={fetchClientData}
-                                trigger={<span className="hidden" />}
-                            />
-                            <CreateInvoiceSheet
-                                clientId={client!.id}
-                                clientName={client!.name}
-                                open={isInvoiceSheetOpen}
-                                onOpenChange={setIsInvoiceSheetOpen}
-                                onSuccess={fetchClientData}
-                                trigger={<span className="hidden" />}
-                            />
-                            <CreateHostingSheet
-                                clientId={client!.id}
-                                open={isHostingSheetOpen}
-                                onOpenChange={setIsHostingSheetOpen}
-                                accountToEdit={hostingToEdit}
-                                onSuccess={fetchClientData}
-                            />
+                            {config.management.visibleTabs.includes('services') && (
+                                <CreateServiceSheet
+                                    clientId={client!.id}
+                                    clientName={client!.name}
+                                    open={isServiceSheetOpen}
+                                    onOpenChange={setIsServiceSheetOpen}
+                                    serviceToEdit={serviceToEdit}
+                                    onSuccess={fetchClientData}
+                                    trigger={<span className="hidden" />}
+                                />
+                            )}
+                            {config.management.visibleTabs.includes('billing') && (
+                                <CreateInvoiceSheet
+                                    clientId={client!.id}
+                                    clientName={client!.name}
+                                    open={isInvoiceSheetOpen}
+                                    onOpenChange={setIsInvoiceSheetOpen}
+                                    onSuccess={fetchClientData}
+                                    trigger={<span className="hidden" />}
+                                />
+                            )}
+                            {config.management.visibleTabs.includes('hosting') && (
+                                <CreateHostingSheet
+                                    clientId={client!.id}
+                                    open={isHostingSheetOpen}
+                                    onOpenChange={setIsHostingSheetOpen}
+                                    accountToEdit={hostingToEdit}
+                                    onSuccess={fetchClientData}
+                                />
+                            )}
                             <ServiceDetailModal
                                 isOpen={isServiceDetailOpen}
                                 onOpenChange={setIsServiceDetailOpen}

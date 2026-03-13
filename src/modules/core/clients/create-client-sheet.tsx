@@ -19,6 +19,7 @@ import { Loader2, Plus, Upload, UserCircle, Mail, Globe, Save } from "lucide-rea
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
 import { useTranslation } from "@/lib/i18n/use-translation"
+import { CategorySelector } from "./components/category-selector"
 
 interface CreateClientSheetProps {
     onSuccess?: () => void
@@ -57,7 +58,8 @@ export function CreateClientSheet({ onSuccess, open: controlledOpen, onOpenChang
         tiktok: "",
         linkedin: "",
         youtube: "",
-        twitter: ""
+        twitter: "",
+        category_id: null as string | null
     })
 
     // File Upload State
@@ -112,6 +114,7 @@ export function CreateClientSheet({ onSuccess, open: controlledOpen, onOpenChang
                 organization_id: orgId,
                 logo_url: finalLogoUrl,
                 user_id: user.id,
+                category_id: form.category_id,
                 // Generate Portal Tokens
                 portal_token: crypto.randomUUID(),
                 portal_short_token: Math.random().toString(36).substring(2, 8).toUpperCase(),
@@ -127,7 +130,7 @@ export function CreateClientSheet({ onSuccess, open: controlledOpen, onOpenChang
             setForm({
                 name: "", company_name: "", nit: "", email: "", phone: "", address: "",
                 logo_url: "", website: "", instagram: "", facebook: "",
-                tiktok: "", linkedin: "", youtube: "", twitter: ""
+                tiktok: "", linkedin: "", youtube: "", twitter: "", category_id: null
             })
             setSelectedFile(null)
             setPreviewUrl(null)
@@ -153,7 +156,7 @@ export function CreateClientSheet({ onSuccess, open: controlledOpen, onOpenChang
                 <SheetTrigger asChild>
                     <Button className="h-9 px-4 bg-brand-pink hover:bg-brand-pink/90 shadow-md text-white border-0 transition-all hover:scale-105 active:scale-95">
                         <Plus className="mr-2 h-4 w-4" />
-                        {t('clients.new_client')}
+                        Nuevo Contacto
                     </Button>
                 </SheetTrigger>
             )}
@@ -169,14 +172,14 @@ export function CreateClientSheet({ onSuccess, open: controlledOpen, onOpenChang
             >
                 <div className="flex flex-col h-full bg-slate-50/50">
                     <SheetHeader className="sr-only">
-                        <SheetTitle>{t('clients.form.create_title')}</SheetTitle>
-                        <SheetDescription>{t('clients.form.create_desc')}</SheetDescription>
+                        <SheetTitle>Crear Contacto</SheetTitle>
+                        <SheetDescription>Completa la información del nuevo contacto.</SheetDescription>
                     </SheetHeader>
 
                     {/* Header */}
                     <div className="bg-white border-b border-gray-100 px-8 py-6 flex-none z-10">
-                        <h2 className="text-2xl font-black text-gray-900 tracking-tight">{t('clients.form.create_title')}</h2>
-                        <p className="text-sm text-muted-foreground mt-1">{t('clients.form.create_desc')}</p>
+                        <h2 className="text-2xl font-black text-gray-900 tracking-tight">Crear Contacto</h2>
+                        <p className="text-sm text-muted-foreground mt-1">Completa los datos del nuevo contacto para tu base de datos.</p>
                     </div>
 
                     {/* Form Body */}
@@ -230,6 +233,13 @@ export function CreateClientSheet({ onSuccess, open: controlledOpen, onOpenChang
                                         placeholder={t('clients.form.fields.company_placeholder')}
                                         value={form.company_name}
                                         onChange={(e) => setForm({ ...form, company_name: e.target.value })}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-bold text-gray-500">Categoría <span className="text-red-500">*</span></Label>
+                                    <CategorySelector 
+                                        value={form.category_id} 
+                                        onChange={(val) => setForm({ ...form, category_id: val })} 
                                     />
                                 </div>
                                 <div className="space-y-2">
@@ -332,7 +342,7 @@ export function CreateClientSheet({ onSuccess, open: controlledOpen, onOpenChang
                             className="bg-indigo-600 text-white hover:bg-indigo-700 rounded-xl h-10 shadow-lg shadow-indigo-200 text-xs font-semibold px-8 gap-2"
                         >
                             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                            {saving ? "Creando..." : "Crear Cliente"}
+                            {saving ? "Creando..." : "Crear Contacto"}
                         </Button>
                     </SheetFooter>
                 </div>

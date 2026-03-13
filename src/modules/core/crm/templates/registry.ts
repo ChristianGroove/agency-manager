@@ -84,6 +84,74 @@ export const CRMTemplates: Record<string, CRMTemplate> = {
             { name: 'Perdido', key: 'lost', mapToProcessKey: 'lost', color: 'bg-gray-400', icon: 'x' }
         ]
     },
+    resto: {
+        id: 'resto',
+        name: 'Restaurante / Gastronomía',
+        description: 'Gestión de reservas y pedidos para establecimientos de comida.',
+        industry: 'resto',
+        processStates: [
+            {
+                key: 'inquiry', name: 'Consulta / Reserva', type: 'sale', is_initial: true, is_terminal: false,
+                allowed_next_states: ['confirmed', 'lost'],
+                metadata: { goal: 'Verificar mesa/disponibilidad' },
+                suggested_actions: [{ label: 'Confirmar Mesa', action: 'confirm_table', type: 'primary' }]
+            },
+            {
+                key: 'confirmed', name: 'Reserva Confirmada', type: 'sale', is_initial: false, is_terminal: false,
+                allowed_next_states: ['seated', 'no_show', 'lost'],
+                metadata: { goal: 'Preparar recepción' }
+            },
+            {
+                key: 'seated', name: 'En Mesa / Consumo', type: 'sale', is_initial: false, is_terminal: false,
+                allowed_next_states: ['won', 'lost'],
+                metadata: { goal: 'Excelente servicio' }
+            },
+            { key: 'no_show', name: 'No se Presentó', type: 'sale', is_initial: false, is_terminal: true, allowed_next_states: ['inquiry'], metadata: { goal: 'Re-agendar' }, auto_tags: ['no_show'] },
+            { key: 'won', name: 'Pedido Finalizado', type: 'sale', is_initial: false, is_terminal: true, allowed_next_states: [], metadata: { goal: 'Fidelización' }, auto_tags: ['comensal_activo'] },
+            { key: 'lost', name: 'Cancelado', type: 'sale', is_initial: false, is_terminal: true, allowed_next_states: ['inquiry'], metadata: { goal: 'Feedback' } }
+        ],
+        pipelineStages: [
+            { name: 'Nueva Consulta', key: 'new', mapToProcessKey: 'inquiry', color: 'bg-blue-500', icon: 'calendar' },
+            { name: 'Confirmado', key: 'confirmed', mapToProcessKey: 'confirmed', color: 'bg-indigo-500', icon: 'check' },
+            { name: 'En Mesa', key: 'seated', mapToProcessKey: 'seated', color: 'bg-amber-500', icon: 'utensils' },
+            { name: 'Finalizado', key: 'won', mapToProcessKey: 'won', color: 'bg-green-500', icon: 'smile' },
+            { name: 'No Show', key: 'no_show', mapToProcessKey: 'no_show', color: 'bg-red-400', icon: 'user-x' },
+            { name: 'Cancelado', key: 'lost', mapToProcessKey: 'lost', color: 'bg-red-500', icon: 'x' }
+        ]
+    },
+    cleaning: {
+        id: 'cleaning',
+        name: 'Servicios de Limpieza / Mantenimiento',
+        description: 'Para empresas de limpieza residencial o comercial.',
+        industry: 'cleaning',
+        processStates: [
+            {
+                key: 'inquiry', name: 'Consulta / Cotización', type: 'sale', is_initial: true, is_terminal: false,
+                allowed_next_states: ['estimate_sent', 'lost'],
+                metadata: { goal: 'Entender necesidades' }
+            },
+            {
+                key: 'estimate_sent', name: 'Presupuesto Enviado', type: 'sale', is_initial: false, is_terminal: false,
+                allowed_next_states: ['scheduled', 'lost', 'inquiry'],
+                metadata: { goal: 'Aceptación de precio' },
+                suggested_actions: [{ label: 'Seguimiento', action: 'follow_up', type: 'primary' }]
+            },
+            {
+                key: 'scheduled', name: 'Servicio Agendado', type: 'sale', is_initial: false, is_terminal: false,
+                allowed_next_states: ['won', 'lost', 'estimate_sent'],
+                metadata: { goal: 'Ejecución de servicio' }
+            },
+            { key: 'won', name: 'Servicio Completado', type: 'sale', is_initial: false, is_terminal: true, allowed_next_states: [], metadata: { goal: 'Facturación' }, auto_tags: ['servicio_exitoso'] },
+            { key: 'lost', name: 'No Contratado', type: 'sale', is_initial: false, is_terminal: true, allowed_next_states: ['inquiry'], metadata: { goal: 'Remarketing' } }
+        ],
+        pipelineStages: [
+            { name: 'Nuevo Lead', key: 'new', mapToProcessKey: 'inquiry', color: 'bg-blue-500', icon: 'user' },
+            { name: 'Cotizado', key: 'quoted', mapToProcessKey: 'estimate_sent', color: 'bg-amber-500', icon: 'file-text' },
+            { name: 'Agendado', key: 'scheduled', mapToProcessKey: 'scheduled', color: 'bg-purple-500', icon: 'calendar' },
+            { name: 'Completado', key: 'won', mapToProcessKey: 'won', color: 'bg-green-500', icon: 'check-circle' },
+            { name: 'Perdido', key: 'lost', mapToProcessKey: 'lost', color: 'bg-red-500', icon: 'x' }
+        ]
+    },
     real_estate: {
         id: 'real_estate',
         name: 'Venta Inmobiliaria',

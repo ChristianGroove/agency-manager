@@ -448,8 +448,11 @@ export const en = {
         },
         table: {
             contact: "Contact",
+            client: "Client",
             status: "Status",
             services: "Services",
+            primary_insight: "Primary",
+            secondary_insight: "Secondary",
             next_payment: "Next Payment",
             actions: "Actions",
             active_services: "{count} Active"

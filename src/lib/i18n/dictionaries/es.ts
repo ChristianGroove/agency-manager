@@ -448,8 +448,11 @@ export const es = {
         },
         table: {
             contact: "Contacto",
+            client: "Cliente",
             status: "Estado",
             services: "Servicios",
+            primary_insight: "Principal",
+            secondary_insight: "Secundario",
             next_payment: "Próximo Cobro",
             actions: "Acciones",
             active_services: "{count} Activos"

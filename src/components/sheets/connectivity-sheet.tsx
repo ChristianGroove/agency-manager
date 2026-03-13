@@ -25,6 +25,8 @@ interface ConnectivitySheetProps {
 }
 
 export function ConnectivitySheet({ client, services, trigger, open: controlledOpen, onOpenChange }: ConnectivitySheetProps) {
+    if (!client) return null
+
     const [internalOpen, setInternalOpen] = useState(false)
     const isControlled = controlledOpen !== undefined
     const open = isControlled ? controlledOpen : internalOpen
@@ -40,13 +42,13 @@ export function ConnectivitySheet({ client, services, trigger, open: controlledO
     const [refreshKey, setRefreshKey] = useState(0) // Forces InsightsTab reload
 
     // Portal Settings
-    const portalSettings = client.portal_insights_settings || { override: null, access_level: 'NONE' }
-    const currentOverride = portalSettings.override
+    const portalSettings = client?.portal_insights_settings || { override: null, access_level: 'NONE' }
+    const currentOverride = portalSettings?.override ?? null
 
     // UI State for Override: 'auto' means override is null. 'manual' means it's boolean.
     const [controlMode, setControlMode] = useState<string>(currentOverride === null ? 'auto' : 'manual')
     const [isForceEnabled, setIsForceEnabled] = useState<boolean>(currentOverride === true)
-    const [accessLevel, setAccessLevel] = useState<string>(portalSettings.access_level || 'ALL')
+    const [accessLevel, setAccessLevel] = useState<string>(portalSettings?.access_level || 'ALL')
 
     useEffect(() => {
         if (open && activeTab === 'meta') {

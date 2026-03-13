@@ -1,6 +1,7 @@
 import { getPaginatedClients } from "@/modules/core/clients/actions"
 import { getSettings } from "@/modules/core/settings/actions"
-import { ClientsView } from "@/modules/core/clients/components/clients-view"
+import { getClientCategories } from "@/modules/core/clients/categories-actions"
+import ClientsView from "@/modules/core/clients/components/clients-view"
 import { GrowthEcosystemShell } from "@/modules/core/layout/growth-ecosystem-shell"
 import { Suspense } from "react"
 
@@ -19,10 +20,13 @@ export default async function ClientsPage({
     const filter = typeof searchParams.filter === 'string' ? searchParams.filter : 'all'
 
     // Parallel data fetching for maximum performance
-    const [paginatedData, settings] = await Promise.all([
+    const [paginatedData, settings, categoriesRes] = await Promise.all([
         getPaginatedClients(page, 50, search, filter),
-        getSettings()
+        getSettings(),
+        getClientCategories()
     ])
+
+    const allCategories = categoriesRes.success ? (categoriesRes.data || []) : []
 
     return (
         <GrowthEcosystemShell>
@@ -30,9 +34,11 @@ export default async function ClientsPage({
                 <ClientsView
                     initialData={paginatedData}
                     initialSettings={settings}
+                    allCategories={allCategories}
                     currentPage={page}
-                    currentSearch={search}
-                    currentFilter={filter}
+                    searchQuery={search}
+                    filter={filter}
+                    spaceType="agency"
                 />
             </Suspense>
         </GrowthEcosystemShell>

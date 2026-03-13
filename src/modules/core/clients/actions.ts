@@ -37,8 +37,6 @@ export async function getClientHistory(clientId: string) {
 export async function quickCreateProspect(data: CreateProspectInput) {
     const supabase = await createClient()
     try {
-        console.log("Attempting to create prospect:", data)
-
         // Validate data
         if (!data.name) return { success: false, error: "Missing name" }
         if (!data.userId) return { success: false, error: "Forbidden: Missing User ID" }
@@ -94,6 +92,8 @@ export async function getClients() {
         .from('clients')
         .select(`
           *,
+          category_id,
+          category:client_categories(id, name, color),
           portal_token,
           portal_short_token,
           invoices (id, total, status, due_date, number, pdf_url, deleted_at, billing_cycles:billing_cycles!billing_cycle_id (start_date, end_date)),

@@ -61,26 +61,28 @@ export function UnifiedCommunicationModal({ isOpen, onOpenChange, client: initia
 
     // Derived Data
     const pendingInvoices = useMemo(() =>
-        clientData.invoices?.filter((i: any) => ['pending', 'overdue'].includes(i.status)) || [],
-        [clientData.invoices])
+        clientData?.invoices?.filter((i: any) => ['pending', 'overdue'].includes(i.status)) || [],
+        [clientData?.invoices])
 
     const quotes = useMemo(() =>
-        clientData.quotes?.slice().sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()) || [],
-        [clientData.quotes])
+        clientData?.quotes?.slice().sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()) || [],
+        [clientData?.quotes])
 
     const portalLink = useMemo(() =>
-        getPortalShortUrl(clientData.portal_short_token || clientData.portal_token || ''),
-        [clientData])
+        getPortalShortUrl(clientData?.portal_short_token || clientData?.portal_token || ''),
+        [clientData?.portal_short_token, clientData?.portal_token])
 
     // --- SYNC INITIAL DATA ---
     // Critical: When opening for a different client, reset the local state immediately
     useEffect(() => {
-        setClientData(initialClient)
-    }, [initialClient.id, initialClient.portal_token])
+        if (initialClient) {
+            setClientData(initialClient)
+        }
+    }, [initialClient?.id, initialClient?.portal_token])
 
     // --- FRESH DATA FETCH ---
     const refreshClientData = async () => {
-        if (!isOpen) return
+        if (!isOpen || !initialClient?.id) return
         setRefreshing(true)
         try {
             // Fetch fresh invoices
@@ -103,8 +105,8 @@ export function UnifiedCommunicationModal({ isOpen, onOpenChange, client: initia
                 phone: initialClient.phone,
                 portal_token: initialClient.portal_token,
                 portal_short_token: initialClient.portal_short_token,
-                invoices: invoices || prev.invoices,
-                quotes: quotesData || prev.quotes
+                invoices: invoices || prev?.invoices || [],
+                quotes: quotesData || prev?.quotes || []
             }))
         } catch (e) {
             console.error("Error refreshing data", e)
@@ -115,7 +117,7 @@ export function UnifiedCommunicationModal({ isOpen, onOpenChange, client: initia
 
     // Initialize & Sync
     useEffect(() => {
-        if (isOpen) {
+        if (isOpen && initialClient) {
             refreshClientData()
 
             // Set Context Defaults
@@ -129,7 +131,7 @@ export function UnifiedCommunicationModal({ isOpen, onOpenChange, client: initia
                 setDocType('portal') // Default to Portal Invite instead of 'none' for better UX
             }
         }
-    }, [isOpen, context, initialClient.id])
+    }, [isOpen, context, initialClient?.id])
 
 
 
@@ -143,10 +145,10 @@ export function UnifiedCommunicationModal({ isOpen, onOpenChange, client: initia
 
     // --- COMPOSE MESSAGES ---
     useEffect(() => {
-        if (!isOpen) return
+        if (!isOpen || !clientData) return
 
         const agencyName = settings?.agency_name || "Nuestra Agencia"
-        const clientFirstName = clientData.name.split(' ')[0]
+        const clientFirstName = clientData?.name?.split(' ')[0] || "Cliente"
 
         let subject = ""
         let waText = ""
@@ -267,8 +269,8 @@ export function UnifiedCommunicationModal({ isOpen, onOpenChange, client: initia
                             {refreshing && <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />}
                         </DialogTitle>
                         <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
-                            <span className="flex items-center gap-1"><User className="w-3 h-3" /> {clientData.name}</span>
-                            {clientData.email && <span className="flex items-center gap-1"><AtSign className="w-3 h-3" /> {clientData.email}</span>}
+                            <span className="flex items-center gap-1"><User className="w-3 h-3" /> {clientData?.name || 'Cliente'}</span>
+                            {clientData?.email && <span className="flex items-center gap-1"><AtSign className="w-3 h-3" /> {clientData.email}</span>}
                         </div>
                     </div>
                     <Button variant="ghost" size="icon" onClick={refreshClientData} title="Refrescar Datos">

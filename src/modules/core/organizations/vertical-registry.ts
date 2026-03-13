@@ -7,6 +7,7 @@
 export type VerticalType = 'agency' | 'resto' | 'cleaning' | 'retail' | 'saas' | 'platform';
 
 export interface VerticalConfig {
+    crmTemplateId: string; // Link to CRMTemplates in @/modules/core/crm/templates/registry
     terminology: {
         client: string;    // 'Cliente', 'Comensal', 'Paciente'
         clients: string;   // 'Clientes', 'Comensales', 'Pacientes'
@@ -41,6 +42,7 @@ export interface VerticalConfig {
 
 export const VERTICAL_REGISTRY: Record<VerticalType, VerticalConfig> = {
     agency: {
+        crmTemplateId: 'agency',
         terminology: {
             client: 'Cliente',
             clients: 'Clientes',
@@ -67,6 +69,7 @@ export const VERTICAL_REGISTRY: Record<VerticalType, VerticalConfig> = {
         }
     },
     resto: {
+        crmTemplateId: 'resto',
         terminology: {
             client: 'Comensal',
             clients: 'Comensales',
@@ -93,6 +96,7 @@ export const VERTICAL_REGISTRY: Record<VerticalType, VerticalConfig> = {
         }
     },
     cleaning: {
+        crmTemplateId: 'cleaning',
         terminology: {
             client: 'Cliente',
             clients: 'Clientes',
@@ -119,6 +123,7 @@ export const VERTICAL_REGISTRY: Record<VerticalType, VerticalConfig> = {
         }
     },
     retail: {
+        crmTemplateId: 'ecommerce', // Linked to high-ticket/retail flow
         terminology: {
             client: 'Cliente',
             clients: 'Clientes',
@@ -145,6 +150,7 @@ export const VERTICAL_REGISTRY: Record<VerticalType, VerticalConfig> = {
         }
     },
     saas: {
+        crmTemplateId: 'saas',
         terminology: {
             client: 'Usuario',
             clients: 'Usuarios',
@@ -171,6 +177,7 @@ export const VERTICAL_REGISTRY: Record<VerticalType, VerticalConfig> = {
         }
     },
     platform: {
+        crmTemplateId: 'saas', // Uses high-level SaaS/Platform flow
         terminology: {
             client: 'Tenant',
             clients: 'Tenants',

@@ -23,7 +23,8 @@ interface PortalGovernanceSheetProps {
 }
 
 export function PortalGovernanceSheet({ client, globalSettings, trigger, open: controlledOpen, onOpenChange }: PortalGovernanceSheetProps) {
-    console.log("PortalGovernanceSheet Client:", client)
+    if (!client) return null
+
     const [internalOpen, setInternalOpen] = useState(false)
     const isControlled = controlledOpen !== undefined
     const open = isControlled ? controlledOpen : internalOpen
@@ -33,15 +34,15 @@ export function PortalGovernanceSheet({ client, globalSettings, trigger, open: c
     }
 
     const [isLoading, setIsLoading] = useState(false)
-    const [config, setConfig] = useState<any>(client.portal_config || {
+    const [config, setConfig] = useState<any>(client?.portal_config || {
         enabled: true,
         modules: {}
     })
 
     // Token Security State
-    const [tokenNeverExpires, setTokenNeverExpires] = useState(client.portal_token_never_expires !== false)
+    const [tokenNeverExpires, setTokenNeverExpires] = useState(client?.portal_token_never_expires !== false)
     const [tokenExpiresAt, setTokenExpiresAt] = useState(
-        client.portal_token_expires_at ? new Date(client.portal_token_expires_at).toISOString().split('T')[0] : ''
+        client?.portal_token_expires_at ? new Date(client.portal_token_expires_at).toISOString().split('T')[0] : ''
     )
     const [isSavingExpiration, setIsSavingExpiration] = useState(false)
 

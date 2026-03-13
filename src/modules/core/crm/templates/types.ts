@@ -31,7 +31,7 @@ export interface CRMTemplate {
     id: string
     name: string
     description: string
-    industry: 'agency' | 'clinic' | 'real_estate' | 'legal' | 'consulting' | 'saas' | 'ecommerce' | 'construction' | 'education' | 'event_planning' | 'general'
+    industry: 'agency' | 'clinic' | 'real_estate' | 'legal' | 'consulting' | 'saas' | 'ecommerce' | 'construction' | 'education' | 'event_planning' | 'resto' | 'cleaning' | 'general'
     processStates: ProcessStateDef[]
     pipelineStages: PipelineStageDef[]
 }
