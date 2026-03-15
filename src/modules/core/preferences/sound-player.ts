@@ -23,6 +23,12 @@ export class SoundPlayer {
         if (!this.audioContext) return;
 
         const ctx = this.audioContext;
+        
+        // Ensure context is resumed (browsers block auto-play until interaction)
+        if (ctx.state === 'suspended') {
+            ctx.resume();
+        }
+
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
 

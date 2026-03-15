@@ -185,8 +185,11 @@ export async function getAgentsWorkload() {
 
     const membersLookup = new Map((membersResult.data || []).map(m => [m.user_id, m.role]));
 
+    // Only include agents who are active members of the organization
+    const activeAgents = availabilityResult.data.filter(agent => membersLookup.has(agent.agent_id));
+
     // Attempt to map users manually since we can't join with auth.users directly
-    const agentsWithUsers = await Promise.all(availabilityResult.data.map(async (agent) => {
+    const agentsWithUsers = await Promise.all(activeAgents.map(async (agent) => {
         try {
             const { data: userData, error: userError } = await supabaseAdmin.auth.admin.getUserById(agent.agent_id)
             const role = membersLookup.get(agent.agent_id) || 'member';

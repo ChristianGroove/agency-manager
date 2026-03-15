@@ -111,8 +111,8 @@ export function GlobalMessageListener() {
                     processedConvs.current.add(dedupeKey)
                     setTimeout(() => processedConvs.current.delete(dedupeKey), 5000)
 
-                    // Suppress if on Inbox Page
-                    if (pathnameRef.current?.includes('/inbox')) return
+                    // Suppress Toasts if on Inbox Page (to avoid clutter), but allow Sound
+                    const isOnInboxPage = pathnameRef.current?.includes('/inbox')
 
                     // Play Sound
                     const currentPrefs = preferencesRef.current
@@ -159,6 +159,9 @@ export function GlobalMessageListener() {
                             return
                         }
                     }
+
+                    // SUPPRESS TOAST IF ON INBOX PAGE
+                    if (isOnInboxPage) return
 
                     // Fetch lead name for the toast
                     const { data: leadData } = await supabase
