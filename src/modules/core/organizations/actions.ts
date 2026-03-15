@@ -646,9 +646,29 @@ export async function createOrganization(formData: {
                         }
                     })
 
+                    let invitedUser = linkData?.user
+                    let inviteLink = ''
+
                     if (inviteError) {
-                        console.error("[createOrganization] GenerateLink Error:", inviteError.message)
-                        invitationError = inviteError.message
+                        if (inviteError.message.includes('already been registered') || inviteError.status === 422) {
+                            console.log("[createOrganization] User already exists, fetching ID...")
+                            // Fetch user to get ID since generateLink failed
+                            const { data: { users }, error: listError } = await supabaseAdmin.auth.admin.listUsers()
+                            const existingUser = users?.find(u => u.email?.toLowerCase() === formData.admin_email.toLowerCase())
+                            
+                            if (existingUser) {
+                                invitedUser = existingUser
+                                const { getAuthRedirectBase } = await import('@/lib/auth-utils')
+                                inviteLink = `${getAuthRedirectBase()}/login`
+                                console.log("[createOrganization] Existing user found:", invitedUser.id)
+                            } else {
+                                console.error("[createOrganization] Error fetching existing user:", listError)
+                                invitationError = inviteError.message
+                            }
+                        } else {
+                            console.error("[createOrganization] GenerateLink Error:", inviteError.message)
+                            invitationError = inviteError.message
+                        }
                     } else if (linkData?.properties?.action_link) {
                         console.log("[createOrganization] Link Data properties found:", linkData.properties)
                         const { getAuthRedirectBase } = await import('@/lib/auth-utils')
@@ -657,18 +677,18 @@ export async function createOrganization(formData: {
                         
                         const actionLink = (linkData as any).properties?.action_link
                         const verificationType = (linkData as any).properties?.verification_type || 'invite'
-                        const inviteLink = getSecureAuthLink(actionLink, verificationType, redirectBase, '/update-password')
+                        inviteLink = getSecureAuthLink(actionLink, verificationType, redirectBase, '/update-password')
 
                         console.log(`[createOrganization] Generated Invite Link for ${formData.admin_email}:`, inviteLink)
+                    }
 
+                    if (invitedUser && inviteLink) {
                         // 3. Ensure User exists and is member with OWNER role
-                        const invitedUser = linkData.user
-                        if (invitedUser) {
-                            const { error: memberErr } = await supabaseAdmin.from('organization_members').insert({
-                                organization_id: newOrg.id,
-                                user_id: invitedUser.id,
-                                role: 'owner' // Use owner instead of admin for the first user
-                            })
+                        const { error: memberErr } = await supabaseAdmin.from('organization_members').insert({
+                            organization_id: newOrg.id,
+                            user_id: invitedUser.id,
+                            role: 'owner'
+                        })
                             if (memberErr) {
                                 throw memberErr
                             }
