@@ -1,12 +1,12 @@
 "use server"
 
-import { createClient } from "@/lib/supabase-server"
-import { supabaseAdmin } from "@/lib/supabase-admin"
-import { revalidatePath } from "next/cache"
 import { OrganizationMember } from "@/types/organization"
 import { cookies } from "next/headers"
 import { getEffectiveBranding } from "@/modules/core/branding/actions"
 import { isSuperAdmin } from "@/lib/auth/platform-roles"
+import { createClient } from "@/lib/supabase-server"
+import { supabaseAdmin } from "@/lib/supabase-admin"
+import { revalidatePath } from "next/cache"
 import { cache } from "react"
 
 /**
@@ -21,7 +21,6 @@ export async function getOrganizationsPaginated(params: {
     parentId?: string
 }) {
     // 1. Auth & Context
-    const supabase = await createClient()
     const currentOrgId = await getCurrentOrganizationId()
 
     if (!currentOrgId) return { data: [], count: 0 }
@@ -543,16 +542,25 @@ export async function createOrganization(formData: {
         if (orgError) throw orgError;
         if (!newOrg) throw new Error("No se pudo generar un slug único para la organización tras varios intentos.");
 
-        // 2. Add Creator as Owner
-        const { error: memberError } = await supabaseAdmin
-            .from('organization_members')
-            .insert({
-                organization_id: newOrg.id,
-                user_id: user.id,
-                role: 'owner'
-            })
+        // 2. Add Owner
+        // If an admin_email is provided, the creator (Superadmin) should NOT be added as owner.
+        // Instead, we let the invited admin be the owner.
+        const shouldAddCreator = !formData.admin_email;
 
-        if (memberError) throw memberError
+        if (shouldAddCreator) {
+            const { error: memberError } = await supabaseAdmin
+                .from('organization_members')
+                .insert({
+                    organization_id: newOrg.id,
+                    user_id: user.id,
+                    role: 'owner'
+                })
+
+            if (memberError) throw memberError
+
+            // Set organization owner_id field
+            await supabaseAdmin.from('organizations').update({ owner_id: user.id }).eq('id', newOrg.id)
+        }
 
         // 2a. Seed Default Roles (Owner/Admin/Member)
         // We do this BEFORE assigning the owner role to the member if we were using role_id,
@@ -639,8 +647,10 @@ export async function createOrganization(formData: {
                     })
 
                     if (inviteError) {
+                        console.error("[createOrganization] GenerateLink Error:", inviteError.message)
                         invitationError = inviteError.message
                     } else if (linkData?.properties?.action_link) {
+                        console.log("[createOrganization] Link Data properties found:", linkData.properties)
                         const { getAuthRedirectBase } = await import('@/lib/auth-utils')
                         const { getSecureAuthLink } = await import('@/lib/auth-link-utils')
                         const redirectBase = getAuthRedirectBase()
@@ -649,13 +659,32 @@ export async function createOrganization(formData: {
                         const verificationType = (linkData as any).properties?.verification_type || 'invite'
                         const inviteLink = getSecureAuthLink(actionLink, verificationType, redirectBase, '/update-password')
 
-                        // 3. Ensure User exists and is member
+                        console.log(`[createOrganization] Generated Invite Link for ${formData.admin_email}:`, inviteLink)
+
+                        // 3. Ensure User exists and is member with OWNER role
                         const invitedUser = linkData.user
                         if (invitedUser) {
-                            await supabaseAdmin.from('organization_members').insert({
+                            const { error: memberErr } = await supabaseAdmin.from('organization_members').insert({
                                 organization_id: newOrg.id,
                                 user_id: invitedUser.id,
-                                role: 'admin'
+                                role: 'owner' // Use owner instead of admin for the first user
+                            })
+                            if (memberErr) {
+                                throw memberErr
+                            }
+
+                            // Set organization owner_id field
+                            const { error: orgUpdateErr } = await supabaseAdmin.from('organizations').update({ owner_id: invitedUser.id }).eq('id', newOrg.id)
+                            if (orgUpdateErr) {
+                                throw orgUpdateErr
+                            }
+
+                            // FIX: Clean up stale user metadata (e.g. "restaurant demo")
+                            await supabaseAdmin.auth.admin.updateUserById(invitedUser.id, {
+                                user_metadata: { 
+                                    full_name: 'Admin', // Set to a neutral name or from form
+                                    onboarding_completed: false 
+                                }
                             })
                         }
 
@@ -665,8 +694,10 @@ export async function createOrganization(formData: {
                         // We need the identity BEFORE sending to build the template
                         const { EmailService } = await import('@/modules/core/notifications/email.service')
                         const identity = await (EmailService as any).getSenderIdentity(creatorOrgId || 'PLATFORM')
+                        console.log("[createOrganization] Resolved Identity for email:", identity.senderName, identity.fromEmail)
                         const inviteHtml = getAuthInviteEmailHtml(formData.name, inviteLink, identity.branding, identity.style)
 
+                        console.log(`[createOrganization] Attempting to send invite email to ${formData.admin_email} via organization ${creatorOrgId || 'PLATFORM'}`)
                         const finalEmailResult = await EmailService.send({
                             to: formData.admin_email,
                             subject: `Invitación a ${formData.name}`,
@@ -679,9 +710,10 @@ export async function createOrganization(formData: {
                         })
 
                         if (finalEmailResult.success) {
+                            console.log(`[createOrganization] Invite email sent successfully to ${formData.admin_email}`)
                             invitationSent = true
                         } else {
-                            console.warn('Email send failed but org created:', finalEmailResult.error)
+                            console.error('[createOrganization] Email send failed:', finalEmailResult.error)
                             invitationError = 'Email no pudo ser enviado'
                         }
                     }
@@ -713,8 +745,10 @@ export async function createOrganization(formData: {
             console.error("Warning: CRM Init failed", initErr)
         }
 
-        // 5. Switch Context Immediately
-        await switchOrganization(newOrg.id)
+        // 5. Switch Context Immediately only if the creator was added as owner
+        if (shouldAddCreator) {
+            await switchOrganization(newOrg.id)
+        }
 
         // 6. Complete Onboarding (Mark flag in Auth Metadata)
         // 6. Complete Onboarding (Mark flag in Auth Metadata)

@@ -12,6 +12,24 @@ import { EmailService } from "@/modules/core/notifications/email.service"
  * =======================
  */
 
+async function logAdminAction(orgId: string | null, action: string, details: any = {}) {
+    try {
+        // Use createClient from SSR to get the actual session user
+        const { createClient } = await import('@/lib/supabase-server')
+        const supabase = await createClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        
+        await supabaseAdmin.from('organization_audit_log').insert({
+            organization_id: orgId,
+            action: action,
+            performed_by: user?.id,
+            details: details
+        })
+    } catch (e) {
+        console.error(`[ADMIN_ACTION] Error logging action:`, e);
+    }
+}
+
 export async function inviteOrgOwner(email: string, orgId: string) {
     await requireSuperAdmin()
 
@@ -110,8 +128,130 @@ export async function removeOrgUser(userId: string, orgId: string) {
     await requireSuperAdmin()
     const { error } = await supabaseAdmin.from('organization_members').delete().match({ organization_id: orgId, user_id: userId })
     if (error) throw error
+
+    await logAdminAction(orgId, 'remove_user', { target_user_id: userId })
+
     revalidatePath(`/platform/admin/organizations/${orgId}`)
     return { success: true }
+}
+
+/**
+ * Admin Action: Reset user password via official recovery flow
+ */
+export async function adminResetUserPassword(userId: string, orgId: string | null) {
+    await requireSuperAdmin()
+
+    // 1. Get user email
+    const { data: { user }, error: getError } = await supabaseAdmin.auth.admin.getUserById(userId)
+    if (getError || !user?.email) throw new Error("No se pudo encontrar el correo del usuario")
+
+    // 2. Generate Recovery Link
+    const { getAdminUrlAsync } = await import('@/lib/utils')
+    const confirmUrl = await getAdminUrlAsync('/auth/confirm?next=/update-password')
+
+    const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+        type: 'recovery',
+        email: user.email,
+        options: { redirectTo: confirmUrl }
+    })
+
+    if (linkError || !linkData?.properties?.action_link) {
+        throw new Error(`Error al generar link: ${linkError?.message || 'Link missing'}`)
+    }
+
+    const { getSecureAuthLink } = await import('@/lib/auth-link-utils')
+    const { getAuthRedirectBase } = await import('@/lib/auth-utils')
+    const actionLink = linkData.properties.action_link
+    const recoveryLink = getSecureAuthLink(actionLink, 'recovery', getAuthRedirectBase(), '/update-password')
+
+    // 3. Send Email via PLATFORM context
+    const { getAuthRecoveryEmailHtml } = await import('@/lib/email-templates')
+    // We fetch platform branding
+    const { EmailService } = await import('@/modules/core/notifications/email.service')
+    
+    // We send it!
+    const emailResult = await EmailService.send({
+        to: user.email,
+        subject: 'Restablecer Contraseña - Pixy Platform',
+        html: getAuthRecoveryEmailHtml(recoveryLink, {
+            agency_name: 'Pixy',
+            primary_color: '#000000',
+            secondary_color: '#F205E2',
+            logo_url: 'https://pixy.com.co/logo.png',
+            website_url: 'https://pixy.com.co'
+        }, 'neo'),
+        organizationId: 'PLATFORM'
+    })
+
+    if (!emailResult.success) {
+        throw new Error(`Error enviando correo: ${emailResult.error?.message}`)
+    }
+
+    // 4. Trace in Audit Log
+    await logAdminAction(orgId, 'reset_password', { 
+        target_user_id: userId, 
+        target_email: user.email,
+        method: 'email_recovery'
+    })
+
+    return { success: true }
+}
+
+/**
+ * Admin Action: Update user profile and auth details
+ */
+export async function adminUpdateUser(userId: string, orgId: string | null, updates: { 
+    email?: string, 
+    full_name?: string,
+    platform_role?: string 
+}) {
+    await requireSuperAdmin()
+
+    console.log(`[adminUpdateUser] Updating user ${userId} in org ${orgId}`, updates)
+    try {
+        // 1. Update Auth if email changed
+        if (updates.email) {
+            console.log(`[adminUpdateUser] Attempting Auth update to email: ${updates.email}`)
+            const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+                email: updates.email,
+                email_confirm: true // Force confirm if admin is changing it
+            })
+            if (authError) {
+                console.error(`[adminUpdateUser] Auth Update Error:`, authError)
+                throw authError
+            }
+        }
+
+        // 2. Update Profile
+        const profileUpdates: any = {}
+        if (updates.email) profileUpdates.email = updates.email
+        if (updates.full_name !== undefined) profileUpdates.full_name = updates.full_name
+        if (updates.platform_role) profileUpdates.platform_role = updates.platform_role
+        profileUpdates.updated_at = new Date().toISOString()
+
+        console.log(`[adminUpdateUser] Attempting Profile update:`, profileUpdates)
+        const { error: profileError } = await supabaseAdmin
+            .from('profiles')
+            .update(profileUpdates)
+            .eq('id', userId)
+
+        if (profileError) {
+            console.error(`[adminUpdateUser] Profile Update Error:`, profileError)
+            throw profileError
+        }
+
+        // 3. Log Action
+        await logAdminAction(orgId, 'update_user', { 
+            target_user_id: userId, 
+            updates 
+        })
+
+        if (orgId) revalidatePath(`/platform/admin/organizations/${orgId}`)
+        return { success: true }
+    } catch (err: any) {
+        console.error(`[adminUpdateUser] Final Error:`, err)
+        throw err
+    }
 }
 
 const PROTECTED_ORG_SLUGS = ['pixy', 'pixy-agency', 'pixy-pds']
@@ -747,4 +887,37 @@ export async function deleteGlobalBanner(id: string) {
     revalidatePath('/platform/admin')
     revalidatePath('/dashboard')
     return { success: true }
+}
+
+/**
+ * Fetch audit logs for a specific organization
+ */
+export async function getOrganizationAuditLogs(orgId: string) {
+    await requireSuperAdmin()
+    const { data, error } = await supabaseAdmin
+        .from('organization_audit_log')
+        .select('*')
+        .eq('organization_id', orgId)
+        .order('created_at', { ascending: false })
+        .limit(50)
+
+    if (error) throw error
+    
+    // Manual join to avoid relationship cache issues
+    const performerIds = Array.from(new Set(data.map(log => log.performed_by).filter(id => !!id))) as string[]
+    
+    if (performerIds.length > 0) {
+        const { data: profiles } = await supabaseAdmin
+            .from('profiles')
+            .select('id, full_name')
+            .in('id', performerIds)
+        
+        const profileMap = Object.fromEntries(profiles?.map(p => [p.id, p]) || [])
+        return data.map(log => ({
+            ...log,
+            performer: log.performed_by ? profileMap[log.performed_by] : null
+        }))
+    }
+
+    return data
 }

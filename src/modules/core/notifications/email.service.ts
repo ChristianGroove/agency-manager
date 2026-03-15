@@ -30,13 +30,16 @@ export class EmailService {
 
         // 1. Resolve Branding & Identity (High priority, available for errors)
         const identity = await this.getSenderIdentity(organizationId);
-        const { senderName, replyTo, branding } = identity;
+        const { senderName, replyTo } = identity;
+        const { branding, style } = identity;
 
         try {
+            console.log(`[EmailService] Attempting to send email to ${to}. Org: ${organizationId}`)
             // 2. Determine Transport Strategy (SMTP vs System/Resend)
             const smtpConfig = await this.getSmtpConfig(organizationId);
 
             let messageId: string | undefined;
+            console.log(`[EmailService] SMTP Config found: ${!!smtpConfig && smtpConfig.is_verified}`)
 
             if (smtpConfig && smtpConfig.is_verified) {
                 // === A. CUSTOM SMTP STRATEGY ===
@@ -80,10 +83,12 @@ export class EmailService {
                 let fromEmail = identity.fromEmail || process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev"; // Fallback to dev if needed
 
                 if (!fromEmail) {
+                    console.error("[EmailService] Resend From address missing")
                     throw new Error("Resend from address is not configured");
                 }
 
                 const from = `"${senderName}" <${fromEmail}>`;
+                console.log(`[EmailService] Sending via Resend from: ${from}`)
 
                 // Add Timeout to Resend Call (8 seconds)
                 const sendPromise = resend.emails.send({
@@ -106,8 +111,24 @@ export class EmailService {
                 const { data, error } = await Promise.race([sendPromise, timeoutPromise]) as any;
 
                 if (error) {
-                    // Resend specific error handling
                     console.error('[EmailService] Resend Error:', error);
+                    
+                    // LOCAL DEV SMART FALLBACK: If domain not verified, try with onboarding@resend.dev
+                    if (process.env.NODE_ENV === 'development' && fromEmail !== "onboarding@resend.dev") {
+                        console.warn("[EmailService] Domain might not be verified. Retrying with onboarding@resend.dev for development...");
+                        const fallbackSend = await resend.emails.send({
+                            from: `"Pixy Dev" <onboarding@resend.dev>`,
+                            to,
+                            replyTo: replyTo || undefined,
+                            subject: `[DEV FALLBACK] ${subject}`,
+                            html: html + `<hr><p style="color:red">Nota: Este correo se envió usando onboarding@resend.dev porque el dominio original no está verificado en este entorno local.</p>`,
+                        });
+                        if (!fallbackSend.error) {
+                            console.log("[EmailService] Fallback email sent successfully.");
+                            return { success: true, data: fallbackSend.data };
+                        }
+                    }
+
                     // Non-blocking log
                     void this.logEmail({
                         organizationId,
@@ -129,7 +150,6 @@ export class EmailService {
                 messageId = data?.id;
             }
 
-            // 3. Log Success (Non-blocking)
             void this.logEmail({
                 organizationId,
                 userId,
@@ -175,13 +195,23 @@ export class EmailService {
      * Fetch encrypted SMTP config for org (internal use)
      */
     private static async getSmtpConfig(organizationId: string) {
-        const { data } = await supabaseAdmin
-            .from('organization_smtp_configs')
-            .select('*')
-            .eq('organization_id', organizationId)
-            .eq('is_verified', true)
-            .single();
-        return data;
+        if (!organizationId || organizationId === 'PLATFORM') return null;
+        
+        try {
+            const { data, error } = await supabaseAdmin
+                .from('organization_smtp_configs')
+                .select('*')
+                .eq('organization_id', organizationId)
+                .eq('is_verified', true)
+                .single();
+            
+            if (error && error.code !== 'PGRST116') {
+                console.error(`[EmailService] getSmtpConfig DB Error`, error);
+            }
+            return data;
+        } catch (e: any) {
+            return null; // Don't crash for SMTP check
+        }
     }
 
     /**
@@ -196,10 +226,11 @@ export class EmailService {
     }> {
         // === PLATFORM CONTEXT ===
         if (organizationId === 'PLATFORM') {
+            const platformEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
             return {
                 senderName: 'Pixy Platform',
-                replyTo: 'contact@pixy.com.co',
-                fromEmail: 'contact@pixy.com.co',
+                replyTo: platformEmail,
+                fromEmail: platformEmail,
                 style: 'neo',
                 branding: {
                     agency_name: 'Pixy',

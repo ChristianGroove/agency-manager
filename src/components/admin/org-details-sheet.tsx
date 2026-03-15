@@ -8,9 +8,10 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Switch } from "@/components/ui/switch"
-import { Package, Users, Settings, Shield, LayoutGrid, AlertCircle, Building2, Key, Calendar, MapPin, Database, Loader2 } from "lucide-react"
-import { getOrgManagerData } from "@/modules/core/admin/actions"
+import { Package, Users, Settings, Shield, LayoutGrid, AlertCircle, Building2, Key, Calendar, MapPin, Database, Loader2, Clock, ShieldCheck } from "lucide-react"
+import { getOrgManagerData, getOrganizationAuditLogs } from "@/modules/core/admin/actions"
 import { getOrganizationActiveModules, getAllSystemModules } from "@/modules/core/saas/module-management-actions"
+import { UserActionsDialog } from "./user-actions-dialog"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 
@@ -34,6 +35,13 @@ export function OrgDetailsSheet({ orgId, isOpen, onClose }: OrgDetailsSheetProps
     const [allModules, setAllModules] = useState<any[]>([])
     const [activeModules, setActiveModules] = useState<string[]>([])
 
+    // Audit State
+    const [auditLogs, setAuditLogs] = useState<any[]>([])
+
+    // User Management States
+    const [selectedUser, setSelectedUser] = useState<any>(null)
+    const [isUserActionsOpen, setIsUserActionsOpen] = useState(false)
+
     // Load initial data
     useEffect(() => {
         if (isOpen && orgId) {
@@ -50,10 +58,11 @@ export function OrgDetailsSheet({ orgId, isOpen, onClose }: OrgDetailsSheetProps
         setIsLoading(true)
         try {
             // Parallel Fetch
-            const [managerData, sysModules, activeModuleKeys] = await Promise.all([
+            const [managerData, sysModules, activeModuleKeys, logs] = await Promise.all([
                 getOrgManagerData(id),
                 getAllSystemModules(),
-                getOrganizationActiveModules(id)
+                getOrganizationActiveModules(id),
+                getOrganizationAuditLogs(id)
             ])
 
             setOrgData(managerData.organization)
@@ -61,6 +70,7 @@ export function OrgDetailsSheet({ orgId, isOpen, onClose }: OrgDetailsSheetProps
             setStats(managerData.stats)
             setAllModules(sysModules || [])
             setActiveModules(activeModuleKeys || [])
+            setAuditLogs(logs || [])
         } catch (error: any) {
             toast.error("Error al cargar la organización", { description: error.message })
             onClose() // Auto-close on critical error
@@ -100,6 +110,14 @@ export function OrgDetailsSheet({ orgId, isOpen, onClose }: OrgDetailsSheetProps
                 "
             >
                 <div className="flex flex-col h-full bg-white/95 dark:bg-slate-950/95 backdrop-blur-xl">
+                    <UserActionsDialog 
+                        open={isUserActionsOpen}
+                        onOpenChange={setIsUserActionsOpen}
+                        user={selectedUser}
+                        orgId={orgId}
+                        onSuccess={() => loadOrgData(orgId)}
+                    />
+                    
                     {isLoading ? (
                         <div className="flex flex-col items-center justify-center h-full space-y-4">
                             <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -323,7 +341,7 @@ export function OrgDetailsSheet({ orgId, isOpen, onClose }: OrgDetailsSheetProps
                                                             <div className="p-6 text-center text-muted-foreground">No hay usuarios</div>
                                                         ) : (
                                                             users.map((member: any) => (
-                                                                <div key={member.user_id} className="p-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                                                                <div key={member.user_id} className="p-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
                                                                     <div className="flex items-center gap-3 overflow-hidden">
                                                                         <div className="h-10 w-10 shrink-0 bg-primary/10 rounded-full flex items-center justify-center text-primary font-bold shadow-inner">
                                                                             {member.user.email?.charAt(0).toUpperCase() || '?'}
@@ -336,6 +354,18 @@ export function OrgDetailsSheet({ orgId, isOpen, onClose }: OrgDetailsSheetProps
                                                                     {orgData.owner_id === member.user_id && (
                                                                         <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-200 border-0 dark:bg-amber-900/30 dark:text-amber-400 shrink-0 ml-2">Dueño</Badge>
                                                                     )}
+                                                                    
+                                                                    <Button 
+                                                                        variant="ghost" 
+                                                                        size="icon" 
+                                                                        className="h-8 w-8 ml-2 opacity-40 group-hover:opacity-100 transition-opacity"
+                                                                        onClick={() => {
+                                                                            setSelectedUser(member)
+                                                                            setIsUserActionsOpen(true)
+                                                                        }}
+                                                                    >
+                                                                        <Settings className="h-4 w-4 text-muted-foreground" />
+                                                                    </Button>
                                                                 </div>
                                                             ))
                                                         )}
@@ -345,7 +375,41 @@ export function OrgDetailsSheet({ orgId, isOpen, onClose }: OrgDetailsSheetProps
                                                 <div className="space-y-6">
                                                     <div>
                                                         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Auditoría SuperAdmin</h3>
-                                                        <p className="text-sm text-muted-foreground">Acciones críticas de seguridad.</p>
+                                                        <p className="text-sm text-muted-foreground">Trazabilidad de acciones críticas realizadas por la plataforma.</p>
+                                                    </div>
+
+                                                    <div className="space-y-3">
+                                                        {auditLogs.length === 0 ? (
+                                                            <div className="rounded-xl border border-dashed p-8 text-center text-muted-foreground bg-slate-50/50">
+                                                                <p className="text-sm">No hay actividad registrada recientemente.</p>
+                                                            </div>
+                                                        ) : (
+                                                            auditLogs.map((log) => (
+                                                                <div key={log.id} className="p-3 rounded-lg border bg-white dark:bg-slate-900 flex items-start gap-3 transition-shadow hover:shadow-sm">
+                                                                    <div className="p-2 bg-indigo-50 text-indigo-600 rounded-md shrink-0 dark:bg-indigo-900/30 dark:text-indigo-400">
+                                                                        <Clock className="h-4 w-4" />
+                                                                    </div>
+                                                                    <div className="flex-1 min-w-0">
+                                                                        <div className="flex items-center justify-between mb-1">
+                                                                            <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-600 dark:text-indigo-400">
+                                                                                {log.action.replace('_', ' ')}
+                                                                            </span>
+                                                                            <span className="text-[10px] text-muted-foreground">
+                                                                                {new Date(log.created_at).toLocaleString()}
+                                                                            </span>
+                                                                        </div>
+                                                                        <p className="text-xs text-slate-700 dark:text-slate-300">
+                                                                            Por <span className="font-semibold">{log.performer?.full_name || 'Admin'}</span>
+                                                                        </p>
+                                                                        {log.details && (
+                                                                            <pre className="mt-2 text-[10px] bg-slate-50 dark:bg-slate-950 p-2 rounded border font-mono overflow-x-auto text-slate-500 whitespace-pre-wrap">
+                                                                                {JSON.stringify(log.details, null, 2)}
+                                                                            </pre>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            ))
+                                                        )}
                                                     </div>
 
                                                     <Card className="border-red-200 bg-red-50/50 dark:border-red-900/30 dark:bg-red-900/10 shadow-none">
