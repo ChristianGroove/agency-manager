@@ -34,7 +34,7 @@ export const INTENT_REGISTRY: Record<string, IntentDefinition> = {
         module: 'crm',
 
         required_parameters: ['client_id', 'project_name'],
-        allowed_spaces: ['agency'],
+        allowed_spaces: ['agency', 'resto', 'retail'],
         linked_action: 'create_brief',
         requires_confirmation: true
     },
@@ -51,7 +51,7 @@ export const INTENT_REGISTRY: Record<string, IntentDefinition> = {
         module: 'billing',
 
         required_parameters: ['invoice_id'],
-        allowed_spaces: ['agency'],
+        allowed_spaces: ['agency', 'resto', 'retail'],
         linked_action: 'send_payment_reminder',
         requires_confirmation: true
     },
@@ -68,7 +68,7 @@ export const INTENT_REGISTRY: Record<string, IntentDefinition> = {
         module: 'billing',
 
         required_parameters: [],
-        allowed_spaces: ['agency'],
+        allowed_spaces: ['agency', 'resto', 'retail'],
         linked_action: 'list_pending_payments',
         requires_confirmation: false
     },
@@ -85,7 +85,7 @@ export const INTENT_REGISTRY: Record<string, IntentDefinition> = {
         module: 'crm',
 
         required_parameters: ['client_id', 'content'],
-        allowed_spaces: ['agency'],
+        allowed_spaces: ['agency', 'resto', 'retail'],
         linked_action: 'create_client_note',
         requires_confirmation: false // Low risk usually doesn't need confirmation, but can enforce if strict
     },
@@ -102,7 +102,7 @@ export const INTENT_REGISTRY: Record<string, IntentDefinition> = {
         module: 'flows',
 
         required_parameters: ['flow_id'],
-        allowed_spaces: ['agency'],
+        allowed_spaces: ['agency', 'resto', 'retail'],
         linked_action: 'pause_flow',
         requires_confirmation: true
     },
@@ -119,7 +119,7 @@ export const INTENT_REGISTRY: Record<string, IntentDefinition> = {
         module: 'flows',
 
         required_parameters: ['flow_id'],
-        allowed_spaces: ['agency'],
+        allowed_spaces: ['agency', 'resto', 'retail'],
         linked_action: 'activate_flow',
         requires_confirmation: true
     },
@@ -136,7 +136,7 @@ export const INTENT_REGISTRY: Record<string, IntentDefinition> = {
         module: 'flows',
 
         required_parameters: ['flow_id'],
-        allowed_spaces: ['agency'],
+        allowed_spaces: ['agency', 'resto', 'retail'],
         linked_action: 'run_flow_once',
         requires_confirmation: true // Always confirm manual triggers
     },

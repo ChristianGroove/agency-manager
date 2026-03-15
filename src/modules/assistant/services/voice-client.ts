@@ -1,9 +1,9 @@
 
 import jwt from 'jsonwebtoken';
 
-// Configuration (Should be in environment variables)
-const VOICE_RUNTIME_URL = process.env.VOICE_RUNTIME_URL || 'http://31.97.142.27:8080';
-const APP_SECRET = 'pixy_secret_hardcoded_fix_99';
+// Configuration (Moved from hardcoded to environment variables)
+const VOICE_RUNTIME_URL = process.env.VOICE_RUNTIME_URL;
+const APP_SECRET = process.env.PIXY_VOICE_SECRET;
 
 export interface VoiceCommand {
     tenant_id: string;
@@ -27,6 +27,11 @@ export class VoiceClient {
     static async sendCommand(command: VoiceCommand): Promise<RuntimeResponse> {
         try {
             // 1. Sign Token
+            if (!APP_SECRET) {
+                console.error("[VoiceClient] Missing PIXY_VOICE_SECRET environment variable.");
+                return { status: 'error', error: "Voice Service Configuration Error" };
+            }
+
             const token = jwt.sign({}, APP_SECRET, {
                 issuer: 'pixy-agency-manager',
                 audience: 'pixy-voice-runtime',

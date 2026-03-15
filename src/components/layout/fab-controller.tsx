@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { UnifiedFloatingFab } from "./unified-floating-fab"
 import MetaControlSheet from "@/components/meta/MetaControlSheet"
 import { useAssistant } from "@/hooks/use-assistant"
@@ -31,19 +31,12 @@ export function FabController({ orgSlug }: { orgSlug?: string }) {
     const [isHelpOpen, setIsHelpOpen] = useState(false)
     const [hasAttemptedAssistant, setHasAttemptedAssistant] = useState(false)
 
-
-    // Lifted Assistant State
-    const { messages, status, isOpen: isAssistantOpen, setIsOpen: setIsAssistantOpen, submitMessage, toggleVoice } = useAssistant()
-
     return (
         <>
             <UnifiedFloatingFab
                 onOpenMeta={() => setIsMetaOpen(true)}
                 onOpenHelp={() => setIsHelpOpen(true)}
-                onOpenAssistant={() => {
-                    setHasAttemptedAssistant(true)
-                    setIsAssistantOpen(true)
-                }}
+                onOpenAssistant={() => setHasAttemptedAssistant(true)}
                 orgSlug={orgSlug}
             />
 
@@ -51,17 +44,33 @@ export function FabController({ orgSlug }: { orgSlug?: string }) {
             {isInternalOrg && <MetaControlSheet open={isMetaOpen} onOpenChange={setIsMetaOpen} />}
             <LazyAssistantModal open={isHelpOpen} onOpenChange={setIsHelpOpen} />
 
-            {/* New Pixy Assistant - Deferred Mount */}
+            {/* New Pixy Assistant - Deferred Mount - Hook only runs when attempted */}
             {isInternalOrg && hasAttemptedAssistant && (
-                <LazyAssistantOverlay
-                    messages={messages}
-                    status={status}
-                    isOpen={isAssistantOpen}
-                    setIsOpen={setIsAssistantOpen}
-                    submitMessage={submitMessage}
-                    toggleVoice={toggleVoice}
-                />
+                <AssistantWrapper />
             )}
         </>
+    )
+}
+
+/**
+ * Internal wrapper to isolate the useAssistant hook and avoid global overhead.
+ */
+function AssistantWrapper() {
+    const { messages, status, isOpen, setIsOpen, submitMessage, toggleVoice } = useAssistant()
+    
+    // Automatically open on first mount when wrapper is triggered
+    useEffect(() => {
+        setIsOpen(true)
+    }, [])
+
+    return (
+        <LazyAssistantOverlay
+            messages={messages}
+            status={status}
+            isOpen={isOpen}
+            setIsOpen={setIsOpen}
+            submitMessage={submitMessage}
+            toggleVoice={toggleVoice}
+        />
     )
 }

@@ -20,8 +20,9 @@ export function useAssistant() {
     const [status, setStatus] = useState<AssistantStatus>('idle');
     const [isOpen, setIsOpen] = useState(false);
 
-    // Mock Voice Simulation
+    // State management
     const listeningTimeout = useRef<NodeJS.Timeout | null>(null);
+    const isLoadingRef = useRef(false);
 
     const addMessage = (role: 'user' | 'assistant', text: string, action?: any) => {
         const msg: Message = {
@@ -36,13 +37,15 @@ export function useAssistant() {
     };
 
     const submitMessage = async (text: string, mode: 'text' | 'voice' = 'text') => {
-        if (!text.trim()) return;
+        const trimmedText = text.trim();
+        if (!trimmedText || isLoadingRef.current) return;
 
         setStatus('thinking');
-        addMessage('user', text);
+        isLoadingRef.current = true;
+        addMessage('user', trimmedText);
 
         try {
-            const result = await sendMessage(text, mode);
+            const result = await sendMessage(trimmedText, mode);
 
             setStatus(mode === 'voice' ? 'speaking' : 'idle');
 
@@ -51,36 +54,25 @@ export function useAssistant() {
                 setTimeout(() => setStatus('idle'), 3000);
             }
 
-            // Suggestions handling
-            let action = undefined;
-            // We need to parse narrative log if it contains special triggers or if we update the Result type to return action data
-            // For now, let's assume result.narrative_log is the text.
-            // If the Engine returns a confirmation request, it's usually just text in the log.
-            // Phase 6 Goal: Rich UI. We might want to parse the log or update Engine to return metadata.
-            // For MVP UI, we'll just display text.
-
-            addMessage('assistant', result.narrative_log, result.data); // data might contain payload if we tweaked Engine?
+            addMessage('assistant', result.narrative_log, result.data);
 
         } catch (e) {
             console.error(e);
             addMessage('assistant', "⚠️ Error de conexión.");
             setStatus('idle');
+        } finally {
+            isLoadingRef.current = false;
         }
     };
 
     const toggleVoice = () => {
         if (status === 'listening') {
-            // Stop listening -> Send
+            setStatus('idle');
             if (listeningTimeout.current) clearTimeout(listeningTimeout.current);
-            setStatus('thinking');
-            // Mock input
-            submitMessage("Crear brief para cliente demo", 'voice');
         } else {
             setStatus('listening');
-            // Mock auto-stop
-            listeningTimeout.current = setTimeout(() => {
-                submitMessage("Crear brief para cliente demo", 'voice');
-            }, 3000);
+            // Baseline for real voice input integration
+            console.log("[Assistant] Voice listening triggered...");
         }
     };
 
