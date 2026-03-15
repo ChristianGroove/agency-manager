@@ -93,14 +93,22 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
-    // Initial Fetch
+    // Unified fetch controller
     useEffect(() => {
         if (!orgLoading && permissionsLoaded) {
-            fetchConversations(true)
             fetchChannels()
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [activeFilter, organizationId, orgLoading, permissionsLoaded, selectedChannelId])
+    }, [organizationId, orgLoading, permissionsLoaded])
+
+    useEffect(() => {
+        if (!orgLoading && permissionsLoaded) {
+            // Debounce search
+            const timer = setTimeout(() => {
+                fetchConversations(true)
+            }, 300)
+            return () => clearTimeout(timer)
+        }
+    }, [activeFilter, organizationId, orgLoading, permissionsLoaded, selectedChannelId, searchQuery])
 
     const fetchChannels = async () => {
         const data = await getChannels()
@@ -117,15 +125,27 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
         }
     }
 
-    const fetchConversations = async (showLoading = false) => {
-        if (!permissionsLoaded || !userPermissions) return // Prevent stale closure bypass
+    const PAGE_SIZE = 50
+    const [hasMore, setHasMore] = useState(true)
+    const [offset, setOffset] = useState(0)
+
+    const fetchConversations = async (showLoading = false, isLoadMore = false) => {
+        if (!permissionsLoaded || !userPermissions || (!hasMore && isLoadMore)) return
 
         if (showLoading) setLoading(true)
+        const currentOffset = isLoadMore ? offset : 0
 
         let query = supabase
             .from('conversations')
             .select('*, leads(name, phone, avatar_url), clients(name, phone, avatar_url), integration_connections(connection_name)')
             .order('last_message_at', { ascending: false })
+            .range(currentOffset, currentOffset + PAGE_SIZE - 1)
+
+        // Apply search if active
+        if (searchQuery.trim()) {
+            const search = `%${searchQuery.toLowerCase()}%`
+            query = query.or(`phone.ilike.${search},last_message_preview.ilike.${search},leads.name.ilike.${search}`)
+        }
 
         // Apply filter
         switch (activeFilter) {
@@ -145,53 +165,52 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
                 break
             case 'all':
             default:
-                // Exclude archived AND snoozed by default from main list
                 query = query.neq('state', 'archived').neq('status', 'snoozed')
                 break
         }
 
-        // Apply channel filter if selected
-        if (selectedChannelId) {
-            query = query.eq('connection_id', selectedChannelId)
-        }
+        if (selectedChannelId) query = query.eq('connection_id', selectedChannelId)
 
-        // Apply strict isolation if active
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         if ((preferences.behavior as any).strict_isolation && currentUserId) {
             query = query.eq('assigned_to', currentUserId)
         }
 
-        // Apply Governing Access (Channel Authorization)
-        // If not Admin/Owner, limit to authorized channels
         const isStaff = userPermissions?.role === 'member'
         const authorizedChannels = userPermissions?.permissions?.inbox_access || []
 
         if (isStaff) {
             if (authorizedChannels.length > 0) {
-                // Individual Priority: Show authorized channels OR specifically assigned chats
                 query = query.or(`connection_id.in.(${authorizedChannels.map((id: string) => `"${id}"`).join(',')}),assigned_to.eq.${currentUserId}`)
             } else if (currentUserId) {
-                // If they have no authorized channels but have assigned chats
                 query = query.eq('assigned_to', currentUserId)
             } else {
-                // No channels and no user ID (shouldn't happen for staff)
                 query = query.eq('id', '00000000-0000-0000-0000-000000000000')
             }
         }
 
-        // Critical: Filter by Organization
-        if (organizationId) {
-            query = query.eq('organization_id', organizationId)
-        }
+        if (organizationId) query = query.eq('organization_id', organizationId)
 
         const { data, error } = await query
 
         if (!error && data) {
-            setConversations(data as Conversation[])
+            if (isLoadMore) {
+                setConversations(prev => [...prev, ...data as Conversation[]])
+                setOffset(prev => prev + PAGE_SIZE)
+            } else {
+                setConversations(data as Conversation[])
+                setOffset(PAGE_SIZE)
+            }
+            setHasMore(data.length === PAGE_SIZE)
         } else if (error) {
-            console.error('[ConversationList] Error fetching conversations:', JSON.stringify(error, null, 2))
+            console.error('[ConversationList] Error fetching conversations:', error)
         }
         if (showLoading) setLoading(false)
+    }
+
+    const loadMore = () => {
+        if (!loading && hasMore) {
+            fetchConversations(false, true)
+        }
     }
 
     // Auto-deselect if selected conversation is gone (and no search is active)
@@ -207,19 +226,48 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [conversations, loading, selectedId, activeFilter, searchQuery])
 
-    // Real-time subscription + polling fallback for sidebar
+    // Real-time surgical updates
     const channelCounter = useRef(0)
     useEffect(() => {
-        // Unique channel name avoids Supabase collision after removeChannel
         channelCounter.current += 1
         const channelName = `conversations-list-${channelCounter.current}`
 
         const channel = supabase
             .channel(channelName)
             .on('postgres_changes',
-                { event: '*', schema: 'public', table: 'conversations' },
-                () => {
-                    fetchConversations(false)
+                { event: '*', schema: 'public', table: 'conversations', filter: `organization_id=eq.${organizationId}` },
+                async (payload) => {
+                    const updatedConv = payload.new as Conversation
+                    
+                    // If it's a new or updated conversation, we might need to update the list
+                    setConversations((prev) => {
+                        const existingIndex = prev.findIndex(c => c.id === updatedConv.id)
+                        
+                        if (existingIndex > -1) {
+                            // Surgical Update: Move to top and update basic fields
+                            const updated = {
+                                ...prev[existingIndex],
+                                ...updatedConv,
+                                // Preserve joined data as it's not in the realtime payload
+                                leads: prev[existingIndex].leads,
+                                clients: prev[existingIndex].clients,
+                                integration_connections: prev[existingIndex].integration_connections
+                            }
+                            const newList = [updated, ...prev.filter(c => c.id !== updatedConv.id)]
+                            return newList
+                        } else {
+                            // If it's not in our current page/view, skip or we could fetch its full record
+                            // For now, if it's the 'all' or 'unread' view, it's safer to just re-fetch the first page
+                            // to ensure consistency and correct sorting for the most recent items.
+                            // However, let's try to fetch just this one record to be super light
+                            return prev
+                        }
+                    })
+
+                    // Fallback: If not found in current list, trigger a light re-fetch of the first page
+                    if (!conversations.some(c => c.id === updatedConv.id)) {
+                         fetchConversations(false)
+                    }
                 }
             )
             .subscribe()
@@ -228,29 +276,9 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
             supabase.removeChannel(channel)
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [activeFilter, currentUserId, permissionsLoaded, userPermissions, selectedChannelId])
+    }, [activeFilter, currentUserId, permissionsLoaded, userPermissions, selectedChannelId, organizationId])
 
-    // Filter and search conversations
-    const filteredConversations = useMemo(() => {
-        if (!searchQuery.trim()) {
-            return conversations
-        }
-
-        const query = searchQuery.toLowerCase()
-        const filtered = conversations.filter(conv => {
-            const leadName = conv.leads?.name?.toLowerCase() || ''
-            const leadPhone = conv.leads?.phone?.toLowerCase() || ''
-            const lastMessage = conv.last_message?.toLowerCase() || ''
-
-            return leadName.includes(query) ||
-                leadPhone.includes(query) ||
-                lastMessage.includes(query)
-        })
-
-        return filtered
-    }, [conversations, searchQuery])
-
-    // Count badges for tabs
+    // Count badges for tabs (Current visible set)
     const counts = useMemo(() => {
         return {
             all: conversations.filter(c => c.state !== 'archived' && c.status !== 'snoozed').length,
@@ -405,7 +433,7 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
                     <div className="p-8 text-center text-sm text-muted-foreground">
                         {t('crm.inbox.sidebar.loading')}
                     </div>
-                ) : filteredConversations.length === 0 ? (
+                ) : conversations.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-full p-8 text-center opacity-60">
                         <MessageSquare className="h-8 w-8 mb-3 text-muted-foreground" />
                         <p className="text-sm font-medium text-foreground">{t('crm.inbox.sidebar.no_conversations')}</p>
@@ -416,8 +444,9 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
                 ) : (
                     <Virtuoso
                         style={{ height: '100%' }}
-                        totalCount={filteredConversations.length}
-                        data={filteredConversations}
+                        totalCount={conversations.length}
+                        data={conversations}
+                        endReached={loadMore}
                         itemContent={(index, conv) => (
                             <div className="border-b border-border/50">
                                 <ConversationListItem
@@ -425,10 +454,17 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
                                     conv={conv}
                                     isSelected={conv.id === selectedId}
                                     onSelect={onSelect}
-                                    fetchConversations={fetchConversations}
+                                    fetchConversations={() => fetchConversations(false)}
                                 />
                             </div>
                         )}
+                        components={{
+                            Footer: () => hasMore ? (
+                                <div className="p-4 text-center text-xs text-muted-foreground animate-pulse">
+                                    {t('crm.inbox.sidebar.loading')}...
+                                </div>
+                            ) : null
+                        }}
                     />
                 )}
             </div>
