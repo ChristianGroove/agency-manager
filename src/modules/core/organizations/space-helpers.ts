@@ -12,7 +12,7 @@ import { getCurrentOrgDetails, getCurrentOrganizationId } from "./actions"
  * Drives UI rendering, card layouts, and feature visibility.
  * Stored in saas_apps.space_category column.
  */
-export type SpaceCategory = 'agency' | 'resto' | 'cleaning' | 'platform' | 'retail'
+export type SpaceCategory = 'agency' | 'resto' | 'cleaning' | 'platform' | 'retail' | 'saas'
 
 /**
  * Get the space category for the current organization.

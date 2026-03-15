@@ -17,6 +17,7 @@ import { getAppPortalConfig, updateAppPortalModule, reorderAppPortalModules } fr
 import { getAllSystemModules } from "@/modules/core/admin/actions"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface AppDetailsSheetProps {
     app: any | null
@@ -135,6 +136,7 @@ export function AppDetailsSheet({ app, isOpen, onClose, dict }: AppDetailsSheetP
                 name: formData.get('name') as string,
                 description: formData.get('description') as string,
                 category: formData.get('category') as string,
+                space_category: formData.get('space_category') as any,
                 price_monthly: parseFloat(formData.get('price_monthly') as string),
                 color: formData.get('color') as string,
                 is_active: formData.get('is_active') === 'true'
@@ -511,15 +513,32 @@ export function AppDetailsSheet({ app, isOpen, onClose, dict }: AppDetailsSheetP
 
                                                         <div className="grid grid-cols-2 gap-6">
                                                             <div className="space-y-3">
-                                                                <Label htmlFor="category" className="text-base font-semibold">Categoría</Label>
-                                                                <Input id="category" name="category" defaultValue={app.category} required className="h-11" />
+                                                                <Label htmlFor="space_category" className="text-base font-semibold">Tipo de Sistema (Space Category)</Label>
+                                                                <Select name="space_category" defaultValue={app.space_category || 'agency'}>
+                                                                    <SelectTrigger id="space_category" className="h-11 border-2 border-amber-100">
+                                                                        <SelectValue placeholder="Selecciona..." />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent>
+                                                                        <SelectItem value="agency">Agency (Service Business)</SelectItem>
+                                                                        <SelectItem value="resto">Resto (F&B / Digital Menu)</SelectItem>
+                                                                        <SelectItem value="cleaning">Cleaning (Appointments)</SelectItem>
+                                                                        <SelectItem value="retail">Retail (Commerce)</SelectItem>
+                                                                        <SelectItem value="saas">SaaS (Software Subscriptions)</SelectItem>
+                                                                        <SelectItem value="platform">Platform (System)</SelectItem>
+                                                                    </SelectContent>
+                                                                </Select>
                                                             </div>
                                                             <div className="space-y-3">
-                                                                <Label htmlFor="price_monthly" className="text-base font-semibold">Precio Mensual</Label>
-                                                                <div className="relative">
-                                                                    <span className="absolute left-3 top-2.5 text-muted-foreground">$</span>
-                                                                    <Input id="price_monthly" name="price_monthly" type="number" step="0.01" defaultValue={app.price_monthly} required className="pl-7 h-11" />
-                                                                </div>
+                                                                <Label htmlFor="category" className="text-base font-semibold">Categoría de Mercado</Label>
+                                                                <Input id="category" name="category" defaultValue={app.category} required className="h-11" />
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="space-y-3">
+                                                            <Label htmlFor="price_monthly" className="text-base font-semibold">Precio Mensual</Label>
+                                                            <div className="relative">
+                                                                <span className="absolute left-3 top-2.5 text-muted-foreground">$</span>
+                                                                <Input id="price_monthly" name="price_monthly" type="number" step="0.01" defaultValue={app.price_monthly} required className="pl-7 h-11" />
                                                             </div>
                                                         </div>
 

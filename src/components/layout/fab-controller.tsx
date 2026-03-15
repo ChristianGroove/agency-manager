@@ -3,7 +3,6 @@
 import { useState } from "react"
 import { UnifiedFloatingFab } from "./unified-floating-fab"
 import MetaControlSheet from "@/components/meta/MetaControlSheet"
-import { AssistantModal } from "@/modules/core/caa/components/assistant-modal"
 import { useAssistant } from "@/hooks/use-assistant"
 import dynamic from "next/dynamic"
 
@@ -13,7 +12,15 @@ const LazyAssistantOverlay = dynamic(
     () => import("@/components/assistant/AssistantOverlay").then(mod => mod.AssistantOverlay),
     {
         ssr: false,
-        loading: () => null // Invisible during background load
+        loading: () => null
+    }
+)
+
+const LazyAssistantModal = dynamic(
+    () => import("@/modules/core/caa/components/assistant-modal").then(mod => mod.AssistantModal),
+    {
+        ssr: false,
+        loading: () => null
     }
 )
 
@@ -42,7 +49,7 @@ export function FabController({ orgSlug }: { orgSlug?: string }) {
 
             {/* Controlled Components */}
             {isInternalOrg && <MetaControlSheet open={isMetaOpen} onOpenChange={setIsMetaOpen} />}
-            <AssistantModal open={isHelpOpen} onOpenChange={setIsHelpOpen} />
+            <LazyAssistantModal open={isHelpOpen} onOpenChange={setIsHelpOpen} />
 
             {/* New Pixy Assistant - Deferred Mount */}
             {isInternalOrg && hasAttemptedAssistant && (

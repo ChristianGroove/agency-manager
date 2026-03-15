@@ -25,7 +25,6 @@ export function RestoDashboard({ dashboardData, extraData, onReload }: RestoDash
     useRegisterView({
         viewId: "dashboard",
         label: "Dashboard Resto",
-        topics: ["resto-intro", "digital-menu-guide"],
         actions: [
             { id: "new-order", label: "Nuevo Pedido", type: "function", target: "open_order_modal", icon: ClipboardList, description: "Registrar un pedido manual" },
             { id: "view-menu", label: "Ver Menú Digital", type: "route", target: portalUrl, icon: QrCode, description: "Abrir el portal del restaurante" }

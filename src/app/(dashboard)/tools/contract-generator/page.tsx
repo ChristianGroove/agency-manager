@@ -24,8 +24,7 @@ export default function ContractGeneratorPage() {
         actions: [
             { id: "generate_from_ai", label: "Generar con IA", type: "function", target: "ai_generate", icon: Sparkles },
             { id: "reset_form", label: "Limpiar Formulario", type: "function", target: "reset", icon: Settings2 }
-        ],
-        topics: ["contract_generator_usage", "legal_templates"]
+        ]
     })
 
     return (

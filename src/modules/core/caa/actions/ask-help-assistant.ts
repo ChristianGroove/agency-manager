@@ -2,6 +2,7 @@
 
 import { AIEngine } from "@/modules/core/ai-engine/service"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getOrgSpaceCategory } from "@/modules/core/organizations/space-helpers"
 import { createClient } from "@/lib/supabase-server"
 
 export interface HelpChatMessage {
@@ -150,19 +151,20 @@ export async function askHelpAssistant(
             }
         }
 
-        // 4. Limit conversation history to save tokens
+        // 5. Limit conversation history to save tokens
         const limitedHistory = conversationHistory.slice(-MAX_CONVERSATION_HISTORY)
-        const historyContext = limitedHistory.length > 0
-            ? `\nContexto previo:\n${limitedHistory.map(m => `${m.role === 'user' ? 'U' : 'A'}: ${m.content.slice(0, 100)}`).join('\n')}\n`
-            : ""
 
-        // 5. Execute with strict guardrails
+        // 6. Get Space Category for tailored context
+        const spaceCategory = await getOrgSpaceCategory(organizationId)
+
+        // 7. Execute with strict guardrails and industry context
         const response = await AIEngine.executeTask({
             organizationId,
             taskType: "help-assistant",
             payload: {
                 question: sanitizedQuestion,
-                context: historyContext
+                history: limitedHistory,
+                spaceCategory // PASS TO AI ENGINE
             }
         })
 

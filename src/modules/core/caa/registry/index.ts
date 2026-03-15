@@ -15,7 +15,7 @@ class ActionRegistry {
 
     register(action: ActionDefinition) {
         if (this.actions.has(action.id)) {
-            console.warn(`[CAA] Action ${action.id} already registered. Overwriting.`)
+            // console.warn(`[CAA] Action ${action.id} already registered.`)
         }
         this.actions.set(action.id, action)
     }
@@ -33,36 +33,20 @@ class ActionRegistry {
     }
 }
 
+/**
+ * HelpRegistry - DEPRECATED for local storage.
+ * Content is now resolved via AI or Vector Search on-demand.
+ */
 class HelpRegistry {
     private static instance: HelpRegistry
-    private articles: Map<string, HelpArticle> = new Map()
-
-    private constructor() { }
-
     public static getInstance(): HelpRegistry {
-        if (!HelpRegistry.instance) {
-            HelpRegistry.instance = new HelpRegistry()
-        }
+        if (!HelpRegistry.instance) HelpRegistry.instance = new HelpRegistry()
         return HelpRegistry.instance
     }
-
-    register(article: HelpArticle) {
-        this.articles.set(article.id, article)
-    }
-
-    batchRegister(articles: HelpArticle[]) {
-        articles.forEach(a => this.register(a))
-    }
-
-    getAll(): HelpArticle[] {
-        return Array.from(this.articles.values())
-    }
-
-    getByView(viewId: string): HelpArticle[] {
-        return this.getAll().filter(article =>
-            article.relatedViews.includes(viewId) || article.relatedViews.includes('*')
-        )
-    }
+    register(..._args: any[]) { }
+    batchRegister(..._args: any[]) { }
+    getAll(): any[] { return [] }
+    getByView(): any[] { return [] }
 }
 
 export const actionRegistry = ActionRegistry.getInstance()

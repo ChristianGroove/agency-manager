@@ -93,7 +93,6 @@ function WorkflowEditorContent({ id }: { id: string }) {
         viewId: 'automation',
         label: 'Editor de Automatización',
         actions: [],
-        topics: ['automation', 'workflow', 'trigger', 'node']
     });
 
     // State with proper types

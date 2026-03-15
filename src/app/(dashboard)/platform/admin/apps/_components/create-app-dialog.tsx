@@ -37,6 +37,7 @@ export function CreateAppDialog({ dict }: CreateAppDialogProps) {
                 category: formData.get('category') as string,
                 price_monthly: parseFloat(formData.get('price_monthly') as string),
                 color: formData.get('color') as string || '#8B5CF6',
+                space_category: formData.get('space_category') as string || 'agency',
             })
 
             if (result.success) {
@@ -98,20 +99,20 @@ export function CreateAppDialog({ dict }: CreateAppDialogProps) {
                             />
                         </div>
                         <div className="grid gap-2">
-                            <Label htmlFor="category" className="font-medium text-gray-700">
-                                {dict?.form?.category || 'Categoría'}
+                            <Label htmlFor="space_category" className="font-medium text-gray-700">
+                                {dict?.form?.space_category || 'Sistema (Space Category)'}
                             </Label>
-                            <Select name="category" defaultValue="general">
-                                <SelectTrigger id="category" className="bg-gray-50 focus:bg-white">
+                            <Select name="space_category" defaultValue="agency">
+                                <SelectTrigger id="space_category" className="bg-gray-50 focus:bg-white border-2 border-amber-100">
                                     <SelectValue placeholder="Selecciona..." />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="general">General</SelectItem>
-                                    <SelectItem value="marketing">Marketing</SelectItem>
-                                    <SelectItem value="sales">Ventas</SelectItem>
-                                    <SelectItem value="finance">Finanzas</SelectItem>
-                                    <SelectItem value="hr">Recursos Humanos</SelectItem>
-                                    <SelectItem value="operations">Operaciones</SelectItem>
+                                    <SelectItem value="agency">Agency (Service Business)</SelectItem>
+                                    <SelectItem value="resto">Resto (F&B / Digital Menu)</SelectItem>
+                                    <SelectItem value="cleaning">Cleaning (Appointments)</SelectItem>
+                                    <SelectItem value="retail">Retail (Commerce)</SelectItem>
+                                    <SelectItem value="saas">SaaS (Software Subscriptions)</SelectItem>
+                                    <SelectItem value="platform">Platform (System)</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>

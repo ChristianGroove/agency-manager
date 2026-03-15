@@ -33,7 +33,6 @@ export function AgencyDashboard({ dashboardData: dashboardRes, extraData, onRelo
     useRegisterView({
         viewId: "dashboard",
         label: "Dashboard Agency",
-        topics: ["getting-started", "metrics", "quick-actions"],
         actions: [
             { id: "new-client", label: t('dashboard.actions.new_client'), type: "function", target: "open_client_modal", icon: UserPlus, description: t('dashboard.actions.new_client_desc') },
             { id: "new-quote", label: t('dashboard.actions.new_quote'), type: "function", target: "open_quote_modal", icon: FilePlus, description: t('dashboard.actions.new_quote_desc') },

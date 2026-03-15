@@ -5,7 +5,6 @@ export interface ViewContextState {
     viewId: string
     label: string
     actions: ActionDefinition[]
-    topics: string[] // Topic IDs for help articles
 }
 
 // Action Definition Interface

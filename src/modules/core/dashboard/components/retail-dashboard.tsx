@@ -34,7 +34,6 @@ export function RetailDashboard({ dashboardData, extraData, onReload }: RetailDa
     useRegisterView({
         viewId: "dashboard",
         label: "Dashboard Retail",
-        topics: ["getting-started", "metrics", "quick-actions"],
         actions: [
             { id: "new-client", label: t('dashboard.actions.new_client'), type: "function", target: "open_client_modal", icon: UserPlus, description: t('dashboard.actions.new_client_desc') },
             { id: "new-invoice", label: "Nueva Factura", type: "function", target: "open_invoice_modal", icon: Receipt, description: t('dashboard.actions.new_invoice_desc') },

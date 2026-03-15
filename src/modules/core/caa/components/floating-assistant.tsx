@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence, useDragControls } from "framer-motion"
-import { useViewContext } from "../context/view-context"
+import { useViewContext } from "@/modules/core/caa/context/view-context"
 import { cn } from "@/lib/utils"
 
 interface FloatingAssistantProps {

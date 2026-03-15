@@ -86,7 +86,6 @@ export function SettingsForm({
     useRegisterView({
         viewId: "settings",
         label: "Configuración",
-        topics: ["configuration", "billing", "branding", "roles"],
         actions: [
             { id: "save-settings", label: "Guardar Cambios", type: "function", target: "submit_form", icon: Save, description: "Guardar la configuración actual" },
             { id: "view-billing", label: "Facturación y Planes", type: "route", target: "/platform/settings?tab=subscription", icon: CreditCard, description: "Gestionar plan y métodos de pago" },

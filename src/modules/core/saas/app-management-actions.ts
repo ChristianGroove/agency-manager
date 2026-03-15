@@ -212,6 +212,7 @@ export async function createApp(input: {
     icon?: string
     color?: string
     price_monthly?: number
+    space_category?: string
 }) {
     await requireSuperAdmin()
 
@@ -228,6 +229,7 @@ export async function createApp(input: {
                 icon: input.icon || 'Package',
                 color: input.color || '#6366f1',
                 price_monthly: input.price_monthly || 0,
+                space_category: input.space_category || 'agency',
                 is_active: true
             })
 

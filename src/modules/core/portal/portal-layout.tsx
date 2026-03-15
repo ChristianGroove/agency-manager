@@ -186,11 +186,11 @@ export function PortalLayout({ token, client, invoices, quotes, briefings, event
                 <div className="p-4 border-t">
                     <div className="flex items-center gap-3 p-2 rounded-lg bg-gray-50">
                         <Avatar className="h-10 w-10 border">
-                            <AvatarFallback>{client.name[0]}</AvatarFallback>
+                            <AvatarFallback>{client?.name ? client.name[0] : 'C'}</AvatarFallback>
                         </Avatar>
                         <div className="overflow-hidden">
-                            <p className="text-sm font-bold truncate">{client.name}</p>
-                            <p className="text-xs text-gray-500 truncate">{client.company_name}</p>
+                            <p className="text-sm font-bold truncate">{client?.name || 'Cliente'}</p>
+                            <p className="text-xs text-gray-500 truncate">{client?.company_name || 'Empresa'}</p>
                         </div>
                     </div>
                 </div>

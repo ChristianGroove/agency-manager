@@ -55,6 +55,27 @@ Este documento define la terminología usada en diferentes capas del sistema par
 #### Archivos clave:
 - `src/app/(public)/portal/[token]/page.tsx`
 
+## Capa Arquitectura - Categorías de Sistema (Spaces)
+
+**Término técnico: `space_category`**
+- Columna: `saas_apps.space_category`
+- Tipo: `SpaceCategory` (en `space-helpers.ts`)
+- **Concepto:** Define la industria y el layout visual de una organización.
+
+| Categoría | Significado UI | Layout Predeterminado |
+|-----------|----------------|-----------------------|
+| `'agency'` | Agencia de Servicios (Marketing, etc) | Agency Dashboard |
+| `'resto'` | Restaurante / F&B (Digital Menu) | Resto PWA / Dashboard |
+| `'cleaning'` | Servicios de Limpieza / Facility | Agency Dashboard |
+| `'retail'` | Comercio Minorista / Tiendas | Agency Dashboard |
+| `'saas'` | Suscripciones de Software | Agency Dashboard |
+| `'platform'` | Gestión de la Plataforma (Admin) | Agency Dashboard |
+
+### Regla de Oro:
+El sistema es **Agency-First**. Cualquier categoría que no sea `'resto'` utilizará por defecto el layout de Agencia (`isAgency = category !== 'resto'`). No crear nuevos layouts a menos que la industria lo requiera físicamente (como el menú de Resto).
+
+---
+
 ## Resumen Rápido
 
 | Contexto | Término UI | Significado |
@@ -62,8 +83,9 @@ Este documento define la terminología usada en diferentes capas del sistema par
 | **Backend** | `services` | Término técnico (NO cambiar) |
 | **Admin: /hosting** | "Contratos" | Servicios vendidos/activos |
 | **Admin: /portfolio** | "Catálogo" | Oferta de servicios |
-| **Admin: Cliente Detail** | "Contratos" | Servicios del cliente |
+| **SaaS Admin** | "Categoría" | Tipo de Space (`space_category`) |
 | **Portal Cliente** | "Mis Servicios" | Sus contratos activos |
+| **Resto Portal** | "Menú Digital" | Catálogo de productos B2C |
 
 ## Reglas para Desarrollo
 
