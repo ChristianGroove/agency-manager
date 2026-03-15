@@ -8,6 +8,11 @@ import { createClient } from "@/lib/supabase-server"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { revalidatePath } from "next/cache"
 import { cache } from "react"
+import { getAuthRedirectBase } from "@/lib/auth-utils"
+import { getSecureAuthLink } from "@/lib/auth-link-utils"
+import { getAuthInviteEmailHtml } from "@/lib/email-templates"
+import { EmailService } from "@/modules/core/notifications/email.service"
+import { initializeOrganizationCRM } from "@/modules/core/crm/process-engine/init"
 
 /**
  * Fetch organizations with Server-Side Pagination & Search
@@ -632,7 +637,6 @@ export async function createOrganization(formData: {
                     invitationError = 'Formato de email inválido'
                 } else {
                     // 1. Generate Invite Link (Admin API)
-                    // We generate a recovery/invite link to get the token_hash
                     const { data: linkData, error: inviteError } = await supabaseAdmin.auth.admin.generateLink({
                         type: 'invite',
                         email: formData.admin_email,
@@ -641,8 +645,7 @@ export async function createOrganization(formData: {
                                 full_name: 'Admin',
                                 invited_org_id: newOrg.id
                             },
-                            // Supabase internal redirect (backup)
-                            redirectTo: `${(await import('@/lib/auth-utils')).getAuthRedirectBase()}/auth/confirm`
+                            redirectTo: `${getAuthRedirectBase()}/auth/confirm`
                         }
                     })
 
@@ -652,13 +655,12 @@ export async function createOrganization(formData: {
                     if (inviteError) {
                         if (inviteError.message.includes('already been registered') || inviteError.status === 422) {
                             console.log("[createOrganization] User already exists, fetching ID...")
-                            // Fetch user to get ID since generateLink failed
                             const { data: { users }, error: listError } = await supabaseAdmin.auth.admin.listUsers()
-                            const existingUser = users?.find(u => u.email?.toLowerCase() === formData.admin_email.toLowerCase())
+                            const adminEmailLower = (formData.admin_email || "").toLowerCase()
+                            const existingUser = (users || []).find((u: any) => u.email?.toLowerCase() === adminEmailLower)
                             
                             if (existingUser) {
                                 invitedUser = existingUser
-                                const { getAuthRedirectBase } = await import('@/lib/auth-utils')
                                 inviteLink = `${getAuthRedirectBase()}/login`
                                 console.log("[createOrganization] Existing user found:", invitedUser.id)
                             } else {
@@ -670,15 +672,9 @@ export async function createOrganization(formData: {
                             invitationError = inviteError.message
                         }
                     } else if (linkData?.properties?.action_link) {
-                        console.log("[createOrganization] Link Data properties found:", linkData.properties)
-                        const { getAuthRedirectBase } = await import('@/lib/auth-utils')
-                        const { getSecureAuthLink } = await import('@/lib/auth-link-utils')
-                        const redirectBase = getAuthRedirectBase()
-                        
                         const actionLink = (linkData as any).properties?.action_link
                         const verificationType = (linkData as any).properties?.verification_type || 'invite'
-                        inviteLink = getSecureAuthLink(actionLink, verificationType, redirectBase, '/update-password')
-
+                        inviteLink = getSecureAuthLink(actionLink, verificationType, getAuthRedirectBase(), '/update-password')
                         console.log(`[createOrganization] Generated Invite Link for ${formData.admin_email}:`, inviteLink)
                     }
 
@@ -689,35 +685,24 @@ export async function createOrganization(formData: {
                             user_id: invitedUser.id,
                             role: 'owner'
                         })
-                            if (memberErr) {
-                                throw memberErr
+                        if (memberErr) throw memberErr
+
+                        // Set organization owner_id field
+                        const { error: orgUpdateErr } = await supabaseAdmin.from('organizations').update({ owner_id: invitedUser.id }).eq('id', newOrg.id)
+                        if (orgUpdateErr) throw orgUpdateErr
+
+                        // FIX: Clean up stale user metadata
+                        await supabaseAdmin.auth.admin.updateUserById(invitedUser.id, {
+                            user_metadata: { 
+                                full_name: 'Admin',
+                                onboarding_completed: false 
                             }
+                        })
 
-                            // Set organization owner_id field
-                            const { error: orgUpdateErr } = await supabaseAdmin.from('organizations').update({ owner_id: invitedUser.id }).eq('id', newOrg.id)
-                            if (orgUpdateErr) {
-                                throw orgUpdateErr
-                            }
-
-                            // FIX: Clean up stale user metadata (e.g. "restaurant demo")
-                            await supabaseAdmin.auth.admin.updateUserById(invitedUser.id, {
-                                user_metadata: { 
-                                    full_name: 'Admin', // Set to a neutral name or from form
-                                    onboarding_completed: false 
-                                }
-                            })
-                        }
-
-                        // Send custom welcome email using CREATOR's SMTP
-                        const { getAuthInviteEmailHtml } = await import('@/lib/email-templates')
-                        
-                        // We need the identity BEFORE sending to build the template
-                        const { EmailService } = await import('@/modules/core/notifications/email.service')
+                        // Send custom welcome email
                         const identity = await (EmailService as any).getSenderIdentity(creatorOrgId || 'PLATFORM')
-                        console.log("[createOrganization] Resolved Identity for email:", identity.senderName, identity.fromEmail)
                         const inviteHtml = getAuthInviteEmailHtml(formData.name, inviteLink, identity.branding, identity.style)
 
-                        console.log(`[createOrganization] Attempting to send invite email to ${formData.admin_email} via organization ${creatorOrgId || 'PLATFORM'}`)
                         const finalEmailResult = await EmailService.send({
                             to: formData.admin_email,
                             subject: `Invitación a ${formData.name}`,
@@ -730,7 +715,6 @@ export async function createOrganization(formData: {
                         })
 
                         if (finalEmailResult.success) {
-                            console.log(`[createOrganization] Invite email sent successfully to ${formData.admin_email}`)
                             invitationSent = true
                         } else {
                             console.error('[createOrganization] Email send failed:', finalEmailResult.error)
@@ -741,7 +725,6 @@ export async function createOrganization(formData: {
             } catch (inviteErr: any) {
                 console.error("Error inviting admin:", inviteErr)
                 invitationError = inviteErr.message || 'Error desconocido al enviar invitación'
-                // Non-blocking - org creation succeeds even if email fails
             }
         }
 
