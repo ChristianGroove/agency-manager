@@ -10,7 +10,7 @@ import { revalidatePath } from "next/cache"
 import { cache } from "react"
 import { getAuthRedirectBase } from "@/lib/auth-utils"
 import { getSecureAuthLink } from "@/lib/auth-link-utils"
-import { getAuthInviteEmailHtml } from "@/lib/email-templates"
+import { getAuthInviteEmailHtml, getAuthConfirmationEmailHtml } from "@/lib/email-templates"
 import { EmailService } from "@/modules/core/notifications/email.service"
 import { initializeOrganizationCRM } from "@/modules/core/crm/process-engine/init"
 
@@ -661,8 +661,24 @@ export async function createOrganization(formData: {
                             
                             if (existingUser) {
                                 invitedUser = existingUser
-                                inviteLink = `${getAuthRedirectBase()}/login`
-                                console.log("[createOrganization] Existing user found:", invitedUser.id)
+                                // IF NOT CONFIRMED: We MUST generate a confirmation link. 
+                                // Since we don't have the password, we use 'magiclink' which also confirms the email when clicked.
+                                if (!existingUser.email_confirmed_at) {
+                                    console.log("[createOrganization] Existing user is unconfirmed, generating safe magiclink for activation.")
+                                    const { data: reLink, error: reError } = await supabaseAdmin.auth.admin.generateLink({
+                                        type: 'magiclink',
+                                        email: formData.admin_email as string,
+                                        options: { redirectTo: `${getAuthRedirectBase()}/auth/confirm?next=/onboarding` }
+                                    })
+                                    if (!reError && (reLink as any).properties?.action_link) {
+                                        inviteLink = getSecureAuthLink((reLink as any).properties.action_link, 'magiclink', getAuthRedirectBase(), '/onboarding')
+                                    } else {
+                                        inviteLink = `${getAuthRedirectBase()}/login` // Fallback
+                                    }
+                                } else {
+                                    inviteLink = `${getAuthRedirectBase()}/login`
+                                }
+                                console.log("[createOrganization] Existing user found:", invitedUser.id, "LinkType:", inviteLink.includes('confirm') ? 'Confirmation' : 'Login')
                             } else {
                                 console.error("[createOrganization] Error fetching existing user:", listError)
                                 invitationError = inviteError.message
@@ -699,14 +715,27 @@ export async function createOrganization(formData: {
                             }
                         })
 
-                        // Send custom welcome email
+                        // 4. Send Custom Email (Invitation or Confirmation depending on user state)
                         const identity = await (EmailService as any).getSenderIdentity(creatorOrgId || 'PLATFORM')
-                        const inviteHtml = getAuthInviteEmailHtml(formData.name, inviteLink, identity.branding, identity.style)
+                        
+                        let emailHtml = ''
+                        let emailSubject = `Invitación a ${formData.name}`
+                        
+                        // If user was already existing but UNCONFIRMED, we must send a Confirmation Link instead of a simple Login link
+                        if (invitedUser.email_confirmed_at) {
+                            // User is confirmed, standard Invitation (or Welcome if we just sent them to /login)
+                            emailHtml = getAuthInviteEmailHtml(formData.name, inviteLink, identity.branding, identity.style)
+                        } else {
+                            // User is NOT confirmed, use Confirmation template even for invitation flow 
+                            // to ensure they activate their account.
+                            emailSubject = `Activa tu cuenta - ${formData.name}`
+                            emailHtml = getAuthConfirmationEmailHtml(inviteLink, identity.branding, identity.style)
+                        }
 
                         const finalEmailResult = await EmailService.send({
                             to: formData.admin_email,
-                            subject: `Invitación a ${formData.name}`,
-                            html: inviteHtml,
+                            subject: emailSubject,
+                            html: emailHtml,
                             organizationId: creatorOrgId || 'PLATFORM',
                             tags: [
                                 { name: 'type', value: 'organization_invitation' },

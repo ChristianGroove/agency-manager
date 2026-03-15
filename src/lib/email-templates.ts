@@ -400,6 +400,32 @@ export function getAuthInviteEmailHtml(orgName: string, actionLink: string, bran
     return getBaseHtml(`Invitación a ${orgName}`, content, branding, style)
 }
 
+export function getAuthConfirmationEmailHtml(actionLink: string, branding: EmailBranding, style: EmailStyle = 'minimal'): string {
+    const isNeo = style === 'neo';
+    const isSwiss = style === 'swiss';
+
+    const content = `
+        <h2 style="margin-top: 0; color: ${isSwiss ? '#000' : '#1e293b'}; font-size: 24px;">Confirma tu Cuenta</h2>
+        <p>¡Gracias por unirte a <strong>${branding.agency_name}</strong>! Estás a un solo paso de activar tu panel de control.</p>
+        <p>Para comenzar, por favor confirma tu dirección de correo electrónico haciendo clic en el siguiente botón:</p>
+
+        <div style="margin: 40px 0; text-align: ${isSwiss ? 'left' : 'center'};">
+             <a href="${actionLink}" style="${isSwiss ? 'background:#000; color:#fff; padding:18px 36px; text-decoration:none; font-weight:bold; display:inline-block; font-size: 16px;' : `background-color: ${branding.primary_color}; color: #ffffff; padding: 16px 32px; border-radius: ${isNeo ? '50px' : '6px'}; text-decoration: none; font-weight: 600; display:inline-block; box-shadow: ${isNeo ? '0 10px 20px -5px ' + branding.primary_color + '66' : '0 4px 6px rgba(0,0,0,0.1)'};`}">
+                Confirmar mi Cuenta
+            </a>
+            <p style="margin-top: 20px; font-size: 11px; color: #94a3b8;">
+                Este enlace expirará pronto por seguridad. Si el botón no funciona, copia y pega esto: <br/>
+                <span style="word-break: break-all;">${actionLink}</span>
+            </p>
+        </div>
+        
+        <p style="font-size: 13px; color: #64748b; margin-top: 30px;">
+            Si no creaste esta cuenta, puedes ignorar este mensaje o contactar a soporte si crees que alguien está usando tu correo.
+        </p>
+    `
+    return getBaseHtml(`Confirma tu cuenta`, content, branding, style)
+}
+
 export function getAuthRecoveryEmailHtml(actionLink: string, branding: EmailBranding, style: EmailStyle = 'minimal'): string {
     const isNeo = style === 'neo';
     const isSwiss = style === 'swiss';

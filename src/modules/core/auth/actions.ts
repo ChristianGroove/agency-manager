@@ -100,7 +100,41 @@ export async function signup(formData: FormData) {
 
         if (linkError) {
             if (linkError.message.includes('already registered')) {
-                return { error: "Este correo ya está registrado." }
+                // IMPROVEMENT: If user exists but is not confirmed, re-send the link instead of failing
+                const { data: { users } } = await supabaseAdmin.auth.admin.listUsers()
+                const existingUser = users?.find(u => u.email?.toLowerCase() === email.toLowerCase())
+                
+                if (existingUser && !existingUser.email_confirmed_at) {
+                    console.log("[signup] User exists but unconfirmed. Re-generating link.")
+                    const { data: reLink, error: reError } = await supabaseAdmin.auth.admin.generateLink({
+                        type: 'signup',
+                        email,
+                        password,
+                        options: { redirectTo: redirectUrl }
+                    })
+                    if (reError || !(reLink as any).properties?.action_link) {
+                        return { error: "No se pudo re-enviar el enlace. Contacte a soporte." }
+                    }
+                    // Continue flow with the new link
+                    const { getSecureAuthLink } = await import('@/lib/auth-link-utils')
+                    const reInviteLink = getSecureAuthLink((reLink as any).properties.action_link, 'signup', redirectBase, '/onboarding')
+                    
+                    // Recursive-like block or just handle here. Let's handle here to keep it flat.
+                    const { getAuthConfirmationEmailHtml } = await import('@/lib/email-templates')
+                    const { EmailService } = await import('@/modules/core/notifications/email.service')
+                    const identity = await (EmailService as any).getSenderIdentity('PLATFORM')
+                    const confirmationHtml = getAuthConfirmationEmailHtml(reInviteLink, identity.branding, identity.style)
+
+                    await EmailService.send({
+                        to: email,
+                        subject: 'Re: Confirma tu cuenta en Pixy',
+                        html: confirmationHtml,
+                        organizationId: 'PLATFORM'
+                    })
+                    return { success: true, message: "Este correo ya estaba registrado pero no confirmado. Hemos re-enviado el enlace de activación." }
+                }
+                
+                return { error: "Este correo ya está registrado y activo. Por favor inicia sesión." }
             }
             if (linkError.message.includes('weak_password')) {
                 return { error: "La contraseña es muy débil." }
@@ -116,18 +150,17 @@ export async function signup(formData: FormData) {
         const { getSecureAuthLink } = await import('@/lib/auth-link-utils')
         const inviteLink = getSecureAuthLink(actionLink, 'signup', redirectBase, '/onboarding')
 
-        // 2. Send Custom Confirmation Email
+        // 2. Resolve Template & Branding
+        const { getAuthConfirmationEmailHtml } = await import('@/lib/email-templates')
         const { EmailService } = await import('@/modules/core/notifications/email.service')
+        
+        const identity = await (EmailService as any).getSenderIdentity('PLATFORM')
+        const confirmationHtml = getAuthConfirmationEmailHtml(inviteLink, identity.branding, identity.style)
 
         await EmailService.send({
             to: email,
             subject: 'Confirma tu cuenta en Pixy',
-            html: `
-                <h1>¡Bienvenido a Pixy!</h1>
-                <p>Gracias por registrarte. Para comenzar, por favor confirma tu correo electrónico.</p>
-                <p><a href="${inviteLink}" style="padding: 12px 24px; background-color: #000; color: #fff; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; margin-top: 10px;">Confirmar Cuenta</a></p>
-                <p>O copia y pega este enlace: <br/> <span style="font-size: 10px; color: #666;">${inviteLink}</span></p>
-            `,
+            html: confirmationHtml,
             organizationId: 'PLATFORM'
         })
 
