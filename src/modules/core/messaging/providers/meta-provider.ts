@@ -18,7 +18,8 @@ import {
     IncomingCall,
     InteractiveButtonsContent,
     InteractiveListContent,
-    InteractiveCTAContent
+    InteractiveCTAContent,
+    InteractiveCallRequestContent
 } from "./types";
 
 export class MetaProvider implements MessagingProvider {
@@ -180,23 +181,26 @@ export class MetaProvider implements MessagingProvider {
                             debugLog(`Found ${messagesInChange.length} WA messages/echoes`);
                             for (const msg of messagesInChange) {
                                 debugLog(`Processing WA msg: ${msg.id} Type: ${msg.type}`);
-                                debugLog(`[DEBUG] Full Message Object: ${JSON.stringify(msg, null, 2)}`);
+                                console.log(`[MetaProvider] [DEBUG] RAW MSG:`, JSON.stringify(msg, null, 2));
                                 // Extract sender info
                                 const contact = change.value.contacts?.find((c: any) => c.wa_id === msg.from);
                                 const phoneNumberId = change.value.metadata?.phone_number_id;
                                 const content = await this.parseMessageContent(msg, phoneNumberId);
 
-                                // Extract button ID if interactive
+                                // Extract button ID if interactive (Official Meta structure)
                                 let buttonId = undefined;
                                 if (msg.type === 'interactive') {
-                                    if (msg.interactive.type === 'button_reply') {
+                                    if (msg.interactive?.type === 'button_reply') {
                                         buttonId = msg.interactive.button_reply.id;
-                                    } else if (msg.interactive.type === 'list_reply') {
+                                    } else if (msg.interactive?.type === 'list_reply') {
                                         buttonId = msg.interactive.list_reply.id;
                                     }
+                                } else if (msg.type === 'button') {
+                                    // Handle template button reply
+                                    buttonId = msg.button?.payload || msg.button?.text;
                                 }
 
-                                debugLog(`WA Msg Parsed: From=${msg.from}, ContentType=${content.type}, Metadata=${JSON.stringify(change.value.metadata)}`);
+                                debugLog(`WA Msg Parsed: ID=${msg.id}, Type=${msg.type}, ButtonID=${buttonId}`);
 
                                 // Detect Echo (Outbound Message from App or SMB)
                                 const isEcho = change.value.metadata?.phone_number_id === msg.from || msg.is_echo === true;
@@ -793,6 +797,39 @@ export class MetaProvider implements MessagingProvider {
                 // Optional footer
                 if (buttonContent.footer) {
                     payload.interactive.footer = { text: buttonContent.footer };
+                }
+                break;
+            }
+
+            case 'interactive_call_request': {
+                // Meta 2026: Interactive message to request call permission within 24h window
+                const callContent = content as InteractiveCallRequestContent;
+                payload.type = 'interactive';
+                const leadIdSuffix = (options.metadata?.leadId as string)?.substring(0, 8) || 'short';
+                payload.interactive = {
+                    type: 'button',
+                    body: { text: callContent.body || '¿Podemos hablar por llamada? Meta requiere tu confirmación para iniciar la conexión.' },
+                    action: {
+                        buttons: [
+                            {
+                                type: 'reply',
+                                reply: {
+                                    id: `approve_call_perm_${leadIdSuffix}`,
+                                    title: 'Aceptar Llamada'
+                                }
+                            },
+                            {
+                                type: 'reply',
+                                reply: {
+                                    id: `deny_call_perm_${leadIdSuffix}`,
+                                    title: 'Ahora no'
+                                }
+                            }
+                        ]
+                    }
+                };
+                if (callContent.footer) {
+                    payload.interactive.footer = { text: callContent.footer };
                 }
                 break;
             }

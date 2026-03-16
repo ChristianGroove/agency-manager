@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState, useMemo, useRef } from "react"
+import { useDebouncedCallback } from "use-debounce"
 import { supabase } from "@/lib/supabase"
 import { Search, MessageSquare, Phone, User, Check, CheckCheck, Filter, Archive, UserCheck, Clock, Bell, BellOff, Settings as SettingsIcon } from "lucide-react"
 import { Virtuoso } from "react-virtuoso"
@@ -58,6 +59,16 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
     const [activeFilter, setActiveFilter] = useState<FilterTab>('all')
     const [loading, setLoading] = useState(true)
     const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+    const [tick, setTick] = useState(0)
+
+    // Maestro Ticker: Updates every 30s to refresh "waiting time" counters across all items
+    // This centralizes CPU load and avoids 100+ independent intervals.
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setTick(prev => prev + 1)
+        }, 30000)
+        return () => clearInterval(interval)
+    }, [])
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [userPermissions, setUserPermissions] = useState<any>(null)
     const [permissionsLoaded, setPermissionsLoaded] = useState(false)
@@ -78,14 +89,19 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
     // Get current user and permissions
     useEffect(() => {
         const fetchInitialData = async () => {
-            const { data } = await supabase.auth.getUser()
-            if (data.user) {
-                setCurrentUserId(data.user.id)
-                // Fetch organizational permissions for channel governance
-                const perms = await getCurrentUserPermissions()
-                setUserPermissions(perms)
-                setPermissionsLoaded(true)
-            } else {
+            try {
+                const { data } = await supabase.auth.getUser()
+                if (data.user) {
+                    setCurrentUserId(data.user.id)
+                    // Fetch organizational permissions for channel governance
+                    const perms = await getCurrentUserPermissions()
+                    setUserPermissions(perms)
+                    setPermissionsLoaded(true)
+                } else {
+                    setPermissionsLoaded(true)
+                }
+            } catch (err) {
+                console.warn('[SidebarConversationList] [AUTH] Failed to fetch initial data:', err)
                 setPermissionsLoaded(true)
             }
         }
@@ -213,6 +229,10 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
         }
     }
 
+    const debouncedFetchConversations = useDebouncedCallback((showLoading = false, isLoadMore = false) => {
+        fetchConversations(showLoading, isLoadMore)
+    }, 1000)
+
     // Auto-deselect if selected conversation is gone (and no search is active)
     useEffect(() => {
         if (!loading && selectedId && conversations.length >= 0) {
@@ -266,7 +286,9 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
 
                     // Fallback: If not found in current list, trigger a light re-fetch of the first page
                     if (!conversations.some(c => c.id === updatedConv.id)) {
-                         fetchConversations(false)
+                        // De-prioritize background re-fetch to avoid request floods
+                        // especially in organizations with frequent incoming messages.
+                        debouncedFetchConversations(false)
                     }
                 }
             )
@@ -455,6 +477,7 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
                                     isSelected={conv.id === selectedId}
                                     onSelect={onSelect}
                                     fetchConversations={() => fetchConversations(false)}
+                                    tick={tick}
                                 />
                             </div>
                         )}

@@ -24,6 +24,8 @@ async function resolveCallingCredentials() {
         .limit(1)
         .single()
 
+    console.log('[resolveCallingCredentials] DB Lookup for org:', orgId, 'Found:', !!connection, 'Error:', error?.message);
+
     if (error || !connection) {
         throw new Error('No active WhatsApp connection found')
     }
@@ -48,9 +50,16 @@ async function resolveCallingCredentials() {
         || metadata?.asset_id
         || process.env.META_PHONE_NUMBER_ID
 
-    if (!accessToken) throw new Error('Missing Meta access token')
-    if (!phoneNumberId) throw new Error('Missing Phone Number ID')
+    if (!accessToken) {
+        console.error('[resolveCallingCredentials] ❌ Missing Meta access token');
+        throw new Error('Missing Meta access token');
+    }
+    if (!phoneNumberId) {
+        console.error('[resolveCallingCredentials] ❌ Missing Phone Number ID');
+        throw new Error('Missing Phone Number ID');
+    }
 
+    console.log('[resolveCallingCredentials] ✅ Resolved:', { phoneNumberId, hasToken: !!accessToken });
     return { accessToken, phoneNumberId }
 }
 

@@ -17,14 +17,14 @@ export interface PermissionRequest {
 export class CallPermissionManager {
 
     /**
-     * Helper to get history from Supabase
+     * Helper to get history from Supabase (using conversations table which HAS a metadata column)
      */
-    private async getHistoryFromDb(userId: string): Promise<PermissionRequest[]> {
+    private async getHistoryFromDb(conversationId: string): Promise<PermissionRequest[]> {
         try {
             const { data, error } = await supabaseAdmin
-                .from('leads')
+                .from('conversations')
                 .select('metadata')
-                .eq('id', userId)
+                .eq('id', conversationId)
                 .single();
 
             if (error || !data) return [];
@@ -47,28 +47,33 @@ export class CallPermissionManager {
     /**
      * Helper to save history to Supabase
      */
-    private async saveHistoryToDb(userId: string, history: PermissionRequest[]) {
+    private async saveHistoryToDb(conversationId: string, history: PermissionRequest[]) {
         try {
             // First get existing metadata to preserve other fields
             const { data: current } = await supabaseAdmin
-                .from('leads')
+                .from('conversations')
                 .select('metadata')
-                .eq('id', userId)
+                .eq('id', conversationId)
                 .single();
 
             const existingMeta = current?.metadata || {};
 
+            console.log(`[CallPermission] [DEBUG] Writing history for ${conversationId}. Items: ${history.length}`);
             const { error } = await supabaseAdmin
-                .from('leads')
+                .from('conversations')
                 .update({
                     metadata: {
                         ...existingMeta,
                         call_permissions: history
                     }
                 })
-                .eq('id', userId);
+                .eq('id', conversationId);
 
-            if (error) throw error;
+            if (error) {
+                console.error(`[CallPermission] [DEBUG] ❌ DB Update Error:`, error);
+                throw error;
+            }
+            console.log(`[CallPermission] [DEBUG] ✅ DB Update Success for ${conversationId}`);
         } catch (e) {
             console.error('[CallPermission] Error saving history:', e);
             throw e;
@@ -78,14 +83,14 @@ export class CallPermissionManager {
     /**
      * Check if can request call permission
      */
-    async canRequestPermission(userId: string): Promise<{
+    async canRequestPermission(conversationId: string): Promise<{
         allowed: boolean;
         reason?: string;
         nextAllowedAt?: Date;
         requestsIn24h: number;
         requestsIn7d: number;
     }> {
-        const history = await this.getHistoryFromDb(userId);
+        const history = await this.getHistoryFromDb(conversationId);
 
         // Check 24h limit (1 request max)
         const last24h = history.filter(p =>
@@ -136,37 +141,37 @@ export class CallPermissionManager {
      * Send call permission request via HSM template
      */
     async requestPermission(params: {
-        userId: string;
+        conversationId: string;
         phoneNumber: string;
         reason: string;
     }): Promise<{
         success: boolean;
         permissionId: string;
     }> {
-        const { userId, phoneNumber, reason } = params;
+        const { conversationId, phoneNumber, reason } = params;
 
         // Check if allowed
-        const check = await this.canRequestPermission(userId);
+        const check = await this.canRequestPermission(conversationId);
         if (!check.allowed) {
             throw new Error(`Cannot request permission: ${check.reason}`);
         }
 
-        console.log('[CallPermission] Requesting permission for user:', userId);
+        console.log('[CallPermission] Requesting permission for conversation:', conversationId);
 
         // Record permission request
-        const permissionId = `perm_${Date.now()}_${userId.substring(0, 8)}`;
+        const permissionId = `perm_${Date.now()}_${conversationId.substring(0, 8)}`;
         const request: PermissionRequest = {
             id: permissionId,
-            userId,
+            userId: conversationId, // Internal tracking
             phoneNumber,
             reason,
             requestedAt: new Date(),
             status: 'pending'
         };
 
-        const history = await this.getHistoryFromDb(userId);
+        const history = await this.getHistoryFromDb(conversationId);
         history.push(request);
-        await this.saveHistoryToDb(userId, history);
+        await this.saveHistoryToDb(conversationId, history);
 
         console.log('[CallPermission] Permission requested and saved:', permissionId);
 
@@ -176,11 +181,11 @@ export class CallPermissionManager {
     /**
      * Handle permission approval (from webhook button click)
      */
-    async approvePermission(userId: string, permissionId: string): Promise<{
+    async approvePermission(conversationId: string, permissionId: string): Promise<{
         success: boolean;
         expiresAt: Date;
     }> {
-        const history = await this.getHistoryFromDb(userId);
+        const history = await this.getHistoryFromDb(conversationId);
         const request = history.find(r => r.id === permissionId);
 
         if (!request) {
@@ -199,7 +204,7 @@ export class CallPermissionManager {
         request.approvedAt = now;
         request.expiresAt = expiresAt;
 
-        await this.saveHistoryToDb(userId, history);
+        await this.saveHistoryToDb(conversationId, history);
 
         console.log('[CallPermission] Permission approved:', {
             permissionId,
@@ -212,8 +217,8 @@ export class CallPermissionManager {
     /**
      * Deny permission request
      */
-    async denyPermission(userId: string, permissionId: string): Promise<{ success: boolean }> {
-        const history = await this.getHistoryFromDb(userId);
+    async denyPermission(conversationId: string, permissionId: string): Promise<{ success: boolean }> {
+        const history = await this.getHistoryFromDb(conversationId);
         const request = history.find(r => r.id === permissionId);
 
         if (!request) {
@@ -221,7 +226,7 @@ export class CallPermissionManager {
         }
 
         request.status = 'denied';
-        await this.saveHistoryToDb(userId, history);
+        await this.saveHistoryToDb(conversationId, history);
 
         console.log('[CallPermission] Permission denied:', permissionId);
 
@@ -231,12 +236,12 @@ export class CallPermissionManager {
     /**
      * Validate if can make call (within 72h approval window)
      */
-    async canMakeCall(userId: string): Promise<{
+    async canMakeCall(conversationId: string): Promise<{
         allowed: boolean;
         expiresAt?: Date;
         reason?: string;
     }> {
-        const history = await this.getHistoryFromDb(userId);
+        const history = await this.getHistoryFromDb(conversationId);
 
         const approved = history
             .filter(r => r.status === 'approved')
@@ -257,7 +262,7 @@ export class CallPermissionManager {
         if (now >= expiresAt) {
             // Update status to expired
             approval.status = 'expired';
-            await this.saveHistoryToDb(userId, history);
+            await this.saveHistoryToDb(conversationId, history);
 
             return {
                 allowed: false,
@@ -276,11 +281,11 @@ export class CallPermissionManager {
      * Reset permission limits after successful call
      * (Meta 2026: Limits reset on connected call)
      */
-    async resetLimitsAfterCall(userId: string): Promise<void> {
-        console.log('[CallPermission] Resetting limits for user:', userId);
+    async resetLimitsAfterCall(conversationId: string): Promise<void> {
+        console.log('[CallPermission] Resetting limits for conversation:', conversationId);
 
         // Clear call_permissions in DB
-        await this.saveHistoryToDb(userId, []);
+        await this.saveHistoryToDb(conversationId, []);
 
         console.log('[CallPermission] Limits reset - user can request again');
     }
@@ -288,7 +293,7 @@ export class CallPermissionManager {
     /**
      * Get permission status for user
      */
-    async getPermissionStatus(userId: string): Promise<{
+    async getPermissionStatus(conversationId: string): Promise<{
         canRequest: boolean;
         canCall: boolean;
         requestsIn24h: number;
@@ -299,11 +304,11 @@ export class CallPermissionManager {
             timeRemaining: string;
         };
     }> {
-        const canRequestCheck = await this.canRequestPermission(userId);
-        const canCallCheck = await this.canMakeCall(userId);
+        const canRequestCheck = await this.canRequestPermission(conversationId);
+        const canCallCheck = await this.canMakeCall(conversationId);
 
         // We need history for internal logic
-        const history = await this.getHistoryFromDb(userId);
+        const history = await this.getHistoryFromDb(conversationId);
         const approved = history.find(r => r.status === 'approved' && r.expiresAt && r.expiresAt > new Date());
 
         const status: any = {

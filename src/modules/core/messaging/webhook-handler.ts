@@ -131,6 +131,25 @@ export class WebhookManager {
                         // Cast to MetaProvider-like interface or check method existence
                         await (provider as any).sendSignalingMessage(msg.from, sdpAnswer, msg.call_id);
                         console.log(`[WebhookManager] ✅ SDP Answer sent for call ${msg.call_id}`);
+
+                        // 3. Notify Frontend about Inbound Call
+                        const { supabaseAdmin } = await import("@/lib/supabase-admin")
+                        await supabaseAdmin.from('notifications').insert({
+                            type: 'inbound_call',
+                            recipient_id: null, // Global for the connection/org agents
+                            data: {
+                                call_id: msg.call_id,
+                                from: msg.from,
+                                channel: channel,
+                                timestamp: msg.timestamp
+                            },
+                            status: 'unread'
+                        });
+                        await supabaseAdmin.channel(`calling:${msg.from}`).send({
+                            type: 'broadcast',
+                            event: 'incoming_call',
+                            payload: { call_id: msg.call_id, from: msg.from }
+                        });
                     } else {
                         console.warn('[WebhookManager] Provider does not support signaling messages');
                     }
@@ -154,9 +173,16 @@ export class WebhookManager {
 
         const conversationId = result.conversationId
 
-        // 1.5 CHECK FOR INTERACTIVE QUOTE RESPONSES
-        // MetaProvider extracts buttonId directly from interactive messages
-        const buttonId = msg.buttonId || ''
+        // 1.5 CHECK FOR INTERACTIVE QUOTES / PERMISSIONS
+        // Robust fallback for various Meta payload structures
+        let buttonId = (
+            msg.buttonId || 
+            (msg.content as any)?.raw?.button_reply?.id || 
+            (msg.content as any)?.raw?.button?.payload ||
+            ''
+        ).trim();
+        
+        console.log(`[WebhookManager] [DEBUG] Processing message with buttonId: "${buttonId}"`);
 
         if (buttonId) {
 
@@ -215,12 +241,10 @@ export class WebhookManager {
             // Handle Rejection Reason Selection (from list response)
             // buttonId also catches list_reply.id from MetaProvider
             if (buttonId.startsWith('rejection_reason_')) {
-                // Format: rejection_reason_{cartId}_{index}
+                // ... existing logic ...
                 const parts = buttonId.replace('rejection_reason_', '').split('_')
                 const cartId = parts.slice(0, -1).join('_') // Handle UUIDs with dashes
                 const reason = msg.content.text || 'Unknown'
-
-
 
                 try {
                     const { handleRejectionReasonSelected } = await import('@/modules/core/crm/quote-response-handler')
@@ -229,6 +253,68 @@ export class WebhookManager {
                     console.error('[WebhookManager] Rejection reason error:', e.message)
                 }
                 return // Stop further processing
+            }
+
+            // --- META 2026: CALL PERMISSION HANDLING ---
+            const cleanButtonId = buttonId.trim();
+            const isApproval = cleanButtonId === 'approve_call_perm' || cleanButtonId.startsWith('approve_call_perm_');
+            const isDenial = cleanButtonId === 'deny_call_perm' || cleanButtonId.startsWith('deny_call_perm_');
+
+            if (isApproval || isDenial) {
+                console.log(`[WebhookManager] 🛡️ Recognized Call Permission: ${cleanButtonId} for conversation ${conversationId}`);
+                try {
+                    const { supabaseAdmin } = await import('@/lib/supabase-admin');
+                    const { CallPermissionManager } = await import('@/lib/meta/calling/call-permission-manager');
+                    const pm = new CallPermissionManager();
+
+                    // Resolve Lead ID from Conversation
+                    const { data: conv, error: convErr } = await supabaseAdmin
+                        .from('conversations')
+                        .select('lead_id, organization_id')
+                        .eq('id', conversationId)
+                        .single();
+
+                    if (convErr || !conv?.lead_id) {
+                        console.warn(`[WebhookManager] ❌ Lead ID missing (Err: ${convErr?.message}) for conversation ${conversationId}`);
+                        throw new Error("No lead linked to conversation");
+                    }
+
+                    console.log(`[WebhookManager] 🔍 Found Lead ID: ${conv.lead_id} (Org: ${conv.organization_id})`);
+
+                    if (cleanButtonId.startsWith('approve_call_perm')) {
+                        console.log(`[WebhookManager] [DEBUG] Attempting to approve call permission for conversation ${conversationId}`);
+                        // Find latest pending permission via conversation metadata
+                        const history = await (pm as any).getHistoryFromDb(conversationId);
+                        console.log(`[WebhookManager] [DEBUG] Found ${history.length} permission items in history`);
+                        const latestPending = [...history].reverse().find((p: any) => p.status === 'pending');
+                        
+                        if (latestPending) {
+                            console.log(`[WebhookManager] [DEBUG] Approving pending perm ID: ${latestPending.id}`);
+                            await pm.approvePermission(conversationId, latestPending.id);
+                            console.log(`[WebhookManager] ✅ Call permission APPROVED for conversation ${conversationId}`);
+                        } else {
+                            console.log(`[WebhookManager] [DEBUG] ⚠️ No pending perm found in history. Available statuses: ${history.map((h: any) => h.status).join(', ')}`);
+                            // Fallback: Just approve a new one if somehow none is found
+                            await pm.requestPermission({ conversationId, phoneNumber: msg.from, reason: 'Consentimiento implícito vía botón' });
+                            const newHistory = await (pm as any).getHistoryFromDb(conversationId);
+                            const newPending = [...newHistory].reverse().find((p: any) => p.status === 'pending');
+                            if (newPending) {
+                                console.log(`[WebhookManager] [DEBUG] Created and approving fallback perm: ${newPending.id}`);
+                                await pm.approvePermission(conversationId, newPending.id);
+                            }
+                        }
+                    } else {
+                         // Find and Deny latest pending
+                         console.log(`[WebhookManager] Denying call perm for conversation ${conversationId}`);
+                         const history = await (pm as any).getHistoryFromDb(conversationId);
+                         const latestPending = [...history].reverse().find((p: any) => p.status === 'pending');
+                         if (latestPending) await pm.denyPermission(conversationId, latestPending.id);
+                         console.log(`[WebhookManager] ❌ Call permission DENIED for conversation ${conversationId}`);
+                    }
+                } catch (e: any) {
+                    console.error('[WebhookManager] ❌ Call permission error:', e.message);
+                }
+                return;
             }
         }
 

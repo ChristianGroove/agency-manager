@@ -34,6 +34,7 @@ export type MessageContent =
     | InteractiveCTAContent
     | LocationRequestContent
     | StickerContent
+    | InteractiveCallRequestContent
 
 export interface TextContent {
     type: 'text'
@@ -123,6 +124,13 @@ export interface InteractiveCTAContent {
 export interface LocationRequestContent {
     type: 'location_request'
     body: string  // Message asking for location
+}
+
+// Meta 2026: Request call permission within 24h window
+export interface InteractiveCallRequestContent {
+    type: 'interactive_call_request'
+    body?: string
+    footer?: string
 }
 
 

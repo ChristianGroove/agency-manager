@@ -82,6 +82,25 @@ export class EvolutionProvider implements MessagingProvider {
                 }))
                 break
 
+            case 'interactive_call_request':
+                endpoint = 'message/sendButtons'
+                body.title = (content as any).header?.text || 'Solicitud de Llamada'
+                body.description = content.body || '¿Podemos hablar por llamada?'
+                body.footer = (content as any).footer || ''
+                body.buttons = [
+                    {
+                        buttonId: `approve_call_perm_${(options.metadata?.leadId as string || '').substring(0, 8)}`,
+                        buttonText: { displayText: 'Aceptar Llamada' },
+                        type: 'reply'
+                    },
+                    {
+                        buttonId: `deny_call_perm_${(options.metadata?.leadId as string || '').substring(0, 8)}`,
+                        buttonText: { displayText: 'Ahora no' },
+                        type: 'reply'
+                    }
+                ]
+                break
+
             default:
                 return { success: false, error: `Content type ${content.type} not supported by Evolution provider` }
         }

@@ -72,8 +72,10 @@ export class InboxService {
             sender: sender,
             metadata: {
                 ...msg,
+                buttonId: msg.buttonId, // Explicitly ensure buttonId is saved
                 sender_type: isEcho ? 'bot' : 'human',
-                is_echo: isEcho
+                is_echo: isEcho,
+                timestamp: msg.timestamp?.toISOString() // Ensure serialized
             },
             created_at: msg.timestamp ? new Date(msg.timestamp).toISOString() : new Date().toISOString()
         })
@@ -752,6 +754,28 @@ export class InboxService {
                 }
             }
         }
+    }
+
+    /**
+     * Check if a conversation has an active 24h session window (Meta policies)
+     * A window is active if the last INBOUND message was received less than 24h ago.
+     */
+    async hasActiveSessionWindow(conversationId: string): Promise<boolean> {
+        const { data: lastInbound, error } = await supabaseAdmin
+            .from('messages')
+            .select('created_at')
+            .eq('conversation_id', conversationId)
+            .eq('direction', 'inbound')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+
+        if (error || !lastInbound) return false;
+
+        const lastMessageDate = new Date(lastInbound.created_at);
+        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+        return lastMessageDate > twentyFourHoursAgo;
     }
 
     private isWithinWorkingHours(config: any, timezone: string = 'America/Bogota'): boolean {

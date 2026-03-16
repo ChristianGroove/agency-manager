@@ -178,27 +178,38 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
                 }
 
                 // Send to InboxService
-                const result = await inboxService.handleIncomingMessage({
+                const incomingMessage = {
                     id: message.key?.id || `evo_${Date.now()}`,
                     externalId: message.key?.id || `evo_${Date.now()}`,
-                    channel: 'evolution',
+                    channel: 'evolution' as any,
                     from: senderPhone,
                     senderName: pushName,
                     content: messageContent,
+                    buttonId: buttonId, // Pass extracted buttonId
                     timestamp: new Date(message.messageTimestamp ? Number(message.messageTimestamp) * 1000 : Date.now()),
                     metadata: {
-                        instance: instanceName, // InboxService looks for 'instance'
-                        instanceName: instanceName, // Keep instanceName for backward compatibility
+                        instance: instanceName,
+                        instanceName: instanceName,
                         connectionId: channel.id,
                         pushName,
                         rawMessage: message
                     }
-                })
+                };
 
-                if (result) {
-                    console.log(`[Webhook:Evolution] InboxService SUCCESS: CID ${result.conversationId}`)
-                } else {
-                    console.error(`[Webhook:Evolution] InboxService FAILED for message ${message.key?.id}`)
+                const result = await inboxService.handleIncomingMessage(incomingMessage)
+
+                if (result && result.success && result.conversationId && buttonId) {
+                    console.log(`[Webhook:Evolution] InboxService SUCCESS. Checking for button process...`)
+                    // If it's a call permission button, pass it to WebhookManager for processing
+                    if (buttonId.startsWith('approve_call_perm') || buttonId.startsWith('deny_call_perm')) {
+                         try {
+                            const { webhookManager } = await import('@/modules/core/messaging/webhook-handler')
+                            // Mocking normalized provider to use WebhookManager logic
+                            await (webhookManager as any).processMessage(incomingMessage, 'whatsapp' as any);
+                         } catch (err) {
+                            console.error('[Webhook:Evolution] Failed to process button logic via WebhookManager:', err)
+                         }
+                    }
                 }
             }
 

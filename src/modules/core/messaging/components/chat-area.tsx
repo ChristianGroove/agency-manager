@@ -65,6 +65,13 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
     // New Sheet State
     const [isRepliesSheetOpen, setIsRepliesSheetOpen] = useState(false)
     const [isTemplatePickerOpen, setIsTemplatePickerOpen] = useState(false)
+    const [callStatus, setCallStatus] = useState<{
+        callingEnabled: boolean,
+        permStatus: { hasPermission: boolean, expiresAt: string | null },
+        isWithinHours: boolean,
+        isSessionActive: boolean
+    } | null>(null)
+    const [incomingCall, setIncomingCall] = useState<{ call_id: string, from: string } | null>(null)
 
     const scrollRef = useRef<HTMLDivElement>(null)
     const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -162,7 +169,20 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
 
         if (data) {
             setConversation(data as any)
-            if (data.unread_count > 0) debouncedMarkAsRead(conversationId)
+            if (data.unread_count > 0) {
+                debouncedMarkAsRead(conversationId)
+            }
+            
+            // Fetch Call Status with error handling to prevent UI crashes on session expiry
+            try {
+                import('../actions').then(m => m.getCallStatus(conversationId)).then(res => {
+                    if (res && res.success) setCallStatus(res as any)
+                }).catch(e => {
+                    console.warn('[ChatArea] [AUTH] Call status fetch failed (likely expired token):', e);
+                })
+            } catch (e) {
+                 console.error('[ChatArea] Dynamic import failed:', e);
+            }
         }
     }
 
@@ -234,11 +254,19 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
                 }
             )
             .on('postgres_changes',
-                { event: '*', schema: 'public', table: 'conversations', filter: `id=eq.${conversationId}` },
-                () => {
+                { event: 'UPDATE', schema: 'public', table: 'conversations', filter: `id=eq.${conversationId}` },
+                (payload) => {
+                    // CONSOLIDATED LISTENER: Handles both general conversation updates and metadata/permission changes
+                    console.log('[ChatArea] [DEBUG] Realtime Update on conversations table:', payload);
                     fetchConversation()
                 }
             )
+            .on('broadcast', { event: 'incoming_call' }, (payload) => {
+                console.log('[ChatArea] Incoming Call Broadcast:', payload)
+                setIncomingCall(payload.payload)
+                // Auto dismiss after 30s
+                setTimeout(() => setIncomingCall(null), 30000)
+            })
             .subscribe((status, error) => {
                 if (status === 'CHANNEL_ERROR') {
                     console.error('[ChatArea] Realtime Error:', error)
@@ -581,11 +609,41 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
                     <TooltipProvider>
                         <Tooltip>
                             <TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground h-8 w-8">
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    disabled={!callStatus?.callingEnabled}
+                                    className={cn(
+                                        "h-8 w-8 transition-colors",
+                                        callStatus?.permStatus?.hasPermission 
+                                            ? "text-green-600 hover:text-green-700 hover:bg-green-50"
+                                            : callStatus?.isSessionActive
+                                                ? "text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                                : "text-muted-foreground"
+                                    )}
+                                    onClick={() => {
+                                        if (callStatus?.permStatus?.hasPermission) {
+                                            // Handle Call Initiation (Logic already in system or to be linked)
+                                            toast.info("Iniciando llamada...");
+                                        } else if (callStatus?.isSessionActive) {
+                                            // Send Interactive Request
+                                            handleSend("¿Podemos hablar por llamada?", "interactive_call_request" as any);
+                                            toast.success("Solicitud de llamada enviada");
+                                        } else {
+                                            // Open Template Picker
+                                            setIsTemplatePickerOpen(true);
+                                        }
+                                    }}
+                                >
                                     <Phone className="h-4 w-4" />
                                 </Button>
                             </TooltipTrigger>
-                            <TooltipContent>Llamar</TooltipContent>
+                            <TooltipContent>
+                                {!callStatus?.callingEnabled ? "Llamadas desactivadas" :
+                                 callStatus?.permStatus?.hasPermission ? "Llamar ahora (Permiso activo)" :
+                                 callStatus?.isSessionActive ? "Solicitar llamada (Ventana 24h)" :
+                                 "Enviar plantilla de llamada"}
+                            </TooltipContent>
                         </Tooltip>
 
                         <Tooltip>
@@ -599,6 +657,42 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
                     </TooltipProvider>
                 </div>
             </div>
+
+            {/* Inbound Call Alert Overlay */}
+            {incomingCall && (
+                <div className="absolute top-20 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-top-4 duration-300">
+                    <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-2xl p-4 flex items-center gap-4 min-w-[320px]">
+                        <div className="h-12 w-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center animate-pulse">
+                            <Phone className="h-6 w-6 text-green-600" />
+                        </div>
+                        <div className="flex-1">
+                            <h4 className="font-semibold text-sm">Llamada Entrante</h4>
+                            <p className="text-xs text-muted-foreground">{incomingCall.from}</p>
+                        </div>
+                        <div className="flex gap-2">
+                            <Button 
+                                size="sm" 
+                                variant="outline" 
+                                className="h-8 rounded-full border-red-200 hover:bg-red-50 text-red-600"
+                                onClick={() => setIncomingCall(null)}
+                            >
+                                <X className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                                size="sm" 
+                                className="h-8 rounded-full bg-green-600 hover:bg-green-700"
+                                onClick={() => {
+                                    // Handle Accept (Open WebRTC UI or podobné)
+                                    toast.success("Conectando...");
+                                    setIncomingCall(null);
+                                }}
+                            >
+                                <Check className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Messages Area */}
             {/* Messages Area */}

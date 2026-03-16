@@ -120,7 +120,6 @@ export async function sendMessage(conversationId: string, payload: string, id?: 
         // use DB connection
         console.log(`[sendMessage] Using DB connection: ${connection.connection_name} (${connection.provider_key})`);
         const creds = connection.credentials as any; // Mock decrypted
-
         if (connection.provider_key === 'evolution_api') {
             const { EvolutionProvider } = await import("./providers/evolution-provider");
             provider = new EvolutionProvider({
@@ -199,15 +198,18 @@ export async function sendMessage(conversationId: string, payload: string, id?: 
     // Normalize for Provider
     const providerOptions: any = {
         to: recipientPhone,
-        content: {
-            type: content.type,
-            text: content.text,
-            caption: content.caption || content.text,
-            mediaUrl: content.url || content.mediaUrl || content.image_url,
-            filename: content.filename || content.fileName
-        },
+        content: ['interactive_buttons', 'interactive_list', 'interactive_cta', 'interactive_call_request'].includes(content.type)
+            ? content
+            : {
+                type: content.type,
+                text: content.text,
+                caption: content.caption || content.text,
+                mediaUrl: content.url || content.mediaUrl || content.image_url,
+                filename: content.filename || content.fileName
+            },
         metadata: {
             channel: channel,
+            leadId: conversation.lead_id,
             ...content.metadata
         }
     }
@@ -233,6 +235,22 @@ export async function sendMessage(conversationId: string, payload: string, id?: 
     if (content.type !== 'note') {
         const { assertUsageAllowed } = await import("@/modules/core/billing/usage-limiter");
         await assertUsageAllowed({ organizationId: conversation.organization_id, engine: 'messaging' });
+
+        // Meta 2026: Record pending permission if interactive call request is sent
+        if (content.type === 'interactive_call_request') {
+            try {
+                const { CallPermissionManager } = await import('@/lib/meta/calling/call-permission-manager');
+                const permissionManager = new CallPermissionManager();
+                await permissionManager.requestPermission({
+                    conversationId: conversationId,
+                    phoneNumber: recipientPhone,
+                    reason: 'Solicitud interactiva (Ventana 24h)'
+                });
+                console.log(`[sendMessage] Recorded pending call permission for conversation: ${conversationId}`);
+            } catch (e: any) {
+                console.error('[sendMessage] Failed to record pending permission:', e.message);
+            }
+        }
 
         try {
             const result = await provider.sendMessage(providerOptions)
@@ -272,14 +290,26 @@ export async function sendMessage(conversationId: string, payload: string, id?: 
     const senderId = user.email || 'Agent'
     const messageId = id || providerResult.messageId!
 
-    await inboxService.saveOutboundMessage(
-        conversationId,
-        content,
-        providerResult.messageId!, // Use provider ID or generated internal ID
-        senderId,
-        id, // Pass explicit ID
-        channel // Pass resolved channel
-    )
+    // We use the supabase client directly to ensure metadata is saved
+    const { error: msgDbError } = await supabase
+        .from('messages')
+        .insert({
+            conversation_id: conversationId,
+            organization_id: conversation.organization_id,
+            direction: 'outbound',
+            content: content,
+            external_id: providerResult.messageId!,
+            status: 'sent',
+            sender_id: senderId,
+            metadata: {
+                ...providerOptions.metadata,
+                timestamp: new Date().toISOString()
+            }
+        });
+
+    if (msgDbError) {
+        console.error('[sendMessage] DB Insert Error:', msgDbError);
+    }
 
     // Fetch the created message to return
     const { data: createdMessage } = await supabase
@@ -290,6 +320,60 @@ export async function sendMessage(conversationId: string, payload: string, id?: 
 
     revalidatePath('/inbox')
     return { success: true, data: createdMessage }
+}
+
+// --- CALLING LOGIC (Meta 2026) ---
+
+export async function getCallStatus(conversationId: string) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, error: 'Unauthorized' }
+
+    // 1. Fetch Conversation
+    const { data: conv, error: convError } = await supabase
+        .from('conversations')
+        .select('organization_id, connection_id, lead_id')
+        .eq('id', conversationId)
+        .single()
+
+    if (convError || !conv) return { success: false, error: 'Conversation not found' }
+
+    // 2. Fetch Connection Config
+    const { data: conn } = await supabase
+        .from('integration_connections')
+        .select('metadata')
+        .eq('id', conv.connection_id!)
+        .single()
+    
+    const connMetadata = (conn?.metadata as any) || {}
+    const callingEnabled = connMetadata.calling_enabled !== false
+    const callingConfig = connMetadata.calling_config // May be null/undefined
+
+    // 3. Load Managers
+    const { CallPermissionManager } = await import('@/lib/meta/calling/call-permission-manager')
+    const { CallHoursManager } = await import('@/lib/meta/calling/call-hours-manager')
+    const { InboxService } = await import('./inbox-service')
+
+    const permissionManager = new CallPermissionManager()
+    const hoursManager = new CallHoursManager(callingConfig)
+    const inboxSvc = new InboxService()
+
+    // 3. Eval States
+    const permResult = await permissionManager.canMakeCall(conversationId)
+    const isWithinHours = await hoursManager.isWithinCallHours()
+    const isSessionActive = await inboxSvc.hasActiveSessionWindow(conversationId)
+
+    return {
+        success: true,
+        callingEnabled,
+        permStatus: {
+            hasPermission: permResult.allowed,
+            expiresAt: permResult.expiresAt?.toISOString() || null,
+            reason: permResult.reason
+        },
+        isWithinHours,
+        isSessionActive
+    }
 }
 
 export async function markConversationAsRead(conversationId: string) {

@@ -28,9 +28,10 @@ interface ConversationListItemProps {
     isSelected: boolean
     onSelect: (id: string) => void
     fetchConversations: () => void
+    tick?: number
 }
 
-export const ConversationListItem = memo(function ConversationListItem({ conv, isSelected, onSelect, fetchConversations }: ConversationListItemProps) {
+export const ConversationListItem = memo(function ConversationListItem({ conv, isSelected, onSelect, fetchConversations, tick }: ConversationListItemProps) {
     const { t, locale } = useTranslation()
     const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
         id: conv.id,
@@ -77,6 +78,7 @@ export const ConversationListItem = memo(function ConversationListItem({ conv, i
             const now = Date.now()
             const diffMin = Math.floor((now - start) / 60000)
 
+            // Umbral de 5 min (Solo se muestra si la espera es >= 5 min por petición del usuario)
             if (diffMin >= 10) {
                 setWaitLevel('critical')
             } else if (diffMin >= 5) {
@@ -94,9 +96,8 @@ export const ConversationListItem = memo(function ConversationListItem({ conv, i
         }
 
         updateWaitStatus()
-        const interval = setInterval(updateWaitStatus, 30000) // Update every 30s
-        return () => clearInterval(interval)
-    }, [conv.waiting_since, conv.status])
+        // No independent interval needed; 'tick' from parent triggers re-evaluation
+    }, [conv.waiting_since, conv.status, tick])
 
     useEffect(() => {
         const timeDiff = new Date().getTime() - new Date(conv.last_message_at).getTime()

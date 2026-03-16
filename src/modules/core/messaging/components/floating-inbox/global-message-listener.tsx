@@ -37,13 +37,17 @@ export function GlobalMessageListener() {
         // PERFORMANCE: Delay websocket connection by 2.5s to let the main dashboard render without CPU contention
         const timer = setTimeout(() => {
             const fetchPerms = async () => {
-                const [perms, connectionIds] = await Promise.all([
-                    getCurrentUserPermissions(),
-                    getOrgConnectionIds()
-                ])
-                setUserPermissions(perms)
-                userPermissionsRef.current = perms
-                orgConnectionIdsRef.current = new Set(connectionIds)
+                try {
+                    const [perms, connectionIds] = await Promise.all([
+                        getCurrentUserPermissions(),
+                        getOrgConnectionIds()
+                    ])
+                    setUserPermissions(perms)
+                    userPermissionsRef.current = perms
+                    orgConnectionIdsRef.current = new Set(connectionIds)
+                } catch (e) {
+                    console.warn('[GlobalMessageListener] [AUTH] Failed to fetch perms/connections:', e);
+                }
             }
             fetchPerms()
         }, 2500)
@@ -163,14 +167,22 @@ export function GlobalMessageListener() {
                     // SUPPRESS TOAST IF ON INBOX PAGE
                     if (isOnInboxPage) return
 
-                    // Fetch lead name for the toast
-                    const { data: leadData } = await supabase
-                        .from('leads')
-                        .select('name, phone')
-                        .eq('id', conv.lead_id)
-                        .single()
+                    // Fetch lead name for the toast with error boundary
+                    let senderName = "Unknown Sender"
+                    try {
+                        const { data: leadData, error: leadError } = await supabase
+                            .from('leads')
+                            .select('name, phone')
+                            .eq('id', conv.lead_id)
+                            .single()
 
-                    const senderName = leadData?.name || leadData?.phone || "Unknown Sender"
+                        if (leadError) throw leadError;
+                        senderName = leadData?.name || leadData?.phone || "Unknown Sender"
+                    } catch (e) {
+                        console.warn('[GlobalMessageListener] Failed to fetch lead name:', e);
+                        // Fallback to what we have in conv
+                        senderName = conv.leads?.name || conv.leads?.phone || "Unknown Sender";
+                    }
                     const messageText = conv.last_message_preview || "Nuevo mensaje"
                     const channelColorClass = getChannelColor(conv.channel)
 
