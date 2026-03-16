@@ -8,8 +8,10 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Trash2, AlertTriangle, Filter, Database, Users, ShieldAlert } from "lucide-react"
 import { toast } from "sonner"
+import { Virtuoso } from "react-virtuoso"
 import { Lead } from "@/types"
 import { deleteLeads, deleteAllLeads } from "../lead-management-actions"
+import { exportLeadsToCSV, purgeColdLeads } from "../leads-actions"
 import { cn } from "@/lib/utils"
 
 interface LeadManagementSheetProps {
@@ -51,6 +53,46 @@ export function LeadManagementSheet({ open, onOpenChange, leads, onSuccess }: Le
             if (res.success) {
                 toast.success(`${selectedLeads.length} leads eliminados`)
                 setSelectedLeads([])
+                onSuccess()
+            } else {
+                toast.error(res.error)
+            }
+        } finally {
+            setIsLoading(false)
+        }
+    }
+
+    const handleExport = async () => {
+        setIsLoading(true)
+        try {
+            const res = await exportLeadsToCSV()
+            if (res.success && res.data) {
+                const blob = new Blob([res.data], { type: 'text/csv;charset=utf-8;' })
+                const link = document.createElement("a")
+                const url = URL.createObjectURL(blob)
+                link.setAttribute("href", url)
+                link.setAttribute("download", `leads_backup_${new Date().toISOString().split('T')[0]}.csv`)
+                link.style.visibility = 'hidden'
+                document.body.appendChild(link)
+                link.click()
+                document.body.removeChild(link)
+                toast.success("Backup exportado correctamente")
+            } else {
+                toast.error(res.error || "Error al exportar")
+            }
+        } finally {
+            setIsLoading(false)
+        }
+    }
+
+    const handleSmartPurge = async () => {
+        if (!confirm("¿Deseas purgar automáticamente leads fríos (+30 días inactivos y score bajo)?")) return
+
+        setIsLoading(true)
+        try {
+            const res = await purgeColdLeads({ inactiveDays: 30, minScore: 20 })
+            if (res.success) {
+                toast.success(`${res.data?.deleted} leads fríos eliminados`)
                 onSuccess()
             } else {
                 toast.error(res.error)
@@ -145,55 +187,81 @@ export function LeadManagementSheet({ open, onOpenChange, leads, onSuccess }: Le
                                         Eliminar ({selectedLeads.length})
                                     </Button>
                                 )}
+                                <div className="flex items-center gap-2">
+                                    <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={handleExport}
+                                        disabled={isLoading || leads.length === 0}
+                                        className="text-slate-600 hover:text-slate-900"
+                                    >
+                                        <Database className="w-4 h-4 mr-2" />
+                                        Exportar CSV
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={handleSmartPurge}
+                                        disabled={isLoading || leads.length === 0}
+                                        className="text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                                    >
+                                        <ShieldAlert className="w-4 h-4 mr-2" />
+                                        Purga Inteligente
+                                    </Button>
+                                </div>
                             </div>
 
-                            {/* List */}
-                            <ScrollArea className="flex-1">
-                                <div className="p-4 space-y-2">
-                                    {leads.map(lead => (
-                                        <div
-                                            key={lead.id}
-                                            className={cn(
-                                                "group flex items-center gap-4 p-3 rounded-xl border transition-all duration-200",
-                                                selectedLeads.includes(lead.id)
-                                                    ? "bg-blue-50/50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800"
-                                                    : "bg-white dark:bg-zinc-900 border-slate-100 dark:border-zinc-800 hover:border-slate-200 dark:hover:border-zinc-700 hover:shadow-sm"
-                                            )}
-                                        >
-                                            <Checkbox
-                                                checked={selectedLeads.includes(lead.id)}
-                                                onCheckedChange={(c) => handleSelectLead(lead.id, Boolean(c))}
-                                                className="border-slate-300 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
-                                            />
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-center gap-2 mb-0.5">
-                                                    <span className="font-medium text-slate-900 dark:text-slate-100 truncate">{lead.name}</span>
-                                                    {lead.company_name && (
-                                                        <span className="hidden sm:inline-block px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 dark:bg-zinc-800 text-slate-500">
-                                                            {lead.company_name}
-                                                        </span>
+                            {/* List with Virtualization */}
+                            <div className="flex-1 min-h-0">
+                                {leads.length === 0 ? (
+                                    <div className="flex flex-col items-center justify-center py-16 text-center h-full">
+                                        <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-zinc-800 flex items-center justify-center mb-4">
+                                            <Users className="w-8 h-8 text-slate-300 dark:text-slate-600" />
+                                        </div>
+                                        <p className="text-slate-500 font-medium">No hay leads disponibles</p>
+                                        <p className="text-sm text-slate-400 mt-1">Tu base de datos está limpia.</p>
+                                    </div>
+                                ) : (
+                                    <Virtuoso
+                                        style={{ height: '100%' }}
+                                        data={leads}
+                                        itemContent={(index, lead) => (
+                                            <div className="px-4 py-1">
+                                                <div
+                                                    className={cn(
+                                                        "group flex items-center gap-4 p-3 rounded-xl border transition-all duration-200",
+                                                        selectedLeads.includes(lead.id)
+                                                            ? "bg-blue-50/50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800"
+                                                            : "bg-white dark:bg-zinc-900 border-slate-100 dark:border-zinc-800 hover:border-slate-200 dark:hover:border-zinc-700 hover:shadow-sm"
                                                     )}
-                                                </div>
-                                                <div className="text-xs text-slate-500 dark:text-slate-400 truncate flex items-center gap-2">
-                                                    {lead.phone && <span>{lead.phone}</span>}
-                                                    {lead.phone && lead.email && <span className="w-0.5 h-0.5 rounded-full bg-slate-300" />}
-                                                    {lead.email && <span>{lead.email}</span>}
-                                                    {!lead.phone && !lead.email && <span className="italic opacity-50">Sin contacto</span>}
+                                                >
+                                                    <Checkbox
+                                                        checked={selectedLeads.includes(lead.id)}
+                                                        onCheckedChange={(c) => handleSelectLead(lead.id, Boolean(c))}
+                                                        className="border-slate-300 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
+                                                    />
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center gap-2 mb-0.5">
+                                                            <span className="font-medium text-slate-900 dark:text-slate-100 truncate">{lead.name}</span>
+                                                            {lead.company_name && (
+                                                                <span className="hidden sm:inline-block px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 dark:bg-zinc-800 text-slate-500">
+                                                                    {lead.company_name}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <div className="text-xs text-slate-500 dark:text-slate-400 truncate flex items-center gap-2">
+                                                            {lead.phone && <span>{lead.phone}</span>}
+                                                            {lead.phone && lead.email && <span className="w-0.5 h-0.5 rounded-full bg-slate-300" />}
+                                                            {lead.email && <span>{lead.email}</span>}
+                                                            {!lead.phone && !lead.email && <span className="italic opacity-50">Sin contacto</span>}
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    ))}
-                                    {leads.length === 0 && (
-                                        <div className="flex flex-col items-center justify-center py-16 text-center">
-                                            <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-zinc-800 flex items-center justify-center mb-4">
-                                                <Users className="w-8 h-8 text-slate-300 dark:text-slate-600" />
-                                            </div>
-                                            <p className="text-slate-500 font-medium">No hay leads disponibles</p>
-                                            <p className="text-sm text-slate-400 mt-1">Tu base de datos está limpia.</p>
-                                        </div>
-                                    )}
-                                </div>
-                            </ScrollArea>
+                                        )}
+                                    />
+                                )}
+                            </div>
                         </TabsContent>
 
                         {/* PURGE TAB */}

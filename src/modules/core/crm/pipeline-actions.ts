@@ -301,7 +301,7 @@ export async function getPipelineData(connectionId?: string | null) {
 
     const [stages, leads, emitters, totalCount] = await Promise.all([
         getCachedPipelineStages(orgId),
-        getLeads(300, connectionId, allowedChannels), // Pass filters
+        getLeads(100, connectionId, allowedChannels), // Pass filters
         getEmitters(),
         getLeadsCount()
     ])

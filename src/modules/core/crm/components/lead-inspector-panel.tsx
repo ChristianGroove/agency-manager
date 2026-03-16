@@ -21,18 +21,15 @@ import {
     Mail,
     Phone,
     MessageSquare,
-    Activity,
     Target,
-    ChevronRight,
-    ExternalLink,
     Zap,
     Loader2,
     CheckCircle2,
     Clock,
     Plus,
-    Calendar,
     Trash2,
-    AlertCircle
+    AlertCircle,
+    ArrowRight
 } from 'lucide-react'
 import { useLeadInspector } from './lead-inspector-context'
 import { CopilotWidget } from './copilot-widget'
@@ -47,11 +44,11 @@ import { cn } from '@/lib/utils'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { getActiveWorkflows, triggerWorkflowForLead } from '@/modules/core/automation/actions'
-import { CreateOrganizationSheet } from '@/components/organizations/create-organization-sheet'
+import { convertLeadToClient } from '../leads-actions'
 import { createTask, completeTask, deleteTask, getTasksForLead, type Task } from '../task-actions'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { ProcessStateCard } from './process/process-state-card'
 
 // Trigger Automation Button with Workflow Selector
 function TriggerAutomationButton({ leadId }: { leadId: string }) {
@@ -120,7 +117,50 @@ function TriggerAutomationButton({ leadId }: { leadId: string }) {
     )
 }
 
-import { ProcessStateCard } from './process/process-state-card'
+// Removed PromoteToTenantButton as per user request
+
+function LeadActionBar({ lead }: { lead: LeadWithRelations }) {
+    const { closeInspector } = useLeadInspector()
+
+    const handleConvert = async () => {
+        const confirmed = confirm("¿Convertir este lead a contacto?")
+        if (!confirmed) return
+
+        const res = await convertLeadToClient(lead.id)
+        if (res.success) {
+            toast.success("Lead convertido a contacto")
+            closeInspector()
+            window.location.href = '/clients'
+        } else {
+            toast.error(res.error || "Error al convertir")
+        }
+    }
+
+    return (
+        <div className="flex flex-wrap gap-2 px-6 py-3 border-b bg-slate-50/50 dark:bg-slate-900/20">
+            <Button variant="outline" size="sm" className="h-9 text-xs flex-1 min-w-[100px]" asChild>
+                <Link href={`/crm/inbox?contact=${lead.phone || lead.email}`}>
+                    <MessageSquare className="h-3.5 w-3.5 mr-1.5 text-blue-500" />
+                    Mensaje
+                </Link>
+            </Button>
+            <TriggerAutomationButton leadId={lead.id} />
+             <Button variant="outline" size="sm" className="h-9 text-xs flex-1 min-w-[100px]">
+                <User className="h-3.5 w-3.5 mr-1.5 text-indigo-500" />
+                Asignar
+            </Button>
+            <Button 
+                variant="outline" 
+                size="sm" 
+                className="h-9 text-xs flex-1 min-w-[100px] bg-green-50/50 hover:bg-green-100/50 border-green-200 text-green-700" 
+                onClick={handleConvert}
+            >
+                <ArrowRight className="h-3.5 w-3.5 mr-1.5" />
+                Convertir
+            </Button>
+        </div>
+    )
+}
 
 // Info Tab - Compact lead information
 function InfoTab({ lead }: { lead: LeadWithRelations }) {
@@ -128,10 +168,8 @@ function InfoTab({ lead }: { lead: LeadWithRelations }) {
 
     return (
         <div className="space-y-4">
-            {/* Process Engine State Card */}
             <ProcessStateCard leadId={lead.id} />
 
-            {/* Header with Score */}
             <div className="flex items-center justify-between">
                 <div>
                     <h3 className="font-semibold text-lg">{lead.name}</h3>
@@ -152,31 +190,22 @@ function InfoTab({ lead }: { lead: LeadWithRelations }) {
                 )}
             </div>
 
-            {/* Stage Badge */}
             <div className="flex items-center gap-2">
                 <Target className="h-4 w-4 text-muted-foreground" />
-                <Badge variant="outline">
-                    {lead.status}
-                </Badge>
-                {/* Stage Badge logic removed due to build error */}
+                <Badge variant="outline">{lead.status}</Badge>
             </div>
 
-            {/* Contact Info */}
             <div className="space-y-2 p-3 bg-muted/50 rounded-lg">
                 {lead.email && (
                     <div className="flex items-center gap-2 text-sm">
                         <Mail className="h-4 w-4 text-muted-foreground" />
-                        <a href={`mailto:${lead.email}`} className="hover:underline">
-                            {lead.email}
-                        </a>
+                        <a href={`mailto:${lead.email}`} className="hover:underline">{lead.email}</a>
                     </div>
                 )}
                 {lead.phone && (
                     <div className="flex items-center gap-2 text-sm">
                         <Phone className="h-4 w-4 text-muted-foreground" />
-                        <a href={`tel:${lead.phone}`} className="hover:underline">
-                            {lead.phone}
-                        </a>
+                        <a href={`tel:${lead.phone}`} className="hover:underline">{lead.phone}</a>
                     </div>
                 )}
                 {lead.assignee && (
@@ -187,7 +216,6 @@ function InfoTab({ lead }: { lead: LeadWithRelations }) {
                 )}
             </div>
 
-            {/* Quick Stats */}
             <div className="grid grid-cols-3 gap-2">
                 <div className="text-center p-2 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
                     <p className="text-lg font-semibold text-blue-600">{lead.tasks?.length || 0}</p>
@@ -203,220 +231,10 @@ function InfoTab({ lead }: { lead: LeadWithRelations }) {
                 </div>
             </div>
 
-            {/* Meta */}
             <p className="text-xs text-muted-foreground text-center">
                 Creado {formatDistanceToNow(new Date(lead.created_at), { addSuffix: true, locale: es })}
             </p>
-
-            {/* Action Buttons */}
-            <div className="flex gap-2">
-                <Button variant="outline" size="sm" className="flex-1" asChild>
-                    <Link href={`/crm/inbox?contact=${lead.phone || lead.email}`}>
-                        <MessageSquare className="h-4 w-4 mr-2" />
-                        Mensaje
-                    </Link>
-                </Button>
-                <TriggerAutomationButton leadId={lead.id} />
-            </div>
-
-            <div className="pt-4 border-t border-dashed">
-                <PromoteToTenantButton lead={lead} />
-            </div>
         </div>
-    )
-}
-
-function PromoteToTenantButton({ lead }: { lead: LeadWithRelations }) {
-    const [open, setOpen] = useState(false)
-
-    return (
-        <>
-            <Button
-                variant="secondary"
-                className="w-full bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200"
-                onClick={() => setOpen(true)}
-            >
-                <Building2 className="h-4 w-4 mr-2" />
-                Convertir a Organización (Tenant)
-            </Button>
-
-            <CreateOrganizationSheet
-                open={open}
-                onOpenChange={setOpen}
-                initialData={{
-                    name: lead.company_name || lead.name,
-                    email: lead.email || undefined
-                }}
-                onSuccess={() => {
-                    // Optional: Mark lead as 'converted' via action
-                    // updateLeadStatus(lead.id, 'won')
-                }}
-            />
-        </>
-    )
-}
-
-// Chat Tab - Mini conversation view
-function ChatTab({ lead }: { lead: LeadWithRelations }) {
-    const [messages, setMessages] = useState<any[]>([])
-    const [loading, setLoading] = useState(true)
-    const [conversationId, setConversationId] = useState<string | null>(null)
-
-    useEffect(() => {
-        async function loadPreview() {
-            setLoading(true)
-            // Dynamically import to avoid server-action build issues in client component if direct import fails
-            const { getLeadConversationPreview } = await import('@/modules/core/messaging/conversation-actions')
-            const res = await getLeadConversationPreview(lead.id)
-            if (res.success && res.messages) {
-                setMessages(res.messages)
-                setConversationId(res.conversationId || null)
-            } else {
-                setMessages([])
-            }
-            setLoading(false)
-        }
-        loadPreview()
-    }, [lead.id])
-
-    const chatLink = conversationId
-        ? `/crm/inbox?conversationId=${conversationId}`
-        : `/crm/inbox?contact=${encodeURIComponent(lead.phone || lead.email || '')}`
-
-    if (loading) {
-        return (
-            <div className="space-y-3">
-                {[1, 2, 3].map((i) => (
-                    <div key={i} className="flex gap-2">
-                        <Skeleton className="h-8 w-8 rounded-full" />
-                        <Skeleton className="h-12 flex-1 rounded-lg" />
-                    </div>
-                ))}
-            </div>
-        )
-    }
-
-    if (messages.length === 0) {
-        return (
-            <div className="flex flex-col items-center justify-center py-8 text-center bg-slate-50 dark:bg-slate-900/50 rounded-xl m-1">
-                <MessageSquare className="h-10 w-10 text-slate-300 dark:text-slate-600 mb-3" />
-                <p className="text-sm text-muted-foreground font-medium">No hay mensajes recientes</p>
-                <p className="text-xs text-muted-foreground mb-4">Inicia una conversación ahora</p>
-                <Button variant="default" size="sm" asChild className="bg-blue-600 hover:bg-blue-700 text-white">
-                    <Link href={chatLink}>
-                        <MessageSquare className="h-4 w-4 mr-2" />
-                        Iniciar Conversación
-                    </Link>
-                </Button>
-            </div>
-        )
-    }
-
-    return (
-        <div className="h-[350px] flex flex-col">
-            <ScrollArea className="flex-1 pr-4 -mr-4">
-                <div className="space-y-4 pr-4 pb-4">
-                    <div className="text-center">
-                        <span className="text-[10px] font-medium text-muted-foreground bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-full">
-                            Últimos 3 mensajes
-                        </span>
-                    </div>
-                    {messages.map((msg, idx) => {
-                        const isOutbound = msg.direction === 'outbound' || msg.sender_id !== lead.phone // Simple heuristic or check direction column
-                        return (
-                            <div
-                                key={idx}
-                                className={cn(
-                                    "flex flex-col max-w-[85%] rounded-2xl px-4 py-2 text-sm shadow-sm",
-                                    isOutbound
-                                        ? "bg-blue-600 text-white ml-auto rounded-br-none"
-                                        : "bg-white dark:bg-slate-800 border mr-auto rounded-bl-none"
-                                )}
-                            >
-                                <p>{typeof msg.content === 'string' ? msg.content : (msg.content?.text || msg.content?.body || 'Mensaje multimedia')}</p>
-                                <span className={cn(
-                                    "text-[10px] mt-1 opacity-70",
-                                    isOutbound ? "text-blue-100" : "text-muted-foreground"
-                                )}>
-                                    {formatDistanceToNow(new Date(msg.created_at), { addSuffix: true, locale: es })}
-                                </span>
-                            </div>
-                        )
-                    })}
-                </div>
-            </ScrollArea>
-
-            <div className="pt-4 border-t mt-2">
-                <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white" asChild>
-                    <Link href={chatLink}>
-                        <MessageSquare className="h-4 w-4 mr-2" />
-                        Ir a la Conversación
-                    </Link>
-                </Button>
-            </div>
-        </div>
-    )
-}
-
-// Activity Tab - Automation execution logs
-function ActivityTab({ lead }: { lead: LeadWithRelations }) {
-    const [executions, setExecutions] = useState<any[]>([])
-    const [loading, setLoading] = useState(true)
-
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            setLoading(false)
-            setExecutions([])
-        }, 500)
-        return () => clearTimeout(timer)
-    }, [lead.id])
-
-    if (loading) {
-        return (
-            <div className="space-y-3">
-                {[1, 2].map((i) => (
-                    <Skeleton key={i} className="h-16 w-full rounded-lg" />
-                ))}
-            </div>
-        )
-    }
-
-    if (executions.length === 0) {
-        return (
-            <div className="flex flex-col items-center justify-center py-8 text-center">
-                <Zap className="h-10 w-10 text-muted-foreground/50 mb-3" />
-                <p className="text-sm text-muted-foreground">Sin actividad de automatizaciones</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                    Las ejecuciones de workflows aparecerán aquí
-                </p>
-            </div>
-        )
-    }
-
-    return (
-        <ScrollArea className="h-[300px]">
-            <div className="space-y-2 pr-4">
-                {executions.map((exec, idx) => (
-                    <div key={idx} className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                        <div className={cn(
-                            "p-1.5 rounded-full",
-                            exec.status === 'success' ? "bg-green-100 text-green-600" : "bg-red-100 text-red-600"
-                        )}>
-                            <Zap className="h-4 w-4" />
-                        </div>
-                        <div className="flex-1">
-                            <p className="text-sm font-medium">{exec.workflow?.name}</p>
-                            <p className="text-xs text-muted-foreground">
-                                {formatDistanceToNow(new Date(exec.completed_at), { addSuffix: true, locale: es })}
-                            </p>
-                        </div>
-                        <Badge variant={exec.status === 'success' ? 'default' : 'destructive'}>
-                            {exec.status}
-                        </Badge>
-                    </div>
-                ))}
-            </div>
-        </ScrollArea>
     )
 }
 
@@ -487,13 +305,6 @@ function TasksTab({ lead, onUpdate }: { lead: LeadWithRelations, onUpdate?: () =
         }
     }
 
-    const priorityColors: Record<string, string> = {
-        low: 'text-gray-500',
-        medium: 'text-blue-500',
-        high: 'text-orange-500',
-        urgent: 'text-red-500'
-    }
-
     if (loading) {
         return (
             <div className="space-y-3">
@@ -506,7 +317,6 @@ function TasksTab({ lead, onUpdate }: { lead: LeadWithRelations, onUpdate?: () =
 
     return (
         <div className="space-y-4">
-            {/* Create Task Button */}
             {!showCreate ? (
                 <Button variant="outline" className="w-full" onClick={() => setShowCreate(true)}>
                     <Plus className="h-4 w-4 mr-2" />
@@ -539,14 +349,12 @@ function TasksTab({ lead, onUpdate }: { lead: LeadWithRelations, onUpdate?: () =
                 </div>
             )}
 
-            {/* Task List */}
             <ScrollArea className="h-[250px]">
                 <div className="space-y-2 pr-4">
                     {tasks.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-8 text-center">
                             <CheckCircle2 className="h-10 w-10 text-muted-foreground/50 mb-3" />
                             <p className="text-sm text-muted-foreground">Sin tareas pendientes</p>
-                            <p className="text-xs text-muted-foreground mt-1">Crea una tarea para dar seguimiento</p>
                         </div>
                     ) : (
                         tasks.map((task) => {
@@ -581,7 +389,6 @@ function TasksTab({ lead, onUpdate }: { lead: LeadWithRelations, onUpdate?: () =
                                             <span className={isOverdue ? "text-red-600 font-medium" : ""}>
                                                 {formatDistanceToNow(new Date(task.due_date), { addSuffix: true, locale: es })}
                                             </span>
-                                            {isOverdue && <AlertCircle className="h-3 w-3 text-red-500" />}
                                         </div>
                                     </div>
                                     <button
@@ -600,24 +407,19 @@ function TasksTab({ lead, onUpdate }: { lead: LeadWithRelations, onUpdate?: () =
     )
 }
 
-
 // Main Panel Component
 export function LeadInspectorPanel() {
     const { isOpen, leadId, defaultTab, closeInspector } = useLeadInspector()
     const [lead, setLead] = useState<LeadWithRelations | null>(null)
     const [loading, setLoading] = useState(false)
     const [activeTab, setActiveTab] = useState(defaultTab)
-
-    // AI Copilot State
     const [recommendations, setRecommendations] = useState<AnalysisRecommendation[]>([])
-    const [analyzing, setAnalyzing] = useState(false)
 
     useEffect(() => {
         if (leadId && isOpen) {
             loadLead()
-            loadAnalysis()
         } else {
-            setRecommendations([]) // Clear on close/change
+            setRecommendations([])
         }
     }, [leadId, isOpen])
 
@@ -625,21 +427,10 @@ export function LeadInspectorPanel() {
         setActiveTab(defaultTab)
     }, [defaultTab])
 
-    async function loadAnalysis() {
-        if (!leadId) return
-        setAnalyzing(true)
-        const res = await getLeadAnalysis(leadId)
-        if (res.success && res.recommendations) {
-            setRecommendations(res.recommendations)
-        }
-        setAnalyzing(false)
-    }
-
     async function loadLead() {
         if (!leadId) return
         setLoading(true)
         try {
-            // Updated to use the imported action correctly
             const data = await getLeadWithRelations(leadId)
             setLead(data)
         } catch (error) {
@@ -651,13 +442,11 @@ export function LeadInspectorPanel() {
 
     return (
         <Sheet open={isOpen} onOpenChange={closeInspector}>
-            {/* Copilot Widget Integration */}
             {isOpen && leadId && recommendations.length > 0 && (
                 <CopilotWidget
                     recommendations={recommendations}
                     onAction={(rec) => {
                         toast.info(`Acción seleccionada: ${rec.action_label}`)
-                        // Future: Handle specific actions like 'book_audit' or 'send_email'
                     }}
                 />
             )}
@@ -671,22 +460,14 @@ export function LeadInspectorPanel() {
                     bg-transparent
                 "
             >
-                <SheetHeader className="hidden">
-                    <SheetTitle>Lead Inspector</SheetTitle>
-                    <SheetDescription>Ver información del lead</SheetDescription>
-                </SheetHeader>
-
                 <div className="flex flex-col h-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl">
-                    {/* Header */}
                     <div className="sticky top-0 z-20 flex items-center gap-3 px-6 py-4 bg-white/40 dark:bg-slate-900/40 backdrop-blur-md border-b border-black/5 dark:border-white/5">
                         <div className="p-2 bg-indigo-50 dark:bg-indigo-950/50 rounded-lg text-indigo-600">
                             <User className="h-5 w-5" />
                         </div>
                         <div>
                             <h2 className="text-lg font-bold tracking-tight">Lead Inspector</h2>
-                            <p className="text-xs text-muted-foreground">
-                                {lead?.name || 'Cargando...'}
-                            </p>
+                            <p className="text-xs text-muted-foreground">{lead?.name || 'Cargando...'}</p>
                         </div>
                     </div>
 
@@ -701,41 +482,31 @@ export function LeadInspectorPanel() {
                             <p className="text-muted-foreground">Lead no encontrado</p>
                         </div>
                     ) : (
-                        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)} className="flex-1 flex flex-col">
-                            <TabsList className="mx-6 mt-4 p-1 bg-muted/50 rounded-xl">
-                                <TabsTrigger value="info" className="flex-1 gap-1.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                                    <User className="h-4 w-4" />
-                                    Info
-                                </TabsTrigger>
-                                <TabsTrigger value="tasks" className="flex-1 gap-1.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                                    <CheckCircle2 className="h-4 w-4" />
-                                    Tareas
-                                </TabsTrigger>
-                                <TabsTrigger value="chat" className="flex-1 gap-1.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                                    <MessageSquare className="h-4 w-4" />
-                                    Chat
-                                </TabsTrigger>
-                                <TabsTrigger value="activity" className="flex-1 gap-1.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                                    <Activity className="h-4 w-4" />
-                                    Activity
-                                </TabsTrigger>
-                            </TabsList>
+                        <div className="flex-1 flex flex-col min-h-0">
+                            <LeadActionBar lead={lead} />
+                            
+                            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)} className="flex-1 flex flex-col min-h-0">
+                                <TabsList className="mx-6 mt-4 p-1 bg-muted/50 rounded-xl">
+                                    <TabsTrigger value="info" className="flex-1 gap-1.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                                        <User className="h-4 w-4" />
+                                        Info
+                                    </TabsTrigger>
+                                    <TabsTrigger value="tasks" className="flex-1 gap-1.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                                        <CheckCircle2 className="h-4 w-4" />
+                                        Tareas
+                                    </TabsTrigger>
+                                </TabsList>
 
-                            <ScrollArea className="flex-1 px-6 py-4">
-                                <TabsContent value="info" className="mt-0">
-                                    <InfoTab lead={lead} />
-                                </TabsContent>
-                                <TabsContent value="tasks" className="mt-0">
-                                    <TasksTab lead={lead} onUpdate={loadLead} />
-                                </TabsContent>
-                                <TabsContent value="chat" className="mt-0">
-                                    <ChatTab lead={lead} />
-                                </TabsContent>
-                                <TabsContent value="activity" className="mt-0">
-                                    <ActivityTab lead={lead} />
-                                </TabsContent>
-                            </ScrollArea>
-                        </Tabs>
+                                <ScrollArea className="flex-1 px-6 py-4">
+                                    <TabsContent value="info" className="mt-0 outline-none">
+                                        <InfoTab lead={lead} />
+                                    </TabsContent>
+                                    <TabsContent value="tasks" className="mt-0 outline-none">
+                                        <TasksTab lead={lead} onUpdate={loadLead} />
+                                    </TabsContent>
+                                </ScrollArea>
+                            </Tabs>
+                        </div>
                     )}
                 </div>
             </SheetContent>

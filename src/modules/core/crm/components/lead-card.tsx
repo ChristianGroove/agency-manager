@@ -5,11 +5,13 @@ import { Lead } from "@/types"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge" // Kept if we revert to badge usage, but currently unused in compact mode? Wait, imports needed.
-import { GripVertical, MoreHorizontal, Eye, MessageSquare, UserPlus, Edit, ArrowRight, XCircle, FileText } from "lucide-react"
+import { GripVertical, MoreHorizontal, Eye, MessageSquare, UserPlus, Edit, ArrowRight, XCircle, FileText, Clock } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
+import { differenceInDays, formatDistanceToNow } from "date-fns"
+import { es } from "date-fns/locale"
 
 interface LeadCardProps {
     lead: Lead
@@ -61,6 +63,17 @@ function LeadCardComponent({ lead, onConvert, onMarkLost, onEdit, onView, onAssi
                     {lead.company_name && (
                         <p className="text-[11px] text-muted-foreground truncate">{lead.company_name}</p>
                     )}
+                    <div className="flex items-center gap-2 mt-1">
+                        {lead.updated_at && differenceInDays(new Date(), new Date(lead.updated_at)) >= 3 && (
+                            <div className="flex items-center gap-1 text-[9px] text-orange-600 font-medium bg-orange-50 dark:bg-orange-950/30 px-1 py-0.5 rounded">
+                                <Clock className="h-2.5 w-2.5" />
+                                {differenceInDays(new Date(), new Date(lead.updated_at))}d estancado
+                            </div>
+                        )}
+                        <span className="text-[9px] text-muted-foreground">
+                            act. {formatDistanceToNow(new Date(lead.updated_at || lead.created_at), { addSuffix: true, locale: es })}
+                        </span>
+                    </div>
                 </div>
                 <div onClick={(e) => e.stopPropagation()} className="shrink-0 flex items-center">
                     <Button
@@ -110,7 +123,7 @@ function LeadCardComponent({ lead, onConvert, onMarkLost, onEdit, onView, onAssi
                             <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={() => onConvert(lead.id)}>
                                 <ArrowRight className="mr-2 h-3.5 w-3.5" />
-                                Convertir
+                                Convertir a Contacto
                             </DropdownMenuItem>
                             <DropdownMenuItem className="text-red-600" onClick={() => onMarkLost(lead.id)}>
                                 <XCircle className="mr-2 h-3.5 w-3.5" />

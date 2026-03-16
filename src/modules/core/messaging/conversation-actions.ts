@@ -49,8 +49,15 @@ export async function archiveConversation(conversationId: string) {
 /**
  * Delete a conversation (and all its messages)
  */
-export async function deleteConversation(conversationId: string) {
+export async function deleteConversation(conversationId: string, deleteLeadIfOrphaned: boolean = false) {
     const supabase = await createClient()
+
+    // 1. Fetch conversation info before delete
+    const { data: conv } = await supabase
+        .from('conversations')
+        .select('lead_id, organization_id')
+        .eq('id', conversationId)
+        .single()
 
     // CLEAR TAGS BEFORE DELETE (Surgical cleanup to avoid DB locks)
     await clearLeadTagsOnEvent(conversationId)
@@ -70,7 +77,24 @@ export async function deleteConversation(conversationId: string) {
         return { success: false, error: "Could not delete conversation. Permission denied or already deleted." }
     }
 
+    // 2. Orphaned Lead Cleanup
+    if (deleteLeadIfOrphaned && conv?.lead_id) {
+        // Check if there are other conversations for this lead
+        const { data: otherConvs } = await supabase
+            .from('conversations')
+            .select('id')
+            .eq('lead_id', conv.lead_id)
+            .limit(1)
+
+        if (!otherConvs || otherConvs.length === 0) {
+            // No other conversations remain, delete lead from CRM
+            const { deleteLeads } = await import("@/modules/core/crm/lead-management-actions")
+            await deleteLeads([conv.lead_id])
+        }
+    }
+
     revalidatePath('/inbox')
+    revalidatePath('/crm')
     return { success: true }
 }
 

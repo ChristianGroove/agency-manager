@@ -10,7 +10,13 @@ export function DroppableStage({ id, children }: { id: string; children: React.R
     })
 
     return (
-        <div ref={setNodeRef} className={cn("flex-1 flex flex-col min-h-0 max-h-full transition-colors", isOver && "bg-slate-50/50 dark:bg-slate-900/20")}>
+        <div 
+            ref={setNodeRef} 
+            className={cn(
+                "flex-1 flex flex-col min-h-0 h-full transition-colors", 
+                isOver && "bg-slate-50/50 dark:bg-slate-900/20"
+            )}
+        >
             {children}
         </div>
     )

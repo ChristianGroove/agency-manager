@@ -1,4 +1,4 @@
-﻿# 📕 PIXY PRODUCT BIBLE - MASTER EDITION
+# 📕 PIXY PRODUCT BIBLE - MASTER EDITION
 **Ecosistema Universal de Gestión Empresarial: Especificación Completa y Definitiva**
 
 > **Fuente de Verdad Única**: Este documento fusiona todas las versiones previas de la documentación de Pixy sin omitir un solo detalle técnico o funcional. Es la referencia absoluta para cualquier desarrollo, integración o decisión estratégica del producto.
@@ -444,6 +444,17 @@ Esta capa constituye el motor de ventas y dinero que comparten TODOS los Spaces 
 - **Dashboard KPI**: El sistema calcula automáticamente el valor total de deals en cada etapa.
 - **Forecasting**: Multiplicar el valor por la probabilidad promedio de la etapa da el ingreso proyectado.
 
+#### 4. Salud del Lead (Lead Scoring & Decay)
+Pixy implementa un motor de calificación inteligente para priorizar la atención comercial:
+- **Cálculo de Score**: Basado en completitud de perfil (email, tel, empresa) y engagement (mensajes, tareas).
+- **Penalización por Inactividad (Decay)**: Los leads "se enfrían" automáticamente. Si no hay actividad en >30 días, el score decrece diariamente, alertando al administrador sobre leads estancados.
+- **Historial de Calificación**: Columna `last_scored_at` para auditar cuándo se actualizó el valor por última vez.
+
+#### 5. Gestión de Datos y Purga (CRM Lifecycle)
+Para garantizar la escalabilidad y limpieza de la base de datos:
+- **Purga Inteligente**: Herramienta administrativa para eliminar masivamente leads "fríos" (inactivos o con bajo score) protegiendo siempre a los clientes convertidos.
+- **Exportación de Marketing**: Motor `exportLeadsToCSV` optimizado para exportar hasta 10,000 leads con formato compatible para campañas de marketing masivo y visualización correcta en Excel (UTF-8 BOM + Delimitador `;`).
+
 ### C. CRM Inbox (Centro de Mando Omnicanal)
 
 El Inbox no es solo un chat; es una consola de ventas de alta velocidad que centraliza TODAS las conversaciones de la organización.
@@ -460,6 +471,7 @@ El Inbox no es solo un chat; es una consola de ventas de alta velocidad que cent
     - Facebook Messenger.
     - Email (próximamente).
 - **Conversación Unificada**: Todas las interacciones con un mismo cliente, sin importar el canal, se unifican en un solo thread.
+- **Limpieza Integrada**: Al eliminar una conversación, el sistema permite limpiar opcionalmente el lead asociado si este no tiene otras interacciones activas, optimizando el almacenamiento.
 
 #### 3. AI-Powered Inbox
 

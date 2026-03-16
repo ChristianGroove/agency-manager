@@ -75,6 +75,7 @@ export type Service = {
 export type Lead = {
     id: string
     created_at: string
+    updated_at?: string
     user_id: string
     organization_id: string
     name: string

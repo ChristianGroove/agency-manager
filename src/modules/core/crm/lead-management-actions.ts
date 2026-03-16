@@ -61,20 +61,20 @@ export async function deleteLeadsByPipeline(pipelineId: string) {
     // For now, assuming subquery via join is safest.
 
     const { data: stages } = await supabase
-        .from('crm_stages')
-        .select('id')
+        .from('pipeline_stages')
+        .select('status_key')
         .eq('pipeline_id', pipelineId)
         .eq('organization_id', orgId)
 
     if (!stages?.length) return { success: false, error: "No stages found for pipeline" }
 
-    const stageIds = stages.map(s => s.id)
+    const statusKeys = stages.map(s => s.status_key)
 
     const { error } = await supabase
         .from('leads')
         .delete()
         .eq('organization_id', orgId)
-        .in('stage_id', stageIds)
+        .in('status', statusKeys)
 
     if (error) {
         return { success: false, error: error.message }

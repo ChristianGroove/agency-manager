@@ -98,10 +98,11 @@ export function ConversationActionsMenu({
                     <DropdownMenuItem
                         className="text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-900/20"
                         onClick={() => {
-                            if (window.confirm("¿Estás seguro de que quieres eliminar esta conversación? Esta acción no se puede deshacer.")) {
+                            if (window.confirm("¿Estás seguro de que quieres eliminar esta conversación?")) {
+                                const deleteLead = window.confirm("¿Deseas eliminar también al Lead si no tiene otras conversaciones activas?")
                                 handleAction(
-                                    () => deleteConversation(conversationId),
-                                    "Conversación eliminada"
+                                    () => deleteConversation(conversationId, deleteLead),
+                                    deleteLead ? "Conversación y Lead eliminados" : "Conversación eliminada"
                                 )
                             }
                         }}

@@ -81,6 +81,15 @@ export async function calculateLeadScore(leadId: string): Promise<{
         const daysSinceUpdate = (new Date().getTime() - new Date(lastUpdate).getTime()) / (1000 * 3600 * 24);
         if (daysSinceUpdate < 7) engagementScore += 10;
         else if (daysSinceUpdate < 30) engagementScore += 5;
+        
+        // --- PHASE 4: Inactivity Penalty (Cold Lead Decay) ---
+        if (daysSinceUpdate > 30) {
+            const penaltyWeeks = Math.floor((daysSinceUpdate - 30) / 7);
+            const penalty = penaltyWeeks * 5; // -5 points per week of inactivity after 30 days
+            const finalPenalty = Math.min(40, penalty); // Max penalty 40 points
+            score -= finalPenalty;
+            breakdown.inactivity_penalty = -finalPenalty;
+        }
     }
 
     engagementScore = Math.min(45, engagementScore);

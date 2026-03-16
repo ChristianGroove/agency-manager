@@ -13,7 +13,7 @@ import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { TagsManagerSheet } from "./tags/tags-manager-sheet"
-import { Plus, Users, XCircle, Settings, Trophy, BarChart3, Upload, TrendingUp, CheckCircle2, ZoomIn, ZoomOut, Mail, Tag, Wrench, Database, Kanban, MessageSquare } from "lucide-react"
+import { Plus, Users, XCircle, Settings, Trophy, BarChart3, Upload, TrendingUp, CheckCircle2, ZoomIn, ZoomOut, Mail, Tag, Wrench, Database, Kanban, MessageSquare, AlertTriangle, PlusCircle } from "lucide-react"
 import { SectionHeader } from "@/components/layout/section-header"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -186,7 +186,7 @@ export function CRMDashboard({
 
         const res = await convertLeadToClient(leadId)
         if (res.success) {
-            toast.success("Lead convertido a cliente exitosamente")
+            toast.success("Lead convertido a contacto exitosamente")
             loadData()
             router.push('/clients')
         } else {
@@ -359,9 +359,9 @@ export function CRMDashboard({
             onDragStart={handleDragStart}
             onDragEnd={onDragEnd}
         >
-            <div className="h-full flex flex-col max-h-full">
-                {/* Compact Header */}
-                <div className="shrink-0 mb-6 space-y-6">
+        <div className="h-[calc(100vh-2rem)] flex flex-col overflow-hidden">
+            {/* Compact Header - Fixed height/shrink-0 */}
+            <div className="shrink-0 mb-4 space-y-4">
                     {/* Standardized Header */}
                     <SectionHeader
                         title="Pipeline"
@@ -468,10 +468,10 @@ export function CRMDashboard({
                     />
                 </div>
 
-                {/* Kanban Board - Takes Full Height */}
-                <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-                    {/* Columns Container - Horizontal Scroll, Columns Fill Height */}
-                    <div className="flex-1 flex overflow-x-auto scrollbar-modern gap-3 px-1 pb-2 h-full">
+                {/* Kanban Board - THE CORE CONTAINER - Flex-1 fill remaining space */}
+                <div className="flex-1 min-h-0 w-full overflow-hidden">
+                    {/* Columns Horizontal Container - h-full items-stretch */}
+                    <div className="h-full flex overflow-x-auto scrollbar-modern gap-3 px-1 pb-4 items-stretch">
                         {stages.map((stage, index) => {
                             const isFirstStage = index === 0
                             const stageLeads = getLeadsByStage(stage.status_key, isFirstStage)
@@ -485,7 +485,7 @@ export function CRMDashboard({
                                     strategy={verticalListSortingStrategy}
                                 >
                                     <div
-                                        className="flex flex-col shrink-0 h-full max-h-full transition-all duration-300 ease-out"
+                                        className="flex flex-col shrink-0 h-full min-h-0 transition-all duration-300 ease-out"
                                         style={{
                                             width: `${columnWidth}px`,
                                             minWidth: `${columnWidth}px`,
@@ -497,9 +497,17 @@ export function CRMDashboard({
                                             <h3 className="font-medium text-xs text-muted-foreground uppercase tracking-wide truncate">
                                                 {stage.name}
                                             </h3>
-                                            <Badge variant="secondary" className="ml-auto h-4 px-1 text-[10px] shrink-0">
-                                                {stageLeads.length}
-                                            </Badge>
+                                            <div className="ml-auto flex items-center gap-1">
+                                                {stageLeads.length > 20 && !stage.is_final && (
+                                                    <div className="flex items-center text-[10px] text-red-500 font-bold animate-pulse" title="Cuello de botella detectado">
+                                                        <AlertTriangle className="h-3 w-3 mr-0.5" />
+                                                        {stageLeads.length}
+                                                    </div>
+                                                )}
+                                                <Badge variant="secondary" className="h-4 px-1 text-[10px] shrink-0">
+                                                    {stageLeads.length}
+                                                </Badge>
+                                            </div>
                                         </div>
 
                                         {/* Droppable Column - Flex-1 to fill remaining height with internal scroll */}
@@ -508,8 +516,9 @@ export function CRMDashboard({
                                                 className="flex-1 flex flex-col gap-1.5 p-1.5 bg-slate-100/60 dark:bg-white/5 rounded-lg border border-slate-200/30 dark:border-white/5 overflow-y-auto scrollbar-modern backdrop-blur-sm"
                                             >
                                                 {stageLeads.length === 0 ? (
-                                                    <div className="flex-1 flex items-center justify-center text-muted-foreground text-xs py-6">
-                                                        Arrastra aquí
+                                                    <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground/40 text-[10px] p-6 border-2 border-dashed border-slate-200/50 dark:border-white/5 rounded-xl m-1">
+                                                        <PlusCircle className="h-4 w-4 mb-1 opacity-20" />
+                                                        Sin leads
                                                     </div>
                                                 ) : (
                                                     stageLeads.map((lead) => (
