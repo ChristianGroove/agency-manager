@@ -222,9 +222,14 @@ export function CRMDashboard({
     }, [])
 
     const handleMessageLead = useCallback((lead: Lead) => {
-        setComLead(lead)
-        setComModalOpen(true)
-    }, [])
+        // Redirect to inbox instead of opening modal
+        const contactParam = lead.phone || lead.email
+        if (contactParam) {
+            router.push(`/crm/inbox?contact=${encodeURIComponent(contactParam)}`)
+        } else {
+            router.push(`/crm/inbox?leadId=${lead.id}`)
+        }
+    }, [router])
 
     const handleQuoteLead = useCallback((lead: Lead) => {
         // Open quote builder sheet pre-filled with lead info

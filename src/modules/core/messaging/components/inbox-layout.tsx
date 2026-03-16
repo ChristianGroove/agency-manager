@@ -11,6 +11,8 @@ import { ConversationDropZones } from "./conversation-drop-zones"
 import { updateConversationState } from "../conversation-management-actions"
 import { toast } from "sonner"
 import { useTranslation } from "@/lib/i18n/use-translation"
+import { useSearchParams, useRouter } from "next/navigation"
+import { createConversation } from "../conversation-management-actions"
 
 interface InboxLayoutProps {
     initialConversationId?: string | null
@@ -29,6 +31,44 @@ export function InboxLayout({ initialConversationId }: InboxLayoutProps) {
             },
         })
     )
+
+    const searchParams = useSearchParams()
+    const router = useRouter()
+    const initializedRef = React.useRef(false)
+
+    // Handle Auto-Navigation/Auto-Start from Query Params
+    React.useEffect(() => {
+        const contact = searchParams.get('contact')
+        const leadId = searchParams.get('leadId')
+
+        if ((contact || leadId) && !initializedRef.current) {
+            initializedRef.current = true
+
+            const autoStartChat = async () => {
+                const payload: any = {}
+                if (leadId) payload.lead_id = leadId
+                if (contact) {
+                    if (contact.includes('@')) payload.email = contact
+                    else payload.phone = contact
+                }
+
+                try {
+                    const result = await createConversation(payload)
+                    if (result.success && result.data) {
+                        setSelectedConversationId(result.data.id)
+                        // Clean up URL to prevent re-triggering on manual refresh if desired,
+                        // or keep it for deep linking. Let's clean it up to keep it tidy.
+                        const newUrl = window.location.pathname
+                        router.replace(newUrl)
+                    }
+                } catch (error) {
+                    console.error("Auto-start chat failed", error)
+                }
+            }
+
+            autoStartChat()
+        }
+    }, [searchParams, router])
 
     const handleDragStart = (event: DragStartEvent) => {
         setActiveDragId(event.active.id as string)

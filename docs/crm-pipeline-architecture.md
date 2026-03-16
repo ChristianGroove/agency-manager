@@ -45,6 +45,9 @@ Para manejar miles de leads sin degradar la UI, el sistema utiliza un modelo hí
 ### Virtualización de UI
 - Implementado mediante `react-virtuoso` en la `LeadManagementSheet` para renderizar solo los elementos visibles en el viewport.
 
-## 4. Integración con el Ecosistema
-- **Inbox-to-CRM Cleanup**: Al eliminar conversaciones en el Inbox, el sistema ofrece limpiar dinámicamente el lead asociado para liberar espacio de almacenamiento.
-- **Process Engine Sync**: Cada movimiento de etapa en el pipeline está validado y sincronizado con el motor de procesos (`process-engine`) mediante `validatePipelineMove`.
+## 5. Integración de Mensajería
+Para asegurar una experiencia fluida, el CRM redirige las acciones de "Enviar Mensaje" directamente al Inbox:
+- **Origen**: Dashboard (`LeadCard`), Inspector o Detail Modal.
+- **Parámetros**: Se utilizan `contact` (teléfono/email) o `leadId` como parámetros de consulta.
+- **Inbox Logic**: El `InboxLayout` detecta estos parámetros y utiliza la acción `createConversation` para abrir un chat existente o iniciar uno nuevo automáticamente.
+- **Ruta Única**: Todas las interacciones de chat ocurren en `/crm/inbox`.

@@ -206,7 +206,13 @@ export function LeadDetailModal({ leadId, open, onClose, onUpdate }: LeadDetailM
                                     <Button
                                         variant="ghost"
                                         size="sm"
-                                        onClick={() => window.open(`/dashboard/inbox?leadId=${lead.id}`, '_self')}
+                                        onClick={() => {
+                                            const contactParam = lead.phone || lead.email
+                                            const query = contactParam 
+                                                ? `contact=${encodeURIComponent(contactParam)}`
+                                                : `leadId=${lead.id}`
+                                            window.open(`/crm/inbox?${query}`, '_self')
+                                        }}
                                     >
                                         <MessageSquare className="h-4 w-4 mr-2" />
                                         Enviar Mensaje

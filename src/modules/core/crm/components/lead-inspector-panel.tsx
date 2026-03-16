@@ -139,7 +139,7 @@ function LeadActionBar({ lead }: { lead: LeadWithRelations }) {
     return (
         <div className="flex flex-wrap gap-2 px-6 py-3 border-b bg-slate-50/50 dark:bg-slate-900/20">
             <Button variant="outline" size="sm" className="h-9 text-xs flex-1 min-w-[100px]" asChild>
-                <Link href={`/crm/inbox?contact=${lead.phone || lead.email}`}>
+                <Link href={`/crm/inbox?${(lead.phone || lead.email) ? `contact=${encodeURIComponent(lead.phone || lead.email || '')}` : `leadId=${lead.id}`}`}>
                     <MessageSquare className="h-3.5 w-3.5 mr-1.5 text-blue-500" />
                     Mensaje
                 </Link>
