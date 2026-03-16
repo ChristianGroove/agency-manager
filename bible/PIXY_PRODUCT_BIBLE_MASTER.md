@@ -472,6 +472,7 @@ El Inbox no es solo un chat; es una consola de ventas de alta velocidad que cent
     - Email (próximamente).
 - **Conversación Unificada**: Todas las interacciones con un mismo cliente, sin importar el canal, se unifican en un solo thread.
 - **Limpieza Integrada**: Al eliminar una conversación, el sistema permite limpiar opcionalmente el lead asociado si este no tiene otras interacciones activas, optimizando el almacenamiento.
+- **Navegación Nativa CRM-Inbox**: Las acciones de envío de mensaje en el Pipeline, Inspector y Detalles de Lead redirigen automáticamente al Inbox centralizado. El Inbox resuelve dinámicamente el `contact` o `leadId` para abrir o crear el chat correspondiente de forma transparente.
 
 #### 3. AI-Powered Inbox
 
