@@ -65,13 +65,17 @@ export async function getSaaSProducts() {
  * Fetch available Apps (Verticals) for Onboarding.
  * Fetches from saas_products which is the table linked by active_app_id.
  */
+/**
+ * Obtiene las aplicaciones (Espacios) disponibles para el Onboarding.
+ * Sincronizado con metadatos del SaaS Engine (Iconos, Colores).
+ */
 export async function getAvailableApps() {
     const supabase = await createClient()
     const { data, error } = await supabase
         .from("saas_apps")
-        .select("id, name, slug, description, price_monthly")
-        .eq('is_active', true) // 'status' might not exist on saas_apps, migration says 'is_active'
-        .order("sort_order", { ascending: true }) // Use sort_order for better control
+        .select("id, name, slug, description, price_monthly, icon, color")
+        .eq('is_active', true) 
+        .order("sort_order", { ascending: true })
 
     if (error) {
         console.error("Error fetching available apps:", error)

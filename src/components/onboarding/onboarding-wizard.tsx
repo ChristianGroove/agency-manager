@@ -58,10 +58,9 @@ export function OnboardingWizard() {
                 const data = await getAvailableApps()
                 setApps(data || [])
                 // Pre-select Agency
-                const marketingApp = data?.find((a: any) => a.id === 'app_marketing_starter')
-                if (marketingApp) {
-                    setFormData(prev => ({ ...prev, app_id: marketingApp.id }))
-                } else if (data && data.length > 0) {
+                setApps(data || [])
+                // Pre-select first available app
+                if (data && data.length > 0) {
                     setFormData(prev => ({ ...prev, app_id: data[0].id }))
                 }
             } catch (e) {
