@@ -44,12 +44,12 @@ export async function generateMetadata(): Promise<Metadata> {
 import { TrashBinModal } from "@/modules/core/trash/trash-bin-modal";
 import { Toaster } from "sonner";
 
+import { AuthRefresher } from "@/components/providers/auth-refresher";
+import StyledJsxRegistry from "@/components/providers/styled-jsx-registry";
 import { BrandingProvider } from "@/components/providers/branding-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
-
 import { ViewContextProvider } from "@/modules/core/caa/context/view-context";
 import { ClientInit } from "@/modules/core/caa/client-init";
-import StyledJsxRegistry from "@/components/providers/styled-jsx-registry";
 
 export default async function RootLayout({
   children,
@@ -67,6 +67,7 @@ export default async function RootLayout({
         suppressHydrationWarning
       >
         <StyledJsxRegistry>
+          <AuthRefresher />
           <BrandingProvider initialBranding={branding}>
             <ThemeProvider
               attribute="class"
