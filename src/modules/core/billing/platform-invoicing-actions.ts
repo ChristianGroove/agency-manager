@@ -346,52 +346,54 @@ export async function manualActivateSubscription(organizationId: string, options
         return { success: false, error: "No se encontró la organización especificada." }
     }
 
-    // 3. INTEGRITY GUARANTEE: Validate or Find a valid Plan ID
-    let finalPlanId: string | null = null;
+    // 3. INTEGRITY GUARANTEE & DIALECT DETECTION
+    let finalProduct: { id: string, slug: string } | null = null;
     
-    // Check if the current plan_id in the org is actually valid
-    if (org.subscription_product_id) {
-        const { data: existingPlan } = await supabaseAdmin
-            .from('saas_products')
-            .select('id')
-            .eq('id', org.subscription_product_id)
-            .maybeSingle();
-        
-        if (existingPlan) {
-            finalPlanId = existingPlan.id;
-        }
-    }
+    // 3a. Find the product (using current org link or fallback)
+    const productRef = org.subscription_product_id;
+    const { data: foundProduct } = await supabaseAdmin
+        .from('saas_products')
+        .select('id, slug')
+        .or(`id.eq.${productRef || '00000000-0000-0000-0000-000000000000'},slug.eq.${productRef || 'none'}`)
+        .maybeSingle();
 
-    // If still no valid plan, find ANY active/available plan as fallback
-    if (!finalPlanId) {
-        console.warn(`[REPAIR] No valid plan for Org ${organizationId}. Searching fallback...`);
+    if (foundProduct) {
+        finalProduct = foundProduct;
+    } else {
+        // Fallback to ANY active product
         const { data: fallback } = await supabaseAdmin
             .from('saas_products')
-            .select('id')
-            .order('status', { ascending: false }) // Prioritize published
+            .select('id, slug')
+            .order('status', { ascending: false })
             .limit(1)
             .maybeSingle();
-        
-        finalPlanId = fallback?.id || null;
-
-        // Auto-Heal: Update organization record to be consistent
-        if (finalPlanId) {
-            await supabaseAdmin
-                .from('organizations')
-                .update({ subscription_product_id: finalPlanId })
-                .eq('id', organizationId);
-        }
+        finalProduct = fallback;
     }
 
-    // 4. Critical Infrastructure Exit
-    if (!finalPlanId) {
+    if (!finalProduct) {
         return { 
             success: false, 
-            error: "INFRAESTRUCTURA INCOMPLETA: La tabla 'saas_products' está vacía. Debes crear al menos un producto en el sistema (Migración Baseline V3.0) antes de activar suscripciones." 
+            error: "INFRAESTRUCTURA INCOMPLETA: No hay productos en 'saas_products'. Por favor, crea un producto primero." 
         }
     }
 
-    // 5. Determine Expiry
+    // 3b. DETECT DIALECT (Does saas_subscriptions expect UUID or Slug?)
+    // We check a sample to avoid failing the FK constraint
+    let dialect: 'uuid' | 'slug' = 'uuid';
+    const { data: sampleSub } = await supabaseAdmin
+        .from('saas_subscriptions')
+        .select('plan_id')
+        .limit(1)
+        .maybeSingle();
+    
+    if (sampleSub && sampleSub.plan_id) {
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sampleSub.plan_id);
+        dialect = isUuid ? 'uuid' : 'slug';
+    }
+
+    const planValueForInsert = dialect === 'uuid' ? finalProduct.id : finalProduct.slug;
+
+    // 4. Determine Expiry
     let expiryStr: string;
     if (options?.expiryDate) {
         expiryStr = new Date(options.expiryDate).toISOString();
@@ -401,14 +403,14 @@ export async function manualActivateSubscription(organizationId: string, options
         expiryStr = d.toISOString();
     }
 
-    // 6. DB Sync (Atomic Updates via Admin)
+    // 5. DB Sync (Atomic Updates via Admin)
     try {
-        // 6a. Update/Create Subscription record
+        // 5a. Upsert Subscription with DIALECT AWARE value
         const { error: subError } = await supabaseAdmin
             .from('saas_subscriptions')
             .upsert({
                 organization_id: organizationId,
-                plan_id: finalPlanId,
+                plan_id: planValueForInsert,
                 status: 'active',
                 current_period_end: expiryStr,
                 billing_method: 'MANUAL',
@@ -417,26 +419,31 @@ export async function manualActivateSubscription(organizationId: string, options
 
         if (subError) throw subError;
 
-        // 6b. Update Organization Status Overlay
-        const { error: orgUpdateError } = await supabaseAdmin
-            .from('organizations')
-            .update({
-                subscription_status: 'active'
-            })
-            .eq('id', organizationId);
+        // 5b. Auto-Heal Organization link if it was missing/invalid
+        if (org.subscription_product_id !== finalProduct.id) {
+            await supabaseAdmin
+                .from('organizations')
+                .update({ subscription_product_id: finalProduct.id })
+                .eq('id', organizationId);
+        }
 
-        if (orgUpdateError) throw orgUpdateError;
+        // 5c. Update Status Overlay
+        await supabaseAdmin
+            .from('organizations')
+            .update({ subscription_status: 'active' })
+            .eq('id', organizationId);
 
         return { 
             success: true, 
-            newExpiry: expiryStr 
+            newExpiry: expiryStr,
+            debug: { dialect, planUsed: planValueForInsert }
         };
 
     } catch (dbError: any) {
         console.error("Critical DB Activation Failure:", dbError);
         return { 
             success: false, 
-            error: `Fallo sistémico en base de datos: ${dbError.message} [PlanID: ${finalPlanId}]` 
+            error: `Fallo sistémico en base de datos: ${dbError.message} [Dialecto: ${dialect}, Valor: ${planValueForInsert}]` 
         };
     }
 }
