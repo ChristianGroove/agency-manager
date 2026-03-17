@@ -13,6 +13,7 @@ import { updateRole } from '../actions'; // Server action
 import { toast } from 'sonner';
 import { Save, AlertCircle, CheckCircle2, Shield } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { useActiveModules } from '@/hooks/use-active-modules';
 
 interface RoleEditorProps {
     role: Role;
@@ -59,7 +60,10 @@ export function RoleEditor({ role, onUpdate }: RoleEditorProps) {
     };
 
     // Calculate stats
-    const totalPermissions = PERMISSION_GROUPS.reduce((acc, g) => acc + g.permissions.length, 0);
+    const { modules: activeModules } = useActiveModules();
+    const visibleGroups = PERMISSION_GROUPS.filter(g => !g.moduleKey || activeModules.includes(g.moduleKey));
+
+    const totalPermissions = visibleGroups.reduce((acc, g) => acc + g.permissions.length, 0);
     const enabledCount = Object.values(permissions).filter(Boolean).length;
 
     return (
@@ -94,11 +98,11 @@ export function RoleEditor({ role, onUpdate }: RoleEditorProps) {
 
                 <Button onClick={handleSave} disabled={!isDirty || isSaving}>
                     {isSaving ? (
-                        <span className="flex items-center">Saving...</span>
+                        <span className="flex items-center">Guardando...</span>
                     ) : (
                         <span className="flex items-center">
                             <Save className="h-4 w-4 mr-2" />
-                            Save Changes
+                            Guardar Cambios
                         </span>
                     )}
                 </Button>
@@ -115,21 +119,21 @@ export function RoleEditor({ role, onUpdate }: RoleEditorProps) {
                                 <Shield className="h-5 w-5" />
                             </div>
                             <div>
-                                <h3 className="font-medium text-sm">Access Control</h3>
-                                <p className="text-xs text-muted-foreground">{enabledCount} of {totalPermissions} permissions enabled</p>
+                                <h3 className="font-medium text-sm">Control de Acceso</h3>
+                                <p className="text-xs text-muted-foreground">{enabledCount} de {totalPermissions} permisos activados</p>
                             </div>
                         </div>
                         {role.permissions['all'] === true && (
                             <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 border-amber-200">
                                 <AlertCircle className="h-3 w-3 mr-1" />
-                                Full Admin Access
+                                Acceso Total Administrador
                             </Badge>
                         )}
                     </div>
 
                     {/* Permission Groups */}
                     <Accordion type="single" collapsible defaultValue="crm" className="w-full space-y-4">
-                        {PERMISSION_GROUPS.map((group) => {
+                        {visibleGroups.map((group) => {
                             // Check count for badge
                             const groupEnabledCount = group.permissions.filter(p => permissions[p.id]).length;
                             const isFull = groupEnabledCount === group.permissions.length;
@@ -145,10 +149,10 @@ export function RoleEditor({ role, onUpdate }: RoleEditorProps) {
                                             <div className="mr-4">
                                                 {isFull ? (
                                                     <Badge variant="outline" className="bg-green-50 text-green-600 border-green-200 gap-1">
-                                                        <CheckCircle2 className="h-3 w-3" /> All
+                                                        <CheckCircle2 className="h-3 w-3" /> Todos
                                                     </Badge>
                                                 ) : groupEnabledCount > 0 && (
-                                                    <Badge variant="secondary">{groupEnabledCount} enabled</Badge>
+                                                    <Badge variant="secondary">{groupEnabledCount} activados</Badge>
                                                 )}
                                             </div>
                                         </div>

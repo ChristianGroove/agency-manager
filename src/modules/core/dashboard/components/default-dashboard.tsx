@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation"
 interface DefaultDashboardProps {
     dashboardData: any
     extraData: any
+    userRole?: string | null
     onReload: () => void
 }
 
@@ -21,7 +22,7 @@ interface DefaultDashboardProps {
  * - 3 Blank Insight Magic Cards
  * - Quick Actions: Create Contact, Inbox
  */
-export function DefaultDashboard({ dashboardData, extraData, onReload }: DefaultDashboardProps) {
+export function DefaultDashboard({ dashboardData, extraData, userRole: initialRole, onReload }: DefaultDashboardProps) {
     const { t } = useTranslation()
     const router = useRouter()
     const [isClientModalOpen, setIsClientModalOpen] = useState(false)
@@ -73,7 +74,7 @@ export function DefaultDashboard({ dashboardData, extraData, onReload }: Default
 
     return (
         <>
-            <ModularDashboardLayout data={data} />
+            <ModularDashboardLayout data={data} userRole={initialRole} />
             <CreateClientSheet 
                 open={isClientModalOpen} 
                 onOpenChange={setIsClientModalOpen} 

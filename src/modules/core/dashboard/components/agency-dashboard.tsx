@@ -17,10 +17,11 @@ import { CreateFormSheet } from "@/modules/core/forms/create-form-sheet"
 interface AgencyDashboardProps {
     dashboardData: any
     extraData: any
+    userRole?: string | null
     onReload: () => void
 }
 
-export function AgencyDashboard({ dashboardData: dashboardRes, extraData, onReload }: AgencyDashboardProps) {
+export function AgencyDashboard({ dashboardData: dashboardRes, extraData, userRole: initialRole, onReload }: AgencyDashboardProps) {
     const { t, tArray } = useTranslation()
 
     // Modals internal state
@@ -155,7 +156,7 @@ export function AgencyDashboard({ dashboardData: dashboardRes, extraData, onRelo
 
     return (
         <>
-            <ModularDashboardLayout data={data} />
+            <ModularDashboardLayout data={data} userRole={initialRole} />
             <CreateClientSheet open={isClientModalOpen} onOpenChange={setIsClientModalOpen} trigger={<span className="hidden" />} onSuccess={() => { setIsClientModalOpen(false); onReload() }} />
             <CreateQuoteSheet open={isQuoteModalOpen} onOpenChange={setIsQuoteModalOpen} trigger={<span className="hidden" />} onSuccess={() => { setIsQuoteModalOpen(false); onReload() }} />
             <CreateFormSheet open={isBriefingModalOpen} onOpenChange={setIsBriefingModalOpen} onSuccess={() => setIsBriefingModalOpen(false)} />

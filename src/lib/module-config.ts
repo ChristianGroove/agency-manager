@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Module Configuration
  * Central mapping of modules to routes and metadata
  */
@@ -48,6 +48,7 @@ export interface ModuleRoute {
         allowedSpaces?: string[] // e.g. ['agency', 'medical']
         excludedSpaces?: string[]
         requiredCapabilities?: string[] // New: e.g. ['CAN_MANAGE_CLIENTS']
+        requiredPermission?: string // NEW: IAM V2 granular permission string (e.g. 'crm.leads.view')
     }
     parentModule?: string // NEW: Maps this UI route to the actual System Module key in Database (e.g. 'core_crm', 'module_messaging')
 }
@@ -82,7 +83,10 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         href: '/crm/contacts',
         icon: UserSquare,
         category: 'crm',
-        parentModule: 'core_clients'
+        parentModule: 'core_clients',
+        access: {
+            requiredPermission: 'crm.leads.view'
+        }
     },
     {
         key: 'crm_pipeline',
@@ -90,7 +94,10 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         href: '/crm/pipeline',
         icon: Kanban,
         category: 'crm',
-        parentModule: 'core_crm'
+        parentModule: 'core_crm',
+        access: {
+            requiredPermission: 'crm.leads.view'
+        }
     },
     {
         key: 'crm_broadcasts',
@@ -100,7 +107,7 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         category: 'crm',
         parentModule: 'core_crm',
         access: {
-            allowedRoles: ['owner', 'admin']
+            requiredPermission: 'crm.leads.edit'
         }
     },
     {
@@ -111,7 +118,7 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         category: 'crm',
         parentModule: 'module_automation',
         access: {
-            allowedRoles: ['owner', 'admin']
+            requiredPermission: 'automation.workflows.view'
         }
     },
     {
@@ -146,8 +153,12 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         label: 'Sedes',
         href: '/platform/locations',
         icon: Store,
+        isCore: true,
         category: 'operations',
-        parentModule: 'core_locations'
+        parentModule: 'core_locations',
+        access: {
+            requiredPermission: 'operations.locations.view'
+        }
     },
     {
         key: 'module_attendance',
@@ -155,15 +166,51 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         href: '/attendance',
         icon: ScanFace,
         category: 'operations',
-        parentModule: 'module_attendance'
+        parentModule: 'module_attendance',
+        access: {
+            requiredPermission: 'operations.attendance.view'
+        }
+    },
+    {
+        key: 'module_resto_tables',
+        label: 'Mesas',
+        href: '/resto-tables',
+        icon: Grid,
+        category: 'operations',
+        parentModule: 'module_resto_tables',
+        access: {
+            requiredPermission: 'operations.resto.view'
+        }
     },
     {
         key: 'pixy_flows',
         label: 'Pixy Flows',
         href: '/flows',
-        icon: BrainCircuit, // Usando BrainCircuit para denotar "Cerebro/IA"
+        icon: BrainCircuit,
         category: 'operations',
         parentModule: 'module_automation',
+        access: {
+            allowedRoles: ['owner', 'admin']
+        }
+    },
+    {
+        key: 'meta_insights',
+        label: 'Meta Insights',
+        href: '/crm/marketing?tab=insights', // Use query param to keep it in the same page but distinct
+        icon: BarChart3,
+        category: 'crm',
+        parentModule: 'meta_insights',
+        access: {
+            allowedRoles: ['owner', 'admin']
+        }
+    },
+    {
+        key: 'module_whitelabel',
+        label: 'Marca Blanca',
+        href: '/platform/branding',
+        icon: Sparkles,
+        category: 'config',
+        parentModule: 'module_whitelabel',
         access: {
             allowedRoles: ['owner', 'admin']
         }
@@ -384,43 +431,64 @@ export function filterRoutesByModules(
     vertical?: string,
     capabilities: Record<string, boolean> = {}
 ): ModuleRoute[] {
+    const normalizedRole = userRole?.toLowerCase()
+    const isOwner = normalizedRole === 'owner' || 
+                   normalizedRole === 'dueño' || 
+                   capabilities['all'] === true
+
     return MODULE_ROUTES.filter(route => {
-        // 1. Access Control (Role & Org Type & Space & Capabilities)
-        if (route.access) {
-            // Check Org Type exclusion
-            if (orgType && route.access.excludedOrgTypes?.includes(orgType)) return false
-            // Check Org Type inclusion (strict)
-            if (orgType && route.access.allowedOrgTypes && !route.access.allowedOrgTypes.includes(orgType)) return false
+        const { access, isCore, key, parentModule } = route
 
-            // Check Space/Limit exclusion (Legacy Vertical Logic)
-            if (vertical && route.access.excludedSpaces?.includes(vertical)) return false
-            if (vertical && route.access.allowedSpaces && !route.access.allowedSpaces.includes(vertical)) return false
+        // 1. NUCLEAR BLOCKERS (Org Type restrictions)
+        if (orgType && access?.excludedOrgTypes?.includes(orgType)) return false
+        if (key === 'reseller_tenants' && orgType === 'client') return false
 
-            // Check Required Capabilities (New V2 Logic)
-            if (route.access.requiredCapabilities) {
-                const hasAllRequired = route.access.requiredCapabilities.every((cap: string) => capabilities[cap] === true)
-                if (!hasAllRequired) return false
+        // 2. CORE & DASHBOARD LOGIC
+        // Core modules and dashboard are infrastructure and should be visible if access allows
+        if (isCore || key === 'dashboard') {
+            if (!access) return true
+            if (isOwner) return true
+
+            // Role check for non-owners
+            if (access.allowedRoles && normalizedRole) {
+                const allowedNormalized = access.allowedRoles.map(r => r.toLowerCase())
+                if (allowedNormalized.includes(normalizedRole)) return true
+            }
+            
+            // Permission check (IAM V2)
+            if (access.requiredPermission && capabilities[access.requiredPermission] === true) {
+                return true
             }
 
-            // Check User Role (if userRole provided)
-            if (route.access.allowedRoles && userRole) {
-                if (!route.access.allowedRoles.includes(userRole)) return false
-            } else if (route.access.allowedRoles && !userRole) {
-                // If role required but unknown, hide it for safety
-                return false
-            }
+            // If it's core but we have a role/perm restriction and we didn't pass, hide it
+            if (access.allowedRoles || access.requiredPermission) return false
+            
+            return true
         }
 
-        // 2. Dashboard and explicit Core configs are always true
-        if (route.isCore) return true
+        // 3. VERTICAL MODULES LOGIC (Requires subscription)
+        const checkKey = parentModule || key
+        const isSubscribed = activeModules.includes(checkKey)
+        
+        // If not subscribed, it's hidden regardless of who you are
+        if (!isSubscribed) return false
 
-        // 3. Evaluate Module subscription using strict parentModule mapping or direct key
-        const checkKey = route.parentModule || route.key
+        // If subscribed, check if we have access
+        if (!access) return true
+        if (isOwner) return true
 
-        // NUCLEAR OPTION: Explicitly block reseller_tenants for clients, bypassing any other logic fallthrough
-        if (route.key === 'reseller_tenants' && orgType === 'client') return false
+        // Role check for non-owners
+        if (access.allowedRoles && normalizedRole) {
+            const allowedNormalized = access.allowedRoles.map(r => r.toLowerCase())
+            if (allowedNormalized.includes(normalizedRole)) return true
+        }
 
-        return activeModules.includes(checkKey)
+        // Permission check (IAM V2)
+        if (access.requiredPermission && capabilities[access.requiredPermission] === true) {
+            return true
+        }
+
+        return false
     })
 }
 

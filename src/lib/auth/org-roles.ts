@@ -17,8 +17,8 @@ const ROLE_HIERARCHY: Record<OrganizationRole, number> = {
  * Get current user's role in the active organization
  * Super Admins are always treated as 'owner' for access purposes
  */
-export const getCurrentOrgRole = cache(async (): Promise<OrganizationRole | null> => {
-    const orgId = await getCurrentOrganizationId()
+export const getCurrentOrgRole = cache(async (providedOrgId?: string | null): Promise<OrganizationRole | null> => {
+    const orgId = providedOrgId || await getCurrentOrganizationId()
     if (!orgId) return null
 
     const supabase = await createClient()
@@ -31,11 +31,29 @@ export const getCurrentOrgRole = cache(async (): Promise<OrganizationRole | null
 
     const { data } = await supabase
         .from('organization_members')
-        .select('role')
+        .select(`
+            role,
+            role_id,
+            role_data:organization_roles (
+                name
+            )
+        `)
         .match({ organization_id: orgId, user_id: user.id })
-        .single()
+        .maybeSingle()
 
-    return (data?.role as OrganizationRole) || null
+    if (!data) return null;
+
+    // Mapping Logic:
+    // 1. If it's explicitly 'owner' or 'admin' in the legacy column, use it.
+    if (data.role === 'owner' || data.role === 'admin') return data.role;
+
+    // 2. If it's 'member' (likely a dynamic role holder), check the role name
+    const dynamicRoleName = (data.role_data as any)?.name?.toLowerCase() || '';
+    if (dynamicRoleName.includes('owner') || dynamicRoleName.includes('dueño')) return 'owner';
+    if (dynamicRoleName.includes('admin') || dynamicRoleName.includes('administrador')) return 'admin';
+
+    // 3. Fallback to legacy field
+    return (data.role as OrganizationRole) || 'member';
 })
 
 /**

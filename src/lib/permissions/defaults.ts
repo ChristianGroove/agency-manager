@@ -21,6 +21,17 @@ import {
 } from 'lucide-react'
 
 /**
+ * @deprecated
+ * Este sistema de permisos legacy está siendo retirado.
+ * Por favor, utiliza el nuevo sistema IAM V2 ubicado en:
+ * src/modules/core/iam/permissions.ts
+ * src/modules/core/iam/services/role-service.ts
+ * 
+ * Los roles y permisos ahora se gestionan dinámicamente desde la base de datos
+ * mediante Roles Custom y no mediante constantes hardcoded.
+ */
+
+/**
  * Default permissions by role
  */
 export const DEFAULT_PERMISSIONS_BY_ROLE: Record<string, MemberPermissions> = {

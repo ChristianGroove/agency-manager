@@ -92,8 +92,18 @@ export function useActiveModules(): UseActiveModulesReturn {
             // Permissions filtering Logic
             const rawModules = data.modules
             const permissions = data.userPermissions as Record<string, any> | null
+            
+            // Merge IAM permissions into capabilities to support Sidebar checks (all: true, crm.leads.view, etc.)
+            const mergedCapabilities = {
+                ...data.capabilities,
+                ...permissions
+            }
+            setCapabilities(mergedCapabilities)
 
-            if (permissions?.modules) {
+            if (permissions?.all === true) {
+                // Wildcard access: no filtering needed
+                setModules(rawModules)
+            } else if (permissions?.modules) {
                 const filteredModules = rawModules.filter(orgModule => {
                     const permKey = MODULE_PERMISSION_MAP[orgModule]
                     if (!permKey) return true

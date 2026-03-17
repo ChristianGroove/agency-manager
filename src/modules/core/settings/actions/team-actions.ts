@@ -8,6 +8,7 @@ import { MemberPermissions } from "@/lib/permissions/types"
 import { revalidatePath, revalidateTag } from "next/cache"
 import { headers } from "next/headers"
 
+
 /**
  * Get members of the current active organization
  * Uses supabaseAdmin to bypass RLS and ensure all members are visible
@@ -92,9 +93,10 @@ export async function getOrganizationMembers() {
  * Invite a member to the current organization
  * Uses Admin API to generate link/create user if needed.
  */
-export async function inviteMember(email: string, roleOrRoleId: string = 'member') {
+export async function inviteMember(email: string, roleId: string) {
     const orgId = await getCurrentOrganizationId()
     if (!orgId) return { success: false, error: "No active organization" }
+    if (!roleId || roleId.length < 30) return { success: false, error: "Rol inválido (UUID requerido)" }
 
     // Verify Admin/Owner permissions
     try {
@@ -116,7 +118,7 @@ export async function inviteMember(email: string, roleOrRoleId: string = 'member
             email: email,
             options: {
                 redirectTo: redirectUrl,
-                data: { organization_id: orgId, role: roleOrRoleId }
+                data: { organization_id: orgId, role: roleId }
             }
         })
 
@@ -131,7 +133,7 @@ export async function inviteMember(email: string, roleOrRoleId: string = 'member
                 email: email,
                 options: {
                     redirectTo: redirectUrl,
-                    data: { organization_id: orgId, role: roleOrRoleId }
+                    data: { organization_id: orgId, role: roleId }
                 }
             })
             linkData = resultExisting.data;
@@ -170,8 +172,8 @@ export async function inviteMember(email: string, roleOrRoleId: string = 'member
             .upsert({
                 organization_id: orgId,
                 user_id: userId,
-                role_id: roleOrRoleId.length > 20 ? roleOrRoleId : null,
-                role: roleOrRoleId.length > 20 ? 'member' : roleOrRoleId,
+                role_id: roleId,
+                role: 'member', // Keep as static fallback for legacy components, but role_id is the truth
             }, { onConflict: 'organization_id,user_id' })
 
         if (memberError) {
@@ -260,7 +262,10 @@ export async function updateMemberRole(userId: string, newRoleId: string) {
     try {
         const { error } = await supabaseAdmin
             .from('organization_members')
-            .update({ role_id: newRoleId })
+            .update({
+                role_id: newRoleId,
+                role: 'member'
+            })
             .match({ organization_id: orgId, user_id: userId })
 
         if (error) throw error
@@ -345,18 +350,35 @@ export async function getMemberPermissions(userId: string) {
 
     const { data: member } = await supabaseAdmin
         .from('organization_members')
-        .select('role, permissions')
+        .select(`
+            role, 
+            permissions,
+            role_data:organization_roles (
+                name,
+                permissions
+            )
+        `)
         .match({ organization_id: orgId, user_id: userId })
         .single()
 
     if (!member) return null
 
-    // Import defaults dynamically to avoid circular deps
-    const { getEffectivePermissions } = await import('@/lib/permissions/defaults')
+    // Merge logic: 1. Role, 2. Overrides
+    const rolePermissions = (member.role_data as any)?.permissions || {}
+    const memberOverrides = (member.permissions as any) || {}
+    
+    const effectivePermissions = {
+        modules: { ...rolePermissions.modules, ...memberOverrides.modules },
+        features: { ...rolePermissions.features, ...memberOverrides.features },
+        ...rolePermissions,
+        ...memberOverrides
+    }
+
+    const roleName = (member.role_data as any)?.name || member.role;
 
     return {
-        role: member.role,
-        permissions: getEffectivePermissions(member.role, member.permissions)
+        role: roleName,
+        permissions: effectivePermissions
     }
 }
 
@@ -376,7 +398,8 @@ async function _getUserPermissionsInternal(userId: string, orgId: string) {
             role, 
             permissions,
             role_data:organization_roles (
-                name
+                name,
+                permissions
             )
         `)
         .match({ organization_id: orgId, user_id: userId })
@@ -384,24 +407,24 @@ async function _getUserPermissionsInternal(userId: string, orgId: string) {
 
     if (!member) return null
 
-    const { getEffectivePermissions } = await import('@/lib/permissions/defaults')
+    // Merge logic: 1. Role, 2. Overrides
+    const rolePermissions = (member.role_data as any)?.permissions || {}
+    const memberOverrides = (member.permissions as any) || {}
+    
+    // Effective permissions (simplified for now to match structure expected by frontend)
+    // In long term, frontend should consume the unified IAM permission strings
+    const effectivePermissions = {
+        modules: { ...rolePermissions.modules, ...memberOverrides.modules },
+        features: { ...rolePermissions.features, ...memberOverrides.features },
+        ...rolePermissions,
+        ...memberOverrides
+    }
 
-    // Use the dynamic role name if available, otherwise fallback to legacy enum
-    // role_data is returned as an array by the query
-    const roleDataArray = member.role_data as unknown as { name: string }[] | { name: string } | null;
-    const dynamicName = Array.isArray(roleDataArray) ? roleDataArray[0]?.name : roleDataArray?.name;
-
-    // Normalize System Roles to canonical keys for frontend logic (sidebar, etc)
-    let finalRole = dynamicName || member.role;
-    if (finalRole === 'Dueño') finalRole = 'owner';
-    if (finalRole === 'Administrador') finalRole = 'admin';
-    if (finalRole === 'Miembro') finalRole = 'member';
-
-    const effectiveRoleName = finalRole?.toLowerCase();
+    const roleName = (member.role_data as any)?.name || member.role;
 
     return {
-        role: effectiveRoleName as string,
-        permissions: getEffectivePermissions(member.role, member.permissions as MemberPermissions)
+        role: roleName.toLowerCase(),
+        permissions: effectivePermissions
     }
 }
 
@@ -421,10 +444,10 @@ export const getCachedUserPermissions = unstable_cache(
  * Get current logged-in user's permissions for the active organization
  * Used by client hooks to filter UI based on permissions
  */
-export async function getCurrentUserPermissions() {
+export async function getCurrentUserPermissions(providedOrgId?: string | null) {
     const supabase = await createClient()
-    // Optimization: Check cookie manually or use cached getter
-    const orgId = await getCurrentOrganizationId()
+    // Optimization: Use providedOrgId or fall back to cookie/default
+    const orgId = providedOrgId || await getCurrentOrganizationId()
 
     if (!orgId) return null
 
@@ -528,8 +551,8 @@ export async function createUserManually(data: {
             .insert({
                 organization_id: orgId,
                 user_id: user.id,
-                role: data.role === 'member' || data.role === 'admin' ? data.role : 'member', // Fallback for legacy enum
-                role_id: data.role.length > 20 ? data.role : null // If it's a UUID, it's a role_id
+                role: 'member',
+                role_id: data.role // In UI we must ensure data.role is a UUID
             })
 
         if (memberError) {

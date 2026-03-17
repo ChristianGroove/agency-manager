@@ -11,7 +11,7 @@ export function ManualCreationForm({ onSuccess }: { onSuccess: () => void }) {
     const [email, setEmail] = useState("")
     const [name, setName] = useState("")
     const [password, setPassword] = useState("")
-    const [role, setRole] = useState("member")
+    const [role, setRole] = useState("")
     const [showPassword, setShowPassword] = useState(false)
     const [isLoading, setIsLoading] = useState(false)
 

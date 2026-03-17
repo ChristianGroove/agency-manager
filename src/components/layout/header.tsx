@@ -116,7 +116,7 @@ export function Header({ currentOrgId }: { currentOrgId: string | null | undefin
                 </div>
 
                 {/* Profile Sheet */}
-                <ProfileSheet open={isProfileOpen} onOpenChange={setIsProfileOpen} user={user} />
+                <ProfileSheet open={isProfileOpen} onOpenChange={setIsProfileOpen} user={user} currentOrgId={currentOrgId} />
             </div>
         </div>
     )

@@ -18,6 +18,7 @@ import {
     Search,
     Filter
 } from 'lucide-react'
+import { useSearchParams } from 'next/navigation'
 import { SplitText } from "@/components/ui/split-text"
 import { CreateBroadcastSheet } from './create-broadcast-sheet'
 import { BroadcastsView } from './broadcasts-view'
@@ -27,6 +28,10 @@ import { SectionHeader } from "@/components/layout/section-header"
 
 export function MarketingDashboard() {
     const router = useRouter()
+    const searchParams = useSearchParams()
+    const tabParam = searchParams.get('tab')
+    
+    const [activeTab, setActiveTab] = useState(tabParam === 'insights' ? 'insights' : 'campaigns')
     const [createBroadcastOpen, setCreateBroadcastOpen] = useState(false)
     const [stats, setStats] = useState({
         totalCampaigns: 0,
@@ -34,6 +39,14 @@ export function MarketingDashboard() {
         totalDelivered: 0,
         deliveryRate: 0
     })
+
+    useEffect(() => {
+        if (tabParam === 'insights') {
+            setActiveTab('insights')
+        } else if (!tabParam) {
+            setActiveTab('campaigns')
+        }
+    }, [tabParam])
 
     useEffect(() => {
         loadStats()
@@ -75,34 +88,42 @@ export function MarketingDashboard() {
     return (
         <div className="space-y-6 min-h-screen pb-20">
             {/* Header Section */}
-            {/* Header Section */}
             <SectionHeader
-                title="Marketing Masivo"
-                subtitle="Gestiona campañas, automatizaciones y envíos masivos"
-                icon={Megaphone}
+                title={activeTab === 'insights' ? "Meta Insights" : "Marketing Masivo"}
+                subtitle={activeTab === 'insights' ? "Análisis de rendimiento de Meta Ads y conversiones" : "Gestiona campañas, automatizaciones y envíos masivos"}
+                icon={activeTab === 'insights' ? BarChart3 : Megaphone}
                 action={
                     <div className="flex gap-3">
-                        <Button
-                            onClick={handleRunCycle}
-                            variant="ghost"
-                            className="text-muted-foreground hover:text-brand-pink"
-                            title="Forzar ciclo de ejecución (Debug)"
-                        >
-                            <Workflow className="h-4 w-4 mr-2" />
-                            Run Cycle
-                        </Button>
-                        <Button
-                            onClick={() => router.push('/crm/marketing/new')}
-                            variant="outline"
-                            className="hidden md:flex border-dashed border-gray-300 dark:border-zinc-700"
-                        >
-                            <Megaphone className="h-4 w-4 mr-2" />
-                            Nueva Campaña
-                        </Button>
-                        <Button onClick={() => setCreateBroadcastOpen(true)} className="bg-brand-pink hover:bg-brand-pink/90 text-white shadow-lg shadow-pink-500/20">
-                            <Radio className="h-4 w-4 mr-2" />
-                            Broadcast Rápido
-                        </Button>
+                        {activeTab !== 'insights' && (
+                            <>
+                                <Button
+                                    onClick={handleRunCycle}
+                                    variant="ghost"
+                                    className="text-muted-foreground hover:text-brand-pink"
+                                    title="Forzar ciclo de ejecución (Debug)"
+                                >
+                                    <Workflow className="h-4 w-4 mr-2" />
+                                    Run Cycle
+                                </Button>
+                                <Button
+                                    onClick={() => router.push('/crm/marketing/new')}
+                                    variant="outline"
+                                    className="hidden md:flex border-dashed border-gray-300 dark:border-zinc-700"
+                                >
+                                    <Megaphone className="h-4 w-4 mr-2" />
+                                    Nueva Campaña
+                                </Button>
+                                <Button onClick={() => setCreateBroadcastOpen(true)} className="bg-brand-pink hover:bg-brand-pink/90 text-white shadow-lg shadow-pink-500/20">
+                                    <Radio className="h-4 w-4 mr-2" />
+                                    Broadcast Rápido
+                                </Button>
+                            </>
+                        )}
+                        {activeTab === 'insights' && (
+                            <Button variant="outline" onClick={() => setActiveTab('campaigns')}>
+                                Volver a Marketing
+                            </Button>
+                        )}
                     </div>
                 }
             />
@@ -159,7 +180,18 @@ export function MarketingDashboard() {
             </div>
 
             {/* Main Content Tabs */}
-            <Tabs defaultValue="campaigns" className="space-y-6">
+            <Tabs 
+                value={activeTab} 
+                onValueChange={(val) => {
+                    setActiveTab(val);
+                    if (val === 'insights') {
+                        router.push('/crm/marketing?tab=insights');
+                    } else {
+                        router.push('/crm/marketing');
+                    }
+                }} 
+                className="space-y-6"
+            >
                 <TabsList className="bg-white dark:bg-zinc-900 p-1 rounded-xl border border-gray-100 dark:border-white/10 h-auto">
                     <TabsTrigger value="campaigns" className="rounded-lg px-4 py-2 data-[state=active]:bg-gray-100 dark:data-[state=active]:bg-white/10">
                         Campañas
@@ -167,9 +199,9 @@ export function MarketingDashboard() {
                     <TabsTrigger value="history" className="rounded-lg px-4 py-2 data-[state=active]:bg-gray-100 dark:data-[state=active]:bg-white/10">
                         Historial de Envíos
                     </TabsTrigger>
-                    {/* <TabsTrigger value="automations" disabled className="rounded-lg px-4 py-2 opacity-50 cursor-not-allowed">
-                        Automatizaciones <Badge variant="outline" className="ml-2 text-[10px] h-4">Soon</Badge>
-                    </TabsTrigger> */}
+                    <TabsTrigger value="insights" className="rounded-lg px-4 py-2 data-[state=active]:bg-gray-100 dark:data-[state=active]:bg-white/10">
+                        Insights
+                    </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="campaigns" className="mt-0">
@@ -178,6 +210,21 @@ export function MarketingDashboard() {
 
                 <TabsContent value="history" className="mt-0">
                     <BroadcastsView />
+                </TabsContent>
+
+                <TabsContent value="insights" className="mt-0">
+                    <Card className="p-20 flex flex-col items-center justify-center text-center border-dashed border-2">
+                        <div className="p-4 bg-amber-50 dark:bg-amber-500/10 rounded-full mb-4">
+                            <BarChart3 className="h-10 w-10 text-amber-600" />
+                        </div>
+                        <h3 className="text-xl font-semibold mb-2">Meta Ads Insights</h3>
+                        <p className="text-muted-foreground max-w-md">
+                            Conecta tu cuenta de Meta Business para visualizar el rendimiento de tus anuncios directamente aquí.
+                        </p>
+                        <Button className="mt-6 bg-blue-600 hover:bg-blue-700 text-white">
+                            Conectar Facebook Ads
+                        </Button>
+                    </Card>
                 </TabsContent>
             </Tabs>
 

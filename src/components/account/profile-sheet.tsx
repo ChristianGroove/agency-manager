@@ -14,8 +14,9 @@ import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useState, useEffect } from "react"
 import { createBrowserClient } from "@supabase/ssr"
-import { Fingerprint, Loader2, Plus, X } from "lucide-react"
+import { Fingerprint, Loader2, Plus, X, Shield, Crown, User as UserIcon } from "lucide-react"
 import { usePasskeys } from "@/modules/auth/passkeys/use-passkeys"
+import { getCurrentUserPermissions } from "@/modules/core/settings/actions/team-actions"
 
 interface ProfileSheetProps {
     open: boolean
@@ -48,13 +49,14 @@ export function ProfileSheet({ open, onOpenChange, user, currentOrgId }: Profile
                 setProfile(data)
 
                 if (currentOrgId) {
-                    const { data: memberData } = await supabase
-                        .from("organization_members")
-                        .select("role")
-                        .eq("user_id", user.id)
-                        .eq("organization_id", currentOrgId)
-                        .single()
-                    if (memberData) setOrgRole(memberData.role)
+                    try {
+                        const perms = await getCurrentUserPermissions(currentOrgId)
+                        if (perms?.role) {
+                            setOrgRole(perms.role)
+                        }
+                    } catch (err) {
+                        console.error("Error fetching permissions for profile sheet:", err)
+                    }
                 }
 
                 setLoading(false)
@@ -62,7 +64,7 @@ export function ProfileSheet({ open, onOpenChange, user, currentOrgId }: Profile
 
             fetchProfile()
         }
-    }, [open, user?.id])
+    }, [open, user?.id, currentOrgId])
 
     const handleRegisterPasskey = async () => {
         await registerPasskey()
@@ -131,7 +133,16 @@ export function ProfileSheet({ open, onOpenChange, user, currentOrgId }: Profile
                                 <div className="grid grid-cols-2 gap-3 pt-2">
                                     <div className="flex flex-col px-3 py-2 bg-gray-50/50 rounded-lg border border-gray-100 text-center">
                                         <span className="text-[9px] uppercase font-bold text-gray-400 tracking-wider">Rol</span>
-                                        <span className="font-semibold text-gray-900 capitalize text-xs mt-0.5">{orgRole === 'owner' ? 'Dueño' : orgRole === 'admin' ? 'Admin' : (orgRole || "Miembro")}</span>
+                                        <span className="font-semibold text-gray-900 capitalize text-xs mt-0.5">
+                                            {(() => {
+                                                if (user?.user_metadata?.platform_role === 'super_admin' || profile?.platform_role === 'super_admin') return 'Super Admin';
+                                                const role = orgRole?.toLowerCase() || '';
+                                                if (role.includes('owner') || role.includes('dueño')) return 'Dueño';
+                                                if (role.includes('admin') || role.includes('administrador')) return 'Administrador';
+                                                if (role.includes('member') || role.includes('miembro')) return 'Miembro';
+                                                return orgRole || "Miembro";
+                                            })()}
+                                        </span>
                                     </div>
                                     <div className="flex flex-col px-3 py-2 bg-gray-50/50 rounded-lg border border-gray-100 text-center">
                                         <span className="text-[9px] uppercase font-bold text-gray-400 tracking-wider">Miembro Desde</span>

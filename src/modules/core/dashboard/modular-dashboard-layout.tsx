@@ -11,6 +11,7 @@ import { LayoutDashboard } from "lucide-react"
 
 import { GlobalBannerConfig, GlobalDashboardBanner } from "@/modules/core/dashboard/components/global-dashboard-banner"
 import { DynamicGreetingHeader } from "@/components/layout/dynamic-greeting-header"
+import { useActiveModules } from "@/hooks/use-active-modules"
 
 export interface DashboardDataProps {
     stats: MagicStatCardProps[]
@@ -20,30 +21,38 @@ export interface DashboardDataProps {
     globalBannerConfig?: GlobalBannerConfig | null
 }
 
-export function ModularDashboardLayout({ data }: { data: DashboardDataProps }) {
+export function ModularDashboardLayout({ data, userRole: initialRole }: { data: DashboardDataProps, userRole?: string | null }) {
+    const { userRole: hookRole } = useActiveModules();
+    const userRole = initialRole || hookRole;
+    const isMember = userRole === 'member' || userRole === 'miembro';
+
     return (
         <div className="space-y-6">
             {/* Header - Could be dynamic later */}
             {/* dynamic Standardized Header */}
             <DynamicGreetingHeader />
 
-            {/* 1. Stats Grid (Dynamic) */}
-            <div className={`grid gap-8 grid-cols-1 md:grid-cols-2 lg:grid-cols-${Math.min(data.stats.length, 4)}`}>
-                {data.stats.map((stat, i) => (
-                    <MagicStatCard key={i} {...stat} />
-                ))}
-            </div>
+            {/* 1. Stats Grid (Dynamic) - HIDDEN FOR MEMBERS */}
+            {!isMember && (
+                <div className={`grid gap-8 grid-cols-1 md:grid-cols-2 lg:grid-cols-${Math.min(data.stats.length, 4)}`}>
+                    {data.stats.map((stat, i) => (
+                        <MagicStatCard key={i} {...stat} />
+                    ))}
+                </div>
+            )}
 
 
-            {/* 3. Quick Actions (Dynamic Grid) */}
-            <div className="grid gap-6 grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-5">
-                {data.quickActions.map((action, i) => (
-                    <QuickAction key={i} {...action} />
-                ))}
-            </div>
+            {/* 3. Quick Actions (Dynamic Grid) - HIDDEN FOR MEMBERS */}
+            {!isMember && (
+                <div className="grid gap-6 grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-5">
+                    {data.quickActions.map((action, i) => (
+                        <QuickAction key={i} {...action} />
+                    ))}
+                </div>
+            )}
 
-            {/* 4. Smart Alert (Full Width) */}
-            {data.smartAlert && (
+            {/* 4. Smart Alert (Full Width) - HIDDEN FOR MEMBERS */}
+            {!isMember && data.smartAlert && (
                 <div className="mt-8">
                     <SmartAlert {...data.smartAlert} />
                 </div>

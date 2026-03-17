@@ -45,7 +45,7 @@ export default function DashboardPage() {
         return <DashboardSkeleton />
     }
 
-    const { orgType, dashboardData, extraData } = payload
+    const { orgType, dashboardData, extraData, userRole } = payload
 
     return (
         <div className="flex flex-col w-full h-full">
@@ -55,12 +55,12 @@ export default function DashboardPage() {
               Evita que el restaurante tenga que descargar JS de facturación B2B o el Reseller de catálogos B2C. 
             */}
             <Suspense fallback={<DashboardSkeleton />}>
-                {orgType === 'agency' && <AgencyDashboard dashboardData={dashboardData} extraData={extraData} onReload={loadDashboard} />}
-                {orgType === 'cleaning' && <CleaningDashboard dashboardData={dashboardData} extraData={extraData} onReload={loadDashboard} />}
-                {orgType === 'reseller' && <ResellerDashboard dashboardData={dashboardData} extraData={extraData} onReload={loadDashboard} />}
-                {orgType === 'resto' && <RestoDashboard dashboardData={dashboardData} extraData={extraData} onReload={loadDashboard} />}
-                {orgType === 'retail' && <RetailDashboard dashboardData={dashboardData} extraData={extraData} onReload={loadDashboard} />}
-                {orgType === 'saas' && <DefaultDashboard dashboardData={dashboardData} extraData={extraData} onReload={loadDashboard} />}
+                {orgType === 'agency' && <AgencyDashboard dashboardData={dashboardData} extraData={extraData} userRole={userRole} onReload={loadDashboard} />}
+                {orgType === 'cleaning' && <CleaningDashboard dashboardData={dashboardData} extraData={extraData} userRole={userRole} onReload={loadDashboard} />}
+                {orgType === 'reseller' && <ResellerDashboard dashboardData={dashboardData} extraData={extraData} userRole={userRole} onReload={loadDashboard} />}
+                {orgType === 'resto' && <RestoDashboard dashboardData={dashboardData} extraData={extraData} userRole={userRole} onReload={loadDashboard} />}
+                {orgType === 'retail' && <RetailDashboard dashboardData={dashboardData} extraData={extraData} userRole={userRole} onReload={loadDashboard} />}
+                {orgType === 'saas' && <DefaultDashboard dashboardData={dashboardData} extraData={extraData} userRole={userRole} onReload={loadDashboard} />}
 
                 {/* Fallback de Seguridad en caso de que un workspace huérfano llegue hasta acá */}
                 {!['agency', 'cleaning', 'reseller', 'resto', 'retail', 'saas'].includes(orgType) && (

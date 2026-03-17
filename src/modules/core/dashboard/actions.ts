@@ -181,10 +181,52 @@ export async function getDashboardPayload() {
         }
     }
 
-    return {
+    // Phase 11: Get current user role to avoid dashboard flashing
+    const { data: { user } } = await supabase.auth.getUser()
+    let userRole = null
+    if (user) {
+        const { getCachedUserPermissions } = await import("@/modules/core/settings/actions/team-actions")
+        const perms = await getCachedUserPermissions(user.id, orgId)
+        userRole = perms?.role || null
+    }
+
+    // Inject role for instant hydration
+    const payload = {
         orgType,
         dashboardData,
-        extraData
+        extraData,
+        userRole
     }
+
+    // --- SECURITY FILTERING (Server Side) ---
+    // Zero-Flicker Policy: Members should NEVER receive sensitive metadata
+    const normalizedRole = userRole?.toLowerCase()
+    const isRestricted = normalizedRole === 'member'
+
+    if (isRestricted && payload.dashboardData) {
+        // Obfuscate financial metrics
+        if (payload.dashboardData.metrics) {
+            payload.dashboardData.metrics = {
+                revenue: 0,
+                pending: 0,
+                overdue: 0,
+                clients_count: payload.dashboardData.metrics.clients_count || 0,
+                debtors: []
+            }
+        }
+        // Remove individual lists if they exist
+        payload.dashboardData.invoices = []
+        payload.dashboardData.services = []
+        
+        // Obfuscate extra data (like payroll or specific vertical metrics)
+        if (payload.extraData) {
+            delete payload.extraData.cleaningRevenue
+            if (payload.extraData.cleaningMetrics) {
+                payload.extraData.cleaningMetrics.revenue = 0
+            }
+        }
+    }
+
+    return payload
 }
 

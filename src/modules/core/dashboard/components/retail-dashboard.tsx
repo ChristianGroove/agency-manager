@@ -16,10 +16,11 @@ import { CreateFormSheet } from "@/modules/core/forms/create-form-sheet"
 interface RetailDashboardProps {
     dashboardData: any
     extraData: any
+    userRole?: string | null
     onReload: () => void
 }
 
-export function RetailDashboard({ dashboardData, extraData, onReload }: RetailDashboardProps) {
+export function RetailDashboard({ dashboardData, extraData, userRole: initialRole, onReload }: RetailDashboardProps) {
     const { t } = useTranslation()
     const { settings } = dashboardData
     const { retailMetrics } = extraData
@@ -105,7 +106,7 @@ export function RetailDashboard({ dashboardData, extraData, onReload }: RetailDa
 
     return (
         <>
-            <ModularDashboardLayout data={data} />
+            <ModularDashboardLayout data={data} userRole={initialRole} />
             <CreateClientSheet open={isClientModalOpen} onOpenChange={setIsClientModalOpen} trigger={<span className="hidden" />} onSuccess={() => { setIsClientModalOpen(false); onReload() }} />
             <CreateQuoteSheet open={isQuoteModalOpen} onOpenChange={setIsQuoteModalOpen} trigger={<span className="hidden" />} onSuccess={() => { setIsQuoteModalOpen(false); onReload() }} />
             <CreateFormSheet open={isBriefingModalOpen} onOpenChange={setIsBriefingModalOpen} onSuccess={() => setIsBriefingModalOpen(false)} />

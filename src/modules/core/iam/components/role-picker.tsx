@@ -22,17 +22,22 @@ export function RolePicker({ value, onValueChange, disabled }: RolePickerProps) 
 
     useEffect(() => {
         getOrganizationRoles()
-            .then(data => setRoles(data))
+            .then(data => {
+                setRoles(data);
+                
+                // Auto-upgrade legacy value or empty value to a real UUID
+                if (!value || value.length < 30) {
+                    const defaultRole = data.find(r => r.name === 'Miembro' || r.name === 'Member') || data[data.length - 1];
+                    if (defaultRole) {
+                        onValueChange(defaultRole.id);
+                    }
+                }
+            })
             .finally(() => setLoading(false));
     }, []);
 
-    // Handle legacy values ('member', 'admin') or UUIDs
-    const selectedRole = roles.find(r =>
-        r.id === value ||
-        (value === 'member' && (r.name === 'Member' || r.name === 'Miembro')) ||
-        (value === 'admin' && (r.name === 'Admin' || r.name === 'Administrador')) ||
-        (value === 'owner' && (r.name === 'Owner' || r.name === 'Dueño'))
-    );
+    // Handle selected role for display
+    const selectedRole = roles.find(r => r.id === value);
 
     // If we found a legacy match, we should ideally call onValueChange(id) to upgrade it,
     // but React setState in render is bad. We rely on the user selecting a new value 

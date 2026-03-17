@@ -28,7 +28,7 @@ export default async function SettingsPage() {
         getOrganizationModules(orgId),
         getSubscriptionApp(),
         getEffectiveBranding(orgId),
-        getCurrentOrgRole(),
+        getCurrentOrgRole(orgId),
         getCurrentBrandingTier(),
         getSnapshots(),
         getVaultConfig(),

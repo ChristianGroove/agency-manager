@@ -58,37 +58,34 @@ export const hasPermission = cache(async (permission: PermissionString): Promise
     const orgId = await getCurrentOrganizationId();
     if (!orgId) return false;
 
-    // TODO: We could cache this result in Redis/KV for even faster access
-    // For now, we query the flattened view or the join
+    // Fetch member and their associated role permissions
     const { data, error } = await supabase
         .from('organization_members')
         .select(`
+            permissions,
             role:organization_roles (
-                permissions,
-                hierarchy_level
+                permissions
             )
         `)
         .eq('organization_id', orgId)
         .eq('user_id', user.id)
         .single();
 
-    if (error || !data || !data.role) return false;
+    if (error || !data) return false;
 
-    // Handle potential array response for 1:1 relation
-    const roleObj = Array.isArray(data.role) ? data.role[0] : data.role;
-    const rolePermissions = (roleObj as any)?.permissions || {};
+    // Merge logic: 
+    // 1. Role permissions (Source of truth)
+    // 2. Member overrides (Legacy/Specific)
+    const rolePermissions = (data.role as any)?.permissions || {};
+    const memberOverrides = (data.permissions as any) || {};
+    
+    // Check for Wildcard (Owner) in either role or overrides
+    if (rolePermissions['all'] === true || memberOverrides['all'] === true) return true;
 
-    // 1. Check for Wildcard (Owner)
-    if (rolePermissions['all'] === true) return true;
+    // Check specific permission
+    if (rolePermissions[permission] === true || memberOverrides[permission] === true) return true;
 
-    // 2. Check specific permission
-    const hasPerm = rolePermissions[permission] === true;
-
-    if (!hasPerm && permission.includes('manage_roles')) {
-        // Debug logging removed for production
-    }
-
-    return hasPerm;
+    return false;
 });
 
 /**
@@ -180,41 +177,41 @@ export async function seedDefaultRoles(orgId: string) {
     const roles = [
         {
             organization_id: orgId,
-            name: 'Owner',
-            description: 'Acceso total a la organización',
+            name: 'Dueño',
+            description: 'Acceso total y administrativo a la organización',
             is_system_role: true,
             hierarchy_level: 100,
             permissions: { all: true }
         },
         {
             organization_id: orgId,
-            name: 'Admin',
-            description: 'Puede gestionar miembros y configuraciones',
+            name: 'Administrador',
+            description: 'Puede gestionar miembros, roles y configuraciones',
             is_system_role: true,
             hierarchy_level: 50,
             permissions: {
                 // Administrative
-                'org.manage_members': true,
-                'org.manage_roles': true, // Admins can manage roles below them (logic handled in service)
-                'org.manage_settings': true,
-                'org.view_audit': true,
+                [PERMISSIONS.ORG.MANAGE_MEMBERS]: true,
+                [PERMISSIONS.ORG.MANAGE_ROLES]: true,
+                [PERMISSIONS.ORG.MANAGE_BILLING]: true,
+                [PERMISSIONS.ORG.VIEW_AUDIT_LOGS]: true,
 
-                // Content
-                'crm.view': true,
-                'crm.edit': true,
-                'crm.delete': true,
-                'content.publish': true
+                // Standard Modules
+                [PERMISSIONS.CRM.VIEW_LEADS]: true,
+                [PERMISSIONS.CRM.EDIT_LEADS]: true,
+                [PERMISSIONS.INBOX.VIEW_ALL]: true,
+                [PERMISSIONS.AUTOMATION.VIEW]: true
             }
         },
         {
             organization_id: orgId,
-            name: 'Member',
-            description: 'Acceso estándar a las funciones asignadas',
+            name: 'Miembro',
+            description: 'Acceso estándar a funciones de operación',
             is_system_role: true,
             hierarchy_level: 10,
             permissions: {
-                'crm.view': true,
-                'crm.edit': true
+                [PERMISSIONS.CRM.VIEW_LEADS]: true,
+                [PERMISSIONS.INBOX.VIEW_ALL]: false // Solo ven lo asignado por defecto
             }
         }
     ];

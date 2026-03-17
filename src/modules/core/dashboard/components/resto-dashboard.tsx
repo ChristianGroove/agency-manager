@@ -10,10 +10,11 @@ import { Utensils, QrCode, ClipboardList, TrendingUp } from "lucide-react"
 interface RestoDashboardProps {
     dashboardData: any
     extraData: any
+    userRole?: string | null
     onReload: () => void
 }
 
-export function RestoDashboard({ dashboardData, extraData, onReload }: RestoDashboardProps) {
+export function RestoDashboard({ dashboardData, extraData, userRole: initialRole, onReload }: RestoDashboardProps) {
     const { t } = useTranslation()
     const { orgDetails } = extraData || {}
     const bannerConfig = dashboardData?.bannerConfig
@@ -69,7 +70,7 @@ export function RestoDashboard({ dashboardData, extraData, onReload }: RestoDash
 
     return (
         <div className="space-y-8 pb-24">
-            <ModularDashboardLayout data={data} />
+            <ModularDashboardLayout data={data} userRole={initialRole} />
             
             {/* Custom Resto Widget */}
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">

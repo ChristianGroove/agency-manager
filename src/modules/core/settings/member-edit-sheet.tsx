@@ -24,6 +24,8 @@ interface MemberEditSheetProps {
     member: {
         user_id: string
         role: string
+        role_id?: string | null
+        role_name?: string | null
         user: {
             email: string
             full_name?: string | null
@@ -44,14 +46,14 @@ export function MemberEditSheet({
 }: MemberEditSheetProps) {
     const [viewMode, setViewMode] = useState<'assign' | 'manage_roles'>('assign')
     const [isSaving, setIsSaving] = useState(false)
-    const [role, setRole] = useState(member?.role || 'member')
+    const [role, setRole] = useState(member?.role_id || member?.role || 'member')
     const [authorizedChannels, setAuthorizedChannels] = useState<string[]>(member?.permissions?.inbox_access || [])
 
     // Reset view when opening different member
     useEffect(() => {
         if (open) {
             setViewMode('assign')
-            setRole(member?.role || 'member')
+            setRole(member?.role_id || "")
             setAuthorizedChannels((member as any)?.permissions?.inbox_access || [])
         }
     }, [open, member])
@@ -59,7 +61,7 @@ export function MemberEditSheet({
     // Update role state when member changes
     useEffect(() => {
         if (member) {
-            setRole(member.role)
+            setRole(member.role_id || "")
             setAuthorizedChannels((member as any)?.permissions?.inbox_access || [])
         }
     }, [member])
@@ -129,23 +131,23 @@ export function MemberEditSheet({
                                         {(member?.user.email?.[0] || 'U').toUpperCase()}
                                     </div>
                                     <div className="flex-1">
-                                        <SheetTitle className="text-white text-lg">
-                                            {member?.user.full_name || 'Sin Nombre'}
-                                        </SheetTitle>
-                                        <SheetDescription className="text-white/80 text-sm">
-                                            {member?.user.email}
-                                        </SheetDescription>
-                                        <div className="mt-1">
-                                            <Badge variant={isOwner ? "default" : "secondary"} className="bg-white/20 text-white border-none">
+                                        <div className="flex items-center justify-between">
+                                            <SheetTitle className="text-white text-lg">
+                                                {member?.user.full_name || 'Sin Nombre'}
+                                            </SheetTitle>
+                                            <Badge variant="outline" className="bg-white/20 text-white border-none py-0.5 h-6 text-[10px] items-center gap-1">
                                                 {isOwner ? (
-                                                    <><Crown className="h-3 w-3 mr-1" /> Dueño</>
-                                                ) : role === 'admin' ? (
-                                                    <><Shield className="h-3 w-3 mr-1" /> Admin</>
+                                                    <><Crown className="h-3 w-3" /> Dueño</>
+                                                ) : (member as any)?.role_name?.toLowerCase().includes('admin') || role === 'admin' ? (
+                                                    <><Shield className="h-3 w-3" /> {(member as any)?.role_name || "Administrador"}</>
                                                 ) : (
-                                                    <><User className="h-3 w-3 mr-1" /> Miembro</>
+                                                    <><User className="h-3 w-3" /> {(member as any)?.role_name || "Miembro"}</>
                                                 )}
                                             </Badge>
                                         </div>
+                                        <SheetDescription className="text-white/80 text-sm">
+                                            {member?.user.email}
+                                        </SheetDescription>
                                     </div>
                                 </div>
                             </div>

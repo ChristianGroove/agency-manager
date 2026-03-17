@@ -82,13 +82,13 @@ export function RoleManager({ initialRoles }: RoleManagerProps) {
                         <h2 className="font-semibold text-sm">Roles</h2>
                         <Button size="sm" variant="outline" onClick={handleCreateRole} disabled={isCreating}>
                             <Plus className="h-3 w-3 mr-1" />
-                            New Role
+                            Nuevo Rol
                         </Button>
                     </div>
                     <div className="relative">
                         <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                         <Input
-                            placeholder="Search roles..."
+                            placeholder="Buscar roles..."
                             className="pl-8 h-9 bg-background"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
@@ -116,8 +116,8 @@ export function RoleManager({ initialRoles }: RoleManagerProps) {
                                     </div>
                                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                         <Users className="h-3 w-3" />
-                                        <span>{role.member_count || 0} members</span>
-                                        {role.is_system_role && <Badge variant="secondary" className="h-4 px-1 text-[10px]">System</Badge>}
+                                        <span>{role.member_count || 0} miembros</span>
+                                        {role.is_system_role && <Badge variant="secondary" className="h-4 px-1 text-[10px]">Sistema</Badge>}
                                     </div>
                                 </div>
 
@@ -130,13 +130,13 @@ export function RoleManager({ initialRoles }: RoleManagerProps) {
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end">
                                             <DropdownMenuItem onClick={(e) => { e.stopPropagation(); /* Clone logic */ }}>
-                                                <Copy className="h-3 w-3 mr-2" /> Duplicate
+                                                <Copy className="h-3 w-3 mr-2" /> Duplicar
                                             </DropdownMenuItem>
                                             <DropdownMenuItem
                                                 className="text-destructive focus:text-destructive"
                                                 onClick={(e) => { e.stopPropagation(); handleDeleteRole(role.id); }}
                                             >
-                                                <Trash2 className="h-3 w-3 mr-2" /> Delete
+                                                <Trash2 className="h-3 w-3 mr-2" /> Eliminar
                                             </DropdownMenuItem>
                                         </DropdownMenuContent>
                                     </DropdownMenu>
@@ -159,7 +159,7 @@ export function RoleManager({ initialRoles }: RoleManagerProps) {
                     />
                 ) : (
                     <div className="flex-1 flex items-center justify-center text-muted-foreground">
-                        Select a role to view permissions
+                        Selecciona un rol para ver los permisos
                     </div>
                 )}
             </div>

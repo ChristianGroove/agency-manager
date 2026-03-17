@@ -25,7 +25,7 @@ export function TeamSettingsTab() {
 
     // Invite Form
     const [inviteEmail, setInviteEmail] = useState("")
-    const [inviteRole, setInviteRole] = useState("member")
+    const [inviteRole, setInviteRole] = useState("")
     const [isInviting, setIsInviting] = useState(false)
 
     // Edit member state

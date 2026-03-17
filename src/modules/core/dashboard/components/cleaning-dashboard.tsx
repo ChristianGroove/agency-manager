@@ -13,10 +13,11 @@ import { NewJobModal } from "@/modules/core/work-orders/components/new-job-modal
 interface CleaningDashboardProps {
     dashboardData: any
     extraData: any
+    userRole?: string | null
     onReload: () => void
 }
 
-export function CleaningDashboard({ dashboardData: coreData, extraData, onReload }: CleaningDashboardProps) {
+export function CleaningDashboard({ dashboardData: coreData, extraData, userRole: initialRole, onReload }: CleaningDashboardProps) {
     const { t, tArray } = useTranslation()
 
     // Modals internal state
@@ -107,7 +108,7 @@ export function CleaningDashboard({ dashboardData: coreData, extraData, onReload
 
     return (
         <>
-            <ModularDashboardLayout data={data} />
+            <ModularDashboardLayout data={data} userRole={initialRole} />
             <CreateClientSheet open={isClientModalOpen} onOpenChange={setIsClientModalOpen} trigger={<span className="hidden" />} onSuccess={() => { setIsClientModalOpen(false); onReload() }} />
             <NewJobModal open={isNewJobModalOpen} onOpenChange={setIsNewJobModalOpen} />
         </>
