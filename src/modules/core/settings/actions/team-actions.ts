@@ -300,10 +300,16 @@ export async function updateMemberPermissions(
         return { success: false, error: "No tienes permisos para editar permisos" }
     }
 
-    // Get current permissions to merge
+    // Secure fetch including role data
     const { data: member } = await supabaseAdmin
         .from('organization_members')
-        .select('permissions, role')
+        .select(`
+            permissions, 
+            role,
+            role_data:organization_roles (
+                hierarchy_level
+            )
+        `)
         .match({ organization_id: orgId, user_id: userId })
         .single()
 
@@ -311,9 +317,10 @@ export async function updateMemberPermissions(
         return { success: false, error: "Miembro no encontrado" }
     }
 
-    // Cannot edit owner permissions
-    if (member.role === 'owner') {
-        return { success: false, error: "No se pueden editar los permisos del dueño" }
+    // Cannot edit owner permissions (Hierarchy 100) or if the role specifically says 'owner'
+    const hierarchy = (member.role_data as any)?.hierarchy_level
+    if (hierarchy === 100 || member.role === 'owner') {
+        return { success: false, error: "No se pueden editar los permisos de un Dueño de sistema" }
     }
 
     // Merge permissions
@@ -421,9 +428,11 @@ async function _getUserPermissionsInternal(userId: string, orgId: string) {
     }
 
     const roleName = (member.role_data as any)?.name || member.role;
+    const hierarchy = (member.role_data as any)?.hierarchy_level || 0;
 
     return {
         role: roleName.toLowerCase(),
+        hierarchy: hierarchy,
         permissions: effectivePermissions
     }
 }

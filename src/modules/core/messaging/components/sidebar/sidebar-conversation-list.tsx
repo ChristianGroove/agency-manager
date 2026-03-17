@@ -130,10 +130,12 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
         const data = await getChannels()
 
         // Filter channels for staff based on governance
-        const isStaff = userPermissions?.role === 'member'
+        const hasGlobalView = userPermissions?.permissions?.all === true || 
+                             userPermissions?.permissions?.['inbox.conversations.view_all'] === true
+        const isRestricted = !hasGlobalView
         const authorizedChannels = userPermissions?.permissions?.inbox_access || []
 
-        if (isStaff) {
+        if (isRestricted) {
             const filteredChannels = data.filter(c => authorizedChannels.includes(c.id))
             setChannels(filteredChannels)
         } else {
@@ -191,10 +193,12 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
             query = query.eq('assigned_to', currentUserId)
         }
 
-        const isStaff = userPermissions?.role === 'member'
+        const hasGlobalView = userPermissions?.permissions?.all === true || 
+                             userPermissions?.permissions?.['inbox.conversations.view_all'] === true
+        const isRestricted = !hasGlobalView
         const authorizedChannels = userPermissions?.permissions?.inbox_access || []
 
-        if (isStaff) {
+        if (isRestricted) {
             if (authorizedChannels.length > 0) {
                 query = query.or(`connection_id.in.(${authorizedChannels.map((id: string) => `"${id}"`).join(',')}),assigned_to.eq.${currentUserId}`)
             } else if (currentUserId) {

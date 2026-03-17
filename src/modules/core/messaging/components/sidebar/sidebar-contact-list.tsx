@@ -45,10 +45,12 @@ export function SidebarContactList({ onSelectConversation }: SidebarContactListP
                 let availableChannels = allChannels
                 if (data.user) {
                     const perms = await getCurrentUserPermissions()
-                    const isStaff = perms?.role === 'member'
+                    const hasGlobalView = perms?.permissions?.all === true || 
+                                         perms?.permissions?.['inbox.conversations.view_all'] === true
+                    const isRestricted = !hasGlobalView
                     const authorizedChannels = perms?.permissions?.inbox_access || []
 
-                    if (isStaff) {
+                    if (isRestricted) {
                         availableChannels = allChannels.filter(c => authorizedChannels.includes(c.id))
                     }
                 }

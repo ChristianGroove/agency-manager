@@ -290,8 +290,12 @@ export async function getPipelineData(connectionId?: string | null) {
     const perms = await getCurrentUserPermissions()
 
     let allowedChannels: string[] | undefined = undefined
-    if (perms?.role === 'member') {
-        allowedChannels = perms.permissions?.inbox_access || []
+    const hasGlobalView = perms?.permissions?.all === true || 
+                         perms?.permissions?.['inbox.conversations.view_all'] === true
+    const isRestricted = !hasGlobalView
+
+    if (isRestricted) {
+        allowedChannels = perms?.permissions?.inbox_access || []
     }
 
     // Parallel Fetching

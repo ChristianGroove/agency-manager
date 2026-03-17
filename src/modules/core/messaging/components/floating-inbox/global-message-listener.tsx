@@ -157,8 +157,12 @@ export function GlobalMessageListener() {
 
                     // RBAC check
                     const perms = userPermissionsRef.current
-                    if (perms?.role === 'member') {
-                        const allowedChannels = perms.permissions?.inbox_access || []
+                    const hasGlobalView = perms?.permissions?.all === true || 
+                                         perms?.permissions?.['inbox.conversations.view_all'] === true
+                    const isRestricted = !hasGlobalView
+
+                    if (isRestricted) {
+                        const allowedChannels = perms?.permissions?.inbox_access || []
                         if (!allowedChannels.includes(conv.connection_id)) {
                             return
                         }

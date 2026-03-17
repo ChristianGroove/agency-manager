@@ -122,7 +122,11 @@ export function CRMDashboard({
             const data = await getChannels()
             const perms = await getCurrentUserPermissions()
 
-            if (perms?.role === 'member') {
+            const hasGlobalView = perms?.permissions?.all === true || 
+                                 perms?.permissions?.['inbox.conversations.view_all'] === true
+            const isRestricted = !hasGlobalView
+
+            if (isRestricted) {
                 const allowed = perms?.permissions?.inbox_access || []
                 setAvailableChannels(data.filter(c => allowed.includes(c.id)))
             } else {
