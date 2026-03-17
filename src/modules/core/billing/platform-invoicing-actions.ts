@@ -87,7 +87,11 @@ export async function createManualPlatformInvoice(data: {
         throw new Error(`No se pudo crear la factura de plataforma: ${error.message} (${error.code})`)
     }
 
-    return { success: true, invoice }
+    // Normalizing for serialization (Plain JSON only)
+    return { 
+        success: true, 
+        invoice: JSON.parse(JSON.stringify(invoice)) 
+    }
 }
 
 export async function sendPlatformInvoiceEmail(invoiceId: string, recipientEmail: string) {
@@ -107,11 +111,17 @@ export async function sendPlatformInvoiceEmail(invoiceId: string, recipientEmail
         throw new Error("Factura no encontrada")
     }
 
-    // Use historical email -> fallback to provided email -> fallback to NONE (user corrected below if needed)
+    // Use historical email -> fallback to provided email -> fallback to NONE
     const targetEmail = recipientEmail || invoice.recipient_email;
 
     if (!targetEmail) {
-        throw new Error("No se encontró un destinatario válido para esta factura")
+        throw new Error("No se encontró un destinatario válido para esta factura (Email histórico vacío)")
+    }
+
+    // Check environment (Pre-flight)
+    if (!process.env.RESEND_API_KEY) {
+        console.error("[Billing] CRITICAL: RESEND_API_KEY missing in production environment");
+        throw new Error("El sistema de correo no está configurado correctamente en el servidor.");
     }
 
     // 3. Fetch Platform Payment Methods
@@ -176,7 +186,11 @@ export async function sendPlatformInvoiceEmail(invoiceId: string, recipientEmail
 
     const pdfBuffer = Buffer.from(await pdfBlob.arrayBuffer())
 
-    const formattedTotal = new Intl.NumberFormat('es-CO', { style: 'currency', currency: invoice.currency, minimumFractionDigits: 0 }).format(invoice.amount_total);
+    const formattedTotal = new Intl.NumberFormat('es-CO', { 
+        style: 'currency', 
+        currency: invoice.currency, 
+        minimumFractionDigits: 0 
+    }).format(invoice.amount_total);
 
     // 4.5. Generate Wompi Link (Automatic Integration)
     let wompiLink = '';
@@ -283,7 +297,8 @@ export async function sendPlatformInvoiceEmail(invoiceId: string, recipientEmail
     })
 
     if (!result.success) {
-        throw new Error("No se pudo enviar el correo")
+        console.error("[Billing] EmailService failed:", result.error);
+        throw new Error(`Servicio de correo falló: ${result.error?.message || "Error desconocido"}`);
     }
 
     return { success: true }
@@ -343,7 +358,10 @@ export async function manualActivateSubscription(organizationId: string, options
         throw new Error("No se pudo activar la suscripción manualmente")
     }
 
-    return { success: true, newExpiry }
+    return { 
+        success: true, 
+        newExpiry: newExpiry.toISOString() // SERIALIZABLE!
+    }
 }
 
 export async function suspendOrganizationSubscription(organizationId: string) {

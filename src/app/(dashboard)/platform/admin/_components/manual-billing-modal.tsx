@@ -207,13 +207,16 @@ export function ManualBillingModal({
 
     const onSubmit = async (values: FormValues) => {
         setIsSubmitting(true)
+        let createdInvoice = null;
+        
         try {
+            // STEP 1: Calculate Taxes & Create Invoice
             const amount = Number(values.amount)
             const taxRate = values.includeTax ? values.taxRate : 0
             const taxAmount = values.includeTax ? (amount * (taxRate / 100)) : 0
             const total = amount + taxAmount
 
-            const { invoice } = await createManualPlatformInvoice({
+            const result = await createManualPlatformInvoice({
                 organizationId,
                 amount: total,
                 currency: values.currency,
@@ -230,20 +233,40 @@ export function ManualBillingModal({
                 recipientEmail: values.recipientEmail
             })
 
-            toast.success(`Factura ${invoice.invoice_number} creada con éxito`)
-
-            await sendPlatformInvoiceEmail(invoice.id, values.recipientEmail)
-            toast.success("Cuenta de cobro enviada por correo")
-
-            if (values.autoActivate) {
-                await manualActivateSubscription(organizationId, { expiryDate: values.billingPeriodEnd })
-                toast.success("Suscripción activada/renovada exitosamente")
+            if (!result?.success || !result?.invoice) {
+                throw new Error("La creación del documento falló en el servidor");
             }
 
-            onOpenChange(false)
-            form.reset()
+            createdInvoice = result.invoice;
+            toast.success(`Documento ${createdInvoice.invoice_number} creado correctamente`);
+
+            // STEP 2: Send Email (Non-blocking for the flow, but logical)
+            try {
+                await sendPlatformInvoiceEmail(createdInvoice.id, values.recipientEmail);
+                toast.success("Correo enviado al cliente");
+            } catch (emailError: any) {
+                console.error("Email delivery failed:", emailError);
+                toast.warning(`La factura se creó (#${createdInvoice.invoice_number}) pero el correo no pudo enviarse: ${emailError.message}`);
+            }
+
+            // STEP 3: Auto-Activation
+            if (values.autoActivate) {
+                try {
+                    await manualActivateSubscription(organizationId, { expiryDate: values.billingPeriodEnd });
+                    toast.success("Vigencia de suscripción actualizada");
+                } catch (activationError: any) {
+                    console.error("Activation failed:", activationError);
+                    toast.error("Error al actualizar la vigencia de la suscripción");
+                }
+            }
+
+            // SUCCESS EXIT
+            onOpenChange(false);
+            form.reset();
+
         } catch (error: any) {
-            toast.error(error.message || "Error al procesar el cobro manual")
+            console.error("Submission error:", error);
+            toast.error(error.message || "No se pudo procesar la solicitud. Verifica tu conexión.");
         } finally {
             setIsSubmitting(false)
         }
