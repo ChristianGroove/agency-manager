@@ -335,10 +335,10 @@ export async function manualActivateSubscription(organizationId: string, options
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, error: "No autorizado" }
 
-    // 2. Fetch Organization Data
+    // 2. Fetch Organization Data (Including active_app_id for legacy support)
     const { data: org, error: orgFetchError } = await supabaseAdmin
         .from('organizations')
-        .select('name, subscription_product_id')
+        .select('name, subscription_product_id, active_app_id')
         .eq('id', organizationId)
         .single();
 
@@ -346,10 +346,10 @@ export async function manualActivateSubscription(organizationId: string, options
         return { success: false, error: "No se encontró la organización especificada." }
     }
 
-    // 3. INTEGRITY GUARANTEE & DIALECT DETECTION
+    // 3. PRODUCT & APP RESOLUTION (EN TRONQUE)
     let finalProduct: { id: string, slug: string } | null = null;
     
-    // 3a. Find the product (using current org link or fallback)
+    // 3a. Find the commercial product (saas_products)
     const productRef = org.subscription_product_id;
     const { data: foundProduct } = await supabaseAdmin
         .from('saas_products')
@@ -360,7 +360,6 @@ export async function manualActivateSubscription(organizationId: string, options
     if (foundProduct) {
         finalProduct = foundProduct;
     } else {
-        // Fallback to ANY active product
         const { data: fallback } = await supabaseAdmin
             .from('saas_products')
             .select('id, slug')
@@ -370,16 +369,8 @@ export async function manualActivateSubscription(organizationId: string, options
         finalProduct = fallback;
     }
 
-    if (!finalProduct) {
-        return { 
-            success: false, 
-            error: "INFRAESTRUCTURA INCOMPLETA: No hay productos en 'saas_products'. Por favor, crea un producto primero." 
-        }
-    }
-
-    // 3b. DETECT DIALECT (Does saas_subscriptions expect UUID or Slug?)
-    // We check a sample to avoid failing the FK constraint
-    let dialect: 'uuid' | 'slug' = 'uuid';
+    // 3b. DETECT DIALECT & ENTITY (Does saas_subscriptions expect Product or App?)
+    let dialect: 'uuid' | 'slug' | 'app' = 'uuid';
     const { data: sampleSub } = await supabaseAdmin
         .from('saas_subscriptions')
         .select('plan_id')
@@ -387,11 +378,26 @@ export async function manualActivateSubscription(organizationId: string, options
         .maybeSingle();
     
     if (sampleSub && sampleSub.plan_id) {
-        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sampleSub.plan_id);
-        dialect = isUuid ? 'uuid' : 'slug';
+        if (sampleSub.plan_id.startsWith('app_')) {
+            dialect = 'app';
+        } else {
+            const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sampleSub.plan_id);
+            dialect = isUuid ? 'uuid' : 'slug';
+        }
     }
 
-    const planValueForInsert = dialect === 'uuid' ? finalProduct.id : finalProduct.slug;
+    // 3c. RESOLVE FINAL ID FOR SUBSCRIPTION TABLE
+    let planValueForInsert: string;
+    if (dialect === 'app') {
+        // LEGACY/LOCAL SUPPORT: Use the app id from the organization
+        planValueForInsert = org.active_app_id || 'app_marketing_starter';
+    } else {
+        // MODERN/PROD SUPPORT: Use the product id or slug
+        if (!finalProduct) {
+            return { success: false, error: "No hay productos disponibles para activar." }
+        }
+        planValueForInsert = dialect === 'uuid' ? finalProduct.id : finalProduct.slug;
+    }
 
     // 4. Determine Expiry
     let expiryStr: string;
@@ -405,7 +411,7 @@ export async function manualActivateSubscription(organizationId: string, options
 
     // 5. DB Sync (Atomic Updates via Admin)
     try {
-        // 5a. Upsert Subscription with DIALECT AWARE value
+        // 5a. Upsert Subscription with RESOLVED plan_id
         const { error: subError } = await supabaseAdmin
             .from('saas_subscriptions')
             .upsert({
@@ -419,18 +425,15 @@ export async function manualActivateSubscription(organizationId: string, options
 
         if (subError) throw subError;
 
-        // 5b. Auto-Heal Organization link if it was missing/invalid
-        if (org.subscription_product_id !== finalProduct.id) {
-            await supabaseAdmin
-                .from('organizations')
-                .update({ subscription_product_id: finalProduct.id })
-                .eq('id', organizationId);
+        // 5b. Auto-Heal Organization links
+        const updates: any = { subscription_status: 'active' };
+        if (finalProduct && org.subscription_product_id !== finalProduct.id) {
+            updates.subscription_product_id = finalProduct.id;
         }
-
-        // 5c. Update Status Overlay
+        
         await supabaseAdmin
             .from('organizations')
-            .update({ subscription_status: 'active' })
+            .update(updates)
             .eq('id', organizationId);
 
         return { 
