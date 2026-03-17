@@ -519,6 +519,17 @@ export async function createOrganization(formData: {
         let newOrg = null;
         let orgError = null;
 
+        // 1.5 Determine Default Plan if missing
+        let subscriptionProductId = null;
+        const { data: defaultProduct } = await supabaseAdmin
+            .from('saas_products')
+            .select('id')
+            .order('is_active', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+        
+        subscriptionProductId = defaultProduct?.id;
+
         while (attempts < maxAttempts) {
             const { data, error } = await supabaseAdmin
                 .from('organizations')
@@ -528,6 +539,7 @@ export async function createOrganization(formData: {
                     logo_url: formData.logo_url,
                     active_app_id: formData.app_id,
                     app_activated_at: new Date().toISOString(),
+                    subscription_product_id: subscriptionProductId, // FIXED: Assign plan on creation
                     subscription_status: 'active',
                     // V2 Fields
                     parent_organization_id: computedParentId,

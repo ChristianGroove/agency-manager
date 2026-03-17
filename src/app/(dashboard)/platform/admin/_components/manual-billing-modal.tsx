@@ -234,38 +234,39 @@ export function ManualBillingModal({
             })
 
             if (!result?.success || !result?.invoice) {
-                throw new Error("La creación del documento falló en el servidor");
+                // Now we get a descriptive error from the server instead of a generic render error
+                throw new Error(result?.error || "La creación del documento falló en el servidor");
             }
 
             createdInvoice = result.invoice;
             toast.success(`Documento ${createdInvoice.invoice_number} creado correctamente`);
 
-            // STEP 2: Send Email (Non-blocking for the flow, but logical)
-            try {
-                await sendPlatformInvoiceEmail(createdInvoice.id, values.recipientEmail);
+            // STEP 2: Send Email (Safe & Non-blocking)
+            const emailResult = await sendPlatformInvoiceEmail(createdInvoice.id, values.recipientEmail);
+            if (emailResult.success) {
                 toast.success("Correo enviado al cliente");
-            } catch (emailError: any) {
-                console.error("Email delivery failed:", emailError);
-                toast.warning(`La factura se creó (#${createdInvoice.invoice_number}) pero el correo no pudo enviarse: ${emailError.message}`);
+            } else {
+                // Here we show the REAL error (Resend config, domain unverified, etc.)
+                toast.warning(`Factura creada (#${createdInvoice.invoice_number}) pero el correo falló: ${emailResult.error}`);
             }
 
             // STEP 3: Auto-Activation
             if (values.autoActivate) {
-                try {
-                    await manualActivateSubscription(organizationId, { expiryDate: values.billingPeriodEnd });
+                const activationResult = await manualActivateSubscription(organizationId, { expiryDate: values.billingPeriodEnd });
+                if (activationResult.success) {
                     toast.success("Vigencia de suscripción actualizada");
-                } catch (activationError: any) {
-                    console.error("Activation failed:", activationError);
-                    toast.error("Error al actualizar la vigencia de la suscripción");
+                } else {
+                    toast.error(`Error al activar suscripción: ${activationResult.error}`);
                 }
             }
 
-            // SUCCESS EXIT
+            // SUCCESS EXIT (even if non-critical steps like email failed, the main document is safe)
             onOpenChange(false);
             form.reset();
 
         } catch (error: any) {
             console.error("Submission error:", error);
+            // This now catches only network errors or true unexpected crashes, NOT application errors
             toast.error(error.message || "No se pudo procesar la solicitud. Verifica tu conexión.");
         } finally {
             setIsSubmitting(false)

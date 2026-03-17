@@ -31,11 +31,11 @@ export async function createManualPlatformInvoice(data: {
 
     // 1. Security Check: Only SuperAdmins
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) throw new Error("Unauthorized")
+    if (!user) return { success: false, error: "No autorizado" }
 
     const isAdmin = await isSuperAdmin(user.id)
     if (!isAdmin) {
-        throw new Error("Solo los Super Administradores pueden generar facturas de plataforma")
+        return { success: false, error: "Solo los Super Administradores pueden generar facturas de plataforma" }
     }
 
     // 1.5. Upsert Billing Profile for persistence (Safe)
@@ -84,7 +84,7 @@ export async function createManualPlatformInvoice(data: {
 
     if (error) {
         console.error("Full error creating platform invoice:", error)
-        throw new Error(`No se pudo crear la factura de plataforma: ${error.message} (${error.code})`)
+        return { success: false, error: `Error DB: ${error.message}` }
     }
 
     // Normalizing for serialization (Plain JSON only)
@@ -97,8 +97,8 @@ export async function createManualPlatformInvoice(data: {
 export async function sendPlatformInvoiceEmail(invoiceId: string, recipientEmail: string) {
     const supabase = await createClient()
 
-    // 1. Fetch Invoice
-    const { data: invoice, error } = await supabase
+    // 1. Fetch Invoice (Admin client to bypass RLS lag)
+    const { data: invoice, error } = await supabaseAdmin
         .from('saas_platform_invoices')
         .select(`
             *,
@@ -115,13 +115,13 @@ export async function sendPlatformInvoiceEmail(invoiceId: string, recipientEmail
     const targetEmail = recipientEmail || invoice.recipient_email;
 
     if (!targetEmail) {
-        throw new Error("No se encontró un destinatario válido para esta factura (Email histórico vacío)")
+        return { success: false, error: "No se encontró un destinatario válido para esta factura (Email histórico vacío)" }
     }
 
     // Check environment (Pre-flight)
     if (!process.env.RESEND_API_KEY) {
-        console.error("[Billing] CRITICAL: RESEND_API_KEY missing in production environment");
-        throw new Error("El sistema de correo no está configurado correctamente en el servidor.");
+        console.error("[Billing] CRITICAL: RESEND_API_KEY missing");
+        return { success: false, error: "Configuración de correo (Resend) faltante en el servidor." }
     }
 
     // 3. Fetch Platform Payment Methods
@@ -298,7 +298,8 @@ export async function sendPlatformInvoiceEmail(invoiceId: string, recipientEmail
 
     if (!result.success) {
         console.error("[Billing] EmailService failed:", result.error);
-        throw new Error(`Servicio de correo falló: ${result.error?.message || "Error desconocido"}`);
+        const errorMsg = typeof result.error === 'string' ? result.error : result.error?.message;
+        return { success: false, error: `Fallo de envío: ${errorMsg || "Error desconocido"}` }
     }
 
     return { success: true }
@@ -332,35 +333,100 @@ export async function manualActivateSubscription(organizationId: string, options
 
     // 1. Security Check
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) throw new Error("Unauthorized")
+    if (!user) return { success: false, error: "No autorizado" }
 
-    // 2. Determine Expiry
-    let newExpiry: Date;
-    if (options?.expiryDate) {
-        newExpiry = new Date(options.expiryDate);
-    } else {
-        newExpiry = new Date();
-        newExpiry.setMonth(newExpiry.getMonth() + (options?.monthsToAdd || 1));
+    // 2. Fetch Organization to get current plan (Product ID)
+    const { data: org } = await supabaseAdmin
+        .from('organizations')
+        .select('subscription_product_id')
+        .eq('id', organizationId)
+        .single();
+
+    let planId = org?.subscription_product_id;
+
+    // 2.5 STRICT INTEGRITY CHECK: Ensure the plan actually exists in saas_products
+    let planExists = false;
+    if (planId) {
+        const { count } = await supabaseAdmin
+            .from('saas_products')
+            .select('id', { count: 'exact', head: true })
+            .eq('id', planId);
+        planExists = (count || 0) > 0;
     }
 
-    const { error } = await supabaseAdmin
-        .from('saas_subscriptions')
+    // 2.6 REPAIR LAYER: If plan is missing or invalid (Orphaned), find and assign a valid one
+    if (!planExists) {
+        console.warn(`[REPAIR] Organization ${organizationId} has an invalid or missing plan. Finding baseline...`);
+        const { data: baselineProduct } = await supabaseAdmin
+            .from('saas_products')
+            .select('id')
+            .order('is_active', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+        
+        planId = baselineProduct?.id;
+
+        // Persist the repair immediately to heal the database
+        if (planId) {
+            await supabaseAdmin
+                .from('organizations')
+                .update({ subscription_product_id: planId })
+                .eq('id', organizationId);
+            console.log(`[REPAIR] Healed organization ${organizationId} with baseline plan ${planId}`);
+        }
+    }
+
+    if (!planId) {
+        return { 
+            success: false, 
+            error: "Falla de Infraestructura: No hay productos en 'saas_products'. La base de datos local está vacía. Por favor, ejecuta las migraciones de baseline." 
+        }
+    }
+
+    // 3. Determine Expiry
+    let expiryStr: string;
+    if (options?.expiryDate) {
+        expiryStr = new Date(options.expiryDate).toISOString();
+    } else {
+        const d = new Date();
+        d.setMonth(d.getMonth() + (options?.monthsToAdd || 1));
+        expiryStr = d.toISOString();
+    }
+
+    // 4. Update Tables (Dual Sync)
+    // 4a. Organizations (Status only)
+    const { error: orgError } = await supabaseAdmin
+        .from('organizations')
         .update({
-            current_period_end: newExpiry.toISOString(),
+            subscription_status: 'active'
+        })
+        .eq('id', organizationId)
+
+    if (orgError) {
+        console.error("Org status update failed:", orgError);
+        return { success: false, error: `Error Org: ${orgError.message}` }
+    }
+
+    // 4b. Saas Subscriptions (Period & Method)
+    const { error: subError } = await supabaseAdmin
+        .from('saas_subscriptions')
+        .upsert({
+            organization_id: organizationId,
+            plan_id: planId, // Assigned or default plan
             status: 'active',
+            current_period_end: expiryStr,
             billing_method: 'MANUAL',
             updated_at: new Date().toISOString()
-        })
-        .eq('organization_id', organizationId)
+        }, { onConflict: 'organization_id' })
 
-    if (error) {
-        console.error("Error activating subscription:", error)
-        throw new Error("No se pudo activar la suscripción manualmente")
+    if (subError) {
+        console.error("Subscription period update failed:", subError);
+        return { success: false, error: `Error Sub: ${subError.message}` }
     }
 
     return { 
         success: true, 
-        newExpiry: newExpiry.toISOString() // SERIALIZABLE!
+        newExpiry: expiryStr 
     }
 }
 
