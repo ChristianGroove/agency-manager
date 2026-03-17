@@ -224,5 +224,6 @@ export const contractOrchestrator = inngest.createFunction(
 
 import { vaultSnapshotScheduler } from "@/modules/core/data-vault/scheduler"
 import { monthlySubscriptionBilling } from "@/inngest/billing";
+import { platformDunningManager } from "@/inngest/dunning-manager";
 
-export const functions = [runWorkflow, vaultSnapshotScheduler, contractOrchestrator, monthlySubscriptionBilling];
+export const functions = [runWorkflow, vaultSnapshotScheduler, contractOrchestrator, monthlySubscriptionBilling, platformDunningManager];

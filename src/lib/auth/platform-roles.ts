@@ -59,7 +59,9 @@ export const getUserPlatformRole = cache(async (userId?: string): Promise<Platfo
 export async function isSuperAdmin(userId?: string): Promise<boolean> {
     try {
         const role = await getUserPlatformRole(userId)
-        return role === 'super_admin'
+        // More robust check for super admins (handles super_admin and superadmin)
+        const normalizedRole = role.toLowerCase().replace('_', '')
+        return normalizedRole === 'superadmin'
     } catch (error) {
         console.error('[isSuperAdmin] Error:', error)
         return false

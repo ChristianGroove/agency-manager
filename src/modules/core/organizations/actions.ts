@@ -222,6 +222,24 @@ export async function getCurrentOrgDetails(orgId?: string) {
 }
 
 /**
+ * Get the billing profile for an organization (NIT, Address, etc.)
+ */
+export async function getOrganizationBillingProfile(orgId: string) {
+    const { data, error } = await supabaseAdmin
+        .from('organization_billing_profiles')
+        .select('*')
+        .eq('organization_id', orgId)
+        .maybeSingle()
+
+    if (error) {
+        console.error("Error fetching billing profile:", error)
+        return null
+    }
+
+    return data
+}
+
+/**
  * Get tenant context for the indicator badge.
  * Logic: Show only if a privileged user (Reseller/Platform) is managing a Client org.
  */

@@ -1,0 +1,1 @@
+-- Consolidado en 20260317000007_unified_billing_infrastructure.sql

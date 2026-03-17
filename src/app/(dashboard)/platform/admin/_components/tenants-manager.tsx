@@ -14,7 +14,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
-import { Search, Building, Plus, Settings, Pencil, Ban, CheckCircle, Trash2 } from "lucide-react"
+import { Search, Building, Plus, Settings, Pencil, Ban, CheckCircle, Trash2, Receipt } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { CreateOrganizationSheet } from "@/components/organizations/create-organization-sheet"
@@ -22,6 +22,7 @@ import { OrgDetailsSheet } from "@/components/admin/org-details-sheet"
 import { EditOrganizationDialog } from "@/components/admin/edit-organization-dialog"
 import { updateOrganizationStatus, deleteOrganization, type AdminOrganization } from '@/modules/core/admin/actions'
 import { toast } from 'sonner'
+import { ManualBillingModal } from "./manual-billing-modal"
 
 const PROTECTED_ORG_SLUGS = ['pixy', 'pixy-agency', 'pixy-pds']
 
@@ -39,6 +40,9 @@ export function TenantsManager({ organizations, allModules }: TenantsManagerProp
     const [activeSheetOrgId, setActiveSheetOrgId] = useState<string | null>(null)
     const [editOrg, setEditOrg] = useState<AdminOrganization | null>(null)
     const [isEditOpen, setIsEditOpen] = useState(false)
+
+    // Manual Billing State
+    const [billingOrg, setBillingOrg] = useState<{ id: string, name: string } | null>(null)
 
     const router = useRouter()
 
@@ -74,6 +78,12 @@ export function TenantsManager({ organizations, allModules }: TenantsManagerProp
                 onOpenChange={setIsEditOpen}
                 organization={editOrg}
                 onSuccess={() => { router.refresh() }}
+            />
+            <ManualBillingModal
+                isOpen={!!billingOrg}
+                onOpenChange={(open) => !open && setBillingOrg(null)}
+                organizationId={billingOrg?.id || ""}
+                organizationName={billingOrg?.name || ""}
             />
 
             <div className="flex flex-col gap-4 mb-6">
@@ -246,10 +256,10 @@ export function TenantsManager({ organizations, allModules }: TenantsManagerProp
                                                         title="Reactivar Tenant"
                                                         onClick={async () => {
                                                             try {
-                                                                await updateOrganizationStatus(org.id, 'active')
-                                                                toast.success('Organización reactivada con éxito')
-                                                                router.refresh()
-                                                            } catch (error: any) {
+                                                                 await updateOrganizationStatus(org.id, 'active')
+                                                                 toast.success('Organización reactivada con éxito')
+                                                                 router.refresh()
+                                                             } catch (error: any) {
                                                                 toast.error(error.message || 'Error al reactivar')
                                                             }
                                                         }}
@@ -258,6 +268,17 @@ export function TenantsManager({ organizations, allModules }: TenantsManagerProp
                                                     </Button>
                                                 )
                                             )}
+
+                                            {/* 3.5 Manual Billing Action */}
+                                            <Button
+                                                size="icon"
+                                                variant="ghost"
+                                                className="h-8 w-8 text-blue-600 bg-blue-50 hover:bg-blue-100 hover:text-blue-700 shrink-0 dark:bg-blue-900/30 dark:text-blue-400"
+                                                title="Generar Cobro Manual (Pixy)"
+                                                onClick={() => setBillingOrg({ id: org.id, name: org.name })}
+                                            >
+                                                <Receipt className="h-4 w-4" />
+                                            </Button>
 
                                             {/* 4. Delete Action (if not protected) */}
                                             {!PROTECTED_ORG_SLUGS.includes(org.slug) && (

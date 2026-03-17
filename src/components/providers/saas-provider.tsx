@@ -27,8 +27,8 @@ export function SaaSProvider({
     children: ReactNode,
     initialData: Omit<SaaSContextType, 'isSuspended'>
 }) {
-    // Derivar estado de suspensión: Bloqueamos si está cancelada o impagada
-    const suspendedStatuses = ['canceled', 'unpaid']
+    // Derivar estado de suspensión: Bloqueamos si está cancelada, impagada o suspendida por mora
+    const suspendedStatuses = ['canceled', 'unpaid', 'suspended']
     const isSuspended = initialData.subscription?.status
         ? suspendedStatuses.includes(initialData.subscription.status)
         : false

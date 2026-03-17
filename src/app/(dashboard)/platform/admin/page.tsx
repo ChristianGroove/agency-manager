@@ -4,7 +4,7 @@ import { getAllAppsAdmin } from "@/modules/core/saas/app-management-actions"
 import { requireSuperAdmin } from '@/lib/auth/platform-roles'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { LayoutDashboard, Globe, Codepen, ShieldAlert, Activity, Server, Box, Building2, Users, LayoutTemplate } from 'lucide-react'
+import { LayoutDashboard, Globe, Codepen, ShieldAlert, Activity, Server, Box, Building2, Users, LayoutTemplate, Wallet } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -17,6 +17,7 @@ import { SaasEngineManager } from "./_components/saas-engine-manager"
 import { SecurityCenter } from "./_components/security-center"
 import { DomainsManager } from "./_components/domains-manager"
 import { GlobalBannersManager } from "./_components/global-banners-manager"
+import { PlatformInvoicesManager } from "./_components/platform-invoices-manager"
 
 export default async function AdminDashboardPage() {
     await requireSuperAdmin()
@@ -64,6 +65,10 @@ export default async function AdminDashboardPage() {
                     <TabsTrigger value="security" className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-white/10 data-[state=active]:shadow-sm transition-all py-2">
                         <ShieldAlert className="h-4 w-4" />
                         Seguridad
+                    </TabsTrigger>
+                    <TabsTrigger value="billing" className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-white/10 data-[state=active]:shadow-sm transition-all py-2 text-primary data-[state=active]:text-primary font-bold">
+                        <Wallet className="h-4 w-4" />
+                        Finanzas
                     </TabsTrigger>
                 </TabsList>
 
@@ -205,6 +210,11 @@ export default async function AdminDashboardPage() {
                 {/* TAB 4: SECURITY */}
                 <TabsContent value="security" className="focus-visible:outline-none">
                     <SecurityCenter />
+                </TabsContent>
+                
+                {/* TAB 5: BILLING (Platform) */}
+                <TabsContent value="billing" className="focus-visible:outline-none">
+                    <PlatformInvoicesManager />
                 </TabsContent>
             </Tabs>
         </div>

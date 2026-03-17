@@ -138,23 +138,62 @@ export async function POST(request: Request) {
                         .maybeSingle()
 
                     if (subscription) {
-                        // Advance period by 1 month
-                        const currentEnd = subscription.current_period_end ? new Date(subscription.current_period_end) : new Date()
-                        const newEnd = new Date(currentEnd)
-                        newEnd.setMonth(newEnd.getMonth() + 1)
+                        let newEnd = new Date(subscription.current_period_end || new Date())
+                        
+                        // Check if it's a platform manual invoice with specific date
+                        if (paymentTx.metadata?.platform_invoice && paymentTx.metadata?.invoice_id) {
+                            const { data: invoice } = await supabaseAdmin
+                                .from('saas_platform_invoices')
+                                .select('billing_period_end')
+                                .eq('id', paymentTx.metadata.invoice_id)
+                                .single()
+                            
+                            if (invoice?.billing_period_end) {
+                                const invoiceEnd = new Date(invoice.billing_period_end);
+                                // Safety: Only update if the invoice provides a FURTHUR end date
+                                if (invoiceEnd > newEnd) {
+                                    newEnd = invoiceEnd;
+                                }
+                            }
+                        } else {
+                            // Standard recurrence logic
+                            newEnd.setMonth(newEnd.getMonth() + 1)
+                        }
 
                         await supabaseAdmin
                             .from('saas_subscriptions')
                             .update({
                                 status: 'active',
-                                current_period_start: currentEnd.toISOString(),
                                 current_period_end: newEnd.toISOString(),
                                 last_payment_at: new Date().toISOString(),
+                                billing_method: paymentTx.metadata?.platform_invoice ? 'MANUAL' : 'AUTOMATIC',
                                 updated_at: new Date().toISOString()
                             })
                             .eq('id', subscription.id)
 
-                        console.log(`[Webhook] ✅ Updated saas_subscription ${subscription.id} for Org ${paymentTx.organization_id}`)
+                        console.log(`[Webhook] ✅ Updated saas_subscription ${subscription.id} for Org ${paymentTx.organization_id} until ${newEnd.toISOString()}`)
+                    }
+
+                    // 1.5. If this is a Platform Manual Invoice, mark it as PAID
+                    if (paymentTx.metadata?.platform_invoice && paymentTx.metadata?.invoice_id) {
+                        try {
+                            const { error: platformInvoiceError } = await supabaseAdmin
+                                .from('saas_platform_invoices')
+                                .update({ 
+                                    status: 'PAID', 
+                                    payment_transaction_id: paymentTx.id,
+                                    updated_at: new Date().toISOString() 
+                                })
+                                .eq('id', paymentTx.metadata.invoice_id);
+
+                            if (platformInvoiceError) {
+                                console.error('[Webhook] ❌ Error updating platform invoice status:', platformInvoiceError);
+                            } else {
+                                console.log(`[Webhook] ✅ Platform Invoice ${paymentTx.metadata.invoice_id} marked as PAID`);
+                            }
+                        } catch (e: any) {
+                            console.error('[Webhook] ❌ Unexpected error updating platform invoice:', e);
+                        }
                     }
 
                     // 2. Register Billable Event (This is the revenue)
