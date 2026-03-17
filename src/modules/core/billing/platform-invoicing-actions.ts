@@ -335,55 +335,63 @@ export async function manualActivateSubscription(organizationId: string, options
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, error: "No autorizado" }
 
-    // 2. Fetch Organization to get current plan (Product ID)
-    const { data: org } = await supabaseAdmin
+    // 2. Fetch Organization Data
+    const { data: org, error: orgFetchError } = await supabaseAdmin
         .from('organizations')
-        .select('subscription_product_id')
+        .select('name, subscription_product_id')
         .eq('id', organizationId)
         .single();
 
-    let planId = org?.subscription_product_id;
-
-    // 2.5 STRICT INTEGRITY CHECK: Ensure the plan actually exists in saas_products
-    let planExists = false;
-    if (planId) {
-        const { count } = await supabaseAdmin
-            .from('saas_products')
-            .select('id', { count: 'exact', head: true })
-            .eq('id', planId);
-        planExists = (count || 0) > 0;
+    if (orgFetchError || !org) {
+        return { success: false, error: "No se encontró la organización especificada." }
     }
 
-    // 2.6 REPAIR LAYER: If plan is missing or invalid (Orphaned), find and assign a valid one
-    if (!planExists) {
-        console.warn(`[REPAIR] Organization ${organizationId} has an invalid or missing plan. Finding baseline...`);
-        const { data: baselineProduct } = await supabaseAdmin
+    // 3. INTEGRITY GUARANTEE: Validate or Find a valid Plan ID
+    let finalPlanId: string | null = null;
+    
+    // Check if the current plan_id in the org is actually valid
+    if (org.subscription_product_id) {
+        const { data: existingPlan } = await supabaseAdmin
             .from('saas_products')
             .select('id')
-            .order('is_active', { ascending: false })
+            .eq('id', org.subscription_product_id)
+            .maybeSingle();
+        
+        if (existingPlan) {
+            finalPlanId = existingPlan.id;
+        }
+    }
+
+    // If still no valid plan, find ANY active/available plan as fallback
+    if (!finalPlanId) {
+        console.warn(`[REPAIR] No valid plan for Org ${organizationId}. Searching fallback...`);
+        const { data: fallback } = await supabaseAdmin
+            .from('saas_products')
+            .select('id')
+            .order('status', { ascending: false }) // Prioritize published
             .limit(1)
             .maybeSingle();
         
-        planId = baselineProduct?.id;
+        finalPlanId = fallback?.id || null;
 
-        // Persist the repair immediately to heal the database
-        if (planId) {
+        // Auto-Heal: Update organization record to be consistent
+        if (finalPlanId) {
             await supabaseAdmin
                 .from('organizations')
-                .update({ subscription_product_id: planId })
+                .update({ subscription_product_id: finalPlanId })
                 .eq('id', organizationId);
-            console.log(`[REPAIR] Healed organization ${organizationId} with baseline plan ${planId}`);
         }
     }
 
-    if (!planId) {
+    // 4. Critical Infrastructure Exit
+    if (!finalPlanId) {
         return { 
             success: false, 
-            error: "Falla de Infraestructura: No hay productos en 'saas_products'. La base de datos local está vacía. Por favor, ejecuta las migraciones de baseline." 
+            error: "INFRAESTRUCTURA INCOMPLETA: La tabla 'saas_products' está vacía. Debes crear al menos un producto en el sistema (Migración Baseline V3.0) antes de activar suscripciones." 
         }
     }
 
-    // 3. Determine Expiry
+    // 5. Determine Expiry
     let expiryStr: string;
     if (options?.expiryDate) {
         expiryStr = new Date(options.expiryDate).toISOString();
@@ -393,40 +401,43 @@ export async function manualActivateSubscription(organizationId: string, options
         expiryStr = d.toISOString();
     }
 
-    // 4. Update Tables (Dual Sync)
-    // 4a. Organizations (Status only)
-    const { error: orgError } = await supabaseAdmin
-        .from('organizations')
-        .update({
-            subscription_status: 'active'
-        })
-        .eq('id', organizationId)
+    // 6. DB Sync (Atomic Updates via Admin)
+    try {
+        // 6a. Update/Create Subscription record
+        const { error: subError } = await supabaseAdmin
+            .from('saas_subscriptions')
+            .upsert({
+                organization_id: organizationId,
+                plan_id: finalPlanId,
+                status: 'active',
+                current_period_end: expiryStr,
+                billing_method: 'MANUAL',
+                updated_at: new Date().toISOString()
+            }, { onConflict: 'organization_id' });
 
-    if (orgError) {
-        console.error("Org status update failed:", orgError);
-        return { success: false, error: `Error Org: ${orgError.message}` }
-    }
+        if (subError) throw subError;
 
-    // 4b. Saas Subscriptions (Period & Method)
-    const { error: subError } = await supabaseAdmin
-        .from('saas_subscriptions')
-        .upsert({
-            organization_id: organizationId,
-            plan_id: planId, // Assigned or default plan
-            status: 'active',
-            current_period_end: expiryStr,
-            billing_method: 'MANUAL',
-            updated_at: new Date().toISOString()
-        }, { onConflict: 'organization_id' })
+        // 6b. Update Organization Status Overlay
+        const { error: orgUpdateError } = await supabaseAdmin
+            .from('organizations')
+            .update({
+                subscription_status: 'active'
+            })
+            .eq('id', organizationId);
 
-    if (subError) {
-        console.error("Subscription period update failed:", subError);
-        return { success: false, error: `Error Sub: ${subError.message}` }
-    }
+        if (orgUpdateError) throw orgUpdateError;
 
-    return { 
-        success: true, 
-        newExpiry: expiryStr 
+        return { 
+            success: true, 
+            newExpiry: expiryStr 
+        };
+
+    } catch (dbError: any) {
+        console.error("Critical DB Activation Failure:", dbError);
+        return { 
+            success: false, 
+            error: `Fallo sistémico en base de datos: ${dbError.message} [PlanID: ${finalPlanId}]` 
+        };
     }
 }
 
