@@ -158,9 +158,12 @@ export interface IncomingMessage {
     metadata?: Record<string, unknown>;
     referral?: {
         source_type: string;
-        source_id: string;
+        source_id: string; // This is often the campaign ID
         source_url: string;
         ctwa_clid: string; // Click-to-WhatsApp Click ID
+        ad_id?: string;    // Specific Ad ID
+        headline?: string;
+        body?: string;
     };
     origin?: 'inbound' | 'outbound';
 }

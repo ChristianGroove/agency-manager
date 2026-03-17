@@ -818,6 +818,7 @@ export function PropertiesSheet({ node, isOpen, onClose, onUpdate, onDelete, onD
                                         <SelectItem value="business_hours">🏢 Solo en Horario de Oficina</SelectItem>
                                         <SelectItem value="outside_hours">🌙 Solo Fuera de Horario (Auto-Respuesta)</SelectItem>
                                         <SelectItem value="media_received">📸 Media Recibida (Imagen/Video/Audio)</SelectItem>
+                                        <SelectItem value="meta_ads">📢 Origin: Meta Ads (FB/IG)</SelectItem>
                                         <SelectItem value="schedule" disabled>⏰ Programado (Próximamente)</SelectItem>
                                     </SelectContent>
                                 </Select>
@@ -832,7 +833,9 @@ export function PropertiesSheet({ node, isOpen, onClose, onUpdate, onDelete, onD
                                                     ? '🌙 Se dispara cuando el mensaje llega fuera del horario de oficina.'
                                                     : formData.triggerType === 'media_received'
                                                         ? '📸 Se dispara cuando el usuario envía una imagen, video, audio o documento.'
-                                                        : '📬 Se dispara con cualquier mensaje entrante.'
+                                                        : formData.triggerType === 'meta_ads'
+                                                            ? '📢 Se dispara solo para leads que vienen de Anuncios de Facebook o Instagram.'
+                                                            : '📬 Se dispara con cualquier mensaje entrante.'
                                     }
                                 </p>
                             </div>
@@ -894,6 +897,42 @@ export function PropertiesSheet({ node, isOpen, onClose, onUpdate, onDelete, onD
                                         </div>
                                         <p className="text-xs text-muted-foreground">
                                             Evita disparar el mismo workflow para el mismo lead dentro de este tiempo. Déjalo en 0 para desactivar.
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Meta Ads Specific Config */}
+                            {formData.triggerType === 'meta_ads' && (
+                                <div className="space-y-4 p-4 bg-indigo-50/50 dark:bg-indigo-950/20 rounded-lg border border-indigo-100 dark:border-indigo-900/50">
+                                    <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
+                                        <Globe className="h-4 w-4" />
+                                        <Label className="text-sm font-semibold">Filtros de Anuncios (Opcional)</Label>
+                                    </div>
+                                    
+                                    <div className="space-y-2">
+                                        <Label>ID de Campaña</Label>
+                                        <Input
+                                            value={(formData.campaign_id as string) || ''}
+                                            onChange={(e) => handleChange('campaign_id', e.target.value)}
+                                            placeholder="ej. 123456789"
+                                            className="bg-white dark:bg-slate-900"
+                                        />
+                                        <p className="text-[10px] text-muted-foreground">
+                                            Deja en blanco para disparar con CUALQUIER campaña.
+                                        </p>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label>ID de Anuncio</Label>
+                                        <Input
+                                            value={(formData.ad_id as string) || ''}
+                                            onChange={(e) => handleChange('ad_id', e.target.value)}
+                                            placeholder="ej. 987654321"
+                                            className="bg-white dark:bg-slate-900"
+                                        />
+                                        <p className="text-[10px] text-muted-foreground">
+                                            Deja en blanco para disparar con CUALQUIER anuncio.
                                         </p>
                                     </div>
                                 </div>

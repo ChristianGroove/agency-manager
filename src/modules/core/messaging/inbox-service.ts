@@ -406,14 +406,26 @@ export class InboxService {
             updates.last_message_preview = typeof msg.content === 'object' ? (msg.content as any).text : msg.content;
 
             // Auto-heal connection_id and metadata if missing and we found one now
-            const metadataChange = (metadata?.phoneNumberId || metadata?.pageId || metadata?.instagramBusinessId)
-                ? { ...((existingConv as any).metadata || {}), ...metadata }
-                : null;
+            const metadataChange = { ...((existingConv as any).metadata || {}), ...metadata };
+            
+            // Meta Ad / Click Tracking Support (CTWA)
+            if (msg.referral) {
+                metadataChange.referral = {
+                    source_type: msg.referral.source_type,
+                    source_id: msg.referral.source_id,
+                    source_url: msg.referral.source_url,
+                    ctwa_clid: msg.referral.ctwa_clid,
+                    ad_id: msg.referral.ad_id || msg.referral.source_id, // Normalize ad_id
+                    free_tier_expires_at: new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString()
+                };
+            }
 
             if (!existingConv.connection_id && connectionId) {
                 updates.connection_id = connectionId;
             }
-            if (metadataChange && JSON.stringify((existingConv as any).metadata) !== JSON.stringify(metadataChange)) {
+            
+            // Comparison to avoid redundant updates, but ensure referral is always updated if it changed
+            if (JSON.stringify((existingConv as any).metadata) !== JSON.stringify(metadataChange)) {
                 updates.metadata = metadataChange;
             }
 
@@ -486,11 +498,16 @@ export class InboxService {
             ...(metadata?.phoneNumberId && { phoneNumberId: metadata.phoneNumberId }),
             ...(metadata?.pageId && { pageId: metadata.pageId }),
             ...(metadata?.instagramBusinessId && { instagramBusinessId: metadata.instagramBusinessId }),
-            // CTWA Detection: 72h Free Window
-            ...(msg.referral?.ctwa_clid && {
-                ctwa_clid: msg.referral.ctwa_clid,
-                referral_source: msg.referral.source_url,
-                free_tier_expires_at: new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString()
+            // Meta Ad / Click Tracking Support (CTWA)
+            ...(msg.referral && {
+                referral: {
+                    source_type: msg.referral.source_type,
+                    source_id: msg.referral.source_id,
+                    source_url: msg.referral.source_url,
+                    ctwa_clid: msg.referral.ctwa_clid,
+                    ad_id: msg.referral.ad_id || msg.referral.source_id,
+                    free_tier_expires_at: new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString()
+                }
             })
         };
         const insertPayload = {

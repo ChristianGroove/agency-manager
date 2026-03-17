@@ -63,7 +63,7 @@ export class AutomationTriggerService {
             .select('*')
             .eq('organization_id', orgId)
             .eq('is_active', true)
-            .in('trigger_type', ['keyword', 'message_received', 'webhook', 'first_contact', 'business_hours', 'outside_hours', 'media_received'])
+            .in('trigger_type', ['keyword', 'message_received', 'webhook', 'first_contact', 'business_hours', 'outside_hours', 'media_received', 'meta_ads'])
 
         if (!workflows || workflows.length === 0) {
             fileLogger.log('[AutomationTrigger] No active message triggers found.')
@@ -236,6 +236,30 @@ export class AutomationTriggerService {
                 }
             }
 
+            // 7. "Meta Ads"
+            else if (wf.trigger_type === 'meta_ads') {
+                const convMetadata = conversation.metadata as any || {}
+                // Support both structured (referral.ad_id) and flat (ad_id) metadata
+                const referral = convMetadata.referral || convMetadata
+                const adId = referral.ad_id || referral.source_id
+                const campaignId = referral.source_id || referral.campaign_id
+
+                if (adId || (referral && referral.ctwa_clid)) {
+                    // It's a Meta Ad lead.
+                    // If trigger config has specific Ad ID or Campaign filters, apply them
+                    const adIdMatch = !config.ad_id || config.ad_id === adId
+                    const campaignMatch = !config.campaign_id || config.campaign_id === campaignId
+
+                    if (adIdMatch && campaignMatch) {
+                        match = true
+                    } else {
+                        skipReason = `Meta Ad mismatch (Ad: ${adId}, Campaign: ${campaignId})`
+                    }
+                } else {
+                    skipReason = 'Not a Meta Ad lead (No referral data found)'
+                }
+            }
+
             if (!match && !skipReason) {
                 skipReason = `Type ${wf.trigger_type} not handled or condition failed`
             }
@@ -298,6 +322,19 @@ export class AutomationTriggerService {
                     .select('*')
                     .eq('id', leadId)
                     .single()
+
+                // Enrich lead with ad data for easier variable access {{lead.ad_id}}
+                if (fullLead) {
+                    const convMetadata = conversation.metadata as any || {}
+                    const referral = convMetadata.referral
+                    if (referral) {
+                        fullLead.ad_id = referral.ad_id || referral.source_id
+                        fullLead.ad_campaign = referral.source_id
+                        fullLead.ad_source = referral.source_type
+                        fullLead.ad_url = referral.source_url
+                        fullLead.ad_ctwa_clid = referral.ctwa_clid
+                    }
+                }
 
                 // DEDUPLICATION
                 const finalMessageId = messageId || (messageContent as any).id || (typeof messageContent === 'object' ? (messageContent as any).id : `auto_${Date.now()}`);

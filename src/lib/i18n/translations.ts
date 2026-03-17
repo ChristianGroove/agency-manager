@@ -145,7 +145,12 @@ export const enTranslations = {
     'stats.no_change': 'No Change',
     'crm.reports.kpis.avg_response_time': 'Avg. Response Time',
     'crm.reports.kpis.target_response': 'Target Response',
-    'common.n_a': 'N/A'
+    'common.n_a': 'N/A',
+
+    // Sidebar
+    'sidebar.cat_crm': 'CRM & Sales',
+    'sidebar.meta_ads_monitor': 'Meta Ads Monitor',
+    'sidebar.module_meta_ads': 'Meta Ads Engine'
 };
 
 export const esTranslations = {
@@ -191,7 +196,12 @@ export const esTranslations = {
     'marketing.send_campaign': 'Enviar Campaña',
     'marketing.eligibility': 'Elegibilidad Marketing',
     'marketing.approved': 'Aprobado',
-    'marketing.pending': 'Pendiente'
+    'marketing.pending': 'Pendiente',
+
+    // Sidebar
+    'sidebar.cat_crm': 'CRM y Ventas',
+    'sidebar.meta_ads_monitor': 'Monitor de Meta Ads',
+    'sidebar.module_meta_ads': 'Motor de Meta Ads'
 };
 
 /**

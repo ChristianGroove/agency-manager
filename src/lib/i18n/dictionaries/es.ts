@@ -48,7 +48,7 @@ export const es = {
         crm_clients: "Contactos",
         crm_pipeline: "Embudo de Ventas",
         crm_broadcasts: "Marketing Masivo",
-        meta_insights: "Meta Insights",
+        meta_ads_monitor: "Meta Ads",
         crm_automations: "Automatizaciones",
         crm_reports: "Reportes",
         crm_settings: "Configuración CRM",

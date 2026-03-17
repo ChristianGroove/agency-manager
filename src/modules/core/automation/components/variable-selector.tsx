@@ -26,6 +26,10 @@ const VARIABLES = [
     { label: 'Mensaje: Pantalla / Remitente', value: '{{message.sender}}' },
     { label: 'Mensaje: Contenido', value: '{{message.content}}' },
     { label: 'Nombre de la Empresa / Org', value: '{{organization.name}}' },
+    { label: 'Meta Ad: ID de Anuncio', value: '{{lead.ad_id}}' },
+    { label: 'Meta Ad: Campaña', value: '{{lead.ad_campaign}}' },
+    { label: 'Meta Ad: Fuente', value: '{{lead.ad_source}}' },
+    { label: 'Meta Ad: URL de Referencia', value: '{{lead.ad_url}}' },
     { label: 'Variable Personalizada', value: '{{custom_variable}}' },
 ];
 

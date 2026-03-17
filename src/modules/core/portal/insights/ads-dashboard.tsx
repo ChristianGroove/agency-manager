@@ -1,20 +1,21 @@
-
+import React, { useState } from "react"
 import { NormalizedAdsMetrics } from "@/lib/integrations/meta/types"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { DollarSign, Eye, MousePointer2, TrendingUp, BarChart3, AlertCircle, ChevronDown, ChevronUp, Image as ImageIcon, Calendar } from "lucide-react"
 import { formatCurrency, cn } from "@/lib/utils"
-import { useState } from "react"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 
 interface AdsDashboardProps {
-    data: NormalizedAdsMetrics
+    data: any // Keeping it flexible to handle both NormalizedAdsMetrics and DB Row
     datePreset?: string
     onDatePresetChange?: (preset: string) => void
     loading?: boolean
+    title?: string
 }
 
-export function AdsDashboard({ data, datePreset, onDatePresetChange, loading }: AdsDashboardProps) {
+export function AdsDashboard({ data, loading, title }: AdsDashboardProps) {
     const [expandedCampaignId, setExpandedCampaignId] = useState<string | null>(null)
 
     if (!data) return null
@@ -23,16 +24,16 @@ export function AdsDashboard({ data, datePreset, onDatePresetChange, loading }: 
         setExpandedCampaignId(expandedCampaignId === id ? null : id)
     }
 
-    // Safety Casts
+    // Generic Data Normalization
     const safeData = {
-        ...data,
         spend: Number(data.spend || 0),
         impressions: Number(data.impressions || 0),
         clicks: Number(data.clicks || 0),
         roas: Number(data.roas || 0),
         cpc: Number(data.cpc || 0),
         ctr: Number(data.ctr || 0),
-        campaigns: Array.isArray(data.campaigns) ? data.campaigns.map(c => ({
+        last_updated: data.last_updated || data.updated_at || new Date().toISOString(),
+        campaigns: Array.isArray(data.campaigns) ? data.campaigns.map((c: any) => ({
             ...c,
             spend: Number(c.spend || 0),
             impressions: Number(c.impressions || 0),
@@ -42,7 +43,7 @@ export function AdsDashboard({ data, datePreset, onDatePresetChange, loading }: 
             cost_per_conversion: Number(c.cost_per_conversion || 0),
             daily_budget: c.daily_budget ? Number(c.daily_budget) : 0,
             lifetime_budget: c.lifetime_budget ? Number(c.lifetime_budget) : 0,
-            ads: (c.ads || []).map(a => ({
+            ads: (c.ads || []).map((a: any) => ({
                 ...a,
                 spend: Number(a.spend || 0),
                 impressions: Number(a.impressions || 0),
@@ -53,296 +54,181 @@ export function AdsDashboard({ data, datePreset, onDatePresetChange, loading }: 
     }
 
     return (
-        <div className="space-y-6">
-            {/* Header / Date Filter */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div className="flex items-center gap-2">
-                    {/* Optional: Add title or subtitle if needed */}
-                </div>
-
-                {onDatePresetChange && (
-                    <div className="grid grid-cols-3 bg-gray-100 p-1 rounded-lg w-full sm:w-auto">
-                        <FilterButton
-                            active={datePreset === 'today'}
-                            onClick={() => onDatePresetChange('today')}
-                            label="Hoy"
-                        />
-                        <FilterButton
-                            active={datePreset === 'yesterday'}
-                            onClick={() => onDatePresetChange('yesterday')}
-                            label="Ayer"
-                        />
-                        <FilterButton
-                            active={datePreset === 'last_30d' || datePreset === 'this_month'}
-                            onClick={() => onDatePresetChange('last_30d')}
-                            label="Este Mes"
-                        />
-                    </div>
-                )}
-            </div>
-
-            {loading && (
-                <div className="absolute inset-0 bg-white/50 z-10 flex items-center justify-center">
-                    {/* Optional loading overlay if main page doesn't handle it */}
-                </div>
-            )}
-
-            {/* KPI Grid */}
-            <div className={cn("grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4 transition-opacity duration-300", loading ? "opacity-50" : "opacity-100")}>
+        <div className="space-y-10">
+            <div className={cn("grid grid-cols-2 md:grid-cols-4 gap-4", loading ? "opacity-50 pointer-events-none" : "opacity-100")}>
                 <KPICard
                     title="Inversión"
                     value={formatCurrency(safeData.spend)}
                     icon={DollarSign}
-                    color="text-green-600"
-                    bg="bg-green-100"
+                    color="text-blue-600 dark:text-blue-400"
+                    bgColor="bg-blue-50 dark:bg-blue-500/10"
                 />
                 <KPICard
-                    title="Impresiones"
-                    value={safeData.impressions.toLocaleString()}
-                    icon={Eye}
-                    color="text-blue-600"
-                    bg="bg-blue-100"
-                />
-                <KPICard
-                    title="Clics"
+                    title="Resultados (Clics)"
                     value={safeData.clicks.toLocaleString()}
                     icon={MousePointer2}
-                    color="text-purple-600"
-                    bg="bg-purple-100"
+                    color="text-purple-600 dark:text-purple-400"
+                    bgColor="bg-purple-50 dark:bg-purple-500/10"
+                />
+                <KPICard
+                    title="Alcance"
+                    value={safeData.impressions.toLocaleString()}
+                    icon={Eye}
+                    color="text-emerald-600 dark:text-emerald-400"
+                    bgColor="bg-emerald-50 dark:bg-emerald-500/10"
                 />
                 <KPICard
                     title="ROAS"
-                    value={`${safeData.roas.toFixed(2)}x`}
+                    value={`${safeData.roas > 0 ? safeData.roas.toFixed(2) : '--'}x`}
                     icon={TrendingUp}
-                    color="text-amber-600"
-                    bg="bg-amber-100"
-                    info="Retorno por cada $1 invertido"
+                    color="text-amber-600 dark:text-amber-400"
+                    bgColor="bg-amber-50 dark:bg-amber-500/10"
                 />
             </div>
 
-            {/* Secondary Metrics */}
-            <div className={cn("grid grid-cols-2 gap-2 md:gap-4 transition-opacity", loading ? "opacity-50" : "opacity-100")}>
-                <Card>
-                    <CardContent className="pt-6">
-                        <div className="flex justify-between items-center">
-                            <span className="text-sm text-gray-500">Costo por Resultado (CPA)</span>
-                            <span className="font-bold text-gray-900">{formatCurrency(safeData.cpc)}</span>
+            {/* Main Content Area */}
+            <div className="grid grid-cols-1 gap-8">
+                <Card className="rounded-[2.5rem] border-none shadow-2xl shadow-slate-200/50 dark:shadow-none bg-white dark:bg-zinc-900 overflow-hidden border border-slate-100 dark:border-white/10">
+                    <CardHeader className="p-8 pb-4 border-b border-slate-50 dark:border-white/5">
+                        <div className="flex items-center justify-between">
+                            <CardTitle className="text-lg font-bold tracking-tight flex items-center gap-3">
+                                <div className="p-2 bg-indigo-50 dark:bg-indigo-500/10 rounded-xl">
+                                    <BarChart3 className="w-5 h-5 text-indigo-600" />
+                                </div>
+                                Campañas Activas
+                            </CardTitle>
                         </div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardContent className="pt-6">
-                        <div className="flex justify-between items-center">
-                            <span className="text-sm text-gray-500">Tasa de Clics (CTR)</span>
-                            <span className="font-bold text-gray-900">{safeData.ctr.toFixed(2)}%</span>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead className="bg-slate-50/50 dark:bg-white/[0.02] text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                                    <tr>
+                                        <th className="px-8 py-5">Campaña / Estado</th>
+                                        <th className="px-6 py-5 text-right">Presupuesto</th>
+                                        <th className="px-6 py-5 text-right">Gasto</th>
+                                        <th className="px-6 py-5 text-right">Conv.</th>
+                                        <th className="px-8 py-5 text-right">CTR / ROAS</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-50 dark:divide-white/5">
+                                    {safeData.campaigns.map((campaign: any) => {
+                                        const isExpanded = expandedCampaignId === campaign.id
+                                        const budget = campaign.daily_budget || campaign.lifetime_budget || 0
+                                        const progress = budget > 0 ? Math.min((campaign.spend / budget) * 100, 100) : 0
+                                        
+                                        return (
+                                            <React.Fragment key={campaign.id}>
+                                                <tr 
+                                                    onClick={() => toggleCampaign(campaign.id)}
+                                                    className={cn(
+                                                        "group cursor-pointer transition-all hover:bg-slate-50/50 dark:hover:bg-white/[0.02]",
+                                                        isExpanded && "bg-slate-50/80 dark:bg-white/[0.03]"
+                                                    )}
+                                                >
+                                                    <td className="px-8 py-6">
+                                                        <div className="flex items-center gap-4">
+                                                            <div className={cn(
+                                                                "w-2 h-2 rounded-full",
+                                                                campaign.status === 'ACTIVE' ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "bg-slate-300"
+                                                            )} />
+                                                            <div>
+                                                                <p className="font-bold text-slate-900 dark:text-white leading-tight group-hover:text-indigo-600 transition-colors uppercase text-sm tracking-tight">{campaign.name}</p>
+                                                                <p className="text-[10px] text-zinc-500 font-bold mt-1 opacity-70">ID: {campaign.id}</p>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-6 text-right">
+                                                        <p className="font-bold text-slate-700 dark:text-slate-300 text-sm">{formatCurrency(budget)}</p>
+                                                        <p className="text-[10px] text-zinc-400 font-medium">{campaign.daily_budget ? 'Diario' : 'Total'}</p>
+                                                    </td>
+                                                    <td className="px-6 py-6 text-right">
+                                                        <div className="flex flex-col items-end gap-1.5">
+                                                            <p className="font-black text-indigo-600 dark:text-indigo-400 text-sm">{formatCurrency(campaign.spend)}</p>
+                                                            <Progress value={progress} className="h-1 w-20 bg-slate-100 dark:bg-zinc-800" />
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-6 text-right">
+                                                        <p className="font-black text-slate-900 dark:text-white text-sm">{campaign.conversions || '-'}</p>
+                                                        <p className="text-[10px] text-zinc-400 font-medium">LTC: {formatCurrency(campaign.cost_per_conversion)}</p>
+                                                    </td>
+                                                    <td className="px-8 py-6 text-right">
+                                                        <div className="flex flex-col items-end">
+                                                            <Badge className="bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-[10px] font-black border-none px-2 mb-1">
+                                                                {campaign.ctr.toFixed(2)}% CTR
+                                                            </Badge>
+                                                            <p className="text-[10px] font-bold text-indigo-500">ROAS: {campaign.roas > 0 ? campaign.roas.toFixed(2) : '--'}x</p>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                                {isExpanded && campaign.ads && campaign.ads.length > 0 && (
+                                                    <tr>
+                                                        <td colSpan={5} className="px-8 py-0">
+                                                            <div className="pb-8 pt-2 pl-12 space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                                                                {campaign.ads.map((ad: any) => (
+                                                                    <div key={ad.id} className="flex items-center justify-between p-4 bg-white dark:bg-zinc-800/50 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm">
+                                                                        <div className="flex items-center gap-4">
+                                                                            <div className="w-12 h-12 rounded-xl border border-slate-100 dark:border-white/10 overflow-hidden bg-slate-50 flex-shrink-0">
+                                                                                {ad.thumbnail_url ? (
+                                                                                    <img src={ad.thumbnail_url} className="w-full h-full object-cover" />
+                                                                                ) : <ImageIcon className="w-full h-full p-3 text-slate-300" />}
+                                                                            </div>
+                                                                            <div>
+                                                                                <p className="text-xs font-black text-slate-800 dark:text-slate-200">{ad.name}</p>
+                                                                                <Badge variant="outline" className="text-[9px] py-0 px-1.5 mt-1 border-slate-200 text-slate-500">
+                                                                                    {ad.status}
+                                                                                </Badge>
+                                                                            </div>
+                                                                        </div>
+                                                                        <div className="flex items-center gap-10 pr-4">
+                                                                            <div className="text-right">
+                                                                                <p className="text-xs font-bold text-slate-400 uppercase tracking-tighter mb-0.5">Gasto</p>
+                                                                                <p className="text-sm font-black text-indigo-600">{formatCurrency(ad.spend)}</p>
+                                                                            </div>
+                                                                            <div className="text-right">
+                                                                                <p className="text-xs font-bold text-slate-400 uppercase tracking-tighter mb-0.5">Conv.</p>
+                                                                                <p className="text-sm font-black text-slate-800 dark:text-slate-200">{ad.conversions}</p>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </React.Fragment>
+                                        )
+                                    })}
+                                </tbody>
+                            </table>
                         </div>
                     </CardContent>
                 </Card>
             </div>
 
-            {/* Active Campaigns Hierarchy */}
-            <Card className={cn("transition-opacity", loading ? "opacity-50" : "opacity-100")}>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-base">
-                        <BarChart3 className="w-5 h-5 text-gray-500" />
-                        Desglose de Campañas
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="p-0">
-                    {/* Headers */}
-                    <div className="hidden md:grid grid-cols-12 gap-4 px-4 py-2 bg-gray-50 border-b border-gray-100 text-xs font-semibold text-gray-500 uppercase tracking-wider items-center">
-                        <div className="col-span-5">Campaña / Anuncios</div>
-                        <div className="col-span-2 text-right">Inversión</div>
-                        <div className="col-span-3 text-right">Resultados (Conv.)</div>
-                        <div className="col-span-2 text-right">Impresiones</div>
-                    </div>
-
-                    <div className="divide-y divide-gray-100">
-                        {safeData.campaigns.map((campaign) => {
-                            const isExpanded = expandedCampaignId === campaign.id
-                            const hasAds = campaign.ads && campaign.ads.length > 0
-                            const adCount = campaign.ads?.length || 0
-
-                            // Budget Calculation
-                            const budget = campaign.daily_budget || campaign.lifetime_budget || 0
-                            const budgetType = campaign.daily_budget ? 'diario' : (campaign.lifetime_budget ? 'total' : '')
-                            const progress = budget > 0 ? Math.min((campaign.spend / budget) * 100, 100) : 0
-
-                            return (
-                                <div key={campaign.id} className="bg-white">
-                                    {/* Campaign Row */}
-                                    <div
-                                        className={cn(
-                                            "flex flex-col md:grid md:grid-cols-12 gap-4 p-4 cursor-pointer hover:bg-gray-50 transition-colors items-center",
-                                            isExpanded ? "bg-gray-50" : ""
-                                        )}
-                                        onClick={() => toggleCampaign(campaign.id)}
-                                    >
-                                        {/* Name & Status */}
-                                        <div className="col-span-5 min-w-0">
-                                            <div className="flex items-center gap-2 mb-1">
-                                                {hasAds ? (
-                                                    isExpanded ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />
-                                                ) : <div className="w-4" />}
-                                                <div>
-                                                    <p className="font-medium text-gray-900 truncate max-w-[200px] md:max-w-[300px]">{campaign.name}</p>
-                                                    <div className="flex items-center gap-2 mt-0.5">
-                                                        <span className={cn(
-                                                            "text-[10px] font-medium px-2 py-0.5 rounded-full capitalize",
-                                                            campaign.status === 'ACTIVE' ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"
-                                                        )}>
-                                                            {campaign.status === 'ACTIVE' ? 'Activo' : campaign.status.toLowerCase().replace('_', ' ')}
-                                                        </span>
-                                                        <span className="text-[10px] text-gray-400 border border-gray-200 px-1.5 rounded-full">
-                                                            {adCount} {adCount === 1 ? 'Anuncio' : 'Anuncios'}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            {/* Budget Bar (Only if budget exists) */}
-                                            {budget > 0 && (
-                                                <div className="flex items-center gap-2 text-xs text-gray-500 mt-2 pl-6">
-                                                    <div className="flex-1 max-w-[150px]">
-                                                        <Progress value={progress} className={cn("h-1.5", progress > 90 ? "bg-red-100" : "bg-gray-100")} />
-                                                    </div>
-                                                    <span className="whitespace-nowrap">{formatCurrency(campaign.spend)} de {formatCurrency(budget)} {budgetType && `(${budgetType})`}</span>
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        {/* Spend */}
-                                        <div className="col-span-2 text-right">
-                                            <p className="font-bold text-gray-900">{formatCurrency(campaign.spend)}</p>
-                                            <p className="text-[10px] text-gray-500 md:hidden">Inversión</p>
-                                        </div>
-
-                                        {/* Conversions */}
-                                        <div className="col-span-3 text-right hidden md:block">
-                                            <p className="font-medium text-gray-900">{campaign.conversions?.toLocaleString() || '-'}</p>
-                                            {campaign.conversions > 0 && (
-                                                <p className="text-[10px] text-gray-500">
-                                                    {formatCurrency(campaign.cost_per_conversion)} / conv.
-                                                </p>
-                                            )}
-                                        </div>
-
-                                        {/* Impressions/Metrics */}
-                                        <div className="col-span-2 text-right hidden md:block">
-                                            <p className="font-medium text-gray-900">{campaign.impressions?.toLocaleString() || '0'}</p>
-                                            <p className="text-[10px] text-gray-500">CTR: {campaign.ctr.toFixed(2)}%</p>
-                                        </div>
-                                    </div>
-
-                                    {/* Ads List (Accordion Content) */}
-                                    {isExpanded && hasAds && (
-                                        <div className="bg-gray-50/50 border-t border-gray-100 p-4 pl-4 md:pl-10 space-y-3">
-                                            {campaign.ads!.length === 0 && <p className="text-sm text-gray-500 italic">No hay anuncios activos.</p>}
-                                            {campaign.ads!.map((ad) => (
-                                                <div key={ad.id} className="flex flex-col md:grid md:grid-cols-12 gap-4 bg-white p-3 rounded-lg border border-gray-100 shadow-sm items-center">
-
-                                                    {/* Ad Info */}
-                                                    <div className="col-span-5 flex items-center gap-3 w-full">
-                                                        <div className="w-10 h-10 bg-gray-100 rounded md overflow-hidden flex-shrink-0 border border-gray-200 flex items-center justify-center relative group">
-                                                            {ad.thumbnail_url ? (
-                                                                <>
-                                                                    <img src={ad.thumbnail_url} alt={ad.name} className="w-full h-full object-cover" />
-                                                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
-                                                                </>
-                                                            ) : (
-                                                                <ImageIcon className="w-4 h-4 text-gray-400" />
-                                                            )}
-                                                        </div>
-                                                        <div className="min-w-0">
-                                                            <p className="text-sm font-medium text-gray-900 truncate max-w-[150px]">{ad.name}</p>
-                                                            <span className={cn(
-                                                                "text-[10px] px-1.5 py-0.5 rounded capitalize inline-block mt-1",
-                                                                ad.status === 'ACTIVE' ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-600"
-                                                            )}>
-                                                                {ad.status === 'ACTIVE' ? 'Activo' : ad.status.toLowerCase()}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Spend */}
-                                                    <div className="col-span-2 text-right w-full md:w-auto flex justify-between md:block">
-                                                        <span className="md:hidden text-xs text-gray-500">Gasto:</span>
-                                                        <p className="text-sm font-bold text-gray-900">{formatCurrency(ad.spend)}</p>
-                                                    </div>
-
-                                                    {/* Conversions */}
-                                                    <div className="col-span-3 text-right w-full md:w-auto flex justify-between md:block">
-                                                        <span className="md:hidden text-xs text-gray-500">Conv:</span>
-                                                        <div>
-                                                            <p className="text-sm font-medium text-gray-900">{ad.conversions?.toLocaleString() || '-'}</p>
-                                                            {ad.conversions > 0 && <p className="text-[10px] text-gray-500">{formatCurrency(ad.cost_per_conversion)}</p>}
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Impressions */}
-                                                    <div className="col-span-2 text-right hidden md:block">
-                                                        <p className="text-xs text-gray-900">{ad.impressions?.toLocaleString()}</p>
-                                                        <p className="text-[10px] text-gray-500">Impr.</p>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            )
-                        })}
-                        {safeData.campaigns.length === 0 && (
-                            <div className="text-center py-8 text-gray-400">
-                                <AlertCircle className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                                <p>No hay campañas activas en este período</p>
-                            </div>
-                        )}
-                    </div>
-                </CardContent>
-            </Card>
-
-            <p className="text-xs text-center text-gray-400 mt-4">
-                Actualizado: {new Date(safeData.last_updated).toLocaleString()}
-            </p>
+            <div className="flex justify-center pt-4">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                    <span className="w-8 h-[1px] bg-slate-200" />
+                    Última Sincronización: {new Date(safeData.last_updated).toLocaleString()}
+                    <span className="w-8 h-[1px] bg-slate-200" />
+                </p>
+            </div>
         </div>
     )
 }
 
-function FilterButton({ active, onClick, label }: { active: boolean, onClick: () => void, label: string }) {
+function KPICard({ title, value, icon: Icon, color, bgColor }: any) {
     return (
-        <button
-            onClick={onClick}
-            className={cn(
-                "px-3 py-1.5 text-sm font-medium rounded-md transition-all",
-                active
-                    ? "bg-white text-brand-primary shadow-sm"
-                    : "text-gray-500 hover:text-gray-900 hover:bg-gray-200/50"
-            )}
-        >
-            {label}
-        </button>
-    )
-}
-
-function KPICard({ title, value, icon: Icon, color, bg, info }: any) {
-    return (
-        <Card>
-            <CardContent className="p-3 md:p-4 flex flex-col items-center text-center gap-2 relative group">
-                <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center ${bg} ${color} mb-1`}>
-                    <Icon className="w-4 h-4 md:w-5 md:h-5" />
+        <Card className="p-5 bg-white dark:bg-zinc-900/50 backdrop-blur-md border-gray-100 dark:border-white/5 shadow-sm hover:shadow-md transition-all group">
+            <div className="flex items-center gap-4">
+                <div className={cn("p-3 rounded-xl group-hover:scale-110 transition-transform", bgColor)}>
+                    <Icon className={cn("h-6 w-6", color)} />
                 </div>
                 <div>
-                    <span className="text-[10px] md:text-xs text-gray-500 font-medium uppercase tracking-wide">{title}</span>
-                    <p className="text-base md:text-2xl font-bold text-gray-900 mt-0.5 truncate max-w-full">{value}</p>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-white leading-tight">{value}</p>
+                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-wider">{title}</p>
                 </div>
-                {info && (
-                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <div className="bg-black text-white text-[10px] px-2 py-1 rounded">
-                            {info}
-                        </div>
-                    </div>
-                )}
-            </CardContent>
+            </div>
         </Card>
     )
 }

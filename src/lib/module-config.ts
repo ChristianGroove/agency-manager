@@ -111,6 +111,17 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         }
     },
     {
+        key: 'meta_ads_monitor',
+        label: 'Meta Ads',
+        href: '/crm/meta-ads',
+        icon: BarChart3,
+        category: 'crm',
+        parentModule: 'module_meta_ads',
+        access: {
+            allowedRoles: ['owner', 'admin']
+        }
+    },
+    {
         key: 'crm_automations',
         label: 'Automatizaciones',
         href: '/crm/automations',
@@ -189,17 +200,6 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         icon: BrainCircuit,
         category: 'operations',
         parentModule: 'module_automation',
-        access: {
-            allowedRoles: ['owner', 'admin']
-        }
-    },
-    {
-        key: 'meta_insights',
-        label: 'Meta Insights',
-        href: '/crm/marketing?tab=insights', // Use query param to keep it in the same page but distinct
-        icon: BarChart3,
-        category: 'crm',
-        parentModule: 'meta_insights',
         access: {
             allowedRoles: ['owner', 'admin']
         }

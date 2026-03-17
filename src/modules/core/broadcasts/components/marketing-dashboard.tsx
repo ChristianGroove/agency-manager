@@ -182,25 +182,15 @@ export function MarketingDashboard() {
             {/* Main Content Tabs */}
             <Tabs 
                 value={activeTab} 
-                onValueChange={(val) => {
-                    setActiveTab(val);
-                    if (val === 'insights') {
-                        router.push('/crm/marketing?tab=insights');
-                    } else {
-                        router.push('/crm/marketing');
-                    }
-                }} 
+                onValueChange={setActiveTab} 
                 className="space-y-6"
             >
                 <TabsList className="bg-white dark:bg-zinc-900 p-1 rounded-xl border border-gray-100 dark:border-white/10 h-auto">
                     <TabsTrigger value="campaigns" className="rounded-lg px-4 py-2 data-[state=active]:bg-gray-100 dark:data-[state=active]:bg-white/10">
-                        Campañas
+                        Campaños
                     </TabsTrigger>
                     <TabsTrigger value="history" className="rounded-lg px-4 py-2 data-[state=active]:bg-gray-100 dark:data-[state=active]:bg-white/10">
                         Historial de Envíos
-                    </TabsTrigger>
-                    <TabsTrigger value="insights" className="rounded-lg px-4 py-2 data-[state=active]:bg-gray-100 dark:data-[state=active]:bg-white/10">
-                        Insights
                     </TabsTrigger>
                 </TabsList>
 
@@ -212,20 +202,6 @@ export function MarketingDashboard() {
                     <BroadcastsView />
                 </TabsContent>
 
-                <TabsContent value="insights" className="mt-0">
-                    <Card className="p-20 flex flex-col items-center justify-center text-center border-dashed border-2">
-                        <div className="p-4 bg-amber-50 dark:bg-amber-500/10 rounded-full mb-4">
-                            <BarChart3 className="h-10 w-10 text-amber-600" />
-                        </div>
-                        <h3 className="text-xl font-semibold mb-2">Meta Ads Insights</h3>
-                        <p className="text-muted-foreground max-w-md">
-                            Conecta tu cuenta de Meta Business para visualizar el rendimiento de tus anuncios directamente aquí.
-                        </p>
-                        <Button className="mt-6 bg-blue-600 hover:bg-blue-700 text-white">
-                            Conectar Facebook Ads
-                        </Button>
-                    </Card>
-                </TabsContent>
             </Tabs>
 
             {/* Create Sheets */}
