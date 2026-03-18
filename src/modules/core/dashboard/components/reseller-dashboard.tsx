@@ -75,6 +75,7 @@ export function ResellerDashboard({ dashboardData: dashboardRes, extraData, user
 
     const data: DashboardDataProps = {
         globalBannerConfig: dashboardRes?.bannerConfig,
+        agentStats: extraData?.agentStats,
         stats: [
             {
                 title: t('dashboard.stats.active_tenants'),

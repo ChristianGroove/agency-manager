@@ -44,6 +44,7 @@ export function RetailDashboard({ dashboardData, extraData, userRole: initialRol
 
     const data: DashboardDataProps = {
         globalBannerConfig: dashboardData?.bannerConfig,
+        agentStats: extraData?.agentStats,
         stats: [
             {
                 title: "Operómetro Retail",

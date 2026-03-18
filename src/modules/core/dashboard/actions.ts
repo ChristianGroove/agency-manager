@@ -113,7 +113,7 @@ export async function getDashboardPayload() {
         modules.includes('vertical_retail') ||
         orgDetails?.name?.toLowerCase().includes('retail') ||
         orgDetails?.slug?.toLowerCase().includes('retail')
-    const isSaaS = spaceCategory === 'saas'
+    const isSaaS = spaceCategory === 'saas' || modules.includes('module_saas') || modules.includes('vertical_saas')
 
     const orgType = isRetail ? 'retail' : (isCleaning ? 'cleaning' : (isResto ? 'resto' : (isSaaS ? 'saas' : ((isPlatform || isReseller) ? 'reseller' : 'agency'))))
 
@@ -190,17 +190,36 @@ export async function getDashboardPayload() {
         userRole = perms?.role || null
     }
 
-    // Inject role for instant hydration
+    const normalizedRole = userRole?.toLowerCase()
+    const canMonitorAgents = ['admin', 'owner'].includes(normalizedRole || '')
+    const isTargetSpace = ['saas', 'retail'].includes(orgType)
+
+    if (canMonitorAgents && isTargetSpace) {
+        const { data: agentStats, error: rpcError } = await supabase.rpc('get_agent_monitoring_stats', { p_org_id: orgId })
+        
+        if (extraData) {
+            extraData.agentStats = agentStats || []
+            extraData.rpcError = rpcError ? rpcError.message : null
+        } else {
+            extraData = { 
+                agentStats: agentStats || [], 
+                rpcError: rpcError ? rpcError.message : null 
+            }
+        }
+    }
+
+    // Inject role and stats for instant hydration
     const payload = {
         orgType,
         dashboardData,
         extraData,
-        userRole
+        userRole,
+        agentStats: extraData?.agentStats || [],
+        rpcError: extraData?.rpcError || null
     }
 
     // --- SECURITY FILTERING (Server Side) ---
     // Zero-Flicker Policy: Members should NEVER receive sensitive metadata
-    const normalizedRole = userRole?.toLowerCase()
     const isRestricted = normalizedRole === 'member'
 
     if (isRestricted && payload.dashboardData) {
@@ -224,7 +243,11 @@ export async function getDashboardPayload() {
             if (payload.extraData.cleaningMetrics) {
                 payload.extraData.cleaningMetrics.revenue = 0
             }
+            delete payload.extraData.agentStats
         }
+        // Protect root property too
+        payload.agentStats = []
+        payload.rpcError = null
     }
 
     return payload

@@ -29,6 +29,7 @@ export function DefaultDashboard({ dashboardData, extraData, userRole: initialRo
 
     const data: DashboardDataProps = {
         globalBannerConfig: dashboardData?.bannerConfig,
+        agentStats: extraData?.agentStats,
         stats: [
             {
                 title: "Insight #1",

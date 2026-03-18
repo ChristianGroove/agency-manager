@@ -67,6 +67,7 @@ export function CleaningDashboard({ dashboardData: coreData, extraData, userRole
 
     const data: DashboardDataProps = {
         globalBannerConfig: coreData?.bannerConfig,
+        agentStats: extraData?.agentStats,
         stats: [
             {
                 title: t('dashboard.stats.jobs_today'),

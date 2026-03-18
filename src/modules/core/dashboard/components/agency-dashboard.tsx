@@ -100,6 +100,7 @@ export function AgencyDashboard({ dashboardData: dashboardRes, extraData, userRo
 
     const data: DashboardDataProps = {
         globalBannerConfig: dashboardRes?.bannerConfig,
+        agentStats: extraData?.agentStats,
         stats: [
             {
                 title: t('dashboard.stats.total_clients'),

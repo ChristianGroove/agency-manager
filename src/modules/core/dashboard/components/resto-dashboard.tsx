@@ -34,6 +34,7 @@ export function RestoDashboard({ dashboardData, extraData, userRole: initialRole
 
     const data: DashboardDataProps = {
         globalBannerConfig: bannerConfig,
+        agentStats: extraData?.agentStats,
         stats: [
             {
                 title: "Ventas Hoy",

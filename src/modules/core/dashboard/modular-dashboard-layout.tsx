@@ -8,6 +8,8 @@ import { SocialGlassWidget, SocialGlassWidgetProps } from "@/modules/core/dashbo
 import { SplitText } from "@/components/ui/split-text"
 import { SectionHeader } from "@/components/layout/section-header"
 import { LayoutDashboard } from "lucide-react"
+import { AgentMonitoringWidget } from "@/modules/core/dashboard/widgets/smart-cards/agent-monitoring-widget"
+import { useState, useEffect } from "react"
 
 import { GlobalBannerConfig, GlobalDashboardBanner } from "@/modules/core/dashboard/components/global-dashboard-banner"
 import { DynamicGreetingHeader } from "@/components/layout/dynamic-greeting-header"
@@ -19,6 +21,10 @@ export interface DashboardDataProps {
     quickActions: QuickActionProps[]
     smartAlert?: SmartAlertProps
     globalBannerConfig?: GlobalBannerConfig | null
+    agentStats?: any[]
+    settings?: any
+    orgType?: string
+    extraData?: any
 }
 
 export function ModularDashboardLayout({ data, userRole: initialRole }: { data: DashboardDataProps, userRole?: string | null }) {
@@ -31,6 +37,13 @@ export function ModularDashboardLayout({ data, userRole: initialRole }: { data: 
             {/* Header - Could be dynamic later */}
             {/* dynamic Standardized Header */}
             <DynamicGreetingHeader />
+            
+            {/* 0. Agent Monitoring (Full Width) - ADMIN/OWNER ONLY */}
+            {!isMember && data.agentStats && data.agentStats.length > 0 && (
+                <AgentMonitoringWidget agents={data.agentStats} />
+            )}
+
+
 
             {/* 1. Stats Grid (Dynamic) - HIDDEN FOR MEMBERS */}
             {!isMember && (
