@@ -41,10 +41,11 @@ To avoid unassigned chats getting lost, the system does not use a separate "Nobo
 2. It adds this count to every user marked as `owner` or `admin`.
 3. This creates a "Shared Responsibility" model where any manager can see the pending workload.
 
-### C. Lógica de Burbujas (Persistencia)
-Para evitar que las burbujas se queden "pegadas" incluso después de que un agente responda:
-- **Trigger**: Resetea `unread_count` a 0 en mensajes `outbound`.
-- **RPC Fail-Safe**: El widget ignora el `unread_count` si el último mensaje fue del agente (`last_message_direction = 'outbound'`). Esto garantiza que la burbuja desaparezca de inmediato sin importar retrasos en otros procesos.
+### C. Lógica de Burbujas (Persistencia y Robustez)
+Para evitar que las burbujas se queden "pegadas" y asegurar que los mensajes no "desaparezcan" por errores de base de datos:
+- **Trigger Defensivo**: Ahora gestiona correctamente contenidos no-objetos (strings planos) y metadatos corruptos para evitar que la transacción falle y se haga rollback del mensaje.
+- **Reseteo de Contador**: Fuerza `unread_count` a 0 en cuanto hay una respuesta.
+- **RPC Fail-Safe**: El widget oculta la burbuja si el último mensaje es `outbound`, independientemente del estado del contador.
 
 ---
 

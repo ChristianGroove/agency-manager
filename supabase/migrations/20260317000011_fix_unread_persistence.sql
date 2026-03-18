@@ -8,10 +8,16 @@ DECLARE
     msg_text TEXT;
     msg_type TEXT;
 BEGIN
-    -- Extraer texto o generar preview basado en el tipo
-    msg_type := jsonb_extract_path_text(new.content, 'type');
-    msg_text := jsonb_extract_path_text(new.content, 'text');
+    -- Manejo seguro si content no es un objeto (Evita error 'cannot extract element from a scalar')
+    IF jsonb_typeof(new.content) = 'object' THEN
+        msg_type := new.content->>'type';
+        msg_text := new.content->>'text';
+    ELSE
+        msg_type := 'text';
+        msg_text := new.content#>>'{}'; -- Convierte scalar a texto de forma limpia
+    END IF;
 
+    -- Previews para multimedia
     IF msg_text IS NULL OR msg_text = '' THEN
         IF msg_type = 'image' THEN msg_text := '📷 Imagen';
         ELSIF msg_type = 'video' THEN msg_text := '🎥 Video';
@@ -23,16 +29,22 @@ BEGIN
 
     UPDATE public.conversations
     SET 
-        last_message = msg_text,
+        last_message = LEFT(msg_text, 255),
         last_message_at = new.created_at,
         updated_at = NOW(),
         -- RESET: Si es outbound (agente), volvemos a 0. Si es inbound, sumamos.
         unread_count = CASE 
-            WHEN new.direction = 'inbound' THEN unread_count + 1 
+            WHEN new.direction = 'inbound' THEN COALESCE(unread_count, 0) + 1 
             ELSE 0 
         END,
-        -- Guardamos la dirección en el metadata para el RPC
-        metadata = jsonb_set(COALESCE(metadata, '{}'::jsonb), '{last_message_direction}', to_jsonb(new.direction))
+        -- Guardamos la dirección en el metadata para el RPC de forma segura
+        metadata = jsonb_set(
+            CASE WHEN jsonb_typeof(COALESCE(metadata, '{}'::jsonb)) = 'object' 
+                 THEN COALESCE(metadata, '{}'::jsonb) 
+                 ELSE '{}'::jsonb END, 
+            '{last_message_direction}', 
+            to_jsonb(new.direction)
+        )
     WHERE id = new.conversation_id;
 
     RETURN NEW;

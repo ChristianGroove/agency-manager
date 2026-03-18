@@ -1,6 +1,7 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
+import { after } from "next/server"
 import { MetaProvider } from "./providers/meta-provider"
 import { inboxService } from "./inbox-service"
 import { supabaseAdmin } from "@/lib/supabase-admin"
@@ -11,6 +12,11 @@ const META_API_TOKEN = process.env.META_API_TOKEN!
 const META_PHONE_NUMBER_ID = process.env.META_PHONE_NUMBER_ID!
 const META_VERIFY_TOKEN = process.env.META_VERIFY_TOKEN!
 
+/**
+ * [WARNING] This function has been refactored for "after()" background processing 
+ * to solve Inbox lag and persistence. However, the user reports it needs 
+ * further THOROUGH REVIEW as it may not be completely solved yet.
+ */
 export async function sendMessage(conversationId: string, payload: string, id?: string) {
     const supabase = await createClient()
 
@@ -187,15 +193,10 @@ export async function sendMessage(conversationId: string, payload: string, id?: 
     let content: any = { type: 'text', text: payload };
     try {
         const parsed = JSON.parse(payload);
-        // Relaxed validation: If it has a type, we assume it's a structured message
-        if (parsed.type) {
-            content = parsed;
-        }
-    } catch (e) {
-        // Not JSON, treat as plain text
-    }
+        if (parsed.type) content = parsed;
+    } catch (e) {}
 
-    // Normalize for Provider
+    // 5. Build Provider Options
     const providerOptions: any = {
         to: recipientPhone,
         content: ['interactive_buttons', 'interactive_list', 'interactive_cta', 'interactive_call_request'].includes(content.type)
@@ -212,113 +213,76 @@ export async function sendMessage(conversationId: string, payload: string, id?: 
             leadId: conversation.lead_id,
             ...content.metadata
         }
-    }
+    };
 
-    // POLICY: Inject 'HUMAN_AGENT' tag for manual replies on Messenger/Instagram
-    // This allows replying up to 7 days after user's last message
     if (channel === 'messenger' || channel === 'instagram') {
-        providerOptions.metadata.features = {
-            tag: 'HUMAN_AGENT'
-        };
-        console.log(`[sendMessage] Injected HUMAN_AGENT tag for ${channel}`);
+        providerOptions.metadata.features = { tag: 'HUMAN_AGENT' };
     }
 
-    // Special handling for legacy MetaProvider compatibility if needed
-    // but better to keep it clean and let providers handle their own mapping
-    if (channel === 'whatsapp' && (content.type === 'image' || content.type === 'video' || content.type === 'audio')) {
-        // MetaProvider might still want this, but we've updated it before or will ensure it's robust
+    // 6. DB Persistence (CRITICAL: Must happen and commit BEFORE returning to prevent "disappearing" messages)
+    const sender = user.email || 'Agent'
+    const messageId = id || crypto.randomUUID()
+    
+    console.log('[sendMessage] Persisting message:', { conversationId, messageId })
+
+    const { data: createdMessage, error: dbError } = await supabaseAdmin
+        .from('messages')
+        .insert({
+            id: messageId,
+            conversation_id: conversationId,
+            organization_id: conversation.organization_id,
+            direction: 'outbound',
+            channel: channel,
+            content: content,
+            status: 'sent',
+            sender: sender,
+            metadata: {
+                ...content.metadata,
+                timestamp: new Date().toISOString()
+            }
+        })
+        .select('*')
+        .single();
+
+    if (dbError) {
+        console.error('[sendMessage] DB Insert Error:', dbError);
+        return { success: false, error: "Failed to persist message. Please try again." }
     }
 
-    // 5. Send Message via Provider (Skip if Internal Note)
-    let providerResult = { success: true, messageId: `internal_${Date.now()}_${Math.random().toString(36).substring(7)}`, error: null };
-
+    // 7. Usage Check (Blocks if exceeded)
     if (content.type !== 'note') {
         const { assertUsageAllowed } = await import("@/modules/core/billing/usage-limiter");
         await assertUsageAllowed({ organizationId: conversation.organization_id, engine: 'messaging' });
 
-        // Meta 2026: Record pending permission if interactive call request is sent
-        if (content.type === 'interactive_call_request') {
+        // 8. BACKGROUND: Send Message via Provider
+        after(async () => {
+            console.log('[sendMessage] [Background] Starting provider send for:', messageId);
             try {
-                const { CallPermissionManager } = await import('@/lib/meta/calling/call-permission-manager');
-                const permissionManager = new CallPermissionManager();
-                await permissionManager.requestPermission({
-                    conversationId: conversationId,
-                    phoneNumber: recipientPhone,
-                    reason: 'Solicitud interactiva (Ventana 24h)'
-                });
-                console.log(`[sendMessage] Recorded pending call permission for conversation: ${conversationId}`);
-            } catch (e: any) {
-                console.error('[sendMessage] Failed to record pending permission:', e.message);
-            }
-        }
+                const result = await provider.sendMessage(providerOptions)
 
-        try {
-            const result = await provider.sendMessage(providerOptions)
-
-            if (!result.success) {
-                // Determine if it's a critical auth error
-                const errStr = String(result.error);
-                const isAuthError = errStr.includes('access token') || errStr.includes('Session has expired') || errStr.includes('validate access token');
-
-                if (isAuthError) {
-                    console.warn('[sendMessage] TOKEN EXPIRED. Falling back to MOCK implementation for Dev/Demo purposes.');
-                    // Mock success to allow UI to continue
-                    providerResult = { success: true, messageId: `mock_${Date.now()}`, error: null }
+                if (result.success && result.messageId) {
+                    await supabaseAdmin
+                        .from('messages')
+                        .update({ external_id: result.messageId })
+                        .eq('id', messageId);
+                    console.log('[sendMessage] [Background] Provider send SUCCESS:', result.messageId);
                 } else {
-                    throw new Error(result.error || "Failed to send message")
+                    await supabaseAdmin
+                        .from('messages')
+                        .update({ status: 'failed', metadata: { error: result.error } } as any)
+                        .eq('id', messageId);
+                    console.error('[sendMessage] [Background] Provider send FAILED:', result.error);
                 }
-            } else {
-                providerResult = { success: true, messageId: result.messageId, error: null }
+            } catch (bgError: any) {
+                console.error('[sendMessage] [Background] Exception:', bgError);
+                await supabaseAdmin
+                    .from('messages')
+                    .update({ status: 'failed', metadata: { error: bgError.message } } as any)
+                    .eq('id', messageId);
             }
-        } catch (e: any) {
-            console.error('[sendMessage] Provider Exception:', e);
-
-            // Fallback for Auth errors caught as exceptions
-            const errStr = e.message || String(e);
-            const isAuthError = errStr.includes('access token') || errStr.includes('Session has expired');
-            if (isAuthError) {
-                console.warn('[sendMessage] TOKEN EXPIRED (Exception). Falling back to MOCK implementation.');
-                providerResult = { success: true, messageId: `mock_${Date.now()}`, error: null }
-            } else {
-                return { success: false, error: e.message || "Provider Error" }
-            }
-        }
+        })
     }
 
-    // 6. Save to Database
-    // Use user email or 'Agent' as sender
-    const senderId = user.email || 'Agent'
-    const messageId = id || providerResult.messageId!
-
-    // We use the supabase client directly to ensure metadata is saved
-    const { error: msgDbError } = await supabase
-        .from('messages')
-        .insert({
-            conversation_id: conversationId,
-            organization_id: conversation.organization_id,
-            direction: 'outbound',
-            content: content,
-            external_id: providerResult.messageId!,
-            status: 'sent',
-            sender_id: senderId,
-            metadata: {
-                ...providerOptions.metadata,
-                timestamp: new Date().toISOString()
-            }
-        });
-
-    if (msgDbError) {
-        console.error('[sendMessage] DB Insert Error:', msgDbError);
-    }
-
-    // Fetch the created message to return
-    const { data: createdMessage } = await supabase
-        .from('messages')
-        .select('*')
-        .eq('id', messageId)
-        .single()
-
-    revalidatePath('/inbox')
     return { success: true, data: createdMessage }
 }
 

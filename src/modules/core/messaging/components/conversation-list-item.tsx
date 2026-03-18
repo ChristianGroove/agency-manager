@@ -101,13 +101,15 @@ export const ConversationListItem = memo(function ConversationListItem({ conv, i
 
     useEffect(() => {
         const timeDiff = new Date().getTime() - new Date(conv.last_message_at).getTime()
-        // If message is younger than 5 seconds AND not currently selected (tuned for realtime feel)
-        if (timeDiff < 5000 && !isSelected) {
+        const direction = conv.metadata?.last_message_direction || 'inbound' // Fallback to inbound if missing
+
+        // If message is younger than 5 seconds AND not currently selected AND is inbound
+        if (timeDiff < 5000 && !isSelected && direction === 'inbound') {
             setIsNew(true)
             const timer = setTimeout(() => setIsNew(false), 4000)
             return () => clearTimeout(timer)
         }
-    }, [conv.last_message_at, isSelected])
+    }, [conv.last_message_at, isSelected, conv.metadata?.last_message_direction])
 
     return (
         <div
