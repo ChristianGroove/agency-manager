@@ -8,16 +8,21 @@ export class OutboundService {
         channelId: string,
         recipientPhone: string,
         content: string | any,
-        organizationId: string
+        organizationId: string,
+        context?: { connection?: any, conversation?: any }
     ) {
-        // 1. Get Channel Credentials
         const supabase = supabaseAdmin
-        const { data: channel } = await supabase
-            .from('integration_connections')
-            .select('*')
-            .eq('id', channelId)
-            // .eq('organization_id', organizationId) // Optional security check
-            .single()
+        
+        // 1. Get Channel Connection (Check context first)
+        let channel = context?.connection
+        if (!channel) {
+            const { data: fetchedChannel } = await supabase
+                .from('integration_connections')
+                .select('*')
+                .eq('id', channelId)
+                .single()
+            channel = fetchedChannel
+        }
 
         if (!channel) throw new Error(`Channel ${channelId} not found`)
 
@@ -29,36 +34,39 @@ export class OutboundService {
 
         console.log(`[OutboundService] Sending via ${channel.provider_key} to ${recipientPhone}`)
 
-        // 3. Find Conversation Context (Moved before sending to get metadata)
+        // 3. Resolve Metadata for Send
         const normalizedRecipient = normalizePhone(recipientPhone)
-        const { data: conv } = await supabase
-            .from('conversations')
-            .select('id, channel, metadata')
-            .eq('organization_id', organizationId)
-            .eq('phone', normalizedRecipient)
-            .neq('state', 'archived')
-            .order('updated_at', { ascending: false })
-            .limit(1)
-            .single()
+        let metadata: any = {}
+        let conversationId: string | null = context?.conversation?.id || null
 
-        let metadata: any = {};
+        // Use context conversation if available, otherwise fetch
+        let conv = context?.conversation
+        if (!conv) {
+             const { data: fetchedConv } = await supabase
+                .from('conversations')
+                .select('id, channel, metadata')
+                .eq('organization_id', organizationId)
+                .eq('phone', normalizedRecipient)
+                .neq('state', 'archived')
+                .order('updated_at', { ascending: false })
+                .limit(1)
+                .maybeSingle()
+             conv = fetchedConv
+             conversationId = conv?.id || null
+        }
 
         if (conv) {
-            const meta = conv.metadata || {};
-
+            const meta = conv.metadata || {}
             if (conv.channel === 'whatsapp' && meta.phoneNumberId) {
-                metadata.phoneNumberId = meta.phoneNumberId;
+                metadata.phoneNumberId = meta.phoneNumberId
             } else if (conv.channel === 'messenger' && meta.pageId) {
-                metadata.pageId = meta.pageId;
+                metadata.pageId = meta.pageId
             } else if (conv.channel === 'instagram') {
-                // Fallback to pageId or instagramBusinessId
-                metadata.pageId = meta.instagramBusinessId || meta.pageId;
+                metadata.pageId = meta.instagramBusinessId || meta.pageId
             }
         }
 
-        // Fallback: If no active conversation, try to check archived
-        let conversationId = conv?.id;
-
+        // Fallback for archived if still no conversationId
         if (!conversationId) {
             const { data: archived } = await supabase
                 .from('conversations')
@@ -67,20 +75,18 @@ export class OutboundService {
                 .eq('phone', normalizedRecipient)
                 .order('updated_at', { ascending: false })
                 .limit(1)
-                .single()
+                .maybeSingle()
 
             if (archived) {
-                conversationId = archived.id;
-                const meta = archived.metadata || {};
+                conversationId = archived.id
+                const meta = archived.metadata || {}
                 if (archived.channel === 'whatsapp' && meta.phoneNumberId) {
-                    metadata.phoneNumberId = meta.phoneNumberId;
+                    metadata.phoneNumberId = meta.phoneNumberId
                 } else if (archived.channel === 'messenger' && meta.pageId) {
-                    metadata.pageId = meta.pageId;
+                    metadata.pageId = meta.pageId
                 }
             }
         }
-
-        console.log(`[OutboundService] Resolved Metadata for Send:`, metadata);
 
         // 4. Send via Adapter
         const result = await adapter.sendMessage(channel.credentials, recipientPhone, content, metadata)

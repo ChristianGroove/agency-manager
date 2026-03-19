@@ -1,0 +1,134 @@
+import { SupabaseClient } from "@supabase/supabase-js"
+import { IncomingMessage } from "./providers/types"
+
+export interface ConnectionMatch {
+    connectionId: string
+    organizationId: string
+    connection: any
+}
+
+export class ChannelResolver {
+    /**
+     * Resolves an integration connection (tenant) based on incoming message metadata.
+     * Strategy:
+     * 1. Check for pre-resolved connectionId (from route handler)
+     * 2. Direct asset_id matching for modern Meta channels
+     * 3. Legacy asset matching for meta_business
+     * 4. Instance matching for Evolution API
+     */
+    static async resolveConnection(msg: IncomingMessage, supabase: SupabaseClient): Promise<ConnectionMatch | null> {
+        const metadata = msg.metadata as any
+        const channel = msg.channel
+
+        // 1. Pre-resolved from Route
+        if (metadata?.connectionId) {
+            const { data } = await supabase
+                .from('integration_connections')
+                .select('id, organization_id, credentials, metadata, default_pipeline_stage_id, working_hours, auto_reply_when_offline')
+                .eq('id', metadata.connectionId)
+                .single()
+
+            if (data) return { connectionId: data.id, organizationId: data.organization_id, connection: data }
+        }
+
+        // 2. WhatsApp Matching
+        if (channel === 'whatsapp') {
+            const phoneNumberId = metadata?.phoneNumberId || metadata?.phone_number_id
+            if (!phoneNumberId) return null
+
+            // Primary: Modern whatsapp_cloud
+            const { data: direct } = await supabase
+                .from('integration_connections')
+                .select('id, organization_id, credentials, metadata, default_pipeline_stage_id, working_hours, auto_reply_when_offline')
+                .eq('provider_key', 'whatsapp_cloud')
+                .eq('status', 'active')
+                .eq('metadata->>asset_id', phoneNumberId)
+                .maybeSingle()
+
+            if (direct) return { connectionId: direct.id, organizationId: direct.organization_id, connection: direct }
+
+            // Fallback: Legacy meta_business/meta_whatsapp
+            const { data: legacy } = await supabase
+                .from('integration_connections')
+                .select('id, organization_id, credentials, metadata, default_pipeline_stage_id, working_hours, auto_reply_when_offline')
+                .in('provider_key', ['meta_business', 'meta_whatsapp'])
+                .eq('status', 'active')
+
+            if (legacy) {
+                const matched = legacy.find((c: any) => {
+                    const assetId = c.metadata?.asset_id
+                    const selectedAssets = c.metadata?.selected_assets || []
+                    return assetId === phoneNumberId || selectedAssets.some((a: any) => a.id === phoneNumberId)
+                })
+                if (matched) return { connectionId: matched.id, organizationId: matched.organization_id, connection: matched }
+            }
+        }
+
+        // 3. Messenger Matching
+        if (channel === 'messenger') {
+            const pageId = metadata?.pageId || metadata?.page_id
+            if (!pageId) return null
+
+            const { data: direct } = await supabase
+                .from('integration_connections')
+                .select('id, organization_id, credentials, metadata, default_pipeline_stage_id, working_hours, auto_reply_when_offline')
+                .eq('provider_key', 'facebook_page')
+                .eq('status', 'active')
+                .eq('metadata->>asset_id', pageId)
+                .maybeSingle()
+
+            if (direct) return { connectionId: direct.id, organizationId: direct.organization_id, connection: direct }
+
+            // Legacy
+            const { data: legacy } = await supabase
+                .from('integration_connections')
+                .select('id, organization_id, credentials, metadata, default_pipeline_stage_id, working_hours, auto_reply_when_offline')
+                .eq('provider_key', 'meta_business')
+                .eq('status', 'active')
+
+            if (legacy) {
+                const matched = legacy.find((c: any) => {
+                    const assetId = c.metadata?.asset_id
+                    const selectedAssets = c.metadata?.selected_assets || []
+                    const assetsPreview = c.metadata?.assets_preview || []
+                    return assetId === pageId || 
+                           selectedAssets.some((a: any) => a.id === pageId) ||
+                           assetsPreview.some((a: any) => a.id === pageId && a.type === 'page')
+                })
+                if (matched) return { connectionId: matched.id, organizationId: matched.organization_id, connection: matched }
+            }
+        }
+
+        // 4. Instagram Matching
+        if (channel === 'instagram') {
+            const igId = metadata?.instagramBusinessId || metadata?.instagram_business_id
+            if (!igId) return null
+
+            const { data: direct } = await supabase
+                .from('integration_connections')
+                .select('id, organization_id, credentials, metadata, default_pipeline_stage_id, working_hours, auto_reply_when_offline')
+                .eq('provider_key', 'instagram_dm')
+                .eq('status', 'active')
+                .eq('metadata->>asset_id', igId)
+                .maybeSingle()
+
+            if (direct) return { connectionId: direct.id, organizationId: direct.organization_id, connection: direct }
+        }
+
+        // 5. Evolution API Matching
+        if (channel === 'evolution' && metadata?.instance) {
+            const { data: connections } = await supabase
+                .from('integration_connections')
+                .select('id, organization_id, credentials, default_pipeline_stage_id, working_hours, auto_reply_when_offline')
+                .eq('provider_key', 'evolution_api')
+                .eq('status', 'active')
+
+            if (connections) {
+                const matched = connections.find((c: any) => c.credentials?.instanceName === metadata.instance)
+                if (matched) return { connectionId: matched.id, organizationId: matched.organization_id, connection: matched }
+            }
+        }
+
+        return null
+    }
+}

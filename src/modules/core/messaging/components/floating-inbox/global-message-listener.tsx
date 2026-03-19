@@ -30,11 +30,10 @@ export function GlobalMessageListener() {
     const [userPermissions, setUserPermissions] = useState<any>(null)
     const userPermissionsRef = useRef<any>(null)
 
-    // Tenant isolation: only show popups for connections that belong to the active org
+    // Tenant isolation
     const orgConnectionIdsRef = useRef<Set<string>>(new Set())
 
     useEffect(() => {
-        // PERFORMANCE: Delay websocket connection by 2.5s to let the main dashboard render without CPU contention
         const timer = setTimeout(() => {
             const fetchPerms = async () => {
                 try {
@@ -45,230 +44,110 @@ export function GlobalMessageListener() {
                     setUserPermissions(perms)
                     userPermissionsRef.current = perms
                     orgConnectionIdsRef.current = new Set(connectionIds)
-                } catch (e) {
-                    console.warn('[GlobalMessageListener] [AUTH] Failed to fetch perms/connections:', e);
-                }
+                } catch (e) {}
             }
             fetchPerms()
-        }, 2500)
-
+        }, 2000)
         return () => clearTimeout(timer)
     }, [])
 
-    // Keep refs updated without triggering useEffect
-    useEffect(() => {
-        pathnameRef.current = pathname
-    }, [pathname])
-
-    useEffect(() => {
-        preferencesRef.current = preferences
-    }, [preferences])
+    useEffect(() => { pathnameRef.current = pathname }, [pathname])
+    useEffect(() => { preferencesRef.current = preferences }, [preferences])
 
     useEffect(() => {
         if (!organizationId) return
 
-        // Define channel colors
-        const getChannelColor = (channel: string) => {
-            switch (channel) {
-                case 'whatsapp': return 'text-[#25D366] bg-[#25D366]/10'
-                case 'messenger': return 'text-[#0084FF] bg-[#0084FF]/10'
-                case 'instagram': return 'text-[#E1306C] bg-[#E1306C]/10'
-                default: return 'text-primary bg-primary/10'
-            }
-        }
-
-        const getChannelIcon = () => {
-            return <MessageSquare className="h-3 w-3" />
-        }
-
-        // Unique channel name avoids Supabase collision after removeChannel
+        // 1. NOTIFICATION LISTENER
         globalChannelCounter.current += 1
         const channelName = `global-conv-${organizationId.slice(0, 8)}-${globalChannelCounter.current}`
 
-        // CRITICAL FIX: Listen to `conversations` table with organization_id filter
-        // instead of unfiltered `messages` table. The `messages` table has NO organization_id,
-        // so every INSERT was broadcast to every tenant globally.
-        // The DB trigger `update_conversation_last_message` updates conversations on every new message,
-        // so this captures the same event with proper tenant scoping.
         const channel = supabase
             .channel(channelName)
             .on('postgres_changes',
-                {
-                    event: 'UPDATE',
-                    schema: 'public',
-                    table: 'conversations',
-                    filter: `organization_id=eq.${organizationId}`
-                },
+                { event: 'UPDATE', schema: 'public', table: 'conversations', filter: `organization_id=eq.${organizationId}` },
                 async (payload) => {
                     const conv = payload.new as any
                     const oldConv = payload.old as any
 
-                    // Only react to NEW messages (last_message_at changed)
                     if (!conv.last_message_at || conv.last_message_at === oldConv?.last_message_at) return
-
-                    // Only react to inbound (unread_count increased)
                     if ((conv.unread_count || 0) <= (oldConv?.unread_count || 0)) return
 
-                    // Deduplication (1 notification per conversation per 5s window)
                     const dedupeKey = `${conv.id}-${conv.last_message_at}`
                     if (processedConvs.current.has(dedupeKey)) return
                     processedConvs.current.add(dedupeKey)
                     setTimeout(() => processedConvs.current.delete(dedupeKey), 5000)
 
-                    // Suppress Toasts if on Inbox Page (to avoid clutter), but allow Sound
-                    const isOnInboxPage = pathnameRef.current?.includes('/inbox')
+                    if (pathnameRef.current?.includes('/inbox')) return
 
-                    // Play Sound
                     const currentPrefs = preferencesRef.current
                     if (currentPrefs.notifications.sound_enabled) {
                         const now = Date.now()
                         if (now - lastSoundPlayedRef.current >= 1000) {
                             try {
-                                const volume = currentPrefs.notifications.sound_volume ?? 0.5
-                                SoundPlayer.getInstance().play(currentPrefs.notifications.sound_selection || 'subtle', volume)
+                                SoundPlayer.getInstance().play(currentPrefs.notifications.sound_selection || 'subtle', currentPrefs.notifications.sound_volume ?? 0.5)
                                 lastSoundPlayedRef.current = now
-                            } catch (e) {
-                                // Audio blocked
-                            }
+                            } catch (e) {}
                         }
                     }
 
-                    // Push Notification
-                    if (currentPrefs.notifications.push_enabled) {
-                        if (document.hidden) {
-                            if (Notification.permission === 'granted') {
-                                const preview = conv.last_message_preview || ''
-                                new Notification('Nuevo mensaje', {
-                                    body: preview.substring(0, 50),
-                                    icon: '/icons/icon-192x192.png'
-                                })
-                            }
-                        }
-                    }
-
-                    // Tenant isolation — only show popups for this org's connections
-                    if (conv.connection_id) {
-                        if (!orgConnectionIdsRef.current.has(conv.connection_id)) {
-                            return
-                        }
-                    } else if (orgConnectionIdsRef.current.size > 0) {
-                        return
-                    }
-
-                    // RBAC check
+                    if (conv.connection_id && !orgConnectionIdsRef.current.has(conv.connection_id)) return
+                    
                     const perms = userPermissionsRef.current
-                    const hasGlobalView = perms?.permissions?.all === true || 
-                                         perms?.permissions?.['inbox.conversations.view_all'] === true
-                    const isRestricted = !hasGlobalView
+                    const hasGlobalView = perms?.permissions?.all === true || perms?.permissions?.['inbox.conversations.view_all'] === true
+                    if (!hasGlobalView && !(perms?.permissions?.inbox_access || []).includes(conv.connection_id)) return
 
-                    if (isRestricted) {
-                        const allowedChannels = perms?.permissions?.inbox_access || []
-                        if (!allowedChannels.includes(conv.connection_id)) {
-                            return
-                        }
-                    }
-
-                    // SUPPRESS TOAST IF ON INBOX PAGE
-                    if (isOnInboxPage) return
-
-                    // Fetch lead name for the toast with error boundary
-                    let senderName = "Unknown Sender"
+                    let senderName = "Nuevo Mensaje"
                     try {
-                        const { data: leadData, error: leadError } = await supabase
-                            .from('leads')
-                            .select('name, phone')
-                            .eq('id', conv.lead_id)
-                            .single()
-
-                        if (leadError) throw leadError;
-                        senderName = leadData?.name || leadData?.phone || "Unknown Sender"
-                    } catch (e) {
-                        console.warn('[GlobalMessageListener] Failed to fetch lead name:', e);
-                        // Fallback to what we have in conv
-                        senderName = conv.leads?.name || conv.leads?.phone || "Unknown Sender";
-                    }
-                    const messageText = conv.last_message_preview || "Nuevo mensaje"
-                    const channelColorClass = getChannelColor(conv.channel)
+                        const { data: leadData } = await supabase.from('leads').select('name, phone').eq('id', conv.lead_id).single()
+                        senderName = leadData?.name || leadData?.phone || "Nuevo Mensaje"
+                    } catch (e) {}
 
                     toast.custom((t) => (
-                        <div className="w-full max-w-md bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-2xl p-4 flex gap-4 pointer-events-auto ring-1 ring-black/5 animate-in slide-in-from-top-2">
-                            {/* Avatar */}
-                            <div className="flex-shrink-0 relative">
-                                <Avatar className="h-12 w-12 border-2 border-white dark:border-zinc-800 shadow-sm">
-                                    <AvatarImage src="" />
-                                    <AvatarFallback className="bg-zinc-100 dark:bg-zinc-800 font-bold text-zinc-700 dark:text-zinc-300">
-                                        {senderName.slice(0, 2).toUpperCase()}
-                                    </AvatarFallback>
-                                </Avatar>
-                                <div className={`absolute -bottom-1 -right-1 h-5 w-5 rounded-full border-2 border-white dark:border-zinc-900 flex items-center justify-center ${channelColorClass}`}>
-                                    {getChannelIcon()}
-                                </div>
-                            </div>
-
-                            {/* Content */}
+                        <div className="w-full max-w-md bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-2xl p-4 flex gap-4 pointer-events-auto items-center animate-in slide-in-from-top-2">
+                            <Avatar className="h-12 w-12 flex-shrink-0">
+                                <AvatarFallback className="bg-brand-cyan text-white font-bold">{senderName.slice(0, 2).toUpperCase()}</AvatarFallback>
+                            </Avatar>
                             <div className="flex-1 min-w-0">
-                                <div className="flex items-start justify-between">
-                                    <h4 className="text-sm font-bold text-foreground truncate">{senderName}</h4>
-                                    <span className="text-[10px] text-muted-foreground ml-2 whitespace-nowrap">Ahora</span>
-                                </div>
-                                <p className="text-sm text-muted-foreground line-clamp-2 mt-0.5 leading-snug">
-                                    {messageText}
-                                </p>
-
-                                <div className="flex items-center gap-2 mt-3">
-                                    <Button
-                                        size="sm"
-                                        variant="default"
-                                        className="h-7 px-3 text-xs bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900"
-                                        onClick={() => {
-                                            toast.dismiss(t)
-                                            openInbox(conv.id)
-                                        }}
-                                    >
-                                        <Reply className="h-3 w-3 mr-1.5" />
-                                        Responder
-                                    </Button>
-                                    <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        className="h-7 px-3 text-xs text-muted-foreground hover:text-foreground"
-                                        onClick={async () => {
-                                            toast.dismiss(t)
-                                            const result = await markConversationAsRead(conv.id)
-                                            if (result.success) {
-                                                toast.success('Marcado como leído')
-                                            } else {
-                                                toast.error('Error al marcar como leído')
-                                            }
-                                        }}
-                                    >
-                                        <CheckCheck className="h-3 w-3 mr-1.5" />
-                                        Marcar leído
-                                    </Button>
+                                <div className="flex items-center justify-between"><h4 className="text-sm font-bold truncate">{senderName}</h4></div>
+                                <p className="text-xs text-muted-foreground truncate">{conv.last_message_preview || "Ver mensaje..."}</p>
+                                <div className="mt-2 flex gap-2">
+                                    <Button size="sm" className="h-7 text-[10px]" onClick={() => { toast.dismiss(t); openInbox(conv.id); }}>Ver</Button>
+                                    <Button size="sm" variant="ghost" className="h-7 text-[10px]" onClick={() => { toast.dismiss(t); markConversationAsRead(conv.id); }}>Marcar leído</Button>
                                 </div>
                             </div>
-
-                            {/* Dismiss */}
-                            <button
-                                onClick={() => toast.dismiss(t)}
-                                className="absolute top-2 right-2 text-muted-foreground hover:text-foreground p-1"
-                            >
-                                <X className="h-3 w-3" />
-                            </button>
                         </div>
-                    ), {
-                        id: `global-notification-${conv.id}`,
-                        duration: 8000,
-                        position: 'top-right'
-                    })
+                    ), { id: `gn-${conv.id}`, duration: 6000 })
                 }
             )
             .subscribe()
 
+        // 2. ULTRA-PERFECT HEARTBEAT (DB-BASED)
+        // Works even if Websockets flicker. RPC re-checks every 10 min.
+        let heartbeatInterval: any = null
+
+        const triggerHeartbeat = async () => {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) return
+
+            // Update DB physical state
+            await supabase
+                .from('agent_availability')
+                .update({ 
+                    last_seen_at: new Date().toISOString(),
+                    status: 'online'
+                })
+                .eq('agent_id', user.id)
+                .eq('organization_id', organizationId)
+        }
+
+        triggerHeartbeat()
+        heartbeatInterval = setInterval(triggerHeartbeat, 60000) // 1 minute is perfect
+
         return () => {
             supabase.removeChannel(channel)
+            if (heartbeatInterval) clearInterval(heartbeatInterval)
         }
-    }, [organizationId, openInbox])
+    }, [organizationId]) // Removed openInbox dependency to avoid unnecessary recreations
 
     return null
 }
