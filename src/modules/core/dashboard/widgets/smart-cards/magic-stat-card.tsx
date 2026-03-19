@@ -36,11 +36,9 @@ export function MagicStatCard({
                 </CardHeader>
                 <CardContent>
                     <div className="text-2xl font-bold text-gray-900 dark:text-white">{value}</div>
-                    {subtext && (
-                        <p className="text-xs text-muted-foreground mt-1">
+                        <div className="text-xs text-muted-foreground mt-1">
                             {subtext}
-                        </p>
-                    )}
+                        </div>
                 </CardContent>
             </Card>
         </MagicCard>
