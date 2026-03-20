@@ -33,12 +33,19 @@ export class AutomationTriggerService {
         // Let's first get the conversation to know the Org
         const { data: conversation } = await supabaseAdmin
             .from('conversations')
-            .select('organization_id, connection_id, last_auto_reply_at, metadata') // Fetch markers
+            .select('organization_id, connection_id, last_auto_reply_at, metadata, assigned_to') // Fetch markers
             .eq('id', conversationId)
             .single()
 
         if (!conversation) {
             console.error('[AutomationTrigger] Conversation not found')
+            return
+        }
+
+        // Meta 2026: SKIP automation if a human agent is currently assigned.
+        // This prevents the bot from "taking over" mid-human interaction.
+        if (conversation.assigned_to) {
+            console.log(`[AutomationTrigger] SKIPPING TRIGGERS for conversation ${conversationId}: Human agent is assigned (${conversation.assigned_to})`)
             return
         }
 
@@ -271,28 +278,22 @@ export class AutomationTriggerService {
             }
 
 
-            // CHANNEL CHECK (ROBUST MULTI-CHANNEL EVALUATION)
+            // CHANNEL CHECK (O(1) ULTRA-STRICT EVALUATION)
             if (match && config.channels && Array.isArray(config.channels) && config.channels.length > 0) {
                 if (finalConnectionId) {
-                    const allowedChannels = config.channels.map((c: any) => String(c).trim());
                     const currentId = String(finalConnectionId).trim();
+                    const allowedSet = new Set(config.channels.map((c: any) => String(c).trim()));
 
-                    if (!allowedChannels.includes('all')) {
-                        const isAllowed = allowedChannels.some((ch: string) => {
-                            // Exact match
-                            if (ch === currentId) return true;
-                            // Substring / composite ID fallbacks
-                            if (ch.includes(currentId)) return true;
-                            if (currentId.includes(ch)) return true;
-                            return false;
-                        });
-
-                        if (!isAllowed) {
-                            match = false;
-                            skipReason = `Channel mismatch (${currentId}) - Allowed: [${allowedChannels.join(', ')}]`;
-                            fileLogger.log(`[AutomationTrigger]   ❌ SKIPPED Workflow: ${wf.id}. Reason: ${skipReason}`);
-                        }
+                    if (!allowedSet.has('all') && !allowedSet.has(currentId)) {
+                        match = false;
+                        skipReason = `Channel mismatch (${currentId}) - Allowed: [${Array.from(allowedSet).join(', ')}]`;
+                        fileLogger.log(`[AutomationTrigger]   ❌ SKIPPED Workflow: ${wf.id}. Reason: ${skipReason}`);
                     }
+                } else if (!config.channels.includes('all')) {
+                    // No connectionId provided, but workflow restricts channels
+                    match = false;
+                    skipReason = `Channel restricted but connectionId is missing from message context`;
+                    fileLogger.log(`[AutomationTrigger]   ❌ SKIPPED Workflow: ${wf.id}. Reason: ${skipReason}`);
                 }
             }
 

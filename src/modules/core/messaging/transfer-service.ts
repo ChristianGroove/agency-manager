@@ -2,6 +2,8 @@
 
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { revalidatePath } from "next/cache"
+import { getDictionary, Locale } from "@/lib/i18n/dictionaries"
+import { resolveLanguage } from "@/lib/i18n"
 
 export interface TransferResult {
     success: boolean
@@ -81,6 +83,7 @@ export async function transferConversation(
         .from('conversations')
         .update({
             assigned_to: toAgentId,
+            is_bot_active: false, // Ensure bot mode is cleared on handover
             updated_at: new Date().toISOString()
         })
         .eq('id', conversationId)
@@ -91,16 +94,45 @@ export async function transferConversation(
     }
 
     // 6. LOG SYSTEM MESSAGE
+    const locale = await resolveLanguage() as Locale
+    const dict = getDictionary(locale)
+    const t = dict.crm.inbox.chat.system
+
+    const userIds = [toAgentId]
+    if (fromAgentId) userIds.push(fromAgentId)
+
+    const { data: profiles } = await supabaseAdmin
+        .from('profiles')
+        .select('id, full_name')
+        .in('id', userIds)
+
+    const profileMap = new Map(profiles?.map(p => [p.id, p]) || [])
+
     let fromName = "System"
     if (fromAgentId) {
-        const { data: fromUser } = await supabaseAdmin.auth.admin.getUserById(fromAgentId)
-        fromName = fromUser?.user?.user_metadata?.name || fromUser?.user?.email || "Agent"
+        const p = profileMap.get(fromAgentId)
+        if (p?.full_name) {
+            fromName = p.full_name
+        } else {
+            const { data: userData } = await supabaseAdmin.auth.admin.getUserById(fromAgentId)
+            fromName = userData?.user?.user_metadata?.name || userData?.user?.email || "Agent"
+        }
     }
 
-    const { data: toUser } = await supabaseAdmin.auth.admin.getUserById(toAgentId)
-    const toName = toUser?.user?.user_metadata?.name || toUser?.user?.email || "Agent"
+    let toName = "Agent"
+    const pTo = profileMap.get(toAgentId)
+    if (pTo?.full_name) {
+        toName = pTo.full_name
+    } else {
+        const { data: userData } = await supabaseAdmin.auth.admin.getUserById(toAgentId)
+        toName = userData?.user?.user_metadata?.name || userData?.user?.email || "Agent"
+    }
 
-    const systemText = `Chat transferred from ${fromName} to ${toName}${reason ? `: ${reason}` : ''}`
+    const reasonSuffix = reason ? t.transfer_reason.replace('{reason}', reason) : ''
+    const systemText = t.transferred
+        .replace('{from}', fromName)
+        .replace('{to}', toName)
+        .replace('{reason}', reasonSuffix)
 
     await supabaseAdmin.from('messages').insert({
         conversation_id: conversationId,

@@ -48,7 +48,14 @@ export class InboxService {
         const isEcho = msg.origin === 'outbound'
         const direction = isEcho ? 'outbound' : 'inbound'
         const status = isEcho ? 'sent' : 'received'
-        const sender = isEcho ? 'System' : (msg.senderName || msg.from)
+        
+        // If it's an echo, we check if the conversation is assigned to a human.
+        // If assigned, we treat the echo as 'human' to prevent bot icon re-activation.
+        const effectiveSenderType = isEcho 
+            ? (conversation.assigned_to ? 'human' : 'bot') 
+            : 'human'
+            
+        const sender = isEcho ? (effectiveSenderType === 'bot' ? 'System' : 'Agent') : (msg.senderName || msg.from)
 
         const { data: insertedMsg, error: msgError } = await supabase.from('messages').insert({
             conversation_id: conversation.id,
@@ -62,7 +69,7 @@ export class InboxService {
             metadata: {
                 ...msg,
                 buttonId: msg.buttonId,
-                sender_type: isEcho ? 'bot' : 'human',
+                sender_type: effectiveSenderType,
                 is_echo: isEcho,
                 timestamp: msg.timestamp?.toISOString()
             },

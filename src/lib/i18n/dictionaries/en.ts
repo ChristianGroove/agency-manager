@@ -1137,6 +1137,10 @@ export const en = {
                     ai_error: "AI Error",
                     file_too_large: "File too large (max 10MB)",
                     upload_failed: "Failed to upload file"
+                },
+                system: {
+                    transferred: "Chat transferred from {from} to {to}{reason}",
+                    transfer_reason: ": {reason}"
                 }
             },
             context: {

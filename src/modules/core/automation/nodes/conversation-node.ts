@@ -33,10 +33,6 @@ export class ConversationNode {
         fileLogger.log(`[ConversationNode] --- Starting Node Execution ---`);
         await logToDb('info', 'Entering Conversation Node');
 
-        // SURGICAL: Wait 1.5s to ensure any pending database triggers from preceding message nodes 
-        // (like update_conversation_last_message) have finished their asynchronous updates.
-        await new Promise(resolve => setTimeout(resolve, 1500));
-
         try {
             // 1. Resolve Conversation ID
             let conversationId = this.contextManager.resolve(data.conversationId || '');
@@ -55,7 +51,7 @@ export class ConversationNode {
             }
 
             const action = data.actionType;
-            console.error(`[ConversationNode] 🚀 Preparing ${action} for ${conversationId}`);
+            console.error(`[ConversationNode] 🚀 Executing ${action} for ${conversationId}`);
 
             // Fetch latest metadata to avoid stale overrides
             const { data: latestConv } = await supabaseAdmin
@@ -71,7 +67,7 @@ export class ConversationNode {
             if (action === 'deactivate_bot') {
                 updates.is_bot_active = false;
                 updates.waiting_since = new Date().toISOString();
-                // Workaround for trigger override: temporarily mark as human sender in metadata
+                // Ensure sender_type is marked as human in metadata to stay consistent with new triggers
                 updates.metadata = {
                     ...(latestConv?.metadata || {}),
                     sender_type: 'human',
@@ -112,19 +108,8 @@ export class ConversationNode {
                 throw error;
             }
 
-            console.error(`[ConversationNode] ✅ Successfully executed ${action} for ${conversationId}. Updated metadata:`, updatedData?.[0]?.metadata);
+            console.log(`[ConversationNode] ✅ Successfully executed ${action} for ${conversationId}.`);
             await logToDb('info', `Executed ${action}`, { conversationId, updates });
-
-            // Wait 500ms and check again to see if a trigger changed it back
-            await new Promise(resolve => setTimeout(resolve, 500));
-            const { data: verify } = await supabaseAdmin
-                .from('conversations')
-                .select('is_bot_active, metadata, status')
-                .eq('id', conversationId)
-                .single();
-
-            console.error(`[ConversationNode] 🕵️ Verification after 500ms: is_bot_active=${verify?.is_bot_active}, sender_type=${verify?.metadata?.sender_type}`);
-            await logToDb('info', `Post-execution verify`, { is_bot_active: verify?.is_bot_active, sender_type: verify?.metadata?.sender_type, status: verify?.status });
 
             return { success: true };
         } catch (error: any) {

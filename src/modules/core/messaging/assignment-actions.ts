@@ -188,17 +188,31 @@ export async function getAgentsWorkload() {
     // Only include agents who are active members of the organization
     const activeAgents = availabilityResult.data.filter(agent => membersLookup.has(agent.agent_id));
 
+    // Fetch profiles to get full names
+    const { data: profiles } = await supabaseAdmin
+        .from('profiles')
+        .select('id, full_name, avatar_url')
+        .in('id', activeAgents.map(a => a.agent_id))
+
+    const profileMap = new Map(profiles?.map(p => [p.id, p]) || [])
+
     // Attempt to map users manually since we can't join with auth.users directly
     const agentsWithUsers = await Promise.all(activeAgents.map(async (agent) => {
         try {
             const { data: userData, error: userError } = await supabaseAdmin.auth.admin.getUserById(agent.agent_id)
             const role = membersLookup.get(agent.agent_id) || 'member';
+            const profile = profileMap.get(agent.agent_id)
 
             if (userError || !userData?.user) {
                 return {
                     ...agent,
                     role,
-                    users: { email: 'Unknown', raw_user_meta_data: { name: 'Unknown Agent' } }
+                    users: { 
+                        email: 'Unknown', 
+                        raw_user_meta_data: { 
+                            name: profile?.full_name || 'Unknown Agent' 
+                        } 
+                    }
                 }
             }
             return {
@@ -206,14 +220,23 @@ export async function getAgentsWorkload() {
                 role,
                 users: {
                     email: userData.user.email,
-                    raw_user_meta_data: userData.user.user_metadata
+                    raw_user_meta_data: {
+                        ...userData.user.user_metadata,
+                        name: profile?.full_name || userData.user.user_metadata?.name || userData.user.email
+                    }
                 }
             }
         } catch (e) {
+            const profile = profileMap.get(agent.agent_id)
             return {
                 ...agent,
                 role: membersLookup.get(agent.agent_id) || 'member',
-                users: { email: 'Unknown', raw_user_meta_data: { name: 'Unknown Agent' } }
+                users: { 
+                    email: 'Unknown', 
+                    raw_user_meta_data: { 
+                        name: profile?.full_name || 'Unknown Agent' 
+                    } 
+                }
             }
         }
     }))

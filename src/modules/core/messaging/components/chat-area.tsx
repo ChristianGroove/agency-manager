@@ -83,12 +83,14 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
         isSessionActive: boolean
     } | null>(null)
     const [incomingCall, setIncomingCall] = useState<{ call_id: string, from: string } | null>(null)
+    const [pendingAttachment, setPendingAttachment] = useState<{ url: string, type: MessageContentType, name: string } | null>(null)
 
     const scrollRef = useRef<HTMLDivElement>(null)
     const scrollContainerRef = useRef<HTMLDivElement>(null)
     const fileInputRef = useRef<HTMLInputElement>(null)
     const virtuosoRef = useRef<VirtuosoHandle>(null)
     const markAsReadTimeout = useRef<NodeJS.Timeout | null>(null)
+    const textareaRef = useRef<HTMLTextAreaElement>(null)
 
     const debouncedMarkAsRead = (id: string) => {
         if (markAsReadTimeout.current) clearTimeout(markAsReadTimeout.current)
@@ -151,6 +153,15 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
             window.removeEventListener('inbox-prefill-message' as any, handlePrefill as any)
         }
     }, [])
+
+    // Auto-expand textarea on value change
+    useEffect(() => {
+        if (textareaRef.current) {
+            textareaRef.current.style.height = 'auto'
+            const newHeight = Math.min(textareaRef.current.scrollHeight, 120)
+            textareaRef.current.style.height = `${newHeight}px`
+        }
+    }, [inputValue])
 
     const [hasMoreMessages, setHasMoreMessages] = useState(false)
     const [loadingOlder, setLoadingOlder] = useState(false)
@@ -290,12 +301,27 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
     }, [conversationId])
 
     const handleSend = async (contentOverride?: string, type: MessageContentType = 'text', mediaUrl?: string, location?: { latitude: number, longitude: number, address?: string }) => {
-        const textContent = contentOverride !== undefined ? contentOverride : inputValue.trim()
-        if (!textContent && !mediaUrl && !location && !sending) return
+        let finalType = type
+        let finalMediaUrl = mediaUrl
 
-        if (!mediaUrl && !location) {
+        // If sending via button (no contentOverride) and we have a pending attachment
+        if (contentOverride === undefined && !mediaUrl && !location && pendingAttachment) {
+            finalType = pendingAttachment.type
+            finalMediaUrl = pendingAttachment.url
+        }
+
+        const textContent = contentOverride !== undefined ? contentOverride : inputValue.trim()
+        if (!textContent && !finalMediaUrl && !location && !sending) return
+
+        if (!finalMediaUrl && !location) {
             setInputValue("")
             setShowEmojiPicker(false)
+        }
+
+        // Clear pending attachment if we are using it
+        if (finalMediaUrl === pendingAttachment?.url) {
+            setPendingAttachment(null)
+            setInputValue("") // Clear input after sending image with caption
         }
 
         setSending(true)
@@ -309,14 +335,14 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
             messageContent = {
                 type: 'note',
                 text: textContent,
-                url: mediaUrl, // Pass media even for notes
-                originalType: type
+                url: finalMediaUrl, // Pass media even for notes
+                originalType: finalType
             }
         } else {
             // Standard External Message
-            if (type === 'text') {
+            if (finalType === 'text') {
                 messageContent = { type: 'text', text: textContent }
-            } else if (type === 'location' && location) {
+            } else if (finalType === 'location' && location) {
                 messageContent = {
                     type: 'location',
                     latitude: location.latitude,
@@ -325,11 +351,11 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
                 }
             } else {
                 messageContent = {
-                    type: type,
-                    mediaUrl: mediaUrl,
-                    url: mediaUrl,
+                    type: finalType,
+                    mediaUrl: finalMediaUrl,
+                    url: finalMediaUrl,
                     caption: textContent,
-                    filename: type === 'document' ? textContent : undefined
+                    filename: finalType === 'document' ? (pendingAttachment?.name || textContent) : undefined
                 }
             }
         }
@@ -502,10 +528,7 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
     }
 
     // ... file selection ...
-    const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0]
-        if (!file) return
-
+    const processFile = async (file: File) => {
         if (file.size > 10 * 1024 * 1024) {
             toast.error(t('crm.inbox.chat.actions.file_too_large'))
             return
@@ -513,7 +536,7 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
 
         setUploading(true)
         try {
-            const fileExt = file.name.split('.').pop()
+            const fileExt = file.name.split('.').pop() || 'png'
             const fileName = `${conversationId}/${Math.random().toString(36).substring(2)}.${fileExt}`
             const filePath = `${fileName}`
 
@@ -532,7 +555,7 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
             else if (file.type.startsWith('video/')) type = 'video'
             else if (file.type.startsWith('audio/')) type = 'audio'
 
-            await handleSend(file.name, type, publicUrl)
+            setPendingAttachment({ url: publicUrl, type, name: file.name })
 
         } catch (error) {
             console.error("Upload failed", error)
@@ -540,6 +563,30 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
         } finally {
             setUploading(false)
             if (fileInputRef.current) fileInputRef.current.value = ''
+        }
+    }
+
+    const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (file) await processFile(file)
+    }
+
+    const handlePaste = async (e: React.ClipboardEvent) => {
+        const items = e.clipboardData?.items
+        if (!items) return
+
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].type.indexOf('image') !== -1) {
+                const file = items[i].getAsFile()
+                if (file) {
+                    // Create a proper File object with a name if it's missing (pasted items often lack it)
+                    const namedFile = new File([file], `pasted-image-${Date.now()}.png`, { type: file.type })
+                    await processFile(namedFile)
+                    // Prevent pasting the image as text if the browser tries to
+                    e.preventDefault()
+                    break
+                }
+            }
         }
     }
 
@@ -982,16 +1029,43 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
                             </Button>
                         </div>
 
-                        <div className="flex-1 bg-zinc-100/50 dark:bg-zinc-800/50 rounded-2xl border-none focus-within:bg-zinc-50 dark:focus-within:bg-zinc-800 transition-all flex items-center px-4 py-2 ring-0 focus-within:ring-0">
-                            <Textarea
-                                value={inputValue}
-                                onChange={handleInputChange}
-                                onKeyDown={handleKeyDown}
-                                placeholder={t('crm.inbox.chat.input_placeholder')}
-                                className="min-h-[24px] max-h-[120px] w-full border-none shadow-none focus-visible:ring-0 focus:ring-0 outline-none p-0 bg-transparent resize-none leading-relaxed text-foreground"
-                                rows={1}
-                                style={{ height: inputValue ? 'auto' : '24px' }}
-                            />
+                        <div className="flex-1 relative">
+                            {/* Pending Attachment Preview */}
+                            {pendingAttachment && (
+                                <div className="absolute -top-24 left-0 bg-white dark:bg-zinc-800 p-2 rounded-xl shadow-lg border border-zinc-200 dark:border-zinc-700 animate-in slide-in-from-bottom-2 duration-200 flex items-center gap-3 z-30">
+                                    <div className="h-16 w-16 bg-zinc-100 dark:bg-zinc-900 rounded-lg overflow-hidden flex items-center justify-center border dark:border-zinc-700">
+                                        {pendingAttachment.type === 'image' ? (
+                                            <img src={pendingAttachment.url} className="h-full w-full object-cover" alt="Preview" />
+                                        ) : (
+                                            <FileText className="h-8 w-8 text-muted-foreground" />
+                                        )}
+                                    </div>
+                                    <div className="flex flex-col min-w-[100px] max-w-[200px]">
+                                        <span className="text-[11px] font-medium truncate text-foreground">{pendingAttachment.name}</span>
+                                        <span className="text-[10px] text-muted-foreground uppercase">{pendingAttachment.type}</span>
+                                    </div>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-6 w-6 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-700"
+                                        onClick={() => setPendingAttachment(null)}
+                                    >
+                                        <X className="h-3 w-3" />
+                                    </Button>
+                                </div>
+                            )}
+
+                            <div className="bg-zinc-100/50 dark:bg-zinc-800/50 rounded-2xl border-none focus-within:bg-zinc-50 dark:focus-within:bg-zinc-800 transition-all flex items-center px-4 py-2 ring-0 focus-within:ring-0 shadow-none">
+                                <Textarea
+                                    ref={textareaRef}
+                                    value={inputValue}
+                                    onChange={handleInputChange}
+                                    onKeyDown={handleKeyDown}
+                                    onPaste={handlePaste}
+                                    placeholder={pendingAttachment ? "Añadir un comentario..." : t('crm.inbox.chat.input_placeholder')}
+                                    className="min-h-[24px] max-h-[120px] w-full border-none shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 focus:ring-0 focus:ring-offset-0 outline-none p-0 bg-transparent resize-none leading-relaxed text-foreground"
+                                    rows={1}
+                                />
 
                             {/* Magic Wand for Refining */}
                             {inputValue.length > 5 && (
@@ -1007,19 +1081,20 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
                                 </Button>
                             )}
                         </div>
+                    </div>
 
                         <Button
                             size="icon"
                             className={cn(
                                 "h-10 w-10 shrink-0 rounded-full shadow-md transition-all duration-300",
-                                inputValue.trim() || uploading 
+                                (inputValue.trim() || uploading || pendingAttachment) 
                                     ? "bg-emerald-600 hover:bg-emerald-700 text-white transform scale-105 active:scale-95" 
                                     : "bg-zinc-100 dark:bg-zinc-800 text-muted-foreground"
                             )}
                             onClick={() => handleSend()}
-                            disabled={sending || (!inputValue.trim() && !uploading)}
+                            disabled={sending || (!inputValue.trim() && !uploading && !pendingAttachment)}
                         >
-                            <Send className={cn("h-5 w-5 ml-0.5", (inputValue.trim() || uploading) && "animate-in slide-in-from-left-1")} />
+                            <Send className={cn("h-5 w-5 ml-0.5", (inputValue.trim() || uploading || pendingAttachment) && "animate-in slide-in-from-left-1")} />
                         </Button>
                     </>
                 )}

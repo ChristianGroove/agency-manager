@@ -16,7 +16,7 @@ export class SendMessageNode {
 
     async execute(data: SendMessageNodeData): Promise<NodeExecutionResult> {
         const { fileLogger } = await import('@/lib/file-logger');
-        const { sendOutboundMessage } = await import('../../messaging/actions');
+        const { outboundService } = await import('../../messaging/outbound-service');
 
         // 1. Resolve Variables in all Text Fields
         const body = this.contextManager.resolve((data.message as string) || '');
@@ -91,8 +91,8 @@ export class SendMessageNode {
 
             fileLogger.log(`[SendMessageNode] Sending Payload: Type=${payload.type}, Media=${!!mediaUrl}`);
 
-            // 5. Send Message
-            const result = await sendOutboundMessage(
+            // 5. Send Message (using Admin privileged service)
+            const result = await outboundService.sendSystemMessage(
                 conversationId,
                 payload,
                 channel,
