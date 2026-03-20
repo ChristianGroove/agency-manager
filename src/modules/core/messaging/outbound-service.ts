@@ -36,7 +36,7 @@ export class OutboundService {
 
         // 3. Resolve Metadata for Send
         const normalizedRecipient = normalizePhone(recipientPhone)
-        let metadata: any = {}
+        let metadata: any = { channel: channel.provider_key === 'whatsapp_cloud' ? 'whatsapp' : (channel.provider_key === 'facebook_page' ? 'messenger' : 'instagram') }
         let conversationId: string | null = context?.conversation?.id || null
 
         // Use context conversation if available, otherwise fetch
@@ -55,15 +55,20 @@ export class OutboundService {
              conversationId = conv?.id || null
         }
 
-        if (conv) {
-            const meta = conv.metadata || {}
-            if (conv.channel === 'whatsapp' && meta.phoneNumberId) {
-                metadata.phoneNumberId = meta.phoneNumberId
-            } else if (conv.channel === 'messenger' && meta.pageId) {
-                metadata.pageId = meta.pageId
-            } else if (conv.channel === 'instagram') {
-                metadata.pageId = meta.instagramBusinessId || meta.pageId
-            }
+        // 4. Extract IDs from Conversation or Connection Metadata
+        const convMeta = conv?.metadata || {}
+        const connMeta = channel.metadata || {}
+        const currentChannel = conv?.channel || metadata.channel
+
+        if (currentChannel === 'whatsapp') {
+            metadata.phoneNumberId = convMeta.phoneNumberId || connMeta.asset_id || connMeta.phone_number_id
+            metadata.channel = 'whatsapp'
+        } else if (currentChannel === 'messenger' || channel.provider_key === 'facebook_page') {
+            metadata.pageId = convMeta.pageId || connMeta.asset_id || connMeta.page_id
+            metadata.channel = 'messenger'
+        } else if (currentChannel === 'instagram' || channel.provider_key === 'instagram_dm') {
+            metadata.pageId = convMeta.instagramBusinessId || convMeta.pageId || connMeta.asset_id || connMeta.instagram_business_id
+            metadata.channel = 'instagram'
         }
 
         // Fallback for archived if still no conversationId

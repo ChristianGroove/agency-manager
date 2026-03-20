@@ -438,10 +438,10 @@ export async function sendQuoteViaWhatsApp(quoteId: string, targetPhone?: string
         // 6. Send/Template Logic
         const message = `Hola ${name}, te comparto tu cotización #${quote.number} por valor de $${quote.total.toLocaleString()}. Puedes verla aquí: ${publicLink}`
 
-        const result = await sendMessage(conversationId, JSON.stringify({
+        const result = await sendMessage(conversationId, {
             type: 'text',
             text: message
-        }))
+        }, 'System')
 
         if (result.success) {
             return { success: true, message: "Enviado correctamente", conversationId }

@@ -25,6 +25,7 @@ export class MetaAdapter implements IntegrationAdapter {
     }
 
     async sendMessage(credentials: ConnectionCredentials | string, recipient: string, content: any, metadata?: any): Promise<{ messageId: string, metadata?: any }> {
+        console.log(`[MetaAdapter] START sendMessage to ${recipient} | Meta:`, JSON.stringify(metadata));
         const { decryptObject } = await import('@/modules/core/integrations/encryption');
 
         let creds: any = credentials;
@@ -38,76 +39,88 @@ export class MetaAdapter implements IntegrationAdapter {
         const pageId = metadata?.pageId || creds.pageId || creds.page_id || creds.assetId || creds.instagramBusinessId;
         const accessToken = creds.accessToken || creds.access_token;
 
-        if ((!phoneNumberId && !pageId) || !accessToken) throw new Error("Missing Meta credentials (ID or Token)")
+        console.log(`[MetaAdapter] Resolved IDs - WA: ${phoneNumberId}, Page/IG: ${pageId}, HasToken: ${!!accessToken}`);
+
+        if ((!phoneNumberId && !pageId) || !accessToken) {
+            console.error('[MetaAdapter] CRITICAL: Missing IDs or Token', { phoneNumberId, pageId, hasToken: !!accessToken });
+            throw new Error("Missing Meta credentials (ID or Token)");
+        }
 
         const isMessenger = !!pageId;
-        const pageOrIgId = pageId; // Alias for clarity if needed
+        const pageOrIgId = pageId; 
 
         let effectiveToken = accessToken;
-
 
         let url = '';
         let payload: any = {};
 
-        const textBody = typeof content === 'string' ? content : content.text || '';
-        const buttons = typeof content === 'object' && content.buttons ? content.buttons : [];
+        const contentObj = typeof content === 'string' ? { type: 'text', text: content } : content;
+        const textBody = contentObj.text || '';
+        const buttons = contentObj.buttons || [];
 
         if (isMessenger) {
             // Messenger / Instagram
-            url = `https://graph.facebook.com/v24.0/${pageId}/messages`;
+            url = `https://graph.facebook.com/v24.0/me/messages`; // Standard endpoint
 
             // Auto-fetch Page Access Token if we only have User Token
-            if (pageId) {
-                try {
-                    // console.log(`[MetaAdapter] Fetching Page Token for ${pageId}...`);
-                    const tokenResp = await fetch(`https://graph.facebook.com/v24.0/${pageId}?fields=access_token`, {
-                        headers: { 'Authorization': `Bearer ${accessToken}` }
-                    });
-                    if (tokenResp.ok) {
-                        const d = await tokenResp.json();
-                        if (d.access_token) {
-                            effectiveToken = d.access_token;
-                            // console.log(`[MetaAdapter] Used Page Token.`);
-                        }
-                    }
-                } catch (e) { console.warn("[MetaAdapter] Token fetch error", e); }
-            }
+            try {
+                const tokenResp = await fetch(`https://graph.facebook.com/v24.0/${pageId}?fields=access_token`, {
+                    headers: { 'Authorization': `Bearer ${accessToken}` }
+                });
+                if (tokenResp.ok) {
+                    const d = await tokenResp.json();
+                    if (d.access_token) effectiveToken = d.access_token;
+                }
+            } catch (e) { console.warn("[MetaAdapter] Token fetch error", e); }
 
-            if (buttons.length > 0) {
+            payload = {
+                recipient: { id: recipient },
+                message: {},
+                messaging_type: "RESPONSE"
+            };
+
+            // Handle Media in Messenger
+            const mediaTypes = ['image', 'video', 'audio', 'file', 'sticker'];
+            if (mediaTypes.includes(contentObj.type) && contentObj.mediaUrl) {
+                payload.message.attachment = {
+                    type: contentObj.type === 'sticker' ? 'image' : contentObj.type,
+                    payload: {
+                        url: contentObj.mediaUrl,
+                        is_reusable: true
+                    }
+                };
+            } else if (buttons.length > 0) {
                 // Button Template
-                payload = {
-                    recipient: { id: recipient },
-                    message: {
-                        attachment: {
-                            type: "template",
-                            payload: {
-                                template_type: "button",
-                                text: textBody,
-                                buttons: buttons.map((b: any) => ({
-                                    type: "postback",
-                                    title: b.label,
-                                    payload: b.id
-                                }))
-                            }
-                        }
-                    },
-                    messaging_type: "RESPONSE"
+                payload.message.attachment = {
+                    type: "template",
+                    payload: {
+                        template_type: "button",
+                        text: textBody || 'Selecciona una opción:',
+                        buttons: buttons.map((b: any) => ({
+                            type: "postback",
+                            title: b.label.substring(0, 20),
+                            payload: b.id
+                        }))
+                    }
                 };
             } else {
-                // Text Message
-                payload = {
-                    recipient: { id: recipient },
-                    message: { text: textBody },
-                    messaging_type: "RESPONSE"
-                };
+                payload.message.text = textBody;
             }
 
         } else {
-            // WhatsApp
+            // WhatsApp logic remains similar but reinforced
             url = `https://graph.facebook.com/v24.0/${phoneNumberId}/messages`;
-
-            if (buttons.length > 0) {
-                // Interactive Button Message
+            
+            if (contentObj.type === 'image' || contentObj.type === 'video' || contentObj.type === 'audio' || contentObj.type === 'document') {
+                const type = contentObj.type;
+                payload = {
+                    messaging_product: "whatsapp",
+                    recipient_type: "individual",
+                    to: recipient,
+                    type: type,
+                    [type]: { link: contentObj.mediaUrl, caption: contentObj.caption }
+                };
+            } else if (buttons.length > 0) {
                 payload = {
                     messaging_product: "whatsapp",
                     recipient_type: "individual",
@@ -119,16 +132,12 @@ export class MetaAdapter implements IntegrationAdapter {
                         action: {
                             buttons: buttons.map((b: any) => ({
                                 type: "reply",
-                                reply: {
-                                    id: b.id,
-                                    title: b.label
-                                }
+                                reply: { id: b.id, title: b.label.substring(0, 20) }
                             }))
                         }
                     }
                 };
             } else {
-                // Text Message
                 payload = {
                     messaging_product: "whatsapp",
                     recipient_type: "individual",

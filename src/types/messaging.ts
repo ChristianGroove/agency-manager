@@ -2,7 +2,7 @@ export type ChannelType = 'whatsapp' | 'email' | 'messenger' | 'instagram' | 'sm
 export type ConversationStatus = 'open' | 'closed' | 'archived' | 'snoozed'
 export type MessageDirection = 'inbound' | 'outbound'
 export type MessageStatus = 'sending' | 'sent' | 'delivered' | 'read' | 'failed'
-export type MessageContentType = 'text' | 'image' | 'video' | 'document' | 'audio' | 'template'
+export type MessageContentType = 'text' | 'image' | 'video' | 'document' | 'audio' | 'template' | 'location' | 'interactive_buttons' | 'interactive_list' | 'interactive_cta' | 'interactive_call_request' | 'sticker' | 'note'
 
 export interface Conversation {
     id: string

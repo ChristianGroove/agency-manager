@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase-server"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
 import { revalidatePath } from "next/cache"
+import { messagingCleanupService } from "./cleanup-service"
 
 /**
  * Returns the active integration_connection IDs for the current org.
@@ -58,6 +59,9 @@ export async function deleteConversation(conversationId: string, deleteLeadIfOrp
         .select('lead_id, organization_id')
         .eq('id', conversationId)
         .single()
+
+    // 1.5. CLEANUP PHYSICAL MEDIA (Prevent orphans in Storage)
+    try { await messagingCleanupService.deleteConversationMedia(conversationId); } catch (e) { console.error("[ConversationActions] Media cleanup error:", e); }
 
     // CLEAR TAGS BEFORE DELETE (Surgical cleanup to avoid DB locks)
     await clearLeadTagsOnEvent(conversationId)

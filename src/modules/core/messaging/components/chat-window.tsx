@@ -64,15 +64,16 @@ export function ChatWindow({ conversationId, initialMessages = [] }: ChatWindowP
 
         const result = await sendMessage(
             conversationId,
-            optimisticMsg.content!
+            optimisticMsg.content!,
+            'Agent'
         )
 
         if (!result.success) {
             toast.error('Error enviando mensaje')
             setMessages(prev => prev.filter(m => m.id !== tempId)) // Revert
         } else {
-            // Replace optimistic with real
-            setMessages(prev => prev.map(m => m.id === tempId ? result.data : m))
+            // Update optimistic status
+            setMessages(prev => prev.map(m => m.id === tempId ? { ...m, status: 'sent' } : m))
         }
         setIsSending(false)
     }

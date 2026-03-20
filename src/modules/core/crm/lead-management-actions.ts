@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase-server"
 import { revalidatePath } from "next/cache"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { messagingCleanupService } from "../messaging/cleanup-service"
 
 export async function getLeadsCount() {
     const supabase = await createClient()
@@ -28,6 +29,9 @@ export async function deleteLeads(leadIds: string[]) {
     if (!orgId) return { success: false, error: "No authenticated organization" }
 
     if (!leadIds.length) return { success: true }
+
+    // 1. CLEANUP PHYSICAL MEDIA (Prevent orphans in Storage)
+    try { await messagingCleanupService.deleteLeadsMedia(leadIds); } catch (e) { console.error("[LeadActions] Media cleanup error:", e); }
 
     const { error } = await supabase
         .from('leads')
@@ -70,6 +74,12 @@ export async function deleteLeadsByPipeline(pipelineId: string) {
 
     const statusKeys = stages.map(s => s.status_key)
 
+    // 1. CLEANUP PHYSICAL MEDIA (Find leads first by status)
+    const { data: leadsToDelete } = await supabase.from('leads').select('id').eq('organization_id', orgId).in('status', statusKeys);
+    if (leadsToDelete?.length) {
+        try { await messagingCleanupService.deleteLeadsMedia(leadsToDelete.map(l => l.id)); } catch (e) { console.error("[LeadActions] Pipeline media cleanup error:", e); }
+    }
+
     const { error } = await supabase
         .from('leads')
         .delete()
@@ -88,6 +98,12 @@ export async function deleteAllLeads() {
     const supabase = await createClient()
     const orgId = await getCurrentOrganizationId()
     if (!orgId) return { success: false, error: "No authenticated organization" }
+
+    // 1. CLEANUP ALL PHYSICAL MEDIA FOR THIS ORG
+    const { data: leads } = await supabase.from('leads').select('id').eq('organization_id', orgId);
+    if (leads?.length) {
+        try { await messagingCleanupService.deleteLeadsMedia(leads.map(l => l.id)); } catch (e) { console.error("[LeadActions] All leads media cleanup error:", e); }
+    }
 
     const { error } = await supabase
         .from('leads')

@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase-server"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { MESSAGING_STORAGE_BUCKET } from "./constants"
 
 export async function uploadSticker(formData: FormData): Promise<{ url: string | null, error: string | null }> {
     const orgId = await getCurrentOrganizationId()
@@ -14,13 +15,13 @@ export async function uploadSticker(formData: FormData): Promise<{ url: string |
     const fileName = `stickers/${orgId}/${Math.random().toString(36).substring(2)}.webp`
 
     const { error: uploadError } = await supabase.storage
-        .from('chat-attachments')
+        .from(MESSAGING_STORAGE_BUCKET)
         .upload(fileName, file, { contentType: 'image/webp', upsert: true })
 
     if (uploadError) return { url: null, error: uploadError.message }
 
     const { data: { publicUrl } } = supabase.storage
-        .from('chat-attachments')
+        .from(MESSAGING_STORAGE_BUCKET)
         .getPublicUrl(fileName)
 
     return { url: publicUrl, error: null }
@@ -32,7 +33,7 @@ export async function getStickersGallery(): Promise<{ urls: string[], error: str
 
     const supabase = await createClient()
     const { data, error } = await supabase.storage
-        .from('chat-attachments')
+        .from(MESSAGING_STORAGE_BUCKET)
         .list(`stickers/${orgId}`)
 
     if (error) return { urls: [], error: error.message }
@@ -49,7 +50,7 @@ export async function getStickersGallery(): Promise<{ urls: string[], error: str
 
     const urls = sortedData.map(f => {
         const { data: { publicUrl } } = supabase.storage
-            .from('chat-attachments')
+            .from(MESSAGING_STORAGE_BUCKET)
             .getPublicUrl(`stickers/${orgId}/${f.name}`)
         return publicUrl
     })
@@ -66,7 +67,7 @@ export async function deleteSticker(url: string): Promise<{ success: boolean, er
     const filename = parts[parts.length - 1]
 
     const { error } = await supabase.storage
-        .from('chat-attachments')
+        .from(MESSAGING_STORAGE_BUCKET)
         .remove([`stickers/${orgId}/${filename}`])
 
     if (error) return { success: false, error: error.message }

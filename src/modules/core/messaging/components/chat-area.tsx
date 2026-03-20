@@ -11,7 +11,9 @@ import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { Database } from "@/types/supabase"
+import { Message as MessagingMessage, MessageContentType } from "@/types/messaging"
 import { sendMessage, markConversationAsRead } from "../actions"
+import { MESSAGING_STORAGE_BUCKET } from "../constants"
 import { refineDraftContent } from "../ai/smart-replies"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { MessageBubble } from "./message-bubble"
@@ -27,11 +29,19 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from "@/components/ui/tooltip"
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { archiveConversation, snoozeConversation, completeConversation, deleteConversation } from "../conversation-actions"
+import { Image, Camera, User as ContactIcon, MapPin, Mic } from "lucide-react"
 
 
 
 import { EmojiStickerPicker } from "./emoji-sticker-picker"
+import { AudioRecorder } from "./audio-recorder"
 
 type Message = Database['public']['Tables']['messages']['Row']
 type Conversation = Database['public']['Tables']['conversations']['Row'] & {
@@ -62,6 +72,7 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
     const [showEmojiPicker, setShowEmojiPicker] = useState(false)
     const [uploading, setUploading] = useState(false)
     const [isInternal, setIsInternal] = useState(false)
+    const [isRecordingAudio, setIsRecordingAudio] = useState(false)
     // New Sheet State
     const [isRepliesSheetOpen, setIsRepliesSheetOpen] = useState(false)
     const [isTemplatePickerOpen, setIsTemplatePickerOpen] = useState(false)
@@ -278,11 +289,11 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
         }
     }, [conversationId])
 
-    const handleSend = async (contentOverride?: string, type: 'text' | 'image' | 'video' | 'audio' | 'document' | 'note' | 'sticker' = 'text', mediaUrl?: string) => {
+    const handleSend = async (contentOverride?: string, type: MessageContentType = 'text', mediaUrl?: string, location?: { latitude: number, longitude: number, address?: string }) => {
         const textContent = contentOverride !== undefined ? contentOverride : inputValue.trim()
-        if (!textContent && !mediaUrl && !sending) return
+        if (!textContent && !mediaUrl && !location && !sending) return
 
-        if (!mediaUrl) {
+        if (!mediaUrl && !location) {
             setInputValue("")
             setShowEmojiPicker(false)
         }
@@ -305,9 +316,17 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
             // Standard External Message
             if (type === 'text') {
                 messageContent = { type: 'text', text: textContent }
+            } else if (type === 'location' && location) {
+                messageContent = {
+                    type: 'location',
+                    latitude: location.latitude,
+                    longitude: location.longitude,
+                    address: location.address || 'Ubicación'
+                }
             } else {
                 messageContent = {
                     type: type,
+                    mediaUrl: mediaUrl,
                     url: mediaUrl,
                     caption: textContent,
                     filename: type === 'document' ? textContent : undefined
@@ -335,8 +354,7 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
         scrollToBottom(messages.length)
 
         try {
-            const payload = JSON.stringify(messageContent)
-            const result = await sendMessage(conversationId, payload, optimisticId)
+            const result = await sendMessage(conversationId, messageContent, 'Agent', optimisticId)
 
             if (!result.success) {
                 console.error("Failed to send", (result as any).error)
@@ -348,6 +366,84 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
             setMessages(prev => prev.filter(m => m.id !== optimisticId))
         } finally {
             setSending(false)
+        }
+    }
+
+    const handleSendLocation = async () => {
+        if (!navigator.geolocation) {
+            toast.error("Geolocalización no soportada por su navegador")
+            return
+        }
+
+        toast.info("Obteniendo ubicación...")
+        navigator.geolocation.getCurrentPosition(async (position) => {
+            const { latitude, longitude } = position.coords
+            const locationContent = {
+                type: 'location',
+                latitude,
+                longitude,
+                address: 'Ubicación compartida'
+            }
+            await handleSend(undefined, 'location', undefined, locationContent)
+        }, (error) => {
+            toast.error("Error al obtener ubicación")
+            console.error(error)
+        })
+    }
+    const handleAudioSend = async (blob: Blob, duration: number, mimeType: string) => {
+        setIsRecordingAudio(false)
+        setUploading(true)
+        
+        try {
+            const isWhatsApp = conversation?.channel === 'whatsapp' || (conversation as any)?.integration_connections?.provider_key?.includes('whatsapp');
+            
+            let finalBlob = blob;
+            let ext = 'webm';
+            let mime = 'audio/webm';
+
+            if (isWhatsApp) {
+                const { convertWebmToOgg } = await import("@/lib/audio/webm-to-ogg")
+                finalBlob = await convertWebmToOgg(blob)
+                ext = 'ogg';
+                mime = 'audio/ogg';
+            } else {
+                // For Social (Messenger/IG), convert to WAV for maximum compatibility
+                try {
+                    const { convertWebmToWav } = await import("@/lib/audio/webm-to-wav")
+                    finalBlob = await convertWebmToWav(blob)
+                    ext = 'wav';
+                    mime = 'audio/wav';
+                } catch (wavErr) {
+                    console.error("[ChatArea] WAV conversion failed, falling back to original blob:", wavErr);
+                    // Fallback to original blob if conversion fails
+                    if (mimeType.includes('mp4')) { ext = 'm4a'; mime = 'audio/mp4'; }
+                    else if (mimeType.includes('webm')) { ext = 'webm'; mime = 'audio/webm'; }
+                }
+            }
+            
+            const orgId = conversation?.organization_id
+            const fileName = `audio/${orgId}/${Date.now()}.${ext}`
+            
+            const { error: uploadError } = await supabase.storage
+                .from(MESSAGING_STORAGE_BUCKET)
+                .upload(fileName, finalBlob, { 
+                    contentType: mime,
+                    cacheControl: '3600',
+                    upsert: false
+                })
+
+            if (uploadError) throw uploadError
+
+            const { data: { publicUrl } } = supabase.storage
+                .from(MESSAGING_STORAGE_BUCKET)
+                .getPublicUrl(fileName)
+
+            await handleSend(undefined, 'audio', publicUrl)
+        } catch (error: any) {
+            toast.error("Error al enviar audio: " + error.message)
+            console.error(error)
+        } finally {
+            setUploading(false)
         }
     }
 
@@ -422,13 +518,13 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
             const filePath = `${fileName}`
 
             const { error: uploadError } = await supabase.storage
-                .from('chat-attachments')
+                .from(MESSAGING_STORAGE_BUCKET)
                 .upload(filePath, file)
 
             if (uploadError) throw uploadError
 
             const { data: { publicUrl } } = supabase.storage
-                .from('chat-attachments')
+                .from(MESSAGING_STORAGE_BUCKET)
                 .getPublicUrl(filePath)
 
             let type: 'image' | 'video' | 'audio' | 'document' = 'document'
@@ -777,120 +873,156 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
             </div>
 
             {/* Input Area */}
-            <div className="p-3 bg-white dark:bg-zinc-900 items-end flex gap-2 border-t relative z-20">
-                {/* Removed floating chips */}
+            <div className={cn("p-3 bg-white dark:bg-zinc-900 border-t relative z-20 min-h-[80px] flex", isRecordingAudio ? "items-center" : "items-end gap-2")}>
+                {isRecordingAudio ? (
+                    <AudioRecorder 
+                        onSend={handleAudioSend} 
+                        onCancel={() => setIsRecordingAudio(false)} 
+                    />
+                ) : (
+                    <>
+                        {/* Internal Mode Toggle - Centered Floating */}
+                        <div className="absolute -top-10 left-1/2 -translate-x-1/2 z-30 flex justify-center">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setIsInternal(!isInternal)}
+                                className={cn(
+                                    "rounded-full shadow-sm backdrop-blur-md border transition-all duration-300 h-7 text-xs font-semibold px-4 tracking-wide",
+                                    isInternal
+                                        ? "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 border-transparent ring-2 ring-zinc-900/10 dark:ring-zinc-100/20 transform scale-105"
+                                        : "bg-white/80 dark:bg-zinc-900/80 hover:bg-white dark:hover:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-muted-foreground hover:text-foreground"
+                                )}
+                            >
+                                {isInternal ? t('crm.inbox.chat.note_mode') : t('crm.inbox.chat.note')}
+                            </Button>
+                        </div>
 
-                {/* Internal Mode Toggle - Centered Floating */}
-                <div className="absolute -top-10 left-1/2 -translate-x-1/2 z-30 flex justify-center">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setIsInternal(!isInternal)}
-                        className={cn(
-                            "rounded-full shadow-sm backdrop-blur-md border transition-all duration-300 h-7 text-xs font-semibold px-4 tracking-wide",
-                            isInternal
-                                ? "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 border-transparent ring-2 ring-zinc-900/10 dark:ring-zinc-100/20 transform scale-105"
-                                : "bg-white/80 dark:bg-zinc-900/80 hover:bg-white dark:hover:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-muted-foreground hover:text-foreground"
+                        {/* Unified Emoji & Sticker Picker Popover */}
+                        {showEmojiPicker && (
+                            <EmojiStickerPicker
+                                onClose={() => setShowEmojiPicker(false)}
+                                onEmojiClick={onEmojiClick}
+                                onStickerSelect={(url: string) => {
+                                    handleSend('Sticker', 'sticker', url)
+                                    setShowEmojiPicker(false)
+                                }}
+                            />
                         )}
-                    >
-                        {isInternal ? t('crm.inbox.chat.note_mode') : t('crm.inbox.chat.note')}
-                    </Button>
-                </div>
 
+                        <div className="flex gap-1">
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className={cn("text-muted-foreground hover:text-foreground shrink-0 rounded-full h-10 w-10", showEmojiPicker && "bg-muted text-foreground")}
+                                onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                            >
+                                <Smile className="h-6 w-6" />
+                            </Button>
 
-                {/* Unified Emoji & Sticker Picker Popover */}
-                {showEmojiPicker && (
-                    <EmojiStickerPicker
-                        onClose={() => setShowEmojiPicker(false)}
-                        onEmojiClick={onEmojiClick}
-                        onStickerSelect={(url: string) => {
-                            handleSend('Sticker', 'sticker', url)
-                            setShowEmojiPicker(false)
-                        }}
-                    />
-                )}
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="text-muted-foreground hover:text-foreground shrink-0 rounded-full h-10 w-10"
+                                        disabled={uploading}
+                                    >
+                                        <Paperclip className={cn("h-5 w-5", uploading && "animate-pulse")} />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="start" className="w-48 bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl mb-2">
+                                    <DropdownMenuItem className="gap-3 py-2.5 cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+                                        <FileText className="h-4 w-4 text-orange-500" />
+                                        <span>Documento</span>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem className="gap-3 py-2.5 cursor-pointer" onClick={() => {
+                                        if (fileInputRef.current) {
+                                            fileInputRef.current.accept = "image/*,video/*"
+                                            fileInputRef.current.click()
+                                        }
+                                    }}>
+                                        <Image className="h-4 w-4 text-blue-500" />
+                                        <span>Fotos y videos</span>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem className="gap-3 py-2.5 cursor-pointer" onClick={handleSendLocation}>
+                                        <MapPin className="h-4 w-4 text-green-500" />
+                                        <span>Ubicación</span>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem className="gap-3 py-2.5 cursor-pointer" onClick={() => setIsRecordingAudio(true)}>
+                                        <Mic className="h-4 w-4 text-red-500" />
+                                        <span>Mensaje de voz</span>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem className="gap-3 py-2.5 cursor-pointer opacity-50">
+                                        <ContactIcon className="h-4 w-4 text-indigo-500" />
+                                        <span>Contacto</span>
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
 
-                <div className="flex gap-2">
+                            <input
+                                type="file"
+                                ref={fileInputRef}
+                                className="hidden"
+                                onChange={handleFileSelect}
+                                accept="image/*,video/*,audio/*,application/pdf"
+                            />
 
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className={cn(
+                                    "text-muted-foreground hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 shrink-0 rounded-full h-10 w-10",
+                                    isTemplatePickerOpen && "bg-green-50 text-green-600 dark:bg-green-900/20"
+                                )}
+                                onClick={() => setIsTemplatePickerOpen(true)}
+                                title="Enviar plantilla WhatsApp"
+                            >
+                                <FileText className="h-5 w-5" />
+                            </Button>
+                        </div>
 
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className={cn("text-muted-foreground hover:text-foreground shrink-0 rounded-full h-10 w-10", showEmojiPicker && "bg-muted text-foreground")}
-                        onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                    >
-                        <Smile className="h-6 w-6" />
-                    </Button>
+                        <div className="flex-1 bg-zinc-100/50 dark:bg-zinc-800/50 rounded-2xl border-none focus-within:bg-zinc-50 dark:focus-within:bg-zinc-800 transition-all flex items-center px-4 py-2 ring-0 focus-within:ring-0">
+                            <Textarea
+                                value={inputValue}
+                                onChange={handleInputChange}
+                                onKeyDown={handleKeyDown}
+                                placeholder={t('crm.inbox.chat.input_placeholder')}
+                                className="min-h-[24px] max-h-[120px] w-full border-none shadow-none focus-visible:ring-0 focus:ring-0 outline-none p-0 bg-transparent resize-none leading-relaxed text-foreground"
+                                rows={1}
+                                style={{ height: inputValue ? 'auto' : '24px' }}
+                            />
 
-                    <input
-                        type="file"
-                        ref={fileInputRef}
-                        className="hidden"
-                        onChange={handleFileSelect}
-                        accept="image/*,video/*,audio/*,application/pdf"
-                    />
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-muted-foreground hover:text-foreground shrink-0 rounded-full h-10 w-10"
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={uploading}
-                    >
-                        <Paperclip className={cn("h-5 w-5", uploading && "animate-pulse")} />
-                    </Button>
+                            {/* Magic Wand for Refining */}
+                            {inputValue.length > 5 && (
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={handleRefine}
+                                    disabled={isRefining}
+                                    className="h-6 w-6 ml-2 text-purple-600 hover:text-purple-700 hover:bg-purple-100 rounded-full shrink-0 animate-in fade-in zoom-in duration-200"
+                                    title={t('crm.inbox.chat.refine_ai')}
+                                >
+                                    <Wand2 className={cn("h-4 w-4", isRefining && "animate-spin")} />
+                                </Button>
+                            )}
+                        </div>
 
-                    {/* Template Picker Button */}
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className={cn(
-                            "text-muted-foreground hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 shrink-0 rounded-full h-10 w-10",
-                            isTemplatePickerOpen && "bg-green-50 text-green-600 dark:bg-green-900/20"
-                        )}
-                        onClick={() => setIsTemplatePickerOpen(true)}
-                        title="Enviar plantilla WhatsApp"
-                    >
-                        <FileText className="h-5 w-5" />
-                    </Button>
-                </div>
-
-                <div className="flex-1 bg-muted/30 rounded-2xl border focus-within:ring-1 focus-within:ring-blue-500 focus-within:bg-background transition-all flex items-center px-4 py-2">
-                    <Textarea
-                        value={inputValue}
-                        onChange={handleInputChange}
-                        onKeyDown={handleKeyDown}
-                        placeholder={t('crm.inbox.chat.input_placeholder')}
-                        className="min-h-[24px] max-h-[120px] w-full border-none shadow-none focus-visible:ring-0 p-0 bg-transparent resize-none leading-relaxed"
-                        rows={1}
-                        style={{ height: inputValue ? 'auto' : '24px' }}
-                    />
-
-                    {/* Magic Wand for Refining */}
-                    {inputValue.length > 5 && (
                         <Button
-                            variant="ghost"
                             size="icon"
-                            onClick={handleRefine}
-                            disabled={isRefining}
-                            className="h-6 w-6 ml-2 text-purple-600 hover:text-purple-700 hover:bg-purple-100 rounded-full shrink-0 animate-in fade-in zoom-in duration-200"
-                            title={t('crm.inbox.chat.refine_ai')}
+                            className={cn(
+                                "h-10 w-10 shrink-0 rounded-full shadow-md transition-all duration-300",
+                                inputValue.trim() || uploading 
+                                    ? "bg-emerald-600 hover:bg-emerald-700 text-white transform scale-105 active:scale-95" 
+                                    : "bg-zinc-100 dark:bg-zinc-800 text-muted-foreground"
+                            )}
+                            onClick={() => handleSend()}
+                            disabled={sending || (!inputValue.trim() && !uploading)}
                         >
-                            <Wand2 className={cn("h-4 w-4", isRefining && "animate-spin")} />
+                            <Send className={cn("h-5 w-5 ml-0.5", (inputValue.trim() || uploading) && "animate-in slide-in-from-left-1")} />
                         </Button>
-                    )}
-                </div>
-
-                <Button
-                    size="icon"
-                    className={cn(
-                        "h-10 w-10 shrink-0 rounded-full transition-all",
-                        inputValue.trim() ? "bg-blue-600 hover:bg-blue-700 text-white" : "bg-muted text-muted-foreground hover:bg-muted/80"
-                    )}
-                    onClick={() => handleSend()}
-                    disabled={sending || (!inputValue.trim() && !uploading)}
-                >
-                    <Send className="h-5 w-5 ml-0.5" />
-                </Button>
+                    </>
+                )}
             </div>
         </div>
     )

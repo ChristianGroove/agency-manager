@@ -44,23 +44,27 @@ export interface TextContent {
 export interface ImageContent {
     type: 'image'
     mediaUrl: string
+    mediaId?: string
     caption?: string
 }
 
 export interface VideoContent {
     type: 'video'
     mediaUrl: string
+    mediaId?: string
     caption?: string
 }
 
 export interface AudioContent {
     type: 'audio'
     mediaUrl: string
+    mediaId?: string
 }
 
 export interface DocumentContent {
     type: 'document'
     mediaUrl: string
+    mediaId?: string
     filename?: string
     caption?: string
 }
@@ -68,6 +72,7 @@ export interface DocumentContent {
 export interface StickerContent {
     type: 'sticker'
     mediaUrl: string
+    mediaId?: string
 }
 
 export interface TemplateContent {

@@ -1,7 +1,7 @@
 "use client"
 
 import { cn } from "@/lib/utils"
-import { Check, CheckCheck, FileIcon, Volume2, Play } from "lucide-react"
+import { Check, CheckCheck, FileIcon, Volume2, Play, MapPin } from "lucide-react"
 import { AudioTranscriber } from "./audio-transcriber"
 import { RestoOrderWidget } from "./resto-order-widget"
 import { memo } from "react"
@@ -93,6 +93,10 @@ function renderContent({ content, isOutbound, messageId, metadata, t, status }: 
     const url = content.url || content.mediaUrl || content.link;
     const text = content.text || content.caption || content.body;
 
+    if (content.type === 'audio' || content.type === 'image') {
+        console.log(`[MessageBubble] Rendering ${content.type}:`, url);
+    }
+
     // Inyección del Widget B2C
     if (metadata?.type === 'resto_order') {
         return <RestoOrderWidget messageId={messageId} orderData={metadata} isOutbound={isOutbound} status={status} />
@@ -169,6 +173,40 @@ function renderContent({ content, isOutbound, messageId, metadata, t, status }: 
                         <span className="text-[10px] text-muted-foreground uppercase">{content.mimeType?.split('/')[1] || 'FILE'}</span>
                     </div>
                 </a>
+            )
+
+        case 'location':
+            const lat = content.latitude || metadata?.latitude || (content as any).raw?.location?.latitude;
+            const lng = content.longitude || metadata?.longitude || (content as any).raw?.location?.longitude;
+            const address = content.address || metadata?.address || (content as any).raw?.location?.address || (content as any).raw?.location?.name || 'Ubicación';
+            
+            if (!lat || !lng) return <p className="text-xs italic opacity-50">Ubicación no disponible</p>;
+
+            return (
+                <div className="flex flex-col gap-2 py-1 min-w-[200px]">
+                    <div className="flex items-center gap-2">
+                         <div className="h-8 w-8 rounded-full bg-green-500/10 flex items-center justify-center shrink-0">
+                            <MapPin className="h-4 w-4 text-green-500" />
+                        </div>
+                        <span className="font-medium text-xs truncate">{address}</span>
+                    </div>
+                    <a 
+                        href={`https://www.google.com/maps?q=${lat},${lng}`} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="rounded-lg overflow-hidden border border-black/5 dark:border-white/5 hover:opacity-90 transition-opacity"
+                    >
+                        <div className="bg-zinc-100 dark:bg-zinc-800 h-24 flex items-center justify-center text-[10px] text-muted-foreground relative group">
+                            <MapPin className="h-8 w-8 opacity-20 group-hover:scale-110 transition-transform" />
+                            <span className="absolute bottom-2 right-2 bg-white/80 dark:bg-black/80 px-1.5 py-0.5 rounded text-[8px] font-mono">
+                                {Number(lat).toFixed(4)}, {Number(lng).toFixed(4)}
+                            </span>
+                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/5">
+                                <span className="bg-white/90 dark:bg-zinc-900/90 px-2 py-1 rounded text-[10px] shadow-sm font-medium">Ver en Mapa</span>
+                            </div>
+                        </div>
+                    </a>
+                </div>
             )
 
         case 'interactive_buttons':
