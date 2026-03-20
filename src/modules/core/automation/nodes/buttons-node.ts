@@ -1,6 +1,6 @@
 
 import { ContextManager } from '../context-manager'
-import { sendOutboundMessage } from '@/modules/core/messaging/actions'
+import { outboundService } from '@/modules/core/messaging/outbound-service'
 import { InteractiveButton, InteractiveListSection } from '@/modules/core/messaging/providers/types'
 
 export interface ButtonsNodeData {
@@ -162,7 +162,7 @@ export class ButtonsNode {
             console.log('=================================================================\n\n');
 
             // Send the message
-            const result = await sendOutboundMessage(
+            const result = await outboundService.sendSystemMessage(
                 conversationId,
                 messageContent,
                 channel,

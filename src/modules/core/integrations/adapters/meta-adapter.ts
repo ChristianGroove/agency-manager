@@ -89,8 +89,30 @@ export class MetaAdapter implements IntegrationAdapter {
                         is_reusable: true
                     }
                 };
+            } else if (contentObj.type === 'interactive_buttons') {
+                payload.message.text = contentObj.body || 'Opciones:';
+                payload.message.quick_replies = (contentObj.buttons || []).slice(0, 13).map((btn: any) => ({
+                    content_type: 'text',
+                    title: btn.title.substring(0, 20),
+                    payload: btn.id
+                }));
+            } else if (contentObj.type === 'interactive_list') {
+                payload.message.text = contentObj.body || 'Selecciona una opción:';
+                // Flatten list rows into quick replies (max 13 supported by Meta)
+                const allRows = (contentObj.sections || []).flatMap((s: any) => s.rows).slice(0, 13);
+                if (allRows.length > 0) {
+                    payload.message.quick_replies = allRows.map((row: any) => ({
+                        content_type: 'text',
+                        title: row.title.substring(0, 20),
+                        payload: row.id
+                    }));
+                }
+            } else if (contentObj.type === 'interactive_cta') {
+                const ctaUrl = contentObj.buttons?.[0]?.url || contentObj.buttons?.[0]?.phoneNumber || '';
+                // Fallback direct URL inside text since IG doesn't support complex CTAs like Messenger
+                payload.message.text = `${contentObj.body || ''}\n\n👉 Enlace: ${ctaUrl}`;
             } else if (buttons.length > 0) {
-                // Button Template
+                // Legacy Button Template (if passed manually)
                 payload.message.attachment = {
                     type: "template",
                     payload: {
@@ -104,7 +126,7 @@ export class MetaAdapter implements IntegrationAdapter {
                     }
                 };
             } else {
-                payload.message.text = textBody;
+                payload.message.text = textBody || ' ';
             }
 
         } else {

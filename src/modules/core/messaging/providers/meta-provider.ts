@@ -118,8 +118,9 @@ export class MetaProvider implements MessagingProvider {
                 message: {}
             };
 
-            // Determine if it's text or attachment
+            // Determine if it's text, attachment, or interactive
             const mediaTypes = ['image', 'video', 'audio', 'file', 'sticker'];
+            
             if (mediaTypes.includes(content.type) && content.mediaUrl) {
                 payload.message.attachment = {
                     type: content.type === 'sticker' ? 'image' : content.type,
@@ -128,8 +129,33 @@ export class MetaProvider implements MessagingProvider {
                         is_reusable: true
                     }
                 };
+            } else if (content.type === 'interactive_buttons') {
+                const buttonContent = content as InteractiveButtonsContent;
+                payload.message.text = buttonContent.body || 'Opciones:';
+                payload.message.quick_replies = buttonContent.buttons.slice(0, 13).map(btn => ({
+                    content_type: 'text',
+                    title: btn.title.substring(0, 20),
+                    payload: btn.id
+                }));
+            } else if (content.type === 'interactive_list') {
+                const listContent = content as InteractiveListContent;
+                payload.message.text = listContent.body || 'Selecciona una opción:';
+                // Flatten list rows into quick replies (max 13 supported by Meta)
+                const allRows = listContent.sections.flatMap(s => s.rows).slice(0, 13);
+                if (allRows.length > 0) {
+                    payload.message.quick_replies = allRows.map(row => ({
+                        content_type: 'text',
+                        title: row.title.substring(0, 20),
+                        payload: row.id
+                    }));
+                }
+            } else if (content.type === 'interactive_cta') {
+                const ctaContent = content as InteractiveCTAContent;
+                const ctaUrl = ctaContent.buttons[0]?.url || ctaContent.buttons[0]?.phoneNumber || '';
+                // Fallback direct URL inside text since IG doesn't support complex CTAs like Messenger
+                payload.message.text = `${ctaContent.body || ''}\n\n👉 Enlace: ${ctaUrl}`;
             } else {
-                payload.message.text = content.text || '';
+                payload.message.text = content.text || ' ';
             }
 
             if (options.metadata?.features && (options.metadata.features as any).tag) {
@@ -137,6 +163,7 @@ export class MetaProvider implements MessagingProvider {
                 payload.tag = (options.metadata.features as any).tag;
             }
 
+            // [LOG] Social Payload
             console.log(`[MetaProvider] Social Payload:`, JSON.stringify(payload));
 
             const response = await fetch(url, {

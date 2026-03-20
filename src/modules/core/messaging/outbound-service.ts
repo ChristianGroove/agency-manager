@@ -108,7 +108,67 @@ export class OutboundService {
             console.warn(`[OutboundService] No conversation found for ${recipientPhone}, message sent but not logged.`)
         }
 
-        return result
+    }
+
+    /**
+     * Send a message from a background system process (Automation Engine)
+     * using Admin privileges to bypass RLS.
+     */
+    async sendSystemMessage(
+        conversationId: string,
+        content: any,
+        channel: string = 'whatsapp',
+        connectionId?: string,
+        sender: string = 'System'
+    ) {
+        const supabase = supabaseAdmin;
+        
+        try {
+            // 1. Get Conversation securely via Admin
+            const { data: conversation, error: convError } = await supabase
+                .from('conversations')
+                .select('*')
+                .eq('id', conversationId)
+                .single();
+
+            if (convError || !conversation) {
+                console.error(`[OutboundService.sendSystemMessage] Conversation not found: ${conversationId}`);
+                throw new Error("Conversation not found");
+            }
+
+            // 2. Identify Recipient Phone deterministically 
+            // Priority: literal DB column 'phone', fallback to metadata
+            const recipientPhone = conversation.phone || conversation.metadata?.phone || conversation.metadata?.external_id;
+
+            if (!recipientPhone) {
+                console.error(`[OutboundService.sendSystemMessage] Missing recipient for conversation: ${conversationId}`);
+                throw new Error("Recipient phone/id is missing in conversation");
+            }
+
+            const resolveConnectionId = connectionId || conversation.connection_id;
+
+            if (!resolveConnectionId) {
+                 throw new Error("Connection ID could not be resolved");
+            }
+
+            // 3. Delegate to robust sendMessage
+            const result = await this.sendMessage(
+                resolveConnectionId,
+                recipientPhone,
+                content,
+                conversation.organization_id,
+                { conversation } // Pass conversation context to avoid refetching
+            ) as any;
+
+            return {
+                success: true,
+                externalId: result.messageId,
+                error: null
+            };
+        } catch (error: any) {
+             console.error("[sendSystemMessage] Error:", error);
+             return { success: false, error: error.message };
+        }
     }
 }
 
