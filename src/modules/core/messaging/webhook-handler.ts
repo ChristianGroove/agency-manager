@@ -32,6 +32,7 @@ export class WebhookManager {
      * Handle incoming webhook request
      */
     async handle(channel: ChannelType, request: Request): Promise<{ success: boolean, message?: string }> {
+        console.log(`[WebhookManager] 🚩 handle() entry for channel: ${channel}, method: ${request.method}`)
         const provider = this.providers[channel]
 
         if (!provider) {

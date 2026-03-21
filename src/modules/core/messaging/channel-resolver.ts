@@ -41,7 +41,7 @@ export class ChannelResolver {
                 .from('integration_connections')
                 .select('id, organization_id, credentials, metadata, default_pipeline_stage_id, working_hours, auto_reply_when_offline')
                 .eq('provider_key', 'whatsapp_cloud')
-                .eq('status', 'active')
+                .in('status', ['active', 'connected'])
                 .eq('metadata->>asset_id', phoneNumberId)
                 .maybeSingle()
 
@@ -52,7 +52,7 @@ export class ChannelResolver {
                 .from('integration_connections')
                 .select('id, organization_id, credentials, metadata, default_pipeline_stage_id, working_hours, auto_reply_when_offline')
                 .in('provider_key', ['meta_business', 'meta_whatsapp'])
-                .eq('status', 'active')
+                .in('status', ['active', 'connected'])
 
             if (legacy) {
                 const matched = legacy.find((c: any) => {
@@ -73,7 +73,7 @@ export class ChannelResolver {
                 .from('integration_connections')
                 .select('id, organization_id, credentials, metadata, default_pipeline_stage_id, working_hours, auto_reply_when_offline')
                 .eq('provider_key', 'facebook_page')
-                .eq('status', 'active')
+                .in('status', ['active', 'connected'])
                 .eq('metadata->>asset_id', pageId)
                 .maybeSingle()
 
@@ -84,7 +84,7 @@ export class ChannelResolver {
                 .from('integration_connections')
                 .select('id, organization_id, credentials, metadata, default_pipeline_stage_id, working_hours, auto_reply_when_offline')
                 .eq('provider_key', 'meta_business')
-                .eq('status', 'active')
+                .in('status', ['active', 'connected'])
 
             if (legacy) {
                 const matched = legacy.find((c: any) => {
@@ -108,11 +108,28 @@ export class ChannelResolver {
                 .from('integration_connections')
                 .select('id, organization_id, credentials, metadata, default_pipeline_stage_id, working_hours, auto_reply_when_offline')
                 .eq('provider_key', 'instagram_dm')
-                .eq('status', 'active')
+                .in('status', ['active', 'connected'])
                 .eq('metadata->>asset_id', igId)
                 .maybeSingle()
 
             if (direct) return { connectionId: direct.id, organizationId: direct.organization_id, connection: direct }
+
+            // Legacy / Multi-asset (meta_business)
+            const { data: legacy } = await supabase
+                .from('integration_connections')
+                .select('id, organization_id, credentials, metadata, default_pipeline_stage_id, working_hours, auto_reply_when_offline')
+                .eq('provider_key', 'meta_business')
+                .in('status', ['active', 'connected'])
+
+            if (legacy) {
+                const matched = legacy.find((c: any) => {
+                    const selectedAssets = c.metadata?.selected_assets || []
+                    const assetsPreview = c.metadata?.assets_preview || []
+                    return selectedAssets.some((a: any) => a.id === igId) ||
+                           assetsPreview.some((a: any) => a.id === igId && a.type === 'instagram')
+                })
+                if (matched) return { connectionId: matched.id, organizationId: matched.organization_id, connection: matched }
+            }
         }
 
         // 5. Evolution API Matching
@@ -121,7 +138,7 @@ export class ChannelResolver {
                 .from('integration_connections')
                 .select('id, organization_id, credentials, default_pipeline_stage_id, working_hours, auto_reply_when_offline')
                 .eq('provider_key', 'evolution_api')
-                .eq('status', 'active')
+                .in('status', ['active', 'connected'])
 
             if (connections) {
                 const matched = connections.find((c: any) => c.credentials?.instanceName === metadata.instance)

@@ -1,6 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { integrationRegistry } from "@/modules/core/integrations/registry"
-import { inboxService } from "./inbox-service"
 import { normalizePhone } from "@/lib/normalize-phone"
 
 export class OutboundService {
@@ -98,7 +97,8 @@ export class OutboundService {
 
         // 5. Log to DB
         if (conversationId) {
-            await inboxService.saveOutboundMessage(
+            const { inboxService: inbox } = await import("./inbox-service")
+            await inbox.saveOutboundMessage(
                 conversationId,
                 content,
                 result.messageId,
@@ -108,6 +108,8 @@ export class OutboundService {
             console.warn(`[OutboundService] No conversation found for ${recipientPhone}, message sent but not logged.`)
         }
 
+        // 6. Return Result
+        return result;
     }
 
     /**

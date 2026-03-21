@@ -47,7 +47,7 @@ export class MetaProvider implements MessagingProvider {
                 if (creds.phoneNumberId) effectiveAssetId = creds.phoneNumberId;
             }
 
-            const url = `https://graph.facebook.com/v24.0/${effectiveAssetId}/messages`;
+            const url = `https://graph.facebook.com/v21.0/${effectiveAssetId}/messages`;
             const content = options.content as any;
             const mediaTypes = ['audio', 'image', 'video', 'document', 'sticker'];
             
@@ -89,7 +89,7 @@ export class MetaProvider implements MessagingProvider {
      */
     private async sendFacebookMessage(options: SendMessageOptions): Promise<{ success: boolean; messageId?: string; error?: string }> {
         try {
-            const url = `https://graph.facebook.com/v24.0/me/messages`;
+            const url = `https://graph.facebook.com/v21.0/me/messages`;
             const content = options.content as any;
             let activeToken = this.apiToken;
             let pageId = this.assetId;
@@ -190,7 +190,7 @@ export class MetaProvider implements MessagingProvider {
         switch (type) {
             case 'text':
                 payload.type = 'text';
-                payload.text = { body: ct.text || ct.body || '' };
+                payload.text = { body: ct.text || ct.body || 'Hola (Pixy Bot)' };
                 break;
 
             case 'template':
@@ -342,7 +342,7 @@ export class MetaProvider implements MessagingProvider {
             default:
                 // Fallback to text if unknown type
                 payload.type = 'text';
-                payload.text = { body: ct.body || ct.text || String(content) };
+                payload.text = { body: ct.body || ct.text || String(content) || 'Hola (Pixy Bot)' };
         }
 
         return payload;
@@ -354,7 +354,7 @@ export class MetaProvider implements MessagingProvider {
     private async uploadMedia(url: string, token: string, type: string, assetId: string): Promise<string | null> {
         try {
             console.log(`[MetaProvider] Uploading media: ${url} (${type})`);
-            const uploadUrl = `https://graph.facebook.com/v24.0/${assetId}/media`;
+            const uploadUrl = `https://graph.facebook.com/v21.0/${assetId}/media`;
             
             // 1. Fetch file
             const fileResp = await fetch(url);

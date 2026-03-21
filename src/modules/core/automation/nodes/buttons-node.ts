@@ -1,6 +1,5 @@
 
 import { ContextManager } from '../context-manager'
-import { outboundService } from '@/modules/core/messaging/outbound-service'
 import { InteractiveButton, InteractiveListSection } from '@/modules/core/messaging/providers/types'
 
 export interface ButtonsNodeData {
@@ -162,6 +161,7 @@ export class ButtonsNode {
             console.log('=================================================================\n\n');
 
             // Send the message
+            const { outboundService } = await import('@/modules/core/messaging/outbound-service')
             const result = await outboundService.sendSystemMessage(
                 conversationId,
                 messageContent,
@@ -175,6 +175,7 @@ export class ButtonsNode {
             }
 
             console.log('[ButtonsNode] Message sent successfully:', result.externalId)
+            fileLogger.log(`[ButtonsNode] Message sent successfully. ID: ${result.externalId}`)
 
             // Store message ID in context for tracking
             this.contextManager.set('lastButtonMessageId', result.externalId)

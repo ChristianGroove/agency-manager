@@ -55,12 +55,12 @@ export class MetaAdapter implements IntegrationAdapter {
         let payload: any = {};
 
         const contentObj = typeof content === 'string' ? { type: 'text', text: content } : content;
-        const textBody = contentObj.text || '';
+        const textBody = contentObj.text || contentObj.body || '';
         const buttons = contentObj.buttons || [];
 
         if (isMessenger) {
             // Messenger / Instagram
-            url = `https://graph.facebook.com/v24.0/me/messages`; // Standard endpoint
+            url = `https://graph.facebook.com/v21.0/me/messages`; // Standard endpoint
 
             // Auto-fetch Page Access Token if we only have User Token
             try {
@@ -131,7 +131,7 @@ export class MetaAdapter implements IntegrationAdapter {
 
         } else {
             // WhatsApp logic reinforced: Handle Media IDs vs Links and Interactive Types
-            url = `https://graph.facebook.com/v24.0/${phoneNumberId}/messages`;
+            url = `https://graph.facebook.com/v21.0/${phoneNumberId}/messages`;
             
             payload = {
                 messaging_product: "whatsapp",
@@ -262,15 +262,16 @@ export class MetaAdapter implements IntegrationAdapter {
                         recipient_type: "individual",
                         to: recipient,
                         type: "text",
-                        text: { body: textBody }
+                        text: { body: textBody || 'Hola (Pixy Bot)' }
                     };
                 }
                 response = await makeRequest(payload)
             }
 
             if (!response.ok) {
-                const err = await response.json()
-                console.error('[MetaAdapter] Send Error:', err);
+                const err = await response.json().catch(() => ({ error: { message: response.statusText } }));
+                console.error('[MetaAdapter] CRITICAL SEND ERROR:', JSON.stringify(err, null, 2));
+                console.error('[MetaAdapter] Failed Payload was:', JSON.stringify(payload, null, 2));
                 throw new Error(`Meta Send Failed: ${err.error?.message || response.statusText}`)
             }
 
