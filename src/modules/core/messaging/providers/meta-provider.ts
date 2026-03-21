@@ -1,3 +1,4 @@
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { 
     MessagingProvider, 
     SendMessageOptions, 
@@ -17,6 +18,59 @@ export class MetaProvider implements MessagingProvider {
         private assetId: string,
         private verifyToken: string
     ) { }
+
+    /**
+     * Internal helper to resolve Meta Media IDs to public URLs via Supabase Storage
+     */
+    private async processMedia(mediaId: string, mimeType: string, assetId: string): Promise<string> {
+        try {
+            console.log(`[MetaProvider] Processing Media ID: ${mediaId} (${mimeType})`);
+            
+            // 1. Get Download URL from Meta
+            const urlRes = await fetch(`https://graph.facebook.com/v21.0/${mediaId}`, {
+                headers: { 'Authorization': `Bearer ${this.apiToken}` }
+            });
+
+            if (!urlRes.ok) {
+                const err = await urlRes.json().catch(() => ({}));
+                console.error(`[MetaProvider] Media ID resolution FAILED:`, err);
+                return "";
+            }
+
+            const { url: downloadUrl } = await urlRes.json();
+            if (!downloadUrl) return "";
+
+            // 2. Download Binary
+            const mediaRes = await fetch(downloadUrl, {
+                headers: { 'Authorization': `Bearer ${this.apiToken}` }
+            });
+
+            if (!mediaRes.ok) return "";
+            const buffer = await mediaRes.arrayBuffer();
+
+            // 3. Upload to Supabase Storage
+            const extension = mimeType.split('/')[1] || 'bin';
+            const fileName = `wa_${Date.now()}_${mediaId}.${extension}`;
+            const { error: uploadError } = await supabaseAdmin.storage
+                .from('chat-attachments')
+                .upload(fileName, buffer, { contentType: mimeType, upsert: true });
+
+            if (uploadError) {
+                console.error(`[MetaProvider] Supabase Media Upload Error:`, uploadError);
+                return "";
+            }
+
+            // 4. Get Public URL
+            const { data: { publicUrl } } = supabaseAdmin.storage
+                .from('chat-attachments')
+                .getPublicUrl(fileName);
+
+            return publicUrl;
+        } catch (error) {
+            console.error(`[MetaProvider] Media Processing Exception:`, error);
+            return "";
+        }
+    }
 
     /**
      * Send a message via Meta APIs (WhatsApp, Messenger, Instagram)
@@ -445,7 +499,9 @@ export class MetaProvider implements MessagingProvider {
                         } else if (['image', 'video', 'audio', 'document', 'sticker'].includes(type)) {
                             const media = msg[type];
                             text = media.caption || `[${type}]`;
-                            mediaUrl = media.id; 
+                            const mediaId = media.id;
+                            const mimeType = media.mime_type || (type === 'sticker' ? 'image/webp' : `${type}/jpeg`);
+                            mediaUrl = await this.processMedia(mediaId, mimeType, phoneNumberId); 
                         }
 
                         const isEcho = phoneNumberId === from || msg.is_echo === true;

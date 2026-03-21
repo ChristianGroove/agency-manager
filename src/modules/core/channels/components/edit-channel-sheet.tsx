@@ -5,19 +5,23 @@ import { PipelineStage } from "@/modules/core/crm/pipeline-actions"
 import { Button } from "@/components/ui/button"
 import {
     Save, Loader2, Phone, Eye, EyeOff, RefreshCw,
-    Clock, Users, MessageSquare, Settings2, Star
+    Clock, Users, MessageSquare, Settings2, Calendar,
+    ChevronDown, ChevronUp, Trash2, Plus
 } from "lucide-react"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useState, useEffect } from "react"
 import { updateChannel } from "../actions"
+import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { Switch } from "@/components/ui/switch"
 import { Sheet, SheetContent, SheetTitle, SheetDescription } from "@/components/ui/sheet"
 import { getChannelAssignmentRule, upsertAssignmentRule, deleteAssignmentRule } from "@/modules/core/messaging/assignment-actions"
 import { Badge } from "@/components/ui/badge"
 import { useI18n } from "@/lib/i18n/context"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { cn } from "@/lib/utils"
 
 interface EditChannelSheetProps {
     open: boolean
@@ -31,8 +35,8 @@ interface EditChannelSheetProps {
 function SectionTitle({ icon: Icon, title, badge }: { icon: any, title: string, badge?: React.ReactNode }) {
     return (
         <div className="flex items-center justify-between pt-1 pb-2">
-            <div className="flex items-center gap-2 text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                <Icon className="h-4 w-4" />
+            <div className="flex items-center gap-2 text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">
+                <Icon className="h-3.5 w-3.5" />
                 {title}
             </div>
             {badge}
@@ -41,12 +45,12 @@ function SectionTitle({ icon: Icon, title, badge }: { icon: any, title: string, 
 }
 
 // Compact row for toggle-style settings
-function SettingRow({ label, description, children }: { label: string, description?: string, children: React.ReactNode }) {
+function SettingRow({ label, description, children, className }: { label: string, description?: string, children: React.ReactNode, className?: string }) {
     return (
-        <div className="flex items-center justify-between py-3 gap-4">
+        <div className={cn("flex items-center justify-between py-3 gap-4", className)}>
             <div className="min-w-0">
                 <Label className="text-sm font-medium">{label}</Label>
-                {description && <p className="text-xs text-muted-foreground mt-0.5">{description}</p>}
+                {description && <p className="text-[11px] text-muted-foreground mt-0.5 leading-tight">{description}</p>}
             </div>
             <div className="shrink-0">{children}</div>
         </div>
@@ -55,9 +59,11 @@ function SettingRow({ label, description, children }: { label: string, descripti
 
 export function EditChannelSheet({ open, onOpenChange, channel, pipelineStages, agents }: EditChannelSheetProps) {
     const { dict } = useI18n()
+    const router = useRouter()
     const t = dict.crm.crm_settings.channels.sheet
     const [isLoading, setIsLoading] = useState(false)
     const [isFetchingRule, setIsFetchingRule] = useState(false)
+    const [activeTab, setActiveTab] = useState("general")
 
     // Form State
     const [name, setName] = useState(channel.connection_name)
@@ -69,9 +75,47 @@ export function EditChannelSheet({ open, onOpenChange, channel, pipelineStages, 
     const [autoReply, setAutoReply] = useState(channel.auto_reply_when_offline || "")
     const [welcomeMessage, setWelcomeMessage] = useState(channel.welcome_message || "")
 
-    // Working Hours
-    const defaultHours = { start: "09:00", end: "17:00", days: [1, 2, 3, 4, 5], timezone: 'America/Bogota' }
-    const [workingHours, setWorkingHours] = useState<any>({ ...defaultHours, ...(channel.working_hours || {}) })
+    // Robust Working Hours Structure Migration
+    const sanitizeWorkingHours = (raw: any) => {
+        const base = { 
+            enabled: true, // Master toggle
+            timezone: 'America/Bogota', 
+            days: {
+                1: { enabled: true, ranges: [{ start: "09:00", end: "18:00" }] },
+                2: { enabled: true, ranges: [{ start: "09:00", end: "18:00" }] },
+                3: { enabled: true, ranges: [{ start: "09:00", end: "18:00" }] },
+                4: { enabled: true, ranges: [{ start: "09:00", end: "18:00" }] },
+                5: { enabled: true, ranges: [{ start: "09:00", end: "18:00" }] },
+                6: { enabled: false, ranges: [{ start: "09:00", end: "12:00" }] },
+                0: { enabled: false, ranges: [{ start: "09:00", end: "12:00" }] }
+            }
+        }
+
+        if (!raw || !raw.days) return base;
+
+        // If it's the old array [1,2,3] structure (Implicitly enabled if it had days)
+        if (Array.isArray(raw.days)) {
+            const newDays: any = { ...base.days }
+            const oldStart = raw.start || "09:00"
+            const oldEnd = raw.end || "18:00"
+            
+            Object.keys(newDays).forEach(d => newDays[d as any].enabled = false);
+            raw.days.forEach((d: number) => {
+                const dayKey = d === 7 || d === 0 ? 0 : d;
+                newDays[dayKey] = { enabled: true, ranges: [{ start: oldStart, end: oldEnd }] }
+            });
+            return { enabled: true, timezone: raw.timezone || base.timezone, days: newDays };
+        }
+
+        // Merge daily configurations to avoid losing days not present in the update
+        return { 
+            ...base, 
+            ...raw,
+            days: { ...base.days, ...raw.days }
+        };
+    }
+
+    const [workingHours, setWorkingHours] = useState<any>(sanitizeWorkingHours(channel.working_hours))
 
     // Routing Rule
     const [assignmentRule, setAssignmentRule] = useState<any>(null)
@@ -96,6 +140,14 @@ export function EditChannelSheet({ open, onOpenChange, channel, pipelineStages, 
                 .finally(() => setIsFetchingRule(false))
 
             if (isWhatsApp) loadCallingStatus()
+            
+            // Reset form on open
+            setName(channel.connection_name)
+            setIsPrimary(channel.is_primary)
+            setPipelineStageId(channel.default_pipeline_stage_id || "none")
+            setAutoReply(channel.auto_reply_when_offline || "")
+            setWelcomeMessage(channel.welcome_message || "")
+            setWorkingHours(sanitizeWorkingHours(channel.working_hours))
         }
     }, [open, channel.id])
 
@@ -165,15 +217,20 @@ export function EditChannelSheet({ open, onOpenChange, channel, pipelineStages, 
                 await deleteAssignmentRule(initialRuleId)
             }
             toast.success(dict.common.saved)
+            router.refresh()
             onOpenChange(false)
         } catch (error: any) {
             toast.error(dict.common.error, { description: error.message || dict.common.unexpected_error })
         } finally { setIsLoading(false) }
     }
 
+    const dayLabels: Record<number, string> = {
+        1: 'Lunes', 2: 'Martes', 3: 'Miércoles', 4: 'Jueves', 5: 'Viernes', 6: 'Sábado', 0: 'Domingo'
+    }
+
     const timezones = [
         { value: 'America/Bogota', label: 'Colombia (GMT-5)' },
-        { value: 'America/Mexico_City', label: 'México Central (GMT-6)' },
+        { value: 'America/Mexico_City', label: 'México (GMT-6)' },
         { value: 'America/Sao_Paulo', label: 'Brasil (GMT-3)' },
         { value: 'America/New_York', label: 'US Eastern (GMT-5)' },
         { value: 'Europe/Madrid', label: 'España (GMT+1)' },
@@ -181,7 +238,7 @@ export function EditChannelSheet({ open, onOpenChange, channel, pipelineStages, 
 
     const providerLabel = ({
         'meta_whatsapp': 'WhatsApp', 'whatsapp_cloud': 'WhatsApp',
-        'evolution_api': 'Evolution', 'meta_instagram': 'Instagram', 'meta_business': 'Meta Business',
+        'evolution_api': 'Evolution', 'facebook_page': 'Messenger', 'instagram_dm': 'Instagram',
     } as Record<string, string>)[channel.provider_key] || channel.provider_key
 
     return (
@@ -192,67 +249,108 @@ export function EditChannelSheet({ open, onOpenChange, channel, pipelineStages, 
                     sm:max-w-xl w-full p-0 gap-0 border-none shadow-2xl
                     mr-4 my-4 h-[calc(100vh-2rem)] rounded-3xl overflow-hidden
                     data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:mr-6
-                    bg-transparent
+                    bg-white/95 dark:bg-gray-950/95 backdrop-blur-xl flex flex-col
                 "
             >
-                <div className="flex flex-col h-full bg-white/95 dark:bg-gray-950/95 backdrop-blur-xl">
-                    {/* Header */}
-                    <div className="sticky top-0 z-20 shrink-0 px-6 py-4 bg-white/60 dark:bg-gray-950/60 backdrop-blur-md border-b border-black/5 dark:border-white/5">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <SheetTitle className="text-lg font-bold text-gray-900 dark:text-white tracking-tight">
-                                    {channel.connection_name}
-                                </SheetTitle>
-                                <SheetDescription className="text-xs">
-                                    {providerLabel} · {(channel.metadata as any)?.display_phone_number || channel.provider_key}
-                                </SheetDescription>
-                            </div>
-                            <Button
-                                onClick={handleSave}
-                                disabled={isLoading || isFetchingRule}
-                                size="sm"
-                                className="bg-black dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-200 rounded-xl shadow-lg shadow-black/10"
-                            >
-                                {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                                <span className="ml-1.5">{t.save}</span>
-                            </Button>
+                {/* Header */}
+                <div className="shrink-0 px-6 py-4 border-b border-black/5 dark:border-white/5">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <SheetTitle className="text-lg font-bold tracking-tight">
+                                {name || channel.connection_name}
+                            </SheetTitle>
+                            <SheetDescription className="text-[10px] font-medium opacity-70 uppercase tracking-widest">
+                                {providerLabel} · {(channel.metadata as any)?.display_phone_number || channel.provider_key}
+                            </SheetDescription>
                         </div>
+                        <Button
+                            onClick={handleSave}
+                            disabled={isLoading || isFetchingRule}
+                            size="sm"
+                            className="bg-primary text-primary-foreground hover:opacity-90 rounded-xl shadow-lg shadow-primary/10 px-4"
+                        >
+                            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                            <span className="ml-1.5 font-semibold text-xs">{t.save}</span>
+                        </Button>
+                    </div>
+                </div>
+
+                {/* Tabs Container */}
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
+                    <div className="px-6 py-2 border-b border-black/5 dark:border-white/5 bg-gray-50/50 dark:bg-white/5">
+                        <TabsList className="grid w-full grid-cols-2 bg-transparent h-9 p-0.5 gap-1">
+                            <TabsTrigger 
+                                value="general" 
+                                className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:shadow-sm text-xs font-semibold"
+                            >
+                                <Settings2 className="w-3.5 h-3.5 mr-2 opacity-70" />
+                                {t.general.title}
+                            </TabsTrigger>
+                            <TabsTrigger 
+                                value="automation" 
+                                className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:shadow-sm text-xs font-semibold"
+                            >
+                                <MessageSquare className="w-3.5 h-3.5 mr-2 opacity-70" />
+                                Automatización y Horarios
+                            </TabsTrigger>
+                        </TabsList>
                     </div>
 
-                    {/* Single scrollable view */}
-                    <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200">
-                        <div className="px-6 py-5 space-y-1">
+                    <div className="flex-1 overflow-y-auto custom-scrollbar">
+                        {/* ════════════════ TAB: GENERAL ════════════════ */}
+                        <TabsContent value="general" className="m-0 p-6 space-y-6 focus-visible:outline-none">
+                            
+                            {/* Basic Info */}
+                            <div className="space-y-4">
+                                <SectionTitle icon={Settings2} title="Información del Canal" />
+                                <div className="grid gap-4 p-4 rounded-2xl border bg-white dark:bg-black/20 shadow-sm">
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[11px] font-bold text-muted-foreground uppercase ml-1">Nombre de la Conexión</Label>
+                                        <Input
+                                            value={name}
+                                            onChange={e => setName(e.target.value)}
+                                            className="h-9 text-sm rounded-xl focus:ring-1 focus:ring-primary"
+                                            placeholder="Ej: WhatsApp Principal"
+                                        />
+                                    </div>
+                                    <SettingRow 
+                                        label={t.general.primary_channel} 
+                                        description={t.general.primary_desc}
+                                        className="py-1"
+                                    >
+                                        <Switch checked={isPrimary} onCheckedChange={setIsPrimary} />
+                                    </SettingRow>
+                                </div>
+                            </div>
 
-                            {/* ═══════ WHATSAPP — CALLING API (first if applicable) ═══════ */}
+                            {/* WhatsApp Features */}
                             {isWhatsApp && (
-                                <>
-                                    <SectionTitle
-                                        icon={Phone}
-                                        title={t.calling.title}
+                                <div className="space-y-4">
+                                    <SectionTitle 
+                                        icon={Phone} 
+                                        title={t.calling.title} 
                                         badge={
-                                            <Badge
-                                                variant={callingEnabled ? "default" : "secondary"}
-                                                className={`text-[10px] ${callingEnabled ? "bg-green-600" : ""}`}
-                                            >
-                                                {callingLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : callingEnabled ? t.calling.status_on : t.calling.status_off}
-                                            </Badge>
-                                        }
+                                            <div className={cn(
+                                                "w-2 h-2 rounded-full animate-pulse",
+                                                callingEnabled ? "bg-green-500" : "bg-gray-300"
+                                            )} />
+                                        } 
                                     />
-                                    <div className="rounded-xl border bg-white/50 dark:bg-white/5 px-4 divide-y divide-gray-100 dark:divide-white/5">
-                                        <SettingRow label={t.calling.voice_title} description={t.calling.voice_desc}>
+                                    <div className="grid gap-1 p-4 rounded-2xl border bg-white dark:bg-black/20 shadow-sm divide-y divide-gray-100 dark:divide-white/5">
+                                        <SettingRow label={t.calling.voice_title} description={t.calling.voice_desc} className="pt-0 pb-3">
                                             <Switch
                                                 checked={callingEnabled}
                                                 onCheckedChange={handleToggleCalling}
                                                 disabled={callingLoading}
                                             />
                                         </SettingRow>
-                                        <SettingRow label={t.calling.icon_title} description={t.calling.icon_desc}>
+                                        <SettingRow label={t.calling.icon_title} description={t.calling.icon_desc} className="pt-3 pb-0">
                                             <Select
                                                 value={iconVisibility}
                                                 onValueChange={(v) => handleIconVisibility(v as 'DEFAULT' | 'HIDE')}
                                                 disabled={callingLoading || !callingEnabled}
                                             >
-                                                <SelectTrigger className="w-28 h-8 text-xs">
+                                                <SelectTrigger className="w-32 h-8 text-xs rounded-lg">
                                                     <SelectValue />
                                                 </SelectTrigger>
                                                 <SelectContent>
@@ -266,185 +364,305 @@ export function EditChannelSheet({ open, onOpenChange, channel, pipelineStages, 
                                             </Select>
                                         </SettingRow>
                                     </div>
-                                    <div className="flex items-center justify-between px-1 pt-1 pb-3">
-                                        <span className="text-[10px] text-muted-foreground">
-                                            {callingStatusSource === 'meta' && `✓ ${dict.common.saved}`}
-                                            {callingStatusSource === 'default' && `○ ${t.calling.default_config}`}
-                                            {callingStatusSource === 'error' && `⚠ ${dict.common.connection_error}`}
-                                            {callingStatusSource === 'loading' && '...'}
-                                        </span>
-                                        <Button variant="ghost" size="sm" onClick={loadCallingStatus} disabled={callingLoading} className="h-6 text-[10px] px-2">
-                                            <RefreshCw className="h-3 w-3 mr-1" />{t.calling.verify}
-                                        </Button>
-                                    </div>
-
-                                    <div className="border-b border-gray-100 dark:border-white/5" />
-                                </>
+                                </div>
                             )}
 
-                            {/* ═══════ GENERAL ═══════ */}
-                            <SectionTitle icon={Settings2} title={t.general.title} />
-                            <div className="rounded-xl border bg-white/50 dark:bg-white/5 px-4 divide-y divide-gray-100 dark:divide-white/5">
-                                <div className="py-3 space-y-1.5">
-                                    <Label className="text-xs text-muted-foreground">{t.general.connection_name}</Label>
-                                    <Input
-                                        value={name}
-                                        onChange={e => setName(e.target.value)}
-                                        className="h-8 text-sm"
-                                    />
-                                </div>
-                                <SettingRow label={t.general.primary_channel} description={t.general.primary_desc}>
-                                    <Switch checked={isPrimary} onCheckedChange={setIsPrimary} />
-                                </SettingRow>
-                                <div className="py-3 space-y-1.5">
-                                    <Label className="text-xs text-muted-foreground">{t.general.initial_stage}</Label>
-                                    <Select value={pipelineStageId || "none"} onValueChange={setPipelineStageId}>
-                                        <SelectTrigger className="h-8 text-sm">
-                                            <SelectValue placeholder={dict.common.search} />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="none">{t.general.stage_disabled}</SelectItem>
-                                            {pipelineStages.map(stage => (
-                                                <SelectItem key={stage.id} value={stage.id}>{stage.name}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
-
-                            <div className="border-b border-gray-100 dark:border-white/5 my-1" />
-
-                            {/* ═══════ MENSAJES Y HORARIO ═══════ */}
-                            <SectionTitle icon={MessageSquare} title={t.messages.title} />
-                            <div className="rounded-xl border bg-white/50 dark:bg-white/5 px-4 divide-y divide-gray-100 dark:divide-white/5">
-                                <div className="py-3 space-y-1.5">
-                                    <Label className="text-xs text-muted-foreground">{t.messages.welcome}</Label>
-                                    <Input
-                                        value={welcomeMessage}
-                                        onChange={e => setWelcomeMessage(e.target.value)}
-                                        placeholder={t.messages.welcome_placeholder}
-                                        className="h-8 text-sm"
-                                    />
-                                </div>
-                                <div className="py-3 space-y-1.5">
-                                    <Label className="text-xs text-muted-foreground">{t.messages.off_hours}</Label>
-                                    <Input
-                                        value={autoReply}
-                                        onChange={e => setAutoReply(e.target.value)}
-                                        placeholder={t.messages.off_hours_placeholder}
-                                        className="h-8 text-sm"
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="border-b border-gray-100 dark:border-white/5 my-1" />
-
-                            {/* ═══════ HORARIO ═══════ */}
-                            <SectionTitle icon={Clock} title={t.schedule.title} />
-                            <div className="rounded-xl border bg-white/50 dark:bg-white/5 px-4 py-3 space-y-3">
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div className="space-y-1">
-                                        <Label className="text-xs text-muted-foreground">{t.schedule.start}</Label>
-                                        <Input type="time" value={workingHours.start} onChange={e => setWorkingHours({ ...workingHours, start: e.target.value })} className="h-8 text-sm" />
+                            {/* Routing & Leads */}
+                            <div className="space-y-4">
+                                <SectionTitle icon={Users} title="CRM y Asignación" />
+                                <div className="grid gap-4 p-4 rounded-2xl border bg-white dark:bg-black/20 shadow-sm">
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[11px] font-bold text-muted-foreground uppercase ml-1">Etapa inicial del Lead</Label>
+                                        <Select value={pipelineStageId || "none"} onValueChange={setPipelineStageId}>
+                                            <SelectTrigger className="h-9 text-sm rounded-xl">
+                                                <SelectValue placeholder="Seleccionar etapa..." />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="none">No mover automáticamente</SelectItem>
+                                                {pipelineStages.map(stage => (
+                                                    <SelectItem key={stage.id} value={stage.id}>{stage.name}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <p className="text-[10px] text-muted-foreground px-1">Los nuevos contactos de este canal se crearán en esta etapa.</p>
                                     </div>
-                                    <div className="space-y-1">
-                                        <Label className="text-xs text-muted-foreground">{t.schedule.end}</Label>
-                                        <Input type="time" value={workingHours.end} onChange={e => setWorkingHours({ ...workingHours, end: e.target.value })} className="h-8 text-sm" />
+
+                                    <div className="border-t border-gray-100 dark:border-white/5 pt-3">
+                                        <SettingRow 
+                                            label={t.assignment.custom_rule} 
+                                            description={t.assignment.custom_rule_desc}
+                                            className="py-1"
+                                        >
+                                            <Switch
+                                                checked={!!assignmentRule}
+                                                onCheckedChange={(checked) => {
+                                                    if (checked && !assignmentRule) {
+                                                        setAssignmentRule({
+                                                            name: `Rule for ${channel.connection_name}`,
+                                                            priority: 10,
+                                                            conditions: { connection_id: [channel.id] },
+                                                            strategy: 'round-robin',
+                                                            assign_to: [],
+                                                            is_active: true
+                                                        } as any)
+                                                    } else if (!checked) {
+                                                        setAssignmentRule(null)
+                                                    }
+                                                }}
+                                            />
+                                        </SettingRow>
+
+                                        {assignmentRule && (
+                                            <div className="mt-4 space-y-4 animate-in slide-in-from-top-2 duration-200">
+                                                <div className="space-y-1.5">
+                                                    <Label className="text-[11px] font-bold text-muted-foreground uppercase ml-1">Estrategia de Reparto</Label>
+                                                    <Select value={assignmentRule.strategy} onValueChange={(val) => setAssignmentRule({ ...assignmentRule, strategy: val })}>
+                                                        <SelectTrigger className="h-8 text-sm rounded-lg">
+                                                            <SelectValue />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="round-robin">Manual / Round Robin</SelectItem>
+                                                            <SelectItem value="specific-agent">Agentes Específicos</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+
+                                                {assignmentRule.strategy === 'specific-agent' && (
+                                                    <div className="space-y-1.5">
+                                                        <Label className="text-[11px] font-bold text-muted-foreground uppercase ml-1">Seleccionar Agentes</Label>
+                                                        <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto p-2 border rounded-xl bg-gray-50/50 dark:bg-white/5">
+                                                            {agents.map(agent => (
+                                                                <div key={agent.user.id} className="flex items-center gap-2 py-1 px-2 hover:bg-white dark:hover:bg-white/5 rounded-lg border border-transparent hover:border-black/5 transition-all">
+                                                                    <Switch
+                                                                        id={agent.user.id}
+                                                                        checked={assignmentRule.assign_to?.includes(agent.user.id)}
+                                                                        onCheckedChange={(checked) => {
+                                                                            const current = assignmentRule.assign_to || []
+                                                                            const updated = checked
+                                                                                ? [...current, agent.user.id]
+                                                                                : current.filter((id: string) => id !== agent.user.id)
+                                                                            setAssignmentRule({ ...assignmentRule, assign_to: updated })
+                                                                        }}
+                                                                        className="scale-75"
+                                                                    />
+                                                                    <Label htmlFor={agent.user.id} className="text-[11px] font-medium cursor-pointer truncate">
+                                                                        {agent.user.full_name || agent.user.email}
+                                                                    </Label>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
-                                <div className="space-y-1">
-                                    <Label className="text-xs text-muted-foreground">{t.schedule.timezone}</Label>
-                                    <Select value={workingHours.timezone || 'America/Bogota'} onValueChange={tz => setWorkingHours({ ...workingHours, timezone: tz })}>
-                                        <SelectTrigger className="h-8 text-sm">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {timezones.map(tz => (
-                                                <SelectItem key={tz.value} value={tz.value}>{tz.label}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                            </div>
+                        </TabsContent>
+
+                        {/* ════════════════ TAB: AUTOMATION & HOURS ════════════════ */}
+                        <TabsContent value="automation" className="m-0 p-6 space-y-6 focus-visible:outline-none">
+                            
+                            {/* Master Toggle - HIGH UX */}
+                            <div className="p-4 rounded-2xl border bg-primary/5 border-primary/20 shadow-sm flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-3">
+                                    <div className={cn(
+                                        "p-2 rounded-xl transition-colors duration-300",
+                                        workingHours.enabled 
+                                            ? "bg-primary text-primary-foreground shadow-md shadow-primary/20" 
+                                            : "bg-gray-200 text-gray-400 dark:bg-gray-800"
+                                    )}>
+                                        <Clock className="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <Label className="text-sm font-bold">Horarios y Automatización Global</Label>
+                                        <p className="text-[11px] text-muted-foreground leading-tight">
+                                            Activa o desactiva la lógica de horarios para este canal.
+                                        </p>
+                                    </div>
                                 </div>
+                                <Switch 
+                                    checked={workingHours.enabled} 
+                                    onCheckedChange={checked => setWorkingHours({ ...workingHours, enabled: checked })} 
+                                />
                             </div>
 
-                            <div className="border-b border-gray-100 dark:border-white/5 my-1" />
+                            <div className={cn(
+                                "space-y-6 transition-all duration-500", 
+                                !workingHours.enabled && "opacity-40 grayscale pointer-events-none scale-[0.98] origin-top"
+                            )}>
+                                {/* Auto Responses */}
+                                <div className="space-y-4">
+                                    <SectionTitle icon={MessageSquare} title="Respuestas Automáticas" />
+                                    <div className="grid gap-6 p-5 rounded-2xl border bg-white dark:bg-black/20 shadow-sm">
+                                        <div className="space-y-2">
+                                            <div className="flex items-center justify-between">
+                                                <Label className="text-[11px] font-bold text-muted-foreground uppercase ml-1">Bienvenida (Nuevos Leads)</Label>
+                                                <Badge variant="outline" className="text-[9px] h-4">Online Only</Badge>
+                                            </div>
+                                            <textarea
+                                                value={welcomeMessage}
+                                                onChange={e => setWelcomeMessage(e.target.value)}
+                                                placeholder="Ej: ¡Hola! Gracias por contactarnos..."
+                                                className="w-full min-h-[80px] text-sm p-3 rounded-xl border bg-gray-50/50 dark:bg-white/5 focus:ring-1 focus:ring-primary outline-none resize-none"
+                                            />
+                                            <p className="text-[10px] text-muted-foreground leading-tight px-1 italic">
+                                                Se enviará solo a contactos nuevos cuando el horario esté activo y no haya flujos de automatización prioritarios.
+                                            </p>
+                                        </div>
 
-                            {/* ═══════ ASIGNACIÓN ═══════ */}
-                            <SectionTitle
-                                icon={Users}
-                                title={t.assignment.title}
-                                badge={isFetchingRule ? <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" /> : undefined}
-                            />
-                            <div className="rounded-xl border bg-white/50 dark:bg-white/5 px-4 divide-y divide-gray-100 dark:divide-white/5">
-                                <SettingRow label={t.assignment.custom_rule} description={t.assignment.custom_rule_desc}>
-                                    <Switch
-                                        checked={!!assignmentRule}
-                                        onCheckedChange={(checked) => {
-                                            if (checked && !assignmentRule) {
-                                                setAssignmentRule({
-                                                    name: `Rule for ${channel.connection_name}`,
-                                                    priority: 10,
-                                                    conditions: { connection_id: [channel.id] },
-                                                    strategy: 'round-robin',
-                                                    assign_to: [],
-                                                    is_active: true
-                                                } as any)
-                                            } else if (!checked) {
-                                                setAssignmentRule(null)
-                                            }
-                                        }}
-                                    />
-                                </SettingRow>
+                                        <div className="space-y-2 border-t border-gray-100 dark:border-white/5 pt-4">
+                                            <div className="flex items-center justify-between">
+                                                <Label className="text-[11px] font-bold text-muted-foreground uppercase ml-1">Respuesta Fuera de Horario</Label>
+                                                <Badge variant="outline" className="text-[9px] h-4 text-orange-600 border-orange-200">Offline Only</Badge>
+                                            </div>
+                                            <textarea
+                                                value={autoReply}
+                                                onChange={e => setAutoReply(e.target.value)}
+                                                placeholder="Ej: Lo sentimos, nuestro horario es de 9am a 6pm..."
+                                                className="w-full min-h-[80px] text-sm p-3 rounded-xl border bg-gray-50/50 dark:bg-white/5 focus:ring-1 focus:ring-primary outline-none resize-none"
+                                            />
+                                            <p className="text-[10px] text-muted-foreground leading-tight px-1 italic">
+                                                Se enviará automáticamente cuando el canal esté fuera de servicio. Limitado a una vez por hora por contacto.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
 
-                                {assignmentRule && (
-                                    <div className="py-3 space-y-3 animate-in slide-in-from-top-2 duration-200">
-                                        <div className="space-y-1">
-                                            <Label className="text-xs text-muted-foreground">{t.assignment.strategy}</Label>
-                                            <Select value={assignmentRule.strategy} onValueChange={(val) => setAssignmentRule({ ...assignmentRule, strategy: val })}>
-                                                <SelectTrigger className="h-8 text-sm">
+                                {/* Schedule Engine */}
+                                <div className="space-y-4">
+                                    <SectionTitle icon={Calendar} title="Horarios de Atención" />
+                                    <div className="p-5 rounded-2xl border bg-white dark:bg-black/20 shadow-sm space-y-5">
+                                        
+                                        <div className="flex items-center justify-between gap-4 p-3 rounded-xl bg-primary/5 border border-primary/10">
+                                            <div className="flex items-center gap-2">
+                                                <Clock className="w-4 h-4 text-primary" />
+                                                <span className="text-xs font-semibold">Zona Horaria Global</span>
+                                            </div>
+                                            <Select 
+                                                value={workingHours.timezone || 'America/Bogota'} 
+                                                onValueChange={tz => setWorkingHours({ ...workingHours, timezone: tz })}
+                                            >
+                                                <SelectTrigger className="w-48 h-8 text-[11px] rounded-lg bg-white dark:bg-gray-900 border-none shadow-sm">
                                                     <SelectValue />
                                                 </SelectTrigger>
                                                 <SelectContent>
-                                                    <SelectItem value="specific-agent">Agentes Específicos</SelectItem>
+                                                    {timezones.map(tz => (
+                                                        <SelectItem key={tz.value} value={tz.value} className="text-[11px]">{tz.label}</SelectItem>
+                                                    ))}
                                                 </SelectContent>
                                             </Select>
                                         </div>
 
-                                        {assignmentRule.strategy === 'specific-agent' && (
-                                            <div className="space-y-1">
-                                                <Label className="text-xs text-muted-foreground">Agentes</Label>
-                                                <div className="grid grid-cols-1 gap-1 max-h-36 overflow-y-auto">
-                                                    {agents.map(agent => (
-                                                        <div key={agent.user.id} className="flex items-center gap-2 py-1 px-1 hover:bg-gray-50 dark:hover:bg-white/5 rounded">
-                                                            <Switch
-                                                                id={agent.user.id}
-                                                                checked={assignmentRule.assign_to?.includes(agent.user.id)}
-                                                                onCheckedChange={(checked) => {
-                                                                    const current = assignmentRule.assign_to || []
-                                                                    const updated = checked
-                                                                        ? [...current, agent.user.id]
-                                                                        : current.filter((id: string) => id !== agent.user.id)
-                                                                    setAssignmentRule({ ...assignmentRule, assign_to: updated })
-                                                                }}
-                                                                className="scale-75"
-                                                            />
-                                                            <Label htmlFor={agent.user.id} className="text-xs font-normal cursor-pointer">
-                                                                {agent.user.full_name || agent.user.email}
-                                                            </Label>
+                                        {/* Days Grid */}
+                                        <div className="space-y-2">
+                                            {[1, 2, 3, 4, 5, 6, 0].map((day) => {
+                                                const schedule = workingHours.days?.[day] || { enabled: false, ranges: [] }
+                                                
+                                                return (
+                                                    <div 
+                                                        key={day} 
+                                                        className={cn(
+                                                            "flex flex-col gap-2 p-3 rounded-xl border transition-all",
+                                                            schedule.enabled ? "bg-white dark:bg-white/5 border-gray-200" : "bg-gray-50/50 dark:bg-black/10 border-transparent opacity-60"
+                                                        )}
+                                                    >
+                                                        <div className="flex items-center justify-between">
+                                                            <div className="flex items-center gap-2">
+                                                                <Switch 
+                                                                    checked={schedule.enabled}
+                                                                    onCheckedChange={checked => {
+                                                                        const newDays = { ...workingHours.days }
+                                                                        newDays[day] = { ...schedule, enabled: checked }
+                                                                        if (checked && (!schedule.ranges || schedule.ranges.length === 0)) {
+                                                                            newDays[day].ranges = [{ start: "09:00", end: "18:00" }]
+                                                                        }
+                                                                        setWorkingHours({ ...workingHours, days: newDays })
+                                                                    }}
+                                                                    className="scale-90"
+                                                                />
+                                                                <span className={cn("text-xs font-bold", day === 0 || day === 6 ? "text-muted-foreground" : "")}>
+                                                                    {dayLabels[day]}
+                                                                </span>
+                                                            </div>
+                                                            {!schedule.enabled ? (
+                                                                <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest">Cerrado</span>
+                                                            ) : (
+                                                                <Badge variant="secondary" className="text-[9px] bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-none">Abierto</Badge>
+                                                            )}
                                                         </div>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
 
-                            {/* Bottom spacing */}
-                            <div className="h-4" />
-                        </div>
+                                                        {schedule.enabled && (
+                                                            <div className="pl-12 space-y-2 animate-in fade-in slide-in-from-left-2 duration-300">
+                                                                {schedule.ranges?.map((range: any, idx: number) => (
+                                                                    <div key={idx} className="flex items-center gap-2 group">
+                                                                        <Input 
+                                                                            type="time" 
+                                                                            value={range.start} 
+                                                                            onChange={e => {
+                                                                                const newRanges = [...schedule.ranges]
+                                                                                newRanges[idx] = { ...range, start: e.target.value }
+                                                                                const newDays = { ...workingHours.days, [day]: { ...schedule, ranges: newRanges } }
+                                                                                setWorkingHours({ ...workingHours, days: newDays })
+                                                                            }}
+                                                                            className="w-24 h-7 text-[11px] rounded-md px-2" 
+                                                                        />
+                                                                        <span className="text-[10px] text-muted-foreground font-bold">a</span>
+                                                                        <Input 
+                                                                            type="time" 
+                                                                            value={range.end} 
+                                                                            onChange={e => {
+                                                                                const newRanges = [...schedule.ranges]
+                                                                                newRanges[idx] = { ...range, end: e.target.value }
+                                                                                const newDays = { ...workingHours.days, [day]: { ...schedule, ranges: newRanges } }
+                                                                                setWorkingHours({ ...workingHours, days: newDays })
+                                                                            }}
+                                                                            className="w-24 h-7 text-[11px] rounded-md px-2" 
+                                                                        />
+                                                                        {idx > 0 && (
+                                                                            <Button 
+                                                                                variant="ghost" size="icon" className="h-6 w-6 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                                                                onClick={() => {
+                                                                                    const newRanges = schedule.ranges.filter((_: any, i: number) => i !== idx)
+                                                                                    const newDays = { ...workingHours.days, [day]: { ...schedule, ranges: newRanges } }
+                                                                                    setWorkingHours({ ...workingHours, days: newDays })
+                                                                                }}
+                                                                            >
+                                                                                <Trash2 className="w-3 h-3" />
+                                                                            </Button>
+                                                                        )}
+                                                                        {idx === 0 && schedule.ranges.length < 2 && (
+                                                                            <Button 
+                                                                                variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 text-blue-500 hover:bg-blue-50"
+                                                                                onClick={() => {
+                                                                                    const newRanges = [...schedule.ranges, { start: "14:00", end: "18:00" }]
+                                                                                    const newDays = { ...workingHours.days, [day]: { ...schedule, ranges: newRanges } }
+                                                                                    setWorkingHours({ ...workingHours, days: newDays })
+                                                                                }}
+                                                                            >
+                                                                                <Plus className="w-3 h-3" />
+                                                                            </Button>
+                                                                        )}
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )
+                                            })}
+                                        </div>
+                                        <p className="text-[10px] text-muted-foreground italic text-center">
+                                            Las automatizaciones secundarias se comportarán según este horario si está activado.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </TabsContent>
                     </div>
-                </div>
+                </Tabs>
+
+                {/* Footer Style spacing/decoration */}
+                <div className="h-6 shrink-0 bg-transparent" />
             </SheetContent>
         </Sheet>
     )

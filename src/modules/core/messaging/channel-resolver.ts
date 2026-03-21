@@ -24,7 +24,7 @@ export class ChannelResolver {
         if (metadata?.connectionId) {
             const { data } = await supabase
                 .from('integration_connections')
-                .select('id, organization_id, credentials, metadata, default_pipeline_stage_id, working_hours, auto_reply_when_offline')
+                .select('id, organization_id, credentials, metadata, default_pipeline_stage_id, working_hours, auto_reply_when_offline, welcome_message')
                 .eq('id', metadata.connectionId)
                 .single()
 
@@ -39,7 +39,7 @@ export class ChannelResolver {
             // Primary: Modern whatsapp_cloud
             const { data: direct } = await supabase
                 .from('integration_connections')
-                .select('id, organization_id, credentials, metadata, default_pipeline_stage_id, working_hours, auto_reply_when_offline')
+                .select('id, organization_id, credentials, metadata, default_pipeline_stage_id, working_hours, auto_reply_when_offline, welcome_message')
                 .eq('provider_key', 'whatsapp_cloud')
                 .in('status', ['active', 'connected'])
                 .eq('metadata->>asset_id', phoneNumberId)
@@ -50,7 +50,7 @@ export class ChannelResolver {
             // Fallback: Legacy meta_business/meta_whatsapp
             const { data: legacy } = await supabase
                 .from('integration_connections')
-                .select('id, organization_id, credentials, metadata, default_pipeline_stage_id, working_hours, auto_reply_when_offline')
+                .select('id, organization_id, credentials, metadata, default_pipeline_stage_id, working_hours, auto_reply_when_offline, welcome_message')
                 .in('provider_key', ['meta_business', 'meta_whatsapp'])
                 .in('status', ['active', 'connected'])
 
@@ -71,7 +71,7 @@ export class ChannelResolver {
 
             const { data: direct } = await supabase
                 .from('integration_connections')
-                .select('id, organization_id, credentials, metadata, default_pipeline_stage_id, working_hours, auto_reply_when_offline')
+                .select('id, organization_id, credentials, metadata, default_pipeline_stage_id, working_hours, auto_reply_when_offline, welcome_message')
                 .eq('provider_key', 'facebook_page')
                 .in('status', ['active', 'connected'])
                 .eq('metadata->>asset_id', pageId)
@@ -82,7 +82,7 @@ export class ChannelResolver {
             // Legacy
             const { data: legacy } = await supabase
                 .from('integration_connections')
-                .select('id, organization_id, credentials, metadata, default_pipeline_stage_id, working_hours, auto_reply_when_offline')
+                .select('id, organization_id, credentials, metadata, default_pipeline_stage_id, working_hours, auto_reply_when_offline, welcome_message')
                 .eq('provider_key', 'meta_business')
                 .in('status', ['active', 'connected'])
 
@@ -106,7 +106,7 @@ export class ChannelResolver {
 
             const { data: direct } = await supabase
                 .from('integration_connections')
-                .select('id, organization_id, credentials, metadata, default_pipeline_stage_id, working_hours, auto_reply_when_offline')
+                .select('id, organization_id, credentials, metadata, default_pipeline_stage_id, working_hours, auto_reply_when_offline, welcome_message')
                 .eq('provider_key', 'instagram_dm')
                 .in('status', ['active', 'connected'])
                 .eq('metadata->>asset_id', igId)
@@ -117,7 +117,7 @@ export class ChannelResolver {
             // Legacy / Multi-asset (meta_business)
             const { data: legacy } = await supabase
                 .from('integration_connections')
-                .select('id, organization_id, credentials, metadata, default_pipeline_stage_id, working_hours, auto_reply_when_offline')
+                .select('id, organization_id, credentials, metadata, default_pipeline_stage_id, working_hours, auto_reply_when_offline, welcome_message')
                 .eq('provider_key', 'meta_business')
                 .in('status', ['active', 'connected'])
 
@@ -136,7 +136,7 @@ export class ChannelResolver {
         if (channel === 'evolution' && metadata?.instance) {
             const { data: connections } = await supabase
                 .from('integration_connections')
-                .select('id, organization_id, credentials, default_pipeline_stage_id, working_hours, auto_reply_when_offline')
+                .select('id, organization_id, credentials, default_pipeline_stage_id, working_hours, auto_reply_when_offline, welcome_message')
                 .eq('provider_key', 'evolution_api')
                 .in('status', ['active', 'connected'])
 

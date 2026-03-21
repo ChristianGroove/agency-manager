@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/lib/supabase-admin"
 import { fileLogger } from "@/lib/file-logger"
 import { WorkflowEngine } from "./engine"
 import { WorkflowDefinition } from "./engine"
+import { BusinessHoursEngine } from "@/lib/business-hours"
 
 /**
  * Service to evaluate incoming events and trigger workflows.
@@ -34,7 +35,7 @@ export class AutomationTriggerService {
         // Let's first get the conversation to know the Org
         const { data: conversation } = await supabaseAdmin
             .from('conversations')
-            .select('organization_id, connection_id, last_auto_reply_at, metadata, assigned_to, is_bot_active') // Fetch markers
+            .select('organization_id, connection_id, last_auto_reply_at, metadata, assigned_to, is_bot_active, integration_connections(working_hours)') // Fetch connection hours
             .eq('id', conversationId)
             .single()
 
@@ -99,6 +100,10 @@ export class AutomationTriggerService {
         const isSessionExpired = lastAutoReply === 0 ||
             resolvedAt > lastAutoReply ||
             (now - lastAutoReply) > (12 * 60 * 60 * 1000);
+
+        // CHANNEL WORKING HOURS CHECK
+        const connectionHours = (conversation as any).integration_connections?.working_hours;
+        const isOnline = BusinessHoursEngine.isOnline(connectionHours);
 
         // Safety: Ignore messages that arrived within 2 seconds of a bot reply 
         // to prevent potential echo loops (some providers echo sent messages back)
@@ -193,41 +198,26 @@ export class AutomationTriggerService {
                 }
             }
 
-            // 4. "Business Hours"
-            else if (wf.trigger_type === 'business_hours') {
-                const now = new Date()
-                const currentHour = now.getHours()
-                const currentDay = now.getDay()
-                const startHour = config.start_hour ?? 9
-                const endHour = config.end_hour ?? 18
-                const workDays = config.work_days ?? [1, 2, 3, 4, 5]
-
-                const isWorkDay = workDays.includes(currentDay)
-                const isWorkHour = currentHour >= startHour && currentHour < endHour
-
-                if (isWorkDay && isWorkHour) {
-                    match = true
-                } else {
-                    skipReason = 'Outside business hours'
-                }
+            // 4. "Business Hours" (Specific Node Trigger)
+            else if (workflowTriggerType === 'business_hours') {
+                // If it's a dedicated Business Hours trigger, check if we are currently online
+                match = isOnline;
+                if (!match) skipReason = 'Currently outside office hours (Channel level)'
             }
 
-            // 5. "Outside Hours"
-            else if (wf.trigger_type === 'outside_hours') {
-                const now = new Date()
-                const currentHour = now.getHours()
-                const currentDay = now.getDay()
-                const startHour = config.start_hour ?? 9
-                const endHour = config.end_hour ?? 18
-                const workDays = config.work_days ?? [1, 2, 3, 4, 5]
-
-                const isWorkDay = workDays.includes(currentDay)
-                const isWorkHour = currentHour >= startHour && currentHour < endHour
-
-                if (!isWorkDay || !isWorkHour) {
-                    match = true
-                } else {
-                    skipReason = 'Inside business hours'
+            // 5. "Outside Hours" (Specific Node Trigger)
+            else if (workflowTriggerType === 'outside_hours') {
+                // If it's a dedicated Outside Hours trigger, check if we are currently offline
+                match = !isOnline;
+                if (!match) skipReason = 'Currently inside office hours (Channel level)'
+            }
+            
+            // Global check for message-based triggers
+            // We block everything EXCEPT the dedicated 'outside_hours' trigger if we are offline
+            if (match && workflowTriggerType !== 'outside_hours') {
+                if (!isOnline) {
+                    match = false;
+                    skipReason = 'Channel is OFFLINE. Triggers paused (Master Toggle).';
                 }
             }
 
