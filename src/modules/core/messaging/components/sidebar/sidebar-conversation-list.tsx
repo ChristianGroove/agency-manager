@@ -24,9 +24,18 @@ import { getChannels } from "@/modules/core/channels/actions"
 import { Channel as ChannelType } from "@/modules/core/channels/types"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
-import { Check as CheckIcon, ChevronsUpDown } from "lucide-react"
+import { Check as CheckIcon, ChevronsUpDown, Users } from "lucide-react"
+import { getSidebarAgents } from "../../assignment-actions"
 
 type FilterTab = 'all' | 'unread' | 'assigned' | 'archived' | 'snoozed'
+
+export interface SidebarAgent {
+    id: string
+    name: string
+    avatar_url: string | null
+    role: string
+    channels: string[]
+}
 
 // Extended type to include joined lead and connection data
 type Conversation = Database['public']['Tables']['conversations']['Row'] & {
@@ -55,6 +64,8 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
     const [conversations, setConversations] = useState<Conversation[]>([])
     const [channels, setChannels] = useState<ChannelType[]>([])
     const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null)
+    const [agents, setAgents] = useState<SidebarAgent[]>([])
+    const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null)
     const [searchQuery, setSearchQuery] = useState("")
     const [activeFilter, setActiveFilter] = useState<FilterTab>('all')
     const [loading, setLoading] = useState(true)
@@ -73,6 +84,20 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
     const [userPermissions, setUserPermissions] = useState<any>(null)
     const [permissionsLoaded, setPermissionsLoaded] = useState(false)
     const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+
+    const hasGlobalView = useMemo(() => {
+        return userPermissions?.permissions?.all === true || 
+               userPermissions?.permissions?.['inbox.conversations.view_all'] === true
+    }, [userPermissions])
+
+    const filteredAgents = useMemo(() => {
+        if (!selectedChannelId) return agents;
+        return agents.filter(a => {
+            const isAdmin = ['admin', 'owner'].includes(a.role.toLowerCase());
+            const hasAccess = a.channels.includes(selectedChannelId);
+            return isAdmin || hasAccess;
+        });
+    }, [agents, selectedChannelId])
     const searchInputRef = useRef<HTMLInputElement>(null)
     const { preferences, updatePreferences } = useInboxPreferences()
     const { organizationId, loading: orgLoading } = useCurrentOrganization()
@@ -113,8 +138,13 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
     useEffect(() => {
         if (!orgLoading && permissionsLoaded) {
             fetchChannels()
+            if (userPermissions?.permissions?.all === true || userPermissions?.permissions?.['inbox.conversations.view_all'] === true) {
+                getSidebarAgents().then(({ data }) => {
+                    if (data) setAgents(data as SidebarAgent[])
+                })
+            }
         }
-    }, [organizationId, orgLoading, permissionsLoaded])
+    }, [organizationId, orgLoading, permissionsLoaded, userPermissions])
 
     useEffect(() => {
         if (!orgLoading && permissionsLoaded) {
@@ -124,14 +154,12 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
             }, 300)
             return () => clearTimeout(timer)
         }
-    }, [activeFilter, organizationId, orgLoading, permissionsLoaded, selectedChannelId, searchQuery])
+    }, [activeFilter, organizationId, orgLoading, permissionsLoaded, selectedChannelId, selectedAgentId, searchQuery])
 
     const fetchChannels = async () => {
         const data = await getChannels()
 
         // Filter channels for staff based on governance
-        const hasGlobalView = userPermissions?.permissions?.all === true || 
-                             userPermissions?.permissions?.['inbox.conversations.view_all'] === true
         const isRestricted = !hasGlobalView
         const authorizedChannels = userPermissions?.permissions?.inbox_access || []
 
@@ -189,12 +217,19 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
 
         if (selectedChannelId) query = query.eq('connection_id', selectedChannelId)
 
+        // Agent Filter Integration (Only triggers if an agent is selected explicitly)
+        if (selectedAgentId) {
+            if (selectedAgentId === 'unassigned') {
+                query = query.is('assigned_to', null)
+            } else {
+                query = query.eq('assigned_to', selectedAgentId)
+            }
+        }
+
         if ((preferences.behavior as any).strict_isolation && currentUserId) {
             query = query.eq('assigned_to', currentUserId)
         }
 
-        const hasGlobalView = userPermissions?.permissions?.all === true || 
-                             userPermissions?.permissions?.['inbox.conversations.view_all'] === true
         const isRestricted = !hasGlobalView
         const authorizedChannels = userPermissions?.permissions?.inbox_access || []
 
@@ -376,6 +411,57 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
                                 </Command>
                             </PopoverContent>
                         </Popover>
+
+                        {hasGlobalView && (
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className={cn(
+                                        "h-9 px-2 bg-zinc-50 dark:bg-zinc-900 border-none",
+                                        selectedAgentId && "text-brand-pink"
+                                    )}
+                                >
+                                    <Users className="h-4 w-4" />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[200px] p-0" align="end">
+                                <Command>
+                                    <CommandInput placeholder={t('crm.inbox.sidebar.filters.agent_filter_placeholder')} />
+                                    <CommandList>
+                                        <CommandEmpty>{t('crm.inbox.sidebar.no_contacts')}</CommandEmpty>
+                                        <CommandGroup>
+                                            <CommandItem
+                                                onSelect={() => setSelectedAgentId(null)}
+                                                className="flex items-center justify-between"
+                                            >
+                                                <span>{t('crm.inbox.sidebar.filters.all_agents')}</span>
+                                                {!selectedAgentId && <CheckIcon className="h-4 w-4" />}
+                                            </CommandItem>
+                                            <CommandItem
+                                                onSelect={() => setSelectedAgentId('unassigned')}
+                                                className="flex items-center justify-between"
+                                            >
+                                                <span>{t('crm.inbox.sidebar.filters.unassigned')}</span>
+                                                {selectedAgentId === 'unassigned' && <CheckIcon className="h-4 w-4" />}
+                                            </CommandItem>
+                                            {filteredAgents.map((agent) => (
+                                                <CommandItem
+                                                    key={agent.id}
+                                                    onSelect={() => setSelectedAgentId(agent.id)}
+                                                    className="flex items-center justify-between"
+                                                >
+                                                    <span className="truncate">{agent.name}</span>
+                                                    {selectedAgentId === agent.id && <CheckIcon className="h-4 w-4" />}
+                                                </CommandItem>
+                                            ))}
+                                        </CommandGroup>
+                                    </CommandList>
+                                </Command>
+                            </PopoverContent>
+                        </Popover>
+                        )}
 
                         <Tooltip>
                             <TooltipTrigger asChild>

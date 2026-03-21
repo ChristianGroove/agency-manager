@@ -996,8 +996,12 @@ export const en = {
                     assigned: "Assigned",
                     assigned_to_me: "Assigned to me",
                     snoozed: "Snoozed",
-                    archived: "Archived"
+                    archived: "Archived",
+                    all_agents: "All Agents",
+                    unassigned: "Unassigned",
+                    agent_filter_placeholder: "Search Agent..."
                 },
+
                 loading: "Loading...",
                 no_conversations: "No conversations",
                 no_conversations_desc: "New messages will appear here",

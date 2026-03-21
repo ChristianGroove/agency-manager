@@ -432,3 +432,74 @@ export async function getAssignmentRules() {
 
     return { success: true, data }
 }
+
+/**
+ * Lightweight action to get agents for the inbox sidebar filter
+ * Crosses organization_members, profiles, and agent_channels in 3 fast queries without hitting Auth API limits.
+ */
+export async function getSidebarAgents() {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+        return { success: false, error: 'Unauthorized', data: [] }
+    }
+
+    const { data: memberData } = await supabase
+        .from('organization_members')
+        .select('organization_id')
+        .eq('user_id', user.id)
+        .limit(1)
+        .single()
+
+    if (!memberData) {
+        return { success: false, error: 'No organization found', data: [] }
+    }
+
+    // 1. Get all members of the organization
+    const { data: members, error: membersError } = await supabaseAdmin
+        .from('organization_members')
+        .select('user_id, role')
+        .eq('organization_id', memberData.organization_id)
+
+    if (membersError || !members) {
+        return { success: false, error: membersError?.message || 'Error fetching members', data: [] }
+    }
+
+    const userIds = members.map(m => m.user_id)
+
+    // 2. Get profiles for names and avatars
+    const { data: profiles } = await supabaseAdmin
+        .from('profiles')
+        .select('id, full_name, avatar_url')
+        .in('id', userIds)
+
+    const profileMap = new Map(profiles?.map(p => [p.id, p]) || [])
+
+    // 3. Get channel access from agent_availability
+    const { data: availability } = await supabaseAdmin
+        .from('agent_availability')
+        .select('agent_id, agent_channels(channel_type)')
+        .eq('organization_id', memberData.organization_id)
+        .in('agent_id', userIds)
+
+    const channelsMap = new Map((availability || []).map(a => [a.agent_id, a.agent_channels?.map((c: any) => c.channel_type) || []]))
+
+    // 4. Assemble payload
+    const agents = members.map(m => {
+        const profile = profileMap.get(m.user_id)
+        return {
+            id: m.user_id,
+            name: profile?.full_name || 'Agente', // Fast local fallback instead of auth fetch
+            avatar_url: profile?.avatar_url || null,
+            role: m.role,
+            channels: channelsMap.get(m.user_id) || []
+        }
+    })
+
+    // Sort alphabetically
+    agents.sort((a, b) => a.name.localeCompare(b.name))
+
+    return { success: true, data: agents }
+}
+

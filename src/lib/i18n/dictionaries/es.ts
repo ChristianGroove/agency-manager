@@ -996,8 +996,12 @@ export const es = {
                     assigned: "Asignados",
                     assigned_to_me: "Asignados a mí",
                     snoozed: "Pospuestos",
-                    archived: "Archivados"
+                    archived: "Archivados",
+                    all_agents: "Todos los Agentes",
+                    unassigned: "Sin Asignar",
+                    agent_filter_placeholder: "Buscar Asesor..."
                 },
+
                 loading: "Cargando...",
                 no_conversations: "No hay conversaciones",
                 no_conversations_desc: "Los nuevos mensajes aparecerán aquí",
