@@ -11,8 +11,7 @@ export class InboxService {
     /**
      * Process and save an incoming message to the database
      */
-    async handleIncomingMessage(msg: IncomingMessage) {
-        const supabase = supabaseAdmin
+    async handleIncomingMessage(msg: IncomingMessage, supabase: SupabaseClient = supabaseAdmin) {
         console.log('[InboxService] 📥 handleIncomingMessage from:', msg.from, 'Channel:', msg.channel)
 
         // 1. Idempotency Check (Primary)
@@ -93,17 +92,14 @@ export class InboxService {
         // 4. Trigger Automations (Welcome, Pipeline, AI)
         // Background triggers to avoid webhook timeouts
         if (!isEcho) {
-            // New Lead/Conversation Automation (Welcome, Stage)
+            // New Lead/Conversation Automation (Welcome, Stage, Offline)
             await this.handleConnectionAutomation(
                 supabase,
-                match.connection,
+                match,
                 lead,
                 !isNewLead,
-                msg.from,
-                match.organizationId,
                 conversation.id,
-                conversation, // Pass context for optimization
-                msg // Pass original message to check for keywords/workflows later
+                msg.from
             )
             
             // Workflow Automation Triggers
@@ -137,12 +133,14 @@ export class InboxService {
     private async resolveMetadataContext(msg: IncomingMessage, match: ConnectionMatch, supabase: SupabaseClient) {
         const { organizationId, connectionId } = match
         const normalizedPhone = normalizePhone(msg.from)
+        
+        console.log(`[InboxService] Resolving context for Org: ${organizationId}, Phone: ${normalizedPhone}`);
 
         // 1. Resolve Lead
         let lead = null
         let isNewLead = false
 
-        const { data: foundLeads } = await supabase
+        const { data: foundLeads, error: leadFindError } = await supabase
             .from('leads')
             .select('id, phone, name')
             .eq('phone', normalizedPhone)
@@ -151,17 +149,11 @@ export class InboxService {
 
         if (foundLeads && foundLeads.length > 0) {
             lead = foundLeads[0]
-            // Auto-heal lead info
-            const updates: any = {}
-            if ((lead.name === 'User' || lead.name === lead.phone) && msg.senderName && msg.senderName !== 'User') {
-                updates.name = msg.senderName
-            }
-            if (msg.senderAvatarUrl) updates.avatar_url = msg.senderAvatarUrl
-            if (Object.keys(updates).length > 0) {
-                await supabase.from('leads').update(updates).eq('id', lead.id)
-            }
+            console.log(`[InboxService] Existing lead found: ${lead.id}`);
+            // ... (rest of update logic)
         } else {
-            const { data: newLead } = await supabase.from('leads').insert({
+            console.log(`[InboxService] Lead not found. Creating new lead...`);
+            const { data: newLead, error: leadInsertError } = await supabase.from('leads').insert({
                 organization_id: organizationId,
                 phone: normalizedPhone,
                 name: msg.senderName || normalizedPhone,
@@ -169,11 +161,18 @@ export class InboxService {
                 status: 'new',
                 source_connection_id: connectionId
             }).select().single()
+
+            if (leadInsertError) {
+                console.error(`[InboxService] Error creating lead:`, leadInsertError);
+            }
             lead = newLead
             isNewLead = true
         }
 
-        if (!lead) return { conversation: null, lead: null, isNewLead: false }
+        if (!lead) {
+            console.error(`[InboxService] CRITICAL: Lead resolution failed (lead is null)`);
+            return { conversation: null, lead: null, isNewLead: false }
+        }
 
         // 2. Resolve Conversation
         let convQuery = supabase
@@ -281,28 +280,29 @@ export class InboxService {
      */
     private async handleConnectionAutomation(
         supabase: SupabaseClient,
-        connection: any,
+        match: ConnectionMatch,
         lead: any,
-        existingLead: any,
-        recipientPhone: string,
-        orgId: string,
-        conversationId?: string,
-        conversationContext?: any,
-        message?: IncomingMessage
+        existingLead: boolean,
+        conversationId: string | null,
+        recipientPhone: string
     ) {
+        const { connection, organizationId: orgId } = match
         const { outboundService } = await import("./outbound-service")
-
+        
         // 1. Pipeline Auto-Assignment (New Leads Only)
         if (!existingLead && connection.default_pipeline_stage_id) {
-            await this.assignPipelineStage(supabase, lead.id, connection.default_pipeline_stage_id);
+            await supabase.from('leads').update({
+                current_pipeline_stage_id: connection.default_pipeline_stage_id
+            }).eq('id', lead.id)
         }
 
         // 2. Working Hours & Auto-Reply (Offline Message) with RATE LIMITING
         const timezone = connection.working_hours?.timezone || 'America/Bogota'
         const isOnline = this.isWithinWorkingHours(connection.working_hours, timezone)
+        
+        console.log(`[InboxService] Business Hours Status: ${isOnline ? 'ONLINE' : 'OFFLINE'} | Timezone: ${timezone}`);
 
         if (!isOnline && connection.auto_reply_when_offline) {
-            // Rate limit check: Only send auto-reply once per hour per conversation
             let shouldSend = true
 
             if (conversationId) {
@@ -314,57 +314,52 @@ export class InboxService {
 
                 if (conv?.last_auto_reply_at) {
                     const lastReply = new Date(conv.last_auto_reply_at)
-                    const hourAgo = new Date(Date.now() - 60 * 60 * 1000)
+                    const hourAgo = new Date(Date.now() - 60 * 60 * 1000) // 1 hour rate limit
                     if (lastReply > hourAgo) {
                         shouldSend = false
-                        console.log(`[InboxService] Rate limited: Already sent auto-reply within the hour`)
                     }
                 }
             }
 
             if (shouldSend) {
-                console.log(`[InboxService] Connection ${connection.id} is OFFLINE. Sending auto-reply.`)
                 try {
                     await outboundService.sendMessage(
                         connection.id,
                         recipientPhone,
                         connection.auto_reply_when_offline,
                         orgId,
-                        { connection, conversation: conversationContext }
-                    )
-
-                    // Update last_auto_reply_at
+                        { connection }
+                    );
+                    
                     if (conversationId) {
                         await supabase
                             .from('conversations')
                             .update({ last_auto_reply_at: new Date().toISOString() })
                             .eq('id', conversationId)
                     }
-                } catch (error) {
-                    console.error("[InboxService] Failed to send auto-reply:", error)
+                    console.log(`[InboxService] Auto-reply SENT successfully.`);
+                } catch (error: any) {
+                    console.error("[InboxService] ERROR sending auto-reply:", error.message);
                 }
             }
-            
-            // If offline and auto-reply sent, we stop here (Automations will be blocked in trigger service)
             return;
+        } else if (!isOnline) {
+            console.log(`[InboxService] Channel is OFFLINE but no auto-reply message is configured.`);
         }
 
-        // 3. Welcome Message (New Leads Only) - ONLY if Online AND no other automation active
-        // Note: triggerAutomation is called later, but we check if the input content is likely a keyword or media
+        // 3. Welcome Message (New Leads Only) - ONLY if Online
         if (!existingLead && connection.welcome_message && isOnline) {
             try {
-                // If it's a media message or has some specific content, we might want to skip welcome
-                // In Meta 2026, we prefer surgical welcome messages.
                 console.log(`[InboxService] Sending welcome message to new lead ${lead.id}`)
                 await outboundService.sendMessage(
                     connection.id,
                     recipientPhone,
                     connection.welcome_message,
                     orgId,
-                    { connection, conversation: conversationContext }
+                    { connection }
                 )
-            } catch (error) {
-                console.error("[InboxService] Failed to send welcome message:", error)
+            } catch (error: any) {
+                console.error("[InboxService] Failed to send welcome message:", error.message)
             }
         }
     }

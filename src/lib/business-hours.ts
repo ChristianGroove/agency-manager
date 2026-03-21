@@ -45,12 +45,16 @@ export class BusinessHoursEngine {
             normalized = { timezone: config.timezone || 'America/Bogota', days: daysObj };
         }
 
-        if (!normalized.days) return true;
+        if (!normalized.days) {
+            console.log(`[BusinessHoursEngine] No 'days' property in normalized config. Returning ONLINE (true).`);
+            return true;
+        }
 
         const tz = normalized.timezone || 'America/Bogota';
         const dayInTz = this.getNumericDay(date, tz);
         
         const daySchedule = normalized.days[dayInTz];
+        
         if (!daySchedule || !daySchedule.enabled || !daySchedule.ranges || daySchedule.ranges.length === 0) {
             return false;
         }
@@ -58,11 +62,13 @@ export class BusinessHoursEngine {
         const currentTimeStr = this.getTimeInTz(date, tz);
         const currentMinutes = this.timeToMinutes(currentTimeStr);
 
-        return daySchedule.ranges.some((range: TimeRange) => {
+        const isWithinRange = daySchedule.ranges.some((range: TimeRange) => {
             const startMinutes = this.timeToMinutes(range.start);
             const endMinutes = this.timeToMinutes(range.end);
             return currentMinutes >= startMinutes && currentMinutes < endMinutes;
         });
+
+        return isWithinRange;
     }
 
     private static getTimeInTz(date: Date, timezone: string): string {

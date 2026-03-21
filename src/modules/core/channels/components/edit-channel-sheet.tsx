@@ -78,7 +78,7 @@ export function EditChannelSheet({ open, onOpenChange, channel, pipelineStages, 
     // Robust Working Hours Structure Migration
     const sanitizeWorkingHours = (raw: any) => {
         const base = { 
-            enabled: true, // Master toggle
+            enabled: false, // Default: OFF for new channels
             timezone: 'America/Bogota', 
             days: {
                 1: { enabled: true, ranges: [{ start: "09:00", end: "18:00" }] },
@@ -477,7 +477,7 @@ export function EditChannelSheet({ open, onOpenChange, channel, pipelineStages, 
                                     <div>
                                         <Label className="text-sm font-bold">Horarios y Automatización Global</Label>
                                         <p className="text-[11px] text-muted-foreground leading-tight">
-                                            Activa o desactiva la lógica de horarios para este canal.
+                                            Controla la lógica de disponibilidad. Al activarlo, el sistema pausará otras automatizaciones durante los horarios configurados para priorizar las respuestas automáticas de este canal.
                                         </p>
                                     </div>
                                 </div>

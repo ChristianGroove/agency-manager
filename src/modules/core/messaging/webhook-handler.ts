@@ -164,8 +164,9 @@ export class WebhookManager {
 
         const msg = inputMsg as IncomingMessage;
 
-        // 1. SAVE TO INBOX
-        const result = await inboxService.handleIncomingMessage(msg)
+        // 1. SAVE TO INBOX (Use Admin client for Webhooks)
+        const { supabaseAdmin } = await import('@/lib/supabase-admin')
+        const result = await inboxService.handleIncomingMessage(msg, supabaseAdmin)
 
         if (!result || !result.success || !result.conversationId) {
             console.error('[WebhookManager] Failed to save message to inbox')
@@ -321,7 +322,6 @@ export class WebhookManager {
 
         // 2. CHECK SUSPENDED WORKFLOWS (Pending Inputs)
         // Use Admin client because Webhooks are unauthenticated system events
-        const { supabaseAdmin } = await import('@/lib/supabase-admin')
         const { fileLogger } = await import('@/lib/file-logger') // Import Logger
         const supabase = supabaseAdmin
 

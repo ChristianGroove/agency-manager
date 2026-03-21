@@ -225,8 +225,6 @@ export class MetaAdapter implements IntegrationAdapter {
             }
         }
 
-        console.log(`[MetaAdapter] Sending to ${url} | Payload:`, JSON.stringify(payload));
-
         const { globalCircuitBreaker } = await import('@/lib/integrations/circuit-breaker');
 
         return await globalCircuitBreaker.execute('meta_api', async () => {
