@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { decryptObject } from "@/modules/core/integrations/encryption";
 import { 
     MessagingProvider, 
     SendMessageOptions, 
@@ -41,7 +42,9 @@ export class MetaProvider implements MessagingProvider {
                 return "";
             }
 
-            // 2. Get Download URL from Meta (Explicitly using v24.0 for media resolution)
+            // 2. Get Download URL from Meta
+            // NOTE: We explicitly use Graph API v24.0 for media resolution (IDs to URLs) 
+            // as it has better support for newer media types and cross-account resolution.
             const urlRes = await fetch(`https://graph.facebook.com/v24.0/${mediaId}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -112,7 +115,14 @@ export class MetaProvider implements MessagingProvider {
     }
 
     /**
-     * Fetch connection token from DB based on Asset ID (Phone Number ID or Page ID)
+     * Resolves the Meta API token for a specific Asset ID (Phone Number ID or Page ID).
+     * 
+     * DEV NOTE: 
+     * 1. CRITICAL FOR PRODUCTION: Integration credentials in the DB are encrypted (AES-256-GCM).
+     *    We MUST use decryptObject() to read the accessToken/phoneId. 
+     * 2. TYPE SAFETY: Always cast IDs to String() before comparison to avoid numeric/string mismatch.
+     * 3. MULTI-TENANT: Each WhatsApp account has its own token; this resolver ensures the 
+     *    correct one is used based on the incoming webhook's metadata.
      */
     private async getTokenByAssetId(assetId: string): Promise<string | null> {
         try {
@@ -125,7 +135,8 @@ export class MetaProvider implements MessagingProvider {
             if (error || !connections) return null;
 
             for (const conn of connections) {
-                const creds = typeof conn.credentials === 'string' ? JSON.parse(conn.credentials) : conn.credentials;
+                // DECRYPT credentials (critical for production where they are encrypted in DB)
+                const creds = decryptObject(conn.credentials);
                 const phoneId = String(creds?.phoneNumberId || creds?.phone_id || creds?.phoneId || "");
                 const pageId = String(creds?.pageId || creds?.page_id || "");
 

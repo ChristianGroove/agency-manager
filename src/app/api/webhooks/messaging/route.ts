@@ -61,19 +61,6 @@ async function getConfiguredManager() {
 }
 
 export async function GET(req: NextRequest) {
-    // DEBUG LOGGING
-    const fs = require('fs');
-    const path = require('path');
-    const debugLogPath = path.join(process.cwd(), 'webhook-debug.log');
-    let timestamp = new Date().toISOString();
-
-    try {
-        const logEntry = `\n[${timestamp}] [GET VALIDATION] 📥 ${req.url}\nParams: ${JSON.stringify(Object.fromEntries(req.nextUrl.searchParams.entries()))}\n`;
-        fs.appendFileSync(debugLogPath, logEntry);
-    } catch (e) {
-        console.error('Failed to write log header', e);
-    }
-
     try {
         console.log('[Webhook GET] Incoming Request URL:', req.url)
         const channel = req.nextUrl.searchParams.get('channel') as ChannelType || 'whatsapp'
@@ -85,7 +72,6 @@ export async function GET(req: NextRequest) {
             req.nextUrl.searchParams.get('hub.verify_token') === VERIFY_TOKEN) {
             const challenge = req.nextUrl.searchParams.get('hub.challenge')
             console.log('[Webhook GET] Fast Verify Success')
-            try { fs.appendFileSync(debugLogPath, `[${timestamp}] ✅ Verified!\n`); } catch (e) { }
             return new NextResponse(challenge, {
                 status: 200,
                 headers: { 'Content-Type': 'text/plain' }
@@ -93,50 +79,18 @@ export async function GET(req: NextRequest) {
         }
         // -----------------------------------------------------------
 
-        try { fs.appendFileSync(debugLogPath, `[${timestamp}] ❌ Verification Failed\n`); } catch (e) { }
         return new NextResponse('Validation failed', { status: 403 })
     } catch (error: any) {
         console.error('[Webhook GET] Error:', error)
-        try { fs.appendFileSync(debugLogPath, `[ERROR] ${error.message}\n`); } catch (e) { }
         return new NextResponse(`Internal Server Error: ${error.message}`, { status: 500 })
     }
 }
 
 export async function POST(req: NextRequest) {
-    const requestId = Math.random().toString(36).substring(7);
-
-    // DEBUG LOGGING
-    const fs = require('fs');
-    const path = require('path');
-    const debugLogPath = path.join(process.cwd(), 'webhook-debug.log');
-
-    try {
-        const timestamp = new Date().toISOString();
-        const logEntry = `\n[${timestamp}] [ID:${requestId}] 📥 RECEIVED POST ${req.url}\n${JSON.stringify(Object.fromEntries(req.headers.entries()), null, 2)}\n`;
-        fs.appendFileSync(debugLogPath, logEntry);
-    } catch (e) {
-        console.error('Failed to write log header', e);
-    }
-
     try {
         const rawBody = await req.text();
-
-        try {
-            fs.appendFileSync(debugLogPath, `[${requestId}] 📦 BODY:\n${rawBody}\n`);
-        } catch (e) { }
-
-        let body;
-        try {
-            body = JSON.parse(rawBody);
-        } catch (e) {
-            fs.appendFileSync(debugLogPath, `[${requestId}] ❌ JSON PARSE FAILED\n`);
-            return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
-        }
+        const body = JSON.parse(rawBody);
         const channel = req.nextUrl.searchParams.get('channel') as ChannelType || 'whatsapp';
-
-        try {
-            fs.appendFileSync(debugLogPath, `[${requestId}] Channel: ${channel}\n`);
-        } catch (e) { }
 
         // Dynamically load manager to handle the heavy lifting
         console.log('[Webhook POST] Loading webhook manager...')
