@@ -22,35 +22,74 @@ export class MetaProvider implements MessagingProvider {
     /**
      * Internal helper to resolve Meta Media IDs to public URLs via Supabase Storage
      */
-    private async processMedia(mediaId: string, mimeType: string, assetId: string): Promise<string> {
+    private async processMedia(mediaId: string, mimeType: string, assetId?: string): Promise<string> {
         try {
-            console.log(`[MetaProvider] Processing Media ID: ${mediaId} (${mimeType})`);
+            console.log(`[MetaProvider] Processing Media ID: ${mediaId} (${mimeType}) AssetId: ${assetId}`);
             
-            // 1. Get Download URL from Meta
+            // 1. Resolve Token for this AssetId if possible
+            let token = this.apiToken;
+            if (assetId) {
+                const dbToken = await this.getTokenByAssetId(assetId);
+                if (dbToken) {
+                    token = dbToken;
+                    console.log(`[MetaProvider] Using DB token for ${assetId}`);
+                }
+            }
+
+            if (!token) {
+                console.error(`[MetaProvider] No token available for media resolution!`);
+                return "";
+            }
+
+            // 2. Get Download URL from Meta
             const urlRes = await fetch(`https://graph.facebook.com/v21.0/${mediaId}`, {
-                headers: { 'Authorization': `Bearer ${this.apiToken}` }
+                headers: { 'Authorization': `Bearer ${token}` }
             });
 
             if (!urlRes.ok) {
                 const err = await urlRes.json().catch(() => ({}));
-                console.error(`[MetaProvider] Media ID resolution FAILED:`, err);
+                console.error(`[MetaProvider] Media ID resolution FAILED with token:`, err);
+                
+                // Fallback to constructor token if DB token failed
+                if (token !== this.apiToken && this.apiToken) {
+                    console.log(`[MetaProvider] Retrying with constructor token...`);
+                    const retryRes = await fetch(`https://graph.facebook.com/v21.0/${mediaId}`, {
+                        headers: { 'Authorization': `Bearer ${this.apiToken}` }
+                    });
+                    if (retryRes.ok) {
+                        const { url } = await retryRes.json();
+                        return await this.downloadAndUpload(url, mediaId, mimeType, this.apiToken);
+                    }
+                }
                 return "";
             }
 
             const { url: downloadUrl } = await urlRes.json();
             if (!downloadUrl) return "";
 
-            // 2. Download Binary
-            const mediaRes = await fetch(downloadUrl, {
-                headers: { 'Authorization': `Bearer ${this.apiToken}` }
+            return await this.downloadAndUpload(downloadUrl, mediaId, mimeType, token);
+        } catch (error) {
+            console.error(`[MetaProvider] Media Processing Exception:`, error);
+            return "";
+        }
+    }
+
+    /**
+     * Helper to download from Meta and upload to Supabase
+     */
+    private async downloadAndUpload(url: string, mediaId: string, mimeType: string, token: string): Promise<string> {
+        try {
+            // 1. Download Binary
+            const mediaRes = await fetch(url, {
+                headers: { 'Authorization': `Bearer ${token}` }
             });
 
             if (!mediaRes.ok) return "";
             const buffer = await mediaRes.arrayBuffer();
 
-            // 3. Upload to Supabase Storage
-            const extension = mimeType.split('/')[1] || 'bin';
-            const fileName = `wa_${Date.now()}_${mediaId}.${extension}`;
+            // 2. Upload to Supabase Storage
+            const extension = mimeType.split('/')[1]?.split(';')[0] || 'bin';
+            const fileName = `whatsapp/${new Date().getFullYear()}/${Date.now()}_${mediaId}.${extension}`;
             const { error: uploadError } = await supabaseAdmin.storage
                 .from('chat-attachments')
                 .upload(fileName, buffer, { contentType: mimeType, upsert: true });
@@ -60,15 +99,44 @@ export class MetaProvider implements MessagingProvider {
                 return "";
             }
 
-            // 4. Get Public URL
+            // 3. Get Public URL
             const { data: { publicUrl } } = supabaseAdmin.storage
                 .from('chat-attachments')
                 .getPublicUrl(fileName);
 
             return publicUrl;
         } catch (error) {
-            console.error(`[MetaProvider] Media Processing Exception:`, error);
+            console.error(`[MetaProvider] downloadAndUpload Exception:`, error);
             return "";
+        }
+    }
+
+    /**
+     * Fetch connection token from DB based on Asset ID (Phone Number ID or Page ID)
+     */
+    private async getTokenByAssetId(assetId: string): Promise<string | null> {
+        try {
+            const { data: connections, error } = await supabaseAdmin
+                .from('integration_connections')
+                .select('credentials')
+                .in('provider_key', ['meta_whatsapp', 'whatsapp_cloud', 'facebook_page', 'instagram_dm'])
+                .eq('status', 'active');
+
+            if (error || !connections) return null;
+
+            for (const conn of connections) {
+                const creds = typeof conn.credentials === 'string' ? JSON.parse(conn.credentials) : conn.credentials;
+                const phoneId = creds?.phoneNumberId || creds?.phone_id || creds?.phoneId;
+                const pageId = creds?.pageId || creds?.page_id;
+
+                if (phoneId === assetId || pageId === assetId) {
+                    return creds.accessToken || creds.apiToken || creds.access_token || null;
+                }
+            }
+            return null;
+        } catch (error) {
+            console.error(`[MetaProvider] getTokenByAssetId Error:`, error);
+            return null;
         }
     }
 
