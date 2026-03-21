@@ -70,19 +70,19 @@ export class SendMessageNode {
                 if (mediaType === 'image') {
                     payload = {
                         type: 'image',
-                        url: mediaUrl,
+                        mediaUrl: mediaUrl,
                         caption: finalBody // Image caption supports markdown
                     };
                 } else if (mediaType === 'video') {
                     payload = {
                         type: 'video',
-                        url: mediaUrl,
+                        mediaUrl: mediaUrl,
                         caption: finalBody
                     };
                 } else if (mediaType === 'document') {
                     payload = {
                         type: 'document',
-                        url: mediaUrl,
+                        mediaUrl: mediaUrl,
                         caption: finalBody,
                         filename: headerText || 'Documento' // Use Title as filename if available
                     };

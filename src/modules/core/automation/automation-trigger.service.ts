@@ -33,7 +33,7 @@ export class AutomationTriggerService {
         // Let's first get the conversation to know the Org
         const { data: conversation } = await supabaseAdmin
             .from('conversations')
-            .select('organization_id, connection_id, last_auto_reply_at, metadata, assigned_to') // Fetch markers
+            .select('organization_id, connection_id, last_auto_reply_at, metadata, assigned_to, is_bot_active') // Fetch markers
             .eq('id', conversationId)
             .single()
 
@@ -42,10 +42,10 @@ export class AutomationTriggerService {
             return
         }
 
-        // Meta 2026: SKIP automation if a human agent is currently assigned.
-        // This prevents the bot from "taking over" mid-human interaction.
-        if (conversation.assigned_to) {
-            console.log(`[AutomationTrigger] SKIPPING TRIGGERS for conversation ${conversationId}: Human agent is assigned (${conversation.assigned_to})`)
+        // Meta 2026: SKIP automation if the bot is explicitly deactivated (e.g., human agent has taken over).
+        // This prevents the bot from "taking over" mid-human interaction without breaking auto-assignment rounds.
+        if (conversation.is_bot_active === false) {
+            console.log(`[AutomationTrigger] SKIPPING TRIGGERS for conversation ${conversationId}: Bot is inactive (Human interaction)`)
             return
         }
 
