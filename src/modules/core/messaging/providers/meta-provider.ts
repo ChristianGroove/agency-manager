@@ -41,8 +41,8 @@ export class MetaProvider implements MessagingProvider {
                 return "";
             }
 
-            // 2. Get Download URL from Meta
-            const urlRes = await fetch(`https://graph.facebook.com/v21.0/${mediaId}`, {
+            // 2. Get Download URL from Meta (Explicitly using v24.0 for media resolution)
+            const urlRes = await fetch(`https://graph.facebook.com/v24.0/${mediaId}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
 
@@ -53,7 +53,7 @@ export class MetaProvider implements MessagingProvider {
                 // Fallback to constructor token if DB token failed
                 if (token !== this.apiToken && this.apiToken) {
                     console.log(`[MetaProvider] Retrying with constructor token...`);
-                    const retryRes = await fetch(`https://graph.facebook.com/v21.0/${mediaId}`, {
+                    const retryRes = await fetch(`https://graph.facebook.com/v24.0/${mediaId}`, {
                         headers: { 'Authorization': `Bearer ${this.apiToken}` }
                     });
                     if (retryRes.ok) {
