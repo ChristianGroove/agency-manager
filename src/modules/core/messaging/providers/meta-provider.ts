@@ -126,13 +126,15 @@ export class MetaProvider implements MessagingProvider {
 
             for (const conn of connections) {
                 const creds = typeof conn.credentials === 'string' ? JSON.parse(conn.credentials) : conn.credentials;
-                const phoneId = creds?.phoneNumberId || creds?.phone_id || creds?.phoneId;
-                const pageId = creds?.pageId || creds?.page_id;
+                const phoneId = String(creds?.phoneNumberId || creds?.phone_id || creds?.phoneId || "");
+                const pageId = String(creds?.pageId || creds?.page_id || "");
 
-                if (phoneId === assetId || pageId === assetId) {
-                    return creds.accessToken || creds.apiToken || creds.access_token || null;
+                if ((phoneId && phoneId === String(assetId)) || (pageId && pageId === String(assetId))) {
+                    const token = creds.accessToken || creds.apiToken || creds.access_token || null;
+                    if (token) return token;
                 }
             }
+            console.error(`[MetaProvider] No active connection found for AssetId: ${assetId}`);
             return null;
         } catch (error) {
             console.error(`[MetaProvider] getTokenByAssetId Error:`, error);
