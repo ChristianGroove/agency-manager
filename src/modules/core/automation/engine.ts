@@ -399,7 +399,8 @@ export class WorkflowEngine {
                     const outEdges = this.definition.edges.filter(e => e.source === node.id && e.sourceHandle !== 'continue')
 
                     // Or if explicitly configured to wait
-                    const shouldWait = (node.data as any).waitForResponse || outEdges.length > 0
+                    const isCTA = (node.data as any).messageType === 'cta'
+                    const shouldWait = !isCTA && ((node.data as any).waitForResponse || outEdges.length > 0)
 
                     if (shouldWait) {
                         const waitNode = new WaitInputNode(this.contextManager)

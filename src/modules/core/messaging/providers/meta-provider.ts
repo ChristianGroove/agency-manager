@@ -1,19 +1,12 @@
-import * as fs from 'fs';
-import * as path from 'path';
-import { supabaseAdmin } from "@/lib/supabase-admin"
-import { decryptObject } from "@/modules/core/integrations/encryption"
-import { validateStickerUrl } from "@/lib/meta/sticker-validator"
-
-import {
-    MessagingProvider,
-    SendMessageOptions,
-    IncomingMessage,
-    WebhookValidationResult,
-    IncomingCall,
+import { 
+    MessagingProvider, 
+    SendMessageOptions, 
+    IncomingMessage, 
     InteractiveButtonsContent,
     InteractiveListContent,
     InteractiveCTAContent,
-    InteractiveCallRequestContent
+    InteractiveCallRequestContent,
+    WebhookValidationResult
 } from "./types";
 
 export class MetaProvider implements MessagingProvider {
@@ -64,11 +57,11 @@ export class MetaProvider implements MessagingProvider {
             }
 
             if (content.type === 'sticker') {
-                const validation = await validateStickerUrl(content.mediaUrl);
-                if (!validation.isValid) return { success: false, error: validation.error };
+                // Sticker validation placeholder
             }
 
             const payload = this.buildPayload(options);
+            console.log('[MetaProvider] Sending to WhatsApp:', JSON.stringify(payload, null, 2));
             const response = await fetch(url, {
                 method: 'POST',
                 headers: {
@@ -97,81 +90,64 @@ export class MetaProvider implements MessagingProvider {
     private async sendFacebookMessage(options: SendMessageOptions): Promise<{ success: boolean; messageId?: string; error?: string }> {
         try {
             const url = `https://graph.facebook.com/v24.0/me/messages`;
+            const content = options.content as any;
             let activeToken = this.apiToken;
-            let effectiveAssetId = this.assetId;
+            let pageId = this.assetId;
 
             if (options.credentials) {
                 const creds = typeof options.credentials === 'string' ? JSON.parse(options.credentials) : options.credentials;
                 activeToken = creds.accessToken || creds.apiToken || creds.access_token || activeToken;
-                // If it's a social connection, assetId in credentials might be the page_id
-                if (creds.assetId || creds.pageId) effectiveAssetId = creds.assetId || creds.pageId;
+                if (creds.pageId) pageId = creds.pageId;
             }
 
-            console.log(`[MetaProvider] Sending Social Message to ${options.to} using Asset ${effectiveAssetId}`);
-
-            // Messenger/IG requires Page Access Token
-            activeToken = await this.getPageAccessToken(effectiveAssetId, activeToken);
-
-            const content = options.content as any;
             const payload: any = {
                 recipient: { id: options.to },
                 message: {}
             };
 
-            // Determine if it's text, attachment, or interactive
-            const mediaTypes = ['image', 'video', 'audio', 'file', 'sticker'];
-            
-            if (mediaTypes.includes(content.type) && content.mediaUrl) {
-                payload.message.attachment = {
-                    type: content.type === 'sticker' ? 'image' : content.type,
-                    payload: {
-                        url: content.mediaUrl,
-                        is_reusable: true
-                    }
-                };
-            } else if (content.type === 'interactive_buttons') {
+            // String content handling
+            if (typeof content === 'string') {
+                payload.message.text = content;
+            } 
+            // Interactive Buttons (Messenger Quick Replies)
+            else if (content.type === 'interactive_buttons') {
                 const buttonContent = content as InteractiveButtonsContent;
                 payload.message.text = buttonContent.body || 'Opciones:';
                 payload.message.quick_replies = buttonContent.buttons.slice(0, 13).map(btn => ({
                     content_type: 'text',
-                    title: btn.title.substring(0, 20),
+                    title: (btn.title || 'Opción').substring(0, 20),
                     payload: btn.id
                 }));
             } else if (content.type === 'interactive_list') {
                 const listContent = content as InteractiveListContent;
-                payload.message.text = listContent.body || 'Selecciona una opción:';
-                // Flatten list rows into quick replies (max 13 supported by Meta)
-                const allRows = listContent.sections.flatMap(s => s.rows).slice(0, 13);
+                payload.message.text = listContent.body || 'Opciones:';
+                const allRows = listContent.sections.flatMap(s => s.rows);
                 if (allRows.length > 0) {
                     payload.message.quick_replies = allRows.map(row => ({
                         content_type: 'text',
-                        title: row.title.substring(0, 20),
+                        title: (row.title || 'Opción').substring(0, 20),
                         payload: row.id
                     }));
                 }
-            } else if (content.type === 'interactive_cta') {
-                const ctaContent = content as InteractiveCTAContent;
-                const ctaUrl = ctaContent.buttons[0]?.url || ctaContent.buttons[0]?.phoneNumber || '';
-                // Fallback direct URL inside text since IG doesn't support complex CTAs like Messenger
-                payload.message.text = `${ctaContent.body || ''}\n\n👉 Enlace: ${ctaUrl}`;
-            } else {
-                payload.message.text = content.text || ' ';
+            }
+            // Media
+            else if (['image', 'video', 'audio', 'document', 'sticker'].includes(content.type)) {
+                payload.message.attachment = {
+                    type: content.type === 'sticker' ? 'image' : content.type,
+                    payload: {
+                        url: content.mediaUrl,
+                        is_selectable: true
+                    }
+                };
+            }
+            // Standard Text
+            else {
+                payload.message.text = content.text || content.body || '';
             }
 
-            if (options.metadata?.features && (options.metadata.features as any).tag) {
-                payload.messaging_type = "MESSAGE_TAG";
-                payload.tag = (options.metadata.features as any).tag;
-            }
-
-            // [LOG] Social Payload
-            console.log(`[MetaProvider] Social Payload:`, JSON.stringify(payload));
-
-            const response = await fetch(url, {
+            const response = await fetch(activeToken.startsWith('EA') ? url : `${url}?access_token=${activeToken}`, {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${activeToken}`,
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
 
@@ -189,360 +165,119 @@ export class MetaProvider implements MessagingProvider {
     }
 
     /**
-     * Validate incoming webhook from Meta (GET challenge)
-     */
-    async validateWebhook(request: Request): Promise<WebhookValidationResult> {
-        if (request.method === 'GET') {
-            const url = new URL(request.url);
-            const mode = url.searchParams.get('hub.mode');
-            const token = url.searchParams.get('hub.verify_token');
-            const challenge = url.searchParams.get('hub.challenge');
-
-            if (mode === 'subscribe' && token === this.verifyToken) {
-                console.log('[MetaProvider] Webhook verified successfully');
-                return { isValid: true, responseBody: challenge || undefined };
-            }
-            return { isValid: false, reason: 'Invalid verify token' };
-        }
-
-        // POST signatures should ideally be validated via X-Hub-Signature-256
-        return { isValid: true };
-    }
-
-    /**
-     * Maintenance: Ensure an asset is subscribed to webhooks
-     * Useful for recovering "failed" connections
-     */
-    async ensureWebhookSubscription(assetId: string, accessToken: string, type: 'page' | 'whatsapp'): Promise<boolean> {
-        try {
-            if (type === 'page') {
-                const url = `https://graph.facebook.com/v24.0/${assetId}/subscribed_apps`;
-                const res = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ subscribed_fields: ['messages', 'messaging_postbacks', 'messaging_optins', 'message_deliveries', 'message_reads'] })
-                });
-                const data = await res.json();
-                return data.success === true;
-            } else {
-                const url = `https://graph.facebook.com/v24.0/${assetId}/subscribed_apps`;
-                const res = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ messaging_product: 'whatsapp' })
-                });
-                const data = await res.json();
-                return data.success === true;
-            }
-        } catch (error) {
-            console.error('[MetaProvider] Subscription Recovery Failed:', error);
-            return false;
-        }
-    }
-
-    /**
-     * Parse Meta Webhook (WhatsApp, Messenger, IG)
-     */
-    async parseWebhook(payload: any): Promise<(IncomingMessage | IncomingCall)[]> {
-        const messages: (IncomingMessage | IncomingCall)[] = [];
-
-        try {
-            if (payload.object === 'whatsapp_business_account') {
-                const waMessages = await this.parseWhatsAppPayload(payload);
-                messages.push(...waMessages);
-            } else if (payload.object === 'page' || payload.object === 'instagram') {
-                const socialMessages = await this.parseSocialPayload(payload);
-                messages.push(...socialMessages);
-            }
-        } catch (error) {
-            console.error('[MetaProvider] parseWebhook Error:', error);
-        }
-
-        return messages;
-    }
-
-    /**
-     * Specialized Parser for WhatsApp Cloud API
-     */
-    private async parseWhatsAppPayload(payload: any): Promise<(IncomingMessage | IncomingCall)[]> {
-        const messages: (IncomingMessage | IncomingCall)[] = [];
-        for (const entry of payload.entry || []) {
-            for (const change of entry.changes || []) {
-                // 1. Handle Messages & Echoes
-                const messagesInChange = change.value?.messages || change.value?.smb_message_echoes;
-                if (messagesInChange) {
-                    for (const msg of messagesInChange) {
-                        const contact = change.value.contacts?.find((c: any) => c.wa_id === msg.from);
-                        let senderName = contact?.profile?.name || '';
-                        
-                        let buttonId = undefined;
-                        if (msg.type === 'button') {
-                            buttonId = msg.button?.payload || msg.button?.text;
-                        }
-
-                        const isEcho = change.value.metadata?.phone_number_id === msg.from || msg.is_echo === true;
-                        const conversationPartner = isEcho ? (msg.to || change.value.metadata?.display_phone_number) : msg.from;
-
-                        messages.push({
-                            id: msg.id,
-                            externalId: msg.id,
-                            channel: 'whatsapp',
-                            from: conversationPartner,
-                            senderName: senderName || conversationPartner,
-                            buttonId: buttonId,
-                            content: {
-                                type: msg.type as any,
-                                text: msg.text?.body || msg.button?.text || '',
-                                mediaUrl: msg.image?.id || msg.video?.id || msg.audio?.id || msg.document?.id,
-                                raw: msg
-                            },
-                            timestamp: new Date(parseInt(msg.timestamp) * 1000),
-                            origin: isEcho ? 'outbound' : 'inbound',
-                            metadata: {
-                                display_phone_number: change.value.metadata?.display_phone_number,
-                                phone_number_id: change.value.metadata?.phone_number_id,
-                                contactName: senderName,
-                                raw: msg
-                            }
-                        });
-
-                        if (msg.referral) {
-                            await this.persistReferralData(msg.from, msg.referral);
-                        }
-                    }
-                }
-
-                // 2. Handle Calls (WebRTC Signaling)
-                const callsInChange = change.value?.calls;
-                if (callsInChange) {
-                    for (const call of callsInChange) {
-                        messages.push({
-                            type: 'call_signaling',
-                            id: call.id,
-                            from: call.from,
-                            timestamp: new Date(parseInt(call.timestamp) * 1000),
-                            call_id: call.id,
-                            event: call.event || 'offer',
-                            payload: call.payload
-                        });
-                    }
-                }
-            }
-        }
-        return messages;
-    }
-
-    /**
-     * Specialized Parser for Facebook Messenger & Instagram DM
-     */
-    private async parseSocialPayload(payload: any): Promise<IncomingMessage[]> {
-        const messages: IncomingMessage[] = [];
-        const objectType = payload.object; // 'page' or 'instagram'
-
-        for (const entry of payload.entry || []) {
-            const pageOrIgId = entry.id;
-            const messagingEvents = entry.messaging || entry.standby || [];
-
-            for (const messaging of messagingEvents) {
-                    if (messaging.message && !messaging.message.is_echo) {
-                        const msg = messaging.message;
-                        const channel = objectType === 'page' ? 'messenger' : 'instagram';
-                        
-                        // DEBUG: Log the whole message object for social channels
-                        const rawMsgLog = `[${new Date().toISOString()}] [${channel}] RAW MSG: ${JSON.stringify(msg)}\n`;
-                        try { fs.appendFileSync(path.join(process.cwd(), 'debug-inbound.log'), rawMsgLog); } catch (e) {}
-                    
-                    let senderName = 'Usuario';
-                    
-                    // Fetch profile if token available
-                    if (this.apiToken) {
-                        const profile = await this.getSenderProfile(messaging.sender.id, pageOrIgId, this.apiToken, channel as any);
-                        if (profile?.name) senderName = profile.name;
-                    }
-
-                    // Handle Media Attachments
-                    let mediaUrl = undefined;
-                    let contentType = 'text';
-                    let text = msg.text || '';
-
-                    if (msg.attachments && msg.attachments.length > 0) {
-                        const logData = `[${new Date().toISOString()}] [${channel}] Attachments: ${JSON.stringify(msg.attachments)}\n`;
-                        try { fs.appendFileSync(path.join(process.cwd(), 'debug-inbound.log'), logData); } catch (e) {}
-
-                        const firstAttachment = msg.attachments[0];
-                        mediaUrl = firstAttachment.payload?.url;
-                        contentType = firstAttachment.type; // image, video, file, audio
-                        
-                        // Detect Sticker or Voice
-                        if (firstAttachment.payload?.sticker_id) {
-                            contentType = 'sticker';
-                        }
-                        // Instagram sometimes uses 'voice' or 'audio'
-                        if (contentType === 'voice') contentType = 'audio';
-                    }
-
-                    messages.push({
-                        id: msg.mid,
-                        externalId: msg.mid,
-                        channel: channel as any,
-                        from: messaging.sender.id,
-                        senderName: senderName,
-                        content: {
-                            type: contentType as any,
-                            text: text,
-                            mediaUrl: mediaUrl,
-                            raw: messaging
-                        },
-                        timestamp: new Date(messaging.timestamp),
-                        metadata: {
-                            page_id: channel === 'messenger' ? pageOrIgId : undefined,
-                            instagram_business_id: channel === 'instagram' ? pageOrIgId : undefined,
-                            raw: messaging
-                        }
-                    });
-                }
-            }
-        }
-        return messages;
-    }
-
-    /**
-     * Get Messenger/Instagram Sender Profile
-     */
-    private async getSenderProfile(psid: string, pageId: string, token: string, channel: 'messenger' | 'instagram'): Promise<{ name?: string; avatar?: string } | null> {
-        try {
-            const url = `https://graph.facebook.com/v24.0/${psid}?fields=name,first_name,last_name,profile_pic&access_token=${token}`;
-            const res = await fetch(url);
-            const data = await res.json();
-            
-            if (data.error) return null;
-
-            return {
-                name: data.name || `${data.first_name || ''} ${data.last_name || ''}`.trim(),
-                avatar: data.profile_pic
-            };
-        } catch (e) {
-            return null;
-        }
-    }
-
-    /**
-     * Exchange User Token for Page Access Token (Messenger/IG)
-     */
-    private async getPageAccessToken(pageId: string, userToken: string): Promise<string> {
-        try {
-            const url = `https://graph.facebook.com/v24.0/${pageId}?fields=access_token&access_token=${userToken}`;
-            const res = await fetch(url);
-            const data = await res.json();
-            return data.access_token || userToken;
-        } catch (e) {
-            return userToken;
-        }
-    }
-
-    /**
-     * Helper to build Axios/Fetch payload for Meta API
+     * Helper to build Axios/Fetch payload for WhatsApp Cloud API
      */
     private buildPayload(options: SendMessageOptions): any {
+        const { content, to } = options;
+        
         const payload: any = {
             messaging_product: 'whatsapp',
             recipient_type: 'individual',
-            to: options.to,
+            to: to,
         };
 
-        const content = options.content;
+        // 1. Handle Simple String Content
+        if (typeof content === 'string') {
+            payload.type = 'text';
+            payload.text = { body: content };
+            return payload;
+        }
 
-        switch (content.type) {
+        // 2. Handle Object-based Content
+        const ct = content as any;
+        const type = ct.type || 'text';
+
+        switch (type) {
             case 'text':
                 payload.type = 'text';
-                payload.text = { body: content.text };
+                payload.text = { body: ct.text || ct.body || '' };
                 break;
 
             case 'template':
                 payload.type = 'template';
                 payload.template = {
-                    name: content.templateName,
-                    language: { code: content.templateLanguage || 'en_US' },
-                    components: content.templateComponents || []
+                    name: ct.templateName,
+                    language: { code: ct.templateLanguage || 'en_US' },
+                    components: ct.templateComponents || []
                 };
-                if (content.time_to_live) {
-                    (payload.template as any).time_to_live = content.time_to_live;
+                if (ct.time_to_live) {
+                    (payload.template as any).time_to_live = ct.time_to_live;
                 }
                 break;
 
             case 'image':
                 payload.type = 'image';
-                if (content.mediaId) {
-                    payload.image = { id: content.mediaId, caption: content.caption };
+                if (ct.mediaId) {
+                    payload.image = { id: ct.mediaId, caption: ct.caption };
                 } else {
-                    payload.image = { link: content.mediaUrl, caption: content.caption };
+                    payload.image = { link: ct.mediaUrl, caption: ct.caption };
                 }
                 break;
 
             case 'video':
                 payload.type = 'video';
-                if (content.mediaId) {
-                    payload.video = { id: content.mediaId, caption: content.caption };
+                if (ct.mediaId) {
+                    payload.video = { id: ct.mediaId, caption: ct.caption };
                 } else {
-                    payload.video = { link: content.mediaUrl, caption: content.caption };
+                    payload.video = { link: ct.mediaUrl, caption: ct.caption };
                 }
                 break;
 
             case 'audio':
                 payload.type = 'audio';
-                if (content.mediaId) {
-                    payload.audio = { id: content.mediaId };
+                if (ct.mediaId) {
+                    payload.audio = { id: ct.mediaId };
                 } else {
-                    payload.audio = { link: content.mediaUrl };
+                    payload.audio = { link: ct.mediaUrl };
                 }
                 break;
 
             case 'document':
                 payload.type = 'document';
-                if (content.mediaId) {
-                    payload.document = { id: content.mediaId, caption: content.caption, filename: content.filename };
+                if (ct.mediaId) {
+                    payload.document = { id: ct.mediaId, caption: ct.caption, filename: ct.filename };
                 } else {
-                    payload.document = { link: content.mediaUrl, caption: content.caption, filename: content.filename };
+                    payload.document = { link: ct.mediaUrl, caption: ct.caption, filename: ct.filename };
                 }
                 break;
 
             case 'sticker':
                 payload.type = 'sticker';
-                if (content.mediaId) {
-                    payload.sticker = { id: content.mediaId };
+                if (ct.mediaId) {
+                    payload.sticker = { id: ct.mediaId };
                 } else {
-                    payload.sticker = { link: content.mediaUrl };
+                    payload.sticker = { link: ct.mediaUrl };
                 }
                 break;
 
             case 'interactive_buttons': {
-                const buttonContent = content as InteractiveButtonsContent;
+                const btnContent = content as InteractiveButtonsContent;
                 payload.type = 'interactive';
                 payload.interactive = {
                     type: 'button',
-                    body: { text: buttonContent.body },
+                    body: { text: (btnContent.body || 'Selecciona una opción:').substring(0, 1024) },
                     action: {
-                        buttons: buttonContent.buttons.slice(0, 3).map(btn => ({
+                        buttons: btnContent.buttons.slice(0, 3).map(btn => ({
                             type: 'reply',
                             reply: {
                                 id: btn.id,
-                                title: btn.title.substring(0, 20)
+                                title: (btn.title || 'Seleccionar').substring(0, 20)
                             }
                         }))
                     }
                 };
-                if (buttonContent.header) {
-                    if (buttonContent.header.type === 'text') {
-                        payload.interactive.header = { type: 'text', text: buttonContent.header.text };
-                    } else if (buttonContent.header.mediaUrl) {
+                if (btnContent.header) {
+                    if (btnContent.header.type === 'text') {
+                        payload.interactive.header = { type: 'text', text: btnContent.header.text };
+                    } else if (btnContent.header.mediaUrl) {
                         payload.interactive.header = {
-                            type: buttonContent.header.type,
-                            [buttonContent.header.type]: { link: buttonContent.header.mediaUrl }
+                            type: btnContent.header.type,
+                            [btnContent.header.type]: { link: btnContent.header.mediaUrl }
                         };
                     }
                 }
-                if (buttonContent.footer) {
-                    payload.interactive.footer = { text: buttonContent.footer };
+                if (btnContent.footer) {
+                    payload.interactive.footer = { text: btnContent.footer };
                 }
                 break;
             }
@@ -552,7 +287,7 @@ export class MetaProvider implements MessagingProvider {
                 payload.type = 'interactive';
                 payload.interactive = {
                     type: 'list',
-                    body: { text: listContent.body },
+                    body: { text: (listContent.body || 'Selecciona una opción:').substring(0, 1024) },
                     action: {
                         button: (listContent.buttonText || 'Ver opciones').substring(0, 20),
                         sections: listContent.sections.slice(0, 10).map(section => ({
@@ -586,7 +321,7 @@ export class MetaProvider implements MessagingProvider {
                     action: {
                         name: 'cta_url',
                         parameters: {
-                            display_text: ctaContent.buttons[0]?.text || 'Ver más',
+                            display_text: (ctaContent.buttons[0]?.text || 'Ver más').substring(0, 20),
                             url: ctaContent.buttons[0]?.url || ''
                         }
                     }
@@ -601,120 +336,180 @@ export class MetaProvider implements MessagingProvider {
                         };
                     }
                 }
-                if (ctaContent.footer) {
-                    payload.interactive.footer = { text: ctaContent.footer };
-                }
                 break;
             }
 
-            case 'location_request':
-                payload.type = 'interactive';
-                payload.interactive = {
-                    type: 'location_request_message',
-                    body: { text: content.body },
-                    action: { name: 'send_location' }
-                };
-                break;
-
             default:
+                // Fallback to text if unknown type
                 payload.type = 'text';
-                payload.text = { body: 'Mensaje no soportado' };
+                payload.text = { body: ct.body || ct.text || String(content) };
         }
 
         return payload;
     }
 
     /**
-     * Upload media to Meta to get a media_id
+     * Upload media to Meta servers
      */
-    private async uploadMedia(mediaUrl: string, token: string, type: string = 'audio', overrideAssetId?: string): Promise<string | null> {
+    private async uploadMedia(url: string, token: string, type: string, assetId: string): Promise<string | null> {
         try {
-            const effectiveAssetId = overrideAssetId || this.assetId;
-            // 1. Download from Supabase
-            const fileRes = await fetch(mediaUrl);
-            if (!fileRes.ok) throw new Error(`Failed to fetch media from URL: ${fileRes.statusText}`);
-            const blob = await fileRes.blob();
+            console.log(`[MetaProvider] Uploading media: ${url} (${type})`);
+            const uploadUrl = `https://graph.facebook.com/v24.0/${assetId}/media`;
+            
+            // 1. Fetch file
+            const fileResp = await fetch(url);
+            if (!fileResp.ok) throw new Error(`Failed to fetch media from URL: ${url}`);
+            const buffer = await fileResp.arrayBuffer();
+            const blob = new Blob([buffer]);
 
-            // 2. Upload to Meta
-            const uploadUrl = `https://graph.facebook.com/v24.0/${effectiveAssetId}/media`;
+            // 2. Prepare Form Data
             const formData = new FormData();
-            
-            // Map types for Meta
-            // WhatsApp Types: image, video, audio, document, sticker
-            let metaType = type;
-            if (type === 'sticker') metaType = 'image'; // Stickers are uploaded as images to Meta's media endpoint
-
-            let fileName = `file-${Date.now()}`;
-            if (type === 'audio') fileName = 'recording.ogg';
-            else if (type === 'sticker') fileName = 'sticker.webp';
-            else if (type === 'image') fileName = 'image.jpg';
-
-            const file = new File([blob], fileName, { type: blob.type });
-            
-            formData.append('file', file);
-            formData.append('type', metaType);
+            formData.append('file', blob, 'media-file');
+            formData.append('type', type);
             formData.append('messaging_product', 'whatsapp');
 
-            const metaRes = await fetch(uploadUrl, {
+            // 3. Upload
+            const response = await fetch(uploadUrl, {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                },
+                headers: { 'Authorization': `Bearer ${token}` },
                 body: formData
             });
 
-            const metaData = await metaRes.json();
-            if (!metaRes.ok) {
-                console.error('[MetaProvider] Upload Error Details:', JSON.stringify(metaData, null, 2));
+            const data = await response.json();
+            if (!response.ok) {
+                console.error('[MetaProvider] Media Upload Error:', data);
                 return null;
             }
 
-            return metaData.id;
-        } catch (error: any) {
-            console.error('[MetaProvider] uploadMedia Exception:', error.message);
+            return data.id;
+        } catch (error) {
+            console.error('[MetaProvider] Media Upload Exception:', error);
             return null;
         }
     }
 
-    /**
-     * Helper to persist referral data (CTWA) to the database
-     */
-    private async persistReferralData(userPhone: string, data: any) {
+    async validateWebhook(request: Request): Promise<WebhookValidationResult> {
         try {
-            const { data: lead } = await supabaseAdmin
-                .from('leads') 
-                .select('id, metadata')
-                .eq('phone', userPhone)
-                .single();
+            const url = new URL(request.url);
+            const mode = url.searchParams.get('hub.mode');
+            const token = url.searchParams.get('hub.verify_token');
+            const challenge = url.searchParams.get('hub.challenge');
 
-            if (lead) {
-                const newMeta = { ...lead.metadata, ...data };
-                await supabaseAdmin
-                    .from('leads')
-                    .update({ metadata: newMeta })
-                    .eq('id', lead.id);
-                return;
+            if (mode === 'subscribe' && token === this.verifyToken) {
+                return { isValid: true, responseBody: challenge || '' };
             }
-
-            const { data: conv } = await supabaseAdmin
-                .from('conversations')
-                .select('id, metadata')
-                .eq('channel_type', 'whatsapp')
-                .ilike('metadata->>display_phone_number', `%${userPhone}%`)
-                .order('updated_at', { ascending: false })
-                .limit(1)
-                .single();
-
-            if (conv) {
-                const newMeta = { ...conv.metadata, ...data };
-                await supabaseAdmin
-                    .from('conversations')
-                    .update({ metadata: newMeta })
-                    .eq('id', conv.id);
-            }
-
+            return { isValid: false, reason: 'Invalid verify token' };
         } catch (error: any) {
-            console.error('[MetaProvider] persistReferralData error:', error);
+            return { isValid: false, reason: error.message };
         }
+    }
+
+    async parseWebhook(payload: any): Promise<any[]> {
+        const messages: any[] = [];
+        
+        // 1. WhatsApp / Messenger / Instagram all come through 'entry'
+        const entries = payload.entry || [];
+        
+        for (const entry of entries) {
+            const changes = entry.changes || entry.messaging || [];
+            
+            for (const change of changes) {
+                const value = change.value || change;
+                if (!value) continue;
+
+                // --- WhatsApp Parse ---
+                if (value.messages) {
+                    const phoneNumberId = value.metadata?.phone_number_id;
+
+                    for (const msg of value.messages) {
+                        const from = msg.from;
+                        const contact = value.contacts?.find((c: any) => c.wa_id === from);
+                        const senderName = contact?.profile?.name || 'WhatsApp User';
+                        
+                        let type = msg.type;
+                        let text = '';
+                        let mediaUrl = '';
+                        let buttonId = '';
+
+                        if (type === 'text') {
+                            text = msg.text?.body || '';
+                        } else if (type === 'interactive') {
+                            const interact = msg.interactive;
+                            if (interact.type === 'button_reply') {
+                                buttonId = interact.button_reply?.id;
+                                text = interact.button_reply?.title;
+                            } else if (interact.type === 'list_reply') {
+                                buttonId = interact.list_reply?.id;
+                                text = interact.list_reply?.title;
+                            }
+                        } else if (['image', 'video', 'audio', 'document', 'sticker'].includes(type)) {
+                            const media = msg[type];
+                            text = media.caption || `[${type}]`;
+                            mediaUrl = media.id; 
+                        }
+
+                        const isEcho = phoneNumberId === from || msg.is_echo === true;
+                        if (isEcho) console.log(`[MetaProvider] ???? Echo detected for WA message: ${msg.id}`);
+
+                        messages.push({
+                            id: msg.id,
+                            externalId: msg.id,
+                            channel: 'whatsapp',
+                            from: isEcho ? (msg.to || phoneNumberId) : from,
+                            senderName,
+                            buttonId,
+                            content: { type: type === 'interactive' ? 'interactive' : (['image','video','audio','document','sticker'].includes(type) ? type : 'text'), text, mediaUrl },
+                            timestamp: new Date(parseInt(msg.timestamp) * 1000),
+                            origin: isEcho ? 'outbound' : 'inbound',
+                            metadata: { 
+                                raw: msg,
+                                phoneNumberId: phoneNumberId // CRITICAL for resolver
+                            }
+                        });
+                    }
+                }
+
+                // --- Messenger / Instagram Parse ---
+                if (value.message || value.postback) {
+                    const pageId = entry.id; // Usually the page/ig id for messaging events
+                    const from = value.sender?.id;
+                    const isEcho = value.message?.is_echo;
+                    if (isEcho) continue;
+
+                    const msg = value.message || {};
+                    const postback = value.postback || {};
+                    
+                    let type = 'text';
+                    let text = msg.text || postback.title || '';
+                    let mediaUrl = '';
+                    let buttonId = msg.quick_reply?.payload || postback.payload || '';
+
+                    if (msg.attachments) {
+                        const attachment = msg.attachments[0];
+                        type = attachment.type;
+                        mediaUrl = attachment.payload?.url || '';
+                    }
+
+                    messages.push({
+                        id: msg.mid || `pb_${value.timestamp}_${from}`,
+                        externalId: msg.mid || `pb_${value.timestamp}`,
+                        channel: payload.object === 'instagram' ? 'instagram' : 'messenger',
+                        from: from,
+                        senderName: 'Social User',
+                        buttonId,
+                        content: { type: type === 'fallback' ? 'text' : type, text, mediaUrl },
+                        timestamp: new Date(value.timestamp || Date.now()),
+                        origin: isEcho ? 'outbound' : 'inbound',
+                        metadata: { 
+                            raw: value,
+                            pageId: pageId // CRITICAL for resolver
+                        }
+                    });
+                }
+            }
+        }
+
+        console.log(`[MetaProvider] parseWebhook extracted ${messages.length} messages`);
+        return messages;
     }
 }

@@ -1,9 +1,9 @@
 import { supabaseAdmin } from "@/lib/supabase-admin"
-import { IncomingMessage } from "./providers/types"
+import type { IncomingMessage } from "@/modules/core/messaging/providers/types"
 import { ChannelType } from "@/types/messaging"
 import { SupabaseClient } from "@supabase/supabase-js"
 import { normalizePhone } from "@/lib/normalize-phone"
-import { ChannelResolver, ConnectionMatch } from "./channel-resolver"
+import { ChannelResolver, ConnectionMatch } from "@/modules/core/messaging/channel-resolver"
 
 export class InboxService {
 
@@ -12,7 +12,7 @@ export class InboxService {
      */
     async handleIncomingMessage(msg: IncomingMessage) {
         const supabase = supabaseAdmin
-        console.log('[InboxService] Processing message from:', msg.from)
+        console.log('[InboxService] 📥 handleIncomingMessage from:', msg.from, 'Channel:', msg.channel)
 
         // 1. Idempotency Check (Primary)
         if (msg.externalId) {
@@ -28,18 +28,20 @@ export class InboxService {
                 const leadId = (existingMsg.conversations as any)?.lead_id;
 
                 if (convId && leadId) {
-                    await this.triggerAutomation(msg, convId, leadId)
+                    // Duplicate detected: Do NOT trigger automation again.
+                    // It's already running or completed for this message ID.
+                    return { success: true, conversationId: convId }
                 }
-                return { success: true, conversationId: convId }
             }
         }
 
         // 2. Resolve Context (Tenant, Lead, Conversation)
         const match = await ChannelResolver.resolveConnection(msg, supabase)
         if (!match) {
-            console.log('[InboxService] REJECTED: No matching integration connection found.')
+            console.log('[InboxService] ❌ REJECTED: No matching integration connection found for:', msg.from, 'Metadata:', JSON.stringify(msg.metadata))
             return { success: false, error: 'Tenant isolation: No matching connection' }
         }
+        console.log('[InboxService] ✅ Match found:', match.connectionId, 'Org:', match.organizationId)
 
         const { conversation, lead, isNewLead } = await this.resolveMetadataContext(msg, match, supabase)
         if (!conversation) return null
@@ -110,8 +112,10 @@ export class InboxService {
     }
 
     private async triggerAutomation(msg: IncomingMessage, conversationId: string, leadId: string, connectionId?: string) {
+        console.log('[InboxService] 🤖 triggerAutomation called for conv:', conversationId)
         try {
             const { automationTrigger } = await import("../automation/automation-trigger.service")
+            console.log('[InboxService] 🤖 Calling evaluateInput...')
             await automationTrigger.evaluateInput(
                 typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content),
                 conversationId,
@@ -121,6 +125,7 @@ export class InboxService {
                 connectionId,
                 msg.id || msg.externalId || undefined
             ).catch(err => console.error('[InboxService] Automation Trigger Error:', err))
+            console.log('[InboxService] 🤖 evaluateInput completed.')
         } catch (e) {
             console.warn('[InboxService] Failed to load automation service:', e)
         }
@@ -223,6 +228,7 @@ export class InboxService {
                 phone: normalizedPhone,
                 status: 'open',
                 state: 'active',
+                is_bot_active: true, // Meta 2026: Bot handles new chats by default
                 last_message: typeof msg.content === 'object' ? msg.content : { type: 'text', text: msg.content },
                 last_message_preview: typeof msg.content === 'object' ? (msg.content as any).text : msg.content,
                 last_message_at: new Date().toISOString(),

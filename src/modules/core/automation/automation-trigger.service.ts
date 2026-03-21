@@ -21,6 +21,7 @@ export class AutomationTriggerService {
      * @param sender The phone number or sender ID
      */
     async evaluateInput(messageContent: string, conversationId: string, channel: string, sender: string, leadId: string, connectionId?: string, messageId?: string) {
+        console.log(`[AutomationTrigger] 🚀 evaluateInput STARTED for conv: ${conversationId}, Channel: ${channel}, Connection: ${connectionId}`)
         fileLogger.log(`[AutomationTrigger] Evaluating input: "${messageContent}" (ID: ${messageId}) for conv: ${conversationId}`)
 
         // 1. Fetch Active Workflows with 'keyword' or 'message_received' triggers
@@ -42,12 +43,10 @@ export class AutomationTriggerService {
             return
         }
 
-        // Meta 2026: SKIP automation if the bot is explicitly deactivated (e.g., human agent has taken over).
-        // This prevents the bot from "taking over" mid-human interaction without breaking auto-assignment rounds.
-        if (conversation.is_bot_active === false) {
-            console.log(`[AutomationTrigger] SKIPPING TRIGGERS for conversation ${conversationId}: Bot is inactive (Human interaction)`)
-            return
-        }
+        // Meta 2026: Bot activity check.
+        // We evaluate keyword triggers regardless to allow "re-activation" via commands like "restart bot" or "start".
+        // However, we skip generic "message_received" (catch-all) triggers if the bot is explicitly deactivated.
+        const botExplicitlyDisabled = conversation.is_bot_active === false;
 
         const orgId = conversation.organization_id
         // Prefer passed connectionId (from message), fallback to conversation's
@@ -110,13 +109,24 @@ export class AutomationTriggerService {
             let match = false
             let skipReason = ''
 
+            // Meta 2026: Resolve the actual trigger type from node data fallback to table data
+            const triggerNode = wf.definition.nodes.find((n: any) => n.id === wf.trigger_id || n.type === 'trigger')
+            const nodeData = triggerNode?.data || {}
+            let workflowTriggerType = nodeData.triggerType || wf.trigger_type
+
+            // If node says 'webhook' but DB says 'message_received' or 'keyword', we trust the DB's intent
+            if (workflowTriggerType === 'webhook' && ['message_received', 'keyword'].includes(wf.trigger_type)) {
+                console.log(`[AutomationTrigger] 🔄 Overriding 'webhook' with '${wf.trigger_type}' for workflow "${wf.name}"`)
+                workflowTriggerType = wf.trigger_type
+            }
+
             if (isEcho) {
                 fileLogger.log(`[AutomationTrigger] Potential echo detected for workflow ${wf.id}. Skipping.`)
                 continue;
             }
 
             // 1. Keyword Trigger
-            if (wf.trigger_type === 'keyword' && config.keyword) {
+            if (workflowTriggerType === 'keyword' && config.keyword) {
                 if (config.keyword && config.keyword.trim() !== '') {
                     const keyword = config.keyword.toLowerCase()
                     const text = actualText.toLowerCase()
@@ -130,28 +140,28 @@ export class AutomationTriggerService {
                     }
                     if (!match) skipReason = `Keyword mismatch (Wanted: ${keyword}, Got: ${text})`
                 } else {
-                    // Empty keyword acts like "Any Message", but we apply session restriction
-                    match = isSessionExpired;
-                    if (!match) skipReason = `Session still active (Rate limiting "Any Message" keyword)`
+                    // Empty keyword acts like "Any Message", but we apply session/activity restriction
+                    match = isSessionExpired && !botExplicitlyDisabled;
+                    if (!match) skipReason = `Session active or Bot disabled (Rate limiting "Any Message" keyword)`
                 }
             }
 
-            // 2. Generic "Message Received" OR "Webhook" (Legacy/Any)
-            else if (wf.trigger_type === 'message_received' || wf.trigger_type === 'webhook') {
-                if (wf.trigger_type === 'webhook' && config.keyword && config.keyword.trim() !== '') {
+            // 2. Generic "Message Received" OR "Webhook"
+            else if (workflowTriggerType === 'message_received' || workflowTriggerType === 'webhook') {
+                if (workflowTriggerType === 'webhook' && config.keyword && config.keyword.trim() !== '') {
                     const keyword = config.keyword.toLowerCase()
                     const text = actualText.toLowerCase()
                     match = text.includes(keyword)
                     if (!match) skipReason = `Webhook keyword mismatch`
                 } else {
-                    // It's a "Catch All" trigger. Apply session logic to avoid infinite loops.
-                    match = isSessionExpired;
-                    if (!match) skipReason = `Session still active (Rate limiting catch-all ${wf.trigger_type})`
+                    // It's a "Catch All" trigger. Apply session and activity logic to avoid infinite loops.
+                    match = isSessionExpired && !botExplicitlyDisabled;
+                    if (!match) skipReason = `Session active or Bot disabled (Rate limiting catch-all ${workflowTriggerType})`
                 }
             }
 
-            // 3. "First Contact" — TRUE once-per-lead with reset on resolve/delete
-            else if (wf.trigger_type === 'first_contact') {
+            // 3. "First Contact"
+            else if (workflowTriggerType === 'first_contact') {
                 // Check if this workflow has EVER run for this lead
                 const { data: lastExecution } = await supabaseAdmin
                     .from('workflow_executions')
@@ -268,7 +278,7 @@ export class AutomationTriggerService {
             }
 
             if (!match && !skipReason) {
-                skipReason = `Type ${wf.trigger_type} not handled or condition failed`
+                skipReason = `Type ${workflowTriggerType} not handled or condition failed`
             }
 
             // Logs for matching or skipping
@@ -279,21 +289,18 @@ export class AutomationTriggerService {
 
 
             // CHANNEL CHECK (O(1) ULTRA-STRICT EVALUATION)
+            // Fix: If config.channels is empty or contains 'all', we allow it.
+            // Also ensure currentId is compared correctly (case-insensitive trims).
             if (match && config.channels && Array.isArray(config.channels) && config.channels.length > 0) {
-                if (finalConnectionId) {
-                    const currentId = String(finalConnectionId).trim();
-                    const allowedSet = new Set(config.channels.map((c: any) => String(c).trim()));
-
-                    if (!allowedSet.has('all') && !allowedSet.has(currentId)) {
+                const allowedSet = new Set(config.channels.map((c: any) => String(c).trim().toLowerCase()));
+                
+                if (!allowedSet.has('all')) {
+                    const currentId = String(finalConnectionId).trim().toLowerCase();
+                    if (!allowedSet.has(currentId)) {
                         match = false;
                         skipReason = `Channel mismatch (${currentId}) - Allowed: [${Array.from(allowedSet).join(', ')}]`;
                         fileLogger.log(`[AutomationTrigger]   ❌ SKIPPED Workflow: ${wf.id}. Reason: ${skipReason}`);
                     }
-                } else if (!config.channels.includes('all')) {
-                    // No connectionId provided, but workflow restricts channels
-                    match = false;
-                    skipReason = `Channel restricted but connectionId is missing from message context`;
-                    fileLogger.log(`[AutomationTrigger]   ❌ SKIPPED Workflow: ${wf.id}. Reason: ${skipReason}`);
                 }
             }
 
@@ -360,7 +367,11 @@ export class AutomationTriggerService {
                 // SURGICAL: Mark bot as active during execution to pause agent response timer
                 await supabaseAdmin
                     .from('conversations')
-                    .update({ is_bot_active: true, updated_at: new Date().toISOString() })
+                    .update({ 
+                        is_bot_active: true, 
+                        last_auto_reply_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString() 
+                    })
                     .eq('id', conversationId)
 
                 // MUST AWAIT in Serverless

@@ -93,7 +93,7 @@ export class MetaAdapter implements IntegrationAdapter {
                 payload.message.text = contentObj.body || 'Opciones:';
                 payload.message.quick_replies = (contentObj.buttons || []).slice(0, 13).map((btn: any) => ({
                     content_type: 'text',
-                    title: btn.title.substring(0, 20),
+                    title: (btn.title || btn.label || 'Opción').substring(0, 20),
                     payload: btn.id
                 }));
             } else if (contentObj.type === 'interactive_list') {
@@ -103,7 +103,7 @@ export class MetaAdapter implements IntegrationAdapter {
                 if (allRows.length > 0) {
                     payload.message.quick_replies = allRows.map((row: any) => ({
                         content_type: 'text',
-                        title: row.title.substring(0, 20),
+                        title: (row.title || row.label || 'Opción').substring(0, 20),
                         payload: row.id
                     }));
                 }
@@ -130,43 +130,98 @@ export class MetaAdapter implements IntegrationAdapter {
             }
 
         } else {
-            // WhatsApp logic remains similar but reinforced
+            // WhatsApp logic reinforced: Handle Media IDs vs Links and Interactive Types
             url = `https://graph.facebook.com/v24.0/${phoneNumberId}/messages`;
             
-            if (contentObj.type === 'image' || contentObj.type === 'video' || contentObj.type === 'audio' || contentObj.type === 'document') {
+            payload = {
+                messaging_product: "whatsapp",
+                recipient_type: "individual",
+                to: recipient
+            };
+
+            const mediaTypes = ['image', 'video', 'audio', 'document', 'sticker'];
+            if (mediaTypes.includes(contentObj.type)) {
                 const type = contentObj.type;
-                payload = {
-                    messaging_product: "whatsapp",
-                    recipient_type: "individual",
-                    to: recipient,
-                    type: type,
-                    [type]: { link: contentObj.mediaUrl, caption: contentObj.caption }
-                };
-            } else if (buttons.length > 0) {
-                payload = {
-                    messaging_product: "whatsapp",
-                    recipient_type: "individual",
-                    to: recipient,
-                    type: "interactive",
-                    interactive: {
-                        type: "button",
-                        body: { text: textBody },
-                        action: {
-                            buttons: buttons.map((b: any) => ({
-                                type: "reply",
-                                reply: { id: b.id, title: b.label.substring(0, 20) }
-                            }))
+                const isUrl = String(contentObj.mediaUrl || '').startsWith('http');
+                
+                payload.type = type;
+                payload[type] = isUrl 
+                    ? { link: contentObj.mediaUrl } 
+                    : { id: contentObj.mediaUrl || contentObj.mediaId };
+                
+                // Meta Policy: Stickers do NOT support captions.
+                if (contentObj.caption && type !== 'sticker') {
+                    payload[type].caption = contentObj.caption;
+                }
+                // Documents Filename
+                if (type === 'document' && contentObj.filename) {
+                    payload[type].filename = contentObj.filename;
+                }
+            } else if (contentObj.type === 'interactive_cta') {
+                // WhatsApp URL/Call buttons
+                payload.type = "interactive";
+                payload.interactive = {
+                    type: "cta_url",
+                    body: { text: contentObj.body || textBody || 'Clic abajo:' },
+                    action: {
+                        name: "cta_url",
+                        parameters: {
+                            display_text: contentObj.buttons?.[0]?.text || 'Ver más',
+                            url: contentObj.buttons?.[0]?.url || contentObj.buttons?.[0]?.value || ''
                         }
                     }
                 };
-            } else {
-                payload = {
-                    messaging_product: "whatsapp",
-                    recipient_type: "individual",
-                    to: recipient,
-                    type: "text",
-                    text: { body: textBody }
+                if (contentObj.header) {
+                    payload.interactive.header = typeof contentObj.header === 'string' 
+                        ? { type: 'text', text: contentObj.header }
+                        : contentObj.header;
+                }
+                if (contentObj.footer) {
+                    payload.interactive.footer = { text: contentObj.footer };
+                }
+            } else if (contentObj.type === 'interactive_buttons' || (buttons.length > 0 && contentObj.type !== 'text' && contentObj.type !== 'interactive_list')) {
+                payload.type = "interactive";
+                payload.interactive = {
+                    type: "button",
+                    body: { text: contentObj.body || textBody || 'Selecciona una opción:' },
+                    action: {
+                        buttons: (contentObj.buttons || buttons || []).slice(0, 3).map((b: any) => ({
+                            type: "reply",
+                            reply: { 
+                                id: b.id, 
+                                title: (b.title || b.label || 'Opción').substring(0, 20) 
+                            }
+                        }))
+                    }
                 };
+                if (contentObj.header) {
+                    payload.interactive.header = typeof contentObj.header === 'string' 
+                        ? { type: 'text', text: contentObj.header }
+                        : contentObj.header;
+                }
+                if (contentObj.footer) {
+                    payload.interactive.footer = { text: contentObj.footer };
+                }
+            } else if (contentObj.type === 'interactive_list') {
+                payload.type = "interactive";
+                payload.interactive = {
+                    type: "list",
+                    body: { text: contentObj.body || 'Selecciona una opción:' },
+                    action: {
+                        button: (contentObj.buttonText || 'Ver opciones').substring(0, 20),
+                        sections: (contentObj.sections || []).slice(0, 10).map((s: any) => ({
+                            title: (s.title || 'Opciones').substring(0, 24),
+                            rows: (s.rows || []).slice(0, 10).map((r: any) => ({
+                                id: r.id,
+                                title: (r.title || 'Opción').substring(0, 24),
+                                description: r.description?.substring(0, 72)
+                            }))
+                        }))
+                    }
+                };
+            } else {
+                payload.type = "text";
+                payload.text = { body: textBody || ' ' };
             }
         }
 
