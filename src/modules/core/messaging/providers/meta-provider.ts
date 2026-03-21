@@ -128,7 +128,7 @@ export class MetaProvider implements MessagingProvider {
         try {
             const { data: connections, error } = await supabaseAdmin
                 .from('integration_connections')
-                .select('credentials')
+                .select('credentials, metadata')
                 .in('provider_key', ['meta_whatsapp', 'whatsapp_cloud', 'facebook_page', 'instagram_dm'])
                 .eq('status', 'active');
 
@@ -137,8 +137,8 @@ export class MetaProvider implements MessagingProvider {
             for (const conn of connections) {
                 // DECRYPT credentials (critical for production where they are encrypted in DB)
                 const creds = decryptObject(conn.credentials);
-                const phoneId = String(creds?.phoneNumberId || creds?.phone_id || creds?.phoneId || "");
-                const pageId = String(creds?.pageId || creds?.page_id || "");
+                const phoneId = String(creds?.phoneNumberId || creds?.phone_id || creds?.phoneId || conn.metadata?.asset_id || "");
+                const pageId = String(creds?.pageId || creds?.page_id || conn.metadata?.page_id || "");
 
                 if ((phoneId && phoneId === String(assetId)) || (pageId && pageId === String(assetId))) {
                     const token = creds.accessToken || creds.apiToken || creds.access_token || null;
