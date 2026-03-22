@@ -90,10 +90,20 @@ export async function POST(req: NextRequest) {
     try {
         const rawBody = await req.text();
         const body = JSON.parse(rawBody);
-        const channel = req.nextUrl.searchParams.get('channel') as ChannelType || 'whatsapp';
+        let channel = req.nextUrl.searchParams.get('channel') as ChannelType;
+
+        // Auto-detect Meta channels from payload if not in URL
+        if (!channel && body.object) {
+            if (body.object === 'instagram') channel = 'instagram';
+            else if (body.object === 'page') channel = 'messenger';
+            else if (body.object === 'whatsapp_business_account') channel = 'whatsapp';
+        }
+        
+        // Final fallback
+        if (!channel) channel = 'whatsapp';
 
         // Dynamically load manager to handle the heavy lifting
-        console.log('[Webhook POST] Loading webhook manager...')
+        console.log(`[Webhook POST] Loading webhook manager for detected channel: ${channel}...`)
         const manager = await getConfiguredManager()
         console.log('[Webhook POST] Manager loaded, processing...')
 

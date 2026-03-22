@@ -11,13 +11,8 @@ class IntegrationRegistry {
 
     constructor() {
         this.register(new OpenAIAdapter())
-        // this.register(new MetaAdapter()) // Legacy WhatsApp specific
-        // this.register(new MockAdapter('meta_instagram')) // Legacy
-        // this.register(new MockAdapter('meta_ads')) // Legacy
-        // this.register(new MockAdapter('meta_business')) // Unified Omnichannel Provider
         this.register(new MetaAdapter('meta_business')) // Unified Omnichannel
         this.register(new MetaAdapter('whatsapp_cloud')) // WA
-        this.register(new MetaAdapter('instagram_dm')) // IG DM
         this.register(new MetaAdapter('instagram_dm')) // IG DM
         this.register(new MetaAdapter('instagram_dme')) // IG DME (New)
         this.register(new MetaAdapter('facebook_page')) // FB Messenger
@@ -28,7 +23,7 @@ class IntegrationRegistry {
         this.register(new MockAdapter('twilio_sms'))
         this.register(new MockAdapter('google_calendar'))
         this.register(new MockAdapter('anthropic'))
-        this.register(new EvolutionAdapter()) // WhatsApp QR via Evolution API
+        this.register(new EvolutionAdapter()) 
         this.register(new S3StorageAdapter())
         this.register(new GoogleDriveAdapter())
     }
