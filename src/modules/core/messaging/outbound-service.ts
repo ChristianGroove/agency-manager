@@ -65,7 +65,7 @@ export class OutboundService {
         } else if (currentChannel === 'messenger' || channel.provider_key === 'facebook_page') {
             metadata.pageId = convMeta.pageId || connMeta.asset_id || connMeta.page_id
             metadata.channel = 'messenger'
-        } else if (currentChannel === 'instagram' || channel.provider_key === 'instagram_dm') {
+        } else if (currentChannel === 'instagram' || ['instagram_dm', 'instagram_dme'].includes(channel.provider_key)) {
             metadata.pageId = convMeta.instagramBusinessId || convMeta.pageId || connMeta.asset_id || connMeta.instagram_business_id
             metadata.channel = 'instagram'
         }

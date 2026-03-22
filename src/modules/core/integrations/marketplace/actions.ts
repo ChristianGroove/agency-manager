@@ -306,11 +306,11 @@ export async function getMetaAuthUrl(channelType?: 'whatsapp' | 'messenger' | 'i
     const state = channelType ? `${orgId}:${channelType}` : orgId;
 
     const CLIENT_ID = process.env.NEXT_PUBLIC_META_APP_ID || process.env.META_APP_ID || '25468410932828305';
-    const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-    const REDIRECT_URI = `${BASE_URL}/api/integrations/meta/callback`;
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    console.log(`[Meta OAuth] BASE_URL resolved to: ${appUrl}`);
+    const REDIRECT_URI = `${appUrl}/api/integrations/meta/callback`;
 
     console.log('[Meta OAuth] Generating URL with Redirect URI:', REDIRECT_URI);
-    console.log('[Meta OAuth] BASE_URL resolved to:', BASE_URL);
 
     // Scopes based on channel type
     // For granular connections, request only the necessary scopes
@@ -338,7 +338,9 @@ export async function getMetaAuthUrl(channelType?: 'whatsapp' | 'messenger' | 'i
                 'public_profile',
                 'instagram_basic',
                 'instagram_manage_messages',
-                'pages_show_list'  // Required for Instagram DMs
+                'pages_show_list',
+                'pages_read_engagement',
+                'pages_manage_metadata'
             ];
             break;
         default:

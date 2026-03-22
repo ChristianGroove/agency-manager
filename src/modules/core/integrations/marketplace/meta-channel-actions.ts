@@ -24,7 +24,7 @@ interface UIActivateInput {
  */
 interface CallbackActivateInput {
     orgId: string
-    providerKey: 'facebook_page' | 'instagram_dm' | 'whatsapp_cloud'
+    providerKey: 'facebook_page' | 'instagram_dm' | 'instagram_dme' | 'whatsapp_cloud'
     assetId: string
     assetName: string
     accessToken: string
@@ -78,7 +78,7 @@ export async function activateMetaChannel(input: ActivateInput): Promise<{ succe
 
         const providerKeyMap = {
             'page': 'facebook_page',
-            'instagram': 'instagram_dm',
+            'instagram': 'instagram_dme',
             'whatsapp': 'whatsapp_cloud'
         };
         providerKey = providerKeyMap[input.assetType];

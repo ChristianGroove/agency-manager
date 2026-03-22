@@ -130,8 +130,8 @@ export class MetaProvider implements MessagingProvider {
         try {
             const { data: connections, error } = await supabaseAdmin
                 .from('integration_connections')
-                .select('credentials, metadata')
-                .in('provider_key', ['meta_whatsapp', 'whatsapp_cloud', 'facebook_page', 'instagram_dm'])
+                .select('credentials, metadata, provider_key')
+                .in('provider_key', ['meta_whatsapp', 'whatsapp_cloud', 'facebook_page', 'instagram_dm', 'instagram_dme'])
                 .eq('status', 'active');
 
             if (error || !connections) return null;
@@ -141,13 +141,13 @@ export class MetaProvider implements MessagingProvider {
                 const creds = decryptObject(conn.credentials);
                 const phoneId = String(creds?.phoneNumberId || creds?.phone_id || creds?.phoneId || conn.metadata?.asset_id || "");
                 const pageId = String(creds?.pageId || creds?.page_id || conn.metadata?.page_id || "");
+                const connAssetId = String(conn.metadata?.asset_id || "");
 
-                if ((phoneId && phoneId === String(assetId)) || (pageId && pageId === String(assetId))) {
+                if ((phoneId && phoneId === String(assetId)) || (pageId && pageId === String(assetId)) || (connAssetId && connAssetId === String(assetId))) {
                     const token = creds.accessToken || creds.apiToken || creds.access_token || null;
                     if (token) return token;
                 }
             }
-            console.error(`[MetaProvider] No active connection found for AssetId: ${assetId}`);
             return null;
         } catch (error) {
             console.error(`[MetaProvider] getTokenByAssetId Error:`, error);
@@ -550,7 +550,6 @@ export class MetaProvider implements MessagingProvider {
             const fields = channel === 'instagram' ? 'username,name' : 'first_name,last_name,name';
             const url = `https://graph.facebook.com/v21.0/${psid}?fields=${fields}&access_token=${token}`;
             
-            console.log(`[MetaProvider] Fetching profile for ${psid} on ${channel}...`);
             const res = await fetch(url);
             const data = await res.json();
 
@@ -593,10 +592,8 @@ export class MetaProvider implements MessagingProvider {
         const messages: (IncomingMessage | IncomingCall)[] = [];
         
         // 1. WhatsApp / Messenger / Instagram all come through 'entry'
-        const entries = payload.entry || [];
-        
-        for (const entry of entries) {
-            const changes = entry.changes || entry.messaging || [];
+        for (const entry of payload.entry || []) {
+            const changes = entry.changes || [entry];
             
             for (const change of changes) {
                 const value = change.value || change;

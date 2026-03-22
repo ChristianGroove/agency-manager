@@ -282,6 +282,30 @@ export class MetaGraphAPI {
     }
 
     /**
+     * Get Instagram Business Account Username
+     */
+    async getInstagramUsername(instagramBusinessId: string, accessToken: string): Promise<string | null> {
+        try {
+            const url = new URL(`${META_GRAPH_URL}/${META_API_VERSION}/${instagramBusinessId}`);
+            url.searchParams.append('access_token', accessToken);
+            url.searchParams.append('fields', 'username');
+
+            const res = await fetch(url.toString());
+            const data = await res.json();
+
+            if (data.error) {
+                console.error('[MetaGraphAPI] Instagram username fetch failed:', data.error);
+                return null;
+            }
+
+            return data.username || null;
+        } catch (error) {
+            console.error('[MetaGraphAPI] Instagram username fetch error:', error);
+            return null;
+        }
+    }
+
+    /**
      * Get User Profile (Name, ID)
      */
     async getUserProfile(userAccessToken: string) {

@@ -115,7 +115,7 @@ export class ChannelResolver {
             const { data: direct } = await supabase
                 .from('integration_connections')
                 .select('id, organization_id, provider_key, credentials, metadata, default_pipeline_stage_id, working_hours, auto_reply_when_offline, welcome_message')
-                .eq('provider_key', 'instagram_dm')
+                .in('provider_key', ['instagram_dm', 'instagram_dme'])
                 .in('status', ['active', 'connected'])
                 .or(`metadata->>asset_id.eq.${igId},metadata->>page_id.eq.${igId},metadata->>pageId.eq.${igId}`)
                 .maybeSingle()

@@ -246,7 +246,7 @@ export async function GET(request: Request) {
             }));
         });
 
-        // Filter assets based on channelType
+        // 4. Map assets based on requested channelType
         let filteredAssets: any[] = [];
         switch (channelType) {
             case 'whatsapp':
@@ -256,19 +256,44 @@ export async function GET(request: Request) {
                 filteredAssets = pages.map(p => ({ id: p.id, name: p.name, type: 'page', access_token: p.access_token }));
                 break;
             case 'instagram':
-                filteredAssets = pages
-                    .filter(p => p.instagram_business_account)
-                    .map(p => ({
-                        id: p.instagram_business_account.id,
-                        name: p.name + ' (Instagram)',
-                        type: 'instagram',
-                        page_id: p.id,
-                        access_token: p.access_token
-                    }));
+                const igAssets = [];
+                for (const p of pages) {
+                    if (p.instagram_business_account) {
+                        const igUsername = await metaApi.getInstagramUsername(p.instagram_business_account.id, p.access_token);
+                        igAssets.push({
+                            id: p.instagram_business_account.id,
+                            name: igUsername || p.name,
+                            type: 'instagram',
+                            page_id: p.id,
+                            access_token: p.access_token
+                        });
+                    }
+                }
+                filteredAssets = igAssets;
                 break;
             default:
+                const allAssets: any[] = [];
+                for (const p of pages) {
+                    if (p.instagram_business_account) {
+                        const igUsername = await metaApi.getInstagramUsername(p.instagram_business_account.id, p.access_token);
+                        allAssets.push({
+                            id: p.instagram_business_account.id,
+                            name: igUsername || p.name,
+                            type: 'instagram',
+                            page_id: p.id,
+                            access_token: p.access_token
+                        });
+                    }
+                    allAssets.push({
+                        id: p.id,
+                        name: p.name,
+                        type: 'page',
+                        has_ig: !!p.instagram_business_account,
+                        access_token: p.access_token
+                    });
+                }
                 filteredAssets = [
-                    ...pages.map(p => ({ id: p.id, name: p.name, type: 'page', has_ig: !!p.instagram_business_account, access_token: p.access_token })),
+                    ...allAssets,
                     ...whatsappAssets
                 ];
         }
@@ -282,10 +307,10 @@ export async function GET(request: Request) {
 
             for (const asset of filteredAssets) {
                 try {
-                    let providerKey: 'facebook_page' | 'instagram_dm' | 'whatsapp_cloud';
+                    let providerKey: 'facebook_page' | 'instagram_dm' | 'instagram_dme' | 'whatsapp_cloud';
                     switch (asset.type) {
                         case 'whatsapp': providerKey = 'whatsapp_cloud'; break;
-                        case 'instagram': providerKey = 'instagram_dm'; break;
+                        case 'instagram': providerKey = 'instagram_dme'; break;
                         default: providerKey = 'facebook_page';
                     }
 
