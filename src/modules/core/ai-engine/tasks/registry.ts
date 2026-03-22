@@ -3,6 +3,7 @@ import { AIMessage } from '../types';
 export interface AITaskDefinition {
   id: string;
   description: string;
+  tier: 'cheap' | 'standard' | 'premium';
   systemPrompt: (context: any) => string;
   userPrompt: (input: any) => string;
   temperature: number;
@@ -17,6 +18,7 @@ export const AI_TASK_REGISTRY: Record<string, AITaskDefinition> = {
   'inbox.smart_replies_v1': {
     id: 'inbox.smart_replies_v1',
     description: 'Generate 3 quick reply suggestions for customer service.',
+    tier: 'standard',
     temperature: 0.7,
     maxTokens: 500,
     jsonMode: true,
@@ -65,6 +67,7 @@ Return JSON:
   'inbox.sentiment_v1': {
     id: 'inbox.sentiment_v1',
     description: 'Analyze sentiment of a single message.',
+    tier: 'cheap',
     temperature: 0.3,
     maxTokens: 200,
     jsonMode: true,
@@ -85,6 +88,7 @@ Return JSON:
   'inbox.intent_v1': {
     id: 'inbox.intent_v1',
     description: 'Classify customer intent and extract entities.',
+    tier: 'cheap',
     temperature: 0.3,
     maxTokens: 300,
     jsonMode: true,
@@ -103,6 +107,7 @@ Return JSON:
   'messaging.refine_draft_v1': {
     id: 'messaging.refine_draft_v1',
     description: 'Refine a message draft for professional tone.',
+    tier: 'cheap',
     temperature: 0.7,
     maxTokens: 500,
     jsonMode: false,
@@ -122,6 +127,7 @@ CRITICAL RULES:
   'automation.generate_template_v1': {
     id: 'automation.generate_template_v1',
     description: 'Generate an automation workflow from natural language.',
+    tier: 'standard',
     temperature: 0.2,
     maxTokens: 1000,
     jsonMode: true,
@@ -151,6 +157,7 @@ No markdown. JSON only.`,
   'automation.suggest_node_v1': {
     id: 'automation.suggest_node_v1',
     description: 'Suggest the next logical node for an automation workflow.',
+    tier: 'standard',
     temperature: 0.3,
     maxTokens: 800,
     jsonMode: true,
@@ -183,6 +190,7 @@ Variables: ${input.variables.join(', ')}`
   'media.transcribe_v1': {
     id: 'media.transcribe_v1',
     description: 'Transcribe audio/voice notes using Whisper.',
+    tier: 'premium',
     temperature: 0,
     maxTokens: 0,
     jsonMode: false,
@@ -193,6 +201,7 @@ Variables: ${input.variables.join(', ')}`
   'media.analyze_voice_v1': {
     id: 'media.analyze_voice_v1',
     description: 'Analyze voice note transcription for summary and action items.',
+    tier: 'standard',
     temperature: 0.3,
     maxTokens: 500,
     jsonMode: true,
@@ -216,6 +225,7 @@ Return JSON:
   'knowledge.extract_faq_v1': {
     id: 'knowledge.extract_faq_v1',
     description: 'Extract a clean Q&A pair from a conversation for knowledge base.',
+    tier: 'standard',
     temperature: 0.3,
     maxTokens: 500,
     jsonMode: true,
@@ -239,6 +249,7 @@ Return JSON:
   'analytics.agent_qa_v1': {
     id: 'analytics.agent_qa_v1',
     description: 'Generate a performance summary for an agent based on recent conversations.',
+    tier: 'standard',
     temperature: 0.3,
     maxTokens: 800,
     jsonMode: true,
@@ -274,6 +285,7 @@ Return JSON:
   'quote.generate_copy_v1': {
     id: 'quote.generate_copy_v1',
     description: 'Generate professional copy for quote headers and footers.',
+    tier: 'cheap',
     temperature: 0.7,
     maxTokens: 100,
     jsonMode: true,
@@ -291,9 +303,12 @@ Do NOT include quotes in the text value.`,
   'help-assistant': {
     id: 'help-assistant',
     description: 'Asistente de ayuda en español para resolver dudas sobre la plataforma Pixy.',
+    tier: 'standard',
     temperature: 0.5,
     maxTokens: 500,
     jsonMode: false,
+    useKnowledgeBase: true,
+    getKBQuery: (input: any) => input.question,
     systemPrompt: (ctx: any) => {
       const space = ctx.spaceCategory || 'agency';
       
@@ -307,11 +322,16 @@ EVITA mencionar: CRM de Ventas, Pipelines complejos o Marketing de Agencia.`;
 Prioriza respuestas sobre: CRM, Pipelines de ventas, Gestión de Contactos, Contratos y Marketing.`;
       }
 
+      const knowledge = ctx.knowledgeContext && ctx.knowledgeContext.length > 0
+        ? `\n# INFORMACIÓN TÉCNICA (KNOWLEDGE BASE):\n${ctx.knowledgeContext.map((k: any) => `- ${k.question}: ${k.answer}`).join('\n')}`
+        : "";
+
       return `Eres el Asistente de Ayuda de Pixy. Tu ÚNICA función es responder preguntas sobre cómo usar la plataforma de manera eficiente.
 ${specializedContext}
+${knowledge}
 
 REGLAS ESTRICTAS:
-1. SOLO respondes sobre Pixy y sus funcionalidades.
+1. SOLO respondes sobre Pixy y sus funcionalidades basándote en la información técnica proporcionada arriba.
 2. Si la pregunta NO es sobre Pixy, responde: "Solo puedo ayudarte con preguntas sobre cómo usar Pixy. ¿Tienes alguna duda sobre la plataforma?"
 3. NO escribas poemas, chistes ni contenido fuera de Pixy.
 4. Respuestas BREVES y precisas: máximo 2-3 oraciones por respuesta.
@@ -324,7 +344,7 @@ MÓDULOS GENERALES:
 - Automatizaciones: Procesos automáticos (Workflows).
 - Configuración: Ajustes de perfil y organización.
 
-Si no conoces una respuesta específica, sugiere: "Te sugiero consultar la sección de configuración o hablar con soporte técnico."`;
+Si no conoces una respuesta específica tras revisar la información técnica, sugiere: "Te sugiero consultar la sección de configuración o hablar con soporte técnico."`;
     },
     userPrompt: (input: any) => {
       const historyText = input.history?.length > 0
@@ -337,6 +357,7 @@ Si no conoces una respuesta específica, sugiere: "Te sugiero consultar la secci
   'automation.orchestrate_workflow_v1': {
     id: 'automation.orchestrate_workflow_v1',
     description: 'Generate a complete automation workflow from natural language description.',
+    tier: 'premium',
     temperature: 0.3,
     maxTokens: 4000,
     jsonMode: true,
@@ -466,6 +487,7 @@ Responde SOLO con JSON válido.`
   'assistant.operational_v1': {
     id: 'assistant.operational_v1',
     description: 'Operational Assistant that executes business actions.',
+    tier: 'standard',
     temperature: 0, // Strict determinism
     maxTokens: 400, // Capped to prevent over-generation
     jsonMode: true,
@@ -499,6 +521,7 @@ Contexto: SpaceID=${input.space_id}, IntentPrevio=${input.userIntent || 'Ninguno
   'contract.generate_v1': {
     id: 'contract.generate_v1',
     description: 'Generador de contratos legales para agencias creativas.',
+    tier: 'premium',
     temperature: 0.3,
     maxTokens: 3000,
     jsonMode: true,

@@ -921,3 +921,61 @@ export async function getOrganizationAuditLogs(orgId: string) {
 
     return data
 }
+export async function getIntelligenceMetrics() {
+    await requireSuperAdmin()
+    
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 7); // Let's do 7 days for more interesting data
+    
+    // 1. Total usage by engine (Last 7d)
+    const { data: engineUsage } = await supabaseAdmin
+        .from('usage_events')
+        .select('engine, quantity')
+        .gte('occurred_at', yesterday.toISOString());
+    
+    // 2. Top tenants by AI usage (Last 7d)
+    const { data: tenantUsage } = await supabaseAdmin
+        .from('usage_events')
+        .select('organization_id, quantity')
+        .eq('engine', 'ai')
+        .gte('occurred_at', yesterday.toISOString());
+
+    // Aggregate data
+    const engineStats = (engineUsage || []).reduce((acc: any, curr: any) => {
+        acc[curr.engine] = (acc[curr.engine] || 0) + (curr.quantity || 0);
+        return acc;
+    }, {});
+
+    const tenantStats = (tenantUsage || []).reduce((acc: any, curr: any) => {
+        acc[curr.organization_id] = (acc[curr.organization_id] || 0) + (curr.quantity || 0);
+        return acc;
+    }, {});
+
+    // Sort tenants and get top 5
+    const topTenants = Object.entries(tenantStats)
+        .sort(([, a]: any, [, b]: any) => b - a)
+        .slice(0, 5)
+        .map(([id, quantity]: [string, any]) => ({ id, quantity }));
+
+    // Get tenant names for the top ones
+    const tenantIds = topTenants.map(t => t.id);
+    let topTenantsWithNames: any[] = [];
+
+    if (tenantIds.length > 0) {
+        const { data: orgNames } = await supabaseAdmin
+            .from('organizations')
+            .select('id, name')
+            .in('id', tenantIds);
+
+        topTenantsWithNames = topTenants.map(t => ({
+            ...t,
+            name: orgNames?.find(on => on.id === t.id)?.name || 'Unknown'
+        }));
+    }
+
+    return {
+        engineStats,
+        topTenants: topTenantsWithNames,
+        totalTokens: (engineUsage || []).filter(e => e.engine === 'ai').reduce((acc: number, curr: any) => acc + (curr.quantity || 0), 0)
+    };
+}

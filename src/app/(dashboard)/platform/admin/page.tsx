@@ -1,4 +1,4 @@
-import { getAdminDashboardStats, getActiveBroadcasts, getAllSystemModules, getModules360Data } from '@/modules/core/admin/actions'
+import { getAdminDashboardStats, getActiveBroadcasts, getAllSystemModules, getModules360Data, getIntelligenceMetrics } from '@/modules/core/admin/actions'
 import { getAdminOrganizations } from '@/modules/core/admin/actions'
 import { getAllAppsAdmin } from "@/modules/core/saas/app-management-actions"
 import { requireSuperAdmin } from '@/lib/auth/platform-roles'
@@ -23,13 +23,14 @@ export default async function AdminDashboardPage() {
     await requireSuperAdmin()
     const t = await getDictionary()
 
-    const [stats, activeBroadcasts, organizations, allModules, apps, modules360] = await Promise.all([
+    const [stats, activeBroadcasts, organizations, allModules, apps, modules360, intelligenceData] = await Promise.all([
         getAdminDashboardStats(),
         getActiveBroadcasts(),
         getAdminOrganizations(),
         getAllSystemModules(),
         getAllAppsAdmin(),
-        getModules360Data()
+        getModules360Data(),
+        getIntelligenceMetrics()
     ])
 
     return (
@@ -204,6 +205,7 @@ export default async function AdminDashboardPage() {
                         apps={apps}
                         dict={t.admin}
                         modules360={modules360}
+                        intelligenceData={intelligenceData}
                     />
                 </TabsContent>
 

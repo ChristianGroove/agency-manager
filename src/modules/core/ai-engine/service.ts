@@ -23,41 +23,33 @@ export const AIEngine = {
         // 1. Load Task Definition
         const taskDef = getTaskDefinition(taskType);
 
-        // 2. CHECK CACHE FIRST (Cost Optimization)
-        const isContractGen = taskType === 'contract.generate_v1';
-        if (!bypassCache && !isContractGen) {
-            const cached = getCachedResponse(taskType, payload);
+        // 2. CHECK CACHE FIRST (Cost Optimization & Multi-tenant Isolation)
+        if (!bypassCache && taskType !== 'contract.generate_v1') {
+            const cached = await getCachedResponse(organizationId, taskType, payload);
             if (cached) {
-                console.log(`[AIEngine] 📦 Cache HIT for ${taskType}`);
+                console.log(`[AIEngine] 📦 Cache HIT for ${organizationId}:${taskType}`);
                 return { success: true, data: cached, provider: 'cache' };
             }
         }
-        if (isContractGen) console.log(`[AIEngine] ⚡ Bypassing cache for ${taskType}`);
 
-        // 4. Resolve Credentials (Active & Priority)
-        // CRITICAL: Use internal fetch to avoid masking (getAICredentials returns masked keys for UI)
+        // 3. Resolve Credentials (Active & Priority)
         const credentials = await fetchInternalCredentials(organizationId);
-
 
         // Filter active and sort by priority (1 is highest)
         const activeCredentials = credentials
             .filter(c => c.status === 'active')
             .sort((a, b) => a.priority - b.priority);
 
-        // Env Var Fallback Injection (OR HARDCODED FALLBACK)
-        // NOTE: Hardcoded fallback is necessary because the user hasn't restarted the server yet
-        const HARDCODED_KEY = "";
-
-        const envKey = process.env.OPENAI_API_KEY || HARDCODED_KEY;
-
-        if (envKey && envKey.startsWith('sk-')) {
-            console.log('[AIEngine] Injecting Valid API Key (Env/Hardcoded)');
-            activeCredentials.unshift({
-                id: 'env-var-fallback',
+        // Env Var Fallback (Platform cost)
+        const envKey = process.env.OPENAI_API_KEY;
+        if (envKey && envKey.startsWith('sk-') && activeCredentials.length === 0) {
+            console.log('[AIEngine] Using Platform Fallback (OpenAI)');
+            activeCredentials.push({
+                id: 'platform-fallback',
                 organization_id: organizationId,
                 provider_id: 'openai',
                 api_key_encrypted: envKey,
-                priority: 0,
+                priority: 99,
                 status: 'active',
                 created_at: new Date().toISOString()
             });
@@ -67,66 +59,55 @@ export const AIEngine = {
             throw new Error('No active AI credentials found for this organization.');
         }
 
-        // 3.5 RAG Context Injection (Knowledge Base)
+        // 4. RAG Context Injection (Knowledge Base)
         if (taskDef.useKnowledgeBase && taskDef.getKBQuery) {
             try {
-                const query = taskDef.getKBQuery(payload)
+                const query = taskDef.getKBQuery(payload);
                 if (query && query.trim().length > 3) {
-                    // Dynamic import to break potential circular deps (Service -> Task -> Service)
-                    const { EmbeddingService } = await import('./embedding') // Local import
-
-                    console.log(`[AIEngine] Searching Knowledge Base for: "${query.substring(0, 50)}..."`)
-                    const knowledge = await EmbeddingService.searchKnowledgeBase(query, organizationId)
-
+                    const { EmbeddingService } = await import('./embedding');
+                    const knowledge = await EmbeddingService.searchKnowledgeBase(query, organizationId, payload.spaceCategory, 'staff');
                     if (knowledge && knowledge.length > 0) {
-                        console.log(`[AIEngine] Found ${knowledge.length} relevant context items`)
-                        payload.knowledgeContext = knowledge
+                        payload.knowledgeContext = knowledge;
                     }
                 }
             } catch (err: any) {
-                console.warn(`[AIEngine] RAG Search failed:`, err.message)
+                console.warn(`[AIEngine] RAG Search failed:`, err.message);
             }
         }
 
-        // 4. Construct Sealed Prompt
+        // 5. Construct Sealed Prompt
         const systemMessage = taskDef.systemPrompt(payload);
         const userMessage = taskDef.userPrompt(payload);
-
         const messages = [
             { role: 'system', content: systemMessage },
             { role: 'user', content: userMessage }
         ];
 
-        // 5. Execute with Fallback
+        // 6. Execute with Auto-Healing Fallback
         let lastError: Error | null = null;
 
         for (const cred of activeCredentials) {
             try {
                 const provider = AIRegistry.getProvider(cred.provider_id);
-                if (!provider) {
-                    console.warn(`[AIEngine] Provider ${cred.provider_id} not found in registry.`);
-                    continue;
-                }
+                if (!provider) continue;
 
+                // Decrypt Key
                 let apiKey = cred.api_key_encrypted;
-                if (!apiKey.startsWith('sk-')) {
+                if (!apiKey.startsWith('sk-') && !apiKey.startsWith('gsk_')) {
                     const decrypted = decrypt(apiKey);
                     if (decrypted) apiKey = decrypted;
                 }
+                if (!apiKey || apiKey.includes('●')) continue;
 
-                // Fallback for encrypted failure or plain text pass-through
-                if (!apiKey) apiKey = cred.api_key_encrypted;
+                // Resolve Best Model for Tier & Provider
+                const model = resolveModelForTier(taskDef.tier, cred.provider_id);
 
-                // CRITICAL SAFETY CHECK: Skip "Poisoned" Masked Keys
-                if (apiKey.includes('●') || apiKey.includes('...')) {
-                    // console.warn(`[AIEngine] Skipping unusable credential ${cred.id} (Masked/Encrypted corrupted)`);
-                    continue;
-                }
+                console.log(`[AIEngine] 🚀 Executing ${taskType} (${taskDef.tier}) via ${cred.provider_id}:${model}`);
 
                 // EXECUTE
                 const response = await provider.generateResponse(
                     messages as any,
-                    provider.models?.[0] || 'gpt-3.5-turbo', // Default to first model or specific map
+                    model,
                     apiKey,
                     {
                         temperature: taskDef.temperature,
@@ -135,73 +116,107 @@ export const AIEngine = {
                     }
                 );
 
-                // LOG USAGE (Async - Fire & Forget)
-                logUsage(organizationId, cred.id, cred.provider_id, response, taskType).catch(console.error);
+                // LOG UNIFIED METERING (usage_events)
+                logUsageEvent(organizationId, cred.provider_id, response, taskType).catch(console.error);
 
                 let parsedData;
                 if (taskDef.jsonMode) {
-                    console.log(`[AIEngine] 🔍 JSON Mode - Raw content:`, response.content?.substring(0, 200) + '...')
                     try {
                         parsedData = JSON.parse(response.content || '{}');
-                        console.log(`[AIEngine] ✅ JSON Parse Success - Keys:`, Object.keys(parsedData || {}))
                     } catch (parseErr: any) {
-                        console.error(`[AIEngine] ❌ JSON Parse Error:`, parseErr.message)
-                        console.error(`[AIEngine] ❌ Raw content was:`, response.content)
-                        throw new Error(`JSON parsing failed: ${parseErr.message}`)
+                        console.error(`[AIEngine] JSON Parse Error:`, parseErr.message);
+                        throw new Error(`Invalid JSON from AI: ${parseErr.message}`);
                     }
                 } else {
                     parsedData = response.content;
                 }
 
-                // CACHE RESULT for future requests
-                setCachedResponse(taskType, payload, parsedData);
+                // CACHE RESULT
+                await setCachedResponse(organizationId, taskType, payload, parsedData);
 
                 return {
                     success: true,
                     data: parsedData,
                     usage: response.usage,
                     provider: cred.provider_id,
+                    model: response.model,
                     context: payload.knowledgeContext
                 };
 
             } catch (error: any) {
-                console.warn(`[AIEngine] Credential ${cred.id} failed:`, error.message);
+                console.warn(`[AIEngine] Provider ${cred.provider_id} failed:`, error.message);
                 lastError = error;
 
-                // If quota error, mark exhausted
+                // Auto-Exhaustion
                 if (error.code === 'QUOTA_EXCEEDED' || error.message.includes('429')) {
                     markCredentialExhausted(cred.id).catch(console.error);
                 }
+                
+                // Continue to next credential
             }
         }
 
-        console.error(`[AIEngine] ❌ All AI credentials failed for ${taskType}. Final Error:`, lastError?.message);
-        throw lastError || new Error('All AI credentials failed.');
+        throw lastError || new Error('All AI providers failed.');
     }
-}
+};
 
 // --- Helpers ---
 
+/**
+ * Intelligent Model Router
+ * Chooses the best model based on task tier and available provider
+ */
+function resolveModelForTier(tier: 'cheap' | 'standard' | 'premium', providerId: string): string {
+    const mapping: Record<string, Record<string, string>> = {
+        cheap: {
+            openai: 'gpt-4o-mini',
+            groq: 'llama-3.1-8b-instant',
+            google: 'gemini-1.5-flash'
+        },
+        standard: {
+            openai: 'gpt-4o-mini',
+            groq: 'llama-3.3-70b-versatile',
+            google: 'gemini-1.5-flash'
+        },
+        premium: {
+            openai: 'gpt-4o',
+            google: 'gemini-1.5-pro',
+            groq: 'llama-3.3-70b-versatile'
+        }
+    };
+
+    return mapping[tier]?.[providerId] || (providerId === 'openai' ? 'gpt-3.5-turbo' : 'default');
+}
+
 async function markCredentialExhausted(credId: string) {
+    if (credId === 'platform-fallback') return;
     const supabase = await createClient();
     await supabase.from('ai_credentials').update({ status: 'exhausted' }).eq('id', credId);
 }
 
-async function logUsage(orgId: string, credId: string, providerId: string, response: any, taskType: string) {
+/**
+ * Unified Metering System
+ * Logs to usage_events for centralized billing/analytics
+ */
+async function logUsageEvent(orgId: string, providerId: string, response: any, taskType: string) {
     try {
         const supabase = await createClient();
-        await supabase.from('ai_usage_logs').insert({
+        const totalTokens = response.usage?.total_tokens || 0;
+
+        await supabase.from('usage_events').insert({
             organization_id: orgId,
-            credential_id: credId,
-            provider_id: providerId,
-            model: response.model,
-            task_type: taskType,
-            input_tokens: response.usage?.input_tokens || 0,
-            output_tokens: response.usage?.output_tokens || 0,
-            status: 'success'
+            engine: 'ai',
+            action: taskType,
+            quantity: totalTokens > 0 ? totalTokens : 1, // Minimum 1 unit if tokens not tracked
+            metadata: {
+                provider: providerId,
+                model: response.model,
+                input_tokens: response.usage?.input_tokens,
+                output_tokens: response.usage?.output_tokens
+            }
         });
     } catch (e) {
-        console.error('[AI-Engine] Failed to log usage:', e);
+        console.error('[AI-Engine] Failed to log usage event:', e);
     }
 }
 
@@ -209,23 +224,17 @@ async function logUsage(orgId: string, credId: string, providerId: string, respo
  * Internal helper to fetch credentials without masking (System Use Only)
  */
 async function fetchInternalCredentials(organizationId: string) {
-    const supabase = await createClient()
+    const supabase = await createClient();
     const { data, error } = await supabase
         .from('ai_credentials')
         .select('*')
         .eq('organization_id', organizationId)
         .eq('status', 'active')
-        .order('priority', { ascending: true })
+        .order('priority', { ascending: true });
 
     if (error) {
-        console.error('[AIEngine] Error fetching internal credentials:', error)
-        return []
+        console.error('[AIEngine] Error fetching internal credentials:', error);
+        return [];
     }
-
-    return data.map((cred: any) => ({
-        ...cred,
-        // Ensure provider_id is mapped correctly if joined, but here we select * from ai_credentials
-        // ai_credentials has provider_id column usually.
-        // We don't join provider details here as Engine just needs the ID and Key.
-    }))
+    return data || [];
 }

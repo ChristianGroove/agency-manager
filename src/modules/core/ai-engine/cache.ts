@@ -1,17 +1,18 @@
-// AI Response Cache (In-Memory)
+// AI Response Cache (Persistent & Organization-Aware)
 
 import crypto from 'crypto';
+import { supabaseAdmin } from "@/lib/supabase-admin";
 
-// Simple in-memory cache (swap to Redis for production)
-const responseCache = new Map<string, { data: any; timestamp: number }>();
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const DEFAULT_TTL_MS = 5 * 60 * 1000; // 5 minutes default
+const EXTENDED_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours for help/docs
 
 /**
- * Generate a deterministic hash for cache key
+ * Task-specific TTL mapping
  */
-function generateCacheKey(taskType: string, payloadHash: string): string {
-    return `ai:${taskType}:${payloadHash}`;
-}
+const TASK_TTLS: Record<string, number> = {
+    'help-assistant': EXTENDED_TTL_MS,
+    'knowledge.extract_faq_v1': EXTENDED_TTL_MS,
+};
 
 /**
  * Hash the payload to create a unique identifier
@@ -22,40 +23,62 @@ function hashPayload(payload: any): string {
 }
 
 /**
- * Get cached response if valid
+ * Get cached response from Database (ai_cache table)
  */
-export function getCachedResponse(taskType: string, payload: any): any | null {
-    const key = generateCacheKey(taskType, hashPayload(payload));
-    const cached = responseCache.get(key);
+export async function getCachedResponse(organizationId: string, taskType: string, payload: any): Promise<any | null> {
+    try {
+        const payloadHash = hashPayload(payload);
 
-    if (!cached) return null;
+        const { data, error } = await supabaseAdmin
+            .from('ai_cache')
+            .select('response_data, expires_at')
+            .eq('organization_id', organizationId)
+            .eq('task_type', taskType)
+            .eq('payload_hash', payloadHash)
+            .gt('expires_at', new Date().toISOString())
+            .single();
 
-    // Check TTL
-    if (Date.now() - cached.timestamp > CACHE_TTL_MS) {
-        responseCache.delete(key);
+        if (error || !data) return null;
+
+        console.log(`[AICache] 🚀 DB Hit for ${organizationId}:${taskType}`);
+        return data.response_data;
+    } catch (e) {
+        console.error("[AICache] Error fetching from DB:", e);
         return null;
     }
-
-    console.log(`[AICache] HIT for ${taskType}`);
-    return cached.data;
 }
 
 /**
- * Store response in cache
+ * Store response in Database (ai_cache table)
  */
-export function setCachedResponse(taskType: string, payload: any, data: any): void {
-    const key = generateCacheKey(taskType, hashPayload(payload));
-    responseCache.set(key, { data, timestamp: Date.now() });
-    console.log(`[AICache] SET for ${taskType}`);
-}
+export async function setCachedResponse(organizationId: string, taskType: string, payload: any, data: any): Promise<void> {
+    try {
+        const payloadHash = hashPayload(payload);
+        const ttl = TASK_TTLS[taskType] || DEFAULT_TTL_MS;
+        const expiresAt = new Date(Date.now() + ttl).toISOString();
 
-/**
- * Clear cache for a specific task type (useful after config changes)
- */
-export function clearCacheForTask(taskType: string): void {
-    for (const key of responseCache.keys()) {
-        if (key.startsWith(`ai:${taskType}:`)) {
-            responseCache.delete(key);
-        }
+        await supabaseAdmin
+            .from('ai_cache')
+            .upsert({
+                organization_id: organizationId,
+                task_type: taskType,
+                payload_hash: payloadHash,
+                response_data: data,
+                expires_at: expiresAt
+            }, { onConflict: 'organization_id, task_type, payload_hash' });
+
+        console.log(`[AICache] 💾 DB Set for ${organizationId}:${taskType} (TTL: ${ttl / 1000}s)`);
+    } catch (e) {
+        console.error("[AICache] Error saving to DB:", e);
     }
+}
+
+/**
+ * Clear cache for a specific task type (Admin only)
+ */
+export async function clearCacheForTask(taskType: string): Promise<void> {
+    await supabaseAdmin
+        .from('ai_cache')
+        .delete()
+        .eq('task_type', taskType);
 }

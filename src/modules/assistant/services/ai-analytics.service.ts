@@ -14,17 +14,20 @@ export class AiAnalyticsService {
         yesterday.setDate(yesterday.getDate() - 1);
 
         const { data: usageData, error: usageError } = await supabase
-            .from('ai_usage_logs')
-            .select('input_tokens, output_tokens, cost_usd')
-            .gte('created_at', yesterday.toISOString());
+            .from('usage_events')
+            .select('quantity, metadata')
+            .eq('engine', 'ai')
+            .gte('occurred_at', yesterday.toISOString());
 
         if (usageError) {
             console.error("Error fetching usage stats:", usageError);
             return { tokens24h: 0, cost24h: 0, activeSessions: 0 };
         }
 
-        const tokens24h = usageData.reduce((acc: number, curr: any) => acc + (curr.input_tokens || 0) + (curr.output_tokens || 0), 0);
-        const cost24h = usageData.reduce((acc: number, curr: any) => acc + (curr.cost_usd || 0), 0);
+        const tokens24h = usageData.reduce((acc: number, curr: any) => acc + (curr.quantity || 0), 0);
+        
+        // Basic cost estimation ($0.20 per 1M tokens as average weighted)
+        const cost24h = (tokens24h / 1_000_000) * 0.20; 
 
         // 2. Mock Active Sessions (Since we don't have a real-time session table yet except redis/memory)
         // In a real scenario, we'd query the session store or check 'voice_session_start' events in last 5 mins.

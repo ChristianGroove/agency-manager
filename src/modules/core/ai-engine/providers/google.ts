@@ -40,15 +40,21 @@ export class GoogleProvider extends BaseAIProvider {
             const result = await chat.sendMessage(prompt);
             const response = result.response;
             const text = response.text();
+            
+            // Extract usage metadata if available
+            const usage = (response as any).usageMetadata || {
+                promptTokenCount: 0,
+                candidatesTokenCount: 0,
+                totalTokenCount: 0
+            };
 
             return {
                 success: true,
                 content: text,
                 usage: {
-                    // Gemini doesn't always return token usage in the simplified response
-                    input_tokens: 0,
-                    output_tokens: 0,
-                    total_tokens: 0
+                    input_tokens: usage.promptTokenCount || 0,
+                    output_tokens: usage.candidatesTokenCount || 0,
+                    total_tokens: usage.totalTokenCount || 0
                 },
                 model: modelName,
                 provider: this.id
