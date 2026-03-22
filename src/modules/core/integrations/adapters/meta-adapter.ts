@@ -16,12 +16,30 @@ export class MetaAdapter implements IntegrationAdapter {
         return { isValid: true }
     }
 
+    /**
+     * Real-time Token Health Check
+     * Hits the Meta Graph API /me endpoint to verify if the stored access token is still valid.
+     * Used by the ChannelCard UI to display the (Green/Red) status dot.
+     */
     async checkConnectionStatus(credentials: ConnectionCredentials): Promise<{ status: 'active' | 'inactive' | 'error', message?: string }> {
-        const result = await this.verifyCredentials(credentials)
-        if (result.isValid) {
-            return { status: 'active' }
+        const { decryptObject } = await import('@/modules/core/integrations/encryption');
+        const creds = decryptObject(credentials);
+        const accessToken = creds.accessToken || creds.access_token;
+
+        if (!accessToken) return { status: 'inactive', message: 'No access token' };
+
+        try {
+            // Simple call to verify token
+            const resp = await fetch(`https://graph.facebook.com/v21.0/me?fields=id&access_token=${accessToken}`);
+            if (resp.ok) {
+                return { status: 'active' };
+            } else {
+                const err = await resp.json();
+                return { status: 'error', message: err.error?.message || 'Token invalid' };
+            }
+        } catch (error: any) {
+            return { status: 'error', message: error.message };
         }
-        return { status: 'error', message: result.error || 'Connection failed' }
     }
 
     async sendMessage(credentials: ConnectionCredentials | string, recipient: string, content: any, metadata?: any): Promise<{ messageId: string, metadata?: any }> {

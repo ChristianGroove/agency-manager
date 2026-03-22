@@ -738,13 +738,13 @@ function WorkflowEditorContent({ id }: { id: string }) {
                 initialName={workflowName}
                 initialDescription={workflowDescription}
                 initialIsActive={isActive}
-                initialChannelId={(nodes.find(n => n.type === 'trigger')?.data?.channel as string) || undefined}
-                onChannelChange={(channelId) => {
+                initialChannels={(nodes.find(n => n.type === 'trigger')?.data?.channels as string[]) || (nodes.find(n => n.type === 'trigger')?.data?.channel ? [nodes.find(n => n.type === 'trigger')?.data?.channel as string] : [])}
+                onChannelsChange={(channels) => {
                     setNodes((nds) => nds.map((node) => {
                         if (node.type === 'trigger') {
                             return {
                                 ...node,
-                                data: { ...node.data, channel: channelId }
+                                data: { ...node.data, channels, channel: channels[0] || null }
                             };
                         }
                         return node;

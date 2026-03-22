@@ -43,9 +43,9 @@ interface WorkflowConfigurationSheetProps {
     initialName: string;
     initialDescription: string;
     initialIsActive: boolean;
-    initialChannelId?: string; // New: Current channel ID
+    initialChannels?: string[]; // Propiedad unificada (arreglo)
     onSaveSettings: (name: string, description: string, isActive: boolean) => Promise<void>;
-    onChannelChange?: (channelId: string | null) => void; // New: Callback to update graph
+    onChannelsChange?: (channels: string[]) => void; // Callback unificado
     // History Props
     workflowId: string;
     onVersionRestored: () => void;
@@ -61,9 +61,9 @@ export function WorkflowConfigurationSheet({
     initialName,
     initialDescription,
     initialIsActive,
-    initialChannelId,
+    initialChannels,
     onSaveSettings,
-    onChannelChange,
+    onChannelsChange,
     workflowId,
     onVersionRestored,
     workflowDefinition,
@@ -76,7 +76,7 @@ export function WorkflowConfigurationSheet({
     const [name, setName] = useState(initialName);
     const [description, setDescription] = useState(initialDescription);
     const [isActive, setIsActive] = useState(initialIsActive);
-    const [channelId, setChannelId] = useState<string | null>(initialChannelId || null);
+    const [channels, setChannels] = useState<string[]>(initialChannels || []);
     const [isSavingSettings, setIsSavingSettings] = useState(false);
 
     // --- History State ---
@@ -98,10 +98,10 @@ export function WorkflowConfigurationSheet({
             setName(initialName);
             setDescription(initialDescription || '');
             setIsActive(initialIsActive);
-            setChannelId(initialChannelId || null);
+            setChannels(initialChannels || []);
             if (defaultTab) setActiveTab(defaultTab);
         }
-    }, [isOpen, initialName, initialDescription, initialIsActive, initialChannelId, workflowId, defaultTab]);
+    }, [isOpen, initialName, initialDescription, initialIsActive, initialChannels, workflowId, defaultTab]);
 
     // Load history when tab changes to history
     useEffect(() => {
@@ -257,19 +257,21 @@ export function WorkflowConfigurationSheet({
                                             />
                                         </div>
                                         <div className="space-y-4">
-                                            <Label className="text-sm font-bold text-slate-700 dark:text-slate-300">Canal Predeterminado (Salida)</Label>
+                                            <Label className="text-sm font-bold text-slate-700 dark:text-slate-300">Canales de Disparo (Trigger)</Label>
                                             <div className="space-y-1.5">
                                                 <ChannelSelector
-                                                    value={channelId}
+                                                    multiple={true}
+                                                    value={channels}
                                                     onChange={(val) => {
-                                                        setChannelId(val as string | null);
-                                                        onChannelChange?.(val as string | null);
+                                                        const newVal = Array.isArray(val) ? val : (val ? [val] : []);
+                                                        setChannels(newVal);
+                                                        onChannelsChange?.(newVal);
                                                     }}
                                                 />
                                                 <p className="text-xs text-slate-500 leading-relaxed">
-                                                    Canal de respaldo (fallback) usado cuando el workflow se inicia manualmente o desde CRM.
+                                                    Selecciona los canales donde esta automatización estará activa.
                                                     <br />
-                                                    <span className="text-amber-600 dark:text-amber-500 font-medium">Nota:</span> Para configurar qué canales <strong>disparan</strong> este flujo, edita el nodo "Trigger".
+                                                    <span className="text-primary font-medium">Nota:</span> Estos canales sincronizan automáticamente con el nodo "Trigger" del flujo.
                                                 </p>
                                             </div>
                                         </div>

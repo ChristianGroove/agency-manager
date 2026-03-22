@@ -4,6 +4,7 @@ import {
     MessagingProvider, 
     SendMessageOptions, 
     IncomingMessage, 
+    IncomingCall,
     InteractiveButtonsContent,
     InteractiveListContent,
     InteractiveCTAContent,
@@ -13,6 +14,7 @@ import {
 
 export class MetaProvider implements MessagingProvider {
     name = 'meta';
+    private profileCache: Record<string, { name: string, expires: number }> = {};
 
     constructor(
         private apiToken: string,
@@ -523,6 +525,54 @@ export class MetaProvider implements MessagingProvider {
         }
     }
 
+    /**
+     * Fetches the user profile (name/username) from Meta Graph API.
+     * 
+     * NOTE: Messenger and Instagram webhooks do NOT include sender names.
+     * This method resolves them using the Page/Instagram Access Token.
+     * Results are cached for 1 hour to prevent API rate limiting.
+     * 
+     * @param psid Page-Scoped ID of the sender
+     * @param assetId The Page ID or Instagram Business ID
+     * @param channel The channel type ('messenger' or 'instagram')
+     */
+    private async fetchSocialProfile(psid: string, assetId: string, channel: string): Promise<{ name: string }> {
+        const cacheKey = `${channel}:${psid}`;
+        if (this.profileCache[cacheKey] && this.profileCache[cacheKey].expires > Date.now()) {
+            return { name: this.profileCache[cacheKey].name };
+        }
+
+        try {
+            const token = await this.getTokenByAssetId(assetId);
+            if (!token) return { name: 'Social User' };
+
+            // Fields vary by channel
+            const fields = channel === 'instagram' ? 'username,name' : 'first_name,last_name,name';
+            const url = `https://graph.facebook.com/v21.0/${psid}?fields=${fields}&access_token=${token}`;
+            
+            console.log(`[MetaProvider] Fetching profile for ${psid} on ${channel}...`);
+            const res = await fetch(url);
+            const data = await res.json();
+
+            if (data.error) {
+                console.warn(`[MetaProvider] Profile fetch error for ${psid}:`, data.error.message);
+                return { name: 'Social User' };
+            }
+
+            let resolvedName = 'Social User';
+            if (data.username) resolvedName = data.username;
+            else if (data.first_name) resolvedName = `${data.first_name} ${data.last_name || ''}`.trim();
+            else if (data.name) resolvedName = data.name;
+
+            // Cache for 1 hour
+            this.profileCache[cacheKey] = { name: resolvedName, expires: Date.now() + 3600000 };
+            return { name: resolvedName };
+        } catch (e) {
+            console.error(`[MetaProvider] Profile Fetch Exception for ${psid}:`, e);
+            return { name: 'Social User' };
+        }
+    }
+
     async validateWebhook(request: Request): Promise<WebhookValidationResult> {
         try {
             const url = new URL(request.url);
@@ -539,8 +589,8 @@ export class MetaProvider implements MessagingProvider {
         }
     }
 
-    async parseWebhook(payload: any): Promise<any[]> {
-        const messages: any[] = [];
+    async parseWebhook(payload: any): Promise<(IncomingMessage | IncomingCall)[]> {
+        const messages: (IncomingMessage | IncomingCall)[] = [];
         
         // 1. WhatsApp / Messenger / Instagram all come through 'entry'
         const entries = payload.entry || [];
@@ -613,33 +663,40 @@ export class MetaProvider implements MessagingProvider {
                     const isEcho = value.message?.is_echo;
                     if (isEcho) continue;
 
-                    const msg = value.message || {};
+                    const msgData = value.message || {};
                     const postback = value.postback || {};
                     
                     let type = 'text';
-                    let text = msg.text || postback.title || '';
+                    let text = msgData.text || postback.title || '';
                     let mediaUrl = '';
-                    let buttonId = msg.quick_reply?.payload || postback.payload || '';
+                    let buttonId = msgData.quick_reply?.payload || postback.payload || '';
 
-                    if (msg.attachments) {
-                        const attachment = msg.attachments[0];
+                    if (msgData.attachments) {
+                        const attachment = msgData.attachments[0];
                         type = attachment.type;
                         mediaUrl = attachment.payload?.url || '';
                     }
 
+                    const channel = payload.object === 'instagram' ? 'instagram' : 'messenger';
+                    const { name: senderName } = await this.fetchSocialProfile(from, pageId, channel);
+
                     messages.push({
-                        id: msg.mid || `pb_${value.timestamp}_${from}`,
-                        externalId: msg.mid || `pb_${value.timestamp}`,
-                        channel: payload.object === 'instagram' ? 'instagram' : 'messenger',
+                        id: msgData.mid || `pb_${value.timestamp}_${from}`,
+                        externalId: msgData.mid || `pb_${value.timestamp}`,
+                        channel: channel,
                         from: from,
-                        senderName: 'Social User',
+                        senderName: senderName,
                         buttonId,
-                        content: { type: type === 'fallback' ? 'text' : type, text, mediaUrl },
+                        content: { 
+                            type: (type === 'fallback' ? 'text' : type) as any, 
+                            text, 
+                            mediaUrl 
+                        },
                         timestamp: new Date(value.timestamp || Date.now()),
                         origin: isEcho ? 'outbound' : 'inbound',
                         metadata: { 
                             raw: value,
-                            pageId: pageId // CRITICAL for resolver
+                            [payload.object === 'instagram' ? 'instagramBusinessId' : 'pageId']: pageId 
                         }
                     });
                 }

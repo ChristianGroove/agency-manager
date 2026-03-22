@@ -16,6 +16,14 @@ export class ChannelResolver {
      * 3. Legacy asset matching for meta_business
      * 4. Instance matching for Evolution API
      */
+    /**
+     * Resolves an incoming webhook to a specific Channel Connection.
+     * Uses metadata matching (phoneNumberId, pageId, instagramBusinessId).
+     * 
+     * @param msg The incoming message object containing channel and metadata.
+     * @param supabase The Supabase client instance.
+     * @returns A Promise that resolves to a ConnectionMatch object if a connection is found, otherwise null.
+     */
     static async resolveConnection(msg: IncomingMessage, supabase: SupabaseClient): Promise<ConnectionMatch | null> {
         const metadata = msg.metadata as any
         const channel = msg.channel
@@ -125,7 +133,9 @@ export class ChannelResolver {
                 const matched = legacy.find((c: any) => {
                     const selectedAssets = c.metadata?.selected_assets || []
                     const assetsPreview = c.metadata?.assets_preview || []
-                    return selectedAssets.some((a: any) => a.id === igId) ||
+                    const assetId = c.metadata?.asset_id || c.metadata?.page_id || c.metadata?.pageId
+                    return assetId === igId ||
+                           selectedAssets.some((a: any) => a.id === igId) ||
                            assetsPreview.some((a: any) => a.id === igId && a.type === 'instagram')
                 })
                 if (matched) return { connectionId: matched.id, organizationId: matched.organization_id, connection: matched }

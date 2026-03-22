@@ -278,18 +278,34 @@ export class AutomationTriggerService {
             }
 
 
-            // CHANNEL CHECK (O(1) ULTRA-STRICT EVALUATION)
-            // Fix: If config.channels is empty or contains 'all', we allow it.
-            // Also ensure currentId is compared correctly (case-insensitive trims).
-            if (match && config.channels && Array.isArray(config.channels) && config.channels.length > 0) {
-                const allowedSet = new Set(config.channels.map((c: any) => String(c).trim().toLowerCase()));
-                
-                if (!allowedSet.has('all')) {
-                    const currentId = String(finalConnectionId).trim().toLowerCase();
-                    if (!allowedSet.has(currentId)) {
-                        match = false;
-                        skipReason = `Channel mismatch (${currentId}) - Allowed: [${Array.from(allowedSet).join(', ')}]`;
-                        fileLogger.log(`[AutomationTrigger]   ❌ SKIPPED Workflow: ${wf.id}. Reason: ${skipReason}`);
+            // 2026 Fix: CHANNEL CHECK (SUPPORT LEGACY & MULTI-SELECT)
+            if (match) {
+                const configChannels = config.channels as string[] | undefined;
+                const configChannel = config.channel as string | undefined;
+
+                // Determine effective channels (multi-select array or legacy string fallback)
+                const effectiveChannels = (configChannels && configChannels.length > 0)
+                    ? configChannels
+                    : (configChannel ? [configChannel] : []);
+
+                if (effectiveChannels.length > 0) {
+                    const allowedSet = new Set(effectiveChannels.map(c => String(c).trim().toLowerCase()));
+
+                    if (!allowedSet.has('all')) {
+                        const currentId = String(finalConnectionId).trim().toLowerCase();
+                        
+                        // Check for exact match or Meta composite ID match (connectionId:assetId)
+                        // This ensures that if the UI selected 'connection_uuid:asset_id', 
+                        // an incoming message from 'connection_uuid' still matches.
+                        const isChannelAllowed = Array.from(allowedSet).some(selectedId => 
+                            selectedId === currentId || selectedId.startsWith(`${currentId}:`)
+                        );
+
+                        if (!isChannelAllowed) {
+                            match = false;
+                            skipReason = `Channel mismatch. Incoming: ${currentId}. Allowed triggers: [${Array.from(allowedSet).join(', ')}]`;
+                            fileLogger.log(`[AutomationTrigger]   ❌ SKIPPED Workflow: ${wf.id}. Reason: ${skipReason}`);
+                        }
                     }
                 }
             }

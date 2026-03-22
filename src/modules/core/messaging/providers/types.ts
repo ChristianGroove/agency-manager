@@ -1,4 +1,4 @@
-import { ChannelType } from "@/types/messaging"
+import { ChannelType } from "../../../../types/messaging"
 
 export interface InteractiveButton {
     id: string
