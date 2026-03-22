@@ -17,6 +17,7 @@ interface UIActivateInput {
     assetName: string
     accessToken: string
     wabaId?: string
+    pageId?: string
 }
 
 /**
@@ -31,6 +32,7 @@ interface CallbackActivateInput {
     pageAccessToken?: string  // For pages only
     displayPhoneNumber?: string
     wabaId?: string
+    pageId?: string
 }
 
 type ActivateInput = UIActivateInput | CallbackActivateInput;
@@ -105,7 +107,7 @@ export async function activateMetaChannel(input: ActivateInput): Promise<{ succe
 
                 // For Instagram, we still subscribe the Page ID because Meta delivers 
                 // Instagram Webhooks via the Page's subscribed_apps entry.
-                const pageIdToSubscribe = (input as any).pageId || (input as any).page_id || assetId;
+                const pageIdToSubscribe = input.pageId || (input as any).page_id || assetId;
 
                 const webhookResult = await metaApi.subscribePageWebhooks(pageIdToSubscribe, finalAccessToken);
                 webhookStatus = webhookResult.success ? "active" : "failed";
@@ -193,7 +195,7 @@ export async function activateMetaChannel(input: ActivateInput): Promise<{ succe
                 waba_id: wabaId,
                 display_phone_number: displayPhoneNumber,
                 webhook_status: webhookStatus,
-                page_id: (input as any).pageId || (input as any).page_id
+                page_id: input.pageId || (input as any).page_id
             },
             config: {
                 asset_type: assetType

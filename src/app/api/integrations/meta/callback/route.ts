@@ -322,7 +322,8 @@ export async function GET(request: Request) {
                         accessToken: longLivedToken,
                         pageAccessToken: asset.access_token,
                         displayPhoneNumber: asset.display_phone_number,
-                        wabaId: asset.waba_id
+                        wabaId: asset.waba_id,
+                        pageId: asset.page_id
                     });
 
                     if (result.success) successCount++;

@@ -35,6 +35,7 @@ interface MetaAsset {
     waba_id?: string
     has_ig?: boolean
     access_token?: string
+    page_id?: string
 }
 
 export function IntegrationSetupSheet({
@@ -116,7 +117,8 @@ export function IntegrationSetupSheet({
                     assetType: asset.type,
                     assetName: asset.name,
                     accessToken: existingConnection.credentials?.access_token,
-                    wabaId: asset.waba_id
+                    wabaId: asset.waba_id,
+                    pageId: asset.page_id
                 })
 
                 if (result.success) {
