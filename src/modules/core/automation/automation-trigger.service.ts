@@ -278,15 +278,16 @@ export class AutomationTriggerService {
             }
 
 
-            // 2026 Fix: CHANNEL CHECK (SUPPORT LEGACY & MULTI-SELECT)
+            // --- CHANNEL FILTERING LOGIC (2026 REFINEMENT) ---
+            // This ensures that the automation only triggers for the intended messaging channels.
+            // It supports both legacy single-channel config ('channel') and new multi-channel ('channels').
             if (match) {
                 const configChannels = config.channels as string[] | undefined;
                 const configChannel = config.channel as string | undefined;
-
-                // Determine effective channels (multi-select array or legacy string fallback)
-                const effectiveChannels = (configChannels && configChannels.length > 0)
+                
+                const effectiveChannels = (configChannels !== undefined && configChannels !== null)
                     ? configChannels
-                    : (configChannel ? [configChannel] : []);
+                    : (configChannel ? [configChannel] : ['all']);
 
                 if (effectiveChannels.length > 0) {
                     const allowedSet = new Set(effectiveChannels.map(c => String(c).trim().toLowerCase()));
@@ -295,8 +296,6 @@ export class AutomationTriggerService {
                         const currentId = String(finalConnectionId).trim().toLowerCase();
                         
                         // Check for exact match or Meta composite ID match (connectionId:assetId)
-                        // This ensures that if the UI selected 'connection_uuid:asset_id', 
-                        // an incoming message from 'connection_uuid' still matches.
                         const isChannelAllowed = Array.from(allowedSet).some(selectedId => 
                             selectedId === currentId || selectedId.startsWith(`${currentId}:`)
                         );
@@ -307,6 +306,11 @@ export class AutomationTriggerService {
                             fileLogger.log(`[AutomationTrigger]   ❌ SKIPPED Workflow: ${wf.id}. Reason: ${skipReason}`);
                         }
                     }
+                } else {
+                    // Fix: If channels are explicitly empty, it should NOT match anything
+                    match = false;
+                    skipReason = `Empty channel selection (deselected).`;
+                    fileLogger.log(`[AutomationTrigger]   ❌ SKIPPED Workflow: ${wf.id}. Reason: ${skipReason}`);
                 }
             }
 

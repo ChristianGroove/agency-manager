@@ -138,7 +138,12 @@ export function WorkflowCard({
                                         size="sm"
                                         className="h-5 px-1.5 -ml-1.5 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all text-[10px] font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400"
                                     >
-                                        {isMulti ? (
+                                        {Array.isArray(effectiveValue) && effectiveValue.length === 0 ? (
+                                            <>
+                                                <Globe className="h-3 w-3 mr-1 text-slate-400" />
+                                                Sin canales (Muteado)
+                                            </>
+                                        ) : isMulti ? (
                                             <>
                                                 <div className="flex -space-x-1 mr-1">
                                                     <div className="w-3 h-3 rounded-full bg-slate-200 border border-white dark:border-slate-900"></div>
@@ -161,7 +166,7 @@ export function WorkflowCard({
                                                 ) : (
                                                     <>
                                                         <Globe className="h-3 w-3 mr-1" />
-                                                        Todos los canales
+                                                        {effectiveValue === 'all' || !effectiveValue ? 'Todos los canales' : 'Canal Desconocido'}
                                                     </>
                                                 )
                                             )

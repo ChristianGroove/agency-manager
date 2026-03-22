@@ -117,7 +117,7 @@ export class ChannelResolver {
                 .select('id, organization_id, provider_key, credentials, metadata, default_pipeline_stage_id, working_hours, auto_reply_when_offline, welcome_message')
                 .eq('provider_key', 'instagram_dm')
                 .in('status', ['active', 'connected'])
-                .eq('metadata->>asset_id', igId)
+                .or(`metadata->>asset_id.eq.${igId},metadata->>page_id.eq.${igId},metadata->>pageId.eq.${igId}`)
                 .maybeSingle()
 
             if (direct) return { connectionId: direct.id, organizationId: direct.organization_id, connection: direct }
@@ -134,7 +134,10 @@ export class ChannelResolver {
                     const selectedAssets = c.metadata?.selected_assets || []
                     const assetsPreview = c.metadata?.assets_preview || []
                     const assetId = c.metadata?.asset_id || c.metadata?.page_id || c.metadata?.pageId
+                    const connectionPageId = c.metadata?.page_id || c.metadata?.pageId
+                    
                     return assetId === igId ||
+                           connectionPageId === igId || // Match by Linked Page ID
                            selectedAssets.some((a: any) => a.id === igId) ||
                            assetsPreview.some((a: any) => a.id === igId && a.type === 'instagram')
                 })
