@@ -139,7 +139,8 @@ export class ChannelResolver {
                     return assetId === igId ||
                            connectionPageId === igId || // Match by Linked Page ID
                            selectedAssets.some((a: any) => a.id === igId) ||
-                           assetsPreview.some((a: any) => a.id === igId && a.type === 'instagram')
+                           assetsPreview.some((a: any) => a.id === igId && a.type === 'instagram') ||
+                           c.provider_key === 'instagram_dme' // Support for DME provider variants
                 })
                 if (matched) return { connectionId: matched.id, organizationId: matched.organization_id, connection: matched }
             }

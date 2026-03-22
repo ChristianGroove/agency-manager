@@ -46,9 +46,14 @@ export function WorkflowCard({
     if (!workflow) return null;
 
     // Determine channel ID (support legacy structure)
-    // Priority: trigger_config.channels (Array) > trigger_config.channel (Legacy) > workflow.channel_id (DB)
     const config = workflow.trigger_config || {};
-    const effectiveValue = config.channels || config.channel || workflow.channel_id || 'all';
+    const configChannels = config.channels;
+    const configChannel = config.channel;
+
+    // Correct multi-channel priority: use channels array if it exists (even if empty)
+    const effectiveValue = Array.isArray(configChannels) 
+        ? configChannels 
+        : (configChannel || workflow.channel_id || 'all');
 
     // Helper for display
     const isMulti = Array.isArray(effectiveValue) && effectiveValue.length > 1;

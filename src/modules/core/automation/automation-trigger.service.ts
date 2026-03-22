@@ -284,14 +284,20 @@ export class AutomationTriggerService {
             if (match) {
                 const configChannels = config.channels as string[] | undefined;
                 const configChannel = config.channel as string | undefined;
-                
-                const effectiveChannels = (configChannels !== undefined && configChannels !== null)
-                    ? configChannels
-                    : (configChannel ? [configChannel] : ['all']);
+
+                // Priority: empty array [] means MUTE > non-empty array [IDs] > legacy channel string > fallback all
+                let effectiveChannels: string[] = [];
+                if (Array.isArray(configChannels)) {
+                    effectiveChannels = configChannels;
+                } else if (configChannel) {
+                    effectiveChannels = [configChannel];
+                } else {
+                    effectiveChannels = ['all'];
+                }
 
                 if (effectiveChannels.length > 0) {
                     const allowedSet = new Set(effectiveChannels.map(c => String(c).trim().toLowerCase()));
-
+                    
                     if (!allowedSet.has('all')) {
                         const currentId = String(finalConnectionId).trim().toLowerCase();
                         
@@ -302,14 +308,14 @@ export class AutomationTriggerService {
 
                         if (!isChannelAllowed) {
                             match = false;
-                            skipReason = `Channel mismatch. Incoming: ${currentId}. Allowed triggers: [${Array.from(allowedSet).join(', ')}]`;
+                            skipReason = `Channel ID ${currentId} is not in the allowed list: [${Array.from(allowedSet).join(', ')}]`;
                             fileLogger.log(`[AutomationTrigger]   ❌ SKIPPED Workflow: ${wf.id}. Reason: ${skipReason}`);
                         }
                     }
                 } else {
-                    // Fix: If channels are explicitly empty, it should NOT match anything
+                    // Explicitly empty array means MUTE
                     match = false;
-                    skipReason = `Empty channel selection (deselected).`;
+                    skipReason = `Workflow ${wf.name} is muted (no channels selected).`;
                     fileLogger.log(`[AutomationTrigger]   ❌ SKIPPED Workflow: ${wf.id}. Reason: ${skipReason}`);
                 }
             }

@@ -521,10 +521,10 @@ export async function updateWorkflowChannel(id: string, channelId: string | stri
             : {};
 
         // Determine array vs string
-        const channels = Array.isArray(channelId) ? channelId : (channelId ? [channelId] : []);
-        // Legacy fallback: Use 'all' if empty, or the first element if exists.
-        // If string 'all' is passed, it remains 'all'.
-        const legacyChannel = channels.length > 0 ? channels[0] : 'all';
+        const isGlobalAll = channelId === null || channelId === 'all';
+        const channels = Array.isArray(channelId) ? channelId : (channelId && channelId !== 'all' ? [channelId] : []);
+        // Only use 'all' if explicitly global, otherwise use the first channel or null for mute.
+        const legacyChannel = isGlobalAll ? 'all' : (channels.length > 0 ? channels[0] : null);
 
         // 2. Update Trigger Node in Definition
         if (definition && definition.nodes) {
