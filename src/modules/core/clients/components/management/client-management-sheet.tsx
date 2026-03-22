@@ -47,9 +47,10 @@ interface ClientManagementSheetProps {
     initialData?: Client
     initialTab?: string
     spaceType?: string
+    onSuccess?: () => void
 }
 
-export function ClientManagementSheet({ clientId, open, onOpenChange, initialData, initialTab = "overview", spaceType = "agency" }: ClientManagementSheetProps) {
+export function ClientManagementSheet({ clientId, open, onOpenChange, initialData, initialTab = "overview", spaceType = "agency", onSuccess }: ClientManagementSheetProps) {
     const { t } = useTranslation()
     const { config, t: tVertical } = useSpacePolicies(spaceType)
     const fileInputRef = useRef<HTMLInputElement>(null)
@@ -204,6 +205,7 @@ export function ClientManagementSheet({ clientId, open, onOpenChange, initialDat
             if (result.success) {
                 toast.success("Servicio eliminado")
                 fetchClientData()
+                if (onSuccess) onSuccess()
             } else {
                 throw new Error("Error al eliminar")
             }
@@ -222,6 +224,7 @@ export function ClientManagementSheet({ clientId, open, onOpenChange, initialDat
             if (error) throw error
             toast.success("Factura marcada como pagada")
             fetchClientData()
+            if (onSuccess) onSuccess()
         } catch (error) {
             toast.error("Error al actualizar factura")
         }
@@ -261,6 +264,7 @@ export function ClientManagementSheet({ clientId, open, onOpenChange, initialDat
                 // Auto-update in DB for Logo
                 await supabase.from('clients').update({ logo_url: publicUrl }).eq('id', client.id)
                 fetchClientData()
+                if (onSuccess) onSuccess()
                 toast.success("Logo actualizado")
             } catch (error) {
                 toast.error("Error al subir imagen")
@@ -298,6 +302,7 @@ export function ClientManagementSheet({ clientId, open, onOpenChange, initialDat
             if (error) throw error
             toast.success("Perfil actualizado correctamente")
             fetchClientData()
+            if (onSuccess) onSuccess()
         } catch (error) {
             toast.error("Error al actualizar perfil")
         } finally {
@@ -700,7 +705,7 @@ export function ClientManagementSheet({ clientId, open, onOpenChange, initialDat
                                     open={isServiceSheetOpen}
                                     onOpenChange={setIsServiceSheetOpen}
                                     serviceToEdit={serviceToEdit}
-                                    onSuccess={fetchClientData}
+                                    onSuccess={() => { fetchClientData(); if (onSuccess) onSuccess(); }}
                                     trigger={<span className="hidden" />}
                                 />
                             )}
@@ -710,7 +715,7 @@ export function ClientManagementSheet({ clientId, open, onOpenChange, initialDat
                                     clientName={client!.name}
                                     open={isInvoiceSheetOpen}
                                     onOpenChange={setIsInvoiceSheetOpen}
-                                    onSuccess={fetchClientData}
+                                    onSuccess={() => { fetchClientData(); if (onSuccess) onSuccess(); }}
                                     trigger={<span className="hidden" />}
                                 />
                             )}
@@ -720,7 +725,7 @@ export function ClientManagementSheet({ clientId, open, onOpenChange, initialDat
                                     open={isHostingSheetOpen}
                                     onOpenChange={setIsHostingSheetOpen}
                                     accountToEdit={hostingToEdit}
-                                    onSuccess={fetchClientData}
+                                    onSuccess={() => { fetchClientData(); if (onSuccess) onSuccess(); }}
                                 />
                             )}
                             <ServiceDetailModal

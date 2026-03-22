@@ -95,16 +95,47 @@ function ClientsContent({ initialData, totalCount, currentPage, spaceType, initi
         const getNextPaymentHelper = (client: any) => {
             const dates: { date: Date, source: string }[] = []
             client.hosting_accounts?.forEach((h: any) => {
-                if (h.status === 'active' && h.renewal_date) dates.push({ date: new Date(h.renewal_date), source: 'Hosting' })
+                if (h.status === 'active' && h.renewal_date && !h.deleted_at) {
+                    dates.push({ date: new Date(h.renewal_date), source: 'Hosting' })
+                }
             })
             client.subscriptions?.forEach((s: any) => {
-                if (s.status === 'active' && s.next_billing_date) {
+                if (s.status === 'active' && s.next_billing_date && !s.deleted_at) {
                     dates.push({ date: new Date(s.next_billing_date), source: s.name })
                 }
             })
             if (dates.length === 0) return null
-            dates.sort((a, b) => a.date.getTime() - b.date.getTime())
-            return dates[0]
+
+            const now = new Date()
+            now.setHours(0, 0, 0, 0)
+            
+            const futureDates = dates.filter(d => {
+                const dDate = new Date(d.date)
+                dDate.setHours(0, 0, 0, 0)
+                return dDate.getTime() >= now.getTime()
+            })
+            const pastDates = dates.filter(d => {
+                const dDate = new Date(d.date)
+                dDate.setHours(0, 0, 0, 0)
+                return dDate.getTime() < now.getTime()
+            })
+
+            // Sort dates
+            futureDates.sort((a, b) => a.date.getTime() - b.date.getTime())
+            pastDates.sort((a, b) => a.date.getTime() - b.date.getTime())
+
+            // If there's debt, we want to see the OLDEST past date that's likely causing the debt
+            if (client.debt > 0 && pastDates.length > 0) {
+                return pastDates[0] // Already sorted earliest to latest
+            }
+
+            // If no debt, show the EARLIEST future date if exists
+            if (futureDates.length > 0) {
+                return futureDates[0]
+            }
+
+            // Fallback to the LATEST past date (most recent cycle) if everyone is paid and no future scheduled
+            return [...pastDates].sort((a, b) => b.date.getTime() - a.date.getTime())[0]
         }
 
         const getDaysDiffHelper = (targetDate: Date) => {

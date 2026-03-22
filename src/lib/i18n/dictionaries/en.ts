@@ -445,6 +445,7 @@ export const en = {
             next_badge: "Next Payment",
             days_ago: "{days}d ago",
             days_left: "{days}d",
+            up_to_date: "Up to date",
             source: "Source"
         },
         table: {

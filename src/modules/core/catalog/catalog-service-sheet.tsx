@@ -42,7 +42,7 @@ export function CatalogServiceSheet({
     spaceType = 'agency'
 }: CatalogServiceSheetProps) {
     const { t } = useTranslation()
-    const isAgency = spaceType === 'agency' || spaceType === 'cleaning'
+    const isAgency = spaceType === 'agency' || spaceType === 'cleaning' || spaceType === 'platform' || spaceType === 'saas'
     const [loading, setLoading] = useState(false)
     const [categories, setCategories] = useState<ServiceCategory[]>([])
     const [formTemplates, setFormTemplates] = useState<FormTemplate[]>([])

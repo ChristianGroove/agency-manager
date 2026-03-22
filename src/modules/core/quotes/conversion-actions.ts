@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache"
 import { logDomainEvent } from "@/lib/event-logger"
 import { createInvoice } from "@/modules/core/billing/invoices-actions"
 import { Quote, QuoteItem, InvoiceItem } from "@/types"
+import * as BillingUtils from "@/lib/billing-utils"
 
 export async function convertQuote(quoteId: string) {
     const supabase = await supabaseServer()
@@ -97,7 +98,7 @@ export async function convertQuote(quoteId: string) {
                     amount: servicePrice,
                     start_date: new Date().toISOString(),
                     billing_cycle_start_date: new Date().toISOString(),
-                    next_billing_date: calculateEndDate(new Date(), frequency),
+                    next_billing_date: BillingUtils.calculateFrequencyNextDate(new Date(), frequency).toISOString(),
                     briefing_template_id: briefingTemplateId,
                     is_catalog_item: false,
                     is_visible_in_portal: true,
@@ -115,14 +116,14 @@ export async function convertQuote(quoteId: string) {
 
             // Create First Billing Cycle
             const cycleStart = new Date()
-            const cycleEnd = calculateEndDate(cycleStart, frequency)
+            const cycleEnd = BillingUtils.calculateFrequencyNextDate(cycleStart, frequency)
 
             const { data: cycle, error: cycleError } = await supabase
                 .from('billing_cycles')
                 .insert({
                     service_id: service.id,
                     start_date: cycleStart.toISOString(),
-                    end_date: cycleEnd,
+                    end_date: cycleEnd.toISOString(),
                     status: 'pending', // Will be invoiced below
                     amount: servicePrice
                 })
@@ -236,13 +237,3 @@ export async function convertQuote(quoteId: string) {
     }
 }
 
-function calculateEndDate(date: Date, frequency: string): string {
-    const d = new Date(date)
-    if (frequency === 'monthly') d.setMonth(d.getMonth() + 1)
-    else if (frequency === 'biweekly') d.setDate(d.getDate() + 15)
-    else if (frequency === 'quarterly') d.setMonth(d.getMonth() + 3)
-    else if (frequency === 'semiannual') d.setMonth(d.getMonth() + 6)
-    else if (frequency === 'yearly') d.setFullYear(d.getFullYear() + 1)
-    else d.setMonth(d.getMonth() + 1) // Default
-    return d.toISOString()
-}

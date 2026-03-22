@@ -445,6 +445,7 @@ export const es = {
             next_badge: "Próximo Pago",
             days_ago: "Hace {days}d",
             days_left: "{days}d",
+            up_to_date: "Al día",
             source: "Fuente"
         },
         table: {

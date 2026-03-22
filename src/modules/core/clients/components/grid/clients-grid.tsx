@@ -74,7 +74,7 @@ export function ClientsGrid({
                 const { debt, futureDebt, nextPayment, daysToPay, activeServicesCount } = client
                 const isAgency = config.management.actions.showBilling
                 const isOverdue = isAgency && daysToPay !== null && daysToPay < 0 && debt > 0
-                const isUrgent = isAgency && daysToPay !== null && ((daysToPay <= 5 && daysToPay >= 0) || (daysToPay < 0 && debt === 0))
+                const isUrgent = isAgency && daysToPay !== null && ((daysToPay <= 5 && daysToPay >= 0) || (daysToPay < 0 && futureDebt > 0))
 
                 return (
                     <div key={client.id || `client-${index}`} className="group relative">
@@ -150,7 +150,7 @@ export function ClientsGrid({
                                                     "text-xl font-black",
                                                     debt > 0 ? "text-red-700" : "text-amber-700"
                                                 )}>
-                                                    ${(debt || futureDebt).toLocaleString()}
+                                                    ${(debt + futureDebt).toLocaleString()}
                                                 </span>
                                             )}
                                         </div>
@@ -161,7 +161,7 @@ export function ClientsGrid({
                                                 "p-3 rounded-lg border transition-all h-[74px] flex flex-col justify-center",
                                                 isOverdue
                                                     ? "bg-red-50 border-red-100"
-                                                    : isUrgent
+                                                    : (isUrgent || futureDebt > 0)
                                                         ? "bg-amber-50 dark:bg-amber-500/10 border-amber-100 dark:border-amber-500/20"
                                                         : "bg-gray-50 dark:bg-white/5 border-gray-100 dark:border-white/10"
                                             )}>
@@ -177,7 +177,7 @@ export function ClientsGrid({
                                                         )}>
                                                             {isOverdue
                                                                 ? t('clients.next_payment.overdue_badge')
-                                                                : (daysToPay !== null && daysToPay < 0)
+                                                                : (daysToPay !== null && daysToPay < 0 && (debt > 0 || futureDebt > 0))
                                                                     ? t('clients.next_payment.pending_badge')
                                                                     : t('clients.next_payment.next_badge')
                                                             }
@@ -192,8 +192,10 @@ export function ClientsGrid({
                                                                 : "bg-gray-200 text-gray-700 hover:bg-gray-300"
                                                     )}>
                                                         {daysToPay !== null && daysToPay < 0
-                                                            ? t('clients.next_payment.days_ago').replace('{days}', Math.abs(daysToPay!).toString())
-                                                            : t('clients.next_payment.days_left').replace('{days}', daysToPay?.toString() || '')}
+                                                            ? (debt > 0 || futureDebt > 0)
+                                                                ? t('clients.next_payment.days_ago', { days: Math.abs(daysToPay!) })
+                                                                : t('clients.next_payment.up_to_date')
+                                                            : t('clients.next_payment.days_left', { days: daysToPay })}
                                                     </Badge>
                                                 </div>
                                                 <p className={cn(

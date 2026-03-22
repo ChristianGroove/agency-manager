@@ -55,18 +55,18 @@ async function repairOrphanedCycles(): Promise<number> {
         if (lastCycle) {
             cycleStart = new Date(lastCycle.end_date)
         } else {
-            cycleStart = new Date(cycleEnd)
-            switch (svc.frequency) {
-                case 'biweekly': cycleStart.setDate(cycleStart.getDate() - 14); break
-                case 'quarterly': cycleStart.setMonth(cycleStart.getMonth() - 3); break
-                case 'semiannual': cycleStart.setMonth(cycleStart.getMonth() - 6); break
-                case 'yearly': cycleStart.setFullYear(cycleStart.getFullYear() - 1); break
-                default: cycleStart.setMonth(cycleStart.getMonth() - 1)
-            }
+            cycleStart = BillingUtils.calculateFrequencyPreviousDate(cycleEnd, svc.frequency)
         }
 
+        const { data: settings } = await supabase
+            .from('organization_settings')
+            .select('default_due_days')
+            .eq('organization_id', svc.organization_id)
+            .maybeSingle()
+
+        const dueDays = parseInt(settings?.default_due_days) || 30
         const dueDate = new Date(cycleEnd)
-        dueDate.setDate(dueDate.getDate() + 5)
+        dueDate.setDate(dueDate.getDate() + dueDays)
 
         const { error: insertError } = await supabase
             .from('billing_cycles')
@@ -165,9 +165,18 @@ export async function checkAndGenerateCycles() {
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
             const isLateIssued = diffDays > 4
 
-            // Due date: issue date + 30 days (per prompt requirement)
+            // Fetch settings for this organization to get default_due_days
+            const { data: settings } = await supabase
+                .from('organization_settings')
+                .select('default_due_days')
+                .eq('organization_id', service.organization_id)
+                .maybeSingle()
+            
+            const dueDays = parseInt(settings?.default_due_days) || 30
+
+            // Due date: issue date + default_due_days
             const dueDate = new Date(issueDate)
-            dueDate.setDate(dueDate.getDate() + 30)
+            dueDate.setDate(dueDate.getDate() + dueDays)
 
             // Invoice Metadata
             const invoiceMetadata = {
@@ -243,14 +252,20 @@ export async function checkAndGenerateCycles() {
                 triggered_by: 'system'
             })
 
-            // C. Create NEXT Billing Cycle (if recurring)
             if (service.type === 'recurring' && service.frequency) {
                 const nextStart = new Date(cycle.end_date)
-                const nextEnd = calculateNextEndDate(nextStart, service.frequency)
+                const nextEnd = BillingUtils.calculateFrequencyNextDate(nextStart, service.frequency)
 
-                // Keep next_due logic consistent or update? Keeping as is for now.
+                // Keep next_due logic consistent with organization settings
+                const { data: settings } = await supabase
+                    .from('organization_settings')
+                    .select('default_due_days')
+                    .eq('organization_id', service.organization_id)
+                    .maybeSingle()
+                
+                const dueDays = parseInt(settings?.default_due_days) || 30
                 const nextDue = new Date(nextEnd)
-                nextDue.setDate(nextDue.getDate() + 5)
+                nextDue.setDate(nextDue.getDate() + dueDays)
 
                 const { data: nextCycleData, error: nextCycleError } = await supabase.from('billing_cycles').insert({
                     service_id: service.id,
@@ -296,20 +311,6 @@ export async function checkAndGenerateCycles() {
     }
 }
 
-function calculateNextEndDate(startDate: Date, frequency: string): Date {
-    const end = new Date(startDate)
-    switch (frequency) {
-        case 'biweekly': end.setDate(end.getDate() + 14); break; // Or use strict months? User prompts suggests precise dates.
-        case 'quarterly': end.setMonth(end.getMonth() + 3); break;
-        case 'semiannual': end.setMonth(end.getMonth() + 6); break;
-        case 'yearly': end.setFullYear(end.getFullYear() + 1); break;
-        case 'monthly':
-        default:
-            end.setMonth(end.getMonth() + 1);
-            break;
-    }
-    return end
-}
 
 function formatDate(dateStr: string) {
     if (!dateStr) return ''

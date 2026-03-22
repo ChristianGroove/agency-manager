@@ -196,8 +196,8 @@ export async function createInvoice(data: Partial<Invoice> & { items: InvoiceIte
     }
 
     if (cycle_id && newInvoice) {
-        // CRITICAL: Mark cycle as invoiced to prevent automation from duplicating it
-        await supabase
+        // Fetch current cycle to get end_date and service info
+        const { data: currentCycle } = await supabase
             .from('billing_cycles')
             .update({
                 status: 'invoiced',
@@ -205,6 +205,48 @@ export async function createInvoice(data: Partial<Invoice> & { items: InvoiceIte
                 updated_at: new Date().toISOString()
             })
             .eq('id', cycle_id)
+            .select('end_date, service_id')
+            .single()
+
+        // Continuity: If service is recurring, create the NEXT pending cycle
+        if (currentCycle) {
+            const { data: service } = await supabase
+                .from('services')
+                .select('id, type, frequency, amount')
+                .eq('id', currentCycle.service_id)
+                .single()
+
+            if (service && service.type === 'recurring' && service.frequency) {
+                // Check if a next cycle already exists to avoid duplicates
+                const { data: existingNext } = await supabase
+                    .from('billing_cycles')
+                    .select('id')
+                    .eq('service_id', service.id)
+                    .eq('status', 'pending')
+                    .maybeSingle()
+
+                if (!existingNext) {
+                    const { calculateFrequencyNextDate } = await import('@/lib/billing-utils')
+                    const nextStart = new Date(currentCycle.end_date)
+                    const nextEnd = calculateFrequencyNextDate(nextStart, service.frequency)
+
+                    // Create next cycle
+                    await supabase.from('billing_cycles').insert({
+                        service_id: service.id,
+                        start_date: nextStart.toISOString(),
+                        end_date: nextEnd.toISOString(),
+                        due_date: nextEnd.toISOString(), // Simplified, will be updated by automation if needed
+                        amount: service.amount,
+                        status: 'pending'
+                    })
+
+                    // Update service next_billing_date
+                    await supabase.from('services').update({
+                        next_billing_date: nextEnd.toISOString()
+                    }).eq('id', service.id)
+                }
+            }
+        }
     }
 
     revalidatePath('/invoices')

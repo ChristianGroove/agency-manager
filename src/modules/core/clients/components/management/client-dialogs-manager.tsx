@@ -65,6 +65,7 @@ export function ClientDialogsManager({
                 initialData={selectedClientForManagement}
                 initialTab={managementInitialTab}
                 spaceType={spaceType}
+                onSuccess={onSuccess}
             />
 
             <ConnectivitySheet

@@ -48,3 +48,68 @@ export const isEmittersModuleEnabled = (): boolean => {
     // Required to be true for now
     return true;
 }
+
+/**
+ * Calculates the next billing date based on a start date and frequency.
+ * Consistent with "Quincenal" = 15 days.
+ */
+export const calculateFrequencyNextDate = (startDate: Date | string, frequency: string): Date => {
+    const date = new Date(startDate);
+    const next = new Date(date);
+    
+    switch (frequency) {
+        case 'biweekly':
+            next.setDate(next.getDate() + 15);
+            break;
+        case 'quarterly':
+            next.setMonth(next.getMonth() + 3);
+            break;
+        case 'semiannual':
+            next.setMonth(next.getMonth() + 6);
+            break;
+        case 'yearly':
+            next.setFullYear(next.getFullYear() + 1);
+            break;
+        case 'one_off':
+        case 'one-time':
+            next.setDate(next.getDate() + 30); // Default due date
+            break;
+        case 'monthly':
+        default:
+            next.setMonth(next.getMonth() + 1);
+            break;
+    }
+    return next;
+}
+
+/**
+ * Calculates the previous billing date (start of cycle) based on an end date and frequency.
+ */
+export const calculateFrequencyPreviousDate = (endDate: Date | string, frequency: string): Date => {
+    const date = new Date(endDate);
+    const prev = new Date(date);
+
+    switch (frequency) {
+        case 'biweekly':
+            prev.setDate(prev.getDate() - 15);
+            break;
+        case 'quarterly':
+            prev.setMonth(prev.getMonth() - 3);
+            break;
+        case 'semiannual':
+            prev.setMonth(prev.getMonth() - 6);
+            break;
+        case 'yearly':
+            prev.setFullYear(prev.getFullYear() - 1);
+            break;
+        case 'one-time':
+        case 'one_off':
+            prev.setDate(prev.getDate() - 30);
+            break;
+        case 'monthly':
+        default:
+            prev.setMonth(prev.getMonth() - 1);
+            break;
+    }
+    return prev;
+}

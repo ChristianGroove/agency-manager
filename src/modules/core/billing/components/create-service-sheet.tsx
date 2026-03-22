@@ -42,6 +42,7 @@ import { ServiceCatalogSelector } from "@/modules/core/catalog/components/servic
 import { logDomainEventAction } from "@/modules/core/logging/actions"
 import { ServiceRetroactiveModal } from "./service-retroactive-modal"
 import { useTranslation } from "@/lib/i18n/use-translation"
+import * as BillingUtils from "@/lib/billing-utils"
 
 interface CreateServiceSheetProps {
     clientId?: string
@@ -252,11 +253,7 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
             }
 
             // Calc Cycle End
-            let cycleEnd = new Date(billingStart)
-            if (formData.frequency === 'biweekly') cycleEnd.setDate(cycleEnd.getDate() + 14)
-            else if (formData.frequency === 'quarterly') cycleEnd.setMonth(cycleEnd.getMonth() + 3)
-            else if (formData.frequency === 'yearly') cycleEnd.setFullYear(cycleEnd.getFullYear() + 1)
-            else cycleEnd.setMonth(cycleEnd.getMonth() + 1)
+            let cycleEnd = BillingUtils.calculateFrequencyNextDate(billingStart, formData.frequency)
 
             const servicePayload = {
                 organization_id: orgId, // CRITICAL FIX
@@ -487,6 +484,7 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
                                                         <SelectTrigger><SelectValue /></SelectTrigger>
                                                         <SelectContent>
                                                             <SelectItem value="monthly">{t('quotes.builder.frequency.monthly')}</SelectItem>
+                                                            <SelectItem value="biweekly">{t('quotes.builder.frequency.biweekly')}</SelectItem>
                                                             <SelectItem value="quarterly">{t('quotes.builder.frequency.quarterly')}</SelectItem>
                                                             <SelectItem value="semiannual">{t('quotes.builder.frequency.semiannual')}</SelectItem>
                                                             <SelectItem value="yearly">{t('quotes.builder.frequency.yearly')}</SelectItem>

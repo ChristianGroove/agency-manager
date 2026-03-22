@@ -1,6 +1,7 @@
 
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import * as BillingUtils from '@/lib/billing-utils';
 
 // SCR (Server-Side Cron) Implementation
 // This route is designed to be called by a trusted external scheduler (like Vercel Cron, GitHub Actions, or a simple curl loop)
@@ -204,15 +205,12 @@ async function generateInvoiceSystem(subscription: any, client: any) {
     const invoiceNumber = `INV-${timestamp}-${randomSuffix}`; // Ideally fetch prefix from settings
 
     const currentBillingDate = new Date(subscription.next_billing_date);
-    let nextBillingDate: Date | null = new Date(currentBillingDate);
+    let nextBillingDate: Date | null = BillingUtils.calculateFrequencyNextDate(currentBillingDate, subscription.frequency);
     let dueDate = new Date(currentBillingDate);
 
-    switch (subscription.frequency) {
-        case 'biweekly': nextBillingDate.setDate(nextBillingDate.getDate() + 15); break;
-        case 'monthly': nextBillingDate.setMonth(nextBillingDate.getMonth() + 1); break;
-        case 'quarterly': nextBillingDate.setMonth(nextBillingDate.getMonth() + 3); break;
-        case 'yearly': nextBillingDate.setFullYear(nextBillingDate.getFullYear() + 1); break;
-        case 'one-time': nextBillingDate = null; dueDate.setDate(dueDate.getDate() + 30); break;
+    if (subscription.frequency === 'one-time' || subscription.frequency === 'one_off') {
+        nextBillingDate = null;
+        dueDate.setDate(dueDate.getDate() + 30);
     }
 
     // 2.5 Find Emitter
@@ -295,16 +293,7 @@ async function generateInvoiceSystem(subscription: any, client: any) {
         if (service) {
             // Calculate Cycle Dates (Arrears/Current assumption)
             const cycleEnd = new Date(currentBillingDate);
-            const cycleStart = new Date(cycleEnd);
-
-            switch (subscription.frequency) {
-                case 'biweekly': cycleStart.setDate(cycleStart.getDate() - 15); break;
-                case 'monthly': cycleStart.setMonth(cycleStart.getMonth() - 1); break;
-                case 'quarterly': cycleStart.setMonth(cycleStart.getMonth() - 3); break;
-                case 'yearly': cycleStart.setFullYear(cycleStart.getFullYear() - 1); break;
-                case 'one-time': cycleStart.setDate(cycleStart.getDate() - 30); break;
-                default: cycleStart.setMonth(cycleStart.getMonth() - 1);
-            }
+            const cycleStart = BillingUtils.calculateFrequencyPreviousDate(cycleEnd, subscription.frequency);
 
             const { data: cycle, error: cycleErr } = await supabaseAdmin
                 .from('billing_cycles')
