@@ -64,18 +64,18 @@ export function QuickInvoicesModal({
                             .filter(inv => !inv.deleted_at && (inv.status === 'pending' || inv.status === 'overdue'))
                             .sort((a, b) => new Date(b.due_date || '').getTime() - new Date(a.due_date || '').getTime())
                             .map(invoice => (
-                                <div key={invoice.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                <div key={invoice.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-100 dark:border-white/10 transition-colors">
                                     <div>
                                         <div className="flex items-center gap-2">
-                                            <span className="font-medium text-gray-900">${invoice.total.toLocaleString()}</span>
+                                            <span className="font-medium text-gray-900 dark:text-white">${invoice.total.toLocaleString()}</span>
                                             <Badge variant={invoice.status === 'paid' ? 'default' : invoice.status === 'overdue' ? 'destructive' : 'secondary'} className="text-[10px] h-5">
                                                 {invoice.status === 'paid' ? 'Pagada' : invoice.status === 'overdue' ? 'Vencida' : 'Pendiente'}
                                             </Badge>
                                         </div>
-                                        <p className="text-xs text-gray-500 mt-1">
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                                             Vence: {invoice.due_date ? new Date(invoice.due_date).toLocaleDateString() : 'Sin fecha'}
                                             {invoice.billing_cycles && (
-                                                <span className="block text-[10px] text-indigo-500 mt-0.5 font-medium">
+                                                <span className="block text-[10px] text-primary mt-0.5 font-bold">
                                                     Periodo: {new Date(invoice.billing_cycles.start_date).toLocaleDateString()} - {new Date(invoice.billing_cycles.end_date).toLocaleDateString()}
                                                 </span>
                                             )}
@@ -86,7 +86,7 @@ export function QuickInvoicesModal({
                                         <Button
                                             size="sm"
                                             variant="outline"
-                                            className="h-8 text-xs border-green-200 text-green-700 hover:bg-green-50 hover:text-green-800"
+                                            className="h-8 text-xs border-emerald-200 dark:border-emerald-500/20 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 hover:text-emerald-800 transition-colors"
                                             onClick={() => handleMarkAsPaid(invoice.id)}
                                             disabled={isMarking === invoice.id}
                                         >
@@ -97,8 +97,8 @@ export function QuickInvoicesModal({
                                 </div>
                             ))
                     ) : (
-                        <div className="text-center py-8 text-gray-500">
-                            <FileText className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                        <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                            <FileText className="h-8 w-8 mx-auto mb-2 text-gray-300 dark:text-gray-700" />
                             <p>No hay facturas registradas</p>
                         </div>
                     )}

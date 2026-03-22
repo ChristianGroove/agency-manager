@@ -94,39 +94,43 @@ export function ClientsTable({
                                         <div className="flex items-center gap-3">
                                             <Avatar className="h-10 w-10">
                                                 <AvatarImage src={client.logo_url} />
-                                                <AvatarFallback>{client.name.substring(0, 2).toUpperCase()}</AvatarFallback>
+                                                <AvatarFallback className="bg-primary/10 text-primary font-bold">
+                                                    {client.name.substring(0, 2).toUpperCase()}
+                                                </AvatarFallback>
                                             </Avatar>
                                             <div>
-                                                <p className="font-medium">{client.name}</p>
-                                                <p className="text-xs text-gray-500">{client.company_name}</p>
+                                                <p className="font-medium dark:text-white">{client.name}</p>
+                                                <p className="text-xs text-gray-500 dark:text-gray-400">{client.company_name}</p>
                                             </div>
                                         </div>
                                     </TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex justify-end gap-1">
-                                            <Button variant="ghost" size="icon" onClick={() => onCommunication(client)} title="Comunicación" className="text-slate-400 hover:text-indigo-600 h-8 w-8">
+                                            <Button variant="ghost" size="icon" onClick={() => onCommunication(client)} title="Comunicación" className="text-slate-400 dark:text-gray-500 hover:text-primary dark:hover:text-primary hover:bg-primary/10 h-8 w-8 mb-0 transition-colors">
                                                 <Phone className="h-4 w-4" />
                                             </Button>
                                             {config.management.actions.showBilling && (
-                                                <Button variant="ghost" size="icon" onClick={() => onInvoices(client)} title="Facturación" className="text-slate-400 hover:text-emerald-600 h-8 w-8">
+                                                <Button variant="ghost" size="icon" onClick={() => onInvoices(client)} title="Facturación" className="text-slate-400 dark:text-gray-500 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 h-8 w-8 transition-colors">
                                                     <FileText className="h-4 w-4" />
                                                 </Button>
                                             )}
                                             {(spaceType === 'agency' || spaceType === 'platform') && (
-                                                <Button variant="ghost" size="icon" onClick={() => onGoToPortal(client)} title="Ir al Portal" className="text-slate-400 hover:text-blue-600 h-8 w-8">
+                                                <Button variant="ghost" size="icon" onClick={() => onGoToPortal(client)} title="Ir al Portal" className="text-slate-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 h-8 w-8 transition-colors">
                                                     <Globe className="h-4 w-4" />
                                                 </Button>
                                             )}
-                                            <Button variant="ghost" size="icon" onClick={() => onNotes?.(client)} title="Notas Rápidas" className="text-slate-400 hover:text-amber-600 h-8 w-8">
+                                            <Button variant="ghost" size="icon" onClick={() => onNotes?.(client)} title="Notas Rápidas" className="text-slate-400 dark:text-gray-500 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-500/10 h-8 w-8 transition-colors">
                                                 <StickyNote className="h-4 w-4" />
                                             </Button>
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
-                                                     <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-slate-400"><MoreVertical className="h-4 w-4" /></Button>
+                                                     <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-slate-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors">
+                                                        <MoreVertical className="h-4 w-4" />
+                                                     </Button>
                                                 </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end" className="w-56">
-                                                    <DropdownMenuLabel>{t('clients.actions.administration')}</DropdownMenuLabel>
-                                                    <DropdownMenuSeparator />
+                                                <DropdownMenuContent align="end" className="w-56 dark:bg-slate-900 dark:border-white/10">
+                                                    <DropdownMenuLabel className="dark:text-gray-400">{t('clients.actions.administration')}</DropdownMenuLabel>
+                                                    <DropdownMenuSeparator className="dark:bg-white/10" />
                                                     <DropdownMenuItem onClick={() => onManage(client)}>
                                                         <FileText className="mr-2 h-4 w-4" /> {t('clients.actions.manage')}
                                                     </DropdownMenuItem>
@@ -136,8 +140,8 @@ export function ClientsTable({
                                                     <DropdownMenuItem onClick={() => onPortal(client)}>
                                                         <Shield className="mr-2 h-4 w-4" /> {t('clients.actions.portal_governance')}
                                                     </DropdownMenuItem>
-                                                    <DropdownMenuSeparator />
-                                                    <DropdownMenuItem className="text-red-600" onClick={() => onDelete(client.id)}>
+                                                    <DropdownMenuSeparator className="dark:bg-white/10" />
+                                                    <DropdownMenuItem className="text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-500/10" onClick={() => onDelete(client.id)}>
                                                         <Trash2 className="mr-2 h-4 w-4" /> {t('clients.actions.delete')}
                                                     </DropdownMenuItem>
                                                 </DropdownMenuContent>

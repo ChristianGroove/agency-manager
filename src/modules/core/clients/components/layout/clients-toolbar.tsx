@@ -62,7 +62,7 @@ export function ClientsToolbar({
                     <Button
                         variant={activeCategory === 'all' ? 'default' : 'ghost'}
                         size="sm"
-                        className={`rounded-full h-8 px-4 text-xs font-medium transition-all shrink-0 ${activeCategory === 'all' ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm' : 'text-gray-500 hover:bg-gray-100'}`}
+                        className={`rounded-full h-8 px-4 text-xs font-semibold transition-all shrink-0 border-0 ${activeCategory === 'all' ? 'bg-primary hover:bg-primary/90 text-white shadow-md' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10'}`}
                         onClick={() => onCategoryChange?.('all')}
                     >
                         Todos
@@ -72,10 +72,10 @@ export function ClientsToolbar({
                             key={cat.id}
                             variant={activeCategory === cat.id ? 'default' : 'ghost'}
                             size="sm"
-                            className={`rounded-full h-8 px-4 text-xs font-medium transition-all flex items-center gap-2 whitespace-nowrap shrink-0 ${activeCategory === cat.id ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900 border border-transparent hover:border-gray-200'}`}
+                            className={`rounded-full h-8 px-4 text-xs font-semibold transition-all flex items-center gap-2 whitespace-nowrap shrink-0 border-0 ${activeCategory === cat.id ? 'bg-primary hover:bg-primary/90 text-white shadow-md' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white border border-transparent dark:border-white/5 hover:border-gray-200 dark:hover:border-white/20'}`}
                             onClick={() => onCategoryChange?.(cat.id)}
                         >
-                            <div className={`w-2 h-2 rounded-full bg-${cat.color}-500`} />
+                            <div className={`w-2 h-2 rounded-full`} style={{ backgroundColor: cat.color }} />
                             {cat.name}
                         </Button>
                     ))}

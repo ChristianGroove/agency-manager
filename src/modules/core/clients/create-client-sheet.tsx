@@ -154,7 +154,7 @@ export function CreateClientSheet({ onSuccess, open: controlledOpen, onOpenChang
                 </SheetTrigger>
             ) : (
                 <SheetTrigger asChild>
-                    <Button className="h-9 px-4 bg-brand-pink hover:bg-brand-pink/90 shadow-md text-white border-0 transition-all hover:scale-105 active:scale-95">
+                    <Button className="h-9 px-4 bg-primary hover:bg-primary/90 shadow-md text-white border-0 transition-all hover:scale-105 active:scale-95">
                         <Plus className="mr-2 h-4 w-4" />
                         Nuevo Contacto
                     </Button>
@@ -167,31 +167,31 @@ export function CreateClientSheet({ onSuccess, open: controlledOpen, onOpenChang
                     sm:max-w-[1000px] w-full p-0 gap-0 border-none shadow-2xl
                     mr-4 my-4 h-[calc(100vh-2rem)] rounded-3xl overflow-hidden
                     data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:mr-6
-                    bg-white/95 backdrop-blur-xl
+                    bg-white/95 dark:bg-slate-950/80 backdrop-blur-xl
                 "
             >
-                <div className="flex flex-col h-full bg-slate-50/50">
+                <div className="flex flex-col h-full bg-slate-50/50 dark:bg-transparent">
                     <SheetHeader className="sr-only">
                         <SheetTitle>Crear Contacto</SheetTitle>
                         <SheetDescription>Completa la información del nuevo contacto.</SheetDescription>
                     </SheetHeader>
 
                     {/* Header */}
-                    <div className="bg-white border-b border-gray-100 px-8 py-6 flex-none z-10">
-                        <h2 className="text-2xl font-black text-gray-900 tracking-tight">Crear Contacto</h2>
-                        <p className="text-sm text-muted-foreground mt-1">Completa los datos del nuevo contacto para tu base de datos.</p>
+                    <div className="bg-white dark:bg-white/5 backdrop-blur-md border-b border-gray-100 dark:border-white/10 px-8 py-6 flex-none z-10">
+                        <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">Crear Contacto</h2>
+                        <p className="text-sm text-muted-foreground dark:text-gray-400 mt-1">Completa los datos del nuevo contacto para tu base de datos.</p>
                     </div>
 
                     {/* Form Body */}
                     <div className="flex-1 overflow-y-auto p-8 space-y-8 scrollbar-thin scrollbar-thumb-gray-200">
                         {/* Avatar Upload Section */}
-                        <div className="flex items-center gap-6 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+                        <div className="flex items-center gap-6 bg-white dark:bg-white/5 p-6 rounded-2xl border border-gray-100 dark:border-white/10 shadow-sm">
                             <div className="relative group">
-                                <Avatar className="h-24 w-24 border-4 border-white shadow-xl rounded-2xl">
+                                <Avatar className="h-24 w-24 border-4 border-white dark:border-slate-900 shadow-xl rounded-2xl">
                                     {previewUrl ? (
                                         <AvatarImage src={previewUrl} className="object-cover" />
                                     ) : (
-                                        <AvatarFallback className="bg-indigo-50 text-indigo-600 text-2xl font-bold rounded-2xl">
+                                        <AvatarFallback className="bg-primary/10 text-primary text-2xl font-bold rounded-2xl">
                                             CL
                                         </AvatarFallback>
                                     )}
@@ -205,47 +205,47 @@ export function CreateClientSheet({ onSuccess, open: controlledOpen, onOpenChang
                                 <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileSelect} />
                             </div>
                             <div className="flex-1">
-                                <h4 className="text-lg font-bold text-gray-900 leading-tight">Personalización Visual</h4>
-                                <p className="text-sm text-gray-500 mt-1">Sube el logo de la marca para que aparezca en el portal y documentos.</p>
+                                <h4 className="text-lg font-bold text-gray-900 dark:text-white leading-tight">Personalización Visual</h4>
+                                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Sube el logo de la marca para que aparezca en el portal y documentos.</p>
                             </div>
                         </div>
 
                         {/* Form Grid - Copied from Mi Perfil */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 bg-white p-8 rounded-2xl border border-gray-100 shadow-sm">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 bg-white dark:bg-white/5 p-8 rounded-2xl border border-gray-100 dark:border-white/10 shadow-sm">
                             {/* Left Column: Datos de Identidad */}
                             <div className="space-y-6">
-                                <h4 className="text-sm font-bold text-indigo-600 uppercase tracking-widest flex items-center gap-2">
+                                <h4 className="text-sm font-bold text-primary uppercase tracking-widest flex items-center gap-2">
                                     <UserCircle className="h-4 w-4" /> Datos de Identidad
                                 </h4>
                                 <div className="space-y-2">
-                                    <Label className="text-xs font-bold text-gray-500">{t('clients.form.fields.name')} <span className="text-red-500">*</span></Label>
+                                    <Label className="text-xs font-bold text-gray-500 dark:text-gray-400">{t('clients.form.fields.name')} <span className="text-red-500">*</span></Label>
                                     <Input
-                                        className="bg-gray-50/50 border-gray-200 focus:bg-white h-11"
+                                        className="bg-gray-50/50 dark:bg-black/20 border-gray-200 dark:border-white/10 focus:bg-white dark:focus:bg-black/40 h-11 dark:text-white"
                                         placeholder={t('clients.form.fields.name_placeholder')}
                                         value={form.name}
                                         onChange={(e) => setForm({ ...form, name: e.target.value })}
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-xs font-bold text-gray-500">{t('clients.form.fields.company')}</Label>
+                                    <Label className="text-xs font-bold text-gray-500 dark:text-gray-400">{t('clients.form.fields.company')}</Label>
                                     <Input
-                                        className="bg-gray-50/50 border-gray-200 focus:bg-white h-11"
+                                        className="bg-gray-50/50 dark:bg-black/20 border-gray-200 dark:border-white/10 focus:bg-white dark:focus:bg-black/40 h-11 dark:text-white"
                                         placeholder={t('clients.form.fields.company_placeholder')}
                                         value={form.company_name}
                                         onChange={(e) => setForm({ ...form, company_name: e.target.value })}
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-xs font-bold text-gray-500">Categoría <span className="text-red-500">*</span></Label>
+                                    <Label className="text-xs font-bold text-gray-500 dark:text-gray-400">Categoría <span className="text-red-500">*</span></Label>
                                     <CategorySelector 
                                         value={form.category_id} 
                                         onChange={(val) => setForm({ ...form, category_id: val })} 
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-xs font-bold text-gray-500">{t('clients.form.fields.nit')}</Label>
+                                    <Label className="text-xs font-bold text-gray-500 dark:text-gray-400">{t('clients.form.fields.nit')}</Label>
                                     <Input
-                                        className="bg-gray-50/50 border-gray-200 focus:bg-white h-11 font-mono"
+                                        className="bg-gray-50/50 dark:bg-black/20 border-gray-200 dark:border-white/10 focus:bg-white dark:focus:bg-black/40 h-11 font-mono dark:text-white"
                                         placeholder="900.123.456-7"
                                         value={form.nit}
                                         onChange={(e) => setForm({ ...form, nit: e.target.value })}
@@ -255,32 +255,32 @@ export function CreateClientSheet({ onSuccess, open: controlledOpen, onOpenChang
 
                             {/* Right Column: Comunicación */}
                             <div className="space-y-6">
-                                <h4 className="text-sm font-bold text-indigo-600 uppercase tracking-widest flex items-center gap-2">
+                                <h4 className="text-sm font-bold text-primary uppercase tracking-widest flex items-center gap-2">
                                     <Mail className="h-4 w-4" /> Comunicación
                                 </h4>
                                 <div className="space-y-2">
-                                    <Label className="text-xs font-bold text-gray-500">Email Directo <span className="text-red-500">*</span></Label>
+                                    <Label className="text-xs font-bold text-gray-500 dark:text-gray-400">Email Directo <span className="text-red-500">*</span></Label>
                                     <Input
                                         type="email"
-                                        className="bg-gray-50/50 border-gray-200 focus:bg-white h-11"
+                                        className="bg-gray-50/50 dark:bg-black/20 border-gray-200 dark:border-white/10 focus:bg-white dark:focus:bg-black/40 h-11 dark:text-white"
                                         placeholder="cliente@empresa.com"
                                         value={form.email}
                                         onChange={(e) => setForm({ ...form, email: e.target.value })}
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-xs font-bold text-gray-500">Teléfono / WhatsApp</Label>
+                                    <Label className="text-xs font-bold text-gray-500 dark:text-gray-400">Teléfono / WhatsApp</Label>
                                     <Input
-                                        className="bg-gray-50/50 border-gray-200 focus:bg-white h-11"
+                                        className="bg-gray-50/50 dark:bg-black/20 border-gray-200 dark:border-white/10 focus:bg-white dark:focus:bg-black/40 h-11 dark:text-white"
                                         placeholder="+57 300..."
                                         value={form.phone}
                                         onChange={(e) => setForm({ ...form, phone: e.target.value })}
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-xs font-bold text-gray-500">Dirección Física</Label>
+                                    <Label className="text-xs font-bold text-gray-500 dark:text-gray-400">Dirección Física</Label>
                                     <Input
-                                        className="bg-gray-50/50 border-gray-200 focus:bg-white h-11"
+                                        className="bg-gray-50/50 dark:bg-black/20 border-gray-200 dark:border-white/10 focus:bg-white dark:focus:bg-black/40 h-11 dark:text-white"
                                         placeholder="Calle 123..."
                                         value={form.address}
                                         onChange={(e) => setForm({ ...form, address: e.target.value })}
@@ -289,38 +289,38 @@ export function CreateClientSheet({ onSuccess, open: controlledOpen, onOpenChang
                             </div>
 
                             {/* Full Width Bottom: Presencia Digital */}
-                            <div className="md:col-span-2 pt-4 border-t border-gray-50 space-y-6">
-                                <h4 className="text-sm font-bold text-indigo-600 uppercase tracking-widest flex items-center gap-2">
+                            <div className="md:col-span-2 pt-4 border-t border-gray-50 dark:border-white/10 space-y-6">
+                                <h4 className="text-sm font-bold text-primary uppercase tracking-widest flex items-center gap-2">
                                     <Globe className="h-4 w-4" /> Presencia Digital
                                 </h4>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                     <div className="space-y-2">
-                                        <Label className="text-xs font-bold text-gray-500">Website</Label>
-                                        <Input className="bg-gray-50/50 h-10" placeholder="https://..." value={form.website} onChange={(e) => setForm({ ...form, website: e.target.value })} />
+                                        <Label className="text-xs font-bold text-gray-500 dark:text-gray-400">Website</Label>
+                                        <Input className="bg-gray-50/50 dark:bg-black/20 dark:border-white/10 h-10 dark:text-white" placeholder="https://..." value={form.website} onChange={(e) => setForm({ ...form, website: e.target.value })} />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label className="text-xs font-bold text-gray-500">Instagram</Label>
-                                        <Input className="bg-gray-50/50 h-10" placeholder="@usuario" value={form.instagram} onChange={(e) => setForm({ ...form, instagram: e.target.value })} />
+                                        <Label className="text-xs font-bold text-gray-500 dark:text-gray-400">Instagram</Label>
+                                        <Input className="bg-gray-50/50 dark:bg-black/20 dark:border-white/10 h-10 dark:text-white" placeholder="@usuario" value={form.instagram} onChange={(e) => setForm({ ...form, instagram: e.target.value })} />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label className="text-xs font-bold text-gray-500">Facebook</Label>
-                                        <Input className="bg-gray-50/50 h-10" placeholder="usuario" value={form.facebook} onChange={(e) => setForm({ ...form, facebook: e.target.value })} />
+                                        <Label className="text-xs font-bold text-gray-500 dark:text-gray-400">Facebook</Label>
+                                        <Input className="bg-gray-50/50 dark:bg-black/20 dark:border-white/10 h-10 dark:text-white" placeholder="usuario" value={form.facebook} onChange={(e) => setForm({ ...form, facebook: e.target.value })} />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label className="text-xs font-bold text-gray-500">TikTok</Label>
-                                        <Input className="bg-gray-50/50 h-10" placeholder="@usuario" value={form.tiktok} onChange={(e) => setForm({ ...form, tiktok: e.target.value })} />
+                                        <Label className="text-xs font-bold text-gray-500 dark:text-gray-400">TikTok</Label>
+                                        <Input className="bg-gray-50/50 dark:bg-black/20 dark:border-white/10 h-10 dark:text-white" placeholder="@usuario" value={form.tiktok} onChange={(e) => setForm({ ...form, tiktok: e.target.value })} />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label className="text-xs font-bold text-gray-500">LinkedIn</Label>
-                                        <Input className="bg-gray-50/50 h-10" placeholder="URL perfil" value={form.linkedin} onChange={(e) => setForm({ ...form, linkedin: e.target.value })} />
+                                        <Label className="text-xs font-bold text-gray-500 dark:text-gray-400">LinkedIn</Label>
+                                        <Input className="bg-gray-50/50 dark:bg-black/20 dark:border-white/10 h-10 dark:text-white" placeholder="URL perfil" value={form.linkedin} onChange={(e) => setForm({ ...form, linkedin: e.target.value })} />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label className="text-xs font-bold text-gray-500">YouTube</Label>
-                                        <Input className="bg-gray-50/50 h-10" placeholder="Canal" value={form.youtube} onChange={(e) => setForm({ ...form, youtube: e.target.value })} />
+                                        <Label className="text-xs font-bold text-gray-500 dark:text-gray-400">YouTube</Label>
+                                        <Input className="bg-gray-50/50 dark:bg-black/20 dark:border-white/10 h-10 dark:text-white" placeholder="Canal" value={form.youtube} onChange={(e) => setForm({ ...form, youtube: e.target.value })} />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label className="text-xs font-bold text-gray-500">Twitter / X</Label>
-                                        <Input className="bg-gray-50/50 h-10" placeholder="@usuario" value={form.twitter} onChange={(e) => setForm({ ...form, twitter: e.target.value })} />
+                                        <Label className="text-xs font-bold text-gray-500 dark:text-gray-400">Twitter / X</Label>
+                                        <Input className="bg-gray-50/50 dark:bg-black/20 dark:border-white/10 h-10 dark:text-white" placeholder="@usuario" value={form.twitter} onChange={(e) => setForm({ ...form, twitter: e.target.value })} />
                                     </div>
                                 </div>
                             </div>
@@ -328,18 +328,18 @@ export function CreateClientSheet({ onSuccess, open: controlledOpen, onOpenChang
                     </div>
 
                     {/* Footer Actions */}
-                    <SheetFooter className="border-t border-gray-100 p-6 bg-white flex-row justify-between items-center sm:justify-between flex-none z-20 shadow-[0_-5px_20px_rgba(0,0,0,0.02)]">
+                    <SheetFooter className="border-t border-gray-100 dark:border-white/10 p-6 bg-white dark:bg-slate-950/80 backdrop-blur-md flex-row justify-between items-center sm:justify-between flex-none z-20 shadow-[0_-5px_20px_rgba(0,0,0,0.02)]">
                         <Button
                             variant="outline"
                             onClick={() => setOpen(false)}
-                            className="h-10 text-xs font-semibold rounded-xl"
+                            className="h-10 text-xs font-semibold rounded-xl dark:bg-white/5 dark:border-white/10 dark:text-white"
                         >
                             {t('clients.form.buttons.cancel')}
                         </Button>
                         <Button
                             onClick={handleCreateClient}
                             disabled={saving}
-                            className="bg-indigo-600 text-white hover:bg-indigo-700 rounded-xl h-10 shadow-lg shadow-indigo-200 text-xs font-semibold px-8 gap-2"
+                            className="bg-primary text-white hover:bg-primary/90 rounded-xl h-10 shadow-lg shadow-primary/20 text-xs font-semibold px-8 gap-2 border-0"
                         >
                             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                             {saving ? "Creando..." : "Crear Contacto"}

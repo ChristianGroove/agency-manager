@@ -86,8 +86,8 @@ export function ClientsGrid({
                                 <div className="absolute top-4 right-4 z-20">
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-gray-100">
-                                                <MoreVertical className="h-4 w-4 text-gray-400" />
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-gray-100 dark:hover:bg-white/10 transition-colors">
+                                                <MoreVertical className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                                             </Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end" className="w-56">
@@ -130,17 +130,17 @@ export function ClientsGrid({
                                         {/* Status Block */}
                                         <div className={cn(
                                             "w-full px-4 py-3 rounded-lg border flex items-center justify-between transition-colors shadow-sm",
-                                            debt > 0 ? "bg-red-50 border-red-100 text-red-900" : 
-                                            isUrgent ? "bg-amber-50 border-amber-100 text-amber-900" : 
-                                            "bg-gray-50 border-gray-100 text-gray-700"
+                                            debt > 0 ? "bg-red-50 dark:bg-red-500/10 border-red-100 dark:border-red-500/20 text-red-900 dark:text-red-400" : 
+                                            isUrgent ? "bg-amber-50 dark:bg-amber-500/10 border-amber-100 dark:border-amber-500/20 text-amber-900 dark:text-amber-400" : 
+                                            "bg-gray-50 dark:bg-white/5 border-gray-100 dark:border-white/10 text-gray-700 dark:text-gray-300"
                                         )}>
                                             <div className="flex items-center gap-2">
-                                                {debt > 0 ? <AlertTriangle className="h-4 w-4 text-red-600" /> : 
-                                                 isUrgent ? <Clock className="h-4 w-4 text-amber-600" /> : 
+                                                {debt > 0 ? <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-500" /> : 
+                                                 isUrgent ? <Clock className="h-4 w-4 text-amber-600 dark:text-amber-500" /> : 
                                                  <CheckCircle2 className="h-4 w-4 text-emerald-500" />}
                                                 <span className={cn(
                                                     "text-sm font-bold uppercase tracking-wide",
-                                                    debt > 0 ? "text-red-700" : isUrgent ? "text-amber-700" : "text-gray-700"
+                                                    debt > 0 ? "text-red-700 dark:text-red-400" : isUrgent ? "text-amber-700 dark:text-amber-400" : "text-gray-700 dark:text-gray-300"
                                                 )}>
                                                     {debt > 0 ? t('clients.status.overdue') : isUrgent ? t('clients.status.urgent') : t('clients.status.active')}
                                                 </span>
@@ -148,7 +148,7 @@ export function ClientsGrid({
                                             {(debt > 0 || futureDebt > 0) && (
                                                 <span className={cn(
                                                     "text-xl font-black",
-                                                    debt > 0 ? "text-red-700" : "text-amber-700"
+                                                    debt > 0 ? "text-red-700 dark:text-red-500" : "text-amber-700 dark:text-amber-500"
                                                 )}>
                                                     ${(debt + futureDebt).toLocaleString()}
                                                 </span>
@@ -160,20 +160,20 @@ export function ClientsGrid({
                                             <div className={cn(
                                                 "p-3 rounded-lg border transition-all h-[74px] flex flex-col justify-center",
                                                 isOverdue
-                                                    ? "bg-red-50 border-red-100"
+                                                    ? "bg-red-50 dark:bg-red-500/5 border-red-100 dark:border-red-500/20"
                                                     : (isUrgent || futureDebt > 0)
-                                                        ? "bg-amber-50 dark:bg-amber-500/10 border-amber-100 dark:border-amber-500/20"
-                                                        : "bg-gray-50 dark:bg-white/5 border-gray-100 dark:border-white/10"
+                                                        ? "bg-amber-50 dark:bg-amber-500/5 border-amber-100 dark:border-amber-500/20"
+                                                        : "bg-gray-50 dark:bg-white/5 border-gray-100 dark:border-white/10 shadow-sm"
                                             )}>
                                                 <div className="flex items-center justify-between mb-1.5 pt-1">
                                                     <div className="flex items-center gap-2">
                                                         <Clock className={cn(
                                                             "h-3.5 w-3.5",
-                                                            isOverdue ? "text-red-600" : isUrgent ? "text-amber-600" : "text-gray-500"
+                                                            isOverdue ? "text-red-600 dark:text-red-500" : isUrgent ? "text-amber-600 dark:text-amber-500" : "text-gray-500 dark:text-gray-400"
                                                         )} />
                                                         <span className={cn(
                                                             "text-xs font-medium uppercase tracking-wide",
-                                                            isOverdue ? "text-red-700" : isUrgent ? "text-amber-700" : "text-gray-600"
+                                                            isOverdue ? "text-red-700 dark:text-red-400" : isUrgent ? "text-amber-700 dark:text-amber-400" : "text-gray-600 dark:text-gray-400"
                                                         )}>
                                                             {isOverdue
                                                                 ? t('clients.next_payment.overdue_badge')
@@ -186,10 +186,10 @@ export function ClientsGrid({
                                                     <Badge variant="secondary" className={cn(
                                                         "text-[10px] font-semibold h-5 px-2",
                                                         isOverdue
-                                                            ? "bg-red-100 text-red-700 hover:bg-red-200"
+                                                            ? "bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400 border-none shadow-none"
                                                             : isUrgent
-                                                                ? "bg-amber-100 text-amber-700 hover:bg-amber-200"
-                                                                : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                                                                ? "bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 border-none shadow-none"
+                                                                : "bg-gray-200 dark:bg-white/10 text-gray-700 dark:text-gray-300 border-none shadow-none"
                                                     )}>
                                                         {daysToPay !== null && daysToPay < 0
                                                             ? (debt > 0 || futureDebt > 0)
@@ -200,7 +200,7 @@ export function ClientsGrid({
                                                 </div>
                                                 <p className={cn(
                                                     "text-sm font-medium truncate pb-1",
-                                                    isOverdue ? "text-red-900" : isUrgent ? "text-amber-900" : "text-gray-900"
+                                                    isOverdue ? "text-red-900 dark:text-red-400" : isUrgent ? "text-amber-900 dark:text-amber-400" : "text-gray-900 dark:text-white/80"
                                                 )}>
                                                     {nextPayment.source}
                                                 </p>
@@ -220,7 +220,7 @@ export function ClientsGrid({
                                 <Button 
                                    variant="ghost" 
                                    size="icon" 
-                                   className="h-9 w-9 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all" 
+                                   className="h-9 w-9 text-slate-400 dark:text-gray-500 hover:text-primary hover:bg-primary/10 rounded-xl transition-all" 
                                    onClick={() => onCommunication(client)}
                                    title="Contactar"
                                 >
@@ -230,7 +230,7 @@ export function ClientsGrid({
                                     <Button 
                                        variant="ghost" 
                                        size="icon" 
-                                       className="h-9 w-9 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all" 
+                                       className="h-9 w-9 text-slate-400 dark:text-gray-500 hover:text-emerald-600 dark:hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 rounded-xl transition-all" 
                                        onClick={() => onInvoices(client)}
                                        title="Documentos Rápidos"
                                     >
@@ -240,7 +240,7 @@ export function ClientsGrid({
                                 <Button 
                                    variant="ghost" 
                                    size="icon" 
-                                   className="h-9 w-9 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-xl transition-all" 
+                                   className="h-9 w-9 text-slate-400 dark:text-gray-500 hover:text-amber-600 dark:hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10 rounded-xl transition-all" 
                                    onClick={() => onNotes?.(client)}
                                    title="Notas"
                                 >
@@ -250,22 +250,22 @@ export function ClientsGrid({
                                     <Button 
                                        variant="ghost" 
                                        size="icon" 
-                                       className="h-9 w-9 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all" 
+                                       className="h-9 w-9 text-slate-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-xl transition-all" 
                                        onClick={() => onGoToPortal?.(client)}
                                        title="Ir al Portal"
                                     >
                                         <Globe className="h-4 w-4" />
                                     </Button>
                                 )}
-
                                 <Button 
                                    size="sm" 
-                                   className="ml-auto bg-slate-900 hover:bg-black text-white rounded-xl px-4 h-9 font-bold text-xs shadow-sm" 
+                                   className="ml-auto bg-primary dark:bg-white hover:bg-primary/90 dark:hover:bg-gray-200 text-white dark:text-black rounded-xl px-4 h-9 font-bold text-xs shadow-sm transition-all active:scale-95" 
                                    onClick={() => onManage(client)}
                                 >
                                     {t('clients.actions.manage')} <ArrowRight className="h-3 w-3 ml-2" />
                                 </Button>
                             </CardFooter>
+
                         </Card>
                     </div>
                 )

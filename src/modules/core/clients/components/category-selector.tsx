@@ -78,7 +78,7 @@ export function CategorySelector({ value, onChange, disabled }: CategorySelector
                     role="combobox"
                     aria-expanded={open}
                     disabled={disabled || loading}
-                    className="w-full justify-between h-11 bg-gray-50/50 border-gray-200 focus:bg-white"
+                    className="w-full justify-between h-11 bg-gray-50/50 dark:bg-black/20 border-gray-200 dark:border-white/10 focus:bg-white dark:focus:bg-black/40 dark:text-white transition-colors"
                 >
                     {loading ? (
                         <div className="flex items-center gap-2 text-gray-400">
@@ -86,22 +86,23 @@ export function CategorySelector({ value, onChange, disabled }: CategorySelector
                         </div>
                     ) : selectedCategory ? (
                         <div className="flex items-center gap-2">
-                            <div className={`w-2 h-2 rounded-full bg-${selectedCategory.color}-500`} />
+                            <div className={`w-2 h-2 rounded-full`} style={{ backgroundColor: selectedCategory.color }} />
                             {selectedCategory.name}
                         </div>
                     ) : (
-                        <span className="text-gray-500">Seleccionar categoría...</span>
+                        <span className="text-gray-500 dark:text-gray-400">Seleccionar categoría...</span>
                     )}
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-[300px] p-0" align="start">
-                <Command>
+            <PopoverContent className="w-[300px] p-0 dark:bg-slate-900 dark:border-white/10" align="start">
+                <Command className="dark:bg-slate-900">
                     <CommandInput 
                         placeholder="Buscar categoría..." 
+                        className="dark:text-white"
                     />
                     <CommandList>
-                        <CommandEmpty className="py-2 px-4 text-xs text-gray-500">
+                        <CommandEmpty className="py-2 px-4 text-xs text-gray-500 dark:text-gray-400">
                             No se encontraron categorías.
                         </CommandEmpty>
                         <CommandGroup>
@@ -113,16 +114,16 @@ export function CategorySelector({ value, onChange, disabled }: CategorySelector
                                         onChange(category.id === value ? "" : category.id)
                                         setOpen(false)
                                     }}
-                                    className="cursor-pointer"
+                                    className="cursor-pointer dark:hover:bg-white/5"
                                 >
                                     <Check
                                         className={cn(
                                             "mr-2 h-4 w-4",
-                                            value === category.id ? "opacity-100 text-indigo-600" : "opacity-0"
+                                            value === category.id ? "opacity-100 text-primary" : "opacity-0"
                                         )}
                                     />
-                                    <div className={`w-2 h-2 rounded-full mr-2 bg-${category.color}-500`} />
-                                    {category.name}
+                                    <div className={`w-2 h-2 rounded-full mr-2`} style={{ backgroundColor: category.color }} />
+                                    <span className="dark:text-gray-300">{category.name}</span>
                                 </CommandItem>
                             ))}
                         </CommandGroup>

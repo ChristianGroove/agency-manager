@@ -313,10 +313,10 @@ export function ClientManagementSheet({ clientId, open, onOpenChange, initialDat
     if (!client && loading) {
         return (
             <Sheet open={open} onOpenChange={onOpenChange}>
-                <SheetContent className="w-full sm:max-w-2xl bg-white/95 backdrop-blur flex items-center justify-center">
+                <SheetContent className="w-full sm:max-w-2xl bg-white/95 dark:bg-slate-950/90 backdrop-blur flex items-center justify-center">
                     <SheetTitle className="sr-only">Cargando cliente...</SheetTitle>
                     <SheetDescription className="sr-only">Espere mientras se carga la información.</SheetDescription>
-                    <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </SheetContent>
             </Sheet>
         )
@@ -332,19 +332,19 @@ export function ClientManagementSheet({ clientId, open, onOpenChange, initialDat
                     sm:max-w-[1000px] w-full p-0 gap-0 border-none shadow-2xl
                     mr-4 my-4 h-[calc(100vh-2rem)] rounded-3xl overflow-hidden
                     data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:mr-6
-                    bg-white/95 backdrop-blur-xl
+                    bg-white/95 dark:bg-slate-950/80 backdrop-blur-xl
                 "
             >
-                <div className="flex flex-col h-full bg-slate-50/50">
+                <div className="flex flex-col h-full bg-slate-50/50 dark:bg-transparent">
                     <SheetHeader className="sr-only">
                         <SheetTitle>Gestión de Contacto: {client.name}</SheetTitle>
                         <SheetDescription>Detalles y gestión de contacto</SheetDescription>
                     </SheetHeader>
                     {/* Header */}
-                    <div className="bg-white border-b border-gray-100 px-8 py-6 flex items-start gap-6 flex-none z-10">
+                    <div className="bg-white dark:bg-white/5 backdrop-blur-md border-b border-gray-100 dark:border-white/10 px-8 py-6 flex items-start gap-6 flex-none z-10">
                         <div className="flex-1 pt-1 min-w-0">
                             <div className="flex items-center justify-between mb-2">
-                                <h2 className="text-2xl font-black text-gray-900 truncate" aria-hidden="true">{client.name}</h2>
+                                <h2 className="text-2xl font-black text-gray-900 dark:text-white truncate" aria-hidden="true">{client.name}</h2>
                                 <div className="flex items-center gap-3">
                                     {client.total_debt && client.total_debt > 0 ? (
                                         <Badge variant="destructive" className="animate-pulse bg-red-500 text-white border-none shadow-lg shadow-red-200 px-4 h-7 rounded-full text-xs font-bold">
@@ -358,17 +358,17 @@ export function ClientManagementSheet({ clientId, open, onOpenChange, initialDat
                                 </div>
                             </div>
 
-                            <div className="flex flex-wrap items-center gap-y-2 gap-x-6 text-sm text-gray-500">
+                            <div className="flex flex-wrap items-center gap-y-2 gap-x-6 text-sm text-gray-500 dark:text-gray-400">
                                 {client.company_name && (
                                     <span className="flex items-center gap-2 font-medium">
-                                        <Layout className="h-4 w-4 text-gray-400" /> {client.company_name}
+                                        <Layout className="h-4 w-4 text-gray-400 dark:text-gray-500" /> {client.company_name}
                                     </span>
                                 )}
                                 <span className="flex items-center gap-2 font-medium">
-                                    <Mail className="h-4 w-4 text-gray-400" /> {client.email || '--'}
+                                    <Mail className="h-4 w-4 text-gray-400 dark:text-gray-500" /> {client.email || '--'}
                                 </span>
                                 <span className="flex items-center gap-2 font-medium">
-                                    <Phone className="h-4 w-4 text-gray-400" /> {client.phone || '--'}
+                                    <Phone className="h-4 w-4 text-gray-400 dark:text-gray-500" /> {client.phone || '--'}
                                 </span>
                             </div>
                         </div>
@@ -377,35 +377,35 @@ export function ClientManagementSheet({ clientId, open, onOpenChange, initialDat
                     {/* Content */}
                     <div className="flex-1 overflow-hidden flex flex-col">
                         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
-                            <div className="px-8 border-b border-gray-100 bg-white/50 backdrop-blur-sm sticky top-0 z-10">
+                            <div className="px-8 border-b border-gray-100 dark:border-white/10 bg-white/50 dark:bg-white/5 backdrop-blur-sm sticky top-0 z-10">
                                 <TabsList className="bg-transparent p-0 w-full justify-start h-auto gap-8">
                                     {config.management.visibleTabs.includes('info') && (
-                                        <TabsTrigger value="info" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-indigo-600 data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 rounded-none px-0 pb-3 pt-2 text-gray-500 font-medium text-sm transition-all">
+                                        <TabsTrigger value="info" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-0 pb-3 pt-2 text-gray-500 dark:text-gray-400 font-medium text-sm transition-all">
                                             <UserCircle className="h-4 w-4 mr-2" /> Perfil
                                         </TabsTrigger>
                                     )}
                                     {config.management.visibleTabs.includes('activity') && (
-                                        <TabsTrigger value="activity" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-indigo-600 data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 rounded-none px-0 pb-3 pt-2 text-gray-500 font-medium text-sm transition-all">
+                                        <TabsTrigger value="activity" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-0 pb-3 pt-2 text-gray-500 dark:text-gray-400 font-medium text-sm transition-all">
                                             <CalendarClock className="h-4 w-4 mr-2" /> Actividad
                                         </TabsTrigger>
                                     )}
                                     {config.management.visibleTabs.includes('services') && (
-                                        <TabsTrigger value="services" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-indigo-600 data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 rounded-none px-0 pb-3 pt-2 text-gray-500 font-medium text-sm transition-all">
+                                        <TabsTrigger value="services" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-0 pb-3 pt-2 text-gray-500 dark:text-gray-400 font-medium text-sm transition-all">
                                             <Server className="h-4 w-4 mr-2" /> Servicios
                                         </TabsTrigger>
                                     )}
                                     {config.management.visibleTabs.includes('billing') && (
-                                        <TabsTrigger value="billing" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-indigo-600 data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 rounded-none px-0 pb-3 pt-2 text-gray-500 font-medium text-sm transition-all">
+                                        <TabsTrigger value="billing" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-0 pb-3 pt-2 text-gray-500 dark:text-gray-400 font-medium text-sm transition-all">
                                             <FileText className="h-4 w-4 mr-2" /> Facturación
                                         </TabsTrigger>
                                     )}
                                     {config.management.visibleTabs.includes('hosting') && (
-                                        <TabsTrigger value="hosting" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-indigo-600 data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 rounded-none px-0 pb-3 pt-2 text-gray-500 font-medium text-sm transition-all">
+                                        <TabsTrigger value="hosting" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-0 pb-3 pt-2 text-gray-500 dark:text-gray-400 font-medium text-sm transition-all">
                                             <Globe className="h-4 w-4 mr-2" /> Hosting
                                         </TabsTrigger>
                                     )}
                                     {config.management.visibleTabs.includes('orders') && (
-                                        <TabsTrigger value="orders" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-indigo-600 data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 rounded-none px-0 pb-3 pt-2 text-gray-500 font-medium text-sm transition-all">
+                                        <TabsTrigger value="orders" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-0 pb-3 pt-2 text-gray-500 dark:text-gray-400 font-medium text-sm transition-all">
                                             <FileText className="h-4 w-4 mr-2" /> Pedidos
                                         </TabsTrigger>
                                     )}
@@ -424,11 +424,11 @@ export function ClientManagementSheet({ clientId, open, onOpenChange, initialDat
                                 {/* TAB: INFORMATION (Editable) */}
                                 <TabsContent value="info" className="space-y-8 m-0 animate-in slide-in-from-right-4 duration-300">
                                     {/* Header Info */}
-                                    <div className="flex items-center gap-6 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+                                    <div className="flex items-center gap-6 bg-white dark:bg-white/5 p-6 rounded-2xl border border-gray-100 dark:border-white/10 shadow-sm">
                                         <div className="relative group">
-                                            <Avatar className="h-24 w-24 border-4 border-white shadow-xl">
+                                            <Avatar className="h-24 w-24 border-4 border-white dark:border-slate-900 shadow-xl">
                                                 <AvatarImage src={editForm.logo_url} className="object-cover" />
-                                                <AvatarFallback className="bg-indigo-50 text-indigo-600 text-2xl font-bold">
+                                                <AvatarFallback className="bg-primary/10 text-primary text-2xl font-bold">
                                                     {client.name.substring(0, 2).toUpperCase()}
                                                 </AvatarFallback>
                                             </Avatar>
@@ -441,43 +441,43 @@ export function ClientManagementSheet({ clientId, open, onOpenChange, initialDat
                                             <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileSelect} />
                                         </div>
                                         <div className="flex-1">
-                                            <h4 className="text-lg font-bold text-gray-900 leading-tight">Personalización Visual</h4>
-                                            <p className="text-sm text-gray-500 mt-1">Sube el logo de la marca para que aparezca en el portal y documentos.</p>
+                                            <h4 className="text-lg font-bold text-gray-900 dark:text-white leading-tight">Personalización Visual</h4>
+                                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Sube el logo de la marca para que aparezca en el portal y documentos.</p>
                                         </div>
                                     </div>
 
                                     {/* Form Grid */}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 bg-white p-8 rounded-2xl border border-gray-100 shadow-sm">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 bg-white dark:bg-white/5 p-8 rounded-2xl border border-gray-100 dark:border-white/10 shadow-sm">
                                         <div className="space-y-6">
-                                            <h4 className="text-sm font-bold text-indigo-600 uppercase tracking-widest flex items-center gap-2">
+                                            <h4 className="text-sm font-bold text-primary uppercase tracking-widest flex items-center gap-2">
                                                 <UserCircle className="h-4 w-4" /> Datos de Identidad
                                             </h4>
                                             <div className="space-y-2">
-                                                <Label className="text-xs font-bold text-gray-500">{t('clients.form.fields.name')}</Label>
+                                                <Label className="text-xs font-bold text-gray-500 dark:text-gray-400">{t('clients.form.fields.name')}</Label>
                                                 <Input
-                                                    className="bg-gray-50/50 border-gray-200 focus:bg-white h-11"
+                                                    className="bg-gray-50/50 dark:bg-black/20 border-gray-200 dark:border-white/10 focus:bg-white dark:focus:bg-black/40 h-11 dark:text-white"
                                                     value={editForm.name}
                                                     onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
                                                 />
                                             </div>
                                             <div className="space-y-2">
-                                                <Label className="text-xs font-bold text-gray-500">{t('clients.form.fields.company')}</Label>
+                                                <Label className="text-xs font-bold text-gray-500 dark:text-gray-400">{t('clients.form.fields.company')}</Label>
                                                 <Input
-                                                    className="bg-gray-50/50 border-gray-200 focus:bg-white h-11"
+                                                    className="bg-gray-50/50 dark:bg-black/20 border-gray-200 dark:border-white/10 focus:bg-white dark:focus:bg-black/40 h-11 dark:text-white"
                                                     value={editForm.company_name}
                                                     onChange={(e) => setEditForm({ ...editForm, company_name: e.target.value })}
                                                 />
                                             </div>
                                             <div className="space-y-2">
-                                                <Label className="text-xs font-bold text-gray-500">{t('clients.form.fields.nit')}</Label>
+                                                <Label className="text-xs font-bold text-gray-500 dark:text-gray-400">{t('clients.form.fields.nit')}</Label>
                                                 <Input
-                                                    className="bg-gray-50/50 border-gray-200 focus:bg-white h-11 font-mono"
+                                                    className="bg-gray-50/50 dark:bg-black/20 border-gray-200 dark:border-white/10 focus:bg-white dark:focus:bg-black/40 h-11 font-mono dark:text-white"
                                                     value={editForm.nit}
                                                     onChange={(e) => setEditForm({ ...editForm, nit: e.target.value })}
                                                 />
                                             </div>
                                             <div className="space-y-2">
-                                                <Label className="text-xs font-bold text-gray-500">Categoría</Label>
+                                                <Label className="text-xs font-bold text-gray-500 dark:text-gray-400">Categoría</Label>
                                                 <CategorySelector
                                                     value={editForm.category_id}
                                                     onChange={(val: string | null) => setEditForm({ ...editForm, category_id: val })}
@@ -486,29 +486,29 @@ export function ClientManagementSheet({ clientId, open, onOpenChange, initialDat
                                         </div>
 
                                         <div className="space-y-6">
-                                            <h4 className="text-sm font-bold text-indigo-600 uppercase tracking-widest flex items-center gap-2">
+                                            <h4 className="text-sm font-bold text-primary uppercase tracking-widest flex items-center gap-2">
                                                 <Mail className="h-4 w-4" /> Comunicación
                                             </h4>
                                             <div className="space-y-2">
-                                                <Label className="text-xs font-bold text-gray-500">Email Directo</Label>
+                                                <Label className="text-xs font-bold text-gray-500 dark:text-gray-400">Email Directo</Label>
                                                 <Input
-                                                    className="bg-gray-50/50 border-gray-200 focus:bg-white h-11"
+                                                    className="bg-gray-50/50 dark:bg-black/20 border-gray-200 dark:border-white/10 focus:bg-white dark:focus:bg-black/40 h-11 dark:text-white"
                                                     value={editForm.email}
                                                     onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
                                                 />
                                             </div>
                                             <div className="space-y-2">
-                                                <Label className="text-xs font-bold text-gray-500">Teléfono / WhatsApp</Label>
+                                                <Label className="text-xs font-bold text-gray-500 dark:text-gray-400">Teléfono / WhatsApp</Label>
                                                 <Input
-                                                    className="bg-gray-50/50 border-gray-200 focus:bg-white h-11"
+                                                    className="bg-gray-50/50 dark:bg-black/20 border-gray-200 dark:border-white/10 focus:bg-white dark:focus:bg-black/40 h-11 dark:text-white"
                                                     value={editForm.phone}
                                                     onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
                                                 />
                                             </div>
                                             <div className="space-y-2">
-                                                <Label className="text-xs font-bold text-gray-500">Dirección Física</Label>
+                                                <Label className="text-xs font-bold text-gray-500 dark:text-gray-400">Dirección Física</Label>
                                                 <Input
-                                                    className="bg-gray-50/50 border-gray-200 focus:bg-white h-11"
+                                                    className="bg-gray-50/50 dark:bg-black/20 border-gray-200 dark:border-white/10 focus:bg-white dark:focus:bg-black/40 h-11 dark:text-white"
                                                     value={editForm.address}
                                                     onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
                                                 />
@@ -516,34 +516,34 @@ export function ClientManagementSheet({ clientId, open, onOpenChange, initialDat
                                         </div>
 
                                         {config.management.profileSections.includes('digital_presence') && (
-                                            <div className="md:col-span-2 pt-4 border-t border-gray-50 space-y-6">
-                                                <h4 className="text-sm font-bold text-indigo-600 uppercase tracking-widest flex items-center gap-2">
+                                            <div className="md:col-span-2 pt-4 border-t border-gray-50 dark:border-white/5 space-y-6">
+                                                <h4 className="text-sm font-bold text-primary uppercase tracking-widest flex items-center gap-2">
                                                     <Globe className="h-4 w-4" /> Presencia Digital
                                                 </h4>
                                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                                     <div className="space-y-2">
-                                                        <Label className="text-xs font-bold text-gray-500">Website</Label>
-                                                        <Input className="bg-gray-50/50 h-10" value={editForm.website} onChange={(e) => setEditForm({ ...editForm, website: e.target.value })} />
+                                                        <Label className="text-xs font-bold text-gray-500 dark:text-gray-400">Website</Label>
+                                                        <Input className="bg-gray-50/50 dark:bg-black/20 border-gray-200 dark:border-white/10 h-10 dark:text-white" value={editForm.website} onChange={(e) => setEditForm({ ...editForm, website: e.target.value })} />
                                                     </div>
                                                     <div className="space-y-2">
-                                                        <Label className="text-xs font-bold text-gray-500">Instagram</Label>
-                                                        <Input className="bg-gray-50/50 h-10" value={editForm.instagram} onChange={(e) => setEditForm({ ...editForm, instagram: e.target.value })} />
+                                                        <Label className="text-xs font-bold text-gray-500 dark:text-gray-400">Instagram</Label>
+                                                        <Input className="bg-gray-50/50 dark:bg-black/20 border-gray-200 dark:border-white/10 h-10 dark:text-white" value={editForm.instagram} onChange={(e) => setEditForm({ ...editForm, instagram: e.target.value })} />
                                                     </div>
                                                     <div className="space-y-2">
-                                                        <Label className="text-xs font-bold text-gray-500">Facebook</Label>
-                                                        <Input className="bg-gray-50/50 h-10" value={editForm.facebook} onChange={(e) => setEditForm({ ...editForm, facebook: e.target.value })} />
+                                                        <Label className="text-xs font-bold text-gray-500 dark:text-gray-400">Facebook</Label>
+                                                        <Input className="bg-gray-50/50 dark:bg-black/20 border-gray-200 dark:border-white/10 h-10 dark:text-white" value={editForm.facebook} onChange={(e) => setEditForm({ ...editForm, facebook: e.target.value })} />
                                                     </div>
                                                     <div className="space-y-2">
-                                                        <Label className="text-xs font-bold text-gray-500">TikTok</Label>
-                                                        <Input className="bg-gray-50/50 h-10" value={editForm.tiktok} onChange={(e) => setEditForm({ ...editForm, tiktok: e.target.value })} />
+                                                        <Label className="text-xs font-bold text-gray-500 dark:text-gray-400">TikTok</Label>
+                                                        <Input className="bg-gray-50/50 dark:bg-black/20 border-gray-200 dark:border-white/10 h-10 dark:text-white" value={editForm.tiktok} onChange={(e) => setEditForm({ ...editForm, tiktok: e.target.value })} />
                                                     </div>
                                                     <div className="space-y-2">
-                                                        <Label className="text-xs font-bold text-gray-500">LinkedIn</Label>
-                                                        <Input className="bg-gray-50/50 h-10" value={editForm.linkedin} onChange={(e) => setEditForm({ ...editForm, linkedin: e.target.value })} />
+                                                        <Label className="text-xs font-bold text-gray-500 dark:text-gray-400">LinkedIn</Label>
+                                                        <Input className="bg-gray-50/50 dark:bg-black/20 border-gray-200 dark:border-white/10 h-10 dark:text-white" value={editForm.linkedin} onChange={(e) => setEditForm({ ...editForm, linkedin: e.target.value })} />
                                                     </div>
                                                     <div className="space-y-2">
-                                                        <Label className="text-xs font-bold text-gray-500">YouTube</Label>
-                                                        <Input className="bg-gray-50/50 h-10" value={editForm.youtube} onChange={(e) => setEditForm({ ...editForm, youtube: e.target.value })} />
+                                                        <Label className="text-xs font-bold text-gray-500 dark:text-gray-400">YouTube</Label>
+                                                        <Input className="bg-gray-50/50 dark:bg-black/20 border-gray-200 dark:border-white/10 h-10 dark:text-white" value={editForm.youtube} onChange={(e) => setEditForm({ ...editForm, youtube: e.target.value })} />
                                                     </div>
                                                 </div>
                                             </div>
@@ -595,24 +595,24 @@ export function ClientManagementSheet({ clientId, open, onOpenChange, initialDat
 
                                     <div className="grid grid-cols-1 gap-4">
                                         {client.hosting_accounts && client.hosting_accounts.map((acc: any) => (
-                                            <div key={acc.id} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between group hover:border-indigo-300 transition-colors">
+                                            <div key={acc.id} className="bg-white dark:bg-white/5 p-4 rounded-xl border border-gray-200 dark:border-white/10 shadow-sm flex items-center justify-between group hover:border-primary transition-colors">
                                                 <div
                                                     className="flex items-center gap-4 cursor-pointer flex-1"
                                                     onClick={() => { setHostingToEdit(acc); setIsHostingSheetOpen(true); }}
                                                 >
-                                                    <div className={cn("p-2.5 rounded-lg", acc.status === 'suspended' ? "bg-red-50 text-red-500" : "bg-emerald-50 text-emerald-600")}>
+                                                    <div className={cn("p-2.5 rounded-lg", acc.status === 'suspended' ? "bg-red-50 dark:bg-red-500/10 text-red-500" : "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400")}>
                                                         <Server className="h-5 w-5" />
                                                     </div>
                                                     <div>
-                                                        <h4 className={cn("font-bold text-sm", acc.status === 'suspended' && "line-through text-gray-400")}>{acc.domain || "Dominio no configurado"}</h4>
-                                                        <p className="text-xs text-gray-500">IP: {acc.server_ip || '--'} • User: {acc.username || '--'}</p>
+                                                        <h4 className={cn("font-bold text-sm dark:text-white", acc.status === 'suspended' && "line-through text-gray-400 dark:text-gray-600")}>{acc.domain || "Dominio no configurado"}</h4>
+                                                        <p className="text-xs text-gray-500 dark:text-gray-400">IP: {acc.server_ip || '--'} • User: {acc.username || '--'}</p>
                                                     </div>
                                                 </div>
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
                                                     onClick={() => { setHostingToEdit(acc); setIsHostingSheetOpen(true); }}
-                                                    className="text-gray-400 hover:text-indigo-600"
+                                                    className="text-gray-400 dark:text-gray-500 hover:text-primary dark:hover:text-primary hover:bg-primary/10"
                                                 >
                                                     Editar
                                                 </Button>
@@ -638,11 +638,11 @@ export function ClientManagementSheet({ clientId, open, onOpenChange, initialDat
                         </Tabs>
 
                         {/* Footer Actions */}
-                        <SheetFooter className="border-t border-gray-100 p-6 bg-white flex-row justify-between items-center sm:justify-between flex-none z-20 shadow-[0_-5px_20px_rgba(0,0,0,0.02)]">
+                        <SheetFooter className="border-t border-gray-100 dark:border-white/10 p-6 bg-white dark:bg-slate-950/80 backdrop-blur-md flex-row justify-between items-center sm:justify-between flex-none z-20 shadow-[0_-5px_20px_rgba(0,0,0,0.02)]">
                             <Button
                                 variant="outline"
                                 onClick={() => onOpenChange(false)}
-                                className="h-10 text-xs font-semibold rounded-xl"
+                                className="h-10 text-xs font-semibold rounded-xl dark:bg-white/5 dark:border-white/10 dark:text-white dark:hover:bg-white/10 transition-colors"
                             >
                                 Cerrar
                             </Button>
@@ -650,7 +650,7 @@ export function ClientManagementSheet({ clientId, open, onOpenChange, initialDat
                             {activeTab === 'services' && config.management.visibleTabs.includes('services') && (
                                 <Button
                                     onClick={() => { setServiceToEdit(null); setIsServiceSheetOpen(true); }}
-                                    className="bg-black text-white hover:bg-gray-800 rounded-xl h-10 shadow-lg shadow-black/10 text-xs font-semibold px-6"
+                                    className="bg-primary hover:bg-primary/90 text-white dark:text-white rounded-xl h-10 shadow-lg shadow-primary/20 text-xs font-semibold px-6 border-0"
                                 >
                                     + Nuevo Servicio
                                 </Button>
@@ -659,7 +659,7 @@ export function ClientManagementSheet({ clientId, open, onOpenChange, initialDat
                             {activeTab === 'billing' && config.management.visibleTabs.includes('billing') && (
                                 <Button
                                     onClick={() => setIsInvoiceSheetOpen(true)}
-                                    className="bg-black text-white hover:bg-gray-800 rounded-xl h-10 shadow-lg shadow-black/10 text-xs font-semibold px-6"
+                                    className="bg-primary hover:bg-primary/90 text-white dark:text-white rounded-xl h-10 shadow-lg shadow-primary/20 text-xs font-semibold px-6 border-0"
                                 >
                                     + Crear Factura
                                 </Button>
@@ -668,14 +668,14 @@ export function ClientManagementSheet({ clientId, open, onOpenChange, initialDat
                             {activeTab === 'hosting' && config.management.visibleTabs.includes('hosting') && (
                                 <Button
                                     onClick={() => { setHostingToEdit(null); setIsHostingSheetOpen(true); }}
-                                    className="bg-brand-pink text-white hover:bg-brand-pink/90 rounded-xl h-10 shadow-lg shadow-brand-pink/20 text-xs font-semibold px-6 border-0"
+                                    className="bg-primary text-white hover:bg-primary/90 rounded-xl h-10 shadow-lg shadow-primary/20 text-xs font-semibold px-6 border-0"
                                 >
                                     + Activar Hosting
                                 </Button>
                             )}
 
                             {activeTab === 'activity' && (
-                                <div className="text-sm text-gray-400 italic">
+                                <div className="text-sm text-gray-400 dark:text-gray-500 italic">
                                     Historial cronológico de interacciones y cambios.
                                 </div>
                             )}
@@ -684,7 +684,7 @@ export function ClientManagementSheet({ clientId, open, onOpenChange, initialDat
                                 <Button
                                     onClick={handleUpdateProfile}
                                     disabled={saving}
-                                    className="bg-indigo-600 text-white hover:bg-indigo-700 rounded-xl h-10 shadow-lg shadow-indigo-200 text-xs font-semibold px-8 gap-2"
+                                    className="bg-primary text-white hover:bg-primary/90 rounded-xl h-10 shadow-lg shadow-primary/20 text-xs font-semibold px-8 gap-2 border-0"
                                 >
                                     {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                                     Guardar Cambios
