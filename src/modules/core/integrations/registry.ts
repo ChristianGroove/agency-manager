@@ -18,6 +18,8 @@ class IntegrationRegistry {
         this.register(new MetaAdapter('meta_business')) // Unified Omnichannel
         this.register(new MetaAdapter('whatsapp_cloud')) // WA
         this.register(new MetaAdapter('instagram_dm')) // IG DM
+        this.register(new MetaAdapter('instagram_dm')) // IG DM
+        this.register(new MetaAdapter('instagram_dme')) // IG DME (New)
         this.register(new MetaAdapter('facebook_page')) // FB Messenger
 
         this.register(new MockAdapter('stripe'))

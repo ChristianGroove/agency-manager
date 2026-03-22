@@ -238,7 +238,8 @@ export function EditChannelSheet({ open, onOpenChange, channel, pipelineStages, 
 
     const providerLabel = ({
         'meta_whatsapp': 'WhatsApp', 'whatsapp_cloud': 'WhatsApp',
-        'evolution_api': 'Evolution', 'facebook_page': 'Messenger', 'instagram_dm': 'Instagram',
+        'evolution_api': 'Evolution', 'facebook_page': 'Messenger', 
+        'instagram_dm': 'Instagram', 'instagram_dme': 'Instagram',
     } as Record<string, string>)[channel.provider_key] || channel.provider_key
 
     return (

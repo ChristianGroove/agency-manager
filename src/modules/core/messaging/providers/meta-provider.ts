@@ -593,11 +593,56 @@ export class MetaProvider implements MessagingProvider {
         
         // 1. WhatsApp / Messenger / Instagram all come through 'entry'
         for (const entry of payload.entry || []) {
-            const changes = entry.changes || [entry];
-            
+            // Instagram / Messenger DMs use entry.messaging array
+            const messaging = entry.messaging || [];
+            if (messaging.length > 0) {
+                for (const item of messaging) {
+                    const from = item.sender?.id;
+                    const recipientId = item.recipient?.id;
+                    const isEcho = item.message?.is_echo;
+                    if (isEcho) continue;
+
+                    const msgData = item.message || {};
+                    const postback = item.postback || {};
+
+                    let type = 'text';
+                    let text = msgData.text || postback.title || '';
+                    let mediaUrl = '';
+                    let buttonId = msgData.quick_reply?.payload || postback.payload || '';
+
+                    if (msgData.attachments) {
+                        const attachment = msgData.attachments[0];
+                        type = attachment.type;
+                        mediaUrl = attachment.payload?.url || '';
+                    }
+
+                    const channel = payload.object === 'instagram' ? 'instagram' : 'messenger';
+                    const { name: senderName } = await this.fetchSocialProfile(from, entry.id, channel);
+
+                    messages.push({
+                        id: msgData.mid || `meta_${Date.now()}`,
+                        externalId: msgData.mid,
+                        channel,
+                        from,
+                        senderName,
+                        buttonId,
+                        content: { type: (['image','video','audio','file'].includes(type) ? type : 'text') as any, text, mediaUrl },
+                        timestamp: new Date(item.timestamp),
+                        origin: 'inbound',
+                        metadata: {
+                            raw: item,
+                            recipientId,
+                            instagram_business_id: recipientId,
+                            page_id: entry.id
+                        }
+                    });
+                }
+            }
+
+            // WhatsApp uses entry.changes array
+            const changes = entry.changes || [];
             for (const change of changes) {
-                const value = change.value || change;
-                if (!value) continue;
+                const value = change.value || {};
 
                 // --- WhatsApp Parse ---
                 if (value.messages) {
@@ -652,51 +697,9 @@ export class MetaProvider implements MessagingProvider {
                         });
                     }
                 }
-
-                // --- Messenger / Instagram Parse ---
-                if (value.message || value.postback) {
-                    const pageId = entry.id; // Usually the page/ig id for messaging events
-                    const from = value.sender?.id;
-                    const isEcho = value.message?.is_echo;
-                    if (isEcho) continue;
-
-                    const msgData = value.message || {};
-                    const postback = value.postback || {};
-                    
-                    let type = 'text';
-                    let text = msgData.text || postback.title || '';
-                    let mediaUrl = '';
-                    let buttonId = msgData.quick_reply?.payload || postback.payload || '';
-
-                    if (msgData.attachments) {
-                        const attachment = msgData.attachments[0];
-                        type = attachment.type;
-                        mediaUrl = attachment.payload?.url || '';
-                    }
-
-                    const channel = payload.object === 'instagram' ? 'instagram' : 'messenger';
-                    const { name: senderName } = await this.fetchSocialProfile(from, pageId, channel);
-
-                    messages.push({
-                        id: msgData.mid || `pb_${value.timestamp}_${from}`,
-                        externalId: msgData.mid || `pb_${value.timestamp}`,
-                        channel: channel,
-                        from: from,
-                        senderName: senderName,
-                        buttonId,
-                        content: { 
-                            type: (type === 'fallback' ? 'text' : type) as any, 
-                            text, 
-                            mediaUrl 
-                        },
-                        timestamp: new Date(value.timestamp || Date.now()),
-                        origin: isEcho ? 'outbound' : 'inbound',
-                        metadata: { 
-                            raw: value,
-                            [payload.object === 'instagram' ? 'instagramBusinessId' : 'pageId']: pageId 
-                        }
-                    });
-                }
+                // --- Legacy / Removed Block ---
+                // The Messenger/Instagram logic has been moved outside the changes loop 
+                // to entry.messaging for structural correctness.
             }
         }
 

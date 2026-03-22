@@ -117,7 +117,7 @@ export class ChannelResolver {
                 .select('id, organization_id, provider_key, credentials, metadata, default_pipeline_stage_id, working_hours, auto_reply_when_offline, welcome_message')
                 .in('provider_key', ['instagram_dm', 'instagram_dme'])
                 .in('status', ['active', 'connected'])
-                .or(`metadata->>asset_id.eq.${igId},metadata->>page_id.eq.${igId},metadata->>pageId.eq.${igId}`)
+                .or(`metadata->>asset_id.eq.${igId},metadata->>page_id.eq.${igId},metadata->>pageId.eq.${igId},metadata->>instagram_business_id.eq.${igId},metadata->>id.eq.${igId}`)
                 .maybeSingle()
 
             if (direct) return { connectionId: direct.id, organizationId: direct.organization_id, connection: direct }
