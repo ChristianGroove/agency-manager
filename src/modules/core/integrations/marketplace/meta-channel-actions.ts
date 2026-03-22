@@ -105,10 +105,10 @@ export async function activateMetaChannel(input: ActivateInput): Promise<{ succe
 
                 // For Instagram, we still subscribe the Page ID because Meta delivers 
                 // Instagram Webhooks via the Page's subscribed_apps entry.
-                const pageIdToSubscribe = assetType === "instagram" ? (input as any).pageId || (input as any).page_id || assetId : assetId;
+                const pageIdToSubscribe = (input as any).pageId || (input as any).page_id || assetId;
 
                 const webhookResult = await metaApi.subscribePageWebhooks(pageIdToSubscribe, finalAccessToken);
-                webhookStatus = webhookResult.success ? "subscribed" : "failed";
+                webhookStatus = webhookResult.success ? "active" : "failed";
                 console.log(`[activateMetaChannel] Webhook ${webhookStatus} for ${assetType} (${assetId}) via Page ${pageIdToSubscribe}`);
             } catch (e: any) {
                 console.warn(`[activateMetaChannel] Token/webhook setup warning: ${e.message}`);

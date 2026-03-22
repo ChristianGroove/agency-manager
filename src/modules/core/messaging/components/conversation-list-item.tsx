@@ -232,7 +232,7 @@ export const ConversationListItem = memo(function ConversationListItem({ conv, i
                         {(['messenger', 'meta_messenger', 'facebook_dm', 'facebook_page'].includes((conv.channel as any)?.toLowerCase())) && (
                             <img src="/social media icons/messenger.png" alt="Messenger" className="h-3.5 w-3.5 object-contain" />
                         )}
-                        {(['instagram', 'instagram_dm', 'meta_instagram'].includes((conv.channel as any)?.toLowerCase())) && (
+                        {(['instagram', 'instagram_dm', 'instagram_dme', 'meta_instagram'].includes((conv.channel as any)?.toLowerCase())) && (
                             <img src="/social media icons/instagram.png" alt="Instagram" className="h-3.5 w-3.5 object-contain" />
                         )}
 

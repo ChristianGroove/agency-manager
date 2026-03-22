@@ -39,7 +39,7 @@ const getChannelVisuals = (key: string, isVirtual: boolean, virtType?: string) =
     if (k === 'meta_messenger' || k === 'messenger') return { iconSrc: '/social media icons/messenger.png', bg: 'bg-blue-50' }
 
     // Instagram
-    if (k === 'meta_instagram' || k === 'instagram_dm' || k === 'instagram') return { iconSrc: '/social media icons/instagram.png', bg: 'bg-pink-50' }
+    if (k === 'meta_instagram' || k === 'instagram_dm' || k === 'instagram_dme' || k === 'instagram') return { iconSrc: '/social media icons/instagram.png', bg: 'bg-pink-50' }
 
     // Virtual Types (from assets)
     if (virtType === 'whatsapp') return { iconSrc: '/social media icons/whatsapp.png', bg: 'bg-green-50' }
@@ -172,6 +172,7 @@ export function ChannelCard({ channel, pipelineStages = [], agents = [], isVirtu
                                             'whatsapp_cloud': 'WhatsApp',
                                             'evolution_api': 'Evolution',
                                             'instagram_dm': 'Instagram',
+                                            'instagram_dme': 'Instagram',
                                             'meta_instagram': 'Instagram',
                                             'meta_business': 'Meta Business',
                                             'facebook_page': 'Messenger',
@@ -286,6 +287,7 @@ export function ChannelCard({ channel, pipelineStages = [], agents = [], isVirtu
                                         'evolution_api': 'Evolution API',
                                         'meta_instagram': 'Instagram',
                                         'instagram_dm': 'Instagram',
+                                        'instagram_dme': 'Instagram',
                                         'meta_business': 'Meta Business',
                                         'facebook_page': 'Messenger',
                                     } as Record<string, string>)[channel.provider_key] || channel.provider_key.replace(/_/g, ' ').toUpperCase()}</span>
