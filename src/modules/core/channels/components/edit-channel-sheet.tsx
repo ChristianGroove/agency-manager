@@ -212,9 +212,20 @@ export function EditChannelSheet({ open, onOpenChange, channel, pipelineStages, 
                 working_hours: workingHours,
             })
             if (assignmentRule) {
-                await upsertAssignmentRule({ ...assignmentRule, conditions: { connection_id: [channel.id] } })
+                const result = await upsertAssignmentRule({ ...assignmentRule, conditions: { connection_id: [channel.id] } })
+                if (!result.success) {
+                    toast.error('Error guardando regla de asignación', { description: result.error })
+                    setIsLoading(false)
+                    return
+                }
+                // Update local state with saved ID for subsequent saves
+                if (result.data) {
+                    setAssignmentRule(result.data)
+                    setInitialRuleId(result.data.id)
+                }
             } else if (initialRuleId && !assignmentRule) {
                 await deleteAssignmentRule(initialRuleId)
+                setInitialRuleId(null)
             }
             toast.success(dict.common.saved)
             router.refresh()
@@ -422,10 +433,16 @@ export function EditChannelSheet({ open, onOpenChange, channel, pipelineStages, 
                                                             <SelectValue />
                                                         </SelectTrigger>
                                                         <SelectContent>
-                                                            <SelectItem value="round-robin">Manual / Round Robin</SelectItem>
+                                                            <SelectItem value="round-robin">Turno Rotativo (Round Robin)</SelectItem>
+                                                            <SelectItem value="load-balance">Balanceo Inteligente</SelectItem>
                                                             <SelectItem value="specific-agent">Agentes Específicos</SelectItem>
                                                         </SelectContent>
                                                     </Select>
+                                                    <p className="text-[10px] text-muted-foreground px-1">
+                                                        {assignmentRule.strategy === 'round-robin' && 'Rota entre agentes disponibles en orden secuencial.'}
+                                                        {assignmentRule.strategy === 'load-balance' && 'Asigna al agente con menor carga de trabajo actual.'}
+                                                        {assignmentRule.strategy === 'specific-agent' && 'Asigna siempre a los agentes seleccionados abajo.'}
+                                                    </p>
                                                 </div>
 
                                                 {assignmentRule.strategy === 'specific-agent' && (

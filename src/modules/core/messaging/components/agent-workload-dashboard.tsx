@@ -322,6 +322,7 @@ export function AgentWorkloadDashboard() {
             </Card>
 
             {/* Test Tools (Dev Only) */}
+            {process.env.NODE_ENV !== 'production' && (
             <Card className="p-4 border-dashed border-indigo-200 bg-indigo-50/50">
                 <div className="flex items-start gap-3">
                     <div className="p-2 bg-indigo-100 rounded text-indigo-600 mt-1">
@@ -336,6 +337,7 @@ export function AgentWorkloadDashboard() {
                     </div>
                 </div>
             </Card>
+            )}
         </div>
     )
 }

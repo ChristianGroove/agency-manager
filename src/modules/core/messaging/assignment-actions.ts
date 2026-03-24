@@ -30,26 +30,48 @@ export async function updateAgentStatus(status: 'online' | 'away' | 'offline' | 
         return { success: false, error: 'Organization membership not found' }
     }
 
-    const { error } = await supabase
+    // Update if exists, insert if new agent
+    // IMPORTANT: Use update first to avoid overwriting auto_assign_enabled and max_capacity
+    const { data: existing } = await supabaseAdmin
         .from('agent_availability')
-        .upsert({
-            organization_id: memberData.organization_id,
-            agent_id: user.id,
-            status,
-            // Initialize defaults if creating new
-            max_capacity: 5,
-            current_load: 0,
-            auto_assign_enabled: false,
-            last_seen_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-        }, {
-            onConflict: 'organization_id,agent_id',
-            ignoreDuplicates: false // Upsert
-        })
+        .select('agent_id')
+        .eq('organization_id', memberData.organization_id)
+        .eq('agent_id', user.id)
+        .maybeSingle()
 
-    if (error) {
-        console.error('Failed to update agent status:', error)
-        return { success: false, error: error.message }
+    if (existing) {
+        // Update only the status field (preserve other settings)
+        const { error } = await supabaseAdmin
+            .from('agent_availability')
+            .update({
+                status,
+                last_seen_at: new Date().toISOString()
+            })
+            .eq('agent_id', user.id)
+            .eq('organization_id', memberData.organization_id)
+
+        if (error) {
+            console.error('Failed to update agent status:', error)
+            return { success: false, error: error.message }
+        }
+    } else {
+        // Insert new agent with sensible defaults
+        const { error } = await supabaseAdmin
+            .from('agent_availability')
+            .insert({
+                organization_id: memberData.organization_id,
+                agent_id: user.id,
+                status,
+                max_capacity: 50,
+                current_load: 0,
+                auto_assign_enabled: true, // Enable by default (matches DB schema default)
+                last_seen_at: new Date().toISOString()
+            })
+
+        if (error) {
+            console.error('Failed to insert agent availability:', error)
+            return { success: false, error: error.message }
+        }
     }
 
     revalidatePath('/inbox')
@@ -269,6 +291,7 @@ export async function upsertAssignmentRule(rule: {
     conditions: any
     strategy: string
     assign_to?: string[]
+    is_active?: boolean
 }) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -277,36 +300,42 @@ export async function upsertAssignmentRule(rule: {
         return { success: false, error: 'Unauthorized' }
     }
 
-    // Get organization_id
-    const { data: org } = await supabase
-        .from('organizations')
-        .select('id')
-        .limit(1)
-        .single()
-
-    if (!org) {
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) {
+        console.error('[upsertAssignmentRule] No organization found')
         return { success: false, error: 'Organization not found' }
     }
 
-    const ruleData = {
-        ...rule,
-        organization_id: org.id,
-        created_by: user.id,
+    const ruleData: any = {
+        name: rule.name,
+        priority: rule.priority,
+        conditions: rule.conditions,
+        strategy: rule.strategy,
+        assign_to: rule.assign_to || [],
+        is_active: rule.is_active !== undefined ? rule.is_active : true,
+        organization_id: orgId,
         updated_at: new Date().toISOString()
     }
 
-    const { data, error } = await supabase
+    // If updating existing rule, include ID
+    if (rule.id) {
+        ruleData.id = rule.id
+    }
+
+    const { data, error } = await supabaseAdmin
         .from('assignment_rules')
         .upsert(ruleData)
         .select()
         .single()
 
     if (error) {
-        console.error('Failed to upsert assignment rule:', error)
+        console.error('[upsertAssignmentRule] Failed:', error)
         return { success: false, error: error.message }
     }
 
+    console.log(`[upsertAssignmentRule] ✅ Saved rule: ${data.id} (${data.strategy})`)
     revalidatePath('/inbox/settings')
+    revalidatePath('/crm/settings/channels')
     return { success: true, data }
 }
 
@@ -314,18 +343,18 @@ export async function upsertAssignmentRule(rule: {
  * Delete an assignment rule
  */
 export async function deleteAssignmentRule(ruleId: string) {
-    const supabase = await createClient()
-
-    const { error } = await supabase
+    const { error } = await supabaseAdmin
         .from('assignment_rules')
         .delete()
         .eq('id', ruleId)
 
     if (error) {
+        console.error('[deleteAssignmentRule] Failed:', error)
         return { success: false, error: error.message }
     }
 
     revalidatePath('/inbox/settings')
+    revalidatePath('/crm/settings/channels')
     return { success: true }
 }
 
@@ -503,3 +532,27 @@ export async function getSidebarAgents() {
     return { success: true, data: agents }
 }
 
+/**
+ * Reconcile current_load for all agents in the organization
+ * Counts actual active assigned conversations vs stored counter
+ */
+export async function reconcileAllAgentLoads() {
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) return { success: false, error: 'No organization found' }
+
+    const { reconcileAgentLoad } = await import('./assignment-engine')
+
+    const { data: agents } = await supabaseAdmin
+        .from('agent_availability')
+        .select('agent_id')
+        .eq('organization_id', orgId)
+
+    if (!agents || agents.length === 0) return { success: true, data: [] }
+
+    const results = await Promise.all(
+        agents.map(a => reconcileAgentLoad(a.agent_id))
+    )
+
+    const fixed = results.filter(r => r.previous !== r.actual)
+    return { success: true, data: { total: agents.length, reconciled: fixed.length } }
+}
