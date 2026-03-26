@@ -448,27 +448,61 @@ export function EditChannelSheet({ open, onOpenChange, channel, pipelineStages, 
                                                 {assignmentRule.strategy === 'specific-agent' && (
                                                     <div className="space-y-1.5">
                                                         <Label className="text-[11px] font-bold text-muted-foreground uppercase ml-1">Seleccionar Agentes</Label>
-                                                        <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto p-2 border rounded-xl bg-gray-50/50 dark:bg-white/5">
-                                                            {agents.map(agent => (
-                                                                <div key={agent.user.id} className="flex items-center gap-2 py-1 px-2 hover:bg-white dark:hover:bg-white/5 rounded-lg border border-transparent hover:border-black/5 transition-all">
-                                                                    <Switch
-                                                                        id={agent.user.id}
-                                                                        checked={assignmentRule.assign_to?.includes(agent.user.id)}
-                                                                        onCheckedChange={(checked) => {
-                                                                            const current = assignmentRule.assign_to || []
-                                                                            const updated = checked
-                                                                                ? [...current, agent.user.id]
-                                                                                : current.filter((id: string) => id !== agent.user.id)
-                                                                            setAssignmentRule({ ...assignmentRule, assign_to: updated })
-                                                                        }}
-                                                                        className="scale-75"
-                                                                    />
-                                                                    <Label htmlFor={agent.user.id} className="text-[11px] font-medium cursor-pointer truncate">
-                                                                        {agent.user.full_name || agent.user.email}
-                                                                    </Label>
-                                                                </div>
-                                                            ))}
+                                                        <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto p-2 border rounded-xl bg-gray-50/50 dark:bg-white/5">
+                                                            {agents.map(agent => {
+                                                                const targetType = channel.provider_key.includes('whatsapp') ? 'whatsapp' :
+                                                                                 channel.provider_key.includes('instagram') ? 'instagram' :
+                                                                                 (channel.provider_key.includes('facebook') || channel.provider_key.includes('messenger')) ? 'messenger' : 
+                                                                                 channel.provider_key;
+                                                                const isPrivileged = agent.role === 'owner' || agent.role === 'admin';
+                                                                const hasChannelBinding = agent.agent_channels?.some((ac: any) => ac.channel_type === targetType && ac.is_active);
+                                                                const hasExplicitAccess = agent.permissions?.inbox_access?.includes(channel.id);
+                                                                const hasAccess = isPrivileged || hasChannelBinding || hasExplicitAccess;
+                                                                const isSelected = assignmentRule.assign_to?.includes(agent.user.id);
+
+                                                                return (
+                                                                    <div 
+                                                                        key={agent.user.id} 
+                                                                        className={cn(
+                                                                            "flex items-center gap-2 py-1.5 px-2 rounded-lg border border-transparent transition-all",
+                                                                            hasAccess ? "hover:bg-white dark:hover:bg-white/5 hover:border-black/5" : "opacity-50 grayscale bg-gray-100/50 dark:bg-gray-800/30"
+                                                                        )}
+                                                                    >
+                                                                        <Switch
+                                                                            id={agent.user.id}
+                                                                            checked={isSelected}
+                                                                            disabled={!hasAccess}
+                                                                            onCheckedChange={(checked) => {
+                                                                                const current = assignmentRule.assign_to || []
+                                                                                const updated = checked
+                                                                                    ? [...current, agent.user.id]
+                                                                                    : current.filter((id: string) => id !== agent.user.id)
+                                                                                setAssignmentRule({ ...assignmentRule, assign_to: updated })
+                                                                            }}
+                                                                            className="scale-75"
+                                                                        />
+                                                                        <div className="flex flex-col min-w-0">
+                                                                            <Label 
+                                                                                htmlFor={agent.user.id} 
+                                                                                className={cn(
+                                                                                    "text-[10px] font-bold truncate cursor-pointer",
+                                                                                    !hasAccess && "cursor-not-allowed"
+                                                                                )}
+                                                                            >
+                                                                                {agent.user.full_name || agent.user.email}
+                                                                            </Label>
+                                                                            {!hasAccess && (
+                                                                                <span className="text-[8px] text-red-500 font-bold uppercase leading-none">No Autorizado</span>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            })}
                                                         </div>
+                                                         <p className="text-[10px] text-muted-foreground mt-2 px-1 italic">
+                                                             Solo puedes seleccionar agentes que tengan el canal asignado en la configuración de equipo. 
+                                                             <span className="font-semibold ml-1">(Admins y Owners tienen acceso total por defecto)</span>.
+                                                         </p>
                                                     </div>
                                                 )}
                                             </div>

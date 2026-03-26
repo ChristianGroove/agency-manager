@@ -159,10 +159,11 @@ async function roundRobinAssignment(orgId: string, agentPool?: string[], channel
     // Get available agents (scoped to org)
     let agentQuery = supabaseAdmin
         .from('agent_availability')
-        .select('agent_id, organization_id')
+        .select('agent_id, organization_id, last_seen_at') // Added last_seen_at
         .eq('status', 'online')
         .eq('auto_assign_enabled', true)
         .eq('organization_id', orgId)
+        .order('agent_id') // Deterministic order for rotation stable playback
 
     if (agentPool && agentPool.length > 0) {
         agentQuery = agentQuery.in('agent_id', agentPool)
@@ -172,16 +173,28 @@ async function roundRobinAssignment(orgId: string, agentPool?: string[], channel
 
     if (!agents || agents.length === 0) return null
 
+    // Heartbeat validation (3 minutes threshold) - Ensure parity with Dashboard
+    const heartbeatThreshold = new Date(Date.now() - 3 * 60 * 1000).toISOString();
+    const activeAgents = agents.filter(a => a.last_seen_at && a.last_seen_at > heartbeatThreshold);
+
+    if (activeAgents.length === 0) return null;
+
     // Filter by Channel Access AND Admin Role
     const [rolesResult, accessResult] = await Promise.all([
-        supabaseAdmin.from('organization_members').select('user_id, role').eq('organization_id', orgId).in('user_id', agents.map(a => a.agent_id)),
+        supabaseAdmin.from('organization_members').select('user_id, role, permissions').eq('organization_id', orgId).in('user_id', agents.map(a => a.agent_id)),
         channelType ? supabaseAdmin.from('agent_channels').select('agent_id').or(`channel_type.eq.${channelType},channel_type.eq.${connectionId}`).eq('is_active', true) : Promise.resolve({ data: [] })
     ]);
 
-    const adminUserIds = new Set((rolesResult.data || []).filter(m => ['admin', 'owner'].includes(m.role?.toLowerCase())).map(m => m.user_id));
+    const membersMap = new Map((rolesResult.data || []).map(m => [m.user_id, m]));
     const authorizedAgentIds = new Set((accessResult.data || []).map(ca => ca.agent_id));
 
-    const qualifiedAgents = agents.filter(a => adminUserIds.has(a.agent_id) || authorizedAgentIds.has(a.agent_id));
+    const qualifiedAgents = activeAgents.filter(a => {
+        const member = membersMap.get(a.agent_id);
+        const isAdmin = ['admin', 'owner'].includes(member?.role?.toLowerCase());
+        const hasChannelBinding = authorizedAgentIds.has(a.agent_id);
+        const hasExplicitAccess = (member?.permissions as any)?.inbox_access?.includes(connectionId);
+        return isAdmin || hasChannelBinding || hasExplicitAccess;
+    });
 
     if (qualifiedAgents.length === 0) return null;
 
@@ -195,29 +208,42 @@ async function loadBalanceAssignment(orgId: string, agentPool?: string[], channe
     // 1. Get online agents with capacity (scoped to org)
     let query = supabaseAdmin
         .from('agent_availability')
-        .select('agent_id, current_load, max_capacity, status, organization_id')
+        .select('agent_id, current_load, max_capacity, status, organization_id, last_seen_at')
         .eq('organization_id', orgId)
         .eq('status', 'online')
         .eq('auto_assign_enabled', true)
+        .order('agent_id')
 
     if (agentPool && agentPool.length > 0) {
         query = query.in('agent_id', agentPool)
     }
 
-    const { data: agents } = await query
+    const { data: agents, error } = await query
 
-    if (!agents || agents.length === 0) return null
+    if (error || !agents || agents.length === 0) return null
+
+    // Heartbeat validation (3 minutes threshold)
+    const heartbeatThreshold = new Date(Date.now() - 3 * 60 * 1000).toISOString();
+    const activeAgents = agents.filter(a => a.last_seen_at && a.last_seen_at > heartbeatThreshold);
+
+    if (activeAgents.length === 0) return null;
 
     // 2. Filter by Channel Access AND Admin Role
     const [rolesResult, accessResult] = await Promise.all([
-        supabaseAdmin.from('organization_members').select('user_id, role').eq('organization_id', orgId).in('user_id', agents.map(a => a.agent_id)),
+        supabaseAdmin.from('organization_members').select('user_id, role, permissions').eq('organization_id', orgId).in('user_id', agents.map(a => a.agent_id)),
         channelType ? supabaseAdmin.from('agent_channels').select('agent_id').or(`channel_type.eq.${channelType},channel_type.eq.${connectionId}`).eq('is_active', true) : Promise.resolve({ data: [] })
     ]);
 
-    const adminUserIds = new Set((rolesResult.data || []).filter(m => ['admin', 'owner'].includes(m.role?.toLowerCase())).map(m => m.user_id));
+    const membersMap = new Map((rolesResult.data || []).map(m => [m.user_id, m]));
     const authorizedAgentIds = new Set((accessResult.data || []).map(ca => ca.agent_id));
 
-    const qualifiedAgents = agents.filter(a => adminUserIds.has(a.agent_id) || authorizedAgentIds.has(a.agent_id));
+    const qualifiedAgents = activeAgents.filter(a => {
+        const member = membersMap.get(a.agent_id);
+        const isAdmin = ['admin', 'owner'].includes(member?.role?.toLowerCase());
+        const hasChannelBinding = authorizedAgentIds.has(a.agent_id);
+        const hasExplicitAccess = (member?.permissions as any)?.inbox_access?.includes(connectionId);
+        return isAdmin || hasChannelBinding || hasExplicitAccess;
+    });
 
     if (qualifiedAgents.length === 0) return null;
 
@@ -276,36 +302,47 @@ async function skillsBasedAssignment(conv: any, agentPool?: string[], channelTyp
     // Fetch roles for bypass
     const { data: members } = await supabaseAdmin
         .from('organization_members')
-        .select('user_id, role')
+        .select('user_id, role, permissions')
         .in('user_id', sortedAgents)
 
-    const adminUserIds = new Set((members || []).filter(m => ['admin', 'owner'].includes(m.role?.toLowerCase())).map(m => m.user_id));
+    const memberMap = new Map((members || []).map(m => [m.user_id, m]));
+
+    const heartbeatThreshold = new Date(Date.now() - 3 * 60 * 1000).toISOString();
 
     for (const agentId of sortedAgents) {
-        const isAdmin = adminUserIds.has(agentId)
+        const member = memberMap.get(agentId);
+        const isAdmin = ['admin', 'owner'].includes(member?.role?.toLowerCase());
 
         // Validation: Channel Access (Skip if Admin)
         if (channelType && !isAdmin) {
-            const { data: hasAccess } = await supabaseAdmin
-                .from('agent_channels')
-                .select('agent_id')
-                .eq('agent_id', agentId)
-                .or(`channel_type.eq.${channelType},channel_type.eq.${connectionId}`)
-                .eq('is_active', true)
-                .limit(1)
+            const hasExplicitAccess = (member?.permissions as any)?.inbox_access?.includes(connectionId);
+            
+            if (!hasExplicitAccess) {
+                const { data: hasAccess } = await supabaseAdmin
+                    .from('agent_channels')
+                    .select('agent_id')
+                    .eq('agent_id', agentId)
+                    .or(`channel_type.eq.${channelType},channel_type.eq.${connectionId}`)
+                    .eq('is_active', true)
+                    .limit(1)
 
-            if (!hasAccess || hasAccess.length === 0) continue;
+                if (!hasAccess || hasAccess.length === 0) continue;
+            }
         }
 
         const { data: availability } = await supabaseAdmin
             .from('agent_availability')
-            .select('agent_id, current_load, max_capacity')
+            .select('agent_id, current_load, max_capacity, last_seen_at')
             .eq('agent_id', agentId)
             .eq('status', 'online')
             .eq('auto_assign_enabled', true)
             .single()
 
-        if (availability && availability.current_load < availability.max_capacity) {
+        // Check load AND heartbeat
+        if (availability && 
+            availability.current_load < availability.max_capacity &&
+            availability.last_seen_at && availability.last_seen_at > heartbeatThreshold
+        ) {
             return availability.agent_id
         }
     }

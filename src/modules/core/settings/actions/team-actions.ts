@@ -39,8 +39,26 @@ export async function getOrganizationMembers() {
 
     if (!members || members.length === 0) return []
 
-    // Fetch user profiles separately using admin
+    // Fetch user profiles and agent_channels separately using admin
     const userIds = members.map(m => m.user_id)
+    
+    // FETCH CHANNELS SEPARATELY (FIX for missing relationship join)
+    const { data: agentChannels } = await supabaseAdmin
+        .from('agent_channels')
+        .select('*')
+        .eq('organization_id', orgId)
+        .in('agent_id', userIds)
+
+    const channelsByAgent = new Map<string, any[]>()
+    agentChannels?.forEach(ac => {
+        const list = channelsByAgent.get(ac.agent_id) || []
+        list.push({
+            channel_type: ac.channel_type,
+            is_active: ac.is_active
+        })
+        channelsByAgent.set(ac.agent_id, list)
+    })
+
     const { data: profiles } = await supabaseAdmin
         .from('profiles')
         .select('id, full_name, avatar_url, platform_role')
@@ -64,9 +82,8 @@ export async function getOrganizationMembers() {
             permissions: member.permissions as unknown as MemberPermissions, // Ensure type safety
             role_id: member.role_id,
             // If they have a dynamic role, use its name, otherwise fallback to legacy enum
-            // We need to fetch the role name? The query above selected '*' from organization_members.
-            // We should join organization_roles to get the name.
-            role_name: member.organization_roles?.name || member.role,
+            role_name: (member as any).organization_roles?.name || member.role,
+            agent_channels: channelsByAgent.get(member.user_id) || [], // Attach manually mapped channels
             user: {
                 id: member.user_id,
                 email: userMap.get(member.user_id) || 'Sin Email',

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Settings, User, Zap, Sparkles } from "lucide-react"
@@ -11,6 +11,7 @@ import { NotificationsCard } from "@/modules/core/preferences/components/notific
 import { ProductivityCard } from "@/modules/core/preferences/components/productivity-card"
 import { DisplayCard } from "@/modules/core/preferences/components/display-card"
 import { useTranslation } from "@/lib/i18n/use-translation"
+import { getCurrentUserPermissions } from "@/modules/core/settings/actions/team-actions"
 
 interface InboxSettingsSheetProps {
     open: boolean
@@ -19,6 +20,33 @@ interface InboxSettingsSheetProps {
 
 export function InboxSettingsSheet({ open, onOpenChange }: InboxSettingsSheetProps) {
     const { t } = useTranslation()
+    const [userPermissions, setUserPermissions] = useState<any>(null)
+    const [loadingPermissions, setLoadingPermissions] = useState(true)
+
+    // Fetch permissions when sheet opens
+    useEffect(() => {
+        if (!open) return
+
+        const fetchPermissions = async () => {
+            try {
+                const perms = await getCurrentUserPermissions()
+                setUserPermissions(perms)
+            } catch (err) {
+                console.warn('[InboxSettingsSheet] Failed to fetch permissions:', err)
+            } finally {
+                setLoadingPermissions(false)
+            }
+        }
+        fetchPermissions()
+    }, [open])
+
+    const isAdmin = useMemo(() => {
+        if (!userPermissions) return false
+        return userPermissions.role === 'admin' || 
+               userPermissions.role === 'owner' || 
+               userPermissions.permissions?.all === true
+    }, [userPermissions])
+
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
             <SheetContent
@@ -56,13 +84,17 @@ export function InboxSettingsSheet({ open, onOpenChange }: InboxSettingsSheetPro
                                         <User className="h-4 w-4 mr-2" />
                                         {t('crm.inbox.settings.tabs.status')}
                                     </TabsTrigger>
-                                    <TabsTrigger
-                                        value="rules"
-                                        className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm px-4"
-                                    >
-                                        <Zap className="h-4 w-4 mr-2" />
-                                        {t('crm.inbox.settings.tabs.rules')}
-                                    </TabsTrigger>
+                                    
+                                    {isAdmin && (
+                                        <TabsTrigger
+                                            value="rules"
+                                            className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm px-4"
+                                        >
+                                            <Zap className="h-4 w-4 mr-2" />
+                                            {t('crm.inbox.settings.tabs.rules')}
+                                        </TabsTrigger>
+                                    )}
+
                                     <TabsTrigger
                                         value="preferences"
                                         className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm px-4"
@@ -83,18 +115,22 @@ export function InboxSettingsSheet({ open, onOpenChange }: InboxSettingsSheetPro
                                             {t('crm.inbox.settings.sections.availability_desc')}
                                         </p>
                                     </div>
-                                    <AgentWorkloadDashboard />
+                                    <AgentWorkloadDashboard isAdmin={isAdmin} />
                                 </TabsContent>
 
-                                <TabsContent value="rules" className="mt-0 space-y-6 max-w-3xl">
-                                    <div className="space-y-1 mb-6">
-                                        <h3 className="text-lg font-semibold">{t('crm.inbox.settings.sections.routing')}</h3>
-                                        <p className="text-sm text-muted-foreground">
-                                            {t('crm.inbox.settings.sections.routing_desc')}
-                                        </p>
-                                    </div>
-                                    <AssignmentRulesManager />
-                                </TabsContent>
+                                {isAdmin && (
+                                    <TabsContent value="rules" className="mt-0 space-y-6 max-w-3xl">
+                                        <div className="space-y-1 mb-6">
+                                            <h3 className="text-lg font-semibold">{t('crm.inbox.settings.sections.routing')}</h3>
+                                            <p className="text-sm text-muted-foreground">
+                                                {t('crm.inbox.settings.sections.routing_desc')}
+                                            </p>
+                                        </div>
+                                        <AssignmentRulesManager />
+                                    </TabsContent>
+                                )}
+
+
 
                                 <TabsContent value="preferences" className="mt-0 space-y-6 max-w-3xl">
                                     <div className="space-y-1 mb-6">

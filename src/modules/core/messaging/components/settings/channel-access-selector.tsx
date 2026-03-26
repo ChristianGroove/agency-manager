@@ -37,9 +37,16 @@ export function ChannelAccessSelector({ selectedIds, onChange, disabled }: Chann
             const data = await getChannels()
             setChannels(data)
             setLoading(false)
+
+            // Auto-clean orphaned IDs on initial load
+            // This ensures "ghost" connections from deleted channels are removed from the parent state
+            const validIds = selectedIds.filter(id => data.some(c => c.id === id));
+            if (validIds.length !== selectedIds.length) {
+                onChange(validIds);
+            }
         }
         fetchChannels()
-    }, [])
+    }, []) // Only run on mount to avoid loops
 
     const toggleChannel = (id: string) => {
         const newSelected = selectedIds.includes(id)
@@ -49,6 +56,8 @@ export function ChannelAccessSelector({ selectedIds, onChange, disabled }: Chann
     }
 
     if (loading) return <div className="h-10 w-full animate-pulse bg-gray-100 rounded-md" />
+
+    const validSelectedIds = selectedIds.filter(id => channels.some(c => c.id === id));
 
     return (
         <div className="space-y-3">
@@ -63,9 +72,9 @@ export function ChannelAccessSelector({ selectedIds, onChange, disabled }: Chann
                     >
                         <span className="flex items-center gap-2 truncate">
                             <MessageSquare className="h-4 w-4 text-indigo-500" />
-                            {selectedIds.length === 0
+                            {validSelectedIds.length === 0
                                 ? "Sin canales autorizados"
-                                : `${selectedIds.length} canales seleccionados`}
+                                : `${validSelectedIds.length} ${validSelectedIds.length === 1 ? 'canal seleccionado' : 'canales seleccionados'}`}
                         </span>
                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
@@ -103,9 +112,9 @@ export function ChannelAccessSelector({ selectedIds, onChange, disabled }: Chann
                 </PopoverContent>
             </Popover>
 
-            {selectedIds.length > 0 && (
+            {validSelectedIds.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 p-2 bg-gray-50/50 rounded-lg border border-dashed border-gray-200">
-                    {channels.filter(c => selectedIds.includes(c.id)).map(c => (
+                    {channels.filter(c => validSelectedIds.includes(c.id)).map(c => (
                         <Badge
                             key={c.id}
                             variant="secondary"
@@ -123,7 +132,7 @@ export function ChannelAccessSelector({ selectedIds, onChange, disabled }: Chann
                 </div>
             )}
 
-            {selectedIds.length === 0 && !disabled && (
+            {validSelectedIds.length === 0 && !disabled && (
                 <div className="flex items-center gap-2 px-2 py-1 text-[10px] text-rose-600 bg-rose-50 rounded border border-rose-100 italic">
                     <ShieldAlert className="h-3 w-3" />
                     Aviso: El agente no verá ningún chat si no autorizas canales.

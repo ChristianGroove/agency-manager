@@ -1167,6 +1167,7 @@ export const en = {
                 },
                 sections: {
                     assignment: "Assignment",
+                    channels: "Channels",
                     contact_details: "Contact Details",
                     tags: "Tags",
                     potential_value: "Potential Value",
@@ -1307,6 +1308,8 @@ export const en = {
                     max_capacity_chats: "{capacity} chats",
                     current_load: "Current Load",
                     manual: "Manual",
+                    reconcile: "Sync Workload",
+                    reconcile_success: "Success! {count} records corrected.",
                     test_tools: "Test Tools",
                     test_tools_desc: "Simulate events to verify rule behavior.",
                     simulate_message: "Simulate New Message (WhatsApp)",

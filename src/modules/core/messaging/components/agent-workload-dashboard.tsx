@@ -22,6 +22,7 @@ import { useTranslation } from "@/lib/i18n/use-translation"
 interface AgentWorkload {
     agent_id: string
     status: 'online' | 'away' | 'offline' | 'busy'
+    last_seen_at?: string
     current_load: number
     max_capacity: number
     auto_assign_enabled: boolean
@@ -31,7 +32,7 @@ interface AgentWorkload {
     }
 }
 
-export function AgentWorkloadDashboard() {
+export function AgentWorkloadDashboard({ isAdmin }: { isAdmin?: boolean }) {
     const { t } = useTranslation()
     const [agents, setAgents] = useState<AgentWorkload[]>([])
     const [currentUser, setCurrentUser] = useState<any>(null)
@@ -55,13 +56,33 @@ export function AgentWorkloadDashboard() {
         }
     }, [])
 
-    const loadWorkload = async () => {
-        setLoading(true)
+    const loadWorkload = async (showLoading = true) => {
+        if (showLoading) setLoading(true)
         const result = await getAgentsWorkload()
         if (result.success) {
             setAgents(result.data as AgentWorkload[])
         }
-        setLoading(false)
+        if (showLoading) setLoading(false)
+    }
+
+    const handleReconcile = async () => {
+        setLoading(true)
+        try {
+            const { reconcileAllAgentLoads } = await import("../assignment-actions")
+            const result = await reconcileAllAgentLoads()
+            if (result.success) {
+                toast.success(t('crm.inbox.settings.sections.reconcile_success', { 
+                    count: (result.data as any).reconciled 
+                }) || `Sincronización completa. ${(result.data as any).reconciled} registros corregidos.`)
+                await loadWorkload(false)
+            } else {
+                toast.error(result.error || "Fallo en la sincronización")
+            }
+        } catch (err) {
+            toast.error("Error al sincronizar")
+        } finally {
+            setLoading(false)
+        }
     }
 
     const handleStatusChange = async (status: 'online' | 'away' | 'offline' | 'busy') => {
@@ -120,8 +141,15 @@ export function AgentWorkloadDashboard() {
 
     const currentAgent = agents.find(a => a.agent_id === currentUser?.id)
 
-    const getStatusColor = (status: string) => {
-        switch (status) {
+    const getStatusColor = (agentStatus: string, lastSeen?: string) => {
+        // Heartbeat validation: 3 minutes threshold
+        const isActuallyOnline = agentStatus === 'online' && (
+            !lastSeen || (new Date(lastSeen).getTime() > Date.now() - 3 * 60 * 1000)
+        );
+
+        if (!isActuallyOnline && agentStatus === 'online') return 'text-gray-400';
+
+        switch (agentStatus) {
             case 'online': return 'text-green-500'
             case 'away': return 'text-yellow-500'
             case 'busy': return 'text-orange-500'
@@ -184,7 +212,7 @@ export function AgentWorkloadDashboard() {
                                 onClick={() => handleStatusChange(status)}
                                 className="capitalize"
                             >
-                                <Circle className={`h-3 w-3 mr-2 fill-current ${getStatusColor(status)}`} />
+                                <Circle className={`h-3 w-3 mr-2 fill-current ${getStatusColor(status, currentAgent.last_seen_at)}`} />
                                 {t(`crm.inbox.settings.sections.${status}`)}
                             </Button>
                         ))}
@@ -273,70 +301,84 @@ export function AgentWorkloadDashboard() {
                 </Card>
             )}
 
-            {/* All Agents Workload */}
-            <Card className="p-6">
-                <h3 className="text-lg font-semibold mb-4">{t('crm.inbox.settings.sections.team_workload')}</h3>
-                <div className="space-y-3">
-                    {agents.map(agent => {
-                        const loadPercentage = getLoadPercentage(agent)
-                        const name = agent.users?.raw_user_meta_data?.name || agent.users?.email || t('common.unknown')
+            {/* All Agents Workload - Restricted to Admins/Owners */}
+            {isAdmin && (
+                <Card className="p-6">
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-semibold">{t('crm.inbox.settings.sections.team_workload')}</h3>
+                        <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={handleReconcile}
+                            disabled={loading}
+                            className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
+                        >
+                            <Loader2 className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                            {t('crm.inbox.settings.sections.reconcile') || "Recalcular Cargas"}
+                        </Button>
+                    </div>
+                    <div className="space-y-3">
+                        {agents.map(agent => {
+                            const loadPercentage = getLoadPercentage(agent)
+                            const name = agent.users?.raw_user_meta_data?.name || agent.users?.email || t('common.unknown')
 
-                        return (
-                            <div key={agent.agent_id} className="flex items-center gap-3 p-3 rounded-lg border">
-                                <div className="flex-shrink-0">
-                                    <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center relative">
-                                        <User className="h-5 w-5 text-gray-600" />
-                                        <Circle
-                                            className={`h-3 w-3 absolute -bottom-0.5 -right-0.5 fill-current ${getStatusColor(agent.status)} border-2 border-white rounded-full`}
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <span className="text-sm font-medium truncate">{name}</span>
-                                        {!agent.auto_assign_enabled && (
-                                            <Badge variant="outline" className="text-xs">{t('crm.inbox.settings.sections.manual')}</Badge>
-                                        )}
-                                    </div>
-
-                                    <div className="flex items-center gap-2">
-                                        <div className="flex-1 bg-gray-200 rounded-full h-2">
-                                            <div
-                                                className={`h-2 rounded-full transition-all ${loadPercentage >= 90 ? 'bg-red-500' :
-                                                    loadPercentage >= 70 ? 'bg-yellow-500' :
-                                                        'bg-green-500'
-                                                    }`}
-                                                style={{ width: `${Math.min(loadPercentage, 100)}%` }}
+                            return (
+                                <div key={agent.agent_id} className="flex items-center gap-3 p-3 rounded-lg border">
+                                    <div className="flex-shrink-0">
+                                        <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center relative">
+                                            <User className="h-5 w-5 text-gray-600" />
+                                            <Circle
+                                                className={`h-3 w-3 absolute -bottom-0.5 -right-0.5 fill-current ${getStatusColor(agent.status, agent.last_seen_at)} border-2 border-white rounded-full`}
                                             />
                                         </div>
-                                        <span className="text-xs text-muted-foreground whitespace-nowrap">
-                                            {agent.current_load}/{agent.max_capacity}
-                                        </span>
+                                    </div>
+
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="text-sm font-medium truncate">{name}</span>
+                                            {!agent.auto_assign_enabled && (
+                                                <Badge variant="outline" className="text-xs">{t('crm.inbox.settings.sections.manual')}</Badge>
+                                            )}
+                                        </div>
+
+                                        <div className="flex items-center gap-2">
+                                            <div className="flex-1 bg-gray-200 rounded-full h-2">
+                                                <div
+                                                    className={`h-2 rounded-full transition-all ${loadPercentage >= 90 ? 'bg-red-500' :
+                                                        loadPercentage >= 70 ? 'bg-yellow-500' :
+                                                            'bg-green-500'
+                                                        }`}
+                                                    style={{ width: `${Math.min(loadPercentage, 100)}%` }}
+                                                />
+                                            </div>
+                                            <span className="text-xs text-muted-foreground whitespace-nowrap">
+                                                {agent.current_load}/{agent.max_capacity}
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        )
-                    })}
-                </div>
-            </Card>
+                            )
+                        })}
+                    </div>
+                </Card>
+            )}
 
-            {/* Test Tools (Dev Only) */}
-            {process.env.NODE_ENV !== 'production' && (
-            <Card className="p-4 border-dashed border-indigo-200 bg-indigo-50/50">
-                <div className="flex items-start gap-3">
-                    <div className="p-2 bg-indigo-100 rounded text-indigo-600 mt-1">
-                        <Zap className="h-4 w-4" />
+            {/* Test Tools (Dev Only + Admin/Owner Restricted) */}
+            {process.env.NODE_ENV !== 'production' && isAdmin && (
+                <Card className="p-4 border-dashed border-indigo-200 bg-indigo-50/50">
+                    <div className="flex items-start gap-3">
+                        <div className="p-2 bg-indigo-100 rounded text-indigo-600 mt-1">
+                            <Zap className="h-4 w-4" />
+                        </div>
+                        <div className="flex-1">
+                            <h4 className="text-sm font-semibold text-indigo-900">{t('crm.inbox.settings.sections.test_tools')}</h4>
+                            <p className="text-xs text-indigo-700 mb-3">
+                                {t('crm.inbox.settings.sections.test_tools_desc')}
+                            </p>
+                            <SimulationControls t={t} />
+                        </div>
                     </div>
-                    <div className="flex-1">
-                        <h4 className="text-sm font-semibold text-indigo-900">{t('crm.inbox.settings.sections.test_tools')}</h4>
-                        <p className="text-xs text-indigo-700 mb-3">
-                            {t('crm.inbox.settings.sections.test_tools_desc')}
-                        </p>
-                        <SimulationControls t={t} />
-                    </div>
-                </div>
-            </Card>
+                </Card>
             )}
         </div>
     )

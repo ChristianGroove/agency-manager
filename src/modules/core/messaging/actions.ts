@@ -308,18 +308,19 @@ export async function getCallStatus(conversationId: string) {
 
     if (convError || !conv) return { success: false, error: 'Conversation not found' }
 
-    // 2. Mock calling config for permission/hours check
-    const callingEnabled = true 
-    const callingConfig = {
-        organizationId: conv.organization_id,
-        connectionId: conv.connection_id
-    }
+    // 2. Fetch calling config for permission/hours check
+    const callingEnabled = true
+    const { data: connection } = await supabaseAdmin
+        .from('integration_connections')
+        .select('working_hours')
+        .eq('id', conv.connection_id)
+        .single()
 
     const { CallPermissionManager } = await import('@/lib/meta/calling/call-permission-manager')
     const { CallHoursManager } = await import('@/lib/meta/calling/call-hours-manager')
 
     const permissionManager = new CallPermissionManager()
-    const hoursManager = new CallHoursManager(callingConfig as any)
+    const hoursManager = new CallHoursManager(connection?.working_hours as any)
 
     // 3. Eval States
     const permResult = await permissionManager.canMakeCall(conversationId)

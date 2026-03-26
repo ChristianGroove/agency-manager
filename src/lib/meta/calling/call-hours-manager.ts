@@ -82,9 +82,9 @@ export class CallHoursManager {
         const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
         const dayName = dayNames[date.getDay()] as keyof CallHoursConfig['schedule'];
 
-        const daySchedule = this.config.schedule[dayName];
+        const daySchedule = this.config.schedule?.[dayName];
 
-        if (!daySchedule.enabled) {
+        if (!daySchedule || !daySchedule.enabled) {
             return {
                 available: false,
                 reason: `Calls not available on ${dayName}`,

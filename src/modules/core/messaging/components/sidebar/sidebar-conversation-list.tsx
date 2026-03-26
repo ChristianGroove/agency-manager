@@ -231,16 +231,10 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
         }
 
         const isRestricted = !hasGlobalView
-        const authorizedChannels = userPermissions?.permissions?.inbox_access || []
 
-        if (isRestricted) {
-            if (authorizedChannels.length > 0) {
-                query = query.or(`connection_id.in.(${authorizedChannels.map((id: string) => `"${id}"`).join(',')}),assigned_to.eq.${currentUserId}`)
-            } else if (currentUserId) {
-                query = query.eq('assigned_to', currentUserId)
-            } else {
-                query = query.eq('id', '00000000-0000-0000-0000-000000000000')
-            }
+        if (isRestricted && currentUserId) {
+            // Strictly only see what is assigned to me
+            query = query.eq('assigned_to', currentUserId)
         }
 
         if (organizationId) query = query.eq('organization_id', organizationId)

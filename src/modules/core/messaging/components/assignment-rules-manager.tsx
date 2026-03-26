@@ -1,7 +1,9 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Plus, GripVertical, Edit, Trash2, Zap, Info } from "lucide-react"
+import { Plus, GripVertical, Edit, Trash2, Zap, Info, ShieldAlert } from "lucide-react"
+import { Checkbox } from "@/components/ui/checkbox"
+import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { useTranslation } from "@/lib/i18n/use-translation"
 import {
@@ -246,7 +248,14 @@ function RuleEditor({ rule, agents, channels, onSave, onCancel, t }: any) {
     const [strategy, setStrategy] = useState<any>(rule?.strategy || 'load-balance')
     const [conditions, setConditions] = useState(rule?.conditions || {})
     const [selectedAgents, setSelectedAgents] = useState<string[]>(rule?.assign_to || [])
-    const [selectedChannel, setSelectedChannel] = useState<string>(rule?.conditions?.connection_id?.[0] || 'all')
+    
+    // Cleanup ghost channel on mount or rule change
+    const initialChannel = rule?.conditions?.connection_id?.[0] || 'all'
+    const [selectedChannel, setSelectedChannel] = useState<string>(
+        initialChannel === 'all' || channels.some((c: any) => c.id === initialChannel) 
+            ? initialChannel 
+            : 'all'
+    )
 
     const handleSave = () => {
         if (!name.trim()) {
@@ -345,6 +354,70 @@ function RuleEditor({ rule, agents, channels, onSave, onCancel, t }: any) {
                     <div className="text-xs text-muted-foreground text-right">{priority}</div>
                 </div>
             </div>
+
+            {strategy === 'specific-agent' && (
+                <div className="space-y-3 pt-2">
+                    <div className="flex items-center justify-between">
+                        <Label className="text-sm font-medium">Agentes Seleccionados</Label>
+                        <span className="text-[10px] text-muted-foreground bg-gray-100 px-2 py-0.5 rounded-full">
+                            {selectedAgents.length} seleccionados
+                        </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 max-h-[300px] overflow-y-auto p-3 border rounded-xl bg-gray-50/30">
+                        {agents.map((agent: any) => {
+                            const agentName = agent.users?.raw_user_meta_data?.name || agent.users?.email || 'Agente'
+                            const isAuthorized = agent.role === 'admin' || agent.role === 'owner' || selectedChannel === 'all' || 
+                                (agent.permissions?.inbox_access || []).includes(selectedChannel) ||
+                                agent.agent_channels?.some((ac: any) => {
+                                    const channel = channels.find((c: any) => c.id === selectedChannel)
+                                    return ac.channel_type === channel?.channel_type
+                                })
+
+                            return (
+                                <div 
+                                    key={agent.agent_id} 
+                                    className={cn(
+                                        "flex items-center gap-3 p-3 rounded-xl border transition-all pointer-events-auto",
+                                        selectedAgents.includes(agent.agent_id) ? "bg-white border-brand-pink/30 shadow-sm" : "bg-transparent border-gray-100 opacity-70"
+                                    )}
+                                >
+                                    <Checkbox 
+                                        id={`agent-${agent.agent_id}`}
+                                        checked={selectedAgents.includes(agent.agent_id)}
+                                        onCheckedChange={(checked) => {
+                                            setSelectedAgents((prev: string[]) => 
+                                                checked ? [...prev, agent.agent_id] : prev.filter(a => a !== agent.agent_id)
+                                            )
+                                        }}
+                                        className="data-[state=checked]:bg-brand-pink data-[state=checked]:border-brand-pink"
+                                    />
+                                    <div className="flex-1 min-w-0">
+                                        <label 
+                                            htmlFor={`agent-${agent.agent_id}`}
+                                            className="text-xs font-semibold block truncate cursor-pointer"
+                                        >
+                                            {agentName}
+                                        </label>
+                                        <p className="text-[10px] text-muted-foreground truncate">{agent.users?.email}</p>
+                                        {!isAuthorized && (
+                                            <div className="flex items-center gap-1 mt-1 text-[9px] font-bold text-rose-500 uppercase tracking-wider">
+                                                <ShieldAlert className="h-2.5 w-2.5" />
+                                                No Autorizado
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )
+                        })}
+                    </div>
+                    {selectedAgents.length === 0 && (
+                        <p className="text-[10px] text-rose-500 italic flex items-center gap-1">
+                            <ShieldAlert className="h-3 w-3" />
+                            Debes seleccionar al menos un agente para esta estrategia.
+                        </p>
+                    )}
+                </div>
+            )}
 
             <div className="flex justify-end gap-2 pt-4">
                 <Button variant="outline" onClick={onCancel}>

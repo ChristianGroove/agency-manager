@@ -63,7 +63,7 @@ export function AgentMonitoringWidget({ agents, className }: AgentMonitoringWidg
                 },
                 (payload: any) => {
                     const data = payload.new
-                    const isOnline = data.status === 'online' && (new Date(data.last_seen_at).getTime() > Date.now() - 10 * 60 * 1000)
+                    const isOnline = data.status === 'online' && (new Date(data.last_seen_at).getTime() > Date.now() - 3 * 60 * 1000)
                     
                     setRealtimeOnlineIds(prev => {
                         const next = new Set(prev)

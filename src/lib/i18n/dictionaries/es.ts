@@ -1169,6 +1169,7 @@ export const es = {
                 },
                 sections: {
                     assignment: "Asignación",
+                    channels: "Canales",
                     contact_details: "Detalles de Contacto",
                     tags: "Etiquetas",
                     potential_value: "Valor Potencial",
@@ -1309,6 +1310,8 @@ export const es = {
                     max_capacity_chats: "{capacity} chats",
                     current_load: "Carga Actual",
                     manual: "Manual",
+                    reconcile: "Sincronizar Cargas",
+                    reconcile_success: "¡Éxito! {count} cargas corregidas.",
                     test_tools: "Herramientas de Prueba",
                     test_tools_desc: "Simula eventos para verificar el funcionamiento de las reglas.",
                     simulate_message: "Simular Mensaje Nuevo (WhatsApp)",

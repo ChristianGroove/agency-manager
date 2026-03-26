@@ -17,6 +17,7 @@ import { useTranslation } from "@/lib/i18n/use-translation"
 interface Agent {
     agent_id: string
     status: string
+    last_seen_at?: string
     current_load: number
     max_capacity: number
     role?: string
@@ -59,8 +60,15 @@ export function QuickAssignPanel({ conversationId, channel, connectionId, curren
     const currentName = currentAgent?.users?.raw_user_meta_data?.name || currentAgent?.users?.email || t('crm.inbox.context.sections.unassign')
     const currentInitials = currentName.substring(0, 2).toUpperCase()
 
-    const getStatusColor = (status: string) => {
-        switch (status) {
+    const getStatusColor = (agentStatus: string, lastSeen?: string) => {
+        // Heartbeat validation: 3 minutes threshold (consistent with 1min heartbeat frequency)
+        const isActuallyOnline = agentStatus === 'online' && (
+            !lastSeen || (new Date(lastSeen).getTime() > Date.now() - 3 * 60 * 1000)
+        );
+
+        if (!isActuallyOnline && agentStatus === 'online') return 'bg-gray-400'; // Fallback to offline if heartbeat missed
+
+        switch (agentStatus) {
             case 'online': return 'bg-green-500' // Using bg for circle
             case 'away': return 'bg-yellow-500'
             case 'busy': return 'bg-orange-500'
@@ -86,7 +94,7 @@ export function QuickAssignPanel({ conversationId, channel, connectionId, curren
                                 </div>
                             )}
                             {currentAgent && (
-                                <span className={cn("absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-background", getStatusColor(currentAgent.status))} />
+                                <span className={cn("absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-background", getStatusColor(currentAgent.status, currentAgent.last_seen_at))} />
                             )}
                         </div>
                         <div className="text-left">
@@ -133,7 +141,7 @@ export function QuickAssignPanel({ conversationId, channel, connectionId, curren
                                             disabled={assigning}
                                         >
                                             <div className="flex items-center w-full">
-                                                <div className={cn("h-2 w-2 rounded-full mr-2", getStatusColor(agent.status))} />
+                                                <div className={cn("h-2 w-2 rounded-full mr-2", getStatusColor(agent.status, agent.last_seen_at))} />
                                                 <span className="flex-1 truncate font-medium">{name}</span>
                                                 {agent.agent_id === currentAssignee && (
                                                     <Check className="ml-auto h-4 w-4 opacity-50" />

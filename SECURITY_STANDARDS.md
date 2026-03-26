@@ -61,13 +61,26 @@ if (canEdit) {
 ### D. Actualización de Roles Existentes
 Al desplegar la feature, decidir si los roles existentes (Admin, Miembro) deben tener este permiso por defecto y crear una migración o script si es necesario, o instruir al Super Admin para que actualice los roles desde "Gestionar Roles".
 
+### E. Protección Granular de Interfaz (Business Admin Only)
+En vistas que consolidan tanto operación como administración (ej. Inbox Settings), se debe usar el patrón de inyección de `isAdmin`/`isOwner` derivado de `getCurrentUserPermissions`.
+- **Regla**: Pestañas de configuración masiva o dashboards de supervisión deben renderizarse condicionalmente.
+- **Implementación**: Pasar el flag `isAdmin` desde el contenedor principal (Sheet) hacia los sub-componentes especializados (Dashboards).
+
 ## 3. Gestión de Usuarios y UI
 
 - **Unificación:** La asignación de roles y la gestión de credenciales se realiza estrictamente a través de `MemberEditSheet` en `/settings`.
 - **Prohibido:** No crear interfaces paralelas de asignación de permisos directos ("toggles" sueltos en perfiles de usuario que no estén atados a un rol).
 - **UX:** Usar `RolePicker` para consistencia en toda la plataforma.
 
-## 4. Auditoría y Limpieza
+## 4. Autorización Granular de Canales (Inbox)
+
+La asignación de canales a agentes sigue un esquema híbrido por razones de compatibilidad y granularidad:
+- **Legacy/Type-level (Tabla `agent_channels`):** Se usa para permisos por tipo de proveedor (ej. "todos los WhatsApp").
+- **Modern/Channel-level (Array `inbox_access`):** Almacenado en el JSON de `permissions` del miembro (`organization_members`). Es el estándar preferido para asignar canales específicos por su UUID.
+- **Regla de Validación**: El motor de asignación (`assignment-engine.ts`) y la UI de editores deben validar contra **ambos orígenes** (OR) para determinar la elegibilidad de un agente.
+- **Acceso Implícito**: Los roles `Admin` y `Owner` siempre se consideran autorizados para todos los canales de la organización, independientemente de sus vinculaciones explícitas.
+
+## 5. Auditoría y Limpieza
 
 - Mantener la tabla `organization_roles` limpia.
 - Migraciones de base de datos deben respetar la integridad referencial de `role_id`.

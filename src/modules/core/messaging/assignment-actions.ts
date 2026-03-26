@@ -196,7 +196,7 @@ export async function getAgentsWorkload() {
             .order('status', { ascending: false }),
         supabaseAdmin
             .from('organization_members')
-            .select('user_id, role')
+            .select('user_id, role, permissions')
             .eq('organization_id', memberData.organization_id)
     ])
 
@@ -205,7 +205,7 @@ export async function getAgentsWorkload() {
         return { success: false, error: availabilityResult.error.message, data: [] }
     }
 
-    const membersLookup = new Map((membersResult.data || []).map(m => [m.user_id, m.role]));
+    const membersLookup = new Map((membersResult.data || []).map(m => [m.user_id, { role: m.role, permissions: m.permissions }]));
 
     // Only include agents who are active members of the organization
     const activeAgents = availabilityResult.data.filter(agent => membersLookup.has(agent.agent_id));
@@ -220,19 +220,22 @@ export async function getAgentsWorkload() {
 
     // Attempt to map users manually since we can't join with auth.users directly
     const agentsWithUsers = await Promise.all(activeAgents.map(async (agent) => {
+        const profile = profileMap.get(agent.agent_id)
         try {
             const { data: userData, error: userError } = await supabaseAdmin.auth.admin.getUserById(agent.agent_id)
-            const role = membersLookup.get(agent.agent_id) || 'member';
-            const profile = profileMap.get(agent.agent_id)
+            const memberInfo = membersLookup.get(agent.agent_id) || { role: 'member', permissions: {} };
+            const role = memberInfo.role;
+            const permissions = memberInfo.permissions;
 
             if (userError || !userData?.user) {
                 return {
                     ...agent,
                     role,
+                    permissions,
                     users: { 
                         email: 'Unknown', 
                         raw_user_meta_data: { 
-                            name: profile?.full_name || 'Unknown Agent' 
+                            name: profile?.full_name || 'Unknown Agent'
                         } 
                     }
                 }
@@ -240,6 +243,7 @@ export async function getAgentsWorkload() {
             return {
                 ...agent,
                 role,
+                permissions,
                 users: {
                     email: userData.user.email,
                     raw_user_meta_data: {
@@ -249,10 +253,11 @@ export async function getAgentsWorkload() {
                 }
             }
         } catch (e) {
-            const profile = profileMap.get(agent.agent_id)
+            const memberInfo = membersLookup.get(agent.agent_id) || { role: 'member', permissions: {} };
             return {
                 ...agent,
-                role: membersLookup.get(agent.agent_id) || 'member',
+                role: memberInfo.role,
+                permissions: memberInfo.permissions,
                 users: { 
                     email: 'Unknown', 
                     raw_user_meta_data: { 
