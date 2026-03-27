@@ -102,4 +102,20 @@ const contracts = await fetchServices()
 
 // NOMENCLATURA: "Catálogo" en UI = plantillas de servicios (tabla: service_catalog)
 const serviceCatalog = await fetchServiceTemplates()
-```
+## Capa Mensajería - Motor de Asignación (Assignment Engine)
+
+**Módulo: `assignment-engine.ts`**
+
+| Término UI | Concepto Técnico | Mecanismo |
+|------------|------------------|-----------|
+| **"Round Robin"** | `round-robin` | Rotación secuencial basada en `assignment_history`. |
+| **"Balanceado"** | `load-balance` | Asignación por menor carga de trabajo (`current_load`). |
+| **"Selectivo"** | `specific-agent` | Rotación restringida a una lista específica de IDs. |
+| **"Carga"** | `current_load` | Contador de chats activos (`state=active`, `status=open/snoozed`). Sincronizado por triggers. |
+| **"Heartbeat"** | `last_seen_at` | Verificación de actividad (< 3 min). Si el asesor no tiene el inbox abierto, es ignorado. |
+
+### Reglas críticas de mantenimiento:
+1. **Atomisidad**: Siempre usar el RPC `fn_get_next_agent_atomic` para evitar asignaciones duplicadas por mensajes simultáneos.
+2. **Historial**: Cada asignación DEBE registrarse en `assignment_history` incluyendo el `organization_id`, o la rotación se romperá (amnesia).
+3. **Disparadores**: El funcionamiento del modo "Balanceado" depende del trigger `trigger_update_agent_load`. Si las cargas fallan, verificar este trigger.
+4. **Pendiente**: Pulir el sistema de "Heartbeat" (actualmente 3 min es muy estricto y puede ignorar asesores conectados si no interactúan frecuentemente).
