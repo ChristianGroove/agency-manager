@@ -12,6 +12,11 @@ export const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey, {
         flowType: 'pkce',
         detectSessionInUrl: true,
         persistSession: true,
+    },
+    realtime: {
+        params: {
+            eventsPerSecond: 10
+        }
     }
 })
 

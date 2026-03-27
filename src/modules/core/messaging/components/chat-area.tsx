@@ -257,7 +257,7 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
 
         chatChannelCounter.current += 1
         const channel = supabase
-            .channel(`chat-area-${conversationId}-${chatChannelCounter.current}`)
+            .channel(`chat-area-${conversationId}`)
             .on('postgres_changes',
                 {
                     event: 'INSERT',
@@ -276,11 +276,12 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
                 }
             )
             .on('postgres_changes',
-                { event: 'UPDATE', schema: 'public', table: 'conversations', filter: `id=eq.${conversationId}` },
+                { event: 'UPDATE', schema: 'public', table: 'conversations' },
                 (payload) => {
-                    // CONSOLIDATED LISTENER: Handles both general conversation updates and metadata/permission changes
-                    console.log('[ChatArea] [DEBUG] Realtime Update on conversations table:', payload);
-                    fetchConversation()
+                    const updatedConv = payload.new as any
+                    if (updatedConv.id === conversationId) {
+                        fetchConversation()
+                    }
                 }
             )
             .on('broadcast', { event: 'incoming_call' }, (payload) => {
@@ -290,12 +291,19 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
                 setTimeout(() => setIncomingCall(null), 30000)
             })
             .subscribe((status, error) => {
-                if (status === 'CHANNEL_ERROR') {
-                    console.error('[ChatArea] Realtime Error:', error)
-                }
+                // Subscription handling
             })
 
+        // ROBUST POLLING FALLBACK: If Realtime is flaky, we fetch messages every 10s
+        const pollingInterval = setInterval(() => {
+            if (channel.state !== 'joined') {
+                fetchConversation()
+                fetchMessages()
+            }
+        }, 30000) // Increase interval for cleaner logs
+
         return () => {
+            clearInterval(pollingInterval)
             supabase.removeChannel(channel)
         }
     }, [conversationId])

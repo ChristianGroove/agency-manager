@@ -282,52 +282,60 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
     // Real-time surgical updates
     const channelCounter = useRef(0)
     useEffect(() => {
-        channelCounter.current += 1
-        const channelName = `conversations-list-${channelCounter.current}`
+        if (!organizationId) return;
+        const channelName = `conversations-list-${organizationId}`
 
-        const channel = supabase
-            .channel(channelName)
-            .on('postgres_changes',
-                { event: '*', schema: 'public', table: 'conversations', filter: `organization_id=eq.${organizationId}` },
-                async (payload) => {
-                    const updatedConv = payload.new as Conversation
-                    
-                    // If it's a new or updated conversation, we might need to update the list
-                    setConversations((prev) => {
-                        const existingIndex = prev.findIndex(c => c.id === updatedConv.id)
+            const channel = supabase
+                .channel(channelName)
+                .on('postgres_changes',
+                    { event: '*', schema: 'public', table: 'conversations' },
+                    async (payload) => {
+                        const updatedConv = payload.new as Conversation
                         
-                        if (existingIndex > -1) {
-                            // Surgical Update: Move to top and update basic fields
-                            const updated = {
-                                ...prev[existingIndex],
-                                ...updatedConv,
-                                // Preserve joined data as it's not in the realtime payload
-                                leads: prev[existingIndex].leads,
-                                clients: prev[existingIndex].clients,
-                                integration_connections: prev[existingIndex].integration_connections
+                        // Client-side filtering check
+                        if (updatedConv.organization_id !== organizationId) return;
+                        
+                        // If it's a new or updated conversation, we might need to update the list
+                        setConversations((prev) => {
+                            const existingIndex = prev.findIndex(c => c.id === updatedConv.id)
+                            
+                            if (existingIndex > -1) {
+                                // Surgical Update: Move to top and update basic fields
+                                const updated = {
+                                    ...prev[existingIndex],
+                                    ...updatedConv,
+                                    // Preserve joined data as it's not in the realtime payload
+                                    leads: prev[existingIndex].leads,
+                                    clients: prev[existingIndex].clients,
+                                    integration_connections: prev[existingIndex].integration_connections
+                                }
+                                const newList = [updated, ...prev.filter(c => c.id !== updatedConv.id)]
+                                return newList
+                            } else {
+                                return prev
                             }
-                            const newList = [updated, ...prev.filter(c => c.id !== updatedConv.id)]
-                            return newList
-                        } else {
-                            // If it's not in our current page/view, skip or we could fetch its full record
-                            // For now, if it's the 'all' or 'unread' view, it's safer to just re-fetch the first page
-                            // to ensure consistency and correct sorting for the most recent items.
-                            // However, let's try to fetch just this one record to be super light
-                            return prev
-                        }
-                    })
+                        })
 
-                    // Fallback: If not found in current list, trigger a light re-fetch of the first page
-                    if (!conversations.some(c => c.id === updatedConv.id)) {
-                        // De-prioritize background re-fetch to avoid request floods
-                        // especially in organizations with frequent incoming messages.
-                        debouncedFetchConversations(false)
+                        // Fallback: If not found in current list, trigger a light re-fetch of the first page
+                        if (!conversations.some(c => c.id === updatedConv.id)) {
+                            debouncedFetchConversations(false)
+                        }
                     }
-                }
-            )
-            .subscribe()
+                )
+                .subscribe((status, err) => {
+                    // Subscription handling
+                })
+
+        // ROBUST POLLING FALLBACK: If Realtime is flaky, we poll every 10s to ensure list is updated
+        const pollingInterval = setInterval(() => {
+            // Check if the current channel is SUBSCRIBED. If not, or just as safety, poll.
+            if (channel.state !== 'joined') {
+                debouncedFetchConversations(false)
+            }
+        }, 35000) // Increase interval for cleaner logs
 
         return () => {
+            clearInterval(pollingInterval)
             supabase.removeChannel(channel)
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
