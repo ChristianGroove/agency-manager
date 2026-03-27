@@ -1,4 +1,5 @@
 "use client"
+// CRITICAL: Realtime managed via singleton. See: realtime_architecture_guide.md
 
 import { Virtuoso, VirtuosoHandle } from "react-virtuoso"
 
@@ -42,6 +43,7 @@ import { Image, Camera, User as ContactIcon, MapPin, Mic } from "lucide-react"
 
 import { EmojiStickerPicker } from "./emoji-sticker-picker"
 import { AudioRecorder } from "./audio-recorder"
+import { realtimeManager } from "@/lib/supabase-realtime-manager"
 
 type Message = Database['public']['Tables']['messages']['Row']
 type Conversation = Database['public']['Tables']['conversations']['Row'] & {
@@ -248,26 +250,23 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
         setLoadingOlder(false)
     }
 
-    const chatChannelCounter = useRef(0)
     useEffect(() => {
+        if (!conversationId) return;
         fetchConversation()
         fetchMessages()
 
-        if (!conversationId) return
-
-        chatChannelCounter.current += 1
-        const channel = supabase
-            .channel(`chat-area-${conversationId}`)
-            .on('postgres_changes',
+        const channelName = `chat-area-${conversationId}`
+        
+        realtimeManager.getOrCreateChannel(channelName, (channel: any) => {
+            channel.on('postgres_changes',
                 {
                     event: 'INSERT',
                     schema: 'public',
                     table: 'messages',
                     filter: `conversation_id=eq.${conversationId}`
                 },
-                (payload) => {
+                (payload: any) => {
                     const newMsg = payload.new as Message
-
                     setMessages((prev) => {
                         if (prev.some(m => m.id === newMsg.id)) return prev
                         return [...prev, newMsg]
@@ -277,34 +276,29 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
             )
             .on('postgres_changes',
                 { event: 'UPDATE', schema: 'public', table: 'conversations' },
-                (payload) => {
+                (payload: any) => {
                     const updatedConv = payload.new as any
                     if (updatedConv.id === conversationId) {
                         fetchConversation()
                     }
                 }
             )
-            .on('broadcast', { event: 'incoming_call' }, (payload) => {
+            .on('broadcast', { event: 'incoming_call' }, (payload: any) => {
                 console.log('[ChatArea] Incoming Call Broadcast:', payload)
                 setIncomingCall(payload.payload)
-                // Auto dismiss after 30s
                 setTimeout(() => setIncomingCall(null), 30000)
             })
-            .subscribe((status, error) => {
-                // Subscription handling
-            })
+        })
 
-        // ROBUST POLLING FALLBACK: If Realtime is flaky, we fetch messages every 10s
+        fetchConversation()
+        fetchMessages()
+
         const pollingInterval = setInterval(() => {
-            if (channel.state !== 'joined') {
-                fetchConversation()
-                fetchMessages()
-            }
-        }, 30000) // Increase interval for cleaner logs
+        }, 30000)
 
         return () => {
+            realtimeManager.releaseChannel(channelName)
             clearInterval(pollingInterval)
-            supabase.removeChannel(channel)
         }
     }, [conversationId])
 

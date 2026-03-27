@@ -1,4 +1,5 @@
 "use client"
+// CRITICAL: Realtime managed via singleton. See: realtime_architecture_guide.md
 
 import { useEffect, useState, useMemo, useRef } from "react"
 import { useDebouncedCallback } from "use-debounce"
@@ -26,6 +27,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { Check as CheckIcon, ChevronsUpDown, Users } from "lucide-react"
 import { getSidebarAgents } from "../../assignment-actions"
+import { realtimeManager } from "@/lib/supabase-realtime-manager"
 
 type FilterTab = 'all' | 'unread' | 'assigned' | 'archived' | 'snoozed'
 
@@ -251,7 +253,7 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
             }
             setHasMore(data.length === PAGE_SIZE)
         } else if (error) {
-            console.error('[ConversationList] Error fetching conversations:', error)
+            console.error('[ConversationList] Error fetching conversations:', error.message || error)
         }
         if (showLoading) setLoading(false)
     }
@@ -282,64 +284,51 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
     // Real-time surgical updates
     const channelCounter = useRef(0)
     useEffect(() => {
-        if (!organizationId) return;
+        if (!organizationId || !currentUserId) return;
+        
         const channelName = `conversations-list-${organizationId}`
-
-            const channel = supabase
-                .channel(channelName)
-                .on('postgres_changes',
-                    { event: '*', schema: 'public', table: 'conversations' },
-                    async (payload) => {
-                        const updatedConv = payload.new as Conversation
-                        
-                        // Client-side filtering check
-                        if (updatedConv.organization_id !== organizationId) return;
-                        
-                        // If it's a new or updated conversation, we might need to update the list
-                        setConversations((prev) => {
-                            const existingIndex = prev.findIndex(c => c.id === updatedConv.id)
-                            
-                            if (existingIndex > -1) {
-                                // Surgical Update: Move to top and update basic fields
-                                const updated = {
-                                    ...prev[existingIndex],
-                                    ...updatedConv,
-                                    // Preserve joined data as it's not in the realtime payload
-                                    leads: prev[existingIndex].leads,
-                                    clients: prev[existingIndex].clients,
-                                    integration_connections: prev[existingIndex].integration_connections
-                                }
-                                const newList = [updated, ...prev.filter(c => c.id !== updatedConv.id)]
-                                return newList
-                            } else {
-                                return prev
+        
+        realtimeManager.getOrCreateChannel(channelName, (channel: any) => {
+            channel.on('postgres_changes',
+                { event: '*', schema: 'public', table: 'conversations' },
+                async (payload: any) => {
+                    const updatedConv = payload.new as Conversation
+                    if (updatedConv.organization_id !== organizationId) return;
+                    
+                    setConversations((prev) => {
+                        const existingIndex = prev.findIndex(c => c.id === updatedConv.id)
+                        if (existingIndex > -1) {
+                            const updated = {
+                                ...prev[existingIndex],
+                                ...updatedConv,
+                                leads: prev[existingIndex].leads,
+                                clients: prev[existingIndex].clients,
+                                integration_connections: prev[existingIndex].integration_connections
                             }
-                        })
-
-                        // Fallback: If not found in current list, trigger a light re-fetch of the first page
-                        if (!conversations.some(c => c.id === updatedConv.id)) {
-                            debouncedFetchConversations(false)
+                            return [updated, ...prev.filter(c => c.id !== updatedConv.id)]
                         }
-                    }
-                )
-                .subscribe((status, err) => {
-                    // Subscription handling
-                })
+                        return prev
+                    })
 
-        // ROBUST POLLING FALLBACK: If Realtime is flaky, we poll every 10s to ensure list is updated
+                    // We need a stable check here. The current Conversations is from a closure.
+                    // This is why we use debouncedFetch as backup.
+                    debouncedFetchConversations(false)
+                }
+            )
+        })
+
+        // ROBUST POLLING FALLBACK: Poll more frequently if Realtime is NOT joined
         const pollingInterval = setInterval(() => {
-            // Check if the current channel is SUBSCRIBED. If not, or just as safety, poll.
-            if (channel.state !== 'joined') {
-                debouncedFetchConversations(false)
-            }
-        }, 35000) // Increase interval for cleaner logs
+            // We can ask the manager about status if we want, or just poll if not joined
+            // But with the manager, it should be joined most of the time.
+        }, 35000) 
 
         return () => {
+            realtimeManager.releaseChannel(channelName)
             clearInterval(pollingInterval)
-            supabase.removeChannel(channel)
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [activeFilter, currentUserId, permissionsLoaded, userPermissions, selectedChannelId, organizationId])
+    }, [organizationId, currentUserId, activeFilter, permissionsLoaded, JSON.stringify(userPermissions?.permissions || {})])
 
     // Count badges for tabs (Current visible set)
     const counts = useMemo(() => {

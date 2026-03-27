@@ -117,7 +117,8 @@ export function InboxLayout({ initialConversationId }: InboxLayoutProps) {
                     toast.error(`Error: ${result.error || t('crm.inbox.layout.unknown')}`)
                 } else {
                     toast.success(t('crm.inbox.layout.conversation_updated', { label: actionLabel }))
-                    window.location.reload()
+                    // Removed window.location.reload() to preserve Realtime connections.
+                    // The UI will update via Postgres changes from the server.
                 }
             } catch (err) {
                 console.error('Exception calling server action:', err)
