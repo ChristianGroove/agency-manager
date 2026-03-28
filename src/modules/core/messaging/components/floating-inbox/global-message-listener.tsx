@@ -93,7 +93,9 @@ export function GlobalMessageListener() {
                     if (conv.connection_id && !orgConnectionIdsRef.current.has(conv.connection_id)) return
                     
                     const perms = userPermissionsRef.current
-                    const hasGlobalView = perms?.permissions?.all === true || perms?.permissions?.['inbox.conversations.view_all'] === true
+                    const role = perms?.role?.toLowerCase();
+                    const isGlobalRole = role === 'owner' || role === 'dueño' || role === 'admin' || role === 'administrador';
+                    const hasGlobalView = isGlobalRole || perms?.permissions?.all === true || perms?.permissions?.['inbox.conversations.view_all'] === true
                     if (!hasGlobalView && !(perms?.permissions?.inbox_access || []).includes(conv.connection_id)) return
 
                     let senderName = "Nuevo Mensaje"

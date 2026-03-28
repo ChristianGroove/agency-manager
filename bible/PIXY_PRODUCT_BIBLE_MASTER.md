@@ -370,8 +370,8 @@ Pixy cuenta con dashboards especializados según el nivel de privilegios adminis
 
 **RBAC (Role Based Access Control)**:
 - Sistema de roles granulares definidos a nivel de servidor:
-    - **Owner**: Control total, puede eliminar la organización.
-    - **Admin**: Gestión completa excepto borrado de organización.
+    - **Owner**: Control total, puede eliminar la organización. Posee visibilidad global absoluta en el Inbox y todos los canales.
+    - **Admin**: Gestión completa excepto borrado de organización. Comparte con el Owner el privilegio de **visibilidad global en el Inbox**, permitiendo la supervisión de todos los chats y canales de la organización sin restricciones de asignación.
     - **Member**: Uso de herramientas operativas sin capacidad de configuración.
     - **Staff**: Rol limitado para colaboradores externos (solo acceso a jobs asignados).
 

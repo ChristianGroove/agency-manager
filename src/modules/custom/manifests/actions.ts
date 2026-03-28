@@ -277,7 +277,6 @@ export async function deleteManifest(documentId: string, storagePath: string) {
         .from('manifest_documents')
         .delete()
         .eq('id', documentId)
-        .eq('uploaded_by', user.id) // Extra safety or just rely on RLS/Org check
 
     // Note: RLS checks org, but let's trust RLS 'USING' policy.
     // However, for delete, RLS is: 

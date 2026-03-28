@@ -42,9 +42,10 @@ export function InboxSettingsSheet({ open, onOpenChange }: InboxSettingsSheetPro
 
     const isAdmin = useMemo(() => {
         if (!userPermissions) return false
-        return userPermissions.role === 'admin' || 
-               userPermissions.role === 'owner' || 
-               userPermissions.permissions?.all === true
+        const role = userPermissions.role?.toLowerCase()
+        const isGlobalRole = role === 'owner' || role === 'dueño' || role === 'admin' || role === 'administrador'
+        
+        return isGlobalRole || userPermissions.permissions?.all === true
     }, [userPermissions])
 
     return (

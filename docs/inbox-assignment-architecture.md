@@ -23,7 +23,7 @@ El sistema garantiza que los agentes solo operen sobre lo que les corresponde:
   1.  Está vinculado en `agent_channels` (Autorización por tipo de canal: WhatsApp, Instagram, etc.).
   2.  Posee el ID del canal específico en su array `permissions.inbox_access` (Autorización granular por canal).
 - **Aislamiento de Vista**: Si un usuario tiene el rol `Member` y NO posee el permiso `inbox.conversations.view_all`, la interfaz (`sidebar-conversation-list.tsx`) filtrará el feed para mostrar **únicamente sus conversaciones asignadas** en los canales autorizados.
-- **Bypass de Jerarquía**: Los roles `Admin` y `Owner` tienen visibilidad total y acceso implícito a todos los canales para fines de supervisión.
+- **Bypass de Jerarquía Directo**: Los roles `Admin` y `Owner` (incluyendo variantes como `Administrador` y `Dueño`) poseen **visibilidad total implícita** inyectada en el frontend. El bypass se activa automáticamente basado en el valor de `role` del usuario, permitiendo la supervisión de todos los chats de todos los canales de la organización por defecto.
 
 ## 4. Sincronización de Carga (Real-Time Workload)
 

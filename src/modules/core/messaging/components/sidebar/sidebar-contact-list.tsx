@@ -45,7 +45,9 @@ export function SidebarContactList({ onSelectConversation }: SidebarContactListP
                 let availableChannels = allChannels
                 if (data.user) {
                     const perms = await getCurrentUserPermissions()
-                    const hasGlobalView = perms?.permissions?.all === true || 
+                    const role = perms?.role?.toLowerCase();
+                    const isGlobalRole = role === 'owner' || role === 'dueño' || role === 'admin' || role === 'administrador';
+                    const hasGlobalView = isGlobalRole || perms?.permissions?.all === true || 
                                          perms?.permissions?.['inbox.conversations.view_all'] === true
                     const isRestricted = !hasGlobalView
                     const authorizedChannels = perms?.permissions?.inbox_access || []

@@ -88,7 +88,11 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
     const [isSettingsOpen, setIsSettingsOpen] = useState(false)
 
     const hasGlobalView = useMemo(() => {
-        return userPermissions?.permissions?.all === true || 
+        const role = userPermissions?.role?.toLowerCase();
+        const isGlobalRole = role === 'owner' || role === 'dueño' || role === 'admin' || role === 'administrador';
+        
+        return isGlobalRole || 
+               userPermissions?.permissions?.all === true || 
                userPermissions?.permissions?.['inbox.conversations.view_all'] === true
     }, [userPermissions])
 

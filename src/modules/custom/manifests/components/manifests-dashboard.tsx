@@ -16,7 +16,11 @@ import { Search, FileText, Eye, Download, Printer, Trash2 } from 'lucide-react'
 import { ManifestUploadDialog } from './manifest-upload-dialog'
 import { searchIMEI, getManifestUrl } from '../actions'
 import { toast } from 'sonner'
-import { PdfViewerDialog } from './pdf-viewer-dialog'
+import dynamic from 'next/dynamic'
+const PdfViewerDialog = dynamic(() => import('./pdf-viewer-dialog').then(mod => mod.PdfViewerDialog), { 
+    ssr: false,
+    loading: () => null
+})
 
 interface DocumentResult {
     id: string

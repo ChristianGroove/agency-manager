@@ -289,7 +289,7 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         icon: FileText,
         category: 'tools', // Changed to 'tools' (Herramientas)
         access: {
-            // No strict restrictions, rely on manual activation
+            allowedRoles: ['owner', 'admin']
         }
     },
     // HIDDEN FOR REGULAR USERS
