@@ -138,9 +138,9 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         href: '/crm/reports',
         icon: BarChart3,
         category: 'crm',
-        parentModule: 'core_crm',
+        parentModule: 'module_crm_reports',
         access: {
-            allowedRoles: ['owner', 'admin']
+            allowedRoles: ['owner']
         }
     },
     // Quote Designer moved to Inbox Sidebar per user request

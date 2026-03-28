@@ -143,8 +143,14 @@ export const getCurrentOrganizationId = cache(async () => {
             .maybeSingle()
 
         if (membership) {
-            console.log(`[ORG_CONTEXT] ✅ Switch to ${orgCookie.value} for User ${user.id}`);
             return orgCookie.value // Valid membership confirmed
+        }
+
+        // Phase 12: SuperAdmin bypass. Allow access if user is platform admin even without explicit membership
+        const { isSuperAdmin } = await import("@/lib/auth/platform-roles")
+        if (await isSuperAdmin(user.id)) {
+            console.log(`[ORG_CONTEXT] 🛡️ SuperAdmin Overpass: ${orgCookie.value} for User ${user.id}`);
+            return orgCookie.value
         }
 
         console.warn(`[ORG_CONTEXT] ❌ Security check failed for ${orgCookie.value} (User ${user.id}). Reverting to default.`);

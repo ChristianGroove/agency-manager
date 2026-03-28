@@ -2,21 +2,11 @@
 
 import { createClient } from '@/lib/supabase-server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { getCurrentOrganizationId } from '@/modules/core/organizations/actions'
 
 // Helper to get org
 async function getOrgId() {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return null
-
-    const { data } = await supabaseAdmin
-        .from('organization_members')
-        .select('organization_id')
-        .eq('user_id', user.id)
-        .limit(1)
-        .single()
-
-    return data?.organization_id
+    return await getCurrentOrganizationId()
 }
 
 export interface CRMStats {
@@ -27,6 +17,111 @@ export interface CRMStats {
     avgDealSize: number
     openConversations: number
     avgResponseTime?: number
+}
+
+export interface AdvancedReportData {
+    period: {
+        start: string
+        end: string
+    }
+    summary: {
+        total_leads: number
+        won_leads: number
+        abandoned_leads: number
+        avg_response_time: number
+        pipeline_value: number
+        conversion_rate: number
+    }
+    agent_performance: Array<{
+        agent_id: string
+        agent_name: string
+        avatar_url: string | null
+        leads_assigned: number
+        deals_won: number
+        avg_response_time: number
+        connection_time_seconds: number
+        agent_status: string
+        sla_met_percentage: number
+    }>
+    lead_sources: Array<{
+        source: string
+        count: number
+    }>
+    activity_trend: Array<{
+        date: string
+        new_leads: number
+        messages_sent: number
+    }>
+    abandoned_leads_list: Array<{
+        id: string
+        name: string
+        waiting_since: string
+        waiting_seconds: number
+        assigned_agent: string
+        agent_id?: string
+    }>
+    debug_org_id?: string
+}
+
+/**
+ * Server action to fetch an image and convert to base64.
+ * Used to bypass CORS issues for PDF generation on the client.
+ */
+export async function getBase64Image(url: string): Promise<string> {
+    if (!url) return '';
+    if (url.startsWith('data:')) return url;
+
+    try {
+        console.log("[getBase64Image] Fetching logo from server:", url);
+        
+        // --- Special Case: Supabase Storage ---
+        // If it's a supabase storage link, we can use the admin client to download it directly
+        // bypassing public URL and CORS issues.
+        if (url.includes('/storage/v1/object/public/')) {
+            try {
+                const urlParts = url.split('/storage/v1/object/public/');
+                const pathParts = urlParts[1].split('/');
+                const bucket = pathParts[0];
+                const fileName = pathParts.slice(1).join('/');
+                
+                console.log(`[getBase64Image] Found Supabase asset: Bucket=${bucket}, Path=${fileName}`);
+                
+                const { data, error } = await supabaseAdmin.storage.from(bucket).download(fileName);
+                if (data && !error) {
+                    const arrayBuffer = await data.arrayBuffer();
+                    const base64 = Buffer.from(arrayBuffer).toString('base64');
+                    const contentType = data.type || 'image/png';
+                    console.log(`[getBase64Image] Successfully downloaded via Admin SDK: ${contentType}`);
+                    return `data:${contentType};base64,${base64}`;
+                }
+                console.warn("[getBase64Image] Admin download failed, trying regular fetch...", error);
+            } catch (e) {
+                console.warn("[getBase64Image] Failed to parse Supabase URL, falling back to fetch");
+            }
+        }
+
+        // --- Standard Fetch Fallback ---
+        const response = await fetch(url, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0'
+            },
+            next: { revalidate: 3600 } 
+        });
+        
+        if (!response.ok) {
+            console.error(`[getBase64Image] HTTP error! status: ${response.status} for ${url}`);
+            return '';
+        }
+        
+        const buffer = await response.arrayBuffer();
+        const contentType = response.headers.get('content-type') || 'image/png';
+        const base64 = Buffer.from(buffer).toString('base64');
+        
+        return `data:${contentType};base64,${base64}`;
+    } catch (error) {
+        console.error("[getBase64Image] Fatal Error:", error);
+        return '';
+    }
 }
 
 export async function getCRMStats(days: number = 30): Promise<{ success: boolean, stats?: CRMStats, error?: string }> {
@@ -320,6 +415,44 @@ export async function getAgentPerformance(): Promise<{ success: boolean, data?: 
 
         return { success: true, data: performance.sort((a, b) => b.totalValue - a.totalValue) }
     } catch (error) {
+        return { success: false, error: String(error) }
+    }
+}
+
+export async function getAdvancedReports(startDate: string, endDate: string, orgId?: string): Promise<{ success: boolean, data?: AdvancedReportData, error?: string }> {
+    try {
+        const targetOrgId = orgId || await getOrgId()
+        
+        console.log('**************************************************')
+        console.log('CRITICAL DEBUG: getAdvancedReports')
+        console.log('Received orgId from client:', orgId)
+        console.log('Derived targetOrgId:', targetOrgId)
+        console.log('Start:', startDate, 'End:', endDate)
+        console.log('**************************************************')
+
+        if (!targetOrgId) {
+            console.error('[REPORTS] No organization ID provided or found')
+            return { success: false, error: 'No se pudo determinar la organización activa' }
+        }
+
+        const { data, error } = await supabaseAdmin.rpc('get_advanced_crm_reports', {
+            p_org_id: targetOrgId,
+            p_start_date: startDate,
+            p_end_date: endDate
+        })
+
+        if (error) {
+            console.error('[REPORTS] RPC Error:', error)
+            throw error
+        }
+
+        console.log('[REPORTS] Result Summary:', data?.summary)
+        console.log('[REPORTS] Agents returned:', data?.agent_performance?.length)
+        console.log('**************************************************')
+
+        return { success: true, data: data as AdvancedReportData }
+    } catch (error) {
+        console.error('[REPORTS] Catch:', error)
         return { success: false, error: String(error) }
     }
 }

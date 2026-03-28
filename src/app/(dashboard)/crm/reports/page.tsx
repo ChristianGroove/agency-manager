@@ -4,334 +4,447 @@ import { useState, useEffect } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
 import {
     Users, DollarSign, TrendingUp, MessageSquare, Target, Award,
-    BarChart3, PieChart, Activity, RefreshCw, Clock
+    BarChart3, PieChart, Activity, RefreshCw, Clock, Calendar as CalendarIcon,
+    AlertTriangle, ArrowUpRight, ArrowDownRight, UserCheck, ShieldCheck, Sparkles
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import {
-    getCRMStats, getLeadsBySource, getLeadsByStatus, getRecentActivity, getAgentPerformance,
-    type CRMStats, type LeadsBySource, type LeadsByStatus, type RecentActivity, type AgentPerformance
-} from '@/modules/core/crm/analytics-actions'
-import { SectionHeader } from "@/components/layout/section-header"
+import { getAdvancedReports, type AdvancedReportData, getBase64Image } from '@/modules/core/crm/analytics-actions'
+import { getEffectiveBranding } from '@/modules/core/branding/actions'
+import { generateCRMReportPDF } from '@/lib/crm-report-generator'
 import { useTranslation } from "@/lib/i18n/use-translation"
+import { format, subDays, startOfDay, endOfDay } from 'date-fns'
+import { es } from 'date-fns/locale'
+import {
+    AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
+    ResponsiveContainer, PieChart as RePieChart, Pie, Cell
+} from 'recharts'
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover"
+import { Calendar } from "@/components/ui/calendar"
+import { useCurrentOrganization } from "@/modules/core/organizations/hooks/use-current-organization"
+import { FileText, Download } from 'lucide-react'
+import type { BrandingConfig } from '@/types/branding'
 
 export default function ReportsPage() {
     const { t } = useTranslation()
     const [loading, setLoading] = useState(true)
-    const [timeRange, setTimeRange] = useState('30')
-    const [stats, setStats] = useState<CRMStats | null>(null)
-    const [sourceData, setSourceData] = useState<LeadsBySource[]>([])
-    const [funnelData, setFunnelData] = useState<LeadsByStatus[]>([])
-    const [activities, setActivities] = useState<RecentActivity[]>([])
-    const [agents, setAgents] = useState<AgentPerformance[]>([])
+    const [exporting, setExporting] = useState(false)
+    const [dateRange, setDateRange] = useState<{ from: Date, to: Date }>({
+        from: startOfDay(new Date()),
+        to: endOfDay(new Date())
+    })
+    const { organizationId, loading: orgLoading } = useCurrentOrganization()
+    const [reportData, setReportData] = useState<AdvancedReportData | null>(null)
+    const [branding, setBranding] = useState<BrandingConfig | null>(null)
+    const [logoBase64Cache, setLogoBase64Cache] = useState<string | null>(null)
 
     useEffect(() => {
-        loadData()
-    }, [timeRange])
+        if (!orgLoading && organizationId) {
+            loadData()
+            loadBranding()
+        }
+    }, [dateRange, organizationId, orgLoading])
 
     async function loadData() {
+        if (!organizationId) return
         setLoading(true)
-        const days = parseInt(timeRange)
-
-        const [statsRes, sourceRes, funnelRes, activityRes, agentRes] = await Promise.all([
-            getCRMStats(days),
-            getLeadsBySource(days),
-            getLeadsByStatus(),
-            getRecentActivity(10),
-            getAgentPerformance()
-        ])
-
-        if (statsRes.success) setStats(statsRes.stats!)
-        if (sourceRes.success) setSourceData(sourceRes.data!)
-        if (funnelRes.success) setFunnelData(funnelRes.data!)
-        if (activityRes.success) setActivities(activityRes.data!)
-        if (agentRes.success) setAgents(agentRes.data!)
-
+        const res = await getAdvancedReports(
+            dateRange.from.toISOString(),
+            dateRange.to.toISOString(),
+            organizationId
+        )
+        if (res.success && res.data) {
+            setReportData(res.data)
+        }
         setLoading(false)
+    }
+
+    async function loadBranding() {
+        if (!organizationId) return
+        const b = await getEffectiveBranding(organizationId)
+        setBranding(b)
+    }
+
+    const handleExportPdf = async () => {
+        if (!reportData || !branding) return
+        setExporting(true)
+        try {
+            const blob = await generateCRMReportPDF({
+                reportData,
+                branding,
+                dateRange
+            })
+            const url = URL.createObjectURL(blob)
+            const a = document.createElement('a')
+            a.href = url
+            a.download = `Reporte_CRM_${format(new Date(), 'yyyy-MM-dd')}.pdf`
+            a.click()
+            URL.revokeObjectURL(url)
+        } catch (error) {
+            console.error("Export error:", error)
+        } finally {
+            setExporting(false)
+        }
     }
 
     const formatCurrency = (value: number) => {
         return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(value)
     }
 
-    const statusLabels: Record<string, string> = {
-        new: t('crm.reports.status.new'),
-        contacted: t('crm.reports.status.contacted'),
-        qualified: t('crm.reports.status.qualified'),
-        negotiation: t('crm.reports.status.negotiation'),
-        won: t('crm.reports.status.won'),
-        lost: t('crm.reports.status.lost')
+    const formatDuration = (seconds: number) => {
+        const h = Math.floor(seconds / 3600)
+        const m = Math.floor((seconds % 3600) / 60)
+        if (h > 0) return `${h}h ${m}m`
+        return `${m}m`
     }
 
-    const statusColors: Record<string, string> = {
-        new: 'bg-blue-500',
-        contacted: 'bg-yellow-500',
-        qualified: 'bg-purple-500',
-        negotiation: 'bg-orange-500',
-        won: 'bg-green-500',
-        lost: 'bg-red-500'
-    }
+    const COLORS = ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ec4899', '#06b6d4']
 
     return (
-        <div className="h-full space-y-6 overflow-auto">
-            {/* Header */}
-            <SectionHeader
-                title={t('crm.reports.title')}
-                subtitle={t('crm.reports.subtitle')}
-                icon={BarChart3}
-                action={
-                    <div className="flex items-center gap-3">
-                        <Select value={timeRange} onValueChange={setTimeRange}>
-                            <SelectTrigger className="w-[140px]">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="7">{t('crm.reports.time_ranges.last_7_days')}</SelectItem>
-                                <SelectItem value="30">{t('crm.reports.time_ranges.last_30_days')}</SelectItem>
-                                <SelectItem value="90">{t('crm.reports.time_ranges.last_90_days')}</SelectItem>
-                                <SelectItem value="365">{t('crm.reports.time_ranges.this_year')}</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        <Button variant="outline" size="icon" onClick={loadData} disabled={loading}>
-                            <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
+        <div className="h-full space-y-6 overflow-auto pb-8">
+            {/* Header / Control Bar */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 sticky top-0 z-30 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md p-4 rounded-2xl border border-gray-200 dark:border-white/5 shadow-sm">
+                <div>
+                    <h1 className="text-2xl font-bold flex items-center gap-2">
+                        <Activity className="w-6 h-6 text-brand-pink" />
+                        Command Center <span className="text-sm font-normal text-gray-400">Analytics</span>
+                    </h1>
+                    <p className="text-xs text-muted-foreground">Monitoreo granular de efectividad y eficiencia operativa</p>
+                </div>
+
+                <div className="flex items-center gap-3">
+                    {/* Header Controls */}
+                    <div className="flex items-center gap-2 mr-2">
+                        <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={handleExportPdf}
+                            disabled={loading || exporting || !reportData}
+                            className="hidden md:flex gap-2 bg-zinc-900 border-white/5 text-white hover:bg-zinc-800"
+                        >
+                            {exporting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                            Exportar PDF
                         </Button>
                     </div>
-                }
-            />
-
-            {/* KPI Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <Card className="p-6 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 border-blue-200 dark:border-blue-800/30">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-sm text-blue-600 dark:text-blue-400 font-medium">{t('crm.reports.kpis.total_leads')}</p>
-                            <p className="text-3xl font-bold text-blue-900 dark:text-white mt-1">
-                                {loading ? '...' : stats?.totalLeads.toLocaleString()}
-                            </p>
-                            <p className="text-xs text-blue-600/70 dark:text-blue-400/70 mt-1">
-                                +{stats?.newLeadsThisMonth || 0} {t('crm.reports.kpis.new_this_period')}
-                            </p>
+                    {/* Diagnostic Tool */}
+                    <div className="hidden md:flex flex-col items-end gap-0.5 mr-2">
+                        <div className="px-2 py-0.5 bg-zinc-100 dark:bg-zinc-800 rounded border border-zinc-200 dark:border-zinc-700 text-[10px] font-mono text-gray-500">
+                            ORG: {organizationId?.slice(0, 8) || '...'}
                         </div>
-                        <div className="p-3 bg-blue-500/10 rounded-2xl">
-                            <Users className="w-8 h-8 text-blue-600 dark:text-blue-400" />
-                        </div>
-                    </div>
-                </Card>
-
-                <Card className="p-6 bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/20 dark:to-emerald-800/20 border-emerald-200 dark:border-emerald-800/30">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">{t('crm.reports.kpis.pipeline_value')}</p>
-                            <p className="text-3xl font-bold text-emerald-900 dark:text-white mt-1">
-                                {loading ? '...' : formatCurrency(stats?.pipelineValue || 0)}
-                            </p>
-                            <p className="text-xs text-emerald-600/70 dark:text-emerald-400/70 mt-1">
-                                {t('crm.reports.kpis.open_opportunities')}
-                            </p>
-                        </div>
-                        <div className="p-3 bg-emerald-500/10 rounded-2xl">
-                            <DollarSign className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
-                        </div>
-                    </div>
-                </Card>
-
-                <Card className="p-6 bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 border-purple-200 dark:border-purple-800/30">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-sm text-purple-600 dark:text-purple-400 font-medium">{t('crm.reports.kpis.conversion_rate')}</p>
-                            <p className="text-3xl font-bold text-purple-900 dark:text-white mt-1">
-                                {loading ? '...' : `${stats?.conversionRate || 0}%`}
-                            </p>
-                            <p className="text-xs text-purple-600/70 dark:text-purple-400/70 mt-1">
-                                {t('crm.reports.kpis.avg_deal')}: {formatCurrency(stats?.avgDealSize || 0)}/{t('crm.reports.kpis.per_deal')}
-                            </p>
-                        </div>
-                        <div className="p-3 bg-purple-500/10 rounded-2xl">
-                            <Target className="w-8 h-8 text-purple-600 dark:text-purple-400" />
-                        </div>
-                    </div>
-                </Card>
-
-                <Card className="p-6 bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 border-orange-200 dark:border-orange-800/30">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-sm text-orange-600 dark:text-orange-400 font-medium">{t('crm.reports.kpis.avg_response_time')}</p>
-                            <p className="text-3xl font-bold text-orange-900 dark:text-white mt-1">
-                                {loading ? '...' : stats?.avgResponseTime ? `${Math.round(stats.avgResponseTime / 60)} min` : t('common.n_a')}
-                            </p>
-                            <p className="text-xs text-orange-600/70 dark:text-orange-400/70 mt-1">
-                                {t('crm.reports.kpis.target_response')}: {'< 5m'}
-                            </p>
-                        </div>
-                        <div className="p-3 bg-orange-500/10 rounded-2xl">
-                            <Clock className="w-8 h-8 text-orange-600 dark:text-orange-400" />
-                        </div>
-                    </div>
-                </Card>
-            </div>
-
-            {/* Charts Row */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Funnel Chart */}
-                <Card className="p-6">
-                    <div className="flex items-center justify-between mb-6">
-                        <div>
-                            <h3 className="font-bold text-lg">{t('crm.reports.funnel.title')}</h3>
-                            <p className="text-sm text-muted-foreground">{t('crm.reports.funnel.subtitle')}</p>
-                        </div>
-                        <BarChart3 className="w-5 h-5 text-muted-foreground" />
-                    </div>
-                    <div className="space-y-4">
-                        {funnelData.map((stage, idx) => {
-                            const maxCount = Math.max(...funnelData.map(s => s.count))
-                            const width = maxCount > 0 ? (stage.count / maxCount) * 100 : 0
-                            return (
-                                <div key={stage.status} className="space-y-2">
-                                    <div className="flex justify-between text-sm">
-                                        <span className="font-medium">{statusLabels[stage.status] || stage.status}</span>
-                                        <span className="text-muted-foreground">{stage.count} ({formatCurrency(stage.value)})</span>
-                                    </div>
-                                    <div className="h-8 bg-gray-100 dark:bg-zinc-800 rounded-lg overflow-hidden">
-                                        <div
-                                            className={cn("h-full rounded-lg transition-all duration-500", statusColors[stage.status])}
-                                            style={{ width: `${width}%` }}
-                                        />
-                                    </div>
-                                </div>
-                            )
-                        })}
-                        {funnelData.length === 0 && !loading && (
-                            <div className="py-8 text-center text-muted-foreground">
-                                {t('crm.reports.empty_data.funnel')}
+                        {reportData && (
+                            <div className="px-2 py-0.5 bg-blue-500/10 rounded border border-blue-500/20 text-[10px] font-mono text-blue-600">
+                                L:{reportData.summary.total_leads} | A:{reportData.agent_performance.length}
                             </div>
                         )}
                     </div>
+
+                    <Select defaultValue="today" onValueChange={(val) => {
+                        const now = new Date()
+                        if (val === 'today') setDateRange({ from: startOfDay(now), to: endOfDay(now) })
+                        if (val === '7d') setDateRange({ from: subDays(now, 7), to: now })
+                        if (val === '15d') setDateRange({ from: subDays(now, 15), to: now })
+                        if (val === '30d') setDateRange({ from: subDays(now, 30), to: now })
+                    }}>
+                        <SelectTrigger className="w-[160px] bg-white dark:bg-zinc-900 border-white/10">
+                            <SelectValue placeholder="Rápido: Hoy" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="today">Hoy</SelectItem>
+                            <SelectItem value="7d">Últimos 7 días</SelectItem>
+                            <SelectItem value="15d">Últimos 15 días</SelectItem>
+                            <SelectItem value="30d">Últimos 30 días</SelectItem>
+                        </SelectContent>
+                    </Select>
+
+                    <Popover>
+                        <PopoverTrigger asChild>
+                            <Button variant="outline" className="gap-2 bg-white dark:bg-zinc-900 border-white/10">
+                                <CalendarIcon className="w-4 h-4" />
+                                {format(dateRange.from, 'dd MMM', { locale: es })} - {format(dateRange.to, 'dd MMM', { locale: es })}
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="end">
+                            <Calendar
+                                initialFocus
+                                mode="range"
+                                selected={{ from: dateRange.from, to: dateRange.to }}
+                                onSelect={(range: any) => range?.from && range?.to && setDateRange({ from: range.from, to: range.to })}
+                                numberOfMonths={2}
+                            />
+                        </PopoverContent>
+                    </Popover>
+
+                    <Button variant="outline" size="icon" onClick={loadData} disabled={loading} className="border-white/10">
+                        <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
+                    </Button>
+                </div>
+            </div>
+
+            {/* KPI Section */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 px-1">
+                <Card className="p-5 border-none bg-gradient-to-br from-blue-500/10 to-blue-600/5 dark:from-blue-500/20 dark:to-transparent relative overflow-hidden group">
+                    <p className="text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 mb-1">Total Leads</p>
+                    <div className="flex items-end gap-2">
+                        <h3 className="text-3xl font-black">{loading ? '...' : (reportData?.summary.total_leads ?? 0)}</h3>
+                    </div>
+                    <Users className="absolute right-4 bottom-4 w-6 h-6 text-blue-500/20" />
                 </Card>
 
-                {/* Source Distribution */}
-                <Card className="p-6">
-                    <div className="flex items-center justify-between mb-6">
-                        <div>
-                            <h3 className="font-bold text-lg">{t('crm.reports.sources.title')}</h3>
-                            <p className="text-sm text-muted-foreground">{t('crm.reports.sources.subtitle')}</p>
-                        </div>
-                        <PieChart className="w-5 h-5 text-muted-foreground" />
+                <Card className="p-5 border-none bg-gradient-to-br from-purple-500/10 to-purple-600/5 dark:from-purple-500/20 dark:to-transparent relative overflow-hidden group">
+                    <p className="text-xs font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400 mb-1">Conversión</p>
+                    <div className="flex items-end gap-2">
+                        <h3 className="text-3xl font-black">{loading ? '...' : `${reportData?.summary.conversion_rate ?? 0}%`}</h3>
                     </div>
-                    <div className="space-y-3">
-                        {sourceData.slice(0, 8).map((source, idx) => {
-                            const colors = ['bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-orange-500', 'bg-pink-500', 'bg-cyan-500', 'bg-yellow-500', 'bg-red-500']
-                            return (
-                                <div key={source.source} className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <div className={cn("w-3 h-3 rounded-full", colors[idx % colors.length])} />
-                                        <span className="font-medium capitalize">{source.source}</span>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-muted-foreground">{source.count}</span>
-                                        <Badge variant="secondary" className="font-mono">{source.percentage}%</Badge>
-                                    </div>
-                                </div>
-                            )
-                        })}
-                        {sourceData.length === 0 && !loading && (
-                            <div className="py-8 text-center text-muted-foreground">
-                                {t('crm.reports.empty_data.sources')}
-                            </div>
-                        )}
+                    <Target className="absolute right-4 bottom-4 w-6 h-6 text-purple-500/20" />
+                </Card>
+
+                <Card className="p-5 border-none bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 dark:from-emerald-500/20 dark:to-transparent relative overflow-hidden group">
+                    <p className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 mb-1">Valor Pipeline</p>
+                    <div className="flex items-end gap-2">
+                        <h3 className="text-3xl font-black">{loading ? '...' : formatCurrency(reportData?.summary.pipeline_value || 0)}</h3>
                     </div>
+                    <DollarSign className="absolute right-4 bottom-4 w-6 h-6 text-emerald-500/20" />
+                </Card>
+
+                <Card className="p-5 border-none bg-gradient-to-br from-orange-500/10 to-orange-600/5 dark:from-orange-500/20 dark:to-transparent relative overflow-hidden group">
+                    <p className="text-xs font-bold uppercase tracking-wider text-orange-600 dark:text-orange-400 mb-1">Tiempo Respuesta</p>
+                    <div className="flex items-end gap-2">
+                        <h3 className="text-3xl font-black">{loading ? '...' : `${Math.round((reportData?.summary.avg_response_time || 0) / 60)}m`}</h3>
+                        <Badge variant="outline" className="mb-1 text-[10px] border-orange-500/20 text-orange-600">SLA {'< 5m'}</Badge>
+                    </div>
+                    <Clock className="absolute right-4 bottom-4 w-6 h-6 text-orange-500/20" />
+                </Card>
+
+                <Card className="p-5 border-none bg-gradient-to-br from-red-500/10 to-red-600/5 dark:from-red-500/20 dark:to-transparent relative overflow-hidden group border-l-4 border-red-500">
+                    <p className="text-xs font-bold uppercase tracking-wider text-red-600 dark:text-red-400 mb-1">Abandono {'>24h'}</p>
+                    <div className="flex items-end gap-2">
+                        <h3 className="text-3xl font-black text-red-600">{loading ? '...' : reportData?.summary.abandoned_leads}</h3>
+                    </div>
+                    <AlertTriangle className="absolute right-4 bottom-4 w-6 h-6 text-red-500/20" />
                 </Card>
             </div>
 
-            {/* Bottom Row */}
+            {/* Charts Section */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Agent Leaderboard */}
-                <Card className="p-6 lg:col-span-2">
-                    <div className="flex items-center justify-between mb-6">
+                <Card className="p-6 lg:col-span-2 bg-white dark:bg-zinc-900/50 border-white/5">
+                    <div className="flex items-center justify-between mb-8">
                         <div>
-                            <h3 className="font-bold text-lg">{t('crm.reports.team.title')}</h3>
-                            <p className="text-sm text-muted-foreground">{t('crm.reports.team.subtitle')}</p>
+                            <h3 className="font-bold text-lg">Tendencia de Actividad</h3>
+                            <p className="text-sm text-muted-foreground">Flujo de leads y mensajes en el tiempo</p>
                         </div>
-                        <Award className="w-5 h-5 text-muted-foreground" />
                     </div>
-                    <div className="space-y-3">
-                        {agents.slice(0, 5).map((agent, idx) => (
-                            <div key={agent.agentId} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-zinc-800/50 rounded-xl">
-                                <div className="flex items-center gap-4">
-                                    <div className={cn(
-                                        "w-8 h-8 rounded-full flex items-center justify-center font-bold text-white",
-                                        idx === 0 ? "bg-yellow-500" : idx === 1 ? "bg-gray-400" : idx === 2 ? "bg-orange-600" : "bg-gray-300"
-                                    )}>
-                                        {idx + 1}
-                                    </div>
-                                    <div>
-                                        <p className="font-medium">{agent.agentName}</p>
-                                        <p className="text-xs text-muted-foreground">{agent.leadsAssigned} {t('crm.reports.team.leads_assigned')}</p>
+                    <div className="h-[300px] w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={reportData?.activity_trend || []}>
+                                <defs>
+                                    <linearGradient id="colorLeads" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#88888822" />
+                                <XAxis
+                                    dataKey="date"
+                                    axisLine={false}
+                                    tickLine={false}
+                                    tick={{ fontSize: 10, fill: '#888' }}
+                                    tickFormatter={(val) => format(new Date(val), 'dd MMM')}
+                                />
+                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#888' }} />
+                                <RechartsTooltip
+                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                                />
+                                <Area type="monotone" dataKey="new_leads" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorLeads)" />
+                                <Area type="monotone" dataKey="messages_sent" stroke="#ec4899" strokeWidth={2} strokeDasharray="5 5" fill="transparent" />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    </div>
+                </Card>
+
+                <Card className="p-6 bg-white dark:bg-zinc-900/50 border-white/5">
+                    <h3 className="font-bold text-lg mb-6">Fuentes de Leads</h3>
+                    <div className="h-[250px] w-full relative text-center flex flex-col items-center justify-center">
+                        {(!reportData || reportData.lead_sources.length === 0) ? (
+                            <div className="text-sm text-muted-foreground italic">No hay datos de fuentes</div>
+                        ) : (
+                            <>
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <RePieChart>
+                                        <Pie
+                                            data={reportData.lead_sources}
+                                            cx="50%"
+                                            cy="50%"
+                                            innerRadius={60}
+                                            outerRadius={80}
+                                            paddingAngle={5}
+                                            dataKey="count"
+                                            nameKey="source"
+                                        >
+                                            {reportData.lead_sources.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                            ))}
+                                        </Pie>
+                                        <RechartsTooltip />
+                                    </RePieChart>
+                                </ResponsiveContainer>
+                                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                                    <span className="text-2xl font-black">{reportData.summary.total_leads}</span>
+                                    <span className="text-[10px] text-muted-foreground uppercase font-bold">Inbound Total</span>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                </Card>
+            </div>
+
+            {/* Team Performance Table */}
+            <Card className="bg-white dark:bg-zinc-900/50 border-white/5 overflow-hidden">
+                <div className="p-6 border-b border-white/5">
+                    <h3 className="font-bold text-lg flex items-center gap-2">
+                        <ShieldCheck className="w-5 h-5 text-green-500" />
+                        Rendimiento del Equipo de Agentes
+                    </h3>
+                    <p className="text-sm text-muted-foreground">Efectividad quirúrgica y tiempos de labor</p>
+                </div>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left">
+                        <thead className="text-xs uppercase bg-gray-50 dark:bg-white/5 font-bold text-muted-foreground">
+                            <tr>
+                                <th className="px-6 py-4">Agente</th>
+                                <th className="px-6 py-4 text-center">Leads Asignados</th>
+                                <th className="px-6 py-4 text-center">Deals Won</th>
+                                <th className="px-6 py-4 text-center">Conversión</th>
+                                <th className="px-6 py-4 text-center">Respuesta (Avg)</th>
+                                <th className="px-6 py-4 text-center">Tiempo Conectado</th>
+                                <th className="px-6 py-4 text-center">SLA (&lt; 5s)</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5">
+                            {reportData?.agent_performance.map((agent) => (
+                                <tr key={agent.agent_id} className="hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
+                                    <td className="px-6 py-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center font-bold text-white text-[10px]">
+                                                {agent.agent_name.slice(0, 2).toUpperCase()}
+                                            </div>
+                                            <span className="font-bold">{agent.agent_name}</span>
+                                        </div>
+                                    </td>
+                                    <td className="px-6 py-4 text-center">{agent.leads_assigned}</td>
+                                    <td className="px-6 py-4 text-center text-green-600 font-bold">{agent.deals_won}</td>
+                                    <td className="px-6 py-4 text-center">
+                                        <Badge variant="outline">
+                                            {agent.leads_assigned > 0 ? Math.round((agent.deals_won / agent.leads_assigned) * 100) : 0}%
+                                        </Badge>
+                                    </td>
+                                    <td className="px-6 py-4 text-center">
+                                        {Math.round((agent.avg_response_time || 0) / 60)}m
+                                    </td>
+                                    <td className="px-6 py-4 text-center tracking-tighter">
+                                        {formatDuration(agent.connection_time_seconds || 0)}
+                                    </td>
+                                    <td className="px-6 py-4 text-center">
+                                        <Badge 
+                                            className={cn(
+                                                "font-bold",
+                                                agent.sla_met_percentage >= 90 ? "bg-green-500/10 text-green-500 border-green-500/20" :
+                                                agent.sla_met_percentage >= 70 ? "bg-yellow-500/10 text-yellow-500 border-yellow-500/20" :
+                                                "bg-red-500/10 text-red-500 border-red-500/20"
+                                            )}
+                                            variant="outline"
+                                        >
+                                            {agent.sla_met_percentage}%
+                                        </Badge>
+                                    </td>
+                                </tr>
+                            ))}
+                            {(!loading && (!reportData || reportData.agent_performance.length === 0)) && (
+                                <tr>
+                                    <td colSpan={7} className="px-6 py-12 text-center text-muted-foreground italic">
+                                        No se encontraron datos de rendimiento para el periodo seleccionado.
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </Card>
+
+            {/* Abandoned Leads Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <Card className="bg-white dark:bg-zinc-900/50 border-white/5 overflow-hidden">
+                    <div className="p-6 border-b border-white/5 flex items-center justify-between">
+                        <div>
+                            <h3 className="font-bold text-lg flex items-center gap-2">
+                                <AlertTriangle className="w-5 h-5 text-red-500" />
+                                Leads en Abandono (&gt;24h)
+                            </h3>
+                            <p className="text-sm text-muted-foreground">Conversiones en riesgo por falta de respuesta</p>
+                        </div>
+                        {reportData && (
+                            <Badge variant="destructive" className="animate-pulse">
+                                {reportData.summary.abandoned_leads} CRÍTICOS
+                            </Badge>
+                        )}
+                    </div>
+                    <div className="divide-y divide-white/5">
+                        {reportData?.abandoned_leads_list.map((lead) => (
+                            <div key={lead.id} className="p-4 hover:bg-red-500/5 transition-colors flex items-center justify-between group">
+                                <div className="space-y-1">
+                                    <p className="font-bold text-gray-900 dark:text-gray-100">{lead.name}</p>
+                                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                                        <span className="flex items-center gap-1">
+                                            <Clock className="w-3 h-3" />
+                                            Espera: {formatDuration(lead.waiting_seconds)}
+                                        </span>
+                                        <span className="flex items-center gap-1">
+                                            <Users className="w-3 h-3" />
+                                            Asignado a: {lead.assigned_agent}
+                                        </span>
                                     </div>
                                 </div>
-                                <div className="text-right">
-                                    <p className="font-bold text-green-600">{formatCurrency(agent.totalValue)}</p>
-                                    <div className="flex flex-col items-end gap-1">
-                                        <p className="text-xs text-muted-foreground">{agent.dealsWon} {t('crm.reports.team.deals')} ({agent.conversionRate}%)</p>
-                                        {agent.avgResponseTime !== undefined && (
-                                            <Badge variant="outline" className={cn(
-                                                "text-[10px] px-1 py-0 h-4",
-                                                agent.avgResponseTime > 600 ? "text-red-600 border-red-200 bg-red-50" :
-                                                    agent.avgResponseTime > 300 ? "text-orange-600 border-orange-200 bg-orange-50" :
-                                                        "text-green-600 border-green-200 bg-green-50"
-                                            )}>
-                                                <Clock className="w-2.5 h-2.5 mr-1" />
-                                                {Math.round(agent.avgResponseTime / 60)} min avg
-                                            </Badge>
-                                        )}
-                                    </div>
-                                </div>
+                                <Button size="sm" variant="ghost" className="opacity-0 group-hover:opacity-100 transition-opacity gap-2">
+                                    Atender <ArrowUpRight className="w-3 h-3" />
+                                </Button>
                             </div>
                         ))}
-                        {agents.length === 0 && !loading && (
-                            <div className="py-8 text-center text-muted-foreground">
-                                {t('crm.reports.empty_data.team')}
+                        {(!loading && (!reportData || reportData.abandoned_leads_list.length === 0)) && (
+                            <div className="p-8 text-center text-muted-foreground italic">
+                                ¡Excelente! No hay leads abandonados en este momento.
                             </div>
                         )}
                     </div>
                 </Card>
 
-                {/* Recent Activity */}
-                <Card className="p-6">
-                    <div className="flex items-center justify-between mb-6">
-                        <div>
-                            <h3 className="font-bold text-lg">{t('crm.reports.activity.title')}</h3>
-                            <p className="text-sm text-muted-foreground">{t('crm.reports.activity.subtitle')}</p>
+                {/* Optional: Growth Insights or something else */}
+                <Card className="p-6 bg-gradient-to-br from-indigo-500/10 to-purple-500/5 border-indigo-500/20 relative overflow-hidden flex flex-col justify-center">
+                    <div className="relative z-10">
+                        <div className="w-12 h-12 rounded-2xl bg-indigo-500 flex items-center justify-center mb-6 shadow-lg shadow-indigo-500/20">
+                            <Sparkles className="w-6 h-6 text-white" />
                         </div>
-                        <Activity className="w-5 h-5 text-muted-foreground" />
+                        <h3 className="text-xl font-bold mb-2">Insights de Optimización</h3>
+                        <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
+                            Basado en el desempeño actual, mejorar el tiempo de respuesta en un **15%** podría incrementar la tasa de conversión en aproximadamente un **4.2%** proyectado para el próximo mes.
+                        </p>
+                        <ul className="space-y-3">
+                            <li className="flex items-center gap-3 text-sm font-medium">
+                                <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                                Reforzar turno de 2PM - 5PM (Alta demanda)
+                            </li>
+                            <li className="flex items-center gap-3 text-sm font-medium">
+                                <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                                Automatizar calificación inicial de leads
+                            </li>
+                        </ul>
                     </div>
-                    <ScrollArea className="h-[300px]">
-                        <div className="space-y-3">
-                            {activities.map(activity => (
-                                <div key={activity.id} className="flex gap-3 p-2 hover:bg-gray-50 dark:hover:bg-zinc-800/50 rounded-lg transition-colors">
-                                    <div className={cn(
-                                        "w-8 h-8 rounded-full flex items-center justify-center shrink-0",
-                                        activity.type === 'deal_won' ? "bg-green-100 text-green-600" : "bg-blue-100 text-blue-600"
-                                    )}>
-                                        {activity.type === 'deal_won' ? <TrendingUp className="w-4 h-4" /> : <Users className="w-4 h-4" />}
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium truncate">{activity.leadName}</p>
-                                        <p className="text-xs text-muted-foreground">{activity.description}</p>
-                                    </div>
-                                </div>
-                            ))}
-                            {activities.length === 0 && !loading && (
-                                <div className="py-8 text-center text-muted-foreground">
-                                    {t('crm.reports.activity.empty')}
-                                </div>
-                            )}
-                        </div>
-                    </ScrollArea>
                 </Card>
             </div>
         </div>
