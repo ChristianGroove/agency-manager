@@ -34,7 +34,8 @@ export function ConversationActionsMenu({
 
     const handleAction = async (action: () => Promise<any>, successMessage: string, isOptimistic: boolean = false) => {
         if (isOptimistic) {
-            onActionComplete?.() // Vanish immediately
+            // GLOBAL SYNC: Vanish immediately from all UI components
+            window.dispatchEvent(new CustomEvent('pixy:conversation-deleted', { detail: { conversationId } }));
         } else {
             setIsLoading(true)
         }

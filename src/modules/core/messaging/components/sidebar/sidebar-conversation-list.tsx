@@ -359,9 +359,20 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
             // But with the manager, it should be joined most of the time.
         }, 35000) 
 
+        // GLOBAL SYNC: Listen for conversation-deleted events from other components (e.g. ChatArea)
+        const handleGlobalDelete = (e: Event) => {
+            const { conversationId } = (e as CustomEvent).detail;
+            if (conversationId) {
+                setConversations(prev => prev.filter(c => c.id !== conversationId));
+            }
+        };
+
+        window.addEventListener('pixy:conversation-deleted', handleGlobalDelete);
+
         return () => {
             realtimeManager.releaseChannel(channelName)
             clearInterval(pollingInterval)
+            window.removeEventListener('pixy:conversation-deleted', handleGlobalDelete);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [organizationId, currentUserId, activeFilter, permissionsLoaded, JSON.stringify(userPermissions?.permissions || {})])

@@ -748,7 +748,8 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
                                     size="icon"
                                     className="h-8 w-8 text-muted-foreground hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20"
                                     onClick={async () => {
-                                        // INSTANT NAVIGATION (Optimistic)
+                                        // INSTANT NAVIGATION & GLOBAL SYNC (Vanish)
+                                        window.dispatchEvent(new CustomEvent('pixy:conversation-deleted', { detail: { conversationId } }));
                                         router.push('/inbox')
                                         toast.success(t('crm.inbox.context.actions.resolved'))
                                         
@@ -774,7 +775,8 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
                                         const tomorrow = new Date()
                                         tomorrow.setDate(tomorrow.getDate() + 1)
                                         
-                                        // Optimistic
+                                        // Optimistic & Global Sync
+                                        window.dispatchEvent(new CustomEvent('pixy:conversation-deleted', { detail: { conversationId } }));
                                         router.push('/inbox')
                                         toast.success(t('crm.inbox.context.actions.snoozed_tomorrow'))
 
@@ -795,7 +797,8 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
                                     size="icon"
                                     className="h-8 w-8 text-muted-foreground hover:text-zinc-900 hover:bg-zinc-100 dark:hover:text-zinc-100 dark:hover:bg-zinc-800"
                                     onClick={async () => {
-                                        // Optimistic
+                                        // Optimistic & Global Sync
+                                        window.dispatchEvent(new CustomEvent('pixy:conversation-deleted', { detail: { conversationId } }));
                                         router.push('/inbox')
                                         toast.success(t('crm.inbox.context.actions.archived'))
 
@@ -818,7 +821,8 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
                                     className="h-8 w-8 text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
                                     onClick={async () => {
                                         if (window.confirm("¿Seguro que quieres eliminar esta conversación?")) {
-                                            // Optimistic
+                                            // Optimistic & Global Sync
+                                            window.dispatchEvent(new CustomEvent('pixy:conversation-deleted', { detail: { conversationId } }));
                                             router.push('/inbox')
                                             toast.success("Eliminando conversación...")
                                             
