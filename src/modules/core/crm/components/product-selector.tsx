@@ -12,6 +12,7 @@ import {
     PopoverTrigger,
 } from "@/components/ui/popover"
 import { searchCatalog } from "../deal-actions"
+import { getCategories, ServiceCategory } from "../../catalog/categories-actions"
 import { cn } from "@/lib/utils"
 
 interface Product {
@@ -32,32 +33,80 @@ export function ProductSelector({ onSelect }: ProductSelectorProps) {
     const [query, setQuery] = useState("")
     const [results, setResults] = useState<Product[]>([])
     const [loading, setLoading] = useState(false)
+    const [loadingMore, setLoadingMore] = useState(false)
     const [selectedCategory, setSelectedCategory] = useState<string>('all')
+    const [categories, setCategories] = useState<{ id: string, label: string }[]>([{ id: 'all', label: 'Todo' }])
+    const [page, setPage] = useState(0)
+    const [hasMore, setHasMore] = useState(false)
+    const [totalCount, setTotalCount] = useState(0)
     const inputRef = useRef<HTMLInputElement>(null)
 
-    // Debounced search
+    // Load dynamic categories
+    useEffect(() => {
+        const loadCategories = async () => {
+            const cats = await getCategories()
+            if (cats && cats.length > 0) {
+                setCategories([
+                    { id: 'all', label: 'Todo' },
+                    ...cats.map(c => ({ id: c.name, label: c.name })) // Filter by name as searchCatalog expects name
+                ])
+            }
+        }
+        loadCategories()
+    }, [])
+
+    // Debounced search - RESET on query or category change
     useEffect(() => {
         const timer = setTimeout(() => {
-            if (isOpen) runSearch()
+            if (isOpen) runSearch(true)
         }, 300)
         return () => clearTimeout(timer)
     }, [query, selectedCategory, isOpen])
 
-    const runSearch = async () => {
-        setLoading(true)
-        const res = await searchCatalog(query, selectedCategory)
-        if (res.success && res.data) {
-            setResults(res.data)
+    const runSearch = async (reset: boolean = false) => {
+        const currentPage = reset ? 0 : page
+        if (reset) {
+            setLoading(true)
+            setPage(0)
+        } else {
+            setLoadingMore(true)
         }
+
+        const res = await searchCatalog(query, selectedCategory, currentPage)
+        
+        if (res.success && res.data) {
+            if (reset) {
+                setResults(res.data)
+            } else {
+                setResults(prev => [...prev, ...res.data])
+            }
+            setHasMore(!!res.hasMore)
+            setTotalCount(res.count || 0)
+        }
+        
         setLoading(false)
+        setLoadingMore(false)
     }
 
-    const categories = [
-        { id: 'all', label: 'Todo' },
-        { id: 'services', label: 'Servicios' },
-        { id: 'products', label: 'Productos' },
-        { id: 'subscriptions', label: 'Suscripciones' }
-    ]
+    const loadNextPage = () => {
+        if (!loadingMore && hasMore) {
+            const nextPage = page + 1
+            setPage(nextPage)
+            // Call runSearch with the next page manually since useEffect might lag
+            runSearchManual(nextPage)
+        }
+    }
+
+    const runSearchManual = async (pageToLoad: number) => {
+        setLoadingMore(true)
+        const res = await searchCatalog(query, selectedCategory, pageToLoad)
+        if (res.success && res.data) {
+            setResults(prev => [...prev, ...res.data])
+            setHasMore(!!res.hasMore)
+        }
+        setLoadingMore(false)
+    }
+
 
     return (
         <Popover open={isOpen} onOpenChange={setIsOpen}>
@@ -151,12 +200,33 @@ export function ProductSelector({ onSelect }: ProductSelectorProps) {
                                     </div>
                                 </button>
                             ))}
+
+                            {/* Load More Trigger */}
+                            {hasMore && (
+                                <div className="p-2 py-4">
+                                    <Button 
+                                        variant="ghost" 
+                                        size="sm" 
+                                        className="w-full text-[10px] text-muted-foreground hover:text-primary transition-colors border border-dashed border-border/60 hover:border-primary/40 bg-muted/20"
+                                        onClick={loadNextPage}
+                                        disabled={loadingMore}
+                                    >
+                                        {loadingMore ? (
+                                            <Loader2 className="h-3 w-3 animate-spin mr-2" />
+                                        ) : (
+                                            <Plus className="h-3 w-3 mr-2" />
+                                        )}
+                                        {loadingMore ? "Cargando..." : "Cargar más productos"}
+                                    </Button>
+                                </div>
+                            )}
                         </div>
                     </ScrollArea>
 
-                    {/* Floating Footer if needed */}
-                    <div className="p-2 border-t bg-muted/20 text-[10px] text-center text-muted-foreground">
-                        Mostrando {results.length} resultados
+                    {/* Floating Footer */}
+                    <div className="p-2 border-t bg-muted/20 text-[10px] flex justify-between items-center px-4">
+                        <span className="text-muted-foreground">Mostrando {results.length} de {totalCount}</span>
+                        {loading && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
                     </div>
                 </div>
             </PopoverContent>

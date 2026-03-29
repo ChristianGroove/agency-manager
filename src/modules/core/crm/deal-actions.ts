@@ -1,4 +1,4 @@
-﻿"use server"
+"use server"
 
 import { createClient } from '@/lib/supabase-server'
 import { supabaseAdmin } from "@/lib/supabase-admin"
@@ -155,7 +155,7 @@ export async function updateCartItem(itemId: string, quantity: number) {
 }
 
 // 5. Search Catalog
-export async function searchCatalog(query: string = '', category?: string) {
+export async function searchCatalog(query: string = '', category?: string, page: number = 0, pageSize: number = 10) {
     const supabase = await createClient()
 
     // Get current organization
@@ -164,9 +164,13 @@ export async function searchCatalog(query: string = '', category?: string) {
 
     let dbQuery = supabase
         .from('service_catalog')
-        .select('*')
+        .select('*', { count: 'exact' })
         .order('name', { ascending: true })
-        .limit(20)
+
+    // Pagination calculations
+    const from = page * pageSize
+    const to = from + pageSize - 1
+    dbQuery = dbQuery.range(from, to)
 
     // Filter by organization if available
     if (orgId) {
@@ -181,10 +185,15 @@ export async function searchCatalog(query: string = '', category?: string) {
         dbQuery = dbQuery.eq('category', category)
     }
 
-    const { data, error } = await dbQuery
+    const { data, error, count } = await dbQuery
 
     if (error) return { success: false, error: error.message }
-    return { success: true, data }
+    return { 
+        success: true, 
+        data: data || [], 
+        count: count || 0,
+        hasMore: (data?.length || 0) === pageSize
+    }
 }
 
 // 6. Send Interactive Quote (The Innovation)
