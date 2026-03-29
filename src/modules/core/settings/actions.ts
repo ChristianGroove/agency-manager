@@ -7,7 +7,9 @@ import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
 import { getActiveModules } from "@/modules/core/saas/actions"
 import { requireOrgRole } from "@/lib/auth/org-roles"
 
-export async function getSettings() {
+import { cache } from "react"
+
+export const getSettings = cache(async () => {
     const supabase = await createClient()
     const orgId = await getCurrentOrganizationId()
 
@@ -91,7 +93,7 @@ export async function getSettings() {
     }
 
     return data
-}
+})
 
 /**
  * Validate settings data based on organization's active modules

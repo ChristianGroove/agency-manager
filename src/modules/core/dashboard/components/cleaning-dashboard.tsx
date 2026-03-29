@@ -10,15 +10,18 @@ import { useTranslation } from "@/lib/i18n/use-translation"
 import { CreateClientSheet } from "@/modules/core/clients/create-client-sheet"
 import { NewJobModal } from "@/modules/core/work-orders/components/new-job-modal"
 
+import { useRouter } from "next/navigation"
+
 interface CleaningDashboardProps {
     dashboardData: any
     extraData: any
     userRole?: string | null
-    onReload: () => void
+    onReload?: () => void
 }
 
 export function CleaningDashboard({ dashboardData: coreData, extraData, userRole: initialRole, onReload }: CleaningDashboardProps) {
     const { t, tArray } = useTranslation()
+    const router = useRouter()
 
     // Modals internal state
     const [isClientModalOpen, setIsClientModalOpen] = useState(false)
@@ -107,10 +110,15 @@ export function CleaningDashboard({ dashboardData: coreData, extraData, userRole
         smartAlert: smartAlert
     }
 
+    const refreshData = () => {
+        router.refresh()
+        if (onReload) onReload()
+    }
+
     return (
         <>
             <ModularDashboardLayout data={data} userRole={initialRole} />
-            <CreateClientSheet open={isClientModalOpen} onOpenChange={setIsClientModalOpen} trigger={<span className="hidden" />} onSuccess={() => { setIsClientModalOpen(false); onReload() }} />
+            <CreateClientSheet open={isClientModalOpen} onOpenChange={setIsClientModalOpen} trigger={<span className="hidden" />} onSuccess={() => { setIsClientModalOpen(false); refreshData() }} />
             <NewJobModal open={isNewJobModalOpen} onOpenChange={setIsNewJobModalOpen} />
         </>
     )

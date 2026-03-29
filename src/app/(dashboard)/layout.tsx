@@ -9,9 +9,12 @@ import { I18nProvider } from "@/lib/i18n/context"
 import { Locale } from "@/lib/i18n/dictionaries"
 
 import { getCurrentOrganizationApp } from "@/modules/core/saas/app-data-actions"
+import { getActiveModules } from "@/modules/core/saas/actions"
 import { getOrganizationSubscription } from "@/modules/core/billing/billing-actions"
 import { SaaSProvider } from "@/components/providers/saas-provider"
 import { SuspendedDashboardView } from "@/components/dashboard/SuspendedDashboardView"
+import { SidebarLoader } from "@/components/layout/sidebar-loader"
+import { Suspense } from "react"
 
 export default async function DashboardLayout({
     children,
@@ -31,33 +34,25 @@ export default async function DashboardLayout({
         redirect('/login')
     }
 
-    // 2. PARALLEL FETCH: All critical data including subscription and app
-    const [currentOrgId, orgDetails, settings, isAdmin, appResult, subscription] = await Promise.all([
+    // 2. PARALLEL FETCH: All critical data including subscription, app and template metadata
+    const [currentOrgId, orgDetails, settings, isAdmin, appResult, subscription, activeModules] = await Promise.all([
         getCurrentOrganizationId(),
         getCurrentOrgDetails(),
         getSettings(),
         isSuperAdmin(user.id),
         getCurrentOrganizationApp(),
-        getOrganizationSubscription()
+        getOrganizationSubscription(),
+        getActiveModules()
     ])
 
     // Lógica de Suspensión (Canceled / Unpaid)
     // El SuperAdmin siempre tiene bypass
     const isSuspended = !isAdmin && (subscription?.status === 'canceled' || subscription?.status === 'unpaid')
 
-    // ... Correct layout detection basándose en el "Space" actual
-    let portalTemplateKey = 'b2b_dashboard'
-    if (orgDetails?.active_app_id) {
-        const { data: appData } = await supabase
-            .from('saas_apps')
-            .select('portal_template')
-            .eq('id', orgDetails.active_app_id)
-            .single()
-
-        if (appData?.portal_template) {
-            portalTemplateKey = appData.portal_template
-        }
-    }
+    // Determinamos el Portal Template de forma eficiente
+    // Si orgDetails tiene portal_template (vía join o precarga), lo usamos. 
+    // Si no, b2b_dashboard es el default.
+    const portalTemplateKey = orgDetails?.active_app?.portal_template || 'b2b_dashboard'
 
     const PortalLayoutComponent = getDashboardTemplate(portalTemplateKey)
     const locale = (settings?.default_language as Locale) || 'es'
@@ -75,6 +70,17 @@ export default async function DashboardLayout({
                     currentOrgId={currentOrgId}
                     isAdmin={isAdmin}
                     orgData={orgDetails}
+                    activeModules={activeModules}
+                    sidebarSlot={
+                        <Suspense fallback={<div className="w-64 h-full bg-white/50 dark:bg-black/20 animate-pulse border-r" />}>
+                            <SidebarLoader 
+                                user={user} 
+                                currentOrgId={currentOrgId} 
+                                isSuperAdmin={isAdmin} 
+                                activeModules={activeModules}
+                            />
+                        </Suspense>
+                    }
                 >
                     {isSuspended ? (
                         <SuspendedDashboardView />

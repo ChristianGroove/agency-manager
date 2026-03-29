@@ -5,17 +5,19 @@ import { GlobalDashboardBanner } from "./global-dashboard-banner"
 import { ModularDashboardLayout, DashboardDataProps } from "@/modules/core/dashboard/modular-dashboard-layout"
 import { useRegisterView } from "@/modules/core/caa/context/view-context"
 import { useTranslation } from "@/lib/i18n/use-translation"
+import { useRouter } from "next/navigation"
 import { Utensils, QrCode, ClipboardList, TrendingUp } from "lucide-react"
 
 interface RestoDashboardProps {
     dashboardData: any
     extraData: any
     userRole?: string | null
-    onReload: () => void
+    onReload?: () => void
 }
 
 export function RestoDashboard({ dashboardData, extraData, userRole: initialRole, onReload }: RestoDashboardProps) {
     const { t } = useTranslation()
+    const router = useRouter()
     const { orgDetails } = extraData || {}
     const bannerConfig = dashboardData?.bannerConfig
 

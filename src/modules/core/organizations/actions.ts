@@ -198,7 +198,10 @@ import { unstable_cache } from "next/cache"
 async function _getOrgDetailsInternal(orgId: string) {
     const { data } = await supabaseAdmin
         .from('organizations')
-        .select('*')
+        .select(`
+            *,
+            active_app:saas_apps!active_app_id (*)
+        `)
         .eq('id', orgId)
         .single()
     return data

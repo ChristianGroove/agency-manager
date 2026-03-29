@@ -11,7 +11,7 @@ interface DefaultDashboardProps {
     dashboardData: any
     extraData: any
     userRole?: string | null
-    onReload: () => void
+    onReload?: () => void
 }
 
 /**
@@ -26,6 +26,11 @@ export function DefaultDashboard({ dashboardData, extraData, userRole: initialRo
     const { t } = useTranslation()
     const router = useRouter()
     const [isClientModalOpen, setIsClientModalOpen] = useState(false)
+
+    const refreshData = () => {
+        router.refresh()
+        if (onReload) onReload()
+    }
 
     const data: DashboardDataProps = {
         globalBannerConfig: dashboardData?.bannerConfig,
@@ -80,7 +85,7 @@ export function DefaultDashboard({ dashboardData, extraData, userRole: initialRo
                 open={isClientModalOpen} 
                 onOpenChange={setIsClientModalOpen} 
                 trigger={<span className="hidden" />} 
-                onSuccess={() => { setIsClientModalOpen(false); onReload() }} 
+                onSuccess={() => { setIsClientModalOpen(false); refreshData() }} 
             />
         </>
     )

@@ -5,6 +5,7 @@ import { Store, Users, AlertTriangle, ShieldCheck, UserPlus, MapPin, ClipboardCh
 import { ModularDashboardLayout, DashboardDataProps } from "@/modules/core/dashboard/modular-dashboard-layout"
 import { useRegisterView } from "@/modules/core/caa/context/view-context"
 import { useTranslation } from "@/lib/i18n/use-translation"
+import { useRouter } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
 
 // Import Modals
@@ -17,11 +18,12 @@ interface RetailDashboardProps {
     dashboardData: any
     extraData: any
     userRole?: string | null
-    onReload: () => void
+    onReload?: () => void
 }
 
 export function RetailDashboard({ dashboardData, extraData, userRole: initialRole, onReload }: RetailDashboardProps) {
     const { t } = useTranslation()
+    const router = useRouter()
     const { settings } = dashboardData
     const { retailMetrics } = extraData
 
@@ -30,6 +32,11 @@ export function RetailDashboard({ dashboardData, extraData, userRole: initialRol
     const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false)
     const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false)
     const [isBriefingModalOpen, setIsBriefingModalOpen] = useState(false)
+
+    const refreshData = () => {
+        router.refresh()
+        if (onReload) onReload()
+    }
 
     // CAA Registration (Context-Aware for Retail)
     useRegisterView({
@@ -108,10 +115,10 @@ export function RetailDashboard({ dashboardData, extraData, userRole: initialRol
     return (
         <>
             <ModularDashboardLayout data={data} userRole={initialRole} />
-            <CreateClientSheet open={isClientModalOpen} onOpenChange={setIsClientModalOpen} trigger={<span className="hidden" />} onSuccess={() => { setIsClientModalOpen(false); onReload() }} />
-            <CreateQuoteSheet open={isQuoteModalOpen} onOpenChange={setIsQuoteModalOpen} trigger={<span className="hidden" />} onSuccess={() => { setIsQuoteModalOpen(false); onReload() }} />
+            <CreateClientSheet open={isClientModalOpen} onOpenChange={setIsClientModalOpen} trigger={<span className="hidden" />} onSuccess={() => { setIsClientModalOpen(false); refreshData() }} />
+            <CreateQuoteSheet open={isQuoteModalOpen} onOpenChange={setIsQuoteModalOpen} trigger={<span className="hidden" />} onSuccess={() => { setIsQuoteModalOpen(false); refreshData() }} />
             <CreateFormSheet open={isBriefingModalOpen} onOpenChange={setIsBriefingModalOpen} onSuccess={() => setIsBriefingModalOpen(false)} />
-            <CreateInvoiceSheet open={isInvoiceModalOpen} onOpenChange={setIsInvoiceModalOpen} trigger={<span className="hidden" />} onSuccess={() => { setIsInvoiceModalOpen(false); onReload() }} />
+            <CreateInvoiceSheet open={isInvoiceModalOpen} onOpenChange={setIsInvoiceModalOpen} trigger={<span className="hidden" />} onSuccess={() => { setIsInvoiceModalOpen(false); refreshData() }} />
         </>
     )
 }

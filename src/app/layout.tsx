@@ -56,8 +56,13 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const settings = await getSettings();
-  const orgId = await getCurrentOrganizationId();
+  // 1. Parallel Fetch of Global Context
+  const [settings, orgId] = await Promise.all([
+    getSettings(),
+    getCurrentOrganizationId()
+  ]);
+
+  // 2. Fetch Branding (Depends on OrgId, but memoized)
   const branding = await getEffectiveBranding(orgId);
 
   return (
@@ -85,7 +90,6 @@ export default async function RootLayout({
           </BrandingProvider>
         </StyledJsxRegistry>
       </body>
-
     </html>
   );
 }

@@ -303,7 +303,7 @@ import { User } from "@supabase/supabase-js"
 import { getCachedOrgDetails } from "@/modules/core/organizations/actions"
 import { getCachedUserPermissions } from "@/modules/core/settings/actions/team-actions"
 
-export async function getSidebarContext(orgId?: string, user?: User | null) {
+export async function getSidebarContext(orgId?: string, user?: User | null, preloadedModules?: string[]) {
     try {
         const organizationId = orgId || await getCurrentOrganizationId()
         if (!organizationId) {
@@ -320,8 +320,8 @@ export async function getSidebarContext(orgId?: string, user?: User | null) {
         const { getCurrentBrandingTier } = await import('@/modules/core/branding/tier-actions')
 
         // Prepare Promises
-        // 1. Modules (Use Cache)
-        const modulesPromise = getActiveModules(organizationId)
+        // 1. Modules (Use Preloaded if available, otherwise Cache)
+        const modulesPromise = preloadedModules ? Promise.resolve(preloadedModules) : getActiveModules(organizationId)
 
         // 2. Org Details (Use Cache)
         const orgDetailsPromise = getCachedOrgDetails(organizationId)

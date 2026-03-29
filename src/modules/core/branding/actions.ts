@@ -3,6 +3,8 @@
 import { createClient } from "@/lib/supabase-server"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 
+import { cache } from "react"
+
 function debugLog(step: string, data: any) {
     console.log(`[BRANDING_DEBUG] ${step}:`, JSON.stringify(data, null, 2))
 }
@@ -39,7 +41,7 @@ const DEFAULT_BRANDING: BrandingConfig = {
 /**
  * Get Platform Settings (Queen Brand) - Singleton ID=1
  */
-export async function getPlatformSettings() {
+export const getPlatformSettings = cache(async () => {
     const supabase = await createClient()
 
     // 1. Fetch Platform Settings (Publicly readable)
@@ -74,7 +76,7 @@ export async function getPlatformSettings() {
         email_style: data.email_style || 'neo',
         socials: data.social_links || {}
     } as BrandingConfig
-}
+})
 
 /**
  * Update Platform Settings (Super Admin Only)
@@ -122,7 +124,7 @@ export async function updatePlatformSettings(data: Partial<BrandingConfig>) {
  * Cascade: Tenant w/ Paid Tier > Tenant w/o Paid Tier > Queen Brand
  * Uses branding_tier_id and tier features instead of module_whitelabel
  */
-export async function getEffectiveBranding(orgId?: string | null): Promise<BrandingConfig> {
+export const getEffectiveBranding = cache(async (orgId?: string | null): Promise<BrandingConfig> => {
 
     // 1. If no org context, return platform branding immediately (Single DB call)
     if (!orgId) {
@@ -215,7 +217,7 @@ export async function getEffectiveBranding(orgId?: string | null): Promise<Brand
         currency_format: tenantSettings.currency_format,
         email_style: pickGeneral(tenantSettings.email_style, platformBranding.email_style)
     }
-}
+})
 
 
 /**

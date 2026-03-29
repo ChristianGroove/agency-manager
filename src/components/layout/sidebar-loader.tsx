@@ -4,20 +4,21 @@ import { createClient } from "@/lib/supabase-server"
 import { isSuperAdmin } from "@/lib/auth/platform-roles"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
 
-export async function SidebarLoader() {
+export async function SidebarLoader({
+    user,
+    currentOrgId,
+    isSuperAdmin: isAdmin,
+    activeModules
+}: {
+    user: any,
+    currentOrgId: string | null,
+    isSuperAdmin: boolean,
+    activeModules?: string[]
+}) {
     // Parallel Fetching for Sidebar Data
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-
-    // We need currentOrgId to fetch context. 
-    // Optimization: We could pass it if we already had it in layout,
-    // but fetching here isolates the data requirements.
-    // getCurrentOrganizationId uses cache() so it's cheap if already called.
-    const currentOrgId = await getCurrentOrganizationId()
-
-    const [sidebarContext, isAdmin, orgs] = await Promise.all([
-        getSidebarContext(currentOrgId || undefined, user),
-        user ? isSuperAdmin(user.id) : false,
+    // We already have User, OrgId and Admin flag from Layout.
+    const [sidebarContext, orgs] = await Promise.all([
+        getSidebarContext(currentOrgId || undefined, user, activeModules),
         import("@/modules/core/organizations/actions").then(mod => mod.getUserOrganizations())
     ])
 

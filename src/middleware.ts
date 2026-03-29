@@ -155,22 +155,33 @@ export async function middleware(request: NextRequest) {
                     .single(),
                 supabase
                     .from('organization_members')
-                    .select('organization:organizations!inner(status)')
+                    .select('organization:organizations!inner(status, slug)')
                     .eq('user_id', user.id)
             ])
 
             const profile = profileResult.data
+            const memberships = membershipResult.data || []
 
             if (profile?.platform_role !== 'super_admin') {
-                const memberships = membershipResult.data
-
-                // Block ONLY if the user has memberships AND NONE of them are active.
-                if (memberships && memberships.length > 0) {
+                // 1. General Active Org Check
+                if (memberships.length > 0) {
                     const hasActiveOrg = memberships.some((m: any) => m.organization?.status === 'active')
 
                     if (!hasActiveOrg) {
                         const url = request.nextUrl.clone()
                         url.pathname = '/suspended'
+                        return NextResponse.redirect(url)
+                    }
+                }
+
+                // 2. Tenant Isolation Check (Cross-tenant prevention)
+                if (!isMainDomain) {
+                    const belongsToCurrentTenant = memberships.some((m: any) => m.organization?.slug === currentHost)
+                    
+                    if (!belongsToCurrentTenant) {
+                        console.warn(`[MIDDLEWARE] ⛔ Unauthorized cross-tenant access attempt: User ${user.id} to tenant ${currentHost}`);
+                        // Redirect to the main application
+                        const url = new URL('/', `https://${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'pixy.com.co'}`)
                         return NextResponse.redirect(url)
                     }
                 }

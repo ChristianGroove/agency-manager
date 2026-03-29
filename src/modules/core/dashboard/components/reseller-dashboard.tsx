@@ -6,6 +6,7 @@ import CountUp from "react-countup"
 import { ModularDashboardLayout, DashboardDataProps } from "@/modules/core/dashboard/modular-dashboard-layout"
 import { resolveDocumentState } from "@/domain/state"
 import { useTranslation } from "@/lib/i18n/use-translation"
+import { useRouter } from "next/navigation"
 
 import { CreateClientSheet } from "@/modules/core/clients/create-client-sheet"
 import { CreateQuoteSheet } from "@/modules/core/quotes/create-quote-sheet"
@@ -17,11 +18,12 @@ interface ResellerDashboardProps {
     dashboardData: any
     extraData: any
     userRole?: string | null
-    onReload: () => void
+    onReload?: () => void
 }
 
 export function ResellerDashboard({ dashboardData: dashboardRes, extraData, userRole: initialRole, onReload }: ResellerDashboardProps) {
     const { t } = useTranslation()
+    const router = useRouter()
 
     // Modals
     const [isClientModalOpen, setIsClientModalOpen] = useState(false)
@@ -29,6 +31,11 @@ export function ResellerDashboard({ dashboardData: dashboardRes, extraData, user
     const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false)
     const [isBriefingModalOpen, setIsBriefingModalOpen] = useState(false)
     const [isNewOrgModalOpen, setIsNewOrgModalOpen] = useState(false)
+
+    const refreshData = () => {
+        router.refresh()
+        if (onReload) onReload()
+    }
 
     const { invoices, settings, metrics, clients } = dashboardRes || { invoices: [] }
     const tenantCount = extraData?.tenantCount || 0
@@ -126,11 +133,11 @@ export function ResellerDashboard({ dashboardData: dashboardRes, extraData, user
     return (
         <>
             <ModularDashboardLayout data={data} userRole={initialRole} />
-            <CreateClientSheet open={isClientModalOpen} onOpenChange={setIsClientModalOpen} trigger={<span className="hidden" />} onSuccess={() => { setIsClientModalOpen(false); onReload() }} />
-            <CreateQuoteSheet open={isQuoteModalOpen} onOpenChange={setIsQuoteModalOpen} trigger={<span className="hidden" />} onSuccess={() => { setIsQuoteModalOpen(false); onReload() }} />
+            <CreateClientSheet open={isClientModalOpen} onOpenChange={setIsClientModalOpen} trigger={<span className="hidden" />} onSuccess={() => { setIsClientModalOpen(false); refreshData() }} />
+            <CreateQuoteSheet open={isQuoteModalOpen} onOpenChange={setIsQuoteModalOpen} trigger={<span className="hidden" />} onSuccess={() => { setIsQuoteModalOpen(false); refreshData() }} />
             <CreateFormSheet open={isBriefingModalOpen} onOpenChange={setIsBriefingModalOpen} onSuccess={() => setIsBriefingModalOpen(false)} />
-            <CreateInvoiceSheet open={isInvoiceModalOpen} onOpenChange={setIsInvoiceModalOpen} trigger={<span className="hidden" />} onSuccess={() => { setIsInvoiceModalOpen(false); onReload() }} />
-            <CreateOrganizationSheet open={isNewOrgModalOpen} onOpenChange={setIsNewOrgModalOpen} onSuccess={() => { setIsNewOrgModalOpen(false); onReload() }} />
+            <CreateInvoiceSheet open={isInvoiceModalOpen} onOpenChange={setIsInvoiceModalOpen} trigger={<span className="hidden" />} onSuccess={() => { setIsInvoiceModalOpen(false); refreshData() }} />
+            <CreateOrganizationSheet open={isNewOrgModalOpen} onOpenChange={setIsNewOrgModalOpen} onSuccess={() => { setIsNewOrgModalOpen(false); refreshData() }} />
         </>
     )
 }
