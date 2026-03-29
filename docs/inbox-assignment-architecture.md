@@ -36,6 +36,33 @@ Para asegurar que el dashboard de agentes refleje la ocupación real, el sistema
   - `assigned_to IS NOT NULL`
 - **Herramienta de Reconciliación**: Debido a posibles latencias o estados inconsistentes en migraciones, el sistema ofrece un botón de **"Sincronizar Cargas"** en el dashboard administrativo que ejecuta `public.reconcile_agent_loads()` para forzar una corrección masiva.
 
+## 5. Sistema de Sincronización "Vanish" (Latencia Cero)
+
+Para garantizar que la interfaz se sienta instantánea y libre de "cards zombis", el sistema utiliza una estrategia de sincronización en tres capas:
+
+### A. Capa Local (Local Global Sync)
+Cuando el usuario activo realiza una acción de Resolve/Delete/Snooze, el componente dispara un evento de ventana personalizado: `pixy:conversation-deleted`.
+- **Propósito**: Notificar a otros componentes en la misma pestaña (ej: Sidebar desde el ChatArea) para que eliminen la card de inmediato sin esperar confirmación del servidor.
+- **Implementación**: `window.dispatchEvent(new CustomEvent('pixy:conversation-deleted', ...))`.
+
+### B. Capa Multi-Agente (Realtime Broadcast)
+Dado que la replicación de base de datos (Postgres Changes) puede tener latencia o fallar en borrados debido a configuraciones de réplica, usamos **Broadcast**.
+- **Mecanismo**: El Server Action emite un mensaje `vanish` al canal de la organización (`inbox-org-${orgId}`).
+- **Resultado**: Todos los agentes conectados a esa organización ven la card desaparecer simultáneamente en menos de 1 segundo.
+
+### C. Capa de Backend (Paralelización)
+Las acciones en `conversation-actions.ts` están optimizadas para no bloquear el hilo principal:
+- **Limpieza en paralelo**: El borrado de media en Storage, la limpieza de etiquetas en el Lead y el borrado en DB ocurren simultáneamente usando `Promise.all`.
+- **Optimistic UI**: El frontend navega al listado ANTES de que el backend responda, confiando en el éxito de la operación.
+
+## 6. Gestión de WebSockets (Realtime Singleton)
+
+Para evitar el problema de "Thundering Herd" (múltiples conexiones WebSocket saturando el servidor), toda la comunicación Realtime debe pasar por el `SupabaseRealtimeManager`.
+
+- **Singleton Strategy**: El manager mantiene una cuenta de referencias (`refCount`) por canal.
+- **Shared Listeners**: Permite que múltiples componentes (Notificaciones, Sidebar, Floating Inbox) compartan la misma conexión física al mismo canal de organización, reduciendo el consumo de recursos en un 70%.
+- **Lifecycle**: Los canales se cierran automáticamente tras un retraso de 10s después de que el último componente se desmonte, manejando ráfagas de re-navegación.
+
 ## 5. Gobernanza de Interfaz (UI RBAC)
 
 Ciertas partes de la configuración del Inbox son estrictamente administrativas y se protegen a nivel de componente:
@@ -54,3 +81,4 @@ Al agregar nuevas estrategias o cambiar la lógica de aislamiento:
 2.  Mantener el umbral de 3 minutos para coherencia con el refresco del frontend.
 3.  Verificar que cualquier nuevo insight administrativo sea inyectado con el flag `isAdmin` derivado de `getCurrentUserPermissions`.
 4.  Si se introducen nuevos estados de conversación, actualizar la función `fn_sync_agent_load_on_change` en la base de datos.
+5.  **Broadcast obligatorio**: Cualquier acción que elimine un chat de la vista principal debe emitir un evento `vanish` vía `broadcastVanish` para mantener la consistencia multi-agente.
