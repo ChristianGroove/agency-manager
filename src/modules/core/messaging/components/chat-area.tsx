@@ -357,7 +357,33 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
         // Preserve original type in metadata/props if needed for rendering
         if (currentPendingProduct) {
             isInteractiveProduct = true
-            const bodyContent = `*${currentPendingProduct.name.toUpperCase()}*\n\n${currentPendingProduct.description || 'Ficha Técnica'}\n\n*Precio:* $${currentPendingProduct.base_price?.toLocaleString() || 'N/A'}${textContent ? `\n\n_${textContent}_` : ''}`
+            
+            const parts = [];
+            parts.push(`*${currentPendingProduct.name.toUpperCase()}*`);
+
+            if (currentPendingProduct.description) {
+                parts.push(`\n${currentPendingProduct.description}`);
+            }
+
+            const features = currentPendingProduct.metadata?.portal_card?.features || [];
+            if (Array.isArray(features) && features.length > 0) {
+                const featureList = features
+                    .map((f: string) => (typeof f === 'string' && f.trim()) ? `✅ ${f.trim()}` : '')
+                    .filter(Boolean)
+                    .join('\n');
+                
+                if (featureList) {
+                    parts.push(`\n*CARACTERÍSTICAS*\n${featureList}`);
+                }
+            }
+
+            parts.push(`\n*Precio:* $${currentPendingProduct.base_price?.toLocaleString() || 'N/A'}`);
+
+            if (textContent && textContent.trim()) {
+                parts.push(`\n---\n_${textContent.trim()}_`);
+            }
+
+            const bodyContent = parts.join('\n');
             
             if (currentPendingProduct.image_url) {
                 messageContent = {
@@ -423,7 +449,8 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
             let result;
             if (isInteractiveProduct) {
                 // If it's a product card, send it using the specific server action to fetch mostrador settings
-                result = await sendProductCardMessage(conversationId, currentPendingProduct, 'Agent', optimisticId)
+                // Updated to pass textContent as extraText
+                result = await sendProductCardMessage(conversationId, currentPendingProduct, 'Agent', optimisticId, textContent)
             } else {
                 result = await sendMessage(conversationId, messageContent, 'Agent', optimisticId)
             }

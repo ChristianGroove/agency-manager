@@ -232,14 +232,36 @@ export async function sendImageMessage(conversationId: string, imageUrl: string,
     return result
 }
 
-export async function sendProductCardMessage(conversationId: string, product: any, sender: string, messageId?: string) {
+export async function sendProductCardMessage(conversationId: string, product: any, sender: string, messageId?: string, extraText?: string) {
     const supabase = await createClient()
 
-    const bodyContent = `*${product.name.toUpperCase()}*
+    const parts = [];
+    parts.push(`*${product.name.toUpperCase()}*`);
 
-${product.description || 'Ficha Técnica de producto'}
+    if (product.description) {
+        parts.push(`\n${product.description}`);
+    }
 
-*Precio:* $${product.base_price?.toLocaleString() || 'N/A'}`;
+    // Extraer características si existen
+    const features = product.metadata?.portal_card?.features || [];
+    if (Array.isArray(features) && features.length > 0) {
+        const featureList = features
+            .map((f: string) => f.trim() ? `✅ ${f.trim()}` : '')
+            .filter(Boolean)
+            .join('\n');
+        
+        if (featureList) {
+            parts.push(`\n*CARACTERÍSTICAS*\n${featureList}`);
+        }
+    }
+
+    parts.push(`\n*Precio:* $${product.base_price?.toLocaleString() || 'N/A'}`);
+
+    if (extraText && extraText.trim()) {
+        parts.push(`\n---\n_${extraText.trim()}_`);
+    }
+
+    const bodyContent = parts.join('\n');
 
     let content: any = {};
     if (product.image_url) {

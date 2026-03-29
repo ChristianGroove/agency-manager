@@ -29,7 +29,7 @@ export function DealBuilder({ leadId, conversationId, onCartChange, variant = 'd
 
     // Detect if space supports mostrador mode (e.g. retail, resto, agency can also showcase products).
     // Let's enable it fully if variant is sidebar for maximum flexibility, or limit it to specific spaces.
-    const [salesMode, setSalesMode] = useState<SalesMode>('cotizacion')
+    const [salesMode, setSalesMode] = useState<SalesMode>('mostrador_ficha')
 
     // Initial Load
     useEffect(() => {
@@ -119,18 +119,6 @@ export function DealBuilder({ leadId, conversationId, onCartChange, variant = 'd
             {showMostradorToggle && (
                 <div className="flex p-1 bg-zinc-100 dark:bg-zinc-800/50 rounded-lg mx-1">
                     <button
-                        onClick={() => setSalesMode('cotizacion')}
-                        className={cn(
-                            "flex-1 flex items-center justify-center py-1.5 text-xs font-semibold rounded-md transition-all gap-1.5",
-                            salesMode === 'cotizacion'
-                                ? "bg-white dark:bg-zinc-700 text-foreground shadow-sm"
-                                : "text-muted-foreground hover:text-foreground"
-                        )}
-                    >
-                        <ShoppingCart className="h-3 w-3" />
-                        Cotización / Carrito
-                    </button>
-                    <button
                         onClick={() => setSalesMode('mostrador_ficha')}
                         className={cn(
                             "flex-1 flex items-center justify-center py-1.5 text-xs font-semibold rounded-md transition-all gap-1.5",
@@ -141,6 +129,18 @@ export function DealBuilder({ leadId, conversationId, onCartChange, variant = 'd
                     >
                         <Package className="h-3 w-3" />
                         Ficha Técnica
+                    </button>
+                    <button
+                        onClick={() => setSalesMode('cotizacion')}
+                        className={cn(
+                            "flex-1 flex items-center justify-center py-1.5 text-xs font-semibold rounded-md transition-all gap-1.5",
+                            salesMode === 'cotizacion'
+                                ? "bg-white dark:bg-zinc-700 text-foreground shadow-sm"
+                                : "text-muted-foreground hover:text-foreground"
+                        )}
+                    >
+                        <ShoppingCart className="h-3 w-3" />
+                        Cotización / Carrito
                     </button>
                 </div>
             )}
