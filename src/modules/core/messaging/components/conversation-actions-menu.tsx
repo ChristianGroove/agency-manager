@@ -32,34 +32,28 @@ export function ConversationActionsMenu({
     const [isLoading, setIsLoading] = useState(false)
     const [isFAQModalOpen, setIsFAQModalOpen] = useState(false)
 
-    const handleAction = async (action: () => Promise<any>, successMessage: string) => {
-        setIsLoading(true)
+    const handleAction = async (action: () => Promise<any>, successMessage: string, isOptimistic: boolean = false) => {
+        if (isOptimistic) {
+            onActionComplete?.() // Vanish immediately
+        } else {
+            setIsLoading(true)
+        }
+
         try {
             const result = await action()
             if (result.success) {
-                toast.success("Success", {
-                    description: successMessage
-                })
-                onActionComplete?.()
+                if (!isOptimistic) {
+                    toast.success("Success", { description: successMessage })
+                    onActionComplete?.()
+                }
             } else {
-                toast.error("Error", {
-                    description: result.error || "Action failed"
-                })
+                toast.error("Error", { description: result.error || "Action failed" })
             }
         } catch (error) {
-            toast.error("Error", {
-                description: "An unexpected error occurred"
-            })
+            toast.error("Error", { description: "An unexpected error occurred" })
         } finally {
             setIsLoading(false)
         }
-    }
-
-    const handleSnooze = (date: Date) => {
-        handleAction(
-            () => snoozeConversation(conversationId, date),
-            `Snoozed until ${date.toLocaleString()}`
-        )
     }
 
     return (
@@ -75,7 +69,7 @@ export function ConversationActionsMenu({
                         <MoreVertical className="h-4 w-4" />
                     </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
+                <DropdownMenuContent align="end" className="w-56">
                     <DropdownMenuItem
                         onClick={() => handleAction(
                             () => markAsRead(conversationId),
@@ -83,7 +77,7 @@ export function ConversationActionsMenu({
                         )}
                     >
                         <CheckCircle className="mr-2 h-4 w-4" />
-                        Mark as read
+                        Marcar como leído
                     </DropdownMenuItem>
 
                     <DropdownMenuSeparator />
@@ -95,21 +89,44 @@ export function ConversationActionsMenu({
 
                     <DropdownMenuSeparator />
 
-                    <DropdownMenuItem
-                        className="text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-900/20"
-                        onClick={() => {
-                            if (window.confirm("¿Estás seguro de que quieres eliminar esta conversación?")) {
-                                const deleteLead = window.confirm("¿Deseas eliminar también al Lead si no tiene otras conversaciones activas?")
-                                handleAction(
-                                    () => deleteConversation(conversationId, deleteLead),
-                                    deleteLead ? "Conversación y Lead eliminados" : "Conversación eliminada"
-                                )
-                            }
-                        }}
-                    >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Eliminar
-                    </DropdownMenuItem>
+                    <DropdownMenuSub>
+                        <DropdownMenuSubTrigger className="text-red-600 focus:text-red-600">
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Eliminar
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuSubContent className="w-56">
+                            <DropdownMenuItem 
+                                className="text-red-600 focus:text-red-600"
+                                onClick={() => {
+                                    if (window.confirm("¿Eliminar solo esta conversación?")) {
+                                        handleAction(
+                                            () => deleteConversation(conversationId, false),
+                                            "Conversación eliminada",
+                                            true
+                                        )
+                                    }
+                                }}
+                            >
+                                <Trash2 className="mr-2 h-3.5 w-3.5" />
+                                Solo esta conversación
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                                className="text-red-600 focus:text-red-600 font-semibold"
+                                onClick={() => {
+                                    if (window.confirm("¡ATENCIÓN! Esto eliminará el chat Y EL LEAD permanentemente. ¿Continuar?")) {
+                                        handleAction(
+                                            () => deleteConversation(conversationId, true),
+                                            "Chat y Lead eliminados",
+                                            true
+                                        )
+                                    }
+                                }}
+                            >
+                                <Trash2 className="mr-2 h-3.5 w-3.5" />
+                                Todo el contacto (Lead)
+                            </DropdownMenuItem>
+                        </DropdownMenuSubContent>
+                    </DropdownMenuSub>
                 </DropdownMenuContent>
             </DropdownMenu>
 

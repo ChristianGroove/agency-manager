@@ -34,7 +34,7 @@ interface QuickAssignPanelProps {
     connectionId?: string
     currentAssignee?: string | null
     agents: Agent[]
-    onAssigned?: () => void
+    onAssigned?: (agentId: string | null) => void
     tick?: number
 }
 
@@ -53,17 +53,27 @@ export function QuickAssignPanel({ conversationId, channel, connectionId, curren
     }, [])
 
     const handleAssign = async (agentId: string | null) => {
-        setAssigning(true)
-        const result = await assignConversation(conversationId, agentId)
+        const originalAssignee = currentAssignee;
+        
+        // 1. OPTIMISTIC UPDATE: Close menu and update parent UI immediately
+        setOpen(false);
+        onAssigned?.(agentId); // Now accepts agentId for optimism
 
-        if (result.success) {
-            toast.success(agentId ? t('crm.inbox.context.actions.assigned') : t('crm.inbox.context.actions.unassigned'))
-            onAssigned?.()
-            setOpen(false)
-        } else {
-            toast.error(result.error || t('crm.inbox.context.actions.failed_to_assign'))
+        try {
+            const result = await assignConversation(conversationId, agentId);
+            
+            if (result.success) {
+                toast.success(agentId ? t('crm.inbox.context.actions.assigned') : t('crm.inbox.context.actions.unassigned'));
+            } else {
+                // 2. ROLLBACK: Revert UI if server fails
+                onAssigned?.(originalAssignee ?? null);
+                toast.error(result.error || t('crm.inbox.context.actions.failed_to_assign'));
+            }
+        } catch (err) {
+            // 2. ROLLBACK: Revert UI on critical network error
+            onAssigned?.(originalAssignee ?? null);
+            toast.error(t('crm.inbox.context.actions.failed_to_assign'));
         }
-        setAssigning(false)
     }
 
     const currentAgent = agents.find(a => a.agent_id === currentAssignee)

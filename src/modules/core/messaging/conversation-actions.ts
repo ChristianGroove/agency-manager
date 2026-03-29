@@ -48,23 +48,35 @@ export async function archiveConversation(conversationId: string) {
 }
 
 /**
- * Delete a conversation (and all its messages)
+ * Delete a conversation (Optimized)
  */
 export async function deleteConversation(conversationId: string, deleteLeadIfOrphaned: boolean = false) {
     const supabase = await createClient()
 
-    // 1. Fetch conversation info before delete
+    // 1. Fetch conversation info (Fast)
     const { data: conv } = await supabase
         .from('conversations')
         .select('lead_id, organization_id')
         .eq('id', conversationId)
         .single()
 
-    // 1.5. CLEANUP PHYSICAL MEDIA (Prevent orphans in Storage)
-    try { await messagingCleanupService.deleteConversationMedia(conversationId); } catch (e) { console.error("[ConversationActions] Media cleanup error:", e); }
+    if (!conv) return { success: false, error: "Conversation not found" }
 
-    // CLEAR TAGS BEFORE DELETE (Surgical cleanup to avoid DB locks)
-    await clearLeadTagsOnEvent(conversationId)
+    // 2. PARALLEL CLEANUP: Media + Tags + Delete Transaction (Conceptually)
+    // We start media cleanup as early as possible
+    const mediaCleanupPromise = messagingCleanupService.deleteConversationMedia(conversationId)
+        .catch(e => console.error("[ConversationActions] Media cleanup error:", e));
+
+    // Clear tags using the IDs we ALREADY have (No new fetch needed)
+    const tagCleanupPromise = (conv.lead_id && conv.organization_id)
+        ? (async () => {
+            const { clearLeadTagsSystem } = await import("@/modules/core/crm/tags-actions")
+            return clearLeadTagsSystem(conv.lead_id!, conv.organization_id!)
+        })()
+        : Promise.resolve({ success: true });
+
+    // Wait for tag cleanup to prevent race conditions on denormalized fields, then delete
+    await tagCleanupPromise;
 
     const { error, count } = await supabase
         .from('conversations')
@@ -76,14 +88,8 @@ export async function deleteConversation(conversationId: string, deleteLeadIfOrp
         return { success: false, error: error.message }
     }
 
-    if (count === 0) {
-        console.error('[ConversationActions] No rows deleted. Likely permission denied or not found.')
-        return { success: false, error: "Could not delete conversation. Permission denied or already deleted." }
-    }
-
-    // 2. Orphaned Lead Cleanup
-    if (deleteLeadIfOrphaned && conv?.lead_id) {
-        // Check if there are other conversations for this lead
+    // 3. Optional Orphaned Lead Cleanup
+    if (deleteLeadIfOrphaned && conv.lead_id) {
         const { data: otherConvs } = await supabase
             .from('conversations')
             .select('id')
@@ -91,11 +97,13 @@ export async function deleteConversation(conversationId: string, deleteLeadIfOrp
             .limit(1)
 
         if (!otherConvs || otherConvs.length === 0) {
-            // No other conversations remain, delete lead from CRM
             const { deleteLeads } = await import("@/modules/core/crm/lead-management-actions")
             await deleteLeads([conv.lead_id])
         }
     }
+
+    // Ensure media cleanup finished at some point (we await it here to ensure consistency before returning)
+    await mediaCleanupPromise;
 
     revalidatePath('/inbox')
     revalidatePath('/crm')
@@ -209,43 +217,45 @@ export async function getLeadConversationPreview(leadId: string, limit: number =
 }
 
 /**
- * Resolve and close a conversation
+ * Resolve and close a conversation (Optimized)
  */
 export async function completeConversation(conversationId: string) {
     const supabase = await createClient()
 
-    // 1. Fetch current metadata to preserve it
+    // 1. Initial Fetch (Fast)
     const { data: conv } = await supabase
         .from('conversations')
         .select('metadata, lead_id, organization_id')
         .eq('id', conversationId)
         .single()
 
+    if (!conv) return { success: false, error: "Conversation not found" }
+
     const newMetadata = {
-        ...(conv?.metadata || {}),
+        ...(conv.metadata || {}),
         resolved_at: new Date().toISOString()
     }
 
-    // 2. Perform the update
-    const { error } = await supabase
-        .from('conversations')
-        .update({
-            status: 'closed',
-            state: 'archived',
-            metadata: newMetadata,
-            updated_at: new Date().toISOString()
-        })
-        .eq('id', conversationId)
+    // 2. PARALLEL EXECUTION: Update DB + Clear Tags in background
+    const updatePromise = supabase.from('conversations').update({
+        status: 'closed',
+        state: 'archived',
+        metadata: newMetadata,
+        updated_at: new Date().toISOString()
+    }).eq('id', conversationId);
 
-    if (error) {
-        console.error('[ConversationActions] Failed to resolve:', error)
-        return { success: false, error: error.message }
-    }
+    const tagCleanupPromise = (conv.lead_id && conv.organization_id)
+        ? (async () => {
+            const { clearLeadTagsSystem } = await import("@/modules/core/crm/tags-actions")
+            return clearLeadTagsSystem(conv.lead_id!, conv.organization_id!)
+        })()
+        : Promise.resolve({ success: true });
 
-    // 3. CLEAR TAGS AFTER RESOLVE (Surgical cleanup)
-    if (conv?.lead_id && conv?.organization_id) {
-        const { clearLeadTagsSystem } = await import("@/modules/core/crm/tags-actions")
-        await clearLeadTagsSystem(conv.lead_id, conv.organization_id)
+    const [updateResult, tagResult] = await Promise.all([updatePromise, tagCleanupPromise]);
+
+    if (updateResult.error) {
+        console.error('[ConversationActions] Failed to resolve:', updateResult.error)
+        return { success: false, error: updateResult.error.message }
     }
 
     revalidatePath('/inbox')

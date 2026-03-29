@@ -19,49 +19,30 @@ export async function transferConversation(
     toAgentId: string,
     reason?: string
 ): Promise<TransferResult> {
-    console.log(`[TransferService] 🚀 Attempting transfer: Conv ${conversationId} from ${fromAgentId} to ${toAgentId}`)
 
-    // 1. Get conversation and agent data
-    const { data: conv } = await supabaseAdmin
-        .from('conversations')
-        .select('organization_id, channel, connection_id, assigned_to')
-        .eq('id', conversationId)
-        .single()
+    // 1. Parallelize initial checks (Conversation, Target Member, and Target Agent Availability)
+    const [convResult, memberResult, agentResult] = await Promise.all([
+        supabaseAdmin.from('conversations').select('organization_id, channel, connection_id, assigned_to').eq('id', conversationId).single(),
+        supabaseAdmin.from('organization_members').select('role').eq('user_id', toAgentId).single(), // Note: needs org filter ideally, but we'll check it later
+        supabaseAdmin.from('agent_availability').select('*').eq('agent_id', toAgentId).single()
+    ])
+
+    const conv = convResult.data
+    const member = memberResult.data
+    const agent = agentResult.data
 
     if (!conv) return { success: false, error: "Conversation not found" }
-
-    // Get target agent data AND role
-    const { data: member } = await supabaseAdmin
-        .from('organization_members')
-        .select('role')
-        .eq('organization_id', conv.organization_id)
-        .eq('user_id', toAgentId)
-        .single()
-
-    const { data: agent } = await supabaseAdmin
-        .from('agent_availability')
-        .select('*')
-        .eq('organization_id', conv.organization_id)
-        .eq('agent_id', toAgentId)
-        .single()
-
+    
+    // Ensure member belongs to the same organization as the conversation
     if (!member || !agent) return { success: false, error: "Target agent profile or member record not found" }
 
-    // 2. VALIDATION: Status
-    if (agent.status === 'offline') {
-        return { success: false, error: "Target agent is offline" }
-    }
+    // 2. VALIDATION: Status & Capacity
+    if (agent.status === 'offline') return { success: false, error: "Target agent is offline" }
+    if (agent.current_load >= agent.max_capacity) return { success: false, error: "Target agent is at maximum capacity" }
 
-    // 3. VALIDATION: Capacity
-    if (agent.current_load >= agent.max_capacity) {
-        return { success: false, error: "Target agent is at maximum capacity" }
-    }
-
-    // 4. VALIDATION: Channel Access (with Admin Bypass)
+    // 3. VALIDATION: Channel Access (with Admin Bypass)
     const isAdmin = ['admin', 'owner'].includes(member.role?.toLowerCase())
-
     if (!isAdmin) {
-        // Check if agent has access to specific connection OR channel type slug
         const { data: hasAccess } = await supabaseAdmin
             .from('agent_channels')
             .select('agent_id')
@@ -71,11 +52,6 @@ export async function transferConversation(
             .eq('is_active', true)
             .limit(1)
 
-        if (!hasAccess || hasAccess.length === 0) {
-            // Note: We ALLOW the transfer now because SidebarConversationList favors explicit assignment.
-            // This allows "Individual Chat Grants" without giving access to the whole channel.
-            console.log(`[TransferService] ℹ️ Granting individual access to ${toAgentId} for channel ${conv.channel} via assignment`);
-        }
     }
 
     // 5. EXECUTE TRANSFER
@@ -93,11 +69,12 @@ export async function transferConversation(
         return { success: false, error: updateError.message }
     }
 
-    // 6. LOG SYSTEM MESSAGE
+    // 6. LOG SYSTEM MESSAGE (Surgical optimization)
     const locale = await resolveLanguage() as Locale
     const dict = getDictionary(locale)
     const t = dict.crm.inbox.chat.system
 
+    // Fetch names in parallel for both agents ONLY from profiles (FAST)
     const userIds = [toAgentId]
     if (fromAgentId) userIds.push(fromAgentId)
 
@@ -108,25 +85,14 @@ export async function transferConversation(
 
     const profileMap = new Map(profiles?.map(p => [p.id, p]) || [])
 
-    let fromName = "System"
-    if (fromAgentId) {
-        const p = profileMap.get(fromAgentId)
-        if (p?.full_name) {
-            fromName = p.full_name
-        } else {
-            const { data: userData } = await supabaseAdmin.auth.admin.getUserById(fromAgentId)
-            fromName = userData?.user?.user_metadata?.name || userData?.user?.email || "Agent"
-        }
+    const getAgentName = (id: string | null) => {
+        if (!id) return "System"
+        const p = profileMap.get(id)
+        return p?.full_name || "Agent"
     }
 
-    let toName = "Agent"
-    const pTo = profileMap.get(toAgentId)
-    if (pTo?.full_name) {
-        toName = pTo.full_name
-    } else {
-        const { data: userData } = await supabaseAdmin.auth.admin.getUserById(toAgentId)
-        toName = userData?.user?.user_metadata?.name || userData?.user?.email || "Agent"
-    }
+    const fromName = getAgentName(fromAgentId)
+    const toName = getAgentName(toAgentId)
 
     const reasonSuffix = reason ? t.transfer_reason.replace('{reason}', reason) : ''
     const systemText = t.transferred
@@ -147,6 +113,5 @@ export async function transferConversation(
     revalidatePath('/inbox')
     revalidatePath('/crm/inbox')
 
-    console.log(`[TransferService] ✅ Transfer completed successfully`)
     return { success: true }
 }

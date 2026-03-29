@@ -41,6 +41,7 @@ import { Image, Camera, User as ContactIcon, MapPin, Mic } from "lucide-react"
 
 
 
+import { useRouter } from "next/navigation"
 import { EmojiStickerPicker } from "./emoji-sticker-picker"
 import { AudioRecorder } from "./audio-recorder"
 import { realtimeManager } from "@/lib/supabase-realtime-manager"
@@ -67,6 +68,7 @@ interface ChatAreaProps {
 
 export function ChatArea({ conversationId, isContextOpen, onToggleContext }: ChatAreaProps) {
     const { t } = useTranslation()
+    const router = useRouter()
     const [messages, setMessages] = useState<Message[]>([])
     const [conversation, setConversation] = useState<Conversation | null>(null)
     const [inputValue, setInputValue] = useState("")
@@ -299,7 +301,6 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
                 }
             )
             .on('broadcast', { event: 'incoming_call' }, (payload: any) => {
-                console.log('[ChatArea] Incoming Call Broadcast:', payload)
                 setIncomingCall(payload.payload)
                 setTimeout(() => setIncomingCall(null), 30000)
             })
@@ -456,7 +457,6 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
             }
 
             if (!result.success) {
-                console.error("Failed to send", (result as any).error)
                 setMessages(prev => prev.filter(m => m.id !== optimisticId))
                 toast.error(t('crm.inbox.chat.actions.chat_error'), { description: (result as any).error || t('crm.inbox.layout.unknown') })
             }
@@ -748,9 +748,13 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
                                     size="icon"
                                     className="h-8 w-8 text-muted-foreground hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20"
                                     onClick={async () => {
+                                        // INSTANT NAVIGATION (Optimistic)
+                                        router.push('/inbox')
+                                        toast.success(t('crm.inbox.context.actions.resolved'))
+                                        
+                                        // Backend work (Background)
                                         const res = await completeConversation(conversationId)
-                                        if (res.success) toast.success(t('crm.inbox.context.actions.resolved'))
-                                        else toast.error(t('crm.inbox.context.actions.resolve_error'))
+                                        if (!res.success) toast.error(t('crm.inbox.context.actions.resolve_error'))
                                     }}
                                 >
                                     <CheckCircle2 className="h-4 w-4" />
@@ -766,12 +770,15 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
                                     variant="ghost"
                                     size="icon"
                                     className="h-8 w-8 text-muted-foreground hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20"
-                                    onClick={() => {
+                                    onClick={async () => {
                                         const tomorrow = new Date()
                                         tomorrow.setDate(tomorrow.getDate() + 1)
-                                        snoozeConversation(conversationId, tomorrow).then(res => {
-                                            if (res.success) toast.success(t('crm.inbox.context.actions.snoozed_tomorrow'))
-                                        })
+                                        
+                                        // Optimistic
+                                        router.push('/inbox')
+                                        toast.success(t('crm.inbox.context.actions.snoozed_tomorrow'))
+
+                                        await snoozeConversation(conversationId, tomorrow)
                                     }}
                                 >
                                     <Clock className="h-4 w-4" />
@@ -788,9 +795,12 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
                                     size="icon"
                                     className="h-8 w-8 text-muted-foreground hover:text-zinc-900 hover:bg-zinc-100 dark:hover:text-zinc-100 dark:hover:bg-zinc-800"
                                     onClick={async () => {
+                                        // Optimistic
+                                        router.push('/inbox')
+                                        toast.success(t('crm.inbox.context.actions.archived'))
+
                                         const res = await archiveConversation(conversationId)
-                                        if (res.success) toast.success(t('crm.inbox.context.actions.archived'))
-                                        else toast.error(t('crm.inbox.context.actions.archive_error'))
+                                        if (!res.success) toast.error(t('crm.inbox.context.actions.archive_error'))
                                     }}
                                 >
                                     <Archive className="h-4 w-4" />
@@ -807,7 +817,11 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
                                     size="icon"
                                     className="h-8 w-8 text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
                                     onClick={async () => {
-                                        if (window.confirm(t('common.confirm_delete'))) {
+                                        if (window.confirm("¿Seguro que quieres eliminar esta conversación?")) {
+                                            // Optimistic
+                                            router.push('/inbox')
+                                            toast.success("Eliminando conversación...")
+                                            
                                             const res = await deleteConversation(conversationId)
                                             if (!res.success) toast.error(t('common.error'))
                                         }

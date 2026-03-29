@@ -356,30 +356,16 @@ export async function clearLeadTagsSystem(leadId: string, organizationId: string
         const { fileLogger } = require('@/lib/file-logger');
         fileLogger.log(`[TagSync] CLEARING ALL TAGS for lead ${leadId}`);
 
-        // 1. Delete all relational links
-        const { error: delError } = await supabaseAdmin
-            .from('crm_lead_tags')
-            .delete()
-            .eq('lead_id', leadId);
+        // EXECUTE ALL IN PARALLEL
+        const [delResult, leadResult, convResult] = await Promise.all([
+            supabaseAdmin.from('crm_lead_tags').delete().eq('lead_id', leadId),
+            supabaseAdmin.from('leads').update({ tags: [] }).eq('id', leadId),
+            supabaseAdmin.from('conversations').update({ tags: [] }).eq('id', leadId).neq('state', 'archived')
+        ]);
 
-        if (delError) throw delError;
-
-        // 2. Clear leads table array
-        const { error: leadError } = await supabaseAdmin
-            .from('leads')
-            .update({ tags: [] })
-            .eq('id', leadId);
-
-        if (leadError) throw leadError;
-
-        // 3. Clear all active conversations for this lead
-        const { error: convError } = await supabaseAdmin
-            .from('conversations')
-            .update({ tags: [] })
-            .eq('lead_id', leadId)
-            .neq('state', 'archived');
-
-        if (convError) throw convError;
+        if (delResult.error) throw delResult.error;
+        if (leadResult.error) throw leadResult.error;
+        if (convResult.error) throw convResult.error;
 
         return { success: true }
     } catch (e: any) {

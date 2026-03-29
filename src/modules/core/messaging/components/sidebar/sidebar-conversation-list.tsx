@@ -298,26 +298,56 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
             channel.on('postgres_changes',
                 { event: '*', schema: 'public', table: 'conversations' },
                 async (payload: any) => {
+                    const eventType = payload.eventType
                     const updatedConv = payload.new as Conversation
-                    if (updatedConv.organization_id !== organizationId) return;
+                    const oldConv = payload.old as any
                     
+                    if (updatedConv && updatedConv.organization_id !== organizationId) return;
+
                     setConversations((prev) => {
+                        // 1. HANDLE DELETE
+                        if (eventType === 'DELETE') {
+                            return prev.filter(c => c.id !== oldConv.id)
+                        }
+
+                        // 2. HANDLE UPDATE/INSERT
                         const existingIndex = prev.findIndex(c => c.id === updatedConv.id)
+                        
+                        // --- CHECK FILTER MATCH ---
+                        let matches = true
+                        if (activeFilter === 'all') matches = updatedConv.state !== 'archived' && updatedConv.status !== 'snoozed'
+                        else if (activeFilter === 'unread') matches = updatedConv.unread_count > 0 && updatedConv.state !== 'archived' && updatedConv.status !== 'snoozed'
+                        else if (activeFilter === 'assigned') matches = updatedConv.assigned_to === currentUserId && updatedConv.state !== 'archived'
+                        else if (activeFilter === 'archived') matches = updatedConv.state === 'archived'
+                        else if (activeFilter === 'snoozed') matches = updatedConv.status === 'snoozed'
+
+                        if (!matches) {
+                            // If it doesn't match the current filter anymore (e.g. resolved/archived), remove it
+                            return prev.filter(c => c.id !== updatedConv.id)
+                        }
+
+                        // If it matches, update or insert
                         if (existingIndex > -1) {
                             const updated = {
                                 ...prev[existingIndex],
                                 ...updatedConv,
+                                // Preserve joined data if missing in payload
                                 leads: prev[existingIndex].leads,
                                 clients: prev[existingIndex].clients,
                                 integration_connections: prev[existingIndex].integration_connections
                             }
+                            // Move to top of list as it was updated
                             return [updated, ...prev.filter(c => c.id !== updatedConv.id)]
+                        } else {
+                            // New item matching filter (might happen on unarchive/re-assign)
+                            // We don't have joined data here, so a full fetch might be better, 
+                            // but adding it to the end or beginning is a start.
+                            // Actually, better to just trigger a debounced fetch if it's new
+                            return prev 
                         }
-                        return prev
                     })
 
-                    // We need a stable check here. The current Conversations is from a closure.
-                    // This is why we use debouncedFetch as backup.
+                    // Always trigger a debounced fetch as backup for full data integrity (joins)
                     debouncedFetchConversations(false)
                 }
             )

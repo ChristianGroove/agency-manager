@@ -382,10 +382,10 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
                                         currentAssignee={conversation?.assigned_to}
                                         agents={globalAgents}
                                         tick={tick}
-                                        onAssigned={() => {
-                                            supabase.from('conversations').select('*').eq('id', conversationId).single().then(({ data }) => {
-                                                if (data) setConversation(data)
-                                            })
+                                        onAssigned={(agentId) => {
+                                            if (conversation) {
+                                                setConversation({ ...conversation, assigned_to: agentId })
+                                            }
                                         }}
                                     />
                                 </div>
