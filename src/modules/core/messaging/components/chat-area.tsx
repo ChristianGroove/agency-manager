@@ -5,7 +5,7 @@ import { Virtuoso, VirtuosoHandle } from "react-virtuoso"
 
 import { useEffect, useRef, useState } from "react"
 import { supabase } from "@/lib/supabase"
-import { Send, Phone, MoreVertical, Sidebar, Paperclip, Smile, Check, CheckCheck, User, X, Target, Wand2, CheckCircle2, Clock, Archive, Trash2, FileText } from "lucide-react"
+import { Send, Phone, MoreVertical, Sidebar, Paperclip, Smile, Check, CheckCheck, User, X, Target, Wand2, CheckCircle2, Clock, Archive, Trash2, FileText, Package } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Separator } from "@/components/ui/separator"
@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { Database } from "@/types/supabase"
 import { Message as MessagingMessage, MessageContentType } from "@/types/messaging"
-import { sendMessage, markConversationAsRead } from "../actions"
+import { sendMessage, markConversationAsRead, sendProductCardMessage } from "../actions"
 import { MESSAGING_STORAGE_BUCKET } from "../constants"
 import { refineDraftContent } from "../ai/smart-replies"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -86,6 +86,7 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
     } | null>(null)
     const [incomingCall, setIncomingCall] = useState<{ call_id: string, from: string } | null>(null)
     const [pendingAttachment, setPendingAttachment] = useState<{ url: string, type: MessageContentType, name: string } | null>(null)
+    const [pendingProduct, setPendingProduct] = useState<any | null>(null)
 
     const scrollRef = useRef<HTMLDivElement>(null)
     const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -154,6 +155,20 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
         return () => {
             window.removeEventListener('inbox-prefill-message' as any, handlePrefill as any)
         }
+    }, [])
+
+    // Listen for product card preparation ("Mostrador" mode)
+    useEffect(() => {
+        const handlePrepareProduct = (event: CustomEvent<any>) => {
+            setPendingProduct(event.detail)
+            // Optional: Auto-focus
+            setTimeout(() => {
+                const textarea = document.querySelector('textarea') as HTMLTextAreaElement
+                if (textarea) textarea.focus()
+            }, 50)
+        }
+        window.addEventListener('inbox-prepare-product' as any, handlePrepareProduct as any)
+        return () => window.removeEventListener('inbox-prepare-product' as any, handlePrepareProduct as any)
     }, [])
 
     // Auto-expand textarea on value change
@@ -313,7 +328,7 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
         }
 
         const textContent = contentOverride !== undefined ? contentOverride : inputValue.trim()
-        if (!textContent && !finalMediaUrl && !location && !sending) return
+        if (!textContent && !finalMediaUrl && !location && !sending && !pendingProduct) return
 
         if (!finalMediaUrl && !location) {
             setInputValue("")
@@ -326,14 +341,37 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
             setInputValue("") // Clear input after sending image with caption
         }
 
+        const currentPendingProduct = pendingProduct
+        if (currentPendingProduct) {
+            setPendingProduct(null)
+            setInputValue("")
+        }
+
         setSending(true)
 
         // Determine message content structure
         let messageContent: any
+        let isInteractiveProduct = false
 
         // Force 'note' type if internal mode is active
         // Preserve original type in metadata/props if needed for rendering
-        if (isInternal) {
+        if (currentPendingProduct) {
+            isInteractiveProduct = true
+            const bodyContent = `*${currentPendingProduct.name.toUpperCase()}*\n\n${currentPendingProduct.description || 'Ficha Técnica'}\n\n*Precio:* $${currentPendingProduct.base_price?.toLocaleString() || 'N/A'}${textContent ? `\n\n_${textContent}_` : ''}`
+            
+            if (currentPendingProduct.image_url) {
+                messageContent = {
+                    type: 'image',
+                    mediaUrl: currentPendingProduct.image_url,
+                    caption: bodyContent
+                }
+            } else {
+                messageContent = {
+                    type: 'text',
+                    text: bodyContent
+                }
+            }
+        } else if (isInternal) {
             messageContent = {
                 type: 'note',
                 text: textContent,
@@ -382,7 +420,13 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
         scrollToBottom(messages.length)
 
         try {
-            const result = await sendMessage(conversationId, messageContent, 'Agent', optimisticId)
+            let result;
+            if (isInteractiveProduct) {
+                // If it's a product card, send it using the specific server action to fetch mostrador settings
+                result = await sendProductCardMessage(conversationId, currentPendingProduct, 'Agent', optimisticId)
+            } else {
+                result = await sendMessage(conversationId, messageContent, 'Agent', optimisticId)
+            }
 
             if (!result.success) {
                 console.error("Failed to send", (result as any).error)
@@ -1057,6 +1101,38 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
                                 </div>
                             )}
 
+                            {/* Pending Product Card Preview */}
+                            {pendingProduct && (
+                                <div className="absolute -top-32 left-0 right-0 max-w-sm bg-white dark:bg-zinc-800 p-2 rounded-xl shadow-lg border border-zinc-200 dark:border-zinc-700 animate-in slide-in-from-bottom-2 duration-200 flex items-start gap-4 z-30 mx-auto">
+                                    <div className="h-20 w-20 bg-zinc-100 dark:bg-zinc-900 rounded-lg overflow-hidden flex items-center justify-center border dark:border-zinc-700 shrink-0">
+                                        {pendingProduct.image_url ? (
+                                            <img src={pendingProduct.image_url} className="h-full w-full object-cover" alt="Product" />
+                                        ) : (
+                                            <Package className="h-8 w-8 text-muted-foreground" />
+                                        )}
+                                    </div>
+                                    <div className="flex flex-col flex-1 min-w-0 min-h-[5rem] py-1">
+                                        <div className="flex justify-between items-start">
+                                            <span className="text-xs font-semibold truncate text-foreground pr-2">{pendingProduct.name}</span>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-5 w-5 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-700 -mt-1 -mr-1"
+                                                onClick={() => setPendingProduct(null)}
+                                            >
+                                                <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                                            </Button>
+                                        </div>
+                                        <span className="text-[10px] text-muted-foreground line-clamp-2 mt-0.5">{pendingProduct.description || 'Ficha Técnica de producto'}</span>
+                                        <div className="mt-auto pt-2 flex items-center">
+                                            <Badge variant="secondary" className="text-[9px] bg-primary/10 text-primary hover:bg-primary/10 border-none font-mono font-medium tracking-tight">
+                                                ${pendingProduct.base_price?.toLocaleString() || '0.00'}
+                                            </Badge>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="bg-zinc-100/50 dark:bg-zinc-800/50 rounded-2xl border-none focus-within:bg-zinc-50 dark:focus-within:bg-zinc-800 transition-all flex items-center px-4 py-2 ring-0 focus-within:ring-0 shadow-none">
                                 <Textarea
                                     ref={textareaRef}
@@ -1089,14 +1165,14 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
                             size="icon"
                             className={cn(
                                 "h-10 w-10 shrink-0 rounded-full shadow-md transition-all duration-300",
-                                (inputValue.trim() || uploading || pendingAttachment) 
+                                (inputValue.trim() || uploading || pendingAttachment || pendingProduct) 
                                     ? "bg-emerald-600 hover:bg-emerald-700 text-white transform scale-105 active:scale-95" 
                                     : "bg-zinc-100 dark:bg-zinc-800 text-muted-foreground"
                             )}
                             onClick={() => handleSend()}
-                            disabled={sending || (!inputValue.trim() && !uploading && !pendingAttachment)}
+                            disabled={sending || (!inputValue.trim() && !uploading && !pendingAttachment && !pendingProduct)}
                         >
-                            <Send className={cn("h-5 w-5 ml-0.5", (inputValue.trim() || uploading || pendingAttachment) && "animate-in slide-in-from-left-1")} />
+                            <Send className={cn("h-5 w-5 ml-0.5", (inputValue.trim() || uploading || pendingAttachment || pendingProduct) && "animate-in slide-in-from-left-1")} />
                         </Button>
                     </>
                 )}

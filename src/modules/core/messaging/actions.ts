@@ -232,6 +232,34 @@ export async function sendImageMessage(conversationId: string, imageUrl: string,
     return result
 }
 
+export async function sendProductCardMessage(conversationId: string, product: any, sender: string, messageId?: string) {
+    const supabase = await createClient()
+
+    const bodyContent = `*${product.name.toUpperCase()}*
+
+${product.description || 'Ficha Técnica de producto'}
+
+*Precio:* $${product.base_price?.toLocaleString() || 'N/A'}`;
+
+    let content: any = {};
+    if (product.image_url) {
+        content = {
+            type: 'image',
+            mediaUrl: product.image_url,
+            caption: bodyContent
+        }
+    } else {
+        content = {
+            type: 'text',
+            text: bodyContent
+        }
+    }
+
+    const result = await internalSend({ conversationId, content, sender, supabase, messageId })
+    revalidatePath(`/inbox/${conversationId}`)
+    return result
+}
+
 export async function sendLocationMessage(conversationId: string, lat: number, lon: number, address: string | undefined, sender: string, messageId?: string) {
     const supabase = await createClient()
     const content = {

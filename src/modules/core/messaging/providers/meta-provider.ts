@@ -190,7 +190,23 @@ export class MetaProvider implements MessagingProvider {
             
             if (mediaTypes.includes(content.type) && content.mediaUrl && !content.mediaId) {
                 const mediaId = await this.uploadMedia(content.mediaUrl, activeToken, content.type, effectiveAssetId);
-                if (mediaId) content.mediaId = mediaId;
+                if (mediaId) {
+                    content.mediaId = mediaId;
+                } else {
+                    console.error('[MetaProvider] Falló la auto-subida de medio. WhatsApp Cloud API rechazará silenciósamente los enlaces locales.');
+                    throw new Error("No se pudo subir la imagen del producto a servidores de Meta. Verifica la URL.");
+                }
+            }
+            
+            // Auto-upload image headers for interactive messages (legacy, but if used)
+            if ((content.type === 'interactive_buttons' || content.type === 'interactive_cta') && content.header?.mediaUrl && !content.header?.mediaId) {
+                const mediaId = await this.uploadMedia(content.header.mediaUrl, activeToken, content.header.type || 'image', effectiveAssetId);
+                if (mediaId) {
+                    content.header.mediaId = mediaId;
+                } else {
+                    console.error('[MetaProvider] Falló la subida de header interactivo. Fallback a texto.');
+                    delete content.header;
+                }
             }
 
             if (content.type === 'sticker') {
@@ -198,7 +214,6 @@ export class MetaProvider implements MessagingProvider {
             }
 
             const payload = this.buildPayload(options);
-            console.log('[MetaProvider] Sending to WhatsApp:', JSON.stringify(payload, null, 2));
             const response = await fetch(url, {
                 method: 'POST',
                 headers: {
@@ -406,6 +421,11 @@ export class MetaProvider implements MessagingProvider {
                 if (btnContent.header) {
                     if (btnContent.header.type === 'text') {
                         payload.interactive.header = { type: 'text', text: btnContent.header.text };
+                    } else if ((btnContent.header as any).mediaId) {
+                        payload.interactive.header = {
+                            type: btnContent.header.type,
+                            [btnContent.header.type]: { id: (btnContent.header as any).mediaId }
+                        };
                     } else if (btnContent.header.mediaUrl) {
                         payload.interactive.header = {
                             type: btnContent.header.type,
@@ -496,12 +516,38 @@ export class MetaProvider implements MessagingProvider {
             // 1. Fetch file
             const fileResp = await fetch(url);
             if (!fileResp.ok) throw new Error(`Failed to fetch media from URL: ${url}`);
-            const buffer = await fileResp.arrayBuffer();
-            const blob = new Blob([buffer]);
+            let buffer = await fileResp.arrayBuffer();
+            
+            // Determine MIME type
+            let mimeType = fileResp.headers.get('content-type') || 'application/octet-stream';
+            if (mimeType === 'application/octet-stream') {
+                if (type === 'image') mimeType = url.toLowerCase().includes('.png') ? 'image/png' : 'image/jpeg';
+                if (type === 'video') mimeType = 'video/mp4';
+                if (type === 'audio') mimeType = 'audio/ogg';
+                if (type === 'document') mimeType = 'application/pdf';
+            }
+            
+            // Meta is strict: webp is REJECTED silently for standard images. We MUST transcode it.
+            if ((mimeType.includes('webp') || url.toLowerCase().includes('.webp')) && type === 'image') {
+                try {
+                    const sharp = (await import('sharp')).default || await import('sharp');
+                    const sharpBuffer = await sharp(buffer).jpeg({ quality: 90 }).toBuffer();
+                    // Convetir Node Buffer a ArrayBuffer compatible con File API
+                    buffer = sharpBuffer.buffer.slice(sharpBuffer.byteOffset, sharpBuffer.byteOffset + sharpBuffer.byteLength) as ArrayBuffer;
+                    mimeType = 'image/jpeg';
+                    console.log('[MetaProvider] Auto-converted WebP to JPEG for strict WA API compatibility.');
+                } catch (e: any) {
+                    console.error('[MetaProvider] Failed to transcode WebP:', e.message);
+                }
+            }
+            
+            const ext = mimeType.split('/')[1]?.split(';')[0] || (type === 'image' ? 'jpg' : 'bin');
+            // Use native File instead of Blob so FormData preserves the filename and type perfectly in Node.js >= 20
+            const file = new File([buffer], `media-file.${ext}`, { type: mimeType });
 
             // 2. Prepare Form Data
             const formData = new FormData();
-            formData.append('file', blob, 'media-file');
+            formData.append('file', file);
             formData.append('type', type);
             formData.append('messaging_product', 'whatsapp');
 

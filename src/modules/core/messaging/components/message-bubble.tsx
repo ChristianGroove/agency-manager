@@ -214,17 +214,24 @@ function renderContent({ content, isOutbound, messageId, metadata, t, status }: 
             const buttons = content.buttons || [];
             const header = content.header || metadata?.header;
             const footer = content.footer || metadata?.footer;
+            const interactiveMediaUrl = content.mediaUrl || (header && typeof header === 'object' ? header.mediaUrl : null);
 
             return (
                 <div className="flex flex-col gap-2 py-1">
+                    {interactiveMediaUrl && (
+                        <img src={interactiveMediaUrl} alt="Header" className="rounded-md max-h-40 w-full object-cover mb-2" />
+                    )}
+
                     {header && (
-                        <div className="mb-1">
-                            {header.type === 'text' ? (
-                                <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground mr-1 h-fit leading-none mb-1">
+                        <div className="mb-0.5">
+                            {typeof header === 'string' ? (
+                                <span className="text-sm font-bold uppercase tracking-wider text-foreground mr-1 h-fit leading-none">
+                                    {header}
+                                </span>
+                            ) : header.type === 'text' ? (
+                                <span className="text-sm font-bold uppercase tracking-wider text-foreground mr-1 h-fit leading-none">
                                     {header.text}
                                 </span>
-                            ) : header.mediaUrl ? (
-                                <img src={header.mediaUrl} alt="Header" className="rounded-md max-h-40 w-full object-cover mb-2" />
                             ) : null}
                         </div>
                     )}

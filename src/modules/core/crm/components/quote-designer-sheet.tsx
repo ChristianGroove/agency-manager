@@ -13,19 +13,21 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { toast } from "sonner"
 import { Loader2, Palette, MessageSquare, Briefcase, Zap, PaintBucket, Save, Sparkles, RotateCcw, Home, Scale, Monitor, GraduationCap, Plane, PartyPopper, Truck, Lightbulb, Calendar } from "lucide-react"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet"
+import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 
 interface QuoteDesignerSheetProps {
     open: boolean
     onOpenChange: (open: boolean) => void
     organizationId?: string
+    spaceCategory?: string | null
 }
 
 const ICONS_MAP: Record<string, any> = {
     Briefcase, Zap, Calendar, Home, Scale, Monitor, GraduationCap, Plane, PartyPopper, Truck, Lightbulb
 }
 
-export function QuoteDesignerSheet({ open, onOpenChange, organizationId }: QuoteDesignerSheetProps) {
+export function QuoteDesignerSheet({ open, onOpenChange, organizationId, spaceCategory }: QuoteDesignerSheetProps) {
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
     const [settings, setSettings] = useState<QuoteSettings | null>(null)
@@ -176,7 +178,14 @@ export function QuoteDesignerSheet({ open, onOpenChange, organizationId }: Quote
                                 {/* --- VERTICAL GRID --- */}
                                 <TabsContent value="vertical" className="animate-in fade-in slide-in-from-bottom-2">
                                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                                        {INDUSTRY_TEMPLATES.map((template) => {
+                                        {[...INDUSTRY_TEMPLATES].sort((a, b) => {
+                                            if (!spaceCategory) return 0
+                                            const aMatch = (a as any).spaces?.includes(spaceCategory)
+                                            const bMatch = (b as any).spaces?.includes(spaceCategory)
+                                            if (aMatch && !bMatch) return -1
+                                            if (!aMatch && bMatch) return 1
+                                            return 0
+                                        }).map((template) => {
                                             const Icon = ICONS_MAP[template.icon] || Briefcase
                                             const isSelected = settings.vertical === template.id
 
@@ -205,6 +214,9 @@ export function QuoteDesignerSheet({ open, onOpenChange, organizationId }: Quote
                                                         <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
                                                             "{template.header}"
                                                         </p>
+                                                        {(template as any).spaces?.includes(spaceCategory) && (
+                                                            <Badge variant="secondary" className="mt-2 text-[9px] bg-pink-100 text-pink-700 hover:bg-pink-100">Sugerido para tu industria</Badge>
+                                                        )}
                                                     </div>
                                                 </div>
                                             )

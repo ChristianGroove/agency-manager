@@ -48,6 +48,7 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
     const [lastMessage, setLastMessage] = useState<string | undefined>(undefined)
     const [loading, setLoading] = useState(true)
     const [spaceCategory, setSpaceCategory] = useState<string | null>(null)
+    const [activeModules, setActiveModules] = useState<string[]>([])
 
     // Tabs State
     const [activeTab, setActiveTab] = useState<TabType>('management')
@@ -127,6 +128,14 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
                         .single()
 
                     setSpaceCategory(appData?.space_category || null)
+                }
+
+                try {
+                    const { getActiveModules } = await import('@/modules/core/saas/actions')
+                    const modules = await getActiveModules(conv.organization_id)
+                    setActiveModules(modules)
+                } catch (err) {
+                    console.warn('Could not load active modules', err)
                 }
             }
         }
@@ -235,17 +244,19 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
                     >
                         {t('crm.inbox.context.tabs.replies')}
                     </button>
-                    <button
-                        onClick={() => setActiveTab('sales')}
-                        className={cn(
-                            "flex-1 flex items-center justify-center py-1.5 text-xs font-semibold rounded-md transition-all",
-                            activeTab === 'sales'
-                                ? "bg-white dark:bg-zinc-800 text-foreground shadow-sm"
-                                : "text-muted-foreground hover:text-foreground"
-                        )}
-                    >
-                        {t('crm.inbox.context.tabs.sales')}
-                    </button>
+                    {activeModules.includes('module_catalog') && (
+                        <button
+                            onClick={() => setActiveTab('sales')}
+                            className={cn(
+                                "flex-1 flex items-center justify-center py-1.5 text-xs font-semibold rounded-md transition-all",
+                                activeTab === 'sales'
+                                    ? "bg-white dark:bg-zinc-800 text-foreground shadow-sm"
+                                    : "text-muted-foreground hover:text-foreground"
+                            )}
+                        >
+                            {t('crm.inbox.context.tabs.sales')}
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -390,6 +401,7 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
                                     leadId={lead.id}
                                     conversationId={conversationId}
                                     variant="sidebar"
+                                    spaceCategory={spaceCategory}
                                     onCartChange={() => {
                                         fetchContext()
                                     }}
@@ -418,6 +430,7 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
                 open={isQuoteDesignerOpen}
                 onOpenChange={setIsQuoteDesignerOpen}
                 organizationId={conversation?.organization_id}
+                spaceCategory={spaceCategory}
             />
             <SavedRepliesSheet
                 open={isRepliesSheetOpen}

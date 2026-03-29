@@ -15,14 +15,21 @@ interface DealBuilderProps {
     conversationId: string
     onCartChange?: () => void
     variant?: 'default' | 'sidebar'
+    spaceCategory?: string | null
     onSendQuote?: () => void // Optional callback if parent wants to handle something
     className?: string
 }
 
-export function DealBuilder({ leadId, conversationId, onCartChange, variant = 'default', className }: DealBuilderProps) {
+type SalesMode = 'cotizacion' | 'mostrador_ficha'
+
+export function DealBuilder({ leadId, conversationId, onCartChange, variant = 'default', spaceCategory, className }: DealBuilderProps) {
     const [cart, setCart] = useState<DealCart | null>(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
+
+    // Detect if space supports mostrador mode (e.g. retail, resto, agency can also showcase products).
+    // Let's enable it fully if variant is sidebar for maximum flexibility, or limit it to specific spaces.
+    const [salesMode, setSalesMode] = useState<SalesMode>('cotizacion')
 
     // Initial Load
     useEffect(() => {
@@ -53,10 +60,19 @@ export function DealBuilder({ leadId, conversationId, onCartChange, variant = 'd
     const handleAddItem = async (product: any) => {
         if (!cart) return
 
+        if (salesMode === 'mostrador_ficha') {
+            // Ficha Técnica Mode: Dispatch event to chat-area to load preview instead of adding to quote cart
+            window.dispatchEvent(new CustomEvent('inbox-prepare-product', {
+                detail: product
+            }))
+            toast.success("Producto cargado al inbox")
+            return
+        }
+
         // Optimistic UI could go here, but let's stick to reliable first
         const res = await addToCart(cart.id, product, 1)
         if (res.success) {
-            toast.success("Producto agregado")
+            toast.success("Producto agregado al carrito")
             refreshCart()
         } else {
             toast.error("Error al agregar")
@@ -95,11 +111,44 @@ export function DealBuilder({ leadId, conversationId, onCartChange, variant = 'd
 
     const items = cart.items || []
     const hasItems = items.length > 0
+    const showMostradorToggle = variant === 'sidebar' // Always show toggle in sidebar for all industries for max value
 
     return (
-        <div className={cn("space-y-3", className)}>
-            {/* Header / Cart Summary */}
-            <div className="flex items-center justify-between px-1">
+        <div className={cn("space-y-4", className)}>
+            {/* Sales Mode Segmented Control */}
+            {showMostradorToggle && (
+                <div className="flex p-1 bg-zinc-100 dark:bg-zinc-800/50 rounded-lg mx-1">
+                    <button
+                        onClick={() => setSalesMode('cotizacion')}
+                        className={cn(
+                            "flex-1 flex items-center justify-center py-1.5 text-xs font-semibold rounded-md transition-all gap-1.5",
+                            salesMode === 'cotizacion'
+                                ? "bg-white dark:bg-zinc-700 text-foreground shadow-sm"
+                                : "text-muted-foreground hover:text-foreground"
+                        )}
+                    >
+                        <ShoppingCart className="h-3 w-3" />
+                        Cotización / Carrito
+                    </button>
+                    <button
+                        onClick={() => setSalesMode('mostrador_ficha')}
+                        className={cn(
+                            "flex-1 flex items-center justify-center py-1.5 text-xs font-semibold rounded-md transition-all gap-1.5",
+                            salesMode === 'mostrador_ficha'
+                                ? "bg-white dark:bg-zinc-700 text-foreground shadow-sm"
+                                : "text-muted-foreground hover:text-foreground"
+                        )}
+                    >
+                        <Package className="h-3 w-3" />
+                        Ficha Técnica
+                    </button>
+                </div>
+            )}
+
+            {salesMode === 'cotizacion' ? (
+                <>
+                    {/* Header / Cart Summary */}
+                    <div className="flex items-center justify-between px-1">
                 <div className="flex items-center gap-2">
                     <ShoppingCart className="h-4 w-4 text-indigo-500" />
                     <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Productos</span>
@@ -172,11 +221,18 @@ export function DealBuilder({ leadId, conversationId, onCartChange, variant = 'd
                     </div>
                 </div>
             ) : (
-                <div className="py-6 text-center border-2 border-dashed border-zinc-100 dark:border-zinc-800 rounded-xl bg-zinc-50/50 dark:bg-zinc-900/20">
-                    <Package className="h-8 w-8 mx-auto text-muted-foreground/30 mb-2" />
-                    <p className="text-xs text-muted-foreground">Carrito vacío</p>
+                <div className="px-1 text-center py-4 bg-muted/40 rounded-xl border border-dashed border-border/60 mx-1">
+                    <Package className="h-6 w-6 text-muted-foreground/40 mx-auto mb-2" />
+                    <p className="text-xs text-muted-foreground">Busca un producto debajo para agregarlo al carrito.</p>
                 </div>
             )}
+            </>
+        ) : (
+            <div className="px-1 text-center py-4 bg-muted/40 rounded-xl border border-dashed border-border/60 mx-1">
+                <Package className="h-6 w-6 text-muted-foreground/40 mx-auto mb-2" />
+                <p className="text-xs text-muted-foreground">Busca un producto debajo y se enviará como una tarjeta interactiva (Ficha Técnica) de manera individual.</p>
+            </div>
+        )}
 
             {/* Add Item Button (Combobox) */}
             <ProductSelector
@@ -184,7 +240,7 @@ export function DealBuilder({ leadId, conversationId, onCartChange, variant = 'd
             />
 
             {/* Sidebar Variant: Prominent Send Button at Bottom */}
-            {variant === 'sidebar' && (
+            {variant === 'sidebar' && salesMode === 'cotizacion' && (
                 <Button
                     className="w-full mt-4 bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 transition-all h-10"
                     onClick={handleSendInteractive}
