@@ -210,64 +210,46 @@ export async function getAgentsWorkload() {
     // Only include agents who are active members of the organization
     const activeAgents = availabilityResult.data.filter(agent => membersLookup.has(agent.agent_id));
 
-    // Fetch profiles to get full names
-    const { data: profiles } = await supabaseAdmin
+    // 2. Get profiles for names and avatars
+    console.time('agents:profiles_fetch')
+    const { data: profiles, error: profileError } = await supabaseAdmin
         .from('profiles')
         .select('id, full_name, avatar_url')
         .in('id', activeAgents.map(a => a.agent_id))
+    console.timeEnd('agents:profiles_fetch')
 
-    const profileMap = new Map(profiles?.map(p => [p.id, p]) || [])
+    if (profileError) {
+        console.error('Error fetching agent profiles:', profileError)
+    }
 
-    // Attempt to map users manually since we can't join with auth.users directly
-    const agentsWithUsers = await Promise.all(activeAgents.map(async (agent) => {
+    const profileMap = new Map((profiles || []).map(p => [p.id, p]))
+
+    // Debug log
+    console.log(`[Inbox] Agentes activos: ${activeAgents.length}, Perfiles encontrados: ${profiles?.length || 0}`)
+    if (activeAgents.length > 0 && (!profiles || profiles.length === 0)) {
+        console.warn('[Inbox] ¡Atención! Se encontraron agentes activos pero NINGÚN perfil coincidente en la tabla profiles.')
+    }
+
+    // Assemble agents with their loaded data
+    const agentsWithUsers = activeAgents.map((agent) => {
         const profile = profileMap.get(agent.agent_id)
-        try {
-            const { data: userData, error: userError } = await supabaseAdmin.auth.admin.getUserById(agent.agent_id)
-            const memberInfo = membersLookup.get(agent.agent_id) || { role: 'member', permissions: {} };
-            const role = memberInfo.role;
-            const permissions = memberInfo.permissions;
-
-            if (userError || !userData?.user) {
-                return {
-                    ...agent,
-                    role,
-                    permissions,
-                    users: { 
-                        email: 'Unknown', 
-                        raw_user_meta_data: { 
-                            name: profile?.full_name || 'Unknown Agent'
-                        } 
-                    }
-                }
-            }
-            return {
-                ...agent,
-                role,
-                permissions,
-                users: {
-                    email: userData.user.email,
-                    raw_user_meta_data: {
-                        ...userData.user.user_metadata,
-                        name: profile?.full_name || userData.user.user_metadata?.name || userData.user.email
-                    }
-                }
-            }
-        } catch (e) {
-            const memberInfo = membersLookup.get(agent.agent_id) || { role: 'member', permissions: {} };
-            return {
-                ...agent,
-                role: memberInfo.role,
-                permissions: memberInfo.permissions,
-                users: { 
-                    email: 'Unknown', 
-                    raw_user_meta_data: { 
-                        name: profile?.full_name || 'Unknown Agent' 
-                    } 
+        const memberInfo = membersLookup.get(agent.agent_id) || { role: 'member', permissions: {} }
+        
+        return {
+            ...agent,
+            role: memberInfo.role,
+            permissions: memberInfo.permissions,
+            users: {
+                email: 'N/A', // Email usually in auth.users, keeping N/A to avoid Auth API waterfalls
+                raw_user_meta_data: {
+                    name: profile?.full_name || 'Agente',
+                    avatar_url: profile?.avatar_url
                 }
             }
         }
-    }))
+    })
 
+    console.timeEnd('agents:total_load')
     return { success: true, data: agentsWithUsers }
 }
 

@@ -20,6 +20,7 @@ import { useInboxPreferences } from "@/modules/core/preferences/use-inbox-prefer
 import { useInboxShortcuts } from "@/modules/core/preferences/use-inbox-shortcuts"
 import { useCurrentOrganization } from "@/modules/core/organizations/hooks/use-current-organization"
 import { useTranslation } from "@/lib/i18n/use-translation"
+import { useSafeInboxContext } from "../../context/inbox-context"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { getChannels } from "@/modules/core/channels/actions"
 import { Channel as ChannelType } from "@/modules/core/channels/types"
@@ -63,6 +64,7 @@ interface SidebarConversationListProps {
 
 export function SidebarConversationList({ selectedId, onSelect }: SidebarConversationListProps) {
     const { t } = useTranslation()
+    const { updateLeadCache } = useSafeInboxContext() as any
     const [conversations, setConversations] = useState<Conversation[]>([])
     const [channels, setChannels] = useState<ChannelType[]>([])
     const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null)
@@ -560,7 +562,22 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
                                     key={conv.id}
                                     conv={conv}
                                     isSelected={conv.id === selectedId}
-                                    onSelect={onSelect}
+                                    onSelect={(id) => {
+                                        // Eager cache update: Push basic data to context BEFORE selecting
+                                        // This makes the ContextDeck header show the name INSTANTLY
+                                        const contactData = conv.clients || conv.leads || { name: conv.leads?.name || conv.leads?.phone }
+                                        if (updateLeadCache) {
+                                            updateLeadCache(id, {
+                                                lead: {
+                                                    ...contactData,
+                                                    title: contactData.name || contactData.phone,
+                                                    name: contactData.name || contactData.phone
+                                                },
+                                                conversation: conv
+                                            })
+                                        }
+                                        onSelect(id)
+                                    }}
                                     fetchConversations={() => fetchConversations(false)}
                                     tick={tick}
                                 />

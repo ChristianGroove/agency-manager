@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils"
 
 import { getDealCart, addToCart, removeCartItem, updateCartItem, sendInteractiveQuote, DealCart } from "../deal-actions"
 import { ProductSelector } from "./product-selector"
+import { useInboxContext } from "../../messaging/context/inbox-context"
 
 interface DealBuilderProps {
     leadId: string
@@ -23,36 +24,41 @@ interface DealBuilderProps {
 type SalesMode = 'cotizacion' | 'mostrador_ficha'
 
 export function DealBuilder({ leadId, conversationId, onCartChange, variant = 'default', spaceCategory, className }: DealBuilderProps) {
-    const [cart, setCart] = useState<DealCart | null>(null)
-    const [loading, setLoading] = useState(true)
+    const { cartsCache, updateCartCache } = useInboxContext()
+    const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
-
-    // Detect if space supports mostrador mode (e.g. retail, resto, agency can also showcase products).
-    // Let's enable it fully if variant is sidebar for maximum flexibility, or limit it to specific spaces.
     const [salesMode, setSalesMode] = useState<SalesMode>('mostrador_ficha')
 
-    // Initial Load
+    // Cart persistence logic
+    const cart = cartsCache[leadId] || null
+
+    // Initial Load / Refresh on lead change
     useEffect(() => {
         loadCart()
     }, [leadId])
 
     const loadCart = async () => {
-        setLoading(true)
+        // Only set primary loading if we don't have cached data
+        if (!cart) setLoading(true)
         setError(null)
-        const res = await getDealCart(leadId)
-        if (res.success && res.cart) {
-            setCart(res.cart)
-        } else {
-            setError(res.error || "Error desconocido")
+        
+        try {
+            const res = await getDealCart(leadId)
+            if (res.success && res.cart) {
+                updateCartCache(leadId, res.cart)
+            } else {
+                setError(res.error || "Error al cargar carrito")
+            }
+        } finally {
+            setLoading(false)
         }
-        setLoading(false)
     }
 
     // Refresh without full loading spinner
     const refreshCart = async () => {
         const res = await getDealCart(leadId)
         if (res.success && res.cart) {
-            setCart(res.cart)
+            updateCartCache(leadId, res.cart)
             onCartChange?.()
         }
     }
@@ -176,7 +182,7 @@ export function DealBuilder({ leadId, conversationId, onCartChange, variant = 'd
             {/* Item List */}
             {hasItems ? (
                 <div className="space-y-2">
-                    {items.map(item => (
+                    {items.map((item: any) => (
                         <div key={item.id} className="flex items-start justify-between gap-2 p-2 rounded-lg bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800 group">
                             <div className="flex-1 min-w-0">
                                 <p className="text-xs font-medium truncate">{item.name}</p>

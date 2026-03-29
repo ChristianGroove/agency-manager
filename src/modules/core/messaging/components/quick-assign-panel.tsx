@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { assignConversation } from "../conversation-management-actions"
@@ -35,12 +35,22 @@ interface QuickAssignPanelProps {
     currentAssignee?: string | null
     agents: Agent[]
     onAssigned?: () => void
+    tick?: number
 }
 
-export function QuickAssignPanel({ conversationId, channel, connectionId, currentAssignee, agents, onAssigned }: QuickAssignPanelProps) {
+export function QuickAssignPanel({ conversationId, channel, connectionId, currentAssignee, agents, tick, onAssigned }: QuickAssignPanelProps) {
     const { t } = useTranslation()
     const [open, setOpen] = useState(false)
     const [assigning, setAssigning] = useState(false)
+    const [, setTick] = useState(0)
+
+    // Local ticker to re-calculate online status vs Current Time every 30s
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setTick(prev => prev + 1)
+        }, 30000)
+        return () => clearInterval(interval)
+    }, [])
 
     const handleAssign = async (agentId: string | null) => {
         setAssigning(true)

@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation"
 import { useInboxPreferences } from "@/modules/core/preferences/use-inbox-preferences"
 import { toast } from "sonner"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { useSafeInboxContext } from "../../context/inbox-context"
 import { useGlobalInbox } from "../../context/global-inbox-context"
 import { MessageSquare, X, Reply, CheckCheck } from "lucide-react"
 import { markConversationAsRead } from "../../actions"
@@ -18,7 +19,9 @@ import { useCurrentOrganization } from "@/modules/core/organizations/hooks/use-c
 export function GlobalMessageListener() {
     const pathname = usePathname()
     const { preferences } = useInboxPreferences()
+    const inboxContext = useSafeInboxContext()
     const { openInbox } = useGlobalInbox()
+    const { refreshAgents, updateAgent } = (inboxContext || {}) as any
     const { organizationId } = useCurrentOrganization()
     const processedConvs = useRef<Set<string>>(new Set())
     const pathnameRef = useRef(pathname)
@@ -124,32 +127,66 @@ export function GlobalMessageListener() {
             .subscribe()
 
         // 2. ULTRA-PERFECT HEARTBEAT (DB-BASED)
-        // Works even if Websockets flicker. RPC re-checks every 10 min.
         let heartbeatInterval: any = null
 
         const triggerHeartbeat = async () => {
-            const { data: { user } } = await supabase.auth.getUser()
-            if (!user) return
+            try {
+                const { data: { user } } = await supabase.auth.getUser()
+                if (!user) return
 
-            // Update DB physical state
-            await supabase
-                .from('agent_availability')
-                .update({ 
-                    last_seen_at: new Date().toISOString(),
-                    status: 'online'
-                })
-                .eq('agent_id', user.id)
-                .eq('organization_id', organizationId)
+                const { error } = await supabase
+                    .from('agent_availability')
+                    .update({ 
+                        last_seen_at: new Date().toISOString(),
+                        status: 'online'
+                    })
+                    .eq('agent_id', user.id)
+                    .eq('organization_id', organizationId)
+                
+                if (!error && refreshAgents) {
+                    refreshAgents()
+                }
+            } catch (err) {}
         }
 
         triggerHeartbeat()
-        heartbeatInterval = setInterval(triggerHeartbeat, 60000) // 1 minute is perfect
+        heartbeatInterval = setInterval(triggerHeartbeat, 60000)
+
+        let presenceChannel: any = null;
+        const connectPresence = async () => {
+            if (!organizationId) return
+
+            presenceChannel = supabase
+                .channel(`inbox-presence-${organizationId.slice(0, 8)}`)
+                .on(
+                    'postgres_changes',
+                    {
+                        event: 'UPDATE',
+                        schema: 'public',
+                        table: 'agent_availability',
+                        filter: `organization_id=eq.${organizationId}`
+                    },
+                    (payload) => {
+                        const newPresence = payload.new as any
+                        if (newPresence && newPresence.agent_id && updateAgent) {
+                            updateAgent(newPresence.agent_id, {
+                                status: newPresence.status,
+                                last_seen_at: newPresence.last_seen_at
+                            })
+                        }
+                    }
+                )
+                .subscribe()
+        }
+
+        connectPresence()
 
         return () => {
             supabase.removeChannel(channel)
+            if (presenceChannel) supabase.removeChannel(presenceChannel)
             if (heartbeatInterval) clearInterval(heartbeatInterval)
         }
-    }, [organizationId]) // Removed openInbox dependency to avoid unnecessary recreations
+    }, [organizationId, updateAgent, refreshAgents, openInbox])
 
     return null
 }

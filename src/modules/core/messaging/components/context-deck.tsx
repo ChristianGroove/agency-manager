@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef } from "react"
+import { useState, useEffect, useCallback, useRef, useMemo } from "react"
+import { getLeadTags } from "../../crm/tags-actions"
 import { supabase } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 import { QuoteDesignerSheet } from "../../crm/components/quote-designer-sheet"
@@ -19,11 +20,11 @@ import { Database } from "@/types/supabase"
 import Link from "next/link"
 import { QuickAssignPanel } from "./quick-assign-panel"
 import { DealBuilder } from "../../crm/components/deal-builder"
-import { getAgentsWorkload } from "../assignment-actions"
 import { archiveConversation, snoozeConversation, completeConversation } from "../conversation-actions"
 import { toast } from "sonner"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useTranslation } from "@/lib/i18n/use-translation"
+import { useInboxContext } from "@/modules/core/messaging/context/inbox-context"
 import {
     Tooltip,
     TooltipContent,
@@ -42,131 +43,149 @@ type TabType = 'management' | 'replies' | 'sales'
 
 export function ContextDeck({ conversationId }: ContextDeckProps) {
     const { t } = useTranslation()
+    const { leadsCache, updateLeadCache, activeModules: globalModules, spaceCategory: globalCategory, agents: globalAgents, tick } = useInboxContext()
+    
     const [lead, setLead] = useState<Lead | null>(null)
     const [conversation, setConversation] = useState<any>(null)
-    const [agents, setAgents] = useState<any[]>([])
     const [lastMessage, setLastMessage] = useState<string | undefined>(undefined)
     const [loading, setLoading] = useState(true)
-    const [spaceCategory, setSpaceCategory] = useState<string | null>(null)
-    const [activeModules, setActiveModules] = useState<string[]>([])
 
     // Tabs State
     const [activeTab, setActiveTab] = useState<TabType>('management')
 
     const [isQuoteDesignerOpen, setIsQuoteDesignerOpen] = useState(false)
     const [isRepliesSheetOpen, setIsRepliesSheetOpen] = useState(false)
+    const abortControllerRef = useRef<AbortController | null>(null)
+    const lastSuccessfulId = useRef<string | null>(null)
+    const fetchIdCounter = useRef(0)
 
-    const fetchContext = useCallback(async () => {
-        setLoading(true)
-        const { data: conv } = await supabase
-            .from('conversations')
-            .select('*')
-            .eq('id', conversationId)
-            .single()
+    const fetchContext = useCallback(async (isInitial = false) => {
+        if (!conversationId) return
+        
+        // Prevent redundant fetch if already successful for this ID
+        if (lastSuccessfulId.current === conversationId && !isInitial) return
 
-        if (conv) {
-            setConversation(conv)
-            let contactData: any = null
+        // Instance tracking to prevent race conditions in finally block
+        fetchIdCounter.current += 1
+        const currentInstanceId = fetchIdCounter.current
 
-            if (conv.lead_id) {
-                const { data: leadData } = await supabase
-                    .from('leads')
-                    .select('*')
-                    .eq('id', conv.lead_id)
-                    .single()
-                if (leadData) contactData = leadData
-            }
+        // Cancel previous fetch if any
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort()
+        }
+        
+        const controller = new AbortController()
+        abortControllerRef.current = controller
 
-            // Si también hay client_id, cargar datos del cliente para address/portal_short_token
-            if (conv.client_id) {
-                const { data: clientData } = await supabase
-                    .from('clients')
-                    .select('*')
-                    .eq('id', conv.client_id)
-                    .single()
+        // 1. Try cache first for instant UI
+        const cached = leadsCache[conversationId]
+        if (cached) {
+            setLead(cached.lead)
+            setConversation(cached.conversation)
+            setLastMessage(cached.lastMessage)
+            setLoading(false)
+            if (!isInitial) return // Don't re-fetch if we have cache and it's not a fresh navigation
+        } else {
+            setLoading(true)
+        }
 
-                if (clientData) {
+        try {
+            // 2. Multi-fetch in parallel
+            const [convResult, messagesResult] = await Promise.all([
+                supabase.from('conversations').select('*').eq('id', conversationId).single(),
+                supabase.from('messages')
+                    .select('content')
+                    .eq('conversation_id', conversationId)
+                    .eq('direction', 'inbound')
+                    .order('created_at', { ascending: false })
+                    .limit(1)
+            ])
+
+            // SAFETY CHECK: If the user changed the conversation while we were waiting, or a new fetch started
+            if (controller.signal.aborted || fetchIdCounter.current !== currentInstanceId) return
+
+            const conv = convResult.data
+            const messages = messagesResult.data
+
+            if (conv) {
+                setConversation(conv)
+                const leadTags = await getLeadTags(conv.lead_id)
+                
+                if (controller.signal.aborted) return
+
+                // Fetch contact data (Lead/Client) in parallel if exists
+                const contactPromises: Promise<any>[] = []
+                if (conv.lead_id) {
+                    contactPromises.push(supabase.from('leads').select('*').eq('id', conv.lead_id).single() as any)
+                }
+                if (conv.client_id) {
+                    contactPromises.push(supabase.from('clients').select('*').eq('id', conv.client_id).single() as any)
+                }
+
+                const contactResults = await Promise.all(contactPromises)
+                
+                if (controller.signal.aborted || fetchIdCounter.current !== currentInstanceId) return
+
+                let contactData: any = null
+                const leadResult = conv.lead_id ? contactResults[0]?.data : null
+                const clientResult = conv.client_id ? (conv.lead_id ? contactResults[1]?.data : contactResults[0]?.data) : null
+
+                if (leadResult) contactData = leadResult
+
+                if (clientResult) {
                     if (contactData) {
-                        // Merge: lead base + client enrichment (address, portal token)
                         contactData = {
                             ...contactData,
-                            address: clientData.address || contactData.address,
-                            portal_short_token: clientData.portal_short_token,
+                            address: clientResult.address || contactData.address,
+                            portal_short_token: clientResult.portal_short_token,
                         }
                     } else {
-                        // Solo client, mapear a lead shape
                         contactData = {
-                            ...clientData,
-                            title: clientData.name,
-                            company: clientData.company_name,
+                            ...clientResult,
+                            title: clientResult.name,
+                            company: clientResult.company_name,
                             status: 'client'
                         }
                     }
                 }
+
+                setLead(contactData)
+                lastSuccessfulId.current = conversationId
+
+                // Update cache
+                let text = ''
+                if (messages && messages.length > 0) {
+                    const lastMsg = messages[0]
+                    if (typeof lastMsg.content === 'string') text = lastMsg.content
+                    else if (typeof lastMsg.content === 'object' && (lastMsg.content as any)?.text) text = (lastMsg.content as any).text
+                }
+                setLastMessage(text || undefined)
+
+                updateLeadCache(conversationId, {
+                    lead: contactData,
+                    conversation: conv,
+                    lastMessage: text || undefined,
+                    tags: leadTags || []
+                })
             }
 
-            setLead(contactData as any)
-
-            const agentsResult = await getAgentsWorkload()
-            if (agentsResult.success) {
-                setAgents(agentsResult.data)
-            }
-
-            // Detect space type for conditional UI (portal token visibility)
-            if (conv.organization_id) {
-                const { data: orgData } = await supabase
-                    .from('organizations')
-                    .select('active_app_id')
-                    .eq('id', conv.organization_id)
-                    .single()
-
-                if (orgData?.active_app_id) {
-                    const { data: appData } = await supabase
-                        .from('saas_apps')
-                        .select('space_category')
-                        .eq('id', orgData.active_app_id)
-                        .single()
-
-                    setSpaceCategory(appData?.space_category || null)
-                }
-
-                try {
-                    const { getActiveModules } = await import('@/modules/core/saas/actions')
-                    const modules = await getActiveModules(conv.organization_id)
-                    setActiveModules(modules)
-                } catch (err) {
-                    console.warn('Could not load active modules', err)
-                }
+        } catch (error: any) {
+            if (error.name === 'AbortError') return
+        } finally {
+            // Only set loading false if this is still the active fetch instance
+            if (fetchIdCounter.current === currentInstanceId) {
+                setLoading(false)
             }
         }
+    }, [conversationId, updateLeadCache, leadsCache])
 
-        // Fetch Last Incoming Message for AI context
-        const { data: messages } = await supabase
-            .from('messages')
-            .select('content')
-            .eq('conversation_id', conversationId)
-            .eq('direction', 'inbound')
-            .order('created_at', { ascending: false })
-            .limit(1)
-
-        if (messages && messages.length > 0) {
-            // Handle both text and json content
-            const lastMsg = messages[0]
-            let text = ''
-            if (typeof lastMsg.content === 'string') text = lastMsg.content
-            else if (typeof lastMsg.content === 'object' && (lastMsg.content as any)?.text) text = (lastMsg.content as any).text
-            setLastMessage(text)
-        } else {
-            setLastMessage(undefined)
-        }
-
-        setLoading(false)
-    }, [conversationId])
-
-    // Initial Fetch
+    // Initial Fetch - Triggered only by conversationId change
     useEffect(() => {
-        fetchContext()
-    }, [fetchContext])
+        fetchContext(true)
+        return () => {
+            if (abortControllerRef.current) abortControllerRef.current.abort()
+        }
+    }, [conversationId, fetchContext])
 
     const contextChannelCounter = useRef(0)
     useEffect(() => {
@@ -190,16 +209,19 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
         }
     }, [conversationId])
 
-    if (loading) {
+    // Si no hay nada de información (ni en caché ni fresca) y estamos cargando, mostrar spinner central
+    const hasData = leadsCache[conversationId] || lead || conversation
+    if (loading && !hasData) {
         return (
-            <div className="flex flex-col items-center justify-center h-full space-y-3">
+            <div className="flex flex-col items-center justify-center h-full space-y-3 bg-background/50 backdrop-blur-sm">
                 <div className="h-6 w-6 border-2 border-brand-pink border-t-transparent rounded-full animate-spin" />
                 <p className="text-xs text-muted-foreground animate-pulse">{t('crm.inbox.context.loading')}</p>
             </div>
         )
     }
 
-    if (!lead) {
+    // Si terminó de cargar y NO hay lead, mostrar pantalla de 'Contacto Desconocido'
+    if (!loading && !lead) {
         return (
             <div className="flex flex-col items-center justify-center h-full p-8 text-center space-y-5 bg-muted/5">
                 <div className="h-16 w-16 rounded-full bg-muted/30 flex items-center justify-center shadow-inner">
@@ -215,7 +237,7 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
     }
 
     // Lead Initials
-    const leadInitials = (lead.title || 'UN').slice(0, 2).toUpperCase()
+    const leadInitials = (lead?.title || 'UN').slice(0, 2).toUpperCase()
 
     return (
         <div className="flex flex-col h-full bg-background/60 dark:bg-zinc-950/60 backdrop-blur-xl border-l border-white/10 dark:border-white/5 shadow-2xl z-20">
@@ -244,7 +266,7 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
                     >
                         {t('crm.inbox.context.tabs.replies')}
                     </button>
-                    {activeModules.includes('module_catalog') && (
+                    {globalModules.includes('module_catalog') && (
                         <button
                             onClick={() => setActiveTab('sales')}
                             className={cn(
@@ -272,23 +294,24 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
                             <div className="flex items-center gap-3 mb-2">
                                 <div className="relative">
                                     <Avatar className="h-14 w-14 shadow-lg ring-2 ring-white/20 dark:ring-white/10">
-                                        <AvatarImage src={(lead as any).avatar_url} className="object-cover" />
+                                        <AvatarImage src={lead?.avatar_url} className="object-cover" />
                                         <AvatarFallback className="bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900 dark:to-purple-900 text-indigo-700 dark:text-indigo-300 font-bold text-lg">
                                             {leadInitials}
                                         </AvatarFallback>
                                     </Avatar>
-                                    <span className="absolute bottom-0 right-0 h-4 w-4 rounded-full bg-green-500 border-2 border-background shadow-sm" />
+                                    <span className={cn(
+                                        "absolute bottom-0 right-0 h-4 w-4 rounded-full border-2 border-background shadow-sm",
+                                        loading ? "bg-amber-400 animate-pulse" : "bg-green-500"
+                                    )} />
                                 </div>
                                 <div className="flex-1 min-w-0 py-1">
-                                    <h2 className="text-lg font-bold truncate leading-tight tracking-tight">{lead.name || lead.title || t('crm.inbox.context.unknown_contact')}</h2>
-                                    <div className="flex items-center gap-2 mt-1.5">
-                                        <Badge variant="secondary" className="text-[10px] h-5 px-2 font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-0 shadow-sm">
-                                            {lead.company || t('crm.inbox.context.particular')}
-                                        </Badge>
-                                        <Badge variant="outline" className="text-[10px] h-5 px-2 font-medium border-zinc-200 dark:border-zinc-800 text-zinc-500">
-                                            {lead.status === 'new' ? t('crm.inbox.context.new_badge') : lead.status}
-                                        </Badge>
-                                    </div>
+                                    <h2 className="text-lg font-bold truncate leading-tight tracking-tight">{lead?.name || lead?.title || t('crm.inbox.context.unknown_contact')}</h2>
+                                    {loading && (
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <div className="h-2 w-2 border-2 border-brand-pink border-t-transparent rounded-full animate-spin opacity-60" />
+                                            <span className="text-[10px] text-muted-foreground animate-pulse">Sincronizando...</span>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
@@ -299,7 +322,13 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
                                 <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">
                                     {t('crm.inbox.context.sections.tags') || 'Etiquetas'}
                                 </h4>
-                                <TagsPicker leadId={lead.id} organizationId={conversation?.organization_id} />
+                                {lead?.id && (
+                                    <TagsPicker 
+                                        leadId={lead.id} 
+                                        organizationId={conversation?.organization_id} 
+                                        initialTags={leadsCache[conversationId]?.tags || []}
+                                    />
+                                )}
                             </div>
 
                             <Separator className="opacity-50" />
@@ -308,28 +337,30 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
                             <div className="space-y-3">
                                 <div className="flex items-center justify-between px-1">
                                     <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t('crm.inbox.context.sections.contact_details')}</h4>
-                                    <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full hover:bg-muted" asChild>
-                                        <Link href={`/crm?lead=${lead.id}`}><ExternalLink className="h-3.5 w-3.5 text-muted-foreground" /></Link>
-                                    </Button>
+                                    {lead?.id && (
+                                        <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full hover:bg-muted" asChild>
+                                            <Link href={`/crm?lead=${lead.id}`}><ExternalLink className="h-3.5 w-3.5 text-muted-foreground" /></Link>
+                                        </Button>
+                                    )}
                                 </div>
 
                                 <div className="space-y-1.5">
                                     <ContactItem
                                         icon={conversation?.channel === 'instagram' ? User : Phone}
                                         label={conversation?.channel === 'instagram' ? 'Instagram ID' : conversation?.channel === 'messenger' ? 'Messenger ID' : t('crm.inbox.context.contact_fields.mobile')}
-                                        value={lead.phone}
+                                        value={lead?.phone}
                                         t={t}
                                     />
-                                    <ContactItem icon={Mail} label={t('crm.inbox.context.contact_fields.email')} value={lead.email} t={t} />
+                                    <ContactItem icon={Mail} label={t('crm.inbox.context.contact_fields.email')} value={lead?.email} t={t} />
                                     <ContactItem
                                         icon={MapPin}
                                         label={t('crm.inbox.context.contact_fields.location')}
-                                        value={(lead as any).address || t('crm.inbox.context.contact_fields.unknown_location')}
+                                        value={(lead as any)?.address || t('crm.inbox.context.contact_fields.unknown_location')}
                                         t={t}
                                     />
 
                                     {/* Portal Token — Solo visible en Space Resto */}
-                                    {spaceCategory === 'resto' && (lead as any).portal_short_token && (
+                                    {globalCategory === 'resto' && (lead as any)?.portal_short_token && (
                                         <PortalTokenItem
                                             token={(lead as any).portal_short_token}
                                             t={t}
@@ -349,7 +380,8 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
                                         channel={conversation?.channel}
                                         connectionId={conversation?.connection_id}
                                         currentAssignee={conversation?.assigned_to}
-                                        agents={agents}
+                                        agents={globalAgents}
+                                        tick={tick}
                                         onAssigned={() => {
                                             supabase.from('conversations').select('*').eq('id', conversationId).single().then(({ data }) => {
                                                 if (data) setConversation(data)
@@ -388,7 +420,7 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
                                         <div>
                                             <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">{t('crm.inbox.context.sections.potential_value')}</div>
                                             <div className="text-2xl font-bold text-foreground font-mono tracking-tight">
-                                                ${lead.value?.toLocaleString() || '0'}
+                                                ${lead?.value?.toLocaleString() || '0'}
                                             </div>
                                         </div>
                                     </div>
@@ -397,16 +429,18 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
                                 <Separator />
 
                                 {/* Deal Builder within ScrollArea */}
-                                <DealBuilder
-                                    leadId={lead.id}
-                                    conversationId={conversationId}
-                                    variant="sidebar"
-                                    spaceCategory={spaceCategory}
-                                    onCartChange={() => {
-                                        fetchContext()
-                                    }}
-                                    className="pb-2"
-                                />
+                                {lead && (
+                                    <DealBuilder
+                                        leadId={lead.id}
+                                        conversationId={conversationId}
+                                        variant="sidebar"
+                                        spaceCategory={globalCategory}
+                                        onCartChange={() => {
+                                            fetchContext()
+                                        }}
+                                        className="pb-2"
+                                    />
+                                )}
                             </div>
                         </ScrollArea>
 
@@ -430,7 +464,7 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
                 open={isQuoteDesignerOpen}
                 onOpenChange={setIsQuoteDesignerOpen}
                 organizationId={conversation?.organization_id}
-                spaceCategory={spaceCategory}
+                spaceCategory={globalCategory}
             />
             <SavedRepliesSheet
                 open={isRepliesSheetOpen}

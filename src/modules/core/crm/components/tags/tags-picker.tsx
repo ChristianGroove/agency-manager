@@ -26,48 +26,45 @@ import {
     type LeadTag
 } from "../../tags-actions"
 import { toast } from "sonner"
+import { useInboxContext } from "@/modules/core/messaging/context/inbox-context"
 
 interface TagsPickerProps {
     leadId: string
     organizationId?: string
+    initialTags?: any[]
 }
 
-export function TagsPicker({ leadId, organizationId }: TagsPickerProps) {
+export function TagsPicker({ leadId, organizationId, initialTags = [] }: TagsPickerProps) {
+    const { allTags, updateLeadCache, leadsCache } = useInboxContext()
     const [open, setOpen] = useState(false)
-    const [allTags, setAllTags] = useState<Tag[]>([])
-    const [selectedTags, setSelectedTags] = useState<LeadTag[]>([])
+    const [selectedTags, setSelectedTags] = useState<LeadTag[]>(initialTags)
     const [isLoading, setIsLoading] = useState(false)
 
-    const loadData = async () => {
-        setIsLoading(true)
-        try {
-            const [tags, leadTags] = await Promise.all([
-                getTags(),
-                getLeadTags(leadId)
-            ])
-            setAllTags(tags)
-            setSelectedTags(leadTags)
-        } catch (error) {
-            console.error("Error loading tags:", error)
-        } finally {
-            setIsLoading(false)
-        }
-    }
-
+    // Sync with props whenever leadId or initialTags change
     useEffect(() => {
-        if (leadId) loadData()
-    }, [leadId])
+        setSelectedTags(initialTags)
+    }, [leadId, initialTags])
+
+    // Initial load happens in Parent (ContextDeck) or Layout now
 
     const handleToggle = async (tag: Tag) => {
         const res = await toggleLeadTag(leadId, tag.id)
         if (res.success) {
             // Update local state for immediate feedback
+            let newTags = []
             if (res.data?.action === 'added') {
-                setSelectedTags(prev => [...prev, { ...tag, linked_at: new Date().toISOString() }])
+                newTags = [...selectedTags, { ...tag, linked_at: new Date().toISOString() }]
                 toast.success(`Etiqueta "${tag.name}" añadida`)
             } else {
-                setSelectedTags(prev => prev.filter(t => t.id !== tag.id))
+                newTags = selectedTags.filter(t => t.id !== tag.id)
                 toast.success(`Etiqueta "${tag.name}" eliminada`)
+            }
+            setSelectedTags(newTags)
+            
+            // Also update the global cache so switching back and forth reflects changes
+            const convEntry = Object.entries(leadsCache).find(([_, data]) => (data as any).lead?.id === leadId)
+            if (convEntry) {
+                updateLeadCache(convEntry[0], { tags: newTags })
             }
         } else {
             toast.error(res.error || "Error al actualizar etiquetas")
@@ -77,7 +74,7 @@ export function TagsPicker({ leadId, organizationId }: TagsPickerProps) {
     return (
         <div className="flex flex-wrap gap-1.5 p-2 bg-white/50 dark:bg-zinc-900/50 rounded-xl border border-white/20 dark:border-white/5">
             {selectedTags.length > 0 ? (
-                selectedTags.map(tag => (
+                selectedTags.map((tag: LeadTag) => (
                     <Badge
                         key={tag.id}
                         variant="secondary"
@@ -117,7 +114,7 @@ export function TagsPicker({ leadId, organizationId }: TagsPickerProps) {
                         <CommandList>
                             <CommandEmpty className="py-2 text-xs text-center">No se encontraron etiquetas.</CommandEmpty>
                             <CommandGroup heading="Etiquetas disponibles">
-                                {allTags.map((tag) => {
+                                {allTags.map((tag: Tag) => {
                                     const isSelected = selectedTags.some(t => t.id === tag.id)
                                     return (
                                         <CommandItem

@@ -14,6 +14,7 @@ import {
 import { searchCatalog } from "../deal-actions"
 import { getCategories, ServiceCategory } from "../../catalog/categories-actions"
 import { cn } from "@/lib/utils"
+import { useInboxContext } from "../../messaging/context/inbox-context"
 
 interface Product {
     id: string
@@ -35,25 +36,30 @@ export function ProductSelector({ onSelect }: ProductSelectorProps) {
     const [loading, setLoading] = useState(false)
     const [loadingMore, setLoadingMore] = useState(false)
     const [selectedCategory, setSelectedCategory] = useState<string>('all')
-    const [categories, setCategories] = useState<{ id: string, label: string }[]>([{ id: 'all', label: 'Todo' }])
+    const [totalCount, setTotalCount] = useState(0)
     const [page, setPage] = useState(0)
     const [hasMore, setHasMore] = useState(false)
-    const [totalCount, setTotalCount] = useState(0)
+    const { catalogCategories, initialProducts } = useInboxContext()
+    const [categories, setCategories] = useState<{ id: string, label: string }[]>([{ id: 'all', label: 'Todo' }])
     const inputRef = useRef<HTMLInputElement>(null)
 
     // Load dynamic categories
+    // Load initial products and categories from context
     useEffect(() => {
-        const loadCategories = async () => {
-            const cats = await getCategories()
-            if (cats && cats.length > 0) {
-                setCategories([
-                    { id: 'all', label: 'Todo' },
-                    ...cats.map(c => ({ id: c.name, label: c.name })) // Filter by name as searchCatalog expects name
-                ])
-            }
+        if (catalogCategories && catalogCategories.length > 0) {
+            setCategories([
+                { id: 'all', label: 'Todo' },
+                ...catalogCategories.map(c => ({ id: c.name, label: c.name }))
+            ])
         }
-        loadCategories()
-    }, [])
+    }, [catalogCategories])
+
+    useEffect(() => {
+        if (initialProducts && initialProducts.length > 0 && results.length === 0 && query === "") {
+            setResults(initialProducts)
+            setHasMore(initialProducts.length >= 10)
+        }
+    }, [initialProducts])
 
     // Debounced search - RESET on query or category change
     useEffect(() => {

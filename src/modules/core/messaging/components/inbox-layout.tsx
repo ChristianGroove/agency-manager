@@ -13,13 +13,35 @@ import { toast } from "sonner"
 import { useTranslation } from "@/lib/i18n/use-translation"
 import { useSearchParams, useRouter } from "next/navigation"
 import { createConversation } from "../conversation-management-actions"
+import { InboxProvider, useInboxContext } from "../context/inbox-context"
+import { getActiveModules } from "@/modules/core/saas/actions"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getAgentsWorkload } from "../assignment-actions"
+import { getTemplates } from "../template-actions"
+import { getCategories } from "@/modules/core/catalog/categories-actions"
+import { searchCatalog } from "@/modules/core/crm/deal-actions"
+import { getTags } from "@/modules/core/crm/tags-actions"
+import { supabase } from "@/lib/supabase"
+import { GlobalMessageListener } from "./floating-inbox/global-message-listener"
+import { realtimeManager } from "@/lib/supabase-realtime-manager"
 
 interface InboxLayoutProps {
     initialConversationId?: string | null
 }
 
+
 export function InboxLayout({ initialConversationId }: InboxLayoutProps) {
+    return (
+        <InboxProvider>
+            <InboxLayoutContent initialConversationId={initialConversationId} />
+        </InboxProvider>
+    )
+}
+
+function InboxLayoutContent({ initialConversationId }: InboxLayoutProps) {
     const { t } = useTranslation()
+    const { setActiveModules, setSpaceCategory, setAgents, setTemplates, setCatalogCategories, setInitialProducts, setAllTags } = useInboxContext()
+
     const [selectedConversationId, setSelectedConversationId] = React.useState<string | null>(initialConversationId || null)
     const [isContextOpen, setIsContextOpen] = React.useState(true)
     const [activeDragId, setActiveDragId] = React.useState<string | null>(null)
@@ -69,6 +91,45 @@ export function InboxLayout({ initialConversationId }: InboxLayoutProps) {
             autoStartChat()
         }
     }, [searchParams, router])
+
+    // Load Global Config Once
+    React.useEffect(() => {
+        const loadConfig = async () => {
+            try {
+                const orgId = await getCurrentOrganizationId()
+                if (orgId) {
+                    const [modules, { data: orgData }, agentsResult, templatesResult, categories, initialProducts, tags] = await Promise.all([
+                        getActiveModules(orgId),
+                        supabase.from('organizations').select('active_app_id').eq('id', orgId).single(),
+                        getAgentsWorkload(),
+                        getTemplates(),
+                        getCategories(),
+                        searchCatalog("", "all", 0),
+                        getTags()
+                    ])
+                    
+                    setActiveModules(modules)
+                    if (agentsResult.success) setAgents(agentsResult.data)
+                    if (templatesResult) setTemplates(templatesResult)
+                    if (categories) setCatalogCategories(categories)
+                    if (initialProducts.success) setInitialProducts(initialProducts.data || [])
+                    if (tags) setAllTags(tags)
+
+                    if (orgData?.active_app_id) {
+                        const { data: appData } = await supabase
+                            .from('saas_apps')
+                            .select('space_category')
+                            .eq('id', orgData.active_app_id)
+                            .single()
+                        setSpaceCategory(appData?.space_category || null)
+                    }
+                }
+            } catch (err) {
+                console.error("Failed to load global inbox config", err)
+            }
+        }
+        loadConfig()
+    }, [setActiveModules, setSpaceCategory])
 
     const handleDragStart = (event: DragStartEvent) => {
         setActiveDragId(event.active.id as string)
@@ -133,6 +194,7 @@ export function InboxLayout({ initialConversationId }: InboxLayoutProps) {
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
         >
+            <GlobalMessageListener />
             <div className="flex h-full w-full bg-background/95 dark:bg-zinc-950/90 backdrop-blur-xl overflow-hidden relative rounded-2xl border border-border/50 shadow-2xl shadow-black/5 dark:shadow-black/20">
 
                 {/* Left Pane */}

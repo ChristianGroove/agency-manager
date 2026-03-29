@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useTranslation } from "@/lib/i18n/use-translation"
 import { extractMetadata, COLORS, ICONS } from "../template-utils"
 import { MessageSquare, Star, Heart, ThumbsUp, Zap, AlertCircle, CheckCircle, Clock, Search, FileText, Plus } from "lucide-react"
@@ -10,6 +10,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { SmartRepliesPanel } from "./smart-replies-panel"
 import { getTemplates, MessageTemplate } from "../template-actions"
 import { cn } from "@/lib/utils"
+import { useInboxContext } from "../context/inbox-context"
 
 
 interface RepliesTabProps {
@@ -20,34 +21,21 @@ interface RepliesTabProps {
 
 export function RepliesTab({ conversationId, lastIncomingMessage, onManageReplies }: RepliesTabProps) {
     const { t } = useTranslation()
-    const [templates, setTemplates] = useState<MessageTemplate[]>([])
+    const { templates: globalTemplates } = useInboxContext()
     const [searchQuery, setSearchQuery] = useState("")
-    const [loading, setLoading] = useState(true)
 
 
-    useEffect(() => {
-        loadTemplates()
-    }, [])
+    // Las plantillas ahora se cargan una vez en el Layout global
 
-    const loadTemplates = async () => {
-        setLoading(true)
-        try {
-            const data = await getTemplates()
-            setTemplates(data)
-        } catch (error) {
-            console.error("Failed to load templates", error)
-        } finally {
-            setLoading(false)
-        }
-    }
-
-    const filteredTemplates = templates.filter(t => {
-        const matchesSearch = t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            t.content.toLowerCase().includes(searchQuery.toLowerCase())
-        // Filter out 'UTILITY' category as requested
-        const isNotUtility = t.category !== 'UTILITY'
-        return matchesSearch && isNotUtility
-    })
+    const filteredTemplates = useMemo(() => {
+        return globalTemplates.filter((t: MessageTemplate) => {
+            const matchesSearch = t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                t.content.toLowerCase().includes(searchQuery.toLowerCase())
+            // Filter out 'UTILITY' category as requested
+            const isNotUtility = t.category !== 'UTILITY'
+            return matchesSearch && isNotUtility
+        })
+    }, [globalTemplates, searchQuery])
 
     const handleSelectTemplate = (content: string) => {
         const event = new CustomEvent('insert-smart-reply', { detail: content })
@@ -81,7 +69,7 @@ export function RepliesTab({ conversationId, lastIncomingMessage, onManageReplie
                             </Button>
                         </div>
 
-                        {loading ? (
+                        {globalTemplates.length === 0 ? (
                             <div className="text-center py-8 text-muted-foreground text-xs animate-pulse">Cargando plantillas...</div>
                         ) : filteredTemplates.length === 0 ? (
                             <div className="text-center py-6 border-2 border-dashed rounded-xl bg-muted/20">
@@ -93,7 +81,7 @@ export function RepliesTab({ conversationId, lastIncomingMessage, onManageReplie
                             </div>
                         ) : (
                             <div className="grid gap-2">
-                                {filteredTemplates.map(template => {
+                                {filteredTemplates.map((template: MessageTemplate) => {
                                     const meta = extractMetadata(template.components)
                                     const colorDef = COLORS.find(c => c.id === (meta.color || 'gray')) || COLORS[0]
                                     const IconComponent = ICONS.find(i => i.id === (meta.icon || 'MessageSquare'))?.icon || MessageSquare
