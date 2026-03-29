@@ -30,7 +30,17 @@ export async function getOrgConnectionIds(): Promise<string[]> {
 export async function archiveConversation(conversationId: string) {
     const supabase = await createClient()
 
-    const { error } = await supabase
+    // Fetch orgId for broadcast
+    const { data: conv } = await supabase
+        .from('conversations')
+        .select('organization_id')
+        .eq('id', conversationId)
+        .single()
+
+    const orgId = conv?.organization_id
+
+    // 4. Update conversation state to archived
+    const { error: updateError } = await supabase
         .from('conversations')
         .update({
             state: 'archived',
@@ -38,13 +48,38 @@ export async function archiveConversation(conversationId: string) {
         })
         .eq('id', conversationId)
 
-    if (error) {
-        console.error('[ConversationActions] Failed to archive:', error)
-        return { success: false, error: error.message }
+    if (updateError) {
+        console.error('[ConversationActions] Failed to resolve:', updateError)
+        return { success: false, error: updateError.message }
+    }
+
+    // BROADCAST: Notify other agents so the card vanishes in their inboxes too
+    if (orgId) {
+        broadcastVanish(orgId, conversationId).catch(e => console.error("[ConversationActions] Broadcast error:", e))
     }
 
     revalidatePath('/inbox')
     return { success: true }
+}
+
+/**
+ * Broadcast a vanish event to all organization members via Realtime
+ */
+async function broadcastVanish(organizationId: string, conversationId: string) {
+    const supabase = await createClient()
+    const channelName = `inbox-org-${organizationId}`
+    const channel = supabase.channel(channelName)
+    
+    // We don't subscribe, just send a broadcast.
+    // This is a one-way fire-and-forget message.
+    await channel.send({
+        type: 'broadcast',
+        event: 'vanish',
+        payload: { conversationId }
+    })
+    
+    // Cleanup temporary channel instance
+    await supabase.removeChannel(channel)
 }
 
 /**
@@ -61,6 +96,8 @@ export async function deleteConversation(conversationId: string, deleteLeadIfOrp
         .single()
 
     if (!conv) return { success: false, error: "Conversation not found" }
+
+    const orgId = conv.organization_id;
 
     // 2. PARALLEL CLEANUP: Media + Tags + Delete Transaction (Conceptually)
     // We start media cleanup as early as possible
@@ -104,6 +141,11 @@ export async function deleteConversation(conversationId: string, deleteLeadIfOrp
 
     // Ensure media cleanup finished at some point (we await it here to ensure consistency before returning)
     await mediaCleanupPromise;
+
+    // 4. MULTI-AGENT BROADCAST (Critical for real-time consistency)
+    if (orgId) {
+        broadcastVanish(orgId, conversationId).catch(e => console.error("[ConversationActions] Broadcast error:", e))
+    }
 
     revalidatePath('/inbox')
     revalidatePath('/crm')
@@ -174,6 +216,12 @@ export async function snoozeConversation(conversationId: string, until: Date) {
     if (error) {
         console.error('[ConversationActions] Failed to snooze:', error)
         return { success: false, error: error.message }
+    }
+
+    // BROADCAST: Notify other agents
+    const { data: convInfo } = await supabase.from('conversations').select('organization_id').eq('id', conversationId).single()
+    if (convInfo?.organization_id) {
+        broadcastVanish(convInfo.organization_id, conversationId).catch(e => {})
     }
 
     revalidatePath('/inbox')
@@ -256,6 +304,11 @@ export async function completeConversation(conversationId: string) {
     if (updateResult.error) {
         console.error('[ConversationActions] Failed to resolve:', updateResult.error)
         return { success: false, error: updateResult.error.message }
+    }
+
+    // BROADCAST: Notify other agents
+    if (conv.organization_id) {
+        broadcastVanish(conv.organization_id, conversationId).catch(e => {})
     }
 
     revalidatePath('/inbox')

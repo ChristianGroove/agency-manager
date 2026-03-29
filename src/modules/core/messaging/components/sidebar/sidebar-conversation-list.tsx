@@ -292,7 +292,7 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
     useEffect(() => {
         if (!organizationId || !currentUserId) return;
         
-        const channelName = `conversations-list-${organizationId}`
+        const channelName = `inbox-org-${organizationId}`
         
         realtimeManager.getOrCreateChannel(channelName, (channel: any) => {
             channel.on('postgres_changes',
@@ -351,6 +351,12 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
                     debouncedFetchConversations(false)
                 }
             )
+            .on('broadcast', { event: 'vanish' }, (payload: any) => {
+                const { conversationId } = payload.payload;
+                if (conversationId) {
+                    setConversations(prev => prev.filter(c => c.id !== conversationId));
+                }
+            })
         })
 
         // ROBUST POLLING FALLBACK: Poll more frequently if Realtime is NOT joined

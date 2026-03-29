@@ -27,7 +27,7 @@ class SupabaseRealtimeManager {
     /**
      * Get or create a persistent channel.
      * @param channelName Unique name for the channel
-     * @param setup Callback to configure the channel (only runs on creation)
+     * @param setup Callback to configure the channel (runs every time to allow new listeners)
      */
     public async getOrCreateChannel(
         channelName: string, 
@@ -42,14 +42,19 @@ class SupabaseRealtimeManager {
                 entry.cleanupTimeout = undefined;
             }
             entry.refCount++;
+            
+            // RUN SETUP RE-REGISTRATION (Allow adding more listeners/filters)
+            setup(entry.channel);
+            
             return entry.channel;
         }
 
         console.log(`[RealtimeManager] Creating NEW channel: ${channelName}`);
         const channel = supabase.channel(channelName);
+        
+        // Initial setup
         setup(channel);
         
-        // Use a promise to wait for subscription if needed, or just subscribe
         channel.subscribe((status) => {
             console.log(`[RealtimeManager] Channel ${channelName} status: ${status}`);
         });
