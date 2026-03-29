@@ -39,9 +39,16 @@ export function ProductSelector({ onSelect }: ProductSelectorProps) {
     const [totalCount, setTotalCount] = useState(0)
     const [page, setPage] = useState(0)
     const [hasMore, setHasMore] = useState(false)
-    const { catalogCategories, initialProducts } = useInboxContext()
+    const { catalogCategories, initialProducts, refreshCatalog } = useInboxContext()
     const [categories, setCategories] = useState<{ id: string, label: string }[]>([{ id: 'all', label: 'Todo' }])
     const inputRef = useRef<HTMLInputElement>(null)
+
+    // On-demand hydration
+    useEffect(() => {
+        if (isOpen && catalogCategories.length === 0) {
+            refreshCatalog()
+        }
+    }, [isOpen, catalogCategories.length, refreshCatalog])
 
     // Load dynamic categories
     // Load initial products and categories from context

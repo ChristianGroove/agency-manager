@@ -21,8 +21,14 @@ interface RepliesTabProps {
 
 export function RepliesTab({ conversationId, lastIncomingMessage, onManageReplies }: RepliesTabProps) {
     const { t } = useTranslation()
-    const { templates: globalTemplates } = useInboxContext()
+    const { templates: globalTemplates, refreshTemplates, isTemplatesLoading } = useInboxContext()
     const [searchQuery, setSearchQuery] = useState("")
+
+    useEffect(() => {
+        if (globalTemplates.length === 0) {
+            refreshTemplates()
+        }
+    }, [globalTemplates.length, refreshTemplates])
 
 
     // Las plantillas ahora se cargan una vez en el Layout global
@@ -69,8 +75,8 @@ export function RepliesTab({ conversationId, lastIncomingMessage, onManageReplie
                             </Button>
                         </div>
 
-                        {globalTemplates.length === 0 ? (
-                            <div className="text-center py-8 text-muted-foreground text-xs animate-pulse">Cargando plantillas...</div>
+                        {globalTemplates.length === 0 && isTemplatesLoading ? (
+                            <div className="text-center py-8 text-muted-foreground text-xs animate-pulse italic">Cargando plantillas...</div>
                         ) : filteredTemplates.length === 0 ? (
                             <div className="text-center py-6 border-2 border-dashed rounded-xl bg-muted/20">
                                 <FileText className="h-8 w-8 mx-auto text-muted-foreground/30 mb-2" />

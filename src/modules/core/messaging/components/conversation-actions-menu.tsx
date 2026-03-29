@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { MoreVertical, Archive, Trash2, CheckCircle, ArchiveRestore, Clock, Lightbulb } from "lucide-react"
+import { MoreVertical, Trash2, CheckCircle } from "lucide-react"
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -13,24 +13,23 @@ import {
     DropdownMenuSubContent
 } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
-import { archiveConversation, deleteConversation, markAsRead, unarchiveConversation, snoozeConversation } from "../conversation-actions"
+import { deleteConversation, markAsRead } from "../conversation-actions"
 import { toast } from "sonner"
-import { addHours, addDays, nextMonday, setHours, setMinutes, startOfHour } from "date-fns"
-import { SaveAsFAQModal } from "./save-as-faq-modal"
 
 interface ConversationActionsMenuProps {
     conversationId: string
     isArchived?: boolean
     onActionComplete?: () => void
+    trigger?: React.ReactNode
 }
 
 export function ConversationActionsMenu({
     conversationId,
     isArchived = false,
-    onActionComplete
+    onActionComplete,
+    trigger
 }: ConversationActionsMenuProps) {
     const [isLoading, setIsLoading] = useState(false)
-    const [isFAQModalOpen, setIsFAQModalOpen] = useState(false)
 
     const handleAction = async (action: () => Promise<any>, successMessage: string, isOptimistic: boolean = false) => {
         if (isOptimistic) {
@@ -58,84 +57,76 @@ export function ConversationActionsMenu({
     }
 
     return (
-        <>
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                {trigger || (
                     <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8"
+                        className="h-8 w-8 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
                         disabled={isLoading}
                     >
                         <MoreVertical className="h-4 w-4" />
                     </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                    <DropdownMenuItem
-                        onClick={() => handleAction(
+                )}
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56" onClick={(e) => e.stopPropagation()}>
+                <DropdownMenuItem
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        handleAction(
                             () => markAsRead(conversationId),
                             "Marked as read"
-                        )}
-                    >
-                        <CheckCircle className="mr-2 h-4 w-4" />
-                        Marcar como leído
-                    </DropdownMenuItem>
+                        )
+                    }}
+                >
+                    <CheckCircle className="mr-2 h-4 w-4" />
+                    Marcar como leído
+                </DropdownMenuItem>
 
-                    <DropdownMenuSeparator />
+                <DropdownMenuSeparator />
 
-                    <DropdownMenuItem onClick={() => setIsFAQModalOpen(true)}>
-                        <Lightbulb className="mr-2 h-4 w-4 text-yellow-500" />
-                        Guardar como FAQ
-                    </DropdownMenuItem>
-
-                    <DropdownMenuSeparator />
-
-                    <DropdownMenuSub>
-                        <DropdownMenuSubTrigger className="text-red-600 focus:text-red-600">
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Eliminar
-                        </DropdownMenuSubTrigger>
-                        <DropdownMenuSubContent className="w-56">
-                            <DropdownMenuItem 
-                                className="text-red-600 focus:text-red-600"
-                                onClick={() => {
-                                    if (window.confirm("¿Eliminar solo esta conversación?")) {
-                                        handleAction(
-                                            () => deleteConversation(conversationId, false),
-                                            "Conversación eliminada",
-                                            true
-                                        )
-                                    }
-                                }}
-                            >
-                                <Trash2 className="mr-2 h-3.5 w-3.5" />
-                                Solo esta conversación
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                                className="text-red-600 focus:text-red-600 font-semibold"
-                                onClick={() => {
-                                    if (window.confirm("¡ATENCIÓN! Esto eliminará el chat Y EL LEAD permanentemente. ¿Continuar?")) {
-                                        handleAction(
-                                            () => deleteConversation(conversationId, true),
-                                            "Chat y Lead eliminados",
-                                            true
-                                        )
-                                    }
-                                }}
-                            >
-                                <Trash2 className="mr-2 h-3.5 w-3.5" />
-                                Todo el contacto (Lead)
-                            </DropdownMenuItem>
-                        </DropdownMenuSubContent>
-                    </DropdownMenuSub>
-                </DropdownMenuContent>
-            </DropdownMenu>
-
-            <SaveAsFAQModal
-                open={isFAQModalOpen}
-                onOpenChange={setIsFAQModalOpen}
-                conversationId={conversationId}
-            />
-        </>
+                <DropdownMenuSub>
+                    <DropdownMenuSubTrigger className="text-red-600 focus:text-red-600">
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Eliminar
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent className="w-56" onClick={(e) => e.stopPropagation()}>
+                        <DropdownMenuItem 
+                            className="text-red-600 focus:text-red-600"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                if (window.confirm("¿Eliminar solo esta conversación?")) {
+                                    handleAction(
+                                        () => deleteConversation(conversationId, false),
+                                        "Conversación eliminada",
+                                        true
+                                    )
+                                }
+                            }}
+                        >
+                            <Trash2 className="mr-2 h-3.5 w-3.5" />
+                            Solo esta conversación
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                            className="text-red-600 focus:text-red-600 font-semibold"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                if (window.confirm("¡ATENCIÓN! Esto eliminará el chat Y EL LEAD permanentemente. ¿Continuar?")) {
+                                    handleAction(
+                                        () => deleteConversation(conversationId, true),
+                                        "Chat y Lead eliminados",
+                                        true
+                                    )
+                                }
+                            }}
+                        >
+                            <Trash2 className="mr-2 h-3.5 w-3.5" />
+                            Todo el contacto (Lead)
+                        </DropdownMenuItem>
+                    </DropdownMenuSubContent>
+                </DropdownMenuSub>
+            </DropdownMenuContent>
+        </DropdownMenu>
     )
 }

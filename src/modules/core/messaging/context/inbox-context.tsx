@@ -18,12 +18,18 @@ interface InboxContextType {
     tick?: number;
     templates: any[];
     setTemplates: (templates: any[]) => void;
+    refreshTemplates: () => Promise<void>;
+    isTemplatesLoading: boolean;
     catalogCategories: any[];
     setCatalogCategories: (categories: any[]) => void;
     initialProducts: any[];
     setInitialProducts: (products: any[]) => void;
+    refreshCatalog: () => Promise<void>;
+    isCatalogLoading: boolean;
     allTags: any[];
     setAllTags: (tags: any[]) => void;
+    refreshTags: () => Promise<void>;
+    isTagsLoading: boolean;
     updateAgent: (agentId: string, data: any) => void;
     refreshAgents: () => Promise<void>;
 }
@@ -37,9 +43,12 @@ export function InboxProvider({ children }: { children: ReactNode }) {
     const [spaceCategory, setSpaceCategory] = useState<string | null>(null)
     const [agents, setAgents] = useState<any[]>([])
     const [templates, setTemplates] = useState<any[]>([])
+    const [isTemplatesLoading, setIsTemplatesLoading] = useState(false)
     const [catalogCategories, setCatalogCategories] = useState<any[]>([])
     const [initialProducts, setInitialProducts] = React.useState<any[]>([])
+    const [isCatalogLoading, setIsCatalogLoading] = useState(false)
     const [allTags, setAllTags] = React.useState<any[]>([])
+    const [isTagsLoading, setIsTagsLoading] = useState(false)
     const [tick, setTick] = React.useState(0)
 
     // Master Ticker: Pulse every 60s to force re-calculation of relative times (like online status)
@@ -88,6 +97,47 @@ export function InboxProvider({ children }: { children: ReactNode }) {
         }
     }, [])
 
+    const refreshTags = useCallback(async () => {
+        if (isTagsLoading) return;
+        setIsTagsLoading(true)
+        try {
+            const { getTags } = await import("../../crm/tags-actions")
+            const tags = await getTags()
+            setAllTags(tags)
+        } finally {
+            setIsTagsLoading(false)
+        }
+    }, [isTagsLoading])
+
+    const refreshTemplates = useCallback(async () => {
+        if (isTemplatesLoading) return;
+        setIsTemplatesLoading(true)
+        try {
+            const { getTemplates } = await import("../template-actions")
+            const all = await getTemplates()
+            setTemplates(all)
+        } finally {
+            setIsTemplatesLoading(false)
+        }
+    }, [isTemplatesLoading])
+
+    const refreshCatalog = useCallback(async () => {
+        if (isCatalogLoading) return;
+        setIsCatalogLoading(true)
+        try {
+            const { getCategories } = await import("../../catalog/categories-actions")
+            const { searchCatalog } = await import("../../crm/deal-actions")
+            const [cats, products] = await Promise.all([
+                getCategories(),
+                searchCatalog("", "all", 0)
+            ])
+            if (cats) setCatalogCategories(cats)
+            if (products?.success) setInitialProducts(products.data || [])
+        } finally {
+            setIsCatalogLoading(false)
+        }
+    }, [isCatalogLoading])
+
     return (
         <InboxContext.Provider value={{
             leadsCache,
@@ -102,12 +152,18 @@ export function InboxProvider({ children }: { children: ReactNode }) {
             setAgents,
             templates,
             setTemplates,
+            refreshTemplates,
+            isTemplatesLoading,
             catalogCategories,
             setCatalogCategories,
             initialProducts,
             setInitialProducts,
+            refreshCatalog,
+            isCatalogLoading,
             allTags,
             setAllTags,
+            refreshTags,
+            isTagsLoading,
             updateAgent,
             refreshAgents,
             tick

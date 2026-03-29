@@ -107,6 +107,11 @@ export function GlobalMessageListener() {
                         senderName = leadData?.name || leadData?.phone || "Nuevo Mensaje"
                     } catch (e) {}
 
+                    // DISPATCH SYNC EVENT FOR CHATAREA AND OTHERS
+                    window.dispatchEvent(new CustomEvent('pixy:sync-active-chat', { 
+                        detail: { conversationId: conv.id } 
+                    }));
+
                     toast.custom((t) => (
                         <div className="w-full max-w-md bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-2xl p-4 flex gap-4 pointer-events-auto items-center animate-in slide-in-from-top-2">
                             <Avatar className="h-12 w-12 flex-shrink-0">

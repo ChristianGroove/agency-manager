@@ -35,7 +35,7 @@ interface TagsPickerProps {
 }
 
 export function TagsPicker({ leadId, organizationId, initialTags = [] }: TagsPickerProps) {
-    const { allTags, updateLeadCache, leadsCache } = useInboxContext()
+    const { allTags, updateLeadCache, leadsCache, refreshTags } = useInboxContext()
     const [open, setOpen] = useState(false)
     const [selectedTags, setSelectedTags] = useState<LeadTag[]>(initialTags)
     const [isLoading, setIsLoading] = useState(false)
@@ -45,7 +45,12 @@ export function TagsPicker({ leadId, organizationId, initialTags = [] }: TagsPic
         setSelectedTags(initialTags)
     }, [leadId, initialTags])
 
-    // Initial load happens in Parent (ContextDeck) or Layout now
+    // On-demand hydration
+    useEffect(() => {
+        if (open && allTags.length === 0) {
+            refreshTags()
+        }
+    }, [open, allTags.length, refreshTags])
 
     const handleToggle = async (tag: Tag) => {
         const res = await toggleLeadTag(leadId, tag.id)

@@ -227,9 +227,9 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
         }
     }
 
-    const fetchMessages = async () => {
+    const fetchMessages = async (forceRefetch = false) => {
         if (!conversationId) return
-        // Load only the LAST N messages (cursor-based, most recent first, then reverse)
+        
         const { data, error } = await supabase
             .from('messages')
             .select('*')
@@ -238,8 +238,22 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
             .limit(MESSAGE_PAGE_SIZE)
 
         if (data) {
-            const sorted = data.reverse() // Back to chronological order for display
-            setMessages(sorted)
+            const sorted = data.reverse()
+            setMessages(prev => {
+                // If it's a new conversation, just set it
+                if (forceRefetch || prev.length === 0 || prev[0]?.conversation_id !== conversationId) {
+                    return sorted
+                }
+                
+                // Smart Merge: Only add what we don't have
+                const existingIds = new Set(prev.map(m => m.id))
+                const onlyNew = sorted.filter(m => !existingIds.has(m.id))
+                
+                if (onlyNew.length === 0) return prev
+                return [...prev, ...onlyNew].sort((a, b) => 
+                    new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+                )
+            })
             setHasMoreMessages(data.length === MESSAGE_PAGE_SIZE)
         }
     }
@@ -267,10 +281,25 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
         setLoadingOlder(false)
     }
 
+    // LISTEN FOR EXTERNAL SYNC (BRIDGE)
+    useEffect(() => {
+        const handleExternalSync = (e: Event) => {
+            const { conversationId: syncConvId } = (e as CustomEvent).detail;
+            if (syncConvId === conversationId) {
+                fetchMessages(); // Triggers the non-destructive merge
+            }
+        };
+
+        window.addEventListener('pixy:sync-active-chat', handleExternalSync);
+        return () => window.removeEventListener('pixy:sync-active-chat', handleExternalSync);
+    }, [conversationId]);
+
     useEffect(() => {
         if (!conversationId) return;
+        
+        // SINGLE INITIAL CALL (Avoid double fire)
         fetchConversation()
-        fetchMessages()
+        fetchMessages(true) // Force fresh load for new ID
 
         const channelName = `chat-area-${conversationId}`
         
@@ -285,6 +314,7 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
                 (payload: any) => {
                     const newMsg = payload.new as Message
                     setMessages((prev) => {
+                        // Avoid duplicates from Realtime
                         if (prev.some(m => m.id === newMsg.id)) return prev
                         return [...prev, newMsg]
                     })
@@ -305,9 +335,6 @@ export function ChatArea({ conversationId, isContextOpen, onToggleContext }: Cha
                 setTimeout(() => setIncomingCall(null), 30000)
             })
         })
-
-        fetchConversation()
-        fetchMessages()
 
         const pollingInterval = setInterval(() => {
         }, 30000)

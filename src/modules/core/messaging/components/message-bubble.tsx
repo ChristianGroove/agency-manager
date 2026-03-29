@@ -2,9 +2,9 @@
 
 import { cn } from "@/lib/utils"
 import { Check, CheckCheck, FileIcon, Volume2, Play, MapPin } from "lucide-react"
-import { AudioTranscriber } from "./audio-transcriber"
 import { RestoOrderWidget } from "./resto-order-widget"
 import { memo } from "react"
+import { useInboxContext } from "../context/inbox-context"
 
 interface MessageContent {
     type: 'text' | 'image' | 'audio' | 'video' | 'document' | 'location' | 'note' | 'sticker' | 'system'
@@ -28,6 +28,7 @@ import { useTranslation } from "@/lib/i18n/use-translation"
 
 export const MessageBubble = memo(function MessageBubble({ content, direction, timestamp, status, messageId, metadata }: MessageBubbleProps) {
     const { t } = useTranslation()
+    const { spaceCategory } = useInboxContext()
     const isOutbound = direction === 'outbound'
     const isSystem = content?.type === 'system'
 
@@ -58,7 +59,7 @@ export const MessageBubble = memo(function MessageBubble({ content, direction, t
             )}>
                 {/* Content Renderer */}
                 <div className="mb-1">
-                    {renderContent({ content, isOutbound, messageId, metadata, t, status })}
+                    {renderContent({ content, isOutbound, messageId, metadata, t, status, spaceCategory })}
                 </div>
 
                 {/* Footer: Timestamp & Status */}
@@ -81,24 +82,21 @@ export const MessageBubble = memo(function MessageBubble({ content, direction, t
     )
 })
 
-function renderContent({ content, isOutbound, messageId, metadata, t, status }: {
+function renderContent({ content, isOutbound, messageId, metadata, t, status, spaceCategory }: {
     content: any,
     isOutbound: boolean,
     messageId?: string,
     metadata?: any,
     t?: any,
-    status?: string
+    status?: string,
+    spaceCategory?: string | null
 }) {
     // Normalizar propiedades del contenido
     const url = content.url || content.mediaUrl || content.link;
     const text = content.text || content.caption || content.body;
 
-    if (content.type === 'audio' || content.type === 'image') {
-        console.log(`[MessageBubble] Rendering ${content.type}:`, url);
-    }
-
-    // Inyección del Widget B2C
-    if (metadata?.type === 'resto_order') {
+    // Inyección del Widget B2C - Solo si es espacio resto
+    if (metadata?.type === 'resto_order' && spaceCategory === 'resto') {
         return <RestoOrderWidget messageId={messageId} orderData={metadata} isOutbound={isOutbound} status={status} />
     }
 
@@ -152,13 +150,6 @@ function renderContent({ content, isOutbound, messageId, metadata, t, status }: 
                         {/* Basic Audio Player */}
                         <audio controls src={url} className="h-8 w-[200px]" />
                     </div>
-                    {/* AI Transcription */}
-                    <AudioTranscriber
-                        audioUrl={url}
-                        messageId={messageId}
-                        cachedTranscription={metadata?.transcription}
-                        cachedAnalysis={metadata?.voice_analysis}
-                    />
                 </div>
             )
 

@@ -14,6 +14,7 @@ import { Database } from "@/types/supabase"
 import { InboxSettingsSheet } from "../inbox-settings-sheet"
 import { Button } from "@/components/ui/button"
 import { ConversationListItem } from "../conversation-list-item"
+import { ConversationActionsMenu } from "../conversation-actions-menu"
 
 import { getCurrentUserPermissions } from "@/modules/core/settings/actions/team-actions"
 import { useInboxPreferences } from "@/modules/core/preferences/use-inbox-preferences"
@@ -75,6 +76,13 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
     const [loading, setLoading] = useState(true)
     const [currentUserId, setCurrentUserId] = useState<string | null>(null)
     const [tick, setTick] = useState(0)
+    const [activeMenuConvId, setActiveMenuConvId] = useState<string | null>(null)
+    const [activeMenuIsArchived, setActiveMenuIsArchived] = useState(false)
+    
+    // Sync Ref to avoid stale closures in realtime callback
+    const selectedIdRef = useRef(selectedId)
+    useEffect(() => { selectedIdRef.current = selectedId }, [selectedId])
+
 
     // Maestro Ticker: Updates every 30s to refresh "waiting time" counters across all items
     // This centralizes CPU load and avoids 100+ independent intervals.
@@ -346,6 +354,14 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
                             return prev 
                         }
                     })
+
+                    // IF THIS IS THE CURRENTLY OPEN CHAT, NOTIFY CHATAREA IMMEDIATELY
+                    if (updatedConv.id === selectedIdRef.current) {
+                        window.dispatchEvent(new CustomEvent('pixy:sync-active-chat', { 
+                            detail: { conversationId: updatedConv.id } 
+                        }));
+                    }
+
 
                     // Always trigger a debounced fetch as backup for full data integrity (joins)
                     debouncedFetchConversations(false)
@@ -625,6 +641,10 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
                                         }
                                         onSelect(id)
                                     }}
+                                    onOpenMenu={(id, isArchived) => {
+                                        setActiveMenuConvId(id)
+                                        setActiveMenuIsArchived(isArchived)
+                                    }}
                                     fetchConversations={() => fetchConversations(false)}
                                     tick={tick}
                                 />
@@ -638,6 +658,17 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
                             ) : null
                         }}
                     />
+                )}
+                
+                {/* Singleton Actions Menu - Renders only once for the whole list */}
+                {activeMenuConvId && (
+                    <div className="hidden">
+                        <ConversationActionsMenu 
+                            conversationId={activeMenuConvId}
+                            isArchived={activeMenuIsArchived}
+                            onActionComplete={() => fetchConversations(false)}
+                        />
+                    </div>
                 )}
             </div>
         </div>

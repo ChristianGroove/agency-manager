@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, memo } from "react"
+import { useState, useEffect, memo, useMemo } from "react"
 import { useDraggable } from "@dnd-kit/core"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
@@ -27,12 +27,13 @@ interface ConversationListItemProps {
     conv: Conversation
     isSelected: boolean
     onSelect: (id: string) => void
+    onOpenMenu: (id: string, isArchived: boolean) => void
     fetchConversations: () => void
     tick?: number
 }
-
-export const ConversationListItem = memo(function ConversationListItem({ conv, isSelected, onSelect, fetchConversations, tick }: ConversationListItemProps) {
-    const { t, locale } = useTranslation()
+ 
+export const ConversationListItem = memo(function ConversationListItem({ conv, isSelected, onSelect, onOpenMenu, fetchConversations, tick }: ConversationListItemProps) {
+     const { t, locale } = useTranslation()
     const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
         id: conv.id,
     })
@@ -61,43 +62,33 @@ export const ConversationListItem = memo(function ConversationListItem({ conv, i
 
     // Pulse Effect for New Messages
     const [isNew, setIsNew] = useState(false)
-    const [pulse, setPulse] = useState(false)
-    const [waitTime, setWaitTime] = useState<string | null>(null)
-    const [waitLevel, setWaitLevel] = useState<'none' | 'warning' | 'critical'>('none')
-
-    // Response time indicators logic
-    useEffect(() => {
+ 
+    // Response time indicators logic (Optimized: useMemo instead of useEffect)
+    const { waitTime, waitLevel } = useMemo(() => {
         if (!conv.waiting_since || conv.status === 'closed') {
-            setWaitTime(null)
-            setWaitLevel('none')
-            return
+            return { waitTime: null, waitLevel: 'none' as const }
         }
-
-        const updateWaitStatus = () => {
-            const start = new Date(conv.waiting_since).getTime()
-            const now = Date.now()
-            const diffMin = Math.floor((now - start) / 60000)
-
-            // Umbral de 5 min (Solo se muestra si la espera es >= 5 min por petición del usuario)
-            if (diffMin >= 10) {
-                setWaitLevel('critical')
-            } else if (diffMin >= 5) {
-                setWaitLevel('warning')
-            } else {
-                setWaitLevel('none')
-            }
-
-            // Human readable wait time
-            if (diffMin < 1) {
-                setWaitTime('< 1m')
-            } else {
-                setWaitTime(`${diffMin}m`)
-            }
-        }
-
-        updateWaitStatus()
-        // No independent interval needed; 'tick' from parent triggers re-evaluation
+ 
+        const start = new Date(conv.waiting_since).getTime()
+        const now = Date.now()
+        const diffMin = Math.floor((now - start) / 60000)
+ 
+        let level: 'none' | 'warning' | 'critical' = 'none'
+        if (diffMin >= 10) level = 'critical'
+        else if (diffMin >= 5) level = 'warning'
+ 
+        const time = diffMin < 1 ? '< 1m' : `${diffMin}m`
+        
+        return { waitTime: time, waitLevel: level }
     }, [conv.waiting_since, conv.status, tick])
+ 
+    const formattedLastMessageTime = useMemo(() => {
+        if (!conv.last_message_at) return t('common.recently')
+        return formatDistanceToNow(new Date(conv.last_message_at), {
+            addSuffix: true,
+            locale: locale === 'es' ? es : enUS
+        })
+    }, [conv.last_message_at, locale, t, tick]) // Update every tick (30s)
 
     useEffect(() => {
         const timeDiff = new Date().getTime() - new Date(conv.last_message_at).getTime()
@@ -237,14 +228,8 @@ export const ConversationListItem = memo(function ConversationListItem({ conv, i
                         )}
 
                         <span>
-                            {conv.last_message_at
-                                ? formatDistanceToNow(new Date(conv.last_message_at), {
-                                    addSuffix: true,
-                                    locale: locale === 'es' ? es : enUS
-                                })
-                                : t('common.recently')
-                            }
-                        </span>
+                             {formattedLastMessageTime}
+                         </span>
 
                         {conv.tags && conv.tags.length > 0 && typeof conv.tags[0] === 'string' && (
                             <div className="flex gap-1">
