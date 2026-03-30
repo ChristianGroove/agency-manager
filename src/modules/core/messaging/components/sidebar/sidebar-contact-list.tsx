@@ -1,16 +1,14 @@
 "use client"
 
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState, useRef, useMemo } from "react"
 import { Virtuoso } from "react-virtuoso"
-import { Search, UserPlus, MessageCircle, Phone, Mail, Building2, User } from "lucide-react"
+import { Search, UserPlus, MessageCircle, Phone, Building2 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
 import { getSidebarContacts, SidebarContact } from "@/modules/core/crm/contact-actions"
 import { toast } from "sonner"
-// We need an action to create/find conversation. 
-// Assuming createConversation exists or we mock it for now.
 import { createConversation } from "@/modules/core/messaging/conversation-management-actions"
 import { useRouter } from "next/navigation"
 import { useTranslation } from "@/lib/i18n/use-translation"
@@ -21,10 +19,16 @@ import { Channel as ChannelType } from "@/modules/core/channels/types"
 import { supabase } from "@/lib/supabase"
 
 interface SidebarContactListProps {
-    onSelectConversation: (id: string) => void
+    onSelectConversation: (id: string | null) => void
+    organizationId: string | null
+    userPermissions: any
 }
 
-export function SidebarContactList({ onSelectConversation }: SidebarContactListProps) {
+export function SidebarContactList({ 
+    onSelectConversation, 
+    organizationId: propOrgId, 
+    userPermissions: propPermissions 
+}: SidebarContactListProps) {
     const { t } = useTranslation()
     const [contacts, setContacts] = useState<SidebarContact[]>([])
     const [searchQuery, setSearchQuery] = useState("")
@@ -36,25 +40,36 @@ export function SidebarContactList({ onSelectConversation }: SidebarContactListP
     const [channels, setChannels] = useState<ChannelType[]>([])
     const [selectedChannelId, setSelectedChannelId] = useState<string>("default")
 
+    // Effective identity data
+    const [localPermissions, setLocalPermissions] = useState<any>(null)
+    const effectivePermissions = propPermissions || localPermissions
+
+    const hasGlobalView = useMemo(() => {
+        const role = effectivePermissions?.role?.toLowerCase();
+        const isGlobalRole = role === 'owner' || role === 'dueño' || role === 'admin' || role === 'administrador';
+        
+        return isGlobalRole || 
+               effectivePermissions?.permissions?.all === true || 
+               effectivePermissions?.permissions?.['inbox.conversations.view_all'] === true
+    }, [effectivePermissions])
+
     useEffect(() => {
-        const fetchChannels = async () => {
+        const fetchUserDataAndChannels = async () => {
             try {
-                const { data } = await supabase.auth.getUser()
-                const allChannels = await getChannels()
-
-                let availableChannels = allChannels
-                if (data.user) {
+                // If perms aren't provided, fetch them once here
+                if (!propPermissions) {
                     const perms = await getCurrentUserPermissions()
-                    const role = perms?.role?.toLowerCase();
-                    const isGlobalRole = role === 'owner' || role === 'dueño' || role === 'admin' || role === 'administrador';
-                    const hasGlobalView = isGlobalRole || perms?.permissions?.all === true || 
-                                         perms?.permissions?.['inbox.conversations.view_all'] === true
-                    const isRestricted = !hasGlobalView
-                    const authorizedChannels = perms?.permissions?.inbox_access || []
+                    setLocalPermissions(perms)
+                }
 
-                    if (isRestricted) {
-                        availableChannels = allChannels.filter(c => authorizedChannels.includes(c.id))
-                    }
+                const allChannels = await getChannels()
+                let availableChannels = allChannels
+                
+                const isRestricted = !hasGlobalView
+                const authorizedChannels = effectivePermissions?.permissions?.inbox_access || []
+
+                if (isRestricted) {
+                    availableChannels = allChannels.filter(c => authorizedChannels.includes(c.id))
                 }
 
                 // Only keep WhatsApp channels for new outbound chats
@@ -68,8 +83,8 @@ export function SidebarContactList({ onSelectConversation }: SidebarContactListP
                 console.error("Failed to load channels", error)
             }
         }
-        fetchChannels()
-    }, [])
+        fetchUserDataAndChannels()
+    }, [propPermissions, hasGlobalView, effectivePermissions])
 
     // Debounced search
     const performSearch = async (query: string) => {
@@ -79,7 +94,6 @@ export function SidebarContactList({ onSelectConversation }: SidebarContactListP
             setContacts(data)
         } catch (error) {
             console.error("Error fetching sidebar contacts:", error)
-            toast.error("Failed to load contacts")
         } finally {
             setLoading(false)
         }
@@ -101,7 +115,6 @@ export function SidebarContactList({ onSelectConversation }: SidebarContactListP
     }
 
     const isPhoneNumber = (query: string) => {
-        // Simple check: mostly digits, at least 7 chars
         const digits = query.replace(/\D/g, '')
         return digits.length >= 7
     }
@@ -111,18 +124,13 @@ export function SidebarContactList({ onSelectConversation }: SidebarContactListP
         const contactId = 'id' in contact ? contact.id : undefined
         const isDirectDial = contactId === 'new-direct-dial'
 
-        if (!phone && !contactId) {
-            toast.error("Invalid contact")
-            return
-        }
+        if (!phone && !contactId) return
 
-        const toastId = toast.loading("Starting chat...")
+        const toastId = toast.loading(t('crm.inbox.sidebar.starting_chat' as any) || "Starting chat...")
         try {
-            // Use updated createConversation with client_id OR phone support
             const payload: any = { channel: 'whatsapp' }
 
             if (isDirectDial && phone) {
-                // Direct Dial: send phone number, NOT the fake 'new-direct-dial' ID
                 payload.phone = phone
             } else if (contactId && !isDirectDial) {
                 payload.client_id = contactId
@@ -138,7 +146,7 @@ export function SidebarContactList({ onSelectConversation }: SidebarContactListP
 
             if (result.success && result.data) {
                 onSelectConversation(result.data.id)
-                toast.success("Chat opened", { id: toastId })
+                toast.success(t('crm.inbox.sidebar.chat_opened' as any) || "Chat opened", { id: toastId })
             } else {
                 toast.error(result.error || "Could not start chat", { id: toastId })
             }
@@ -149,10 +157,8 @@ export function SidebarContactList({ onSelectConversation }: SidebarContactListP
         }
     }
 
-    // Combine contacts with "Direct Dial" option if applicable
     const displayContacts = [...contacts]
     if (searchQuery && isPhoneNumber(searchQuery)) {
-        // Check if exact match exists to avoid duplicate
         const exists = contacts.some(c => c.phone?.replace(/\D/g, '') === searchQuery.replace(/\D/g, ''))
         if (!exists) {
             displayContacts.unshift({
@@ -167,9 +173,7 @@ export function SidebarContactList({ onSelectConversation }: SidebarContactListP
 
     return (
         <div className="flex flex-col h-full bg-white dark:bg-zinc-950">
-            {/* Header Area */}
             <div className="px-4 pb-2 pt-2 space-y-3">
-                {/* Search */}
                 <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
@@ -180,7 +184,6 @@ export function SidebarContactList({ onSelectConversation }: SidebarContactListP
                     />
                 </div>
 
-                {/* Channel Selector */}
                 {channels.length > 0 && (
                     <div className="flex items-center gap-2 mt-2 bg-zinc-50 dark:bg-zinc-900/50 p-1.5 rounded-md border border-zinc-100 dark:border-zinc-800">
                         <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap pl-1">
@@ -202,7 +205,6 @@ export function SidebarContactList({ onSelectConversation }: SidebarContactListP
                 )}
             </div>
 
-            {/* Contact List */}
             <div className="flex-1 min-h-0">
                 {loading && contacts.length === 0 ? (
                     <div className="p-8 text-center text-sm text-muted-foreground">
@@ -262,13 +264,11 @@ export function SidebarContactList({ onSelectConversation }: SidebarContactListP
                                         </div>
                                     </div>
 
-                                    {/* Actions - Visible on Hover */}
                                     <div className={cn("opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1", contact.id === 'new-direct-dial' && "opacity-100")}>
                                         <Button
                                             size="icon"
                                             variant="ghost"
                                             className="h-8 w-8 rounded-full text-muted-foreground hover:text-primary hover:bg-transparent"
-                                            title={t('crm.inbox.sidebar.tabs.conversations')}
                                         >
                                             <MessageCircle className="h-4 w-4" />
                                         </Button>

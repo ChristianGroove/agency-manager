@@ -10,11 +10,18 @@ import { useTranslation } from "@/lib/i18n/use-translation"
 interface SidebarTabsProps {
     selectedConversationId: string | null
     onSelectConversation: (id: string | null) => void
+    organizationId: string | null
+    userPermissions: any
 }
 
 type TabType = 'conversations' | 'contacts'
 
-export function SidebarTabs({ selectedConversationId, onSelectConversation }: SidebarTabsProps) {
+export function SidebarTabs({ 
+    selectedConversationId, 
+    onSelectConversation,
+    organizationId,
+    userPermissions 
+}: SidebarTabsProps) {
     const { t } = useTranslation()
     const [activeTab, setActiveTab] = React.useState<TabType>('conversations')
 
@@ -67,21 +74,22 @@ export function SidebarTabs({ selectedConversationId, onSelectConversation }: Si
 
             {/* Content Area */}
             <div className="flex-1 min-h-0 relative">
-                {/* We use absolute positioning and opacity/z-index to allow state preservation if needed, 
-                    OR simple conditional rendering. Conditional is safer for data fetching. */}
-
-                {activeTab === 'conversations' && (
+                <div className={cn("h-full", activeTab !== 'conversations' && "hidden")}>
                     <SidebarConversationList
                         selectedId={selectedConversationId}
-                        onSelect={onSelectConversation}
+                        onSelect={handleConversationSelect}
+                        organizationId={organizationId}
+                        userPermissions={userPermissions}
                     />
-                )}
+                </div>
 
-                {activeTab === 'contacts' && (
+                <div className={cn("h-full", activeTab !== 'contacts' && "hidden")}>
                     <SidebarContactList
                         onSelectConversation={handleConversationSelect}
+                        organizationId={organizationId}
+                        userPermissions={userPermissions}
                     />
-                )}
+                </div>
             </div>
         </div>
     )

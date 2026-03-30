@@ -435,7 +435,7 @@ async function skillsBasedAssignment(conv: any, agentPool?: string[], channelTyp
     return null
 }
 
-async function logAssignment(convId: string, agentId: string, ruleId: string | null, method: string, orgId: string) {
+export async function logAssignment(convId: string, agentId: string, ruleId: string | null, method: string, orgId: string) {
     const { error } = await supabaseAdmin
         .from('assignment_history')
         .insert({

@@ -39,6 +39,8 @@ function InboxLayoutContent({ initialConversationId }: InboxLayoutProps) {
     const { setActiveModules, setSpaceCategory, setAgents } = useInboxContext()
 
     const [selectedConversationId, setSelectedConversationId] = React.useState<string | null>(initialConversationId || null)
+    const [organizationId, setOrganizationId] = React.useState<string | null>(null)
+    const [userPermissions, setUserPermissions] = React.useState<any>(null)
     const [isContextOpen, setIsContextOpen] = React.useState(true)
     const [activeDragId, setActiveDragId] = React.useState<string | null>(null)
 
@@ -88,36 +90,42 @@ function InboxLayoutContent({ initialConversationId }: InboxLayoutProps) {
         }
     }, [searchParams, router])
 
-    // Load Global Config Once (Optimized: Lazy load secondary data)
-     React.useEffect(() => {
-         const loadConfig = async () => {
-             try {
-                 const orgId = await getCurrentOrganizationId()
-                 if (orgId) {
-                     const [modules, { data: orgData }, agentsResult] = await Promise.all([
-                         getActiveModules(orgId),
-                         supabase.from('organizations').select('active_app_id').eq('id', orgId).single(),
-                         getAgentsWorkload()
-                     ])
-                     
-                     setActiveModules(modules)
-                     if (agentsResult.success) setAgents(agentsResult.data)
- 
-                     if (orgData?.active_app_id) {
-                         const { data: appData } = await supabase
-                             .from('saas_apps')
-                             .select('space_category')
-                             .eq('id', orgData.active_app_id)
-                             .single()
-                         setSpaceCategory(appData?.space_category || null)
-                     }
-                 }
-             } catch (err) {
-                 console.error("Failed to load global inbox config", err)
-             }
-         }
-         loadConfig()
-     }, [setActiveModules, setSpaceCategory, setAgents])
+    // Load Global Config Once (Optimized: Centralized Identity & Module Loading)
+    React.useEffect(() => {
+        const loadConfig = async () => {
+            try {
+                const orgId = await getCurrentOrganizationId()
+                if (orgId) {
+                    setOrganizationId(orgId)
+                    
+                    // Fetch everything in parallel to minimize TTFB
+                    const [modules, { data: orgData }, agentsResult, perms] = await Promise.all([
+                        getActiveModules(orgId),
+                        supabase.from('organizations').select('active_app_id').eq('id', orgId).single(),
+                        getAgentsWorkload(),
+                        import('@/modules/core/settings/actions/team-actions').then(m => m.getCurrentUserPermissions())
+                    ])
+                    
+                    setActiveModules(modules)
+                    setUserPermissions(perms)
+                    
+                    if (agentsResult.success) setAgents(agentsResult.data)
+
+                    if (orgData?.active_app_id) {
+                        const { data: appData } = await supabase
+                            .from('saas_apps')
+                            .select('space_category')
+                            .eq('id', orgData.active_app_id)
+                            .single()
+                        setSpaceCategory(appData?.space_category || null)
+                    }
+                }
+            } catch (err) {
+                console.error("Failed to load global inbox config", err)
+            }
+        }
+        loadConfig()
+    }, [setActiveModules, setSpaceCategory, setAgents])
 
     const handleDragStart = (event: DragStartEvent) => {
         setActiveDragId(event.active.id as string)
@@ -190,6 +198,8 @@ function InboxLayoutContent({ initialConversationId }: InboxLayoutProps) {
                     <SidebarTabs
                         selectedConversationId={selectedConversationId}
                         onSelectConversation={setSelectedConversationId}
+                        organizationId={organizationId}
+                        userPermissions={userPermissions}
                     />
                     <ConversationDropZones visible={!!activeDragId} />
                 </div>

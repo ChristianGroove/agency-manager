@@ -4,7 +4,7 @@
 import { useEffect, useState, useMemo, useRef } from "react"
 import { useDebouncedCallback } from "use-debounce"
 import { supabase } from "@/lib/supabase"
-import { Search, MessageSquare, Phone, User, Check, CheckCheck, Filter, Archive, UserCheck, Clock, Bell, BellOff, Settings as SettingsIcon } from "lucide-react"
+import { Search, MessageSquare, Clock, Filter, Archive, Users, Settings as SettingsIcon, MessageCircle, User } from "lucide-react"
 import { Virtuoso } from "react-virtuoso"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -12,6 +12,8 @@ import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { Database } from "@/types/supabase"
 import { InboxSettingsSheet } from "../inbox-settings-sheet"
+import { BulkDistributionModal } from "./bulk-distribution-modal"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { ConversationListItem } from "../conversation-list-item"
 import { ConversationActionsMenu } from "../conversation-actions-menu"
@@ -27,7 +29,7 @@ import { getChannels } from "@/modules/core/channels/actions"
 import { Channel as ChannelType } from "@/modules/core/channels/types"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
-import { Check as CheckIcon, ChevronsUpDown, Users } from "lucide-react"
+import { Check as CheckIcon } from "lucide-react"
 import { getSidebarAgents } from "../../assignment-actions"
 import { realtimeManager } from "@/lib/supabase-realtime-manager"
 
@@ -61,9 +63,16 @@ type Conversation = Database['public']['Tables']['conversations']['Row'] & {
 interface SidebarConversationListProps {
     selectedId: string | null
     onSelect: (id: string | null) => void
+    organizationId: string | null
+    userPermissions: any
 }
 
-export function SidebarConversationList({ selectedId, onSelect }: SidebarConversationListProps) {
+export function SidebarConversationList({ 
+    selectedId, 
+    onSelect, 
+    organizationId: propOrgId, 
+    userPermissions: propPermissions 
+}: SidebarConversationListProps) {
     const { t } = useTranslation()
     const { updateLeadCache } = useSafeInboxContext() as any
     const [conversations, setConversations] = useState<Conversation[]>([])
@@ -78,33 +87,40 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
     const [tick, setTick] = useState(0)
     const [activeMenuConvId, setActiveMenuConvId] = useState<string | null>(null)
     const [activeMenuIsArchived, setActiveMenuIsArchived] = useState(false)
+    const [isDistributeModalOpen, setIsDistributeModalOpen] = useState(false)
     
+    // Internal fallbacks if props are missing
+    const { organizationId: localOrgId, loading: orgLoading } = useCurrentOrganization()
+    const [localPermissions, setLocalPermissions] = useState<any>(null)
+    const [localPermissionsLoaded, setLocalPermissionsLoaded] = useState(false)
+
+    // Effective Data
+    const effectiveOrgId = propOrgId || localOrgId
+    const effectivePermissions = propPermissions || localPermissions
+    const identityLoaded = !!effectiveOrgId && (!!propPermissions || localPermissionsLoaded)
+
     // Sync Ref to avoid stale closures in realtime callback
     const selectedIdRef = useRef(selectedId)
     useEffect(() => { selectedIdRef.current = selectedId }, [selectedId])
 
-
-    // Maestro Ticker: Updates every 30s to refresh "waiting time" counters across all items
-    // This centralizes CPU load and avoids 100+ independent intervals.
+    // Maestro Ticker
     useEffect(() => {
         const interval = setInterval(() => {
             setTick(prev => prev + 1)
         }, 30000)
         return () => clearInterval(interval)
     }, [])
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const [userPermissions, setUserPermissions] = useState<any>(null)
-    const [permissionsLoaded, setPermissionsLoaded] = useState(false)
+
     const [isSettingsOpen, setIsSettingsOpen] = useState(false)
 
     const hasGlobalView = useMemo(() => {
-        const role = userPermissions?.role?.toLowerCase();
+        const role = effectivePermissions?.role?.toLowerCase();
         const isGlobalRole = role === 'owner' || role === 'dueño' || role === 'admin' || role === 'administrador';
         
         return isGlobalRole || 
-               userPermissions?.permissions?.all === true || 
-               userPermissions?.permissions?.['inbox.conversations.view_all'] === true
-    }, [userPermissions])
+               effectivePermissions?.permissions?.all === true || 
+               effectivePermissions?.permissions?.['inbox.conversations.view_all'] === true
+    }, [effectivePermissions])
 
     const filteredAgents = useMemo(() => {
         if (!selectedChannelId) return agents;
@@ -114,72 +130,69 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
             return isAdmin || hasAccess;
         });
     }, [agents, selectedChannelId])
-    const searchInputRef = useRef<HTMLInputElement>(null)
-    const { preferences, updatePreferences } = useInboxPreferences()
-    const { organizationId, loading: orgLoading } = useCurrentOrganization()
 
-    // Notifications are handled by GlobalMessageListener — no duplicate hook needed
+    const searchInputRef = useRef<HTMLInputElement>(null)
+    const { preferences } = useInboxPreferences()
 
     // Enable Shortcuts
     useInboxShortcuts({
         onSearch: () => {
             searchInputRef.current?.focus()
+        },
+        onDistribute: () => {
+            setIsDistributeModalOpen(true)
         }
     });
 
-    // Get current user and permissions
+    // Get current user and local permissions (fallback only)
     useEffect(() => {
-        const fetchInitialData = async () => {
+        const fetchUserData = async () => {
             try {
                 const { data } = await supabase.auth.getUser()
                 if (data.user) {
                     setCurrentUserId(data.user.id)
-                    // Fetch organizational permissions for channel governance
-                    const perms = await getCurrentUserPermissions()
-                    setUserPermissions(perms)
-                    setPermissionsLoaded(true)
-                } else {
-                    setPermissionsLoaded(true)
+                    if (!propPermissions) {
+                        const perms = await getCurrentUserPermissions()
+                        setLocalPermissions(perms)
+                    }
                 }
+                setLocalPermissionsLoaded(true)
             } catch (err) {
-                console.warn('[SidebarConversationList] [AUTH] Failed to fetch initial data:', err)
-                setPermissionsLoaded(true)
+                console.warn('[SidebarConversationList] [AUTH] Fallback failed:', err)
+                setLocalPermissionsLoaded(true)
             }
         }
-        fetchInitialData()
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [])
+        fetchUserData()
+    }, [propPermissions])
 
-    // Unified fetch controller
+    // Unified fetch controller for secondary data (channels, agents)
     useEffect(() => {
-        if (!orgLoading && permissionsLoaded) {
+        if (identityLoaded && effectiveOrgId) {
             fetchChannels()
-            if (userPermissions?.permissions?.all === true || userPermissions?.permissions?.['inbox.conversations.view_all'] === true) {
+            if (hasGlobalView) {
                 getSidebarAgents().then(({ data }) => {
                     if (data) setAgents(data as SidebarAgent[])
                 })
             }
         }
-    }, [organizationId, orgLoading, permissionsLoaded, userPermissions])
+    }, [effectiveOrgId, identityLoaded, hasGlobalView])
 
+    // Main fetch controller for conversations
     useEffect(() => {
-        if (!orgLoading && permissionsLoaded) {
+        if (identityLoaded && effectiveOrgId) {
             // Debounce search
             const timer = setTimeout(() => {
                 fetchConversations(true)
             }, 300)
             return () => clearTimeout(timer)
         }
-    }, [activeFilter, organizationId, orgLoading, permissionsLoaded, selectedChannelId, selectedAgentId, searchQuery])
+    }, [activeFilter, effectiveOrgId, identityLoaded, selectedChannelId, selectedAgentId, searchQuery])
 
     const fetchChannels = async () => {
         const data = await getChannels()
+        const authorizedChannels = effectivePermissions?.permissions?.inbox_access || []
 
-        // Filter channels for staff based on governance
-        const isRestricted = !hasGlobalView
-        const authorizedChannels = userPermissions?.permissions?.inbox_access || []
-
-        if (isRestricted) {
+        if (!hasGlobalView) {
             const filteredChannels = data.filter(c => authorizedChannels.includes(c.id))
             setChannels(filteredChannels)
         } else {
@@ -192,7 +205,7 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
     const [offset, setOffset] = useState(0)
 
     const fetchConversations = async (showLoading = false, isLoadMore = false) => {
-        if (!permissionsLoaded || !userPermissions || (!hasMore && isLoadMore)) return
+        if (!identityLoaded || !effectiveOrgId || (!hasMore && isLoadMore)) return
 
         if (showLoading) setLoading(true)
         const currentOffset = isLoadMore ? offset : 0
@@ -203,21 +216,17 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
             .order('last_message_at', { ascending: false })
             .range(currentOffset, currentOffset + PAGE_SIZE - 1)
 
-        // Apply search if active
         if (searchQuery.trim()) {
             const search = `%${searchQuery.toLowerCase()}%`
             query = query.or(`phone.ilike.${search},last_message_preview.ilike.${search},leads.name.ilike.${search}`)
         }
 
-        // Apply filter
         switch (activeFilter) {
             case 'unread':
                 query = query.gt('unread_count', 0).neq('state', 'archived').neq('status', 'snoozed')
                 break
             case 'assigned':
-                if (currentUserId) {
-                    query = query.eq('assigned_to', currentUserId).neq('state', 'archived').neq('status', 'snoozed')
-                }
+                if (currentUserId) query = query.eq('assigned_to', currentUserId).neq('state', 'archived').neq('status', 'snoozed')
                 break
             case 'archived':
                 query = query.eq('state', 'archived')
@@ -225,35 +234,26 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
             case 'snoozed':
                 query = query.eq('status', 'snoozed')
                 break
-            case 'all':
             default:
                 query = query.neq('state', 'archived').neq('status', 'snoozed')
                 break
         }
 
         if (selectedChannelId) query = query.eq('connection_id', selectedChannelId)
-
-        // Agent Filter Integration (Only triggers if an agent is selected explicitly)
         if (selectedAgentId) {
-            if (selectedAgentId === 'unassigned') {
-                query = query.is('assigned_to', null)
-            } else {
-                query = query.eq('assigned_to', selectedAgentId)
-            }
+            if (selectedAgentId === 'unassigned') query = query.is('assigned_to', null)
+            else query = query.eq('assigned_to', selectedAgentId)
         }
 
         if ((preferences.behavior as any).strict_isolation && currentUserId) {
             query = query.eq('assigned_to', currentUserId)
         }
 
-        const isRestricted = !hasGlobalView
-
-        if (isRestricted && currentUserId) {
-            // Strictly only see what is assigned to me
+        if (!hasGlobalView && currentUserId) {
             query = query.eq('assigned_to', currentUserId)
         }
 
-        if (organizationId) query = query.eq('organization_id', organizationId)
+        query = query.eq('organization_id', effectiveOrgId)
 
         const { data, error } = await query
 
@@ -266,41 +266,23 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
                 setOffset(PAGE_SIZE)
             }
             setHasMore(data.length === PAGE_SIZE)
-        } else if (error) {
-            console.error('[ConversationList] Error fetching conversations:', error.message || error)
         }
         if (showLoading) setLoading(false)
     }
 
     const loadMore = () => {
-        if (!loading && hasMore) {
-            fetchConversations(false, true)
-        }
+        if (!loading && hasMore) fetchConversations(false, true)
     }
 
     const debouncedFetchConversations = useDebouncedCallback((showLoading = false, isLoadMore = false) => {
         fetchConversations(showLoading, isLoadMore)
     }, 1000)
 
-    // Auto-deselect if selected conversation is gone (and no search is active)
-    useEffect(() => {
-        if (!loading && selectedId && conversations.length >= 0) {
-            if (activeFilter === 'all' && !searchQuery) {
-                const stillExists = conversations.some(c => c.id === selectedId)
-                if (!stillExists) {
-                    onSelect(null)
-                }
-            }
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [conversations, loading, selectedId, activeFilter, searchQuery])
-
     // Real-time surgical updates
-    const channelCounter = useRef(0)
     useEffect(() => {
-        if (!organizationId || !currentUserId) return;
+        if (!effectiveOrgId || !currentUserId) return;
         
-        const channelName = `inbox-org-${organizationId}`
+        const channelName = `inbox-org-${effectiveOrgId}`
         
         realtimeManager.getOrCreateChannel(channelName, (channel: any) => {
             channel.on('postgres_changes',
@@ -310,18 +292,13 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
                     const updatedConv = payload.new as Conversation
                     const oldConv = payload.old as any
                     
-                    if (updatedConv && updatedConv.organization_id !== organizationId) return;
+                    if (updatedConv && updatedConv.organization_id !== effectiveOrgId) return;
 
                     setConversations((prev) => {
-                        // 1. HANDLE DELETE
-                        if (eventType === 'DELETE') {
-                            return prev.filter(c => c.id !== oldConv.id)
-                        }
+                        if (eventType === 'DELETE') return prev.filter(c => c.id !== oldConv.id)
 
-                        // 2. HANDLE UPDATE/INSERT
                         const existingIndex = prev.findIndex(c => c.id === updatedConv.id)
                         
-                        // --- CHECK FILTER MATCH ---
                         let matches = true
                         if (activeFilter === 'all') matches = updatedConv.state !== 'archived' && updatedConv.status !== 'snoozed'
                         else if (activeFilter === 'unread') matches = updatedConv.unread_count > 0 && updatedConv.state !== 'archived' && updatedConv.status !== 'snoozed'
@@ -329,41 +306,26 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
                         else if (activeFilter === 'archived') matches = updatedConv.state === 'archived'
                         else if (activeFilter === 'snoozed') matches = updatedConv.status === 'snoozed'
 
-                        if (!matches) {
-                            // If it doesn't match the current filter anymore (e.g. resolved/archived), remove it
-                            return prev.filter(c => c.id !== updatedConv.id)
-                        }
+                        if (!matches) return prev.filter(c => c.id !== updatedConv.id)
 
-                        // If it matches, update or insert
                         if (existingIndex > -1) {
                             const updated = {
                                 ...prev[existingIndex],
                                 ...updatedConv,
-                                // Preserve joined data if missing in payload
                                 leads: prev[existingIndex].leads,
                                 clients: prev[existingIndex].clients,
                                 integration_connections: prev[existingIndex].integration_connections
                             }
-                            // Move to top of list as it was updated
                             return [updated, ...prev.filter(c => c.id !== updatedConv.id)]
-                        } else {
-                            // New item matching filter (might happen on unarchive/re-assign)
-                            // We don't have joined data here, so a full fetch might be better, 
-                            // but adding it to the end or beginning is a start.
-                            // Actually, better to just trigger a debounced fetch if it's new
-                            return prev 
                         }
+                        return prev 
                     })
 
-                    // IF THIS IS THE CURRENTLY OPEN CHAT, NOTIFY CHATAREA IMMEDIATELY
                     if (updatedConv.id === selectedIdRef.current) {
                         window.dispatchEvent(new CustomEvent('pixy:sync-active-chat', { 
                             detail: { conversationId: updatedConv.id } 
                         }));
                     }
-
-
-                    // Always trigger a debounced fetch as backup for full data integrity (joins)
                     debouncedFetchConversations(false)
                 }
             )
@@ -375,13 +337,6 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
             })
         })
 
-        // ROBUST POLLING FALLBACK: Poll more frequently if Realtime is NOT joined
-        const pollingInterval = setInterval(() => {
-            // We can ask the manager about status if we want, or just poll if not joined
-            // But with the manager, it should be joined most of the time.
-        }, 35000) 
-
-        // GLOBAL SYNC: Listen for conversation-deleted events from other components (e.g. ChatArea)
         const handleGlobalDelete = (e: Event) => {
             const { conversationId } = (e as CustomEvent).detail;
             if (conversationId) {
@@ -393,13 +348,10 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
 
         return () => {
             realtimeManager.releaseChannel(channelName)
-            clearInterval(pollingInterval)
             window.removeEventListener('pixy:conversation-deleted', handleGlobalDelete);
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [organizationId, currentUserId, activeFilter, permissionsLoaded, JSON.stringify(userPermissions?.permissions || {})])
+    }, [effectiveOrgId, currentUserId, activeFilter, identityLoaded])
 
-    // Count badges for tabs (Current visible set)
     const counts = useMemo(() => {
         return {
             all: conversations.filter(c => c.state !== 'archived' && c.status !== 'snoozed').length,
@@ -413,11 +365,14 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
     return (
         <div className="flex flex-col h-full bg-white dark:bg-zinc-950">
             <InboxSettingsSheet open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
+            <BulkDistributionModal 
+                open={isDistributeModalOpen} 
+                onOpenChange={setIsDistributeModalOpen}
+                onSuccess={() => fetchConversations(false)}
+            />
 
-            {/* Header Area */}
             <TooltipProvider>
                 <div className="px-4 pb-2 pt-2 space-y-3">
-                    {/* Channel Filter & Search */}
                     <div className="flex gap-2">
                         <div className="relative flex-1">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -538,7 +493,6 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
                         </Tooltip>
                     </div>
 
-                    {/* Filter Tabs */}
                     <Tabs value={activeFilter} onValueChange={(v) => setActiveFilter(v as FilterTab)} className="w-full">
                         <TabsList className="w-full justify-start gap-1 bg-transparent p-0 h-auto">
                             <TabsTrigger
@@ -599,13 +553,12 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
                 </div>
             </TooltipProvider>
 
-            {/* Conversation List */}
             <div className="flex-1 min-h-0">
-                {loading ? (
+                {!identityLoaded ? (
                     <div className="p-8 text-center text-sm text-muted-foreground">
                         {t('crm.inbox.sidebar.loading')}
                     </div>
-                ) : conversations.length === 0 ? (
+                ) : conversations.length === 0 && !loading ? (
                     <div className="flex flex-col items-center justify-center h-full p-8 text-center opacity-60">
                         <MessageSquare className="h-8 w-8 mb-3 text-muted-foreground" />
                         <p className="text-sm font-medium text-foreground">{t('crm.inbox.sidebar.no_conversations')}</p>
@@ -626,8 +579,6 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
                                     conv={conv}
                                     isSelected={conv.id === selectedId}
                                     onSelect={(id) => {
-                                        // Eager cache update: Push basic data to context BEFORE selecting
-                                        // This makes the ContextDeck header show the name INSTANTLY
                                         const contactData = conv.clients || conv.leads || { name: conv.leads?.name || conv.leads?.phone }
                                         if (updateLeadCache) {
                                             updateLeadCache(id, {
@@ -660,7 +611,6 @@ export function SidebarConversationList({ selectedId, onSelect }: SidebarConvers
                     />
                 )}
                 
-                {/* Singleton Actions Menu - Renders only once for the whole list */}
                 {activeMenuConvId && (
                     <div className="hidden">
                         <ConversationActionsMenu 

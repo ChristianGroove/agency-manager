@@ -79,6 +79,16 @@ export const es = {
         cat_finance: "Finanzas",
         cat_tools: "Herramientas",
         cat_config: "Plataforma",
+        distribution: {
+            title: "Distribución Inteligente",
+            subtitle: "{count} conversaciones pendientes",
+            distribute: "Repartir",
+            distribute_all: "Repartir Todo",
+            distributing: "Asignando...",
+            success: "Se han repartido {count} chats",
+            no_unassigned: "Sin chats pendientes",
+            syncing: "Sincronizando...",
+        }
     },
     settings: {
         title: "Configuración",

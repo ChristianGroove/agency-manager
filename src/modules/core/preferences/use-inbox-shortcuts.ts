@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useHotkeys } from 'react-hotkeys-hook';
@@ -10,9 +9,11 @@ export interface InboxShortcutsProps {
     onArchive?: () => void;
     onNext?: () => void;
     onPrevious?: () => void;
+    onDistribute?: () => void;
 }
 
-export function useInboxShortcuts({ onSearch, onArchive, onNext, onPrevious }: InboxShortcutsProps = {}) {
+export function useInboxShortcuts({ onSearch, onArchive, onNext, onPrevious, onDistribute }: InboxShortcutsProps = {}) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { preferences } = useInboxPreferences();
 
     // Focus Search
@@ -35,6 +36,14 @@ export function useInboxShortcuts({ onSearch, onArchive, onNext, onPrevious }: I
     useHotkeys('k', () => onPrevious?.(), { enableOnFormTags: false });
     useHotkeys('down', () => onNext?.(), { enableOnFormTags: false });
     useHotkeys('up', () => onPrevious?.(), { enableOnFormTags: false });
+
+    // Distribute Unassigned (Ctrl + Alt + A)
+    useHotkeys('ctrl+alt+a', (e) => {
+        if (onDistribute) {
+            e.preventDefault();
+            onDistribute();
+        }
+    }, { enableOnFormTags: false });
 
     return null; // Logic only
 }

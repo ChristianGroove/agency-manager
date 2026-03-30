@@ -79,6 +79,16 @@ export const en = {
         cat_finance: "Finance",
         cat_tools: "Tools",
         cat_config: "Platform",
+        distribution: {
+            title: "Intelligent Distribution",
+            subtitle: "{count} unassigned conversations",
+            distribute: "Distribute",
+            distribute_all: "Distribute All",
+            distributing: "Assigning...",
+            success: "Assigned {count} chats",
+            no_unassigned: "No pending chats",
+            syncing: "Syncing...",
+        }
     },
     settings: {
         title: "Settings",

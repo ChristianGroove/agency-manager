@@ -147,6 +147,14 @@ export const enTranslations = {
     'crm.reports.kpis.target_response': 'Target Response',
     'common.n_a': 'N/A',
 
+    // Distribution
+    'crm.inbox.sidebar.distribute': 'Distribute',
+    'crm.inbox.sidebar.distribute_all': 'Distribute All Channels',
+    'crm.inbox.sidebar.distributing': 'Assigning conversations...',
+    'crm.inbox.sidebar.distributed_success': 'Successfully assigned {count} conversations',
+    'crm.inbox.sidebar.bulk_distribution': 'Intelligent Distribution',
+    'crm.inbox.sidebar.no_unassigned': 'No unassigned conversations',
+
     // Sidebar
     'sidebar.cat_crm': 'CRM & Sales',
     'sidebar.meta_ads_monitor': 'Meta Ads Monitor',
@@ -201,7 +209,15 @@ export const esTranslations = {
     // Sidebar
     'sidebar.cat_crm': 'CRM y Ventas',
     'sidebar.meta_ads_monitor': 'Monitor de Meta Ads',
-    'sidebar.module_meta_ads': 'Motor de Meta Ads'
+    'sidebar.module_meta_ads': 'Motor de Meta Ads',
+
+    // Distribution
+    'crm.inbox.sidebar.distribute': 'Repartir',
+    'crm.inbox.sidebar.distribute_all': 'Repartir todos los canales',
+    'crm.inbox.sidebar.distributing': 'Asignando conversaciones...',
+    'crm.inbox.sidebar.distributed_success': 'Se han repartido {count} conversaciones',
+    'crm.inbox.sidebar.bulk_distribution': 'Distribución Inteligente',
+    'crm.inbox.sidebar.no_unassigned': 'Sin conversaciones pendientes',
 };
 
 /**

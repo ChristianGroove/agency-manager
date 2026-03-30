@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase-server"
 import { supabaseAdmin } from "@/lib/supabase-admin"
-import { assignConversation as autoAssignConversation } from "./assignment-engine"
+import { assignConversation as autoAssignConversation, logAssignment } from "./assignment-engine"
 import { revalidatePath } from "next/cache"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
 
@@ -542,4 +542,183 @@ export async function reconcileAllAgentLoads() {
 
     const fixed = results.filter(r => r.previous !== r.actual)
     return { success: true, data: { total: agents.length, reconciled: fixed.length } }
+}
+
+/**
+ * Distribute all unassigned conversations equitably among online agents
+ * using a channel-aware Round Robin algorithm.
+ */
+/**
+ * Distribute unassigned conversations equitably among online agents.
+ * @param targetConnectionIds Optional array of connection IDs to limit distribution.
+ */
+export async function distributeUnassignedConversations(targetConnectionIds?: string[]) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, error: 'Unauthorized' }
+
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) return { success: false, error: 'No organization found' }
+
+    // 1. Fetch unassigned conversations
+    let convQuery = supabaseAdmin
+        .from('conversations')
+        .select('id, channel, connection_id')
+        .eq('organization_id', orgId)
+        .is('assigned_to', null)
+        .eq('state', 'active')
+        .eq('status', 'open')
+
+    if (targetConnectionIds && targetConnectionIds.length > 0) {
+        convQuery = convQuery.in('connection_id', targetConnectionIds)
+    }
+
+    const { data: unassigned, error: convError } = await convQuery
+
+    if (convError) return { success: false, error: convError.message }
+    if (!unassigned || unassigned.length === 0) return { success: true, count: 0, message: 'No unassigned conversations' }
+
+    // 2. Fetch online agents with heartbeat validation (3 minutes threshold)
+    const heartbeatThreshold = new Date(Date.now() - 3 * 60 * 1000).toISOString()
+    const { data: agents, error: agentError } = await supabaseAdmin
+        .from('agent_availability')
+        .select('agent_id, organization_id, last_seen_at')
+        .eq('organization_id', orgId)
+        .eq('status', 'online')
+        .eq('auto_assign_enabled', true)
+        .gt('last_seen_at', heartbeatThreshold)
+
+    if (agentError) return { success: false, error: agentError.message }
+    if (!agents || agents.length === 0) return { success: false, error: 'No online agents available' }
+
+    const agentIds = agents.map(a => a.agent_id)
+
+    // 3. Get roles and channel access for these agents
+    const [rolesResult, accessResult] = await Promise.all([
+        supabaseAdmin.from('organization_members').select('user_id, role, permissions').eq('organization_id', orgId).in('user_id', agentIds),
+        supabaseAdmin.from('agent_channels').select('agent_id, channel_type').eq('is_active', true).in('agent_id', agentIds)
+    ])
+
+    const membersMap = new Map((rolesResult.data || []).map(m => [m.user_id, m]))
+    const channelAccessMap = (accessResult.data || []).reduce((acc: any, curr) => {
+        if (!acc[curr.agent_id]) acc[curr.agent_id] = new Set()
+        acc[curr.agent_id].add(curr.channel_type)
+        return acc
+    }, {})
+
+    // 4. Group conversations by connection_id for targeted distribution
+    const groups: Record<string, typeof unassigned> = {}
+    unassigned.forEach(c => {
+        const key = c.connection_id || c.channel
+        if (!groups[key]) groups[key] = []
+        groups[key].push(c)
+    })
+
+    let totalDistributed = 0
+    const assignmentPromises: Promise<any>[] = []
+
+    // 5. Apply Round Robin per Group
+    for (const [connectionId, groupChats] of Object.entries(groups)) {
+        // Filter agents qualified for THIS channel
+        const qualifiedAgents = agents.filter(a => {
+            const member = membersMap.get(a.agent_id)
+            const isAdmin = ['admin', 'owner'].includes(member?.role?.toLowerCase())
+            const hasChannelBinding = channelAccessMap[a.agent_id]?.has(connectionId) || channelAccessMap[a.agent_id]?.has(groupChats[0].channel)
+            const hasExplicitAccess = (member?.permissions as any)?.inbox_access?.includes(connectionId)
+            return isAdmin || hasChannelBinding || hasExplicitAccess
+        })
+
+        if (qualifiedAgents.length === 0) continue
+
+        // Distribute chats in this group
+        groupChats.forEach((chat, index) => {
+            const agent = qualifiedAgents[index % qualifiedAgents.length]
+            
+            // Push update promise - Wrapped in async to ensure correct Promise type
+            assignmentPromises.push((async () => {
+                const { error: updateError } = await supabaseAdmin
+                    .from('conversations')
+                    .update({ assigned_to: agent.agent_id, updated_at: new Date().toISOString() })
+                    .eq('id', chat.id)
+                
+                if (!updateError) {
+                    await logAssignment(chat.id, agent.agent_id, null, 'round-robin-bulk', orgId)
+                }
+            })())
+            totalDistributed++
+        })
+    }
+
+    if (totalDistributed > 0) {
+        await Promise.all(assignmentPromises)
+        revalidatePath('/inbox')
+    }
+
+    return { success: true, count: totalDistributed }
+}
+
+/**
+ * Get statistics of unassigned conversations grouped by channel connection
+ */
+export async function getUnassignedDistributionStats() {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, data: [] }
+
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) return { success: false, data: [] }
+
+    // 1. Fetch unassigned conversations summary
+    const { data: convs, error: convError } = await supabaseAdmin
+        .from('conversations')
+        .select('connection_id, channel')
+        .eq('organization_id', orgId)
+        .is('assigned_to', null)
+        .eq('state', 'active')
+        .eq('status', 'open')
+
+    if (convError || !convs) {
+        return { success: false, error: convError?.message, data: [] }
+    }
+
+    const { data: connections, error: connError } = await supabaseAdmin
+        .from('integration_connections')
+        .select('id, connection_name, provider_key')
+        .eq('organization_id', orgId)
+
+    if (connError) {
+        return { success: false, error: connError.message, data: [] }
+    }
+
+    const connMap = new Map(connections?.map(c => [c.id, c]) || [])
+
+    // 3. Group and count
+    const statsMap: Record<string, { id: string, name: string, type: string, count: number }> = {}
+
+    const getFriendlyType = (key: string) => {
+        const k = key.toLowerCase();
+        if (k.includes('whatsapp')) return 'WhatsApp';
+        if (k.includes('instagram')) return 'Instagram';
+        if (k.includes('messenger') || k.includes('facebook')) return 'Messenger';
+        if (k.includes('evolution')) return 'WhatsApp (API)';
+        return key;
+    }
+
+    convs.forEach(c => {
+        const id = c.connection_id || 'unknown'
+        if (!statsMap[id]) {
+            const conn = connMap.get(id)
+            const typeKey = conn?.provider_key || c.channel || 'chat'
+            statsMap[id] = {
+                id,
+                name: conn?.connection_name || 'General',
+                type: getFriendlyType(typeKey),
+                count: 0
+            }
+        }
+        statsMap[id].count++
+    })
+
+    const data = Object.values(statsMap).sort((a, b) => b.count - a.count)
+    return { success: true, data }
 }
