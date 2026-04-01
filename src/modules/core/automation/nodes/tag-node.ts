@@ -61,11 +61,11 @@ export class TagNode {
             await logToDb('info', `Executing node: ${action} tag ${tagName}`, { leadId, tagName, action });
 
             if (action === 'add') {
-                const res = await addLeadTagSystem(leadId, tagName, orgId, executionId);
+                const res = await addLeadTagSystem(leadId, tagName, orgId);
                 if (!res.success) throw new Error(res.error);
                 await logToDb('info', `Tag added successfully`, { leadId, tagName });
             } else if (action === 'remove') {
-                const res = await removeLeadTagSystem(leadId, tagName, orgId, executionId);
+                const res = await removeLeadTagSystem(leadId, tagName, orgId);
                 if (!res.success) throw new Error(res.error);
                 await logToDb('info', `Tag removed successfully`, { leadId, tagName });
             }

@@ -238,7 +238,7 @@ export async function exportLeadsToCSV(): Promise<ActionResponse<string>> {
 export async function purgeColdLeads(criteria: { 
     inactiveDays: number, 
     minScore?: number 
-}): Promise<ActionResponse<{ deleted: number }>> {
+    }): Promise<ActionResponse<{ deleted: number }>> {
     const orgId = await getCurrentOrganizationId()
     if (!orgId) return { success: false, error: "No organization context" }
 

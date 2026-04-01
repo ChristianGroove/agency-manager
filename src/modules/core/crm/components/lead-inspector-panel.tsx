@@ -461,15 +461,15 @@ export function LeadInspectorPanel() {
                 "
             >
                 <div className="flex flex-col h-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl">
-                    <div className="sticky top-0 z-20 flex items-center gap-3 px-6 py-4 bg-white/40 dark:bg-slate-900/40 backdrop-blur-md border-b border-black/5 dark:border-white/5">
+                    <SheetHeader className="sticky top-0 z-20 flex flex-row items-center gap-3 px-6 py-4 bg-white/40 dark:bg-slate-900/40 backdrop-blur-md border-b border-black/5 dark:border-white/5 text-left space-y-0">
                         <div className="p-2 bg-indigo-50 dark:bg-indigo-950/50 rounded-lg text-indigo-600">
                             <User className="h-5 w-5" />
                         </div>
-                        <div>
-                            <h2 className="text-lg font-bold tracking-tight">Lead Inspector</h2>
-                            <p className="text-xs text-muted-foreground">{lead?.name || 'Cargando...'}</p>
+                        <div className="flex flex-col">
+                            <SheetTitle className="text-lg font-bold tracking-tight">Lead Inspector</SheetTitle>
+                            <SheetDescription className="text-xs text-muted-foreground">{lead?.name || 'Cargando...'}</SheetDescription>
                         </div>
-                    </div>
+                    </SheetHeader>
 
                     {loading ? (
                         <div className="p-6 space-y-4">

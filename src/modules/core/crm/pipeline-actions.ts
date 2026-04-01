@@ -1,8 +1,9 @@
-"use server"
+'use server'
 
 import { createClient } from "@/lib/supabase-server"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
 import { revalidatePath } from "next/cache"
+import { PipelineService } from "./logic/services/pipeline.service"
 
 export type PipelineStage = {
     id: string
@@ -16,32 +17,32 @@ export type PipelineStage = {
     is_final: boolean
 }
 
+export type Pipeline = {
+    id: string
+    organization_id: string
+    name: string
+    is_default: boolean
+    process_enabled: boolean
+}
+
 export type ActionResponse<T> = {
     success: boolean
     data?: T
     error?: string
 }
 
-export async function getPipelineStages(): Promise<PipelineStage[]> {
+async function getService() {
     const supabase = await createClient()
     const orgId = await getCurrentOrganizationId()
+    if (!orgId) throw new Error("No organization context")
+    return new PipelineService(supabase, orgId)
+}
 
-    if (!orgId) return []
-
+export async function getPipelineStages(): Promise<PipelineStage[]> {
     try {
-        const { data, error } = await supabase
-            .from('pipeline_stages')
-            .select('*')
-            .eq('organization_id', orgId)
-            .eq('is_active', true)
-            .order('display_order', { ascending: true })
-
-        if (error) throw error
-
-        // DEBUG: Check stages
-        console.log("🛤️ Pipeline Stages for Org:", orgId, data?.map(s => `${s.name} (${s.status_key})`))
-        return data as PipelineStage[]
-    } catch (error: any) {
+        const service = await getService()
+        return await service.getStages() as PipelineStage[]
+    } catch (error) {
         console.error("Error fetching pipeline stages:", error)
         return []
     }
@@ -54,36 +55,10 @@ export async function createPipelineStage(input: {
     icon?: string
     display_order?: number
 }): Promise<ActionResponse<PipelineStage>> {
-    const supabase = await createClient()
-    const orgId = await getCurrentOrganizationId()
-
-    if (!orgId) return { success: false, error: "No organization context" }
-
     try {
-        // Find default pipeline if not provided
-        const { data: pipeline } = await supabase
-            .from('pipelines')
-            .select('id')
-            .eq('organization_id', orgId)
-            .eq('is_default', true)
-            .single()
-
-        const { data, error } = await supabase
-            .from('pipeline_stages')
-            .insert({
-                organization_id: orgId,
-                pipeline_id: pipeline?.id,
-                name: input.name,
-                status_key: input.status_key,
-                color: input.color || 'bg-gray-500',
-                icon: input.icon || 'circle',
-                display_order: input.display_order || 999,
-            })
-            .select()
-            .single()
-
-        if (error) throw error
-
+        const service = await getService()
+        const data = await service.createStage(input)
+        
         revalidatePath('/crm')
         revalidatePath('/crm/pipeline')
         revalidatePath('/crm/settings/pipeline')
@@ -99,21 +74,9 @@ export async function updatePipelineStage(
     stageId: string,
     updates: Partial<Pick<PipelineStage, 'name' | 'color' | 'icon' | 'display_order'>>
 ): Promise<ActionResponse<PipelineStage>> {
-    const supabase = await createClient()
-    const orgId = await getCurrentOrganizationId()
-
-    if (!orgId) return { success: false, error: "No organization context" }
-
     try {
-        const { data, error } = await supabase
-            .from('pipeline_stages')
-            .update(updates)
-            .eq('id', stageId)
-            .eq('organization_id', orgId)
-            .select()
-            .single()
-
-        if (error) throw error
+        const service = await getService()
+        const data = await service.updateStage(stageId, updates)
 
         revalidatePath('/crm')
         revalidatePath('/crm/pipeline')
@@ -127,20 +90,9 @@ export async function updatePipelineStage(
 }
 
 export async function deletePipelineStage(stageId: string): Promise<ActionResponse<null>> {
-    const supabase = await createClient()
-    const orgId = await getCurrentOrganizationId()
-
-    if (!orgId) return { success: false, error: "No organization context" }
-
     try {
-        // Soft delete by setting is_active to false
-        const { error } = await supabase
-            .from('pipeline_stages')
-            .update({ is_active: false })
-            .eq('id', stageId)
-            .eq('organization_id', orgId)
-
-        if (error) throw error
+        const service = await getService()
+        await service.deleteStage(stageId)
 
         revalidatePath('/crm')
         revalidatePath('/crm/pipeline')
@@ -156,22 +108,9 @@ export async function deletePipelineStage(stageId: string): Promise<ActionRespon
 export async function reorderPipelineStages(
     stageIds: string[]
 ): Promise<ActionResponse<null>> {
-    const supabase = await createClient()
-    const orgId = await getCurrentOrganizationId()
-
-    if (!orgId) return { success: false, error: "No organization context" }
-
     try {
-        // Update each stage with its new display_order
-        const updates = stageIds.map((stageId, index) =>
-            supabase
-                .from('pipeline_stages')
-                .update({ display_order: index + 1 })
-                .eq('id', stageId)
-                .eq('organization_id', orgId)
-        )
-
-        await Promise.all(updates)
+        const service = await getService()
+        await service.reorderStages(stageIds)
 
         revalidatePath('/crm')
         revalidatePath('/crm/pipeline')
@@ -184,138 +123,38 @@ export async function reorderPipelineStages(
     }
 }
 
-// --- Pipeline Entity Actions (Phase 8) ---
-
-export type Pipeline = {
-    id: string
-    organization_id: string
-    name: string
-    is_default: boolean
-    process_enabled: boolean
-}
-
-/**
- * Get the default pipeline for the organization
- * (For MVP we assume 1 pipeline per org)
- */
-export async function getDefaultPipeline(): Promise<Pipeline | null> {
-    const supabase = await createClient()
-    const orgId = await getCurrentOrganizationId()
-
-    if (!orgId) return null
-
+export async function getDefaultPipeline() {
     try {
-        const { data, error } = await supabase
-            .from('pipelines')
-            .select('*')
-            .eq('organization_id', orgId)
-            .eq('is_default', true)
-            .maybeSingle()
-
-        if (error) throw error
-        return data as Pipeline
+        const service = await getService()
+        return await service.getDefaultPipeline()
     } catch (error: any) {
         console.error("Error fetching pipeline:", error)
         return null
     }
 }
 
-export async function togglePipelineStrictMode(pipelineId: string, enabled: boolean): Promise<ActionResponse<Pipeline>> {
-    const supabase = await createClient()
-    const orgId = await getCurrentOrganizationId()
-
-    if (!orgId) return { success: false, error: "Unauthorized" }
-
+export async function togglePipelineStrictMode(pipelineId: string, enabled: boolean) {
     try {
-        const { data, error } = await supabase
-            .from('pipelines')
-            .update({ process_enabled: enabled })
-            .eq('id', pipelineId)
-            .eq('organization_id', orgId)
-            .select()
-            .single()
-
-        if (error) throw error
-        return { success: true, data: data as Pipeline }
+        const service = await getService()
+        const data = await service.toggleStrictMode(pipelineId, enabled)
+        return { success: true, data }
     } catch (error: any) {
         console.error("Error toggling strict mode:", error)
         return { success: false, error: error.message }
     }
 }
 
-// --- Optimized Data Fetching (Phase 9) ---
-import { unstable_cache } from "next/cache"
-import { Lead, Emitter } from "@/types"
-import { supabaseAdmin } from "@/lib/supabase-admin"
-
-/**
- * Cached version of getPipelineStages (1 hour TTL)
- * Stages rarely change.
- */
-async function fetchPipelineStages(orgId: string) {
-    // Use Admin Client to bypass cookies() requirement in cache scope
-    const { data, error } = await supabaseAdmin
-        .from('pipeline_stages')
-        .select('*')
-        .eq('organization_id', orgId)
-        .eq('is_active', true)
-        .order('display_order', { ascending: true })
-
-    if (error) return []
-    return data as PipelineStage[]
-}
-
-/**
- * Cached version of getPipelineStages (1 hour TTL)
- * Stages rarely change.
- */
 export async function getCachedPipelineStages(orgId: string) {
-    return unstable_cache(
-        async () => fetchPipelineStages(orgId),
-        ['pipeline-stages', orgId],
-        { revalidate: 3600 }
-    )()
+    const service = await getService()
+    return await service.getCachedStages()
 }
 
-/**
- * Aggregated server action to fetch all CRM data in parallel.
- * Reduces 4+ roundtrips to 1.
- */
 export async function getPipelineData(connectionId?: string | null) {
-    const orgId = await getCurrentOrganizationId()
-    if (!orgId) return null
-
-    // Require Security Team Permissions
-    const { getCurrentUserPermissions } = await import('@/modules/core/settings/actions/team-actions')
-    const perms = await getCurrentUserPermissions()
-
-    let allowedChannels: string[] | undefined = undefined
-    const role = perms?.role?.toLowerCase();
-    const isGlobalRole = role === 'owner' || role === 'dueño' || role === 'admin' || role === 'administrador';
-    const hasGlobalView = isGlobalRole || perms?.permissions?.all === true || 
-                         perms?.permissions?.['inbox.conversations.view_all'] === true
-    const isRestricted = !hasGlobalView
-
-    if (isRestricted) {
-        allowedChannels = perms?.permissions?.inbox_access || []
-    }
-
-    // Parallel Fetching
-    const { getLeads } = await import('./leads-actions')
-    const { getEmitters } = await import('@/modules/core/settings/emitters-actions')
-    const { getLeadsCount } = await import('./lead-management-actions')
-
-    const [stages, leads, emitters, totalCount] = await Promise.all([
-        getCachedPipelineStages(orgId),
-        getLeads(100, connectionId, allowedChannels), // Pass filters
-        getEmitters(),
-        getLeadsCount()
-    ])
-
-    return {
-        stages,
-        leads,
-        emitters: emitters || [],
-        totalCount
+    try {
+        const service = await getService()
+        return await service.getPipelineData(connectionId)
+    } catch (error) {
+        console.error("Error fetching pipeline data:", error)
+        return null
     }
 }

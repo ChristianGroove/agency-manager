@@ -42,6 +42,81 @@ export class LeadsRepository {
         return data as Lead
     }
 
+    async findWithRelations(id: string, organizationId: string): Promise<any> {
+        // Fetch lead core
+        const { data: lead, error: leadError } = await this.supabase
+            .from('leads')
+            .select('*')
+            .eq('id', id)
+            .eq('organization_id', organizationId)
+            .single()
+
+        if (leadError || !lead) return null
+
+        // Fetch relations in parallel
+        const [
+            { data: activities },
+            { data: tasks },
+            { data: notes },
+            { data: documents },
+            { data: assignee },
+            { data: emails },
+            { data: sourceConnection }
+        ] = await Promise.all([
+            this.supabase
+                .from('lead_activities')
+                .select('*')
+                .eq('lead_id', id)
+                .order('created_at', { ascending: false })
+                .limit(50),
+            this.supabase
+                .from('lead_tasks')
+                .select('*')
+                .eq('lead_id', id)
+                .order('due_date', { ascending: true, nullsFirst: false }),
+            this.supabase
+                .from('lead_notes')
+                .select('*')
+                .eq('lead_id', id)
+                .order('created_at', { ascending: false }),
+            this.supabase
+                .from('lead_documents')
+                .select('*')
+                .eq('lead_id', id)
+                .order('created_at', { ascending: false }),
+            lead.assigned_to
+                ? this.supabase
+                    .from('profiles')
+                    .select('id, email, full_name, avatar_url')
+                    .eq('id', lead.assigned_to)
+                    .single()
+                : Promise.resolve({ data: null }),
+            this.supabase
+                .from('lead_emails')
+                .select('*')
+                .eq('lead_id', id)
+                .order('created_at', { ascending: false }),
+            lead.source_connection_id
+                ? this.supabase
+                    .from('integration_connections')
+                    .select('id, connection_name, provider_key')
+                    .eq('id', lead.source_connection_id)
+                    .single()
+                : Promise.resolve({ data: null })
+        ])
+
+        return {
+            ...lead,
+            activities: activities || [],
+            tasks: tasks || [],
+            note_entries: notes || [],
+            documents: documents || [],
+            emails: emails || [],
+            assignee: assignee || undefined,
+            source_connection: sourceConnection || undefined
+        }
+    }
+
     async update(id: string, updates: Record<string, any>, organizationId?: string): Promise<Lead> {
         let query = this.supabase
             .from('leads')

@@ -149,16 +149,20 @@ export class LeadsService {
         return lead
     }
 
-    async calculateScore(leadId: string): Promise<{ score: number, breakdown: Record<string, number> }> {
-        const { score, breakdown } = await coreCalculateLeadScore(leadId)
+    async getWithRelations(leadId: string): Promise<any> {
+        return this.repo.findWithRelations(leadId, this.organizationId)
+    }
 
-        // Admin override usually or standard repo update
+    async calculateScore(leadId: string): Promise<any> {
+        const { score, factors, breakdown } = await coreCalculateLeadScore(leadId)
+
         await this.repo.update(leadId, {
             score,
+            score_factors: factors,
             last_scored_at: new Date().toISOString()
-        })
+        }, this.organizationId)
 
-        return { score, breakdown }
+        return { score, factors, breakdown }
     }
 
     async recalculateAllScores(): Promise<number> {
