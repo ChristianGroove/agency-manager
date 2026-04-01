@@ -201,9 +201,10 @@ export async function getContractGeneratorData({ clientId, serviceIds }: { clien
     // 2. Fetch Client Details if selected
     if (clientId) {
         const { data: client } = await supabase
-            .from("clients")
+            .from("leads")
             .select("*")
             .eq("id", clientId)
+            .eq("contact_type", "client")
             .single()
         results.client = client
     }
@@ -229,9 +230,10 @@ export async function getClientsList() {
 
     const supabase = await createClient()
     const { data: clients, error } = await supabase
-        .from("clients")
+        .from("leads")
         .select("id, name, email")
         .eq("organization_id", orgId)
+        .eq("contact_type", "client")
         .order("name")
 
     if (error) {
@@ -281,7 +283,7 @@ export async function getContracts() {
             title, 
             status, 
             created_at, 
-            client:clients(name)
+            client:leads(name)
         `)
         .eq('organization_id', orgId)
         .order('created_at', { ascending: false })

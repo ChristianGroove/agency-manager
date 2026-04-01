@@ -58,7 +58,7 @@ export async function getClients() {
     if (!orgId) return []
 
     const { data, error } = await supabase
-        .from('clients')
+        .from('leads')
         .select('id, name')
         .eq('organization_id', orgId)
         .order('name', { ascending: true })

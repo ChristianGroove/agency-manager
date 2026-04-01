@@ -8,7 +8,7 @@ export default async function NewBriefingPage() {
     // Fetch clients for the select dropdown
     const supabase = await createClient()
     const { data: clients } = await supabase
-        .from('clients')
+        .from('leads')
         .select('id, name')
         .order('name')
 

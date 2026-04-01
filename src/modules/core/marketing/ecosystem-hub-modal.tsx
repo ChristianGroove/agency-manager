@@ -94,7 +94,7 @@ export function EcosystemHubModal({ client, services, open: controlledOpen, onOp
             }
 
             const { error } = await supabase
-                .from('clients')
+                .from('leads')
                 .update({ portal_insights_settings: newSettings })
                 .eq('id', client.id)
 

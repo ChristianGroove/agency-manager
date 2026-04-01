@@ -19,7 +19,7 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const MOCK_CONTEXT: AssistantContext = {
-    tenant_id: 'e3940176-508b-4f9e-a615-5606ce598e98', // Sandbox Org
+    tenant_id: '00000000-0000-0000-0000-000000000000', // Mock Org
     space_id: 'agency',
     user_id: 'd9b07172-132b-4275-a05e-855c829e3427', // Mock User
     role: 'owner',

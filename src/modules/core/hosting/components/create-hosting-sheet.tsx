@@ -76,7 +76,7 @@ export function CreateHostingSheet({ open, onOpenChange, onSuccess, accountToEdi
     }, [open, accountToEdit, clientId])
 
     const fetchClients = async () => {
-        const { data } = await supabase.from('clients').select('id, name').order('name')
+        const { data } = await supabase.from('leads').select('id, name').order('name')
         if (data) setClients(data)
     }
 

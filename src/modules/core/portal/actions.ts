@@ -16,7 +16,7 @@ export async function getPortalData(token: string) {
         // ---------------------------------------------------------
         // 1. Try finding a CLIENT first (Existing Logic)
         // ---------------------------------------------------------
-        let clientQuery = supabaseAdmin.from('clients').select('*')
+        let clientQuery = supabaseAdmin.from('leads').select('*')
         if (isUuid) {
             clientQuery = clientQuery.or(`portal_short_token.eq.${token},portal_token.eq.${token}`)
         } else {
@@ -297,7 +297,7 @@ export async function getPortalData(token: string) {
                 const jobs = await Promise.all((rawJobs || []).map(async (job) => {
                     const [clientRes, serviceRes] = await Promise.all([
                         job.client_id
-                            ? supabaseAdmin.from('clients').select('id, name, phone, address').eq('id', job.client_id).maybeSingle()
+                            ? supabaseAdmin.from('leads').select('id, name, phone, address').eq('id', job.client_id).maybeSingle()
                             : Promise.resolve({ data: null }),
                         job.service_id
                             ? supabaseAdmin.from('cleaning_services').select('id, name, estimated_duration_minutes').eq('id', job.service_id).maybeSingle()
@@ -476,7 +476,7 @@ export async function getPortalMetadata(token: string) {
 
         // 2. Try finding a CLIENT
         if (!organizationId) {
-            let clientQuery = supabaseAdmin.from('clients').select('organization_id')
+            let clientQuery = supabaseAdmin.from('leads').select('organization_id')
             if (isUuid) {
                 clientQuery = clientQuery.or(`portal_short_token.eq.${token},portal_token.eq.${token}`)
             } else {
@@ -525,7 +525,7 @@ export async function regeneratePortalToken(clientId: string) {
 
         // 2. Update client
         const { error: updateError } = await supabaseAdmin
-            .from('clients')
+            .from('leads')
             .update({
                 portal_short_token: newToken,
                 portal_token_created_at: new Date().toISOString()
@@ -589,7 +589,7 @@ export async function updatePortalTokenExpiration(
         }
 
         const { error } = await supabaseAdmin
-            .from('clients')
+            .from('leads')
             .update(updateData)
             .eq('id', clientId)
 
@@ -624,7 +624,7 @@ export async function acceptQuote(token: string, quoteId: string) {
         // 1. Verify Client
         const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)
 
-        let query = supabaseAdmin.from('clients').select('id, name, user_id')
+        let query = supabaseAdmin.from('leads').select('id, name, user_id')
 
         if (isUuid) {
             query = query.or(`portal_short_token.eq.${token},portal_token.eq.${token}`)
@@ -687,7 +687,7 @@ export async function rejectQuote(token: string, quoteId: string) {
         // 1. Verify Client
         const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)
 
-        let query = supabaseAdmin.from('clients').select('id, name, user_id')
+        let query = supabaseAdmin.from('leads').select('id, name, user_id')
 
         if (isUuid) {
             query = query.or(`portal_short_token.eq.${token},portal_token.eq.${token}`)
@@ -748,7 +748,7 @@ export async function registerServiceInterest(token: string, serviceId: string, 
         // 1. Verify Client
         const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)
 
-        let query = supabaseAdmin.from('clients').select('id, name, user_id')
+        let query = supabaseAdmin.from('leads').select('id, name, user_id')
 
         if (isUuid) {
             query = query.or(`portal_short_token.eq.${token},portal_token.eq.${token}`)
@@ -814,7 +814,7 @@ export async function getPortalBriefing(token: string, briefingId: string) {
     // 1. Verify Client by Token
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)
 
-    let query = supabaseAdmin.from('clients').select('id')
+    let query = supabaseAdmin.from('leads').select('id')
 
     if (isUuid) {
         query = query.or(`portal_short_token.eq.${token},portal_token.eq.${token}`)
@@ -855,7 +855,7 @@ export async function getPortalBriefingResponses(token: string, briefingId: stri
     // 1. Verify Client
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)
 
-    let query = supabaseAdmin.from('clients').select('id')
+    let query = supabaseAdmin.from('leads').select('id')
 
     if (isUuid) {
         query = query.or(`portal_short_token.eq.${token},portal_token.eq.${token}`)
@@ -883,7 +883,7 @@ export async function getPortalCatalog(token: string) {
     // 1. Try finding a CLIENT first
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)
 
-    let clientQuery = supabaseAdmin.from('clients').select('id, organization_id')
+    let clientQuery = supabaseAdmin.from('leads').select('id, organization_id')
 
     if (isUuid) {
         clientQuery = clientQuery.or(`portal_short_token.eq.${token},portal_token.eq.${token}`)
@@ -953,7 +953,7 @@ export async function getPortalQuote(token: string, quoteId: string) {
     // 1. Verify Client
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)
 
-    let query = supabaseAdmin.from('clients').select('id, organization_id')
+    let query = supabaseAdmin.from('leads').select('id, organization_id')
 
     if (isUuid) {
         query = query.or(`portal_short_token.eq.${token},portal_token.eq.${token}`)
@@ -1003,7 +1003,7 @@ export async function getPortalInvoice(token: string, invoiceId: string) {
     // 1. Verify Client
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)
 
-    let query = supabaseAdmin.from('clients').select('id, organization_id')
+    let query = supabaseAdmin.from('leads').select('id, organization_id')
 
     if (isUuid) {
         query = query.or(`portal_short_token.eq.${token},portal_token.eq.${token}`)
@@ -1138,7 +1138,7 @@ export async function completeJob(token: string, jobId: string) {
 export async function updateClientPortalConfig(clientId: string, config: any) {
     try {
         const { error } = await supabaseAdmin
-            .from('clients')
+            .from('leads')
             .update({ portal_config: config })
             .eq('id', clientId)
 

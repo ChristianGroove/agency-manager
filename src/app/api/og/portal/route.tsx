@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
         if (token) {
             // Fetch organization branding via token
             const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)
-            let query = supabaseAdmin.from('clients').select('organization_id')
+            let query = supabaseAdmin.from('leads').select('organization_id')
 
             if (isUuid) {
                 query = query.or(`portal_short_token.eq.${token},portal_token.eq.${token}`)

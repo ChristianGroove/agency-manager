@@ -109,7 +109,7 @@ export function CreateClientSheet({ onSuccess, open: controlledOpen, onOpenChang
                 finalLogoUrl = publicUrl
             }
 
-            const { error } = await supabase.from('clients').insert({
+            const { error } = await supabase.from('leads').insert({
                 ...form,
                 organization_id: orgId,
                 logo_url: finalLogoUrl,

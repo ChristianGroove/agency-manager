@@ -76,7 +76,7 @@ export async function dispatchRestoOrder(payload: CheckoutPayload) {
         let portalToken = null
 
         const { data: existingClient } = await supabase
-            .from('clients')
+            .from('leads')
             .select('id, portal_short_token')
             .eq('organization_id', payload.orgId)
             .eq('phone', payload.customerPhone)
@@ -97,11 +97,11 @@ export async function dispatchRestoOrder(payload: CheckoutPayload) {
 
             if (!portalToken) {
                 const { data: newToken } = await supabase.rpc('generate_short_token')
-                await supabase.from('clients').update({ portal_short_token: newToken }).eq('id', clientIdToUse)
+                await supabase.from('leads').update({ portal_short_token: newToken }).eq('id', clientIdToUse)
                 portalToken = newToken
             }
 
-            await supabase.from('clients').update({
+            await supabase.from('leads').update({
                 name: payload.customerName,
                 ...(payload.deliveryAddress ? { address: payload.deliveryAddress } : {})
             }).eq('id', clientIdToUse)
@@ -110,7 +110,7 @@ export async function dispatchRestoOrder(payload: CheckoutPayload) {
             portalToken = newToken
 
             const { data: newClient, error: clientError } = await supabase
-                .from('clients')
+                .from('leads')
                 .insert({
                     organization_id: payload.orgId,
                     name: payload.customerName,
@@ -251,7 +251,7 @@ export async function updateClientAddress(clientId: string, address: string) {
 
     try {
         const { error } = await supabase
-            .from('clients')
+            .from('leads')
             .update({ address })
             .eq('id', clientId)
 

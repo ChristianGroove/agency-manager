@@ -319,7 +319,7 @@ export async function createConversation(input: { lead_id?: string, client_id?: 
         const normalizedPhone = normalizePhone(phone)
         // A. Check for existing Client
         const { data: existingClient } = await supabase
-            .from('clients')
+            .from('leads')
             .select('id, organization_id')
             .eq('phone', normalizedPhone)
             .single()
@@ -390,7 +390,7 @@ export async function createConversation(input: { lead_id?: string, client_id?: 
     if (!organization_id) {
         if (finalClientId) {
             const { data: client } = await supabase
-                .from('clients')
+                .from('leads')
                 .select('organization_id')
                 .eq('id', finalClientId)
                 .single()

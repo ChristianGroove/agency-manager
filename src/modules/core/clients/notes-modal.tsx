@@ -29,7 +29,7 @@ export function NotesModal({ clientId, initialNotes, isOpen, onClose, onSuccess 
             if (!clientId) throw new Error("No client ID provided")
 
             const { error } = await supabase
-                .from('clients')
+                .from('leads')
                 .update({ notes: notes })
                 .eq('id', clientId)
 

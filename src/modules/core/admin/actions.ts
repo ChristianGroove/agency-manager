@@ -333,7 +333,7 @@ export async function getOrganizationDetails(orgId: string) {
     const { data: org, error: orgError } = await supabaseAdmin.from('organizations').select('*').eq('id', orgId).single()
     if (orgError) throw orgError
     const { count: userCount } = await supabaseAdmin.from('organization_members').select('*', { count: 'exact', head: true }).eq('organization_id', orgId)
-    const { count: clientCount } = await supabaseAdmin.from('clients').select('*', { count: 'exact', head: true }).eq('organization_id', orgId)
+    const { count: clientCount } = await supabaseAdmin.from('leads').select('*', { count: 'exact', head: true }).eq('organization_id', orgId)
     return { organization: org, stats: { users: userCount || 0, clients: clientCount || 0 } }
 }
 

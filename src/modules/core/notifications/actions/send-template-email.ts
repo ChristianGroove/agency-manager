@@ -22,7 +22,7 @@ export async function sendTemplateEmail({ clientId, templateKey, contextId, cust
 
     // 1. Fetch Client
     const { data: client } = await supabase
-        .from('clients')
+        .from('leads')
         .select('name, email, phone, portal_short_token, portal_token')
         .eq('id', clientId)
         .single()

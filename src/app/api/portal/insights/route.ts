@@ -17,7 +17,7 @@ export async function GET(req: Request) {
     try {
         // 1. Verify Portal Token & Get Client
         const { data: client, error: clientError } = await supabaseAdmin
-            .from('clients')
+            .from('leads')
             .select('id, services(name, status)')
             .eq('portal_short_token', token)
             .single()

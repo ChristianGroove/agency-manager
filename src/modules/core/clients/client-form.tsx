@@ -38,10 +38,12 @@ export function ClientForm() {
                 return
             }
 
-            const { error } = await supabase.from("clients").insert({
+            const { error } = await supabase.from("leads").insert({
                 ...formData,
                 user_id: user.id,
-                portal_token: crypto.randomUUID()
+                portal_token: crypto.randomUUID(),
+                contact_type: 'client',
+                status: 'active'
             })
 
             if (error) {

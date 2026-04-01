@@ -176,7 +176,7 @@ export function CreateInvoiceSheet({
                 }
 
                 const { data } = await supabase
-                    .from('clients')
+                    .from('leads')
                     .select('id, name, company_name')
                     .eq('organization_id', orgId)
                     .is('deleted_at', null)

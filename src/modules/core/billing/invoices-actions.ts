@@ -132,7 +132,7 @@ export async function createInvoice(data: Partial<Invoice> & { items: InvoiceIte
 
     if (data.client_id) {
         const { data: clientData } = await supabase
-            .from('clients')
+            .from('leads')
             .select('*')
             .eq('id', data.client_id)
             .single()
@@ -394,7 +394,7 @@ export async function registerPayment(id: string, amount: number, notes?: string
             if (!leadId && invoice.client) {
                 // Fallback: Find lead by client email (heuristic)
                 const { data: client } = await supabase
-                    .from('clients')
+                    .from('leads')
                     .select('email, organization_id')
                     .eq('id', invoice.client_id)
                     .single()

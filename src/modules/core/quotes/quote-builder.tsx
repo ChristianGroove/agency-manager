@@ -127,7 +127,7 @@ export function QuoteBuilder({ onSuccess, mode = 'page', emitters, prefillLeadId
 
             // Fetch Clients - WITH ORGANIZATION FILTER
             const { data: clientsData } = await supabase
-                .from('clients')
+                .from('leads')
                 .select('*')
                 .eq('organization_id', orgId)
                 .is('deleted_at', null)
@@ -180,7 +180,7 @@ export function QuoteBuilder({ onSuccess, mode = 'page', emitters, prefillLeadId
         // Check DB Clients
         // Use maybeSingle() to avoid error on multiple duplicates
         const { data: clientData } = await supabase
-            .from('clients')
+            .from('leads')
             .select('*')
             .eq('organization_id', orgId)
             .ilike('phone', `%${clean}%`)

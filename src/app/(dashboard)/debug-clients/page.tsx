@@ -7,7 +7,7 @@ export default async function DebugClientsPage() {
     const orgId = await getCurrentOrganizationId()
 
     let query = supabase
-        .from('clients')
+        .from('leads')
         .select(`
           *,
           portal_token,
@@ -27,7 +27,7 @@ export default async function DebugClientsPage() {
 
     // EXACT QUERY FROM ACTIONS.TS
     const { data, error } = await supabase
-        .from('clients')
+        .from('leads')
         .select(`
           *,
           portal_token,

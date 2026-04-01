@@ -66,9 +66,6 @@ export async function middleware(request: NextRequest) {
     // Apply WAF Headers
     applySecurityHeaders(response.headers)
 
-    const isSandboxRegPatt = /uqnsdylhyenfmfkxmkrn/
-    console.log(`[MIDDLEWARE] Env: ${process.env.NEXT_PUBLIC_SUPABASE_URL?.match(isSandboxRegPatt) ? 'SANDBOX' : 'PRODUCTION'}`);
-
     const supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,

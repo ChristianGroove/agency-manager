@@ -82,7 +82,7 @@ export function CreateHostingSheet({ open, onOpenChange, onSuccess, accountToEdi
         }
         const currentOrgId = getOrgId()
 
-        let query = supabase.from('clients').select('id, name').order('name')
+        let query = supabase.from('leads').select('id, name').order('name')
 
         if (currentOrgId) {
             query = query.eq('organization_id', currentOrgId) // FILTER

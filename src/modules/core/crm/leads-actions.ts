@@ -182,31 +182,23 @@ export async function convertLeadToClient(leadId: string): Promise<ActionRespons
         if (leadError) throw leadError
         if (!lead) throw new Error("Lead not found or access denied")
 
-        // 2. Create client with lead data
-        const { data: client, error: clientError } = await supabase
-            .from('clients')
-            .insert({
-                name: lead.name,
-                company_name: lead.company_name,
-                email: lead.email,
-                phone: lead.phone,
-                user_id: user.id,
-                organization_id: lead.organization_id, // ✅ Include organization_id
+        // 2. Update contact_type to 'client' (SAME UUID — all relationships preserved)
+        const { data: client, error: updateError } = await supabase
+            .from('leads')
+            .update({ 
+                contact_type: 'client',
+                status: 'converted'
             })
+            .eq('id', leadId)
+            .eq('organization_id', orgId)
             .select()
             .single()
 
-        if (clientError) throw clientError
-
-        // 3. Update lead status to 'converted'
-        await supabase
-            .from('leads')
-            .update({ status: 'converted' })
-            .eq('id', leadId)
+        if (updateError) throw updateError
 
         revalidatePath('/clients')
         revalidatePath('/crm')
-        return { success: true, data: client as Client }
+        return { success: true, data: client as unknown as Client }
     } catch (error: any) {
         console.error("Error converting lead:", error)
         return { success: false, error: error.message }

@@ -34,7 +34,7 @@ export async function getDashboardData(supabase: any, orgId: string) {
 // Fallback function si la RPC falla
 async function getDashboardDataFallback(orgId: string, supabase: any) {
     const [clientsRes, invoicesRes, servicesRes, settingsRes] = await Promise.all([
-        supabase.from('clients').select('id, status, created_at, organization_id, first_name, last_name, company_name, logo_url, avatar_url').is('deleted_at', null).eq('organization_id', orgId),
+        supabase.from('leads').select('id, status, created_at, organization_id, first_name, last_name, company_name, logo_url, avatar_url').is('deleted_at', null).eq('organization_id', orgId),
         supabase.from('invoices').select('id, status, total, client_id, due_date, created_at, organization_id').is('deleted_at', null).eq('organization_id', orgId),
         supabase.from('services').select('id, status, type, frequency, amount, organization_id').is('deleted_at', null).eq('organization_id', orgId),
         supabase.from('organization_settings').select('*').eq('organization_id', orgId).maybeSingle()

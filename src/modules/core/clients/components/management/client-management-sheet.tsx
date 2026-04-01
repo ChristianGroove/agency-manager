@@ -111,14 +111,14 @@ export function ClientManagementSheet({ clientId, open, onOpenChange, initialDat
         setLoading(true)
         try {
             const { data, error } = await supabase
-                .from('clients')
+                .from('leads')
                 .select(`
                     *,
-                    services:services(*),
-                    invoices:invoices(*),
-                    quotes:quotes(*),
-                    subscriptions:subscriptions(*),
-                    hosting_accounts:hosting_accounts(*)
+                    services:services!client_id(*),
+                    invoices:invoices!client_id(*),
+                    quotes:quotes!client_id(*),
+                    subscriptions:subscriptions!client_id(*),
+                    hosting_accounts:hosting_accounts!client_id(*)
                 `)
                 .eq('id', clientId)
                 .single()
@@ -161,9 +161,9 @@ export function ClientManagementSheet({ clientId, open, onOpenChange, initialDat
                 .single()
             setSettings(settingsData || {})
 
-        } catch (error) {
-            console.error(error)
-            toast.error("Error al cargar datos del cliente")
+        } catch (error: any) {
+            console.error("Full Error:", error)
+            toast.error(`Error: ${error.message || 'Desconocido'} - ${error.details || ''}`)
         } finally {
             setLoading(false)
         }
@@ -262,7 +262,7 @@ export function ClientManagementSheet({ clientId, open, onOpenChange, initialDat
                 setEditForm(prev => ({ ...prev, logo_url: publicUrl }))
 
                 // Auto-update in DB for Logo
-                await supabase.from('clients').update({ logo_url: publicUrl }).eq('id', client.id)
+                await supabase.from('leads').update({ logo_url: publicUrl }).eq('id', client.id)
                 fetchClientData()
                 if (onSuccess) onSuccess()
                 toast.success("Logo actualizado")
@@ -279,7 +279,7 @@ export function ClientManagementSheet({ clientId, open, onOpenChange, initialDat
         setSaving(true)
         try {
             const { error } = await supabase
-                .from('clients')
+                .from('leads')
                 .update({
                     name: editForm.name,
                     company_name: editForm.company_name,

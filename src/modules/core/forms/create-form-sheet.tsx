@@ -97,7 +97,7 @@ export function CreateFormSheet({
             const [templatesData, clientsRes] = await Promise.all([
                 getFormTemplates(),
                 supabase
-                    .from('clients')
+                    .from('leads')
                     .select('id, name, company_name')
                     .eq('organization_id', orgId)
                     .is('deleted_at', null)

@@ -38,7 +38,7 @@ export async function getTrashItems(): Promise<TrashItem[]> {
 
     // 1. Clients
     const { data: clients } = await supabase
-        .from('clients')
+        .from('leads')
         .select('id, name, deleted_at')
         .eq('organization_id', orgId)
         .not('deleted_at', 'is', null)

@@ -45,15 +45,16 @@ export async function quickCreateProspect(data: CreateProspectInput) {
         if (!orgId) return { success: false, error: "No organization context found" }
 
         const { data: newClient, error } = await supabase
-            .from('clients')
+            .from('leads')
             .insert({
                 organization_id: orgId,
                 user_id: data.userId,
                 name: data.name,
                 email: data.email,
                 phone: data.phone,
-                // status: 'prospect', // Uncomment if status column exists in DB
-                created_at: new Date().toISOString()
+                contact_type: 'client',
+                status: 'active',
+                source: 'quote_builder'
             })
             .select()
             .single()
@@ -89,19 +90,11 @@ export async function getClients() {
     const orgId = await getCurrentOrganizationId()
 
     let query = supabase
-        .from('clients')
+        .from('leads')
         .select(`
-          *,
-          category_id,
-          category:client_categories(id, name, color),
-          portal_token,
-          portal_short_token,
-          invoices (id, total, status, due_date, number, pdf_url, deleted_at, billing_cycles:billing_cycles!billing_cycle_id (start_date, end_date)),
-          quotes (id, number, total, status, pdf_url, deleted_at),
-          hosting_accounts (status, renewal_date),
-          subscriptions (id, name, next_billing_date, status, amount, service_type, frequency, deleted_at),
-          services (id, status, deleted_at)
+          *
         `)
+        .eq('contact_type', 'client')
         .is('deleted_at', null)
         .order('created_at', { ascending: false })
 
@@ -155,7 +148,7 @@ export async function deleteClients(ids: string[]) {
 
     try {
         const { error } = await supabase
-            .from('clients')
+            .from('leads')
             .update({ deleted_at: new Date().toISOString() })
             .in('id', ids)
             .eq('organization_id', orgId)

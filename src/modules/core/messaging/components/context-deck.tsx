@@ -119,7 +119,7 @@ export function ContextDeck({ conversationId }: ContextDeckProps) {
                     contactPromises.push(supabase.from('leads').select('*').eq('id', conv.lead_id).single() as any)
                 }
                 if (conv.client_id) {
-                    contactPromises.push(supabase.from('clients').select('*').eq('id', conv.client_id).single() as any)
+                    contactPromises.push(supabase.from('leads').select('*').eq('id', conv.client_id).single() as any)
                 }
 
                 const contactResults = await Promise.all(contactPromises)

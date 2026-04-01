@@ -40,8 +40,8 @@ export async function getSidebarContacts(query: string = ""): Promise<SidebarCon
         }
 
         let dbQuery = supabase
-            .from('clients')
-            .select('id, name, phone, email, created_at') // Removed avatar_url
+            .from('leads')
+            .select('id, name, phone, email, created_at')
             .eq('organization_id', orgId)
             .is('deleted_at', null)
             .not('phone', 'is', null) // Only contacts with phone
@@ -61,14 +61,14 @@ export async function getSidebarContacts(query: string = ""): Promise<SidebarCon
             return []
         }
 
-        // Map client data to SidebarContact format
-        return (data || []).map((client: any) => ({
-            id: client.id,
-            name: client.name,
-            phone: client.phone,
-            email: client.email,
-            avatar_url: null, // Clients table doesn't have this, set to null
-            last_contacted_at: client.created_at, // Fallback
+        // Map lead data to SidebarContact format
+        return (data || []).map((contact: any) => ({
+            id: contact.id,
+            name: contact.name,
+            phone: contact.phone,
+            email: contact.email,
+            avatar_url: null,
+            last_contacted_at: contact.created_at, // Fallback
             company_name: null,
             status: 'active'
         }))

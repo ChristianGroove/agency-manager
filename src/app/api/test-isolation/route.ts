@@ -56,7 +56,7 @@ export async function GET() {
         const userId = users[0].id
 
         const portalToken = `test-token-${Date.now()}`
-        const { data: clientA, error: cErrA } = await supabaseAdmin.from('clients').insert({
+        const { data: clientA, error: cErrA } = await supabaseAdmin.from('leads').insert({
             organization_id: orgA.id,
             name: 'Client A',
             email: `client-a-${Date.now()}@test.com`,
@@ -96,7 +96,7 @@ export async function GET() {
         // 6. Cleanup
         log('Limpiando datos de prueba...')
         await supabaseAdmin.from('services').delete().in('id', [serviceA.id, serviceB.id])
-        await supabaseAdmin.from('clients').delete().eq('id', clientA.id)
+        await supabaseAdmin.from('leads').delete().eq('id', clientA.id)
         await supabaseAdmin.from('organizations').delete().in('id', [orgA.id, orgB.id])
         log('Limpieza completada.')
 
