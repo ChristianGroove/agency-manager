@@ -837,7 +837,7 @@ export async function getPortalBriefing(token: string, briefingId: string) {
                 description,
                 structure
             ),
-            client:clients(name, email)
+            client:leads(name, email)
         `)
         .eq('id', briefingId)
         .eq('client_id', client.id) // Security Check
@@ -970,8 +970,7 @@ export async function getPortalQuote(token: string, quoteId: string) {
         .from('quotes')
         .select(`
             *,
-            client:clients (*),
-            lead:leads (*),
+            client:leads (*),
             emitter:emitters (*)
         `)
         .eq('id', quoteId)
@@ -1020,7 +1019,7 @@ export async function getPortalInvoice(token: string, invoiceId: string) {
         .from('invoices')
         .select(`
             *,
-            client:clients (*),
+            client:leads (*),
             emitter:emitters (*)
         `)
         .eq('id', invoiceId)
