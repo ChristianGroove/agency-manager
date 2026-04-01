@@ -115,6 +115,8 @@ export function CreateClientSheet({ onSuccess, open: controlledOpen, onOpenChang
                 logo_url: finalLogoUrl,
                 user_id: user.id,
                 category_id: form.category_id,
+                contact_type: 'client',
+                status: 'active',
                 // Generate Portal Tokens
                 portal_token: crypto.randomUUID(),
                 portal_short_token: Math.random().toString(36).substring(2, 8).toUpperCase(),
