@@ -13,7 +13,7 @@ import { useRouter } from "next/navigation"
 import { CreateClientSheet } from "@/modules/core/clients/create-client-sheet"
 import { CreateQuoteSheet } from "@/modules/core/quotes/create-quote-sheet"
 import { CreateInvoiceSheet } from "@/modules/core/billing/create-invoice-sheet"
-import { CreateFormSheet } from "@/modules/core/forms/create-form-sheet"
+import { CreateFormSheet } from "@/modules/features/forms/create-form-sheet"
 
 interface AgencyDashboardProps {
     dashboardData: any
@@ -172,3 +172,4 @@ export function AgencyDashboard({ dashboardData: dashboardRes, extraData, userRo
         </>
     )
 }
+

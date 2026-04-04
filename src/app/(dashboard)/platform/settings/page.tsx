@@ -4,7 +4,7 @@ import { getSettings } from "@/modules/core/settings/actions"
 import { getEffectiveBranding } from "@/modules/core/branding/actions"
 import { getCurrentBrandingTier } from "@/modules/core/branding/tier-actions"
 import { getOrganizationModules, getCurrentOrganizationId, getOrganizationCardDetails } from "@/modules/core/organizations/actions"
-import { getSubscriptionApp } from "@/modules/core/catalog/actions"
+import { getSubscriptionApp } from "@/modules/features/catalog/actions"
 import { getCurrentOrgRole } from "@/lib/auth/org-roles"
 import { Loader2 } from "lucide-react"
 
@@ -69,4 +69,5 @@ function SettingsLoading() {
         </div>
     )
 }
+
 

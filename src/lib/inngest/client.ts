@@ -25,10 +25,27 @@ type ContractGeneratedEvent = {
     };
 };
 
+type StripeWebhookEvent = {
+    name: "stripe/webhook.received";
+    data: {
+        event: any;
+    };
+};
+
+type WhatsAppReceivedEvent = {
+    name: "whatsapp/message.received";
+    data: {
+        incomingMessage: any;
+    };
+};
+
 type Events = {
     "automation.execute": AutomationExecuteEvent;
     "contract.generated": ContractGeneratedEvent;
+    "whatsapp/message.received": WhatsAppReceivedEvent;
+    "stripe/webhook.received": StripeWebhookEvent;
 };
+
 
 // 2. Create Client
 export const inngest = new Inngest({

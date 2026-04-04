@@ -3,9 +3,9 @@ import { Metadata } from "next"
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase-server"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
-import { getAttendanceLogs, getStaff, getAttendanceShifts } from "@/modules/core/attendance/actions"
+import { getAttendanceLogs, getStaff, getAttendanceShifts } from "@/modules/features/attendance/actions"
 import { getLocations } from "@/modules/core/locations/actions"
-import { AttendanceDashboard } from "@/modules/core/attendance/components/admin/attendance-dashboard"
+import { AttendanceDashboard } from "@/modules/features/attendance/components/admin/attendance-dashboard"
 import { GlobalLoader } from "@/components/ui/global-loader"
 
 export const metadata: Metadata = {

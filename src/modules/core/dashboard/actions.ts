@@ -166,7 +166,7 @@ export async function getDashboardPayload() {
         if (dashboardData) dashboardData.bannerConfig = bannerRes.data || null
 
         if (orgType === 'cleaning') {
-            const { getOperationsMetrics, getWeeklyRevenue } = await import("@/modules/core/work-orders/actions/operation-actions")
+            const { getOperationsMetrics, getWeeklyRevenue } = await import("@/modules/features/work-orders/actions/operation-actions")
             const [cleaningMetrics, cleaningRevenue] = await Promise.all([
                 getOperationsMetrics(new Date().toISOString()),
                 getWeeklyRevenue()
@@ -252,4 +252,5 @@ export async function getDashboardPayload() {
 
     return payload
 }
+
 

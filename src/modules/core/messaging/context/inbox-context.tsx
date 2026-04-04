@@ -1,6 +1,8 @@
 "use client"
 
 import React, { createContext, useContext, useState, ReactNode, useCallback } from "react"
+import { getCategories } from "@/modules/features/catalog/categories-actions"
+import { searchCatalog } from "../../crm/deal-actions"
 
 interface InboxContextType {
     leadsCache: Record<string, any>;
@@ -125,8 +127,6 @@ export function InboxProvider({ children }: { children: ReactNode }) {
         if (isCatalogLoading) return;
         setIsCatalogLoading(true)
         try {
-            const { getCategories } = await import("../../catalog/categories-actions")
-            const { searchCatalog } = await import("../../crm/deal-actions")
             const [cats, products] = await Promise.all([
                 getCategories(),
                 searchCatalog("", "all", 0)

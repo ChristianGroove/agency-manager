@@ -1,36 +1,68 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Agency Manager SaaS Platform
 
-## Getting Started
+Plataforma de gestión de agencias (CRM, Mensajería y Automatización) diseñada para el escalado empresarial. Construida con **Next.js**, **Supabase** y **Inngest**.
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## 🚀 Arquitectura Modular
+
+El proyecto utiliza una arquitectura separada por responsabilidades para maximizar la velocidad de desarrollo y minimizar el riesgo técnico:
+
+- **`/src/modules/core`**: Motores básicos (Auth, Billing, SaaS Engine, Multitenancy).
+- **`/src/modules/features`**: Módulos verticales de industria (Resto, Attendance, Hosting, etc.).
+- **`/src/inngest`**: Procesamiento asíncrono y workers de segundo plano.
+
+Consulta la [Guía de Arquitectura](src/modules/ARCHITECTURE.md) para más detalles.
+
+---
+
+## 🏗️ Stack Tecnológico
+
+- **Frontend:** Next.js (App Router), Tailwind CSS, Radix UI.
+- **Backend:** Supabase (Auth, DB, Realtime, Functions).
+- **Colas y Workers:** [Inngest](src/inngest/README.md) para tareas asíncronas y escalabilidad.
+- **Mensajería:** Evolution API (WhatsApp/Meta).
+
+---
+
+## 🛠️ Primeros Pasos (Desarrollo)
+
+1.  **Instalación:**
+    ```bash
+    npm install
+    ```
+
+2.  **Variables de Entorno:**
+    Copia `.env.example` a `.env.local` y configura tus credenciales de Supabase.
+
+3.  **Servidor de Desarrollo:**
+    ```bash
+    npm run dev
+    ```
+
+4.  **Dashboard de Inngest (Local):**
+    Imprescindible para ver el flujo de webhooks y tareas asíncronas:
+    ```bash
+    npx inngest-cli@latest dev
+    ```
+
+---
+
+## 📁 Estructura del Proyecto
+
+```text
+src/
+├── app/            # Next.js App Router (Páginas y API Routes)
+├── components/     # Componentes UI globales (Shadcn)
+├── lib/            # Utilidades y Clientes (Supabase, Inngest, Auth)
+├── modules/        # Dominios de Negocio (Core & Features)
+└── types/          # Definiciones de TypeScript compartidas
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 🛡️ Seguridad y Roles
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+El acceso está protegido mediante **RLS (Row Level Security)** en Supabase y un sistema de roles jerárquico (`Platform` > `Reseller` > `Operator` > `Owner` > `Agent`).
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Consulte la documentación de IAM en `src/modules/core/iam` para la gestión de permisos.

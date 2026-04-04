@@ -1,5 +1,5 @@
 
-import { WorkOrdersDashboard } from "@/modules/core/work-orders/components/universal/work-orders-dashboard"
+import { WorkOrdersDashboard } from "@/modules/features/work-orders/components/universal/work-orders-dashboard"
 
 export const metadata = {
     title: "Operaciones | Work Orders",
@@ -13,3 +13,4 @@ export default function WorkOrdersPage() {
         </div>
     )
 }
+

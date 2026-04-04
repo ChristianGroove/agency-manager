@@ -25,6 +25,9 @@
     "paths": {
       "@/*": [
         "./src/*"
+      ],
+      "@/modules/features/*": [
+        "./src/modules/features/*"
       ]
     }
   },

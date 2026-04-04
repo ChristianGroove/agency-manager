@@ -8,7 +8,7 @@ import { useTranslation } from "@/lib/i18n/use-translation"
 
 // Import Modals (these were in page.tsx)
 import { CreateClientSheet } from "@/modules/core/clients/create-client-sheet"
-import { NewJobModal } from "@/modules/core/work-orders/components/new-job-modal"
+import { NewJobModal } from "@/modules/features/work-orders/components/new-job-modal"
 
 import { useRouter } from "next/navigation"
 
@@ -123,3 +123,4 @@ export function CleaningDashboard({ dashboardData: coreData, extraData, userRole
         </>
     )
 }
+

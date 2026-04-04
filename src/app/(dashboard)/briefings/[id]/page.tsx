@@ -1,11 +1,11 @@
-import { getSubmissionById, getSubmissionResponses } from "@/modules/core/forms/actions"
+import { getSubmissionById, getSubmissionResponses } from "@/modules/features/forms/actions"
 import { notFound } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, ExternalLink } from "lucide-react"
 import Link from "next/link"
-import { FormTemplate } from "@/modules/core/forms/actions"
+import { FormTemplate } from "@/modules/features/forms/actions"
 
 interface PageProps {
     params: Promise<{

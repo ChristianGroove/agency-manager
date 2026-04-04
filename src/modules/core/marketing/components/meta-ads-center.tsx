@@ -5,7 +5,7 @@ import { BarChart3, Target, TrendingUp, DollarSign, Users, MousePointer2, Settin
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { AdsDashboard } from "../../portal/insights/ads-dashboard"
+import { AdsDashboard } from "@/modules/features/portal/insights/ads-dashboard"
 import { TenantAdsSettings } from "./tenant-ads-settings"
 import { getOrgAdsMetrics } from "../actions"
 import { SectionHeader } from "@/components/layout/section-header"

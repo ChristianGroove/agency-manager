@@ -1,9 +1,9 @@
-import { RestoTablesCanvas } from '@/modules/core/resto/tables/components/resto-tables-canvas'
+import { RestoTablesCanvas } from '@/modules/features/resto/tables/components/resto-tables-canvas'
 import { Card } from '@/components/ui/card'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Info, Utensils } from 'lucide-react'
 import { getCurrentOrganizationId } from '@/modules/core/organizations/actions'
-import { getZonesAndTables } from '@/modules/core/resto/tables/actions'
+import { getZonesAndTables } from '@/modules/features/resto/tables/actions'
 import { redirect } from 'next/navigation'
 
 export default async function RestoTablesPage({

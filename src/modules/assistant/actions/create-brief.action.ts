@@ -1,6 +1,6 @@
 
 import { AssistantContext, AssistantAction, AssistantResult } from "../types";
-import { createFormSubmission } from "@/modules/core/forms/actions";
+import { createFormSubmission } from "@/modules/features/forms/actions";
 
 export const CreateBriefAction: AssistantAction = {
     name: "create_brief",
@@ -38,3 +38,4 @@ export const CreateBriefAction: AssistantAction = {
         }
     }
 };
+

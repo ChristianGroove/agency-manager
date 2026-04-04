@@ -1,4 +1,4 @@
-import { getPortalInvoice, getPortalMetadata } from "@/modules/core/portal/actions"
+import { getPortalInvoice, getPortalMetadata } from "@/modules/features/portal/services/portal-service"
 import { notFound } from "next/navigation"
 import { PortalInvoiceClientPage } from "./client-page"
 

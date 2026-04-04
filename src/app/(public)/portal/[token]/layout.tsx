@@ -1,6 +1,6 @@
 
 import { Metadata } from "next"
-import { getPortalMetadata } from "@/modules/core/portal/actions"
+import { getPortalMetadata } from "@/modules/features/portal/services/portal-service"
 
 type Props = {
     params: Promise<{ token: string }>

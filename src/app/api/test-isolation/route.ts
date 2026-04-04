@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
-import { getPortalCatalog } from '@/modules/core/portal/actions'
+import { getPortalCatalog } from '@/modules/features/portal/services/portal-service'
 
 export async function GET() {
     const results: string[] = []
@@ -110,3 +110,4 @@ export async function GET() {
         log: results
     })
 }
+

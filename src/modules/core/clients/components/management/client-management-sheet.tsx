@@ -30,7 +30,7 @@ import { CreateInvoiceSheet } from "@/modules/core/billing/create-invoice-sheet"
 import { ServiceDetailModal } from "@/modules/core/billing/components/service-detail-modal"
 // import { ShareInvoiceModal } from "@/modules/core/billing/share-invoice-modal" // REPLACED
 import { UnifiedCommunicationModal } from "@/modules/core/communication/components/unified-communication-modal" // NEW
-import { CreateHostingSheet } from "@/modules/core/hosting/components/create-hosting-sheet"
+import { CreateHostingSheet } from "@/modules/features/hosting/components/create-hosting-sheet"
 import { NotesModal } from "@/modules/core/clients/notes-modal"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
@@ -766,3 +766,4 @@ export function ClientManagementSheet({ clientId, open, onOpenChange, initialDat
         </Sheet >
     )
 }
+

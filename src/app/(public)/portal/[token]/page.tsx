@@ -2,17 +2,18 @@
 
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
-import { getPortalData, acceptQuote, rejectQuote } from "@/modules/core/portal/actions"
+import { getPortalData, getPortalMetadata } from "@/modules/features/portal/services/portal-service"
+import { acceptQuote, rejectQuote } from "@/modules/features/portal/services/business-service"
 import { Client, Invoice, Quote, Briefing, ClientEvent, Service } from "@/types"
 import { Loader2, AlertTriangle, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { getPublicPortalTemplate } from "@/components/portals/public-registry"
-import { WorkerPortalLayout } from "@/modules/core/portal/worker-portal-layout"
-import { QuoteDetailModal } from "@/modules/core/portal/quote-detail-modal"
-import { PaymentOptionsModal } from "@/modules/core/portal/payment-options-modal"
-import { InvoiceDetailModal } from "@/modules/core/portal/invoice-detail-modal"
+import { WorkerPortalLayout } from "@/modules/features/portal/components/worker-portal-layout"
+import { QuoteDetailModal } from "@/modules/features/portal/components/modals/quote-detail-modal"
+import { PaymentOptionsModal } from "@/modules/features/portal/components/modals/payment-options-modal"
+import { InvoiceDetailModal } from "@/modules/features/portal/components/modals/invoice-detail-modal"
 import { GlobalLoader } from "@/components/ui/global-loader"
-import { AttendanceStaffPortal } from "@/modules/core/attendance/components/staff-portal-view"
+import { AttendanceStaffPortal } from "@/modules/features/attendance/components/staff-portal-view"
 
 // ... existing imports
 

@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
-import { getPortalData } from "@/modules/core/portal/actions"
+import { getPortalData } from "@/modules/features/portal/services/portal-service"
 import { Loader2, AlertTriangle } from "lucide-react"
-import { WorkerPortalLayout } from "@/modules/core/portal/worker-portal-layout"
+import { WorkerPortalLayout } from "@/modules/features/portal/components/worker-portal-layout"
 
 /**
  * Staff Portal Page

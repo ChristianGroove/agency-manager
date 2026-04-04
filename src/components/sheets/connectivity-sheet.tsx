@@ -12,7 +12,7 @@ import { toast } from "sonner"
 import { Loader2, Zap, CheckCircle2, LayoutGrid, BarChart3, Globe, Smartphone, ArrowRight, Settings2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { MobilePreview } from "@/components/marketing/mobile-preview"
-import { InsightsTab } from "@/modules/core/portal/insights/insights-tab"
+import { InsightsTab } from "@/modules/features/portal/insights/insights-tab"
 import { getMetaConfig, saveMetaConfig, syncClientSocialMetrics, syncClientAdsMetrics, getMetaAssets } from "@/modules/core/admin/actions"
 import { supabase } from "@/lib/supabase"
 
@@ -481,3 +481,4 @@ function CustomTab({ value, label, icon: Icon, active, disabled, badge }: any) {
         </TabsTrigger>
     )
 }
+

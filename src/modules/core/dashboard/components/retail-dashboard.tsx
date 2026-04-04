@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge"
 import { CreateClientSheet } from "@/modules/core/clients/create-client-sheet"
 import { CreateQuoteSheet } from "@/modules/core/quotes/create-quote-sheet"
 import { CreateInvoiceSheet } from "@/modules/core/billing/create-invoice-sheet"
-import { CreateFormSheet } from "@/modules/core/forms/create-form-sheet"
+import { CreateFormSheet } from "@/modules/features/forms/create-form-sheet"
 
 interface RetailDashboardProps {
     dashboardData: any
@@ -122,3 +122,4 @@ export function RetailDashboard({ dashboardData, extraData, userRole: initialRol
         </>
     )
 }
+

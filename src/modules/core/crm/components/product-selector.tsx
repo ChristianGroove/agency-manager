@@ -12,7 +12,7 @@ import {
     PopoverTrigger,
 } from "@/components/ui/popover"
 import { searchCatalog } from "../deal-actions"
-import { getCategories, ServiceCategory } from "../../catalog/categories-actions"
+import { getCategories, ServiceCategory } from "@/modules/features/catalog/categories-actions"
 import { cn } from "@/lib/utils"
 import { useInboxContext } from "../../messaging/context/inbox-context"
 

@@ -1,0 +1,399 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import { Client, Invoice, Quote, Briefing, ClientEvent, Service } from "@/types"
+import { Button } from "@/components/ui/button"
+import { LayoutDashboard, Layers, CreditCard, Search, Bell, LogOut, Menu, BarChart3, Server, X } from "lucide-react"
+import { isFeatureEnabled } from "@/lib/features"
+import { cn } from "@/lib/utils"
+import { PortalSummaryTab } from "./portal-summary-tab"
+import { PortalServicesTab } from "./portal-services-tab"
+import { PortalBillingTab } from "./portal-billing-tab"
+import { PortalCatalogTab } from "./portal-catalog-tab"
+import { InsightsTab } from "../insights/insights-tab"
+import { QuoteDetailModal } from "./modals/quote-detail-modal"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Badge } from "@/components/ui/badge"
+import { PortalHostingTab } from "./portal-hosting-tab"
+
+interface PortalLayoutProps {
+    token: string
+    client: Client
+    invoices: Invoice[]
+    quotes: Quote[]
+    briefings: Briefing[]
+    events: ClientEvent[]
+    services: Service[]
+    hostingAccounts?: any[] // Optional to avoid breaking existing calls immediately
+    settings: any
+    activeModules: Array<{
+        slug: string
+        portal_tab_label: string
+        portal_icon_key: string
+    }>
+    onPay: (invoiceIds: string[]) => void
+    onViewInvoice: (invoice: Invoice) => void
+    onViewQuote: (quote: Quote) => void
+    logout?: () => void
+    insightsAccess?: { show: boolean, mode: { organic: boolean, ads: boolean } } // NEW
+}
+
+// Icon mapping for dynamic tabs
+const ICON_MAP: Record<string, any> = {
+    LayoutDashboard,
+    Layers,
+    CreditCard,
+    Search,
+    Server,
+    BarChart3
+}
+
+// Map module slug to component key
+function mapModuleToComponent(moduleSlug: string): string {
+    const mapping: Record<string, string> = {
+        'module_invoicing': 'billing',
+        'module_briefings': 'services',
+        'core_services': 'services',
+        'module_catalog': 'explore',
+        'meta_insights': 'insights'
+    }
+    return mapping[moduleSlug] || 'summary'
+}
+
+type TabKey = 'summary' | 'services' | 'billing' | 'explore' | 'insights' | 'hosting'
+
+import { useTranslation } from "@/lib/i18n/use-translation"
+
+export function PortalLayout({ token, client, invoices, quotes, briefings, events, services, hostingAccounts = [], settings, activeModules, onPay, onViewInvoice, onViewQuote, insightsAccess }: PortalLayoutProps) {
+    const { t } = useTranslation()
+    // Determine which tabs to show based on active modules (Deduplicated Logic)
+    const showServices = activeModules.some(m => ['core_services', 'module_briefings', 'module_projects'].includes(m.slug))
+    const showBilling = activeModules.some(m => ['module_invoicing', 'core_billing', 'payments', 'module_payments'].includes(m.slug))
+    const showExplore = activeModules.some(m => ['module_catalog', 'core_catalog'].includes(m.slug))
+    const showInsights = activeModules.some(m => ['meta_insights', 'module_insights'].includes(m.slug)) && insightsAccess?.show === true
+
+    const dynamicTabs = [
+        // 1. Summary (Always shown)
+        {
+            key: 'summary',
+            component: 'summary',
+            label: t('portal.nav.summary'),
+            icon: LayoutDashboard
+        },
+        // 2. Services (If any service-related module is active)
+        ...(showServices ? [{
+            key: 'services',
+            component: 'services',
+            label: t('portal.nav.services'),
+            icon: Layers
+        }] : []),
+        // 3. Billing (If invoicing/payments is active)
+        ...(showBilling ? [{
+            key: 'billing',
+            component: 'billing',
+            label: t('portal.nav.billing'),
+            icon: CreditCard
+        }] : []),
+        // 4. Explore/Catalog
+        ...(showExplore ? [{
+            key: 'explore',
+            component: 'explore',
+            label: t('portal.nav.explore'),
+            icon: Search
+        }] : []),
+        // 5. Insights
+        ...(showInsights ? [{
+            key: 'insights',
+            component: 'insights',
+            label: t('portal.nav.insights'),
+            icon: BarChart3
+        }] : []),
+        // 6. Hosting (Auto-detected)
+        ...(hostingAccounts && hostingAccounts.length > 0 ? [{
+            key: 'hosting',
+            component: 'hosting',
+            label: t('portal.nav.hosting'),
+            icon: Server
+        }] : [])
+    ]
+
+    const [activeTab, setActiveTab] = useState(dynamicTabs[0]?.key || 'summary')
+    const [viewQuote, setViewQuote] = useState<Quote | null>(null)
+    const [targetBriefingId, setTargetBriefingId] = useState<string | null>(null)
+    const [showBillingAlert, setShowBillingAlert] = useState(true)
+
+    // Derived State
+    const pendingInvoices = invoices.filter(i => i.status === 'pending' || i.status === 'overdue')
+    const totalPending = pendingInvoices.reduce((acc, curr) => acc + Number(curr.total), 0)
+    const pendingBriefings = briefings.filter(b => b.status === 'sent' || b.status === 'in_progress')
+    const openQuotes = quotes.filter(q => q.status === 'sent')
+
+    // Notifications Count (Module-Aware)
+    // Only count items if the corresponding module is active
+    const hasInvoicingModule = activeModules.some(m => m.slug === 'module_invoicing')
+    const hasBriefingsModule = activeModules.some(m => m.slug === 'module_briefings' || m.slug === 'core_services')
+
+    const notificationCount =
+        (hasInvoicingModule ? pendingInvoices.length + openQuotes.length : 0) +
+        (hasBriefingsModule ? pendingBriefings.length : 0)
+
+    const handleViewBriefing = (id: string) => {
+        // Find first tab that maps to 'services' component
+        const servicesTab = dynamicTabs.find(t => t.component === 'services')
+        setTargetBriefingId(id)
+        setActiveTab(servicesTab?.key || 'summary')
+    }
+
+    // Inject Branding Logic via CSS Variables if needed (already done in page.tsx wrapper, but good to keep in mind)
+
+    return (
+        <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row">
+
+            {/* ----------------- Mobile Top Bar (Project Logo + Notifs) ----------------- */}
+            <div className="md:hidden flex items-center justify-center p-4 bg-white border-b sticky top-0 z-30 relative">
+                <img src={settings.portal_logo_url || "/branding/logo dark.svg"} alt="Logo" className="h-8 object-contain" />
+                <div className="absolute right-4">
+                    <NotificationBell
+                        count={notificationCount}
+                        pendingInvoices={pendingInvoices}
+                        openQuotes={openQuotes}
+                        pendingBriefings={pendingBriefings}
+                        onViewQuote={onViewQuote}
+                        onTabChange={setActiveTab}
+                    />
+                </div>
+            </div>
+
+            {/* ----------------- Desktop Sidebar (Navigation) ----------------- */}
+            <aside className="hidden md:flex flex-col w-64 bg-white border-r h-screen sticky top-0">
+                <div className="p-8">
+                    <img src={settings.portal_logo_url || "/branding/logo dark.svg"} alt="Logo" className="h-10 object-contain mb-8" />
+                </div>
+
+                <nav className="flex-1 px-4 space-y-2">
+                    {dynamicTabs.map(tab => (
+                        <NavButton
+                            key={tab.key}
+                            active={activeTab === tab.key}
+                            onClick={() => setActiveTab(tab.key)}
+                            icon={tab.icon}
+                            label={tab.label}
+                        />
+                    ))}
+                </nav>
+
+                <div className="p-4 border-t">
+                    <div className="flex items-center gap-3 p-2 rounded-lg bg-gray-50">
+                        <Avatar className="h-10 w-10 border">
+                            <AvatarFallback>{client?.name ? client.name[0] : 'C'}</AvatarFallback>
+                        </Avatar>
+                        <div className="overflow-hidden">
+                            <p className="text-sm font-bold truncate">{client?.name || 'Cliente'}</p>
+                            <p className="text-xs text-gray-500 truncate">{client?.company_name || 'Empresa'}</p>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            {/* ----------------- Main Content Area ----------------- */}
+            <main className="flex-1 flex flex-col min-h-0 relative">
+
+                {/* Desktop Header (User + Notifs) */}
+                <header className="hidden md:flex items-center justify-end p-6 gap-4">
+                    <NotificationBell
+                        count={notificationCount}
+                        pendingInvoices={pendingInvoices}
+                        openQuotes={openQuotes}
+                        pendingBriefings={pendingBriefings}
+                        onViewQuote={onViewQuote}
+                        onTabChange={setActiveTab}
+                    />
+                </header>
+
+                {/* Content Scrollable */}
+                <div className="flex-1 overflow-y-auto p-4 md:p-6 md:pt-4 pb-32 md:pb-8">
+                    {/* Find the current tab's component */}
+                    {dynamicTabs.find(t => t.key === activeTab)?.component === 'summary' && (
+                        <PortalSummaryTab
+                            client={client} invoices={invoices} quotes={quotes} briefings={briefings} events={events}
+                            onViewQuote={onViewQuote} onViewBriefing={handleViewBriefing}
+                        />
+                    )}
+                    {dynamicTabs.find(t => t.key === activeTab)?.component === 'services' && (
+                        <PortalServicesTab
+                            token={token}
+                            services={services} invoices={invoices} briefings={briefings}
+                            onPay={onPay} onViewInvoice={onViewInvoice}
+                            initialBriefingId={targetBriefingId}
+                            onBriefingClosed={() => setTargetBriefingId(null)}
+                        />
+                    )}
+                    {dynamicTabs.find(t => t.key === activeTab)?.component === 'billing' && (
+                        <PortalBillingTab
+                            invoices={invoices} settings={settings} onPay={onPay} onViewInvoice={onViewInvoice} token={token}
+                        />
+                    )}
+                    {dynamicTabs.find(t => t.key === activeTab)?.component === 'insights' && <InsightsTab client={client} services={services} token={token} insightsAccess={insightsAccess} />}
+                    {dynamicTabs.find(t => t.key === activeTab)?.component === 'explore' && <PortalCatalogTab settings={settings} client={client} token={token} />}
+                    {dynamicTabs.find(t => t.key === activeTab)?.component === 'hosting' && <PortalHostingTab hostingAccounts={hostingAccounts || []} />}
+                </div>
+
+                {/* Billing Summary Block (Persistent Desktop) */}
+                {/* Visible on all tabs except 'explore' */}
+                {showBillingAlert && activeTab !== 'explore' && pendingInvoices.length > 0 && (
+                    <div className="hidden lg:block fixed bottom-8 right-8 z-20">
+                        <div className="bg-white rounded-xl shadow-2xl p-6 w-80 border border-gray-100 ring-1 ring-black/5 animate-in slide-in-from-right">
+                            <div className="flex justify-between items-start mb-4">
+                                <div className="flex items-center gap-3">
+                                    <h4 className="font-bold text-gray-900">{t('portal.alerts.pending_payments')}</h4>
+                                    <Badge className={cn(
+                                        "border-0 text-white",
+                                        pendingInvoices.some(i => i.status === 'overdue')
+                                            ? "bg-red-600 hover:bg-red-700"
+                                            : "bg-orange-500 hover:bg-orange-600"
+                                    )}>{pendingInvoices.length}</Badge>
+                                </div>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+                                    onClick={() => setShowBillingAlert(false)}
+                                >
+                                    <X className="h-4 w-4" />
+                                </Button>
+                            </div>
+                            <p className="text-3xl font-bold text-gray-900 mb-2">
+                                {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(totalPending)}
+                            </p>
+                            <p className="text-sm text-gray-500 mb-4">{t('portal.alerts.pending_docs_msg').replace('{count}', pendingInvoices.length.toString())}</p>
+                            <Button
+                                className="w-full text-white bg-black hover:bg-gray-800"
+                                onClick={() => {
+                                    // Find first tab that maps to 'billing' component
+                                    const billingTab = dynamicTabs.find(t => t.component === 'billing')
+                                    setActiveTab(billingTab?.key || 'summary')
+                                    setShowBillingAlert(false)
+                                }}
+                            >
+                                {t('portal.alerts.go_to_payments')}
+                            </Button>
+                        </div>
+                    </div>
+                )}
+            </main>
+
+            {/* ----------------- Mobile Bottom Navigation ----------------- */}
+            <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t flex justify-around p-2 pb-4 z-50">
+                {dynamicTabs.slice(0, 5).map(tab => (
+                    <MobileNavBtn
+                        key={tab.key}
+                        active={activeTab === tab.key}
+                        onClick={() => setActiveTab(tab.key)}
+                        icon={tab.icon}
+                        label={tab.label}
+                    />
+                ))}
+            </nav>
+
+        </div>
+    )
+}
+
+function NavButton({ active, onClick, icon: Icon, label }: any) {
+    return (
+        <button
+            onClick={onClick}
+            className={cn(
+                "flex items-center w-full gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
+                active ? "bg-black text-white" : "text-gray-600 hover:bg-gray-50"
+            )}
+        >
+            <Icon className="h-5 w-5" />
+            {label}
+        </button>
+    )
+}
+
+function MobileNavBtn({ active, onClick, icon: Icon, label }: any) {
+    return (
+        <button
+            onClick={onClick}
+            className={cn(
+                "flex flex-col items-center gap-1 p-2 rounded-lg min-w-[64px]",
+                active ? "text-primary" : "text-gray-400"
+            )}
+        >
+            <Icon className={cn("h-6 w-6", active && "stroke-[2.5px]")} />
+            <span className="text-[10px] font-medium">{label}</span>
+        </button>
+    )
+}
+
+function NotificationBell({ count, pendingInvoices, openQuotes, pendingBriefings, onViewQuote, onTabChange, onViewBriefing }: any) {
+    const { t } = useTranslation()
+    return (
+        <Popover>
+            <PopoverTrigger asChild>
+                <Button variant="ghost" size="icon" className="relative">
+                    <Bell className="h-5 w-5 text-gray-600" />
+                    {count > 0 && (
+                        <span className="absolute top-2 right-2 h-2.5 w-2.5 bg-red-500 rounded-full border-2 border-white ring-1 ring-red-500"></span>
+                    )}
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80 p-0" align="end">
+                <div className="p-4 border-b">
+                    <h4 className="font-bold">{t('portal.header.notifications')}</h4>
+                </div>
+                <div className="max-h-[300px] overflow-y-auto">
+                    {count === 0 ? (
+                        <div className="p-8 text-center text-gray-500 text-sm">{t('portal.header.empty_notifs')}</div>
+                    ) : (
+                        <div className="divide-y">
+                            {pendingInvoices.length > 0 && (
+                                <div className="p-4 hover:bg-gray-50 cursor-pointer" onClick={() => onTabChange('billing')}>
+                                    <div className="flex gap-3">
+                                        <div className="h-8 w-8 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                                            <CreditCard className="h-4 w-4 text-red-600" />
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-medium">{t('portal.header.docs_overdue')}</p>
+                                            <p className="text-xs text-gray-500">{t('portal.header.pending_docs_count').replace('{count}', pendingInvoices.length.toString())}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                            {openQuotes.map((q: Quote) => (
+                                <div key={q.id} className="p-4 hover:bg-gray-50 cursor-pointer" onClick={() => onViewQuote(q)}>
+                                    <div className="flex gap-3">
+                                        <div className="h-8 w-8 rounded-full bg-purple-100 flex items-center justify-center shrink-0">
+                                            <LayoutDashboard className="h-4 w-4 text-purple-600" />
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-medium">{t('portal.header.new_quote')}</p>
+                                            <p className="text-xs text-gray-500">{t('portal.header.check_quote').replace('{number}', q.number)}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                            {pendingBriefings.map((b: Briefing) => (
+                                <div key={b.id} className="p-4 hover:bg-gray-50 cursor-pointer" onClick={() => onViewBriefing ? onViewBriefing(b.id) : onTabChange('services')}>
+                                    <div className="flex gap-3">
+                                        <div className="h-8 w-8 rounded-full bg-brand-pink/10 flex items-center justify-center shrink-0">
+                                            <Layers className="h-4 w-4 text-brand-pink" />
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-medium">{t('portal.header.pending_briefing')}</p>
+                                            <p className="text-xs text-gray-500">{t('portal.header.briefing_info').replace('{name}', b.template?.name || 'Service')}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </PopoverContent>
+        </Popover>
+    )
+}

@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation"
-import { getSubmissionByToken, getSubmissionResponses } from "@/modules/core/forms/actions"
-import { FormWizard } from "@/modules/core/forms/form-wizard"
-import { FormTemplate } from "@/modules/core/forms/actions"
-import boyWithDogAnimation from "../../../../../public/animations/boy-with-dog-in-wilderness-illustration-2025-10-20-03-04-06-utc.json"
+import { getSubmissionByToken, getSubmissionResponses } from "@/modules/features/forms/actions"
+import { FormWizard } from "@/modules/features/forms/form-wizard"
+import { FormTemplate } from "@/modules/features/forms/actions"
+import boyWithDogAnimation from "@/../public/animations/boy-with-dog-in-wilderness-illustration-2025-10-20-03-04-06-utc.json"
 import { LottieAnimation } from "@/components/ui/lottie-animation"
 
 interface PageProps {

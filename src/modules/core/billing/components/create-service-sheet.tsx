@@ -38,7 +38,7 @@ import { format } from "date-fns"
 import { supabase } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
-import { ServiceCatalogSelector } from "@/modules/core/catalog/components/service-catalog-selector"
+import { ServiceCatalogSelector } from "@/modules/features/catalog/components/service-catalog-selector"
 import { logDomainEventAction } from "@/modules/core/logging/actions"
 import { ServiceRetroactiveModal } from "./service-retroactive-modal"
 import { useTranslation } from "@/lib/i18n/use-translation"
@@ -728,3 +728,4 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
         </Sheet >
     )
 }
+

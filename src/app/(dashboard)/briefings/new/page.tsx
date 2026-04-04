@@ -1,5 +1,5 @@
-import { getFormTemplates } from "@/modules/core/forms/actions"
-import { CreateFormSubmission } from "@/modules/core/forms/create-form-submission"
+import { getFormTemplates } from "@/modules/features/forms/actions"
+import { CreateFormSubmission } from "@/modules/features/forms/create-form-submission"
 import { createClient } from "@/lib/supabase-server"
 
 export default async function NewBriefingPage() {
@@ -30,3 +30,4 @@ export default async function NewBriefingPage() {
         </div>
     )
 }
+

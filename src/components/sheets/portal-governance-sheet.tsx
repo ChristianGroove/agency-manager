@@ -5,7 +5,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { Layout, Globe, Server, FileText, BarChart3, ExternalLink, Shield, Calendar } from "lucide-react"
-import { updateClientPortalConfig, updatePortalTokenExpiration } from "@/modules/core/portal/actions"
+import { updateClientPortalConfig, updatePortalTokenExpiration } from "@/modules/features/portal/services/token-service"
+
 import { toast } from "sonner"
 import { Client } from "@/types"
 import { Switch } from "@/components/ui/switch"
@@ -272,3 +273,4 @@ export function PortalGovernanceSheet({ client, globalSettings, trigger, open: c
         </Sheet>
     )
 }
+

@@ -1,4 +1,4 @@
-import { PortalLayout } from "@/modules/core/portal/portal-layout";
+import { PortalLayout } from "@/modules/features/portal/components/portal-layout";
 import { B2CRestaurantLayout } from "./b2c-restaurant-template/b2c-restaurant-layout";
 
 /**
@@ -23,3 +23,4 @@ export function getPublicPortalTemplate(templateKey: string | null | undefined):
 
     return PUBLIC_PORTAL_TEMPLATES[templateKey];
 }
+

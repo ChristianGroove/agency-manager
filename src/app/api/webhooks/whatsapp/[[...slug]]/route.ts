@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabase-admin"
-import { InboxService } from "@/modules/core/messaging/inbox-service"
+import { inngest } from "@/lib/inngest/client"
+
 
 /**
  * Evolution API Webhook Handler (Catch-all)
@@ -16,16 +17,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
     try {
         const body = await req.json();
 
-        // original code continues... but I need to replace line 16?
-        // Replace ONLY line 16? No, I am replacing lines 14-16.
-
-        // Let's rewrite carefully.
-        // Original:
-        // 14:     const { slug } = await params
-        // 15:     try {
-        // 16:         const body = await req.json()
-
-        // Replacement must provide `body`.
+        /**
+         * OFF-LOADING PATTERN (Fase 2):
+         * No procesamos lógica pesada (IA, DB, etc.) directamente en la ruta de la API.
+         * Despachamos el evento a Inngest y respondemos 200 OK inmediatamente.
+         * El worker en `src/inngest/messaging.ts` se encarga del procesamiento real.
+         */
 
         const { event, instance, data } = body
 
@@ -93,9 +90,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
                 return NextResponse.json({ status: 'ok', event: 'no_messages' })
             }
 
-            const inboxService = new InboxService()
 
             for (const message of messages) {
+
                 // Skip outgoing messages (sent by us)
                 if (message.key?.fromMe) {
                     continue
@@ -178,21 +175,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
                     }
                 };
 
-                const result = await inboxService.handleIncomingMessage(incomingMessage, supabaseAdmin)
+                // Send to Inngest for Async Processing
+                await inngest.send({
+                    name: 'whatsapp/message.received',
+                    data: { incomingMessage }
+                })
 
-                if (result && result.success && result.conversationId && buttonId) {
-                    console.log(`[Webhook:Evolution] InboxService SUCCESS. Checking for button process...`)
-                    // If it's a call permission button, pass it to WebhookManager for processing
-                    if (buttonId.startsWith('approve_call_perm') || buttonId.startsWith('deny_call_perm')) {
-                         try {
-                            const { webhookManager } = await import('@/modules/core/messaging/webhook-handler')
-                            // Mocking normalized provider to use WebhookManager logic
-                            await (webhookManager as any).processMessage(incomingMessage, 'whatsapp' as any);
-                         } catch (err) {
-                            console.error('[Webhook:Evolution] Failed to process button logic via WebhookManager:', err)
-                         }
-                    }
-                }
+                console.log(`[Webhook:Evolution] Message dispatched to Inngest for async processing.`)
             }
 
             return NextResponse.json({ status: 'ok', event: 'messages_processed', count: messages.length })

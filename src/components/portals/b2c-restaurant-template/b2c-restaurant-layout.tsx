@@ -12,7 +12,7 @@ import { RestoMenuGrid } from "./views/RestoMenuGrid"
 import { RestoCartView } from "./views/RestoCartView"
 import { RestoOrderTracker } from "./views/RestoOrderTracker"
 import { useRestoCart } from "@/hooks/use-resto-cart"
-import { getPortalCatalog } from "@/modules/core/portal/actions"
+import { getPortalCatalog } from "@/modules/features/portal/services/portal-service"
 import { useSearchParams } from "next/navigation"
 import { updateClientAddress } from "./actions/checkout-actions"
 
@@ -326,3 +326,4 @@ function RestoClientProfile({ client, primaryColor }: { client: any, primaryColo
         </>
     )
 }
+

@@ -4,7 +4,7 @@ import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase-server"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
 import { getLocations, getStaffTrackers } from "@/modules/core/locations/actions"
-import { getStaff } from "@/modules/core/attendance/actions"
+import { getStaff } from "@/modules/features/attendance/actions"
 import { LocationsView } from "@/modules/core/locations/components/locations-view"
 import { GlobalLoader } from "@/components/ui/global-loader"
 

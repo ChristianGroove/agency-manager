@@ -1,7 +1,7 @@
 
-import { getFormSubmissions } from "@/modules/core/forms/actions"
-import { FormPageHeader } from "@/modules/core/forms/form-page-header"
-import { DynamicFormList } from "@/modules/core/forms/dynamic-form-list"
+import { getFormSubmissions } from "@/modules/features/forms/actions"
+import { FormPageHeader } from "@/modules/features/forms/form-page-header"
+import { DynamicFormList } from "@/modules/features/forms/dynamic-form-list"
 
 export default async function BriefingsPage() {
     const submissions = await getFormSubmissions()
@@ -14,6 +14,7 @@ export default async function BriefingsPage() {
         </div>
     )
 }
+
 
 
 

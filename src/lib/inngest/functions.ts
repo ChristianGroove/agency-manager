@@ -226,5 +226,18 @@ import { vaultSnapshotScheduler } from "@/modules/core/data-vault/scheduler";
 import { monthlySubscriptionBilling } from "@/inngest/billing";
 import { platformDunningManager } from "@/inngest/dunning-manager";
 import { clientInvoicingAutomation } from "@/inngest/client-invoicing";
+import { processIncomingMessage } from "@/inngest/messaging";
+import { processStripeWebhook } from "@/inngest/stripe";
 
-export const functions = [runWorkflow, vaultSnapshotScheduler, contractOrchestrator, monthlySubscriptionBilling, platformDunningManager, clientInvoicingAutomation];
+export const functions = [
+    runWorkflow, 
+    vaultSnapshotScheduler, 
+    contractOrchestrator, 
+    monthlySubscriptionBilling, 
+    platformDunningManager, 
+    clientInvoicingAutomation,
+    processIncomingMessage,
+    processStripeWebhook
+];
+
+

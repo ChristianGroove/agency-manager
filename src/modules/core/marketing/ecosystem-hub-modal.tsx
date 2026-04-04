@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils"
 // Actions
 import { getMetaConfig, saveMetaConfig } from "@/modules/core/admin/actions"
 import { supabase } from "@/lib/supabase"
-import { InsightsTab } from "@/modules/core/portal/insights/insights-tab"
+import { InsightsTab } from "@/modules/features/portal/insights/insights-tab"
 
 interface EcosystemHubModalProps {
     client: any
@@ -407,3 +407,4 @@ function SubmitButton({ label }: { label: string }) {
 function Badge({ variant, className, children }: any) {
     return <div className={cn("px-2 py-0.5 rounded text-xs font-medium border", className)}>{children}</div>
 }
+

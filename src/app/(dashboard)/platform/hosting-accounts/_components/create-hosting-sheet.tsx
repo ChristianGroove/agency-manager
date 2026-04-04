@@ -19,7 +19,7 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 import { toast } from "sonner"
-import { createHostingAccount, updateHostingAccount } from "@/modules/core/hosting/actions"
+import { createHostingAccount, updateHostingAccount } from "@/modules/features/hosting/actions"
 import { supabase } from "@/lib/supabase"
 import { Loader2 } from "lucide-react"
 
@@ -228,3 +228,4 @@ export function CreateHostingSheet({ open, onOpenChange, onSuccess, accountToEdi
         </Sheet>
     )
 }
+

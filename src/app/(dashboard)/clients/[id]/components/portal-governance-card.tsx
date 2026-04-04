@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Layout, Globe, Server, FileText, BarChart3, Lock, AlertTriangle, ExternalLink, RefreshCw } from "lucide-react"
-import { updateClientPortalConfig } from "@/modules/core/portal/actions"
+import { updateClientPortalConfig } from "@/modules/features/portal/services/token-service"
 import { toast } from "sonner"
 import { Client } from "@/types"
 

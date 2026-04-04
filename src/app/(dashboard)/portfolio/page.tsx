@@ -11,11 +11,11 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Plus, Store } from "lucide-react"
 import { SectionHeader } from "@/components/layout/section-header"
-import { CatalogList } from "@/modules/core/catalog/catalog-list"
-import { CatalogServiceSheet } from "@/modules/core/catalog/catalog-service-sheet"
-import { CategoryManager } from "@/modules/core/catalog/components/category-manager"
-import { getCatalogItems, deleteCatalogItem } from "@/modules/core/catalog/actions"
-import { getCategories, ServiceCategory } from "@/modules/core/catalog/categories-actions"
+import { CatalogList } from "@/modules/features/catalog/catalog-list"
+import { CatalogServiceSheet } from "@/modules/features/catalog/catalog-service-sheet"
+import { CategoryManager } from "@/modules/features/catalog/components/category-manager"
+import { getCatalogItems, deleteCatalogItem } from "@/modules/features/catalog/actions"
+import { getCategories, ServiceCategory } from "@/modules/features/catalog/categories-actions"
 import { ServiceCatalogItem } from "@/types"
 import { BriefingTemplate } from "@/types/briefings"
 import { toast } from "sonner"
@@ -23,8 +23,8 @@ import { cn } from "@/lib/utils"
 import { SplitText } from "@/components/ui/split-text"
 import { SearchFilterBar, FilterOption } from "@/components/shared/search-filter-bar"
 import { ViewToggle, ViewMode } from "@/components/shared/view-toggle"
-import { CategorySelector } from "@/modules/core/catalog/category-selector"
-import { TemplateImporter } from "@/modules/core/catalog/template-importer"
+import { CategorySelector } from "@/modules/features/catalog/category-selector"
+import { TemplateImporter } from "@/modules/features/catalog/template-importer"
 import { useTranslation } from "@/lib/i18n/use-translation"
 
 
@@ -209,3 +209,4 @@ export default function PortfolioPage() {
         </div>
     )
 }
+
