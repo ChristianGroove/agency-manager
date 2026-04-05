@@ -8,26 +8,28 @@ Este documento define las reglas arquitectónicas establecidas durante la gran r
 
 ---
 
-## 1. La Tabla Única Canónica (`leads`)
+## 1. Patrón Bimodal: Unificación DB vs Aislamiento de Capa de Servicio
 
-Históricamente, el sistema tenía dos tablas separadas: `leads` (prospectos) y `clients` (clientes). Esto causaba duplicidad severa de datos y desincronización de historiales de chat.
+Históricamente, el sistema tenía dos tablas separadas: `leads` y `clients`. En una refactorización masiva, **estas tablas fueron UNIFICADAS a nivel de base de datos dentro de `public.leads`**, trasladando TODAS las relaciones e historiales (`invoices`, `services`, `subscriptions`, etc.) para apuntar obligatoriamente al sistema de leads.
 
-**Regla de Oro:** La tabla `clients` está **DEPRECADA**. La única fuente de verdad para cualquier persona, empresa, prospecto o cliente en el sistema es la tabla `public.leads`.
+Sin embargo, para evitar cruces mortales comerciales e invisibilización de métricas en Javascript, se estableció una regla de **Separación a nivel de Servicio Bimodal**, controlada rígidamente por la columna `contact_type`:
 
-### El Discriminador: `contact_type`
-Para saber si un registro en `leads` es un contacto frío o un cliente consolidado con facturación, usamos la columna `contact_type`. Valores aceptados:
+### API 1: Modalidad 'Leads' (CRM Ventas)
+- **Repo Origen:** `public.leads` donde el registro de negocio actúa temporalmente.
+- **Regla:** Solo fluye a través del embudo comercial (`ContactService`). 
+- **Comportamiento:** Limitado sin tableros o insight features para evitar cargas transaccionales innecesarias.
 
-- `'lead'`: Prospecto inicial. Vive en el CRM Pipeline.
-- `'client'`: Cliente formal (suele tener `nit`, `address`, `category_id`). Vive en la tabla de Clientes y Portal.
-- `'prospect'`: Prospecto cualificado (usado por cotizaciones).
-- `'partner'`: Proveedores o socios.
+### API 2: Modalidad 'Clients' (Centro Administrativo)
+- **Repo Origen:** `public.leads WHERE contact_type = 'client'`
+- **Regla:** Utiliza su propia capa lógica (`ClientService.ts`) especializada en orquestar interacciones estructuradas anexas como `hosting_accounts`, `active_services`, facturas anidadas, deudas, calculos matemáticos, y acceso de Portales.
 
-### Conversión de Lead a Cliente
-Nunca se debe hacer un `INSERT` nuevo para convertir a alguien. La conversión se hace haciendo un `UPDATE` al registro existente:
-```sql
-UPDATE leads SET contact_type = 'client', status = 'converted' WHERE id = '...';
-```
-Esto preserva el UUID original, manteniendo intacto todo su historial de chats, cotizaciones y facturas asociadas.
+### 👻 TRAMPA DE POSTGREST: "FACTURAS FANTASMAS Y SOFT-DELETES"
+Al consultar las dependencias de los clientes usando la sintaxis embeddida de Supabase (`invoices(*)`), PostgREST **devolverá también registros soft-eliminados o archivados**, ya que no filtra la relación interna. Esto provocaba picos absurdos de facturación ("Facturas Fantasmas") donde registros `void` o con `deleted_at` inflaban la deuda.
+**Regla Estricta:** Todo Service que proyecte Arrays relacionados debe mapear y purgar en Javascript (.filter()) la basura histórica `(!inv.deleted_at && !inv.archived && inv.status !== 'void')` ANTES de recalcular matemáticas (`debt`) o despachar el Payload a los componentes Reacr.
+
+### 🚫 CASO DE ESTUDIO: LA CONFUSIÓN LETAL (ABRIL 2026)
+Hubo un periodo en el que la tabla legacy `public.clients` no se había eliminado y un programador repuntó los servicios de "Facturación" asumiendo que esa era aún la fuente cliente. Esto provocó Crashings en todo el entorno (`Could not find relationship 'services'`), ya que la Capa DB tenía las llaves foráneas asignadas a `leads`.
+**Nunca, por ninguna razón se debe retroceder la consulta de clientes a la vieja tabla `clients`. Siempre es y será `leads` filtrada por `contact_type='client'`.**
 
 ---
 

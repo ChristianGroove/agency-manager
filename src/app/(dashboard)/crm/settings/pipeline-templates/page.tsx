@@ -1,5 +1,5 @@
 
-import { TemplateSelector } from "@/modules/core/crm/components/template-selector"
+import { TemplateSelector } from "@/modules/features/crm/components/template-selector"
 import { SectionHeader } from "@/components/layout/section-header"
 import { Metadata } from "next"
 

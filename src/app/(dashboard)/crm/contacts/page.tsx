@@ -1,7 +1,6 @@
-import { getPaginatedClients } from "@/modules/core/clients/actions"
-import { getSettings } from "@/modules/core/settings/actions"
+import { getClientsAction, getSettingsAction, getCategoriesAction } from "@/modules/features/crm/crm-actions"
 import { getOrgSpaceCategory } from "@/modules/core/organizations/space-helpers"
-import ClientsView from "@/modules/core/clients/components/clients-view"
+import ClientsView from "@/modules/features/crm/components/clients-view"
 import { Suspense } from "react"
 import { VerticalType } from "@/modules/core/organizations/vertical-registry"
 
@@ -19,14 +18,16 @@ export default async function CRMContactsPage({
     const search = typeof searchParams.search === 'string' ? searchParams.search : ''
     const filter = typeof searchParams.filter === 'string' ? searchParams.filter : 'all'
 
-    const { getClientCategories } = await import("@/modules/core/clients/categories-actions")
-    const [paginatedData, settings, spaceType, categoriesRes] = await Promise.all([
-        getPaginatedClients(page, 50, search, filter),
-        getSettings(),
+    // Use unified CRM Actions
+    const [clientsRes, settingsRes, spaceType, categoriesRes] = await Promise.all([
+        getClientsAction({ page, search, filter }),
+        getSettingsAction(),
         getOrgSpaceCategory(),
-        getClientCategories()
+        getCategoriesAction()
     ])
 
+    const paginatedData = clientsRes.success ? clientsRes.data : { results: [], count: 0 }
+    const settings = settingsRes.success ? settingsRes.data : null
     const allCategories = categoriesRes.success ? (categoriesRes.data || []) : []
 
     return (

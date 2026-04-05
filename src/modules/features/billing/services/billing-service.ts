@@ -18,7 +18,7 @@ export async function getInvoices() {
         .from('invoices')
         .select(`
             *,
-            client:clients(name)
+            client:leads(name)
         `)
         .eq('organization_id', orgId)
         .is('deleted_at', null)
@@ -42,7 +42,7 @@ export async function getInvoiceById(id: string) {
         .from('invoices')
         .select(`
             *,
-            client:clients(*),
+            client:leads(*),
             emitter:emitters(*)
         `)
         .eq('id', id)
@@ -264,7 +264,7 @@ export async function toggleServiceStatus(id: string, status: 'active' | 'paused
 export async function getPublicInvoice(id: string) {
     const { data: invoice, error } = await supabaseAdmin
         .from('invoices')
-        .select(`*, client:clients(*), emitter:emitters(*)`)
+        .select(`*, client:leads(*), emitter:emitters(*)`)
         .eq('id', id)
         .single()
 

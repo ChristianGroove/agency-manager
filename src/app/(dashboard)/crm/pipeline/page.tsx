@@ -1,6 +1,6 @@
 import { Suspense } from "react"
-import { CRMDashboard } from "@/modules/core/crm/components/crm-dashboard"
-import { getPipelineData } from "@/modules/core/crm/pipeline-actions"
+import { CRMDashboard } from "@/modules/features/crm/components/crm-dashboard"
+import { getPipelineViewDataAction } from "@/modules/features/crm/crm-actions"
 
 export const metadata = {
     title: "Pipeline | CRM",
@@ -15,7 +15,7 @@ export default async function CRMPipelinePage(props: {
     const params = await props.searchParams
     const channelId = params.channel || null
 
-    const data = await getPipelineData(channelId)
+    const data = await getPipelineViewDataAction(channelId)
 
     if (!data) {
         return <div className="p-8 text-center text-red-500">Error: No se pudo cargar el contexto de organización.</div>
@@ -28,7 +28,7 @@ export default async function CRMPipelinePage(props: {
                     initialLeads={data.leads}
                     initialStages={data.stages}
                     initialEmitters={data.emitters}
-                    initialCount={data.totalCount}
+                    initialCount={data.totalCount || 0}
                 />
             </div>
         </Suspense>

@@ -1,5 +1,5 @@
 import { Suspense } from "react"
-import { PipelineStagesManager } from "@/modules/core/crm/components/pipeline-stages-manager"
+import { PipelineStagesManager } from "@/modules/features/crm/components/pipeline-stages-manager"
 
 export const metadata = {
     title: "Configuración de Pipeline | CRM",

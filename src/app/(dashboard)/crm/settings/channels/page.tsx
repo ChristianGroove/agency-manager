@@ -11,7 +11,7 @@ export async function generateMetadata() {
     }
 }
 
-import { getPipelineStages } from "@/modules/core/crm/pipeline-actions"
+import { getPipelineStages } from "@/modules/features/crm/services/logic/pipeline-actions"
 import { getOrganizationMembers } from "@/modules/core/settings/actions/team-actions"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
 

@@ -1,6 +1,6 @@
 import { Suspense } from "react"
 import { getChannel } from "@/modules/core/channels/actions"
-import { getPipelineStages } from "@/modules/core/crm/pipeline-actions"
+import { getPipelineStages } from "@/modules/features/crm/services/logic/pipeline-actions"
 import { ChannelDetail } from "@/modules/core/channels/components/channel-detail"
 import { notFound } from "next/navigation"
 

@@ -127,7 +127,7 @@ export function CreateInvoiceSheet({
             setIsValidating(true)
             try {
                 // Simulate context for validation
-                const { validateInvoiceDraftAction: validateInvoiceDraft } = await import("../billing-actions")
+                const { validateInvoiceDraftAction: validateInvoiceDraft } = await import("@/modules/features/billing/billing-actions")
                 const result = await validateInvoiceDraft({
                     document_type: derivedDocType,
                     items: items,
@@ -294,7 +294,7 @@ export function CreateInvoiceSheet({
                 result = data
                 toast.success(t('invoicing.toasts.updated_success'))
             } else {
-                const { createInvoiceAction: createInvoice } = await import('../billing-actions')
+                const { createInvoiceAction: createInvoice } = await import('@/modules/features/billing/billing-actions')
                 const response = await createInvoice({
                     client_id: finalClient,
                     emitter_id: selectedEmitterId || undefined,

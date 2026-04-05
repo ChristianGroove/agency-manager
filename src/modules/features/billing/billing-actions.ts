@@ -30,6 +30,14 @@ export async function getInvoices() {
     return await BillingService.getInvoices()
 }
 
+export async function deleteInvoicesAction(ids: string[]) {
+    const { createClient } = await import("@/lib/supabase-server")
+    const supabase = await createClient()
+    const { error } = await supabase.from('invoices').update({ deleted_at: new Date().toISOString() }).in('id', ids)
+    if (!error) revalidatePath('/billing')
+    return { success: !error, error: error?.message }
+}
+
 export async function getInvoiceById(id: string) {
     return await BillingService.getInvoiceById(id)
 }
@@ -44,6 +52,16 @@ export async function getAuditLogsAction(entityId?: string) {
 
 export async function getPublicInvoiceAction(id: string) {
     return await BillingService.getPublicInvoice(id)
+}
+
+export async function getEmittersAction() {
+    const { getEmitters } = await import("@/modules/core/settings/emitters-actions")
+    try {
+        const data = await getEmitters()
+        return { success: true, data }
+    } catch (e: any) {
+        return { success: false, error: e.message }
+    }
 }
 
 // ============================================
@@ -89,6 +107,10 @@ export async function getSubscriptionHistory() {
     return await PaymentService.getSubscriptionHistory()
 }
 
+export async function getPaymentTransactions() {
+    return await PaymentService.getPaymentTransactions()
+}
+
 // ============================================
 // SUBSCRIPTION ACTIONS
 // ============================================
@@ -122,8 +144,8 @@ export async function getRevenueMetrics() {
 // FISCAL DOCUMENT ACTIONS (DIAN Implementation)
 // ============================================
 
-export async function validateInvoiceDraftAction(invoiceId: string) {
-    return await validateInvoiceDraft(invoiceId)
+export async function validateInvoiceDraftAction(formData: any) {
+    return await validateInvoiceDraft(formData)
 }
 
 export async function getFiscalDocumentsAction() {

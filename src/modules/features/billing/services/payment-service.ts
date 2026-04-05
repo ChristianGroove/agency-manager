@@ -116,7 +116,7 @@ async function handleProcessEngineTransition(invoiceId: string, orgId: string) {
         }
 
         if (leadId) {
-            const { ProcessEngine } = await import('@/modules/core/crm/process-engine/engine')
+            const { ProcessEngine } = await import('@/modules/features/crm/services/process-engine/engine')
             const instance = await ProcessEngine.getActiveProcess(leadId, 'sale')
             if (instance) {
                 const result = await ProcessEngine.transition(instance.id, 'won', 'system', 'Invoice Paid')
