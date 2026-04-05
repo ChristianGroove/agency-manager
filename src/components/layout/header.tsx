@@ -20,7 +20,7 @@ import { createBrowserClient } from "@supabase/ssr"
 import { logout } from "@/modules/core/auth/actions"
 import { SpaceStatusBadge } from "@/components/dashboard/SpaceStatusBadge"
 import { getCurrentOrganizationApp } from "@/modules/core/saas/app-data-actions"
-import { getOrganizationSubscription } from "@/modules/core/billing/billing-actions"
+import { getOrganizationSubscription } from "@/modules/features/billing/billing-actions"
 import { getCurrentOrgDetails } from "@/modules/core/organizations/actions"
 
 export function Header({ currentOrgId }: { currentOrgId: string | null | undefined }) {

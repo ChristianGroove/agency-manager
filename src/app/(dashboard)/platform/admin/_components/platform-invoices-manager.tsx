@@ -13,11 +13,11 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { 
-    getPlatformInvoices, 
-    sendPlatformInvoiceEmail,
-    suspendOrganizationSubscription,
-    deletePlatformInvoice
-} from "@/modules/core/billing/platform-invoicing-actions"
+    getPlatformInvoicesAction as getPlatformInvoices, 
+    sendPlatformInvoiceEmailAction as sendPlatformInvoiceEmail,
+    suspendOrganizationSubscriptionAction as suspendOrganizationSubscription,
+    deletePlatformInvoiceAction as deletePlatformInvoice
+} from "@/modules/features/billing/billing-actions"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { 

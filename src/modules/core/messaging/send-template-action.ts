@@ -129,7 +129,7 @@ export async function sendTemplateMessage(input: {
     console.log('[sendTemplateMessage] Sending HSM:', JSON.stringify(metaPayload, null, 2))
 
     // 6. POST to Meta Graph API
-    const { assertUsageAllowed } = await import("@/modules/core/billing/usage-limiter")
+    const { assertUsageAllowed } = await import("@/modules/core/usage/usage-limiter")
     await assertUsageAllowed({ organizationId: conversation.organization_id, engine: 'messaging' })
 
     const apiUrl = `https://graph.facebook.com/v24.0/${finalPhoneId}/messages`

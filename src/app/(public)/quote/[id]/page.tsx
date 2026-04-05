@@ -3,10 +3,10 @@
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import { Quote } from "@/types"
-import { QuoteTemplate } from "@/modules/core/quotes/quote-template"
+import { QuoteTemplate } from "@/modules/features/quotes/components/quote-template"
 import { Loader2, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { getPublicQuote } from "@/modules/core/quotes/actions"
+import { getPublicQuote } from "@/modules/features/quotes/quotes-actions"
 
 export default function PublicQuotePage() {
     const params = useParams()

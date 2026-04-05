@@ -39,7 +39,7 @@ export class BillingNode {
     }
 
     private async createInvoice(data: BillingNodeData): Promise<NodeExecutionResult> {
-        const { createInvoice } = await import('@/modules/core/billing/invoices-actions');
+        const { createInvoiceAction: createInvoice } = await import('@/modules/features/billing/billing-actions');
 
         // Resolve variables
         const clientId = this.contextManager.resolve(data.clientId || '') ||
@@ -69,7 +69,7 @@ export class BillingNode {
     }
 
     private async createQuote(data: BillingNodeData): Promise<NodeExecutionResult> {
-        const { createQuote } = await import('@/modules/core/quotes/actions');
+        const { createQuoteAction: createQuote } = await import('@/modules/features/quotes/quotes-actions');
 
         const leadId = this.contextManager.resolve(data.leadId || '') ||
             (this.contextManager.get('lead') as any)?.id;
@@ -90,7 +90,7 @@ export class BillingNode {
             date: new Date().toISOString()
         });
 
-        if (!result.success) throw new Error(result.error as string);
+        if (!result.success || !result.data) throw new Error(result.error as string || "Failed to create quote");
 
         this.contextManager.set('quote_id', result.data.id);
         this.contextManager.set('quote', result.data);
@@ -99,7 +99,7 @@ export class BillingNode {
     }
 
     private async sendQuote(data: BillingNodeData): Promise<NodeExecutionResult> {
-        const { sendQuoteViaWhatsApp } = await import('@/modules/core/quotes/actions');
+        const { sendQuoteViaWhatsAppAction: sendQuoteViaWhatsApp } = await import('@/modules/features/quotes/quotes-actions');
 
         const quoteId = this.contextManager.resolve(data.quoteId || '') ||
             (this.contextManager.get('quote_id') as string);

@@ -58,6 +58,15 @@ Se eliminaron todos los valores **hardcoded**.
 - **Bypass Administrativo**: Campo `bypass_until` que permite omitir cobros automáticos mientras mantiene el acceso activo. Ideal para periodos de cortesía o resolución de disputas.
 - **Precios Personalizados**: Prioridad de cobro al campo `custom_price` en `saas_subscriptions` sobre el precio base del producto.
 
-### 9. Experiencia de Usuario (Dashboard)
-- **SpaceStatusBadge**: Componente ubicado en el Header que muestra el nombre del Space, días restantes y estado (Activo, Bypass, etc.).
-- **Detalle de Plan**: Modal dinámico que lista los beneficios específicos configurados en `saas_apps.features`.
+### 9. Arquitectura de 3 Capas (Refactor Fase 3)
+A partir de **Abril 2026**, el sistema de billing ha sido desacoplado físicamente del Core para mejorar la mantenibilidad y escalabilidad. 
+
+- **Nueva Ubicación**: `src/modules/features/billing`.
+- **Patrón de Implementación**: Sistema de Fachada (Facade) con servicios aislados.
+- **Acciones del Servidor**: Centralizadas en `billing-actions.ts`.
+
+Para una documentación técnica profunda dirigida a desarrolladores, ver:
+[**Arquitectura de 3 Capas - Billing (Detallada)**](file:///d:/Pixy/agency-manager/docs/billing-3-tier-architecture.md)
+
+---
+*Documentación base para la Plataforma Pixy*

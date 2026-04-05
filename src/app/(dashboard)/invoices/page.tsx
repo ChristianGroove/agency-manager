@@ -1,6 +1,6 @@
 
-import { getInvoices } from "@/modules/core/billing/invoices-actions"
-import { BillingControlCenter } from "@/modules/core/billing/components/billing-control-center"
+import { getInvoices } from "@/modules/features/billing/billing-actions"
+import { BillingControlCenter } from "@/modules/features/billing/components/billing-control-center"
 import { Suspense } from "react"
 
 export const metadata = {

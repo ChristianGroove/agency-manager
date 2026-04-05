@@ -420,7 +420,7 @@ export async function triggerWorkflowForLead(workflowId: string, leadId: string)
 
 
 
-        const { assertUsageAllowed } = await import("@/modules/core/billing/usage-limiter");
+        const { assertUsageAllowed } = await import("@/modules/core/usage/usage-limiter");
         await assertUsageAllowed({ organizationId: orgId, engine: 'automation' });
 
         // Create an execution record

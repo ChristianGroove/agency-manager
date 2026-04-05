@@ -34,11 +34,11 @@ import { Textarea } from "@/components/ui/textarea"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { 
-    createManualPlatformInvoice, 
-    sendPlatformInvoiceEmail, 
-    getPlatformPaymentMethods,
-    manualActivateSubscription 
-} from "@/modules/core/billing/platform-invoicing-actions"
+    createManualPlatformInvoiceAction as createManualPlatformInvoice, 
+    sendPlatformInvoiceEmailAction as sendPlatformInvoiceEmail, 
+    getPlatformPaymentMethodsAction as getPlatformPaymentMethods,
+    manualActivateSubscriptionAction as manualActivateSubscription 
+} from "@/modules/features/billing/billing-actions"
 import { getOrganizationBillingProfile } from "@/modules/core/organizations/actions"
 import { generatePlatformInvoicePDF } from "@/lib/platform-pdf-generator"
 import { toast } from "sonner"

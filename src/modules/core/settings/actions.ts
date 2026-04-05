@@ -331,18 +331,7 @@ export async function getOrganizationBranding() {
  * =======================
  */
 
-export interface DocumentBrandingSettings {
-    document_primary_color: string
-    document_secondary_color: string
-    document_logo_url?: string
-    document_logo_size: 'small' | 'medium' | 'large'
-    document_template_style: 'minimal' | 'modern' | 'classic'
-    document_show_watermark: boolean
-    document_watermark_text?: string
-    document_font_family: string
-    document_header_text_color: string
-    document_footer_text_color: string
-}
+import { DocumentBrandingSettings } from "@/modules/features/billing/types"
 
 /**
  * Get document branding settings for current or specified organization

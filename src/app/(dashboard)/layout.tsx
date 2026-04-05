@@ -10,7 +10,7 @@ import { Locale } from "@/lib/i18n/dictionaries"
 
 import { getCurrentOrganizationApp } from "@/modules/core/saas/app-data-actions"
 import { getActiveModules } from "@/modules/core/saas/actions"
-import { getOrganizationSubscription } from "@/modules/core/billing/billing-actions"
+import { getOrganizationSubscription } from "@/modules/features/billing/billing-actions"
 import { SaaSProvider } from "@/components/providers/saas-provider"
 import { SuspendedDashboardView } from "@/components/dashboard/SuspendedDashboardView"
 import { SidebarLoader } from "@/components/layout/sidebar-loader"

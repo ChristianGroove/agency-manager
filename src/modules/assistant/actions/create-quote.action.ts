@@ -1,6 +1,6 @@
 
 import { AssistantContext, AssistantAction, AssistantResult } from "../types";
-import { createQuote } from "@/modules/core/quotes/actions";
+import { createQuoteAction as createQuote } from "@/modules/features/quotes/quotes-actions";
 
 export const CreateQuoteAction: AssistantAction = {
     name: "create_quote",

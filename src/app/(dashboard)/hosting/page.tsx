@@ -32,10 +32,10 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
 import { supabase } from "@/lib/supabase"
-import { CreateServiceSheet } from "@/modules/core/billing/components/create-service-sheet"
-import { ServiceDetailModal } from "@/modules/core/billing/components/service-detail-modal"
-import { ResumeServiceModal } from "@/modules/core/billing/components/resume-service-modal"
-import { toggleServiceStatus } from "@/modules/core/billing/services-actions"
+import { CreateServiceSheet } from "@/modules/features/billing/components/create-service-sheet"
+import { ServiceDetailModal } from "@/modules/features/billing/components/service-detail-modal"
+import { ResumeServiceModal } from "@/modules/features/billing/components/resume-service-modal"
+import { toggleServiceStatusAction as toggleServiceStatus } from "@/modules/features/billing/billing-actions"
 import { cn } from "@/lib/utils"
 import { SplitText } from "@/components/ui/split-text"
 import { SectionHeader } from "@/components/layout/section-header"
@@ -81,7 +81,7 @@ export default function ServicesPage() {
     const fetchServices = async () => {
         setLoading(true)
         try {
-            const { getServices } = await import("@/modules/core/billing/services-actions")
+            const { getInvoices: getServices } = await import("@/modules/features/billing/billing-actions")
             const data = await getServices()
             if (data) setServices(data as unknown as Service[])
         } catch (error) {
@@ -114,7 +114,7 @@ export default function ServicesPage() {
 
         setIsDeleting(true)
         try {
-            const { deleteServices } = await import("@/modules/core/billing/services-actions")
+            const { deleteServicesAction: deleteServices } = await import("@/modules/features/billing/billing-actions")
             await deleteServices(Array.from(selectedIds))
             toast.success(`${selectedIds.size} contratos eliminados correctamente`)
             setSelectedIds(new Set())

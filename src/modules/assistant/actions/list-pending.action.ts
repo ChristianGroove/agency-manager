@@ -1,7 +1,7 @@
 
 import { AssistantContext, AssistantAction, AssistantResult } from "../types";
-import { getInvoices } from "@/modules/core/billing/invoices-actions";
-// import { getQuotes } from "@/modules/core/quotes/actions"; // Assuming this exists or using generic fetch
+import { getInvoices } from "@/modules/features/billing/billing-actions";
+// import { getQuotes } from "@/modules/features/quotes/quotes-actions"; // Assuming this exists or using generic fetch
 
 export const ListPendingActions: AssistantAction = {
     name: "list_pending_actions",

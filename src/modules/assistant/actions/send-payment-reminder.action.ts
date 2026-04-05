@@ -1,6 +1,6 @@
 
 import { AssistantContext, AssistantAction, AssistantResult } from "../types";
-import { getInvoiceById } from "@/modules/core/billing/invoices-actions";
+import { getInvoiceById } from "@/modules/features/billing/billing-actions";
 
 export const SendPaymentReminderAction: AssistantAction = {
     name: "send_payment_reminder",

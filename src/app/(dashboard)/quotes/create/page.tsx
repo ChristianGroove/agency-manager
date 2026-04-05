@@ -1,4 +1,4 @@
-import { QuoteBuilder } from "@/modules/core/quotes/quote-builder"
+import { QuoteBuilder } from "@/modules/features/quotes/components/quote-builder"
 import { getActiveEmitters } from "@/modules/core/settings/emitters-actions"
 
 export default async function CreateQuotePage() {

@@ -25,9 +25,9 @@ import { ClientInvoicesList } from "../detail/client-invoices-list"
 import { ClientTimeline } from "@/modules/core/clients/client-timeline"
 
 // Action Sheets & Modals
-import { CreateServiceSheet } from "@/modules/core/billing/components/create-service-sheet"
-import { CreateInvoiceSheet } from "@/modules/core/billing/create-invoice-sheet"
-import { ServiceDetailModal } from "@/modules/core/billing/components/service-detail-modal"
+import { CreateServiceSheet } from "@/modules/features/billing/components/create-service-sheet"
+import { CreateInvoiceSheet } from "@/modules/features/billing/components/create-invoice-sheet"
+import { ServiceDetailModal } from "@/modules/features/billing/components/service-detail-modal"
 // import { ShareInvoiceModal } from "@/modules/core/billing/share-invoice-modal" // REPLACED
 import { UnifiedCommunicationModal } from "@/modules/core/communication/components/unified-communication-modal" // NEW
 import { CreateHostingSheet } from "@/modules/features/hosting/components/create-hosting-sheet"
@@ -199,7 +199,7 @@ export function ClientManagementSheet({ clientId, open, onOpenChange, initialDat
         if (!confirm("PELIGRO: ¿Eliminar servicio permanentemente? Se borrará de la lista.")) return
 
         try {
-            const { deleteServices } = await import("@/modules/core/billing/services-actions")
+            const { deleteInvoicesAction: deleteServices } = await import("@/modules/features/billing/billing-actions")
             const result = await deleteServices([serviceId])
 
             if (result.success) {

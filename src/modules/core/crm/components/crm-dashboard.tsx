@@ -35,8 +35,8 @@ import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable"
 import { LeadCard } from "./lead-card"
 import { DroppableStage } from "./droppable-stage"
 import { SplitText } from "@/components/ui/split-text"
-import { CreateQuoteSheet } from "@/modules/core/quotes/create-quote-sheet"
-import { QuoteShareSheet } from "@/modules/core/quotes/quote-share-sheet"
+import { CreateQuoteSheet } from "@/modules/features/quotes/components/create-quote-sheet"
+import { QuoteShareSheet } from "@/modules/features/quotes/components/quote-share-sheet"
 
 // Icon mapping
 const ICON_MAP: Record<string, any> = {

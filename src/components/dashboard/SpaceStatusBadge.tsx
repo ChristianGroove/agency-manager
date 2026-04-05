@@ -25,7 +25,7 @@ import { CheckCircle2, Clock, Crown, Package, AlertCircle, FileText, Download, R
 import { cn } from "@/lib/utils"
 import { format, differenceInDays, parseISO } from "date-fns"
 import { es } from "date-fns/locale"
-import { getSubscriptionHistory } from "@/modules/core/billing/billing-actions"
+import { getSubscriptionHistory } from "@/modules/features/billing/billing-actions"
 import { SubscriptionTicket } from "./SubscriptionTicket"
 import "./SpaceStatusBadge.css"
 

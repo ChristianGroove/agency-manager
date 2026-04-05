@@ -1,5 +1,5 @@
 import { ContextManager } from './context-manager'
-import { trackUsage } from '@/modules/core/billing/usage-tracker'
+import { trackUsage } from '@/modules/core/usage/usage-tracker'
 import { CRMNode, CRMNodeData } from './nodes/crm-node'
 import { HTTPNode, HTTPNodeData } from './nodes/http-node'
 import { EmailNode, EmailNodeData } from './nodes/email-node'

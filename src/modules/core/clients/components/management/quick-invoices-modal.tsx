@@ -31,8 +31,9 @@ export function QuickInvoicesModal({
     const handleMarkAsPaid = async (invoiceId: string) => {
         setIsMarking(invoiceId)
         try {
-            const { registerManualPayment } = await import("@/modules/core/billing/payments-actions")
-            const result = await registerManualPayment(invoiceId)
+            const { registerPaymentAction } = await import("@/modules/features/billing/billing-actions")
+            const invoice = localInvoices.find(inv => inv.id === invoiceId)
+            const result = await registerPaymentAction(invoiceId, invoice?.total || 0, "Pago manual registrado desde detalles del cliente")
             
             if (!result.success) throw new Error(result.error)
 

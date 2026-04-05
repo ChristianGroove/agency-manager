@@ -9,8 +9,8 @@ import Link from "next/link"
 import { Quote, Client, Lead } from "@/types"
 import { convertLeadToClient } from "@/modules/core/crm/leads-actions"
 
-import { QuoteTemplate } from "@/modules/core/quotes/quote-template"
-import { QuoteShareSheet } from "@/modules/core/quotes/quote-share-sheet"
+import { QuoteTemplate } from "@/modules/features/quotes/components/quote-template"
+import { QuoteShareSheet } from "@/modules/features/quotes/components/quote-share-sheet"
 import { ShareButton } from "@/components/animate-ui/components/community/share-button"
 
 export default function QuoteDetailPage() {
@@ -43,7 +43,7 @@ export default function QuoteDetailPage() {
 
     const fetchQuote = async (id: string) => {
         try {
-            const { getQuote } = await import("@/modules/core/quotes/actions")
+            const { getQuote } = await import("@/modules/features/quotes/quotes-actions")
             const res = await getQuote(id)
 
             if (res.error || !res.data) {
@@ -96,7 +96,7 @@ export default function QuoteDetailPage() {
         setConverting(true)
         try {
             // Import dynamically or at top? using Server Action
-            const { convertQuote } = await import("@/modules/core/quotes/conversion-actions")
+            const { convertQuoteAction: convertQuote } = await import("@/modules/features/quotes/quotes-actions")
             const result = await convertQuote(quote.id)
 
             if (result.success) {

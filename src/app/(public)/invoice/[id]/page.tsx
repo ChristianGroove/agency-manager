@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import { supabase } from "@/lib/supabase"
-import { InvoiceTemplate } from "@/modules/core/billing/invoice-template"
+import { InvoiceTemplate } from "@/modules/features/billing/components/invoice-template"
 import { Loader2, Download, Printer } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Toaster } from "sonner"
@@ -22,7 +22,7 @@ export default function PublicInvoicePage() {
 
             try {
                 // Use Server Action to fetch data securely bypassing RLS
-                const { getPublicInvoice } = await import("@/modules/core/billing/invoices-actions")
+                const { getPublicInvoiceAction: getPublicInvoice } = await import("@/modules/features/billing/billing-actions")
                 const result = await getPublicInvoice(id)
 
                 if (result.error) {

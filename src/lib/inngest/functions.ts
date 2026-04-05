@@ -1,5 +1,5 @@
 import { inngest } from "./client";
-import { trackUsage } from "@/modules/core/billing/usage-tracker";
+import { trackUsage } from "@/modules/core/usage/usage-tracker";
 import { WorkflowEngine } from "@/modules/core/automation/engine";
 import { createClient } from "@supabase/supabase-js";
 
@@ -45,7 +45,7 @@ export const runWorkflow = inngest.createFunction(
 
         // 1. Check Usage Limits (Protection)
         await step.run("check-limits", async () => {
-            const { assertUsageAllowed } = await import("@/modules/core/billing/usage-limiter");
+            const { assertUsageAllowed } = await import("@/modules/core/usage/usage-limiter");
             await assertUsageAllowed({ organizationId, engine: 'automation' });
         });
 
@@ -153,7 +153,7 @@ export const contractOrchestrator = inngest.createFunction(
         // 1. Meter AI Usage
         if (usage) {
             await step.run("meter-ai-usage", async () => {
-                const { trackUsage } = await import("@/modules/core/billing/usage-tracker");
+                const { trackUsage } = await import("@/modules/core/usage/usage-tracker");
 
                 // Track AI Messages (1 per generation)
                 await trackUsage({
