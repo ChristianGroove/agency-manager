@@ -8,7 +8,7 @@ import { Quote } from "@/types"
 import { QuoteTemplate } from "./quote-template"
 import { getSettings } from "@/modules/core/settings/actions" // Server Action
 import { convertQuoteAction as convertQuote } from "../quotes-actions"
-import { convertLeadToClient } from "@/modules/core/crm/leads-actions"
+import { convertLeadToClient } from "@/modules/features/crm/services/logic/leads-actions"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import { QuoteShareSheet } from "./quote-share-sheet"

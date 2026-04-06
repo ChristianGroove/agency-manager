@@ -9,7 +9,7 @@ import { Loader2, Plus, Trash, ArrowLeft, Check, ChevronsUpDown, UserPlus, FileT
 import { QuoteItem, ServiceCatalogItem, Client, Emitter } from "@/types"
 import { createQuoteAction as createQuote, updateQuoteAction as updateQuote } from "../quotes-actions"
 import { useTranslation } from "@/lib/i18n/use-translation"
-import { quickCreateProspect } from "@/modules/core/clients/actions"
+import { quickCreateProspect } from "@/modules/features/crm/services/logic/actions"
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
 import {
