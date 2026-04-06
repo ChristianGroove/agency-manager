@@ -7,7 +7,7 @@ import { Loader2, Download, Share2, Mail, ArrowLeft, UserPlus, Edit } from "luci
 
 import Link from "next/link"
 import { Quote, Client, Lead } from "@/types"
-import { convertLeadToClient } from "@/modules/core/crm/leads-actions"
+import { convertLeadToClient } from "@/modules/features/crm/services/logic/leads-actions"
 
 import { QuoteTemplate } from "@/modules/features/quotes/components/quote-template"
 import { QuoteShareSheet } from "@/modules/features/quotes/components/quote-share-sheet"

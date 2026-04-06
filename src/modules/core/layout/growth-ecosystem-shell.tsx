@@ -1,8 +1,8 @@
 
 import { PropsWithChildren } from "react"
 import { GrowthEcosystemNav } from "./growth-ecosystem-nav"
-import { LeadInspectorProvider } from "@/modules/core/crm/components/lead-inspector-context"
-import { LeadInspectorPanel } from "@/modules/core/crm/components/lead-inspector-panel"
+import { LeadInspectorProvider } from "@/modules/features/crm/components/lead-inspector-context"
+import { LeadInspectorPanel } from "@/modules/features/crm/components/lead-inspector-panel"
 
 interface GrowthEcosystemShellProps extends PropsWithChildren {
     title?: string;

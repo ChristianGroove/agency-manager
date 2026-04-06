@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { getQuoteSettings, updateQuoteSettings, QuoteSettings } from "@/modules/core/crm/quote-settings"
+import { getQuoteSettings, updateQuoteSettings, QuoteSettings } from "@/modules/features/crm/services/logic/quote-settings"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"

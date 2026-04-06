@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
 
 // Import Modals
-import { CreateClientSheet } from "@/modules/core/clients/create-client-sheet"
+import { CreateLeadSheet as CreateClientSheet } from "@/modules/features/crm/components/create-lead-sheet"
 import { CreateQuoteSheet } from "@/modules/features/quotes/components/create-quote-sheet"
 import { CreateInvoiceSheet } from "@/modules/features/billing/components/create-invoice-sheet"
 import { CreateFormSheet } from "@/modules/features/forms/create-form-sheet"
@@ -115,10 +115,10 @@ export function RetailDashboard({ dashboardData, extraData, userRole: initialRol
     return (
         <>
             <ModularDashboardLayout data={data} userRole={initialRole} />
-            <CreateClientSheet open={isClientModalOpen} onOpenChange={setIsClientModalOpen} trigger={<span className="hidden" />} onSuccess={() => { setIsClientModalOpen(false); refreshData() }} />
-            <CreateQuoteSheet open={isQuoteModalOpen} onOpenChange={setIsQuoteModalOpen} trigger={<span className="hidden" />} onSuccess={() => { setIsQuoteModalOpen(false); refreshData() }} />
+            <CreateClientSheet open={isClientModalOpen} onOpenChange={setIsClientModalOpen} onSuccess={() => { setIsClientModalOpen(false); refreshData() }} />
+            <CreateQuoteSheet open={isQuoteModalOpen} onOpenChange={setIsQuoteModalOpen} onSuccess={() => { setIsQuoteModalOpen(false); refreshData() }} />
             <CreateFormSheet open={isBriefingModalOpen} onOpenChange={setIsBriefingModalOpen} onSuccess={() => setIsBriefingModalOpen(false)} />
-            <CreateInvoiceSheet open={isInvoiceModalOpen} onOpenChange={setIsInvoiceModalOpen} trigger={<span className="hidden" />} onSuccess={() => { setIsInvoiceModalOpen(false); refreshData() }} />
+            <CreateInvoiceSheet open={isInvoiceModalOpen} onOpenChange={setIsInvoiceModalOpen} onSuccess={() => { setIsInvoiceModalOpen(false); refreshData() }} />
         </>
     )
 }

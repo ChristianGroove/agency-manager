@@ -7,7 +7,7 @@ import { ModularDashboardLayout, DashboardDataProps } from "@/modules/core/dashb
 import { useTranslation } from "@/lib/i18n/use-translation"
 
 // Import Modals (these were in page.tsx)
-import { CreateClientSheet } from "@/modules/core/clients/create-client-sheet"
+import { CreateLeadSheet as CreateClientSheet } from "@/modules/features/crm/components/create-lead-sheet"
 import { NewJobModal } from "@/modules/features/work-orders/components/new-job-modal"
 
 import { useRouter } from "next/navigation"
@@ -118,7 +118,7 @@ export function CleaningDashboard({ dashboardData: coreData, extraData, userRole
     return (
         <>
             <ModularDashboardLayout data={data} userRole={initialRole} />
-            <CreateClientSheet open={isClientModalOpen} onOpenChange={setIsClientModalOpen} trigger={<span className="hidden" />} onSuccess={() => { setIsClientModalOpen(false); refreshData() }} />
+            <CreateClientSheet open={isClientModalOpen} onOpenChange={setIsClientModalOpen} onSuccess={() => { setIsClientModalOpen(false); refreshData() }} />
             <NewJobModal open={isNewJobModalOpen} onOpenChange={setIsNewJobModalOpen} />
         </>
     )

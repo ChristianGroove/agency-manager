@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { supabase } from "@/lib/supabase"
 import { createQuoteAction as createQuote } from "@/modules/features/quotes/quotes-actions"
-import { createLead } from "@/modules/core/crm/leads-actions"
+import { createLead } from "@/modules/features/crm/services/logic/leads-actions"
 import { Client } from "@/types"
 import { Loader2, Users, UserPlus } from "lucide-react"
 
@@ -34,7 +34,7 @@ export default function NewQuotePage() {
 
     const fetchClients = async () => {
         try {
-            const { getClients } = await import("@/modules/core/clients/actions")
+            const { getClients } = await import("@/modules/features/crm/services/logic/actions")
             const data = await getClients()
             if (data) setClients(data)
         } catch (error) {
