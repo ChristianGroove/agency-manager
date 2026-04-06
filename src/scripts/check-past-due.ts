@@ -46,7 +46,7 @@ async function checkPastDueInvoices() {
     if (!invoices || invoices.length === 0) return
 
     // Dynamic Import Engine
-    const { ProcessEngine } = await import('../modules/core/crm/process-engine/engine')
+    const { ProcessEngine } = await import('../modules/features/crm/services/process-engine/engine')
 
     for (const inv of invoices) {
         if (!inv.client_id) continue

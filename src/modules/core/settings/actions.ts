@@ -331,7 +331,7 @@ export async function getOrganizationBranding() {
  * =======================
  */
 
-import { DocumentBrandingSettings } from "@/modules/features/billing/types"
+import { type DocumentBrandingSettings } from "@/modules/features/billing/types"
 
 /**
  * Get document branding settings for current or specified organization

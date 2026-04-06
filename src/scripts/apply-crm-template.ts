@@ -2,7 +2,7 @@
 import { createClient } from '@supabase/supabase-js'
 import dotenv from 'dotenv'
 import path from 'path'
-import { initializeOrganizationCRM } from '../modules/core/crm/process-engine/init'
+import { initializeOrganizationCRM } from '../modules/features/crm/services/process-engine/init'
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') })
 
