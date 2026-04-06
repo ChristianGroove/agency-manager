@@ -166,9 +166,9 @@ export function AgencyDashboard({ dashboardData: dashboardRes, extraData, userRo
         <>
             <ModularDashboardLayout data={data} userRole={initialRole} />
             <CreateClientSheet open={isClientModalOpen} onOpenChange={setIsClientModalOpen} onSuccess={() => { setIsClientModalOpen(false); refreshData() }} />
-            <CreateQuoteSheet open={isQuoteModalOpen} onOpenChange={setIsQuoteModalOpen} trigger={<span className="hidden" />} onSuccess={() => { setIsQuoteModalOpen(false); refreshData() }} />
+            <CreateQuoteSheet open={isQuoteModalOpen} onOpenChange={setIsQuoteModalOpen} onSuccess={() => { setIsQuoteModalOpen(false); refreshData() }} />
             <CreateFormSheet open={isBriefingModalOpen} onOpenChange={setIsBriefingModalOpen} onSuccess={() => setIsBriefingModalOpen(false)} />
-            <CreateInvoiceSheet open={isInvoiceModalOpen} onOpenChange={setIsInvoiceModalOpen} trigger={<span className="hidden" />} onSuccess={() => { setIsInvoiceModalOpen(false); refreshData() }} />
+            <CreateInvoiceSheet open={isInvoiceModalOpen} onOpenChange={setIsInvoiceModalOpen} onSuccess={() => { setIsInvoiceModalOpen(false); refreshData() }} />
         </>
     )
 }

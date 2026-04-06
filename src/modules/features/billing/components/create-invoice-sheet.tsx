@@ -334,14 +334,18 @@ export function CreateInvoiceSheet({
 
     return (
         <Sheet open={open} onOpenChange={setOpen}>
-            <SheetTrigger asChild>
-                {trigger || (
+            {trigger ? (
+                <SheetTrigger asChild>
+                    {trigger}
+                </SheetTrigger>
+            ) : !isControlled ? (
+                <SheetTrigger asChild>
                     <Button className="h-9 px-4 bg-brand-pink hover:bg-brand-pink/90 shadow-md text-white border-0">
                         <Plus className="mr-2 h-4 w-4" />
                         {t('invoicing.form.create_title')}
                     </Button>
-                )}
-            </SheetTrigger>
+                </SheetTrigger>
+            ) : null}
             <SheetContent
                 side="right"
                 className="

@@ -22,6 +22,7 @@ Sin embargo, para evitar cruces mortales comerciales e invisibilización de mét
 ### API 2: Modalidad 'Clients' (Centro Administrativo)
 - **Repo Origen:** `public.leads WHERE contact_type = 'client'`
 - **Regla:** Utiliza su propia capa lógica (`ClientService.ts`) especializada en orquestar interacciones estructuradas anexas como `hosting_accounts`, `active_services`, facturas anidadas, deudas, calculos matemáticos, y acceso de Portales.
+- **Inbox Sidebar:** La pestaña de "Contactos" en el Sidebar del Inbox DEBE filtrar estrictamente por `contact_type = 'client'` para no mezclar prospectos (leads) con clientes reales.
 
 ### 👻 TRAMPA DE POSTGREST: "FACTURAS FANTASMAS Y SOFT-DELETES"
 Al consultar las dependencias de los clientes usando la sintaxis embeddida de Supabase (`invoices(*)`), PostgREST **devolverá también registros soft-eliminados o archivados**, ya que no filtra la relación interna. Esto provocaba picos absurdos de facturación ("Facturas Fantasmas") donde registros `void` o con `deleted_at` inflaban la deuda.
@@ -30,6 +31,10 @@ Al consultar las dependencias de los clientes usando la sintaxis embeddida de Su
 ### 🚫 CASO DE ESTUDIO: LA CONFUSIÓN LETAL (ABRIL 2026)
 Hubo un periodo en el que la tabla legacy `public.clients` no se había eliminado y un programador repuntó los servicios de "Facturación" asumiendo que esa era aún la fuente cliente. Esto provocó Crashings en todo el entorno (`Could not find relationship 'services'`), ya que la Capa DB tenía las llaves foráneas asignadas a `leads`.
 **Nunca, por ninguna razón se debe retroceder la consulta de clientes a la vieja tabla `clients`. Siempre es y será `leads` filtrada por `contact_type='client'`.**
+
+### 🎨 REGLA DE INTERFAZ: "GHOST TRIGGERS" EN MODALES
+Al crear Sheets o Modales que soporten modo "Controlado" (vía props `open` y `onOpenChange`), **NUNCA se debe renderizar un disparador (`SheetTrigger`) por defecto** si la prop `trigger` es nula y el componente está en modo controlado. Esto inyecta botones fantasma al final del DOM (especialmente en Dashboards).
+**Regla:** El `SheetTrigger` debe ser condicional: `{trigger ? <SheetTrigger>{trigger}</SheetTrigger> : !isControlled ? <SheetTrigger>Default Button</SheetTrigger> : null}`.
 
 ---
 
