@@ -126,20 +126,32 @@ export function SidebarConversationList({
     }, [effectivePermissions])
 
     const filteredAgents = useMemo(() => {
-        if (!selectedChannelId) return agents;
-
         const authorizedChannels = effectivePermissions?.permissions?.inbox_access || []
         
         return agents.filter(a => {
             const role = a.role.toLowerCase();
             const targetIsOwner = role === 'owner' || role === 'dueño';
-            const targetIsAdmin = role === 'admin' || role === 'administrador';
-            const hasAccess = a.channels.includes(selectedChannelId);
+            
+            // Si el usuario actual es owner, ve a todos
+            if (hasGlobalView) return true;
 
-            // Si el usuario actual es admin restringido, solo debería ver agentes en ese canal
-            return targetIsOwner || (isAdmin ? hasAccess : (targetIsAdmin || hasAccess));
+            // Si el usuario actual es admin restringido
+            if (isAdmin) {
+                // Si se seleccionó un canal específico, solo ver agentes en ese canal
+                if (selectedChannelId) {
+                    const hasAccess = a.channels.includes(selectedChannelId);
+                    return targetIsOwner || hasAccess;
+                }
+                
+                // Si NO hay canal seleccionado (vista general)
+                // Solo ver agentes que compartan AL MENOS UNO de sus canales autorizados
+                const sharesChannel = a.channels.some(ch => authorizedChannels.includes(ch));
+                return targetIsOwner || sharesChannel;
+            }
+
+            return false;
         });
-    }, [agents, selectedChannelId, isAdmin, effectivePermissions])
+    }, [agents, selectedChannelId, isAdmin, hasGlobalView, effectivePermissions])
 
     const searchInputRef = useRef<HTMLInputElement>(null)
     const { preferences } = useInboxPreferences()
@@ -179,13 +191,13 @@ export function SidebarConversationList({
     useEffect(() => {
         if (identityLoaded && effectiveOrgId) {
             fetchChannels()
-            if (hasGlobalView) {
+            if (hasGlobalView || isAdmin) {
                 getSidebarAgents().then(({ data }) => {
                     if (data) setAgents(data as SidebarAgent[])
                 })
             }
         }
-    }, [effectiveOrgId, identityLoaded, hasGlobalView])
+    }, [effectiveOrgId, identityLoaded, hasGlobalView, isAdmin])
 
     // Main fetch controller for conversations
     useEffect(() => {
@@ -458,7 +470,7 @@ export function SidebarConversationList({
                             </PopoverContent>
                         </Popover>
 
-                        {hasGlobalView && (
+                        {(hasGlobalView || isAdmin) && (
                         <Popover>
                             <PopoverTrigger asChild>
                                 <Button
