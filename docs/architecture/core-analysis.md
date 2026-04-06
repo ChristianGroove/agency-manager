@@ -33,7 +33,7 @@ Módulos que contienen lógica de negocio que podría considerarse una "Feature"
 
 1. **Inflación del Core**: 37 módulos en el nivel `core` crean una barrera de entrada alta para nuevos desarrolladores y aumentan el tiempo de compilación de pruebas globales.
 2. **Duplicidad de Conceptos**: La existencia de `clients` (en core) y `crm` (en features) genera confusión. La migración hacia un modelo unificado en `features/crm` es el camino correcto para limpiar el `core`.
-3. **Módulos Vacíos o Residuales**: Se han detectado carpetas como `caa` o `clients` con mínima funcionalidad o vacías, residuos de refactorizaciones previas.
+3.  **Saneamiento de "God Components"**: Se ha demostrado con éxito la fragmentación de archivos masivos en `messaging` y `crm` hacia una arquitectura de 3 capas. Este patrón debe ser el estándar para futuras intervenciones en otros módulos inflados.
 
 ---
 

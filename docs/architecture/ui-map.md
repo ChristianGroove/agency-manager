@@ -21,13 +21,34 @@ Las rutas del dashboard se encuentran en `src/app/(dashboard)/` y se dividen por
 
 ---
 
-## 2. Componentes UI de Gran Tamaño (God Components)
+## 2. Patrones de UI Modular (Anti-God Components)
 
-Se han identificado componentes con alta complejidad y cantidad de líneas de código (>1000):
+Para escalar el sistema, hemos implementado una **Arquitectura de 3 Capas** en los componentes más complejos (`Inbox` y `CRM`), eliminando los archivos monolíticos de más de 1000 líneas.
 
-1. **`chat-area.tsx`** (~1144 líneas): Gestiona todo el estado del chat activo, visualización de mensajes y selector de herramientas.
-2. **`client-card-v2.tsx`**: Centraliza toda la información del lead/cliente en la vista de detalle del CRM.
-3. **`workflow-builder.tsx`**: Orquestador visual para la creación de automatizaciones.
+### Estructura de 3 Capas:
+
+```mermaid
+graph TD
+    A[Componente Orquestador] --> B[Custom Hook: useBusinessLogic]
+    A --> C[Action Manager: Modals/Sheets]
+    A --> D[Atomic Components / Tabs]
+    
+    subgraph "Lógica de Negocio"
+        B
+    end
+    
+    subgraph "Capa de UI"
+        C
+        D
+    end
+```
+
+1.  **Orquestador**: (ej. `ChatArea.tsx` o `ClientManagementSheet.tsx`) Ahora son archivos de <180 líneas que solo coordinan el estado y distribuyen props.
+2.  **Custom Hooks**: Encapsulan la sincronización (Realtime), fetching de API y mutaciones de datos.
+3.  **Atomic Tabs / Components**: Carpetas dedicadas con las piezas visuales aisladas (ej. `ProfileTab`, `MessageList`).
+
+### God Components Restantes:
+1. **`workflow-builder.tsx`**: Orquestador visual para la creación de automatizaciones (Pendiente de refactorización).
 
 ---
 

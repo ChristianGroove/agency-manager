@@ -5,7 +5,7 @@ import { DndContext, DragOverlay, useSensor, useSensors, PointerSensor, DragStar
 import { cn } from "@/lib/utils"
 // import { ConversationList } from "./conversation-list" // Deprecated
 import { SidebarTabs } from "./sidebar/sidebar-tabs"
-import { ChatArea } from "./chat-area"
+import { ChatArea } from "./chat-area/chat-area"
 import { ContextDeck } from "./context-deck"
 import { ConversationDropZones } from "./conversation-drop-zones"
 import { updateConversationState } from "../conversation-management-actions"

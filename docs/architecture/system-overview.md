@@ -47,6 +47,14 @@ Este documento proporciona la visión general definitiva de la arquitectura téc
 
 ---
 
-## 5. Conclusión de la Auditoría Arquitectónica
+## 5. Hitos Recientes de la Plataforma
+
+- **Junio 2025**: Lanzamiento inicial con arquitectura monolítica (MVP).
+- **Marzo 2026**: Consolidación de CRM (Entidad unificada de Leads).
+- **Abril 2026**: Saneamiento de Interfaz. Fragmentación de "God Components" (`ChatArea`, `ClientManagementSheet`) en arquitectura de 3 capas (Hooks + Action Managers + Atomic UI). Reducción del 80% en líneas de código por archivo orquestador.
+
+---
+
+## 6. Conclusión de la Auditoría Arquitectónica
 
 El sistema posee una arquitectura **Madura y Coherente**. La transición de un modelo centrado en `clients` a una entidad unificada de `leads` (CRM Consolidation) es el paso técnico más importante realizado recientemente para preparar el producto para una escala masiva de multi-tenancy. La organización en `src/modules` es la clave para que Agency Manager pueda seguir creciendo como una plataforma multivertical sin colapsar bajo su propia complejidad.
