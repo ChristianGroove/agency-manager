@@ -64,8 +64,10 @@ export class UserPreferencesService {
         // PGRST116: Row not found (expected for new users)
         // 42P01: Table not found (migration not applied yet)
         if (error) {
-            if (error.code === 'PGRST116' || error.code === '42P01') {
-                // Return defaults silently
+            const isAborted = error.message?.includes('AbortError') || error.hint?.includes('aborted');
+
+            if (error.code === 'PGRST116' || error.code === '42P01' || isAborted) {
+                // Return defaults silently for these cases
                 return DEFAULT_PREFERENCES;
             }
             console.error('Error fetching preferences:', JSON.stringify(error, null, 2));

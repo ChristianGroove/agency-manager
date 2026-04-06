@@ -12,7 +12,7 @@ import { getAuthRedirectBase } from "@/lib/auth-utils"
 import { getSecureAuthLink } from "@/lib/auth-link-utils"
 import { getAuthInviteEmailHtml, getAuthConfirmationEmailHtml } from "@/lib/email-templates"
 import { EmailService } from "@/modules/core/notifications/email.service"
-import { initializeOrganizationCRM } from "@/modules/core/crm/process-engine/init"
+import { initializeOrganizationCRM } from "@/modules/features/crm/services/process-engine/init"
 
 /**
  * Fetch organizations with Server-Side Pagination & Search
@@ -761,7 +761,7 @@ export async function createOrganization(formData: {
 
         // 4. Initialize CRM Defaults (Process Engine & Pipeline)
         try {
-            const { initializeOrganizationCRM } = await import('@/modules/core/crm/process-engine/init')
+            const { initializeOrganizationCRM } = await import('@/modules/features/crm/services/process-engine/init')
             await initializeOrganizationCRM(newOrg.id)
         } catch (initErr) {
             console.error("Warning: CRM Init failed", initErr)

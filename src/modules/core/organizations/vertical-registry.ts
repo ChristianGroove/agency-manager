@@ -7,7 +7,7 @@
 export type VerticalType = 'agency' | 'resto' | 'cleaning' | 'retail' | 'saas' | 'platform';
 
 export interface VerticalConfig {
-    crmTemplateId: string; // Link to CRMTemplates in @/modules/core/crm/templates/registry
+    crmTemplateId: string; // Link to CRMTemplates configuration
     terminology: {
         client: string;    // 'Cliente', 'Comensal', 'Paciente'
         clients: string;   // 'Clientes', 'Comensales', 'Pacientes'
