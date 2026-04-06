@@ -195,10 +195,11 @@ export class WebhookManager {
 
 
                 try {
-                    const { handleQuoteApproval } = await import('@/modules/core/crm/quote-response-handler')
+                    const { handleQuoteApproval } = await import('@/modules/features/crm/services/logic/quote-response-handler')
                     const { data: conv } = await (await import('@/lib/supabase-admin')).supabaseAdmin
                         .from('conversations')
                         .select('connection_id, phone')
+                        .order('created_at', { ascending: false })
                         .eq('id', conversationId)
                         .single()
 
@@ -220,7 +221,7 @@ export class WebhookManager {
 
 
                 try {
-                    const { handleQuoteRejection } = await import('@/modules/core/crm/quote-response-handler')
+                    const { handleQuoteRejection } = await import('@/modules/features/crm/services/logic/quote-response-handler')
                     const { supabaseAdmin } = await import('@/lib/supabase-admin')
                     const { data: conv } = await supabaseAdmin
                         .from('conversations')
@@ -249,7 +250,7 @@ export class WebhookManager {
                 const reason = msg.content.text || 'Unknown'
 
                 try {
-                    const { handleRejectionReasonSelected } = await import('@/modules/core/crm/quote-response-handler')
+                    const { handleRejectionReasonSelected } = await import('@/modules/features/crm/services/logic/quote-response-handler')
                     await handleRejectionReasonSelected(cartId, reason, conversationId)
                 } catch (e: any) {
                     console.error('[WebhookManager] Rejection reason error:', e.message)

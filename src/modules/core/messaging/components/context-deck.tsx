@@ -1,17 +1,17 @@
 "use client"
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react"
-import { getLeadTags } from "../../crm/tags-actions"
+import { getLeadTags } from "@/modules/features/crm/services/logic/tags-actions"
 import { supabase } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
-import { QuoteDesignerSheet } from "../../crm/components/quote-designer-sheet"
+import { QuoteDesignerSheet } from "@/modules/features/crm/components/quote-designer-sheet"
 import {
     User, Phone, Mail, MapPin, ExternalLink,
     CalendarClock, Archive, CheckCircle2,
     MoreHorizontal, Tag, DollarSign, Palette,
     Copy, Send, KeyRound
 } from "lucide-react"
-import { TagsPicker } from "../../crm/components/tags/tags-picker"
+import { TagsPicker } from "@/modules/features/crm/components/tags/tags-picker"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
@@ -19,7 +19,7 @@ import { Badge } from "@/components/ui/badge"
 import { Database } from "@/types/supabase"
 import Link from "next/link"
 import { QuickAssignPanel } from "./quick-assign-panel"
-import { DealBuilder } from "../../crm/components/deal-builder"
+import { DealBuilder } from "@/modules/features/crm/components/deal-builder"
 import { archiveConversation, snoozeConversation, completeConversation } from "../conversation-actions"
 import { toast } from "sonner"
 import { ScrollArea } from "@/components/ui/scroll-area"

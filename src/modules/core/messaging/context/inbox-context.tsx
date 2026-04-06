@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, ReactNode, useCallback } from "react"
 import { getCategories } from "@/modules/features/catalog/categories-actions"
-import { searchCatalog } from "../../crm/deal-actions"
+import { searchCatalog } from "@/modules/features/crm/services/logic/deal-actions"
 
 interface InboxContextType {
     leadsCache: Record<string, any>;
@@ -103,7 +103,7 @@ export function InboxProvider({ children }: { children: ReactNode }) {
         if (isTagsLoading) return;
         setIsTagsLoading(true)
         try {
-            const { getTags } = await import("../../crm/tags-actions")
+            const { getTags } = await import("@/modules/features/crm/services/logic/tags-actions")
             const tags = await getTags()
             setAllTags(tags)
         } finally {

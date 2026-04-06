@@ -107,8 +107,8 @@ export async function deleteConversation(conversationId: string, deleteLeadIfOrp
     // Clear tags using the IDs we ALREADY have (No new fetch needed)
     const tagCleanupPromise = (conv.lead_id && conv.organization_id)
         ? (async () => {
-            const { clearLeadTagsSystem } = await import("@/modules/core/crm/tags-actions")
-            return clearLeadTagsSystem(conv.lead_id!, conv.organization_id!)
+            const { clearContactTagsAction } = await import("@/modules/features/crm/crm-actions")
+            return clearContactTagsAction(conv.lead_id!)
         })()
         : Promise.resolve({ success: true });
 
@@ -134,8 +134,8 @@ export async function deleteConversation(conversationId: string, deleteLeadIfOrp
             .limit(1)
 
         if (!otherConvs || otherConvs.length === 0) {
-            const { deleteLeads } = await import("@/modules/core/crm/lead-management-actions")
-            await deleteLeads([conv.lead_id])
+            const { deleteContactsAction } = await import("@/modules/features/crm/crm-actions")
+            await deleteContactsAction([conv.lead_id])
         }
     }
 
@@ -294,8 +294,8 @@ export async function completeConversation(conversationId: string) {
 
     const tagCleanupPromise = (conv.lead_id && conv.organization_id)
         ? (async () => {
-            const { clearLeadTagsSystem } = await import("@/modules/core/crm/tags-actions")
-            return clearLeadTagsSystem(conv.lead_id!, conv.organization_id!)
+            const { clearContactTagsAction } = await import("@/modules/features/crm/crm-actions")
+            return clearContactTagsAction(conv.lead_id!)
         })()
         : Promise.resolve({ success: true });
 
@@ -327,7 +327,7 @@ async function clearLeadTagsOnEvent(conversationId: string) {
         .single()
 
     if (conv?.lead_id && conv?.organization_id) {
-        const { clearLeadTagsSystem } = await import("@/modules/core/crm/tags-actions")
-        await clearLeadTagsSystem(conv.lead_id, conv.organization_id)
+        const { clearContactTagsAction } = await import("@/modules/features/crm/crm-actions")
+        await clearContactTagsAction(conv.lead_id)
     }
 }
