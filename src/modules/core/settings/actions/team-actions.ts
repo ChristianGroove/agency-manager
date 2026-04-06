@@ -423,7 +423,8 @@ async function _getUserPermissionsInternal(userId: string, orgId: string) {
             permissions,
             role_data:organization_roles (
                 name,
-                permissions
+                permissions,
+                hierarchy_level
             )
         `)
         .match({ organization_id: orgId, user_id: userId })
@@ -457,14 +458,16 @@ async function _getUserPermissionsInternal(userId: string, orgId: string) {
 /**
  * PERF: Cached version of permissions fetch (1 minute TTL)
  */
-export const getCachedUserPermissions = unstable_cache(
-    async (userId: string, orgId: string) => _getUserPermissionsInternal(userId, orgId),
-    ['user-permissions'],
-    {
-        revalidate: 1,
-        tags: ['permissions']
-    }
-)
+import { cache as reactCache } from "react"
+
+/**
+ * Get current logged-in user's permissions for the active organization.
+ * Security: We use React's request-scoped cache() for deduplication within a single render cycle.
+ * We REMOVE unstable_cache to ensure data is ALWAYS fresh from DB in production and prevent cross-user identity leaks.
+ */
+export const getCachedUserPermissions = reactCache(async (userId: string, orgId: string) => {
+    return _getUserPermissionsInternal(userId, orgId)
+})
 
 /**
  * Get current logged-in user's permissions for the active organization

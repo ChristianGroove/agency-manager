@@ -115,19 +115,34 @@ export function SidebarConversationList({
 
     const hasGlobalView = useMemo(() => {
         const role = effectivePermissions?.role?.toLowerCase();
-        // Solo el dueño (Owner) tiene visión global absoluta de todos los canales
-        return role === 'owner' || role === 'dueño' || 
-               effectivePermissions?.permissions?.all === true;
+        const hierarchy = effectivePermissions?.hierarchy;
+        // La jerarquía 100 es el estándar de verdad para Dueño el cual ve todo.
+        // Reforzamos con roles explícitos para mayor compatibilidad.
+        return hierarchy === 100 || role === 'owner' || role === 'dueño' || role === 'propietario';
     }, [effectivePermissions])
 
     const isAdmin = useMemo(() => {
         const role = effectivePermissions?.role?.toLowerCase();
-        return role === 'admin' || role === 'administrador';
+        const hierarchy = effectivePermissions?.hierarchy;
+        // Los admins suelen ser jerarquía 50. Cualquier cosa >= 50 pero < 100 es admin.
+        // Anteriormente estaba en 80, lo que dejaba fuera a los admins estándar de nivel 50.
+        const isLevelAdmin = hierarchy !== undefined && hierarchy >= 50 && hierarchy < 100;
+        const isStringAdmin = role === 'admin' || role === 'administrador' || role === 'manager';
+        return isLevelAdmin || isStringAdmin;
     }, [effectivePermissions])
 
+    // Lógica de Canales Autorizados con Mapeo Profundo (Raíz, Módulos, Inbox)
+    const authorizedChannels = useMemo(() => {
+        const p = effectivePermissions?.permissions;
+        if (!p) return [];
+        // Buscamos en todas las rutas posibles del JSON de permisos
+        const fromRoot = p.inbox_access;
+        const fromModules = p.modules?.inbox?.inbox_access;
+        const fromInbox = p.inbox?.inbox_access;
+        return (fromRoot || fromModules || fromInbox || []) as string[];
+    }, [effectivePermissions]);
+
     const filteredAgents = useMemo(() => {
-        const authorizedChannels = effectivePermissions?.permissions?.inbox_access || []
-        
         return agents.filter(a => {
             const role = a.role.toLowerCase();
             const targetIsOwner = role === 'owner' || role === 'dueño';
@@ -151,7 +166,7 @@ export function SidebarConversationList({
 
             return false;
         });
-    }, [agents, selectedChannelId, isAdmin, hasGlobalView, effectivePermissions])
+    }, [agents, selectedChannelId, isAdmin, hasGlobalView, authorizedChannels])
 
     const searchInputRef = useRef<HTMLInputElement>(null)
     const { preferences } = useInboxPreferences()
@@ -208,7 +223,7 @@ export function SidebarConversationList({
             }, 300)
             return () => clearTimeout(timer)
         }
-    }, [activeFilter, effectiveOrgId, identityLoaded, selectedChannelId, selectedAgentId, searchQuery])
+    }, [activeFilter, effectiveOrgId, identityLoaded, selectedChannelId, selectedAgentId, searchQuery, isAdmin, hasGlobalView, effectivePermissions])
 
     const fetchChannels = async () => {
         const data = await getChannels()
@@ -267,21 +282,29 @@ export function SidebarConversationList({
             else query = query.eq('assigned_to', selectedAgentId)
         }
 
-        const authorizedChannels = effectivePermissions?.permissions?.inbox_access || []
-
-        if (!hasGlobalView && isAdmin) {
-            // Un administrador restringido ve TODOS los chats de sus canales asignados
-            if (authorizedChannels.length > 0) {
+        // LÓGICA DE SEGURIDAD REFORZADA:
+        // Si no es owner (jerarquía 100), DEBE estar restringido.
+        if (hasGlobalView) {
+            // El Dueño ve todo. 
+        } else if (isAdmin) {
+            // ABSOLUTA PRIORIDAD: Filtro obligatorio para Admin
+            if (authorizedChannels && authorizedChannels.length > 0) {
                 query = query.in('connection_id', authorizedChannels)
             } else {
-                // Si no tiene canales, no ve nada
+                // Si es admin pero no se encontraron canales mapeados, NO ve nada.
+                // Esto previene que una discrepancia en el JSON de producción otorgue visibilidad global.
                 setConversations([])
                 setLoading(false)
                 return
             }
-        } else if (!hasGlobalView && currentUserId) {
-            // Un miembro normal solo ve sus propios chats
+        } else if (currentUserId) {
+            // Miembros regulares: solo sus propios chats asignados.
             query = query.eq('assigned_to', currentUserId)
+        } else {
+            // Si la identidad no ha cargado o no se reconoce el rol, bloqueamos vista por defecto.
+            setConversations([])
+            setLoading(false)
+            return
         }
 
         query = query.eq('organization_id', effectiveOrgId)
@@ -406,7 +429,11 @@ export function SidebarConversationList({
     }, [conversations, currentUserId])
 
     return (
-        <div className="flex flex-col h-full bg-white dark:bg-zinc-950">
+        <div 
+            className="flex flex-col h-full bg-white dark:bg-zinc-950"
+            data-role={effectivePermissions?.role}
+            data-hierarchy={effectivePermissions?.hierarchy}
+        >
             <InboxSettingsSheet open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
             <BulkDistributionModal 
                 open={isDistributeModalOpen} 
