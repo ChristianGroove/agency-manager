@@ -184,9 +184,10 @@ export async function getDashboardPayload() {
     // Phase 11: Get current user role to avoid dashboard flashing
     const { data: { user } } = await supabase.auth.getUser()
     let userRole = null
+    let perms = null
     if (user) {
         const { getCachedUserPermissions } = await import("@/modules/core/settings/actions/team-actions")
-        const perms = await getCachedUserPermissions(user.id, orgId)
+        perms = await getCachedUserPermissions(user.id, orgId)
         userRole = perms?.role || null
     }
 
@@ -197,12 +198,41 @@ export async function getDashboardPayload() {
     if (canMonitorAgents && isTargetSpace) {
         const { data: agentStats, error: rpcError } = await supabase.rpc('get_agent_monitoring_stats', { p_org_id: orgId })
         
+        let filteredStats = agentStats || []
+
+        // SI ES ADMIN (RESTRIGIDO): Filtrar agentes por canales compartidos
+        if (normalizedRole === 'admin' || normalizedRole === 'administrador') {
+            const adminChannels = perms?.permissions?.inbox_access || []
+            
+            if (adminChannels.length > 0) {
+                // Obtener qué canales tiene cada agente
+                const { data: availability } = await supabase
+                    .from('agent_availability')
+                    .select('agent_id, agent_channels(channel_type)')
+                    .eq('organization_id', orgId)
+
+                const agentsWithAccess = new Set<string>()
+                availability?.forEach((a: any) => {
+                    const agentHasSharedChannel = a.agent_channels?.some((c: any) => adminChannels.includes(c.channel_type))
+                    if (agentHasSharedChannel) agentsWithAccess.add(a.agent_id)
+                })
+
+                // Filtrar las estadísticas. El 'unassigned' (ceros) se mantiene si el admin tiene algún canal.
+                const UNASSIGNED_ID = '00000000-0000-0000-0000-000000000000'
+                filteredStats = (agentStats || []).filter((s: any) => 
+                    s.user_id === UNASSIGNED_ID || agentsWithAccess.has(s.user_id)
+                )
+            } else {
+                filteredStats = []
+            }
+        }
+
         if (extraData) {
-            extraData.agentStats = agentStats || []
+            extraData.agentStats = filteredStats
             extraData.rpcError = rpcError ? rpcError.message : null
         } else {
             extraData = { 
-                agentStats: agentStats || [], 
+                agentStats: filteredStats, 
                 rpcError: rpcError ? rpcError.message : null 
             }
         }

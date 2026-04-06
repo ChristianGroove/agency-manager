@@ -34,13 +34,28 @@ export function ChannelAccessSelector({ selectedIds, onChange, disabled }: Chann
 
     useEffect(() => {
         const fetchChannels = async () => {
-            const data = await getChannels()
-            setChannels(data)
+            const { getCurrentUserPermissions } = await import("@/modules/core/settings/actions/team-actions")
+            const [data, perms] = await Promise.all([
+                getChannels(),
+                getCurrentUserPermissions()
+            ])
+
+            const role = perms?.role?.toLowerCase()
+            const isOwner = role === 'owner' || role === 'dueño'
+            const isAdmin = role === 'admin' || role === 'administrador'
+            const authorizedChannels = perms?.permissions?.inbox_access || []
+
+            let finalChannels = data
+            if (!isOwner && isAdmin) {
+                // Si es un admin restringido, solo puede ver/asignar los canales que él posee
+                finalChannels = data.filter(c => authorizedChannels.includes(c.id))
+            }
+
+            setChannels(finalChannels)
             setLoading(false)
 
             // Auto-clean orphaned IDs on initial load
-            // This ensures "ghost" connections from deleted channels are removed from the parent state
-            const validIds = selectedIds.filter(id => data.some(c => c.id === id));
+            const validIds = selectedIds.filter(id => finalChannels.some(c => c.id === id));
             if (validIds.length !== selectedIds.length) {
                 onChange(validIds);
             }

@@ -115,21 +115,31 @@ export function SidebarConversationList({
 
     const hasGlobalView = useMemo(() => {
         const role = effectivePermissions?.role?.toLowerCase();
-        const isGlobalRole = role === 'owner' || role === 'dueño' || role === 'admin' || role === 'administrador';
-        
-        return isGlobalRole || 
-               effectivePermissions?.permissions?.all === true || 
-               effectivePermissions?.permissions?.['inbox.conversations.view_all'] === true
+        // Solo el dueño (Owner) tiene visión global absoluta de todos los canales
+        return role === 'owner' || role === 'dueño' || 
+               effectivePermissions?.permissions?.all === true;
+    }, [effectivePermissions])
+
+    const isAdmin = useMemo(() => {
+        const role = effectivePermissions?.role?.toLowerCase();
+        return role === 'admin' || role === 'administrador';
     }, [effectivePermissions])
 
     const filteredAgents = useMemo(() => {
         if (!selectedChannelId) return agents;
+
+        const authorizedChannels = effectivePermissions?.permissions?.inbox_access || []
+        
         return agents.filter(a => {
-            const isAdmin = ['admin', 'owner'].includes(a.role.toLowerCase());
+            const role = a.role.toLowerCase();
+            const targetIsOwner = role === 'owner' || role === 'dueño';
+            const targetIsAdmin = role === 'admin' || role === 'administrador';
             const hasAccess = a.channels.includes(selectedChannelId);
-            return isAdmin || hasAccess;
+
+            // Si el usuario actual es admin restringido, solo debería ver agentes en ese canal
+            return targetIsOwner || (isAdmin ? hasAccess : (targetIsAdmin || hasAccess));
         });
-    }, [agents, selectedChannelId])
+    }, [agents, selectedChannelId, isAdmin, effectivePermissions])
 
     const searchInputRef = useRef<HTMLInputElement>(null)
     const { preferences } = useInboxPreferences()
@@ -245,11 +255,20 @@ export function SidebarConversationList({
             else query = query.eq('assigned_to', selectedAgentId)
         }
 
-        if ((preferences.behavior as any).strict_isolation && currentUserId) {
-            query = query.eq('assigned_to', currentUserId)
-        }
+        const authorizedChannels = effectivePermissions?.permissions?.inbox_access || []
 
-        if (!hasGlobalView && currentUserId) {
+        if (!hasGlobalView && isAdmin) {
+            // Un administrador restringido ve TODOS los chats de sus canales asignados
+            if (authorizedChannels.length > 0) {
+                query = query.in('connection_id', authorizedChannels)
+            } else {
+                // Si no tiene canales, no ve nada
+                setConversations([])
+                setLoading(false)
+                return
+            }
+        } else if (!hasGlobalView && currentUserId) {
+            // Un miembro normal solo ve sus propios chats
             query = query.eq('assigned_to', currentUserId)
         }
 
@@ -294,17 +313,29 @@ export function SidebarConversationList({
                     
                     if (updatedConv && updatedConv.organization_id !== effectiveOrgId) return;
 
+                    const authorizedChannels = effectivePermissions?.permissions?.inbox_access || []
+
                     setConversations((prev) => {
                         if (eventType === 'DELETE') return prev.filter(c => c.id !== oldConv.id)
 
                         const existingIndex = prev.findIndex(c => c.id === updatedConv.id)
                         
                         let matches = true
-                        if (activeFilter === 'all') matches = updatedConv.state !== 'archived' && updatedConv.status !== 'snoozed'
-                        else if (activeFilter === 'unread') matches = updatedConv.unread_count > 0 && updatedConv.state !== 'archived' && updatedConv.status !== 'snoozed'
-                        else if (activeFilter === 'assigned') matches = updatedConv.assigned_to === currentUserId && updatedConv.state !== 'archived'
-                        else if (activeFilter === 'archived') matches = updatedConv.state === 'archived'
-                        else if (activeFilter === 'snoozed') matches = updatedConv.status === 'snoozed'
+                        
+                        // Security check: Must belong to authorized channels if NOT owner
+                        if (!hasGlobalView) {
+                            if (!updatedConv.connection_id || !authorizedChannels.includes(updatedConv.connection_id)) {
+                                matches = false
+                            }
+                        }
+
+                        if (matches) {
+                            if (activeFilter === 'all') matches = updatedConv.state !== 'archived' && updatedConv.status !== 'snoozed'
+                            else if (activeFilter === 'unread') matches = updatedConv.unread_count > 0 && updatedConv.state !== 'archived' && updatedConv.status !== 'snoozed'
+                            else if (activeFilter === 'assigned') matches = updatedConv.assigned_to === currentUserId && updatedConv.state !== 'archived'
+                            else if (activeFilter === 'archived') matches = updatedConv.state === 'archived'
+                            else if (activeFilter === 'snoozed') matches = updatedConv.status === 'snoozed'
+                        }
 
                         if (!matches) return prev.filter(c => c.id !== updatedConv.id)
 

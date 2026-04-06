@@ -16,14 +16,35 @@ Para evitar asignar leads a agentes inactivos o con la pestaña cerrada:
 - **Umbral de Vida**: Se requiere un `last_seen_at` dentro de los últimos **3 minutos** (180 segundos).
 - **Fallback**: Si no hay agentes activos bajo este umbral dentro de los seleccionados, el sistema puede reintentar o asignar al administrador según la configuración de la regla.
 
-## 2. Aislamiento de Datos y Privacidad
+## 2. Aislamiento de Datos y Privacidad (RBAC Granular)
 
-El sistema garantiza que los agentes solo operen sobre lo que les corresponde:
-- **Vinculación Técnica**: Un agente solo es elegible para leads de un canal si cumple una de estas condiciones:
-  1.  Está vinculado en `agent_channels` (Autorización por tipo de canal: WhatsApp, Instagram, etc.).
-  2.  Posee el ID del canal específico en su array `permissions.inbox_access` (Autorización granular por canal).
-- **Aislamiento de Vista**: Si un usuario tiene el rol `Member` y NO posee el permiso `inbox.conversations.view_all`, la interfaz (`sidebar-conversation-list.tsx`) filtrará el feed para mostrar **únicamente sus conversaciones asignadas** en los canales autorizados.
-- **Bypass de Jerarquía Directo**: Los roles `Admin` y `Owner` (incluyendo variantes como `Administrador` y `Dueño`) poseen **visibilidad total implícita** inyectada en el frontend. El bypass se activa automáticamente basado en el valor de `role` del usuario, permitiendo la supervisión de todos los chats de todos los canales de la organización por defecto.
+El sistema garantiza que los agentes y administradores operen únicamente sobre los canales que les corresponden, con una excepción jerárquica para el Dueño.
+
+### A. Criterios de Elegibilidad Técnica
+Un usuario (Agente o Administrador) es elegible para interactuar con un canal si cumple una de estas condiciones:
+1.  **Rol Maestro**: Posee el rol `Owner` o `Dueño` (Acceso total automático a todo el tenant).
+2.  **Autorización Granular**: Posee el ID del canal específico en su array `permissions.inbox_access`.
+3.  **Vinculación por Tipo**: Está vinculado en la tabla `agent_channels` para ese tipo de conexión (WhatsApp, Instagram, etc.).
+
+### B. Políticas de Filtrado en la Interfaz (UI Aisolation)
+La interfaz aplica filtros restrictivos basados en el rol para mantener la privacidad y reducir el ruido visual:
+
+- **Dueño (Owner)**: Mantiene la **visibilidad total implícita**. Ve todos los canales, todos los chats y a todos los agentes en los selectores de monitoreo y asignación.
+- **Administrador (Admin)**: 
+    - **Inbox**: Solo ve los canales autorizados en su `inbox_access`. Dentro de esos canales, ve **todos los chats** (Inbox total por canal).
+    - **Dashboard**: El widget de monitoreo solo muestra agentes que comparten al menos un canal con él.
+    - **Asignación**: El selector de "Asignar a" solo muestra agentes que tienen acceso al canal de la conversación actual.
+    - **Gestión**: Solo puede asignar a otros usuarios los canales a los que él mismo tiene acceso.
+- **Miembro (Member)**:
+    - **Inbox**: Solo ve sus **conversaciones asignadas** dentro de sus canales autorizados.
+    - **Asignación**: Al igual que el Admin, solo ve agentes elegibles para el canal actual en el selector de asignación.
+
+## 3. Lógica de Filtrado en Selectores de Agentes
+
+Para garantizar que un chat no sea asignado a alguien sin acceso, el componente `QuickAssignPanel.tsx` realiza un filtrado reactivo:
+1.  Obtiene el rol del usuario conectado.
+2.  Calcula la `isEligible` de cada agente en la lista (basado en si el agente tiene acceso al canal del chat).
+3.  Si el usuario conectado NO es Owner, se ocultan todos los agentes que no sean `isEligible`.
 
 ## 4. Sincronización de Carga (Real-Time Workload)
 

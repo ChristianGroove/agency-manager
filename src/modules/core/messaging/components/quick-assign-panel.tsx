@@ -76,9 +76,23 @@ export function QuickAssignPanel({ conversationId, channel, connectionId, curren
         }
     }
 
+    const [currentUserRole, setCurrentUserRole] = useState<string | null>(null)
+
+    useEffect(() => {
+        const fetchRole = async () => {
+            const { getCurrentUserPermissions } = await import("@/modules/core/settings/actions/team-actions")
+            const perms = await getCurrentUserPermissions()
+            setCurrentUserRole(perms?.role || null)
+        }
+        fetchRole()
+    }, [])
+
     const currentAgent = agents.find(a => a.agent_id === currentAssignee)
     const currentName = currentAgent?.users?.raw_user_meta_data?.name || currentAgent?.users?.email || t('crm.inbox.context.sections.unassign')
     const currentInitials = currentName.substring(0, 2).toUpperCase()
+
+    const isCurrentAdmin = currentUserRole === 'admin' || currentUserRole === 'administrador'
+    const isCurrentOwner = currentUserRole === 'owner' || currentUserRole === 'dueño'
 
     const getStatusColor = (agentStatus: string, lastSeen?: string) => {
         // Heartbeat validation: 3 minutes threshold (consistent with 1min heartbeat frequency)
@@ -140,17 +154,33 @@ export function QuickAssignPanel({ conversationId, channel, connectionId, curren
                                     <Check className={cn("ml-auto h-4 w-4", !currentAssignee ? "opacity-100" : "opacity-0")} />
                                 </CommandItem>
                             )}
-                            {agents
+                            {currentUserRole && agents
+                                .filter(agent => {
+                                    const role = agent.role?.toLowerCase() || ''
+                                    const targetIsOwner = role === 'owner' || role === 'dueño';
+                                    
+                                    const hasChannelAccess = agent.agent_channels?.some(c =>
+                                        c.channel_type === channel || c.channel_type === connectionId
+                                    );
+                                    const isEligible = targetIsOwner || hasChannelAccess;
+
+                                    // FILTRADO: Si el usuario NO es un Owner, solo debería ver agentes con acceso al canal (o al propio Dueño)
+                                    if (!isCurrentOwner && !isEligible) {
+                                        return false
+                                    }
+                                    return true
+                                })
                                 .map(agent => {
                                     const name = agent.users?.raw_user_meta_data?.name || agent.users?.email || t('crm.inbox.context.sections.unknown_agent')
                                     const loadPercentage = (agent.current_load / agent.max_capacity) * 100
 
-                                    // Eligibility Check
-                                    const isAdmin = ['admin', 'owner'].includes(agent.role?.toLowerCase() || '');
+                                    // Re-calculate eligibility for the badge display
+                                    const role = agent.role?.toLowerCase() || ''
+                                    const targetIsOwner = role === 'owner' || role === 'dueño';
                                     const hasChannelAccess = agent.agent_channels?.some(c =>
                                         c.channel_type === channel || c.channel_type === connectionId
                                     );
-                                    const isEligible = isAdmin || hasChannelAccess;
+                                    const isEligible = targetIsOwner || hasChannelAccess;
 
                                     return (
                                         <CommandItem

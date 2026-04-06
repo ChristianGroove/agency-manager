@@ -75,7 +75,7 @@ export const PERMISSION_GROUPS = [
         label: 'Bandeja y Mensajería',
         description: 'Control de acceso a chats y configuración de canales.',
         permissions: [
-            { id: PERMISSIONS.INBOX.VIEW_ALL, label: 'Ver Todas las Conversaciones', description: 'Ver todos los chats (si no, solo los asignados)' },
+            { id: PERMISSIONS.INBOX.VIEW_ALL, label: 'Ver Todas las Conversaciones', description: 'Ver todos los chats dentro de los canales autorizados (si no, solo los asignados)' },
             { id: PERMISSIONS.INBOX.ASSIGN_AGENTS, label: 'Asignar Agentes', description: 'Puede reasignar chats a otros miembros' },
             { id: PERMISSIONS.INBOX.MANAGE_CHANNELS, label: 'Gestionar Canales', description: 'Conectar o desconectar números de WhatsApp' },
         ]
