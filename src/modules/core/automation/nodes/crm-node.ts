@@ -3,7 +3,7 @@
  * Enables workflows to interact with the CRM module
  */
 
-import { createLead, createLeadSystem, updateLeadStatus } from '@/modules/core/crm/leads-actions';
+import { createLeadAction, createLeadSystemAction, updateContactStatusAction, updateContactStatusSystemAction, addContactTagSystemAction } from '@/modules/features/crm/crm-actions';
 import { ContextManager } from '../context-manager';
 
 export interface CRMNodeData {
@@ -63,7 +63,7 @@ export class CRMNode {
 
         if (organizationId) {
             console.log('[CRM Node] Using System Action (Background)');
-            result = await createLeadSystem({
+            result = await createLeadSystemAction({
                 name,
                 email: email || undefined,
                 phone: phone || undefined,
@@ -71,7 +71,7 @@ export class CRMNode {
             }, organizationId);
         } else {
             console.log('[CRM Node] Using User Action (Foreground)');
-            result = await createLead({
+            result = await createLeadAction({
                 name,
                 email: email || undefined,
                 phone: phone || undefined,
@@ -101,7 +101,7 @@ export class CRMNode {
 
         console.log('[CRM Node] Updating lead stage:', { leadId, newStageId });
 
-        const result = await updateLeadStatus(leadId, newStageId);
+        const result = await updateContactStatusAction(leadId, newStageId);
 
         if (result.success) {
             console.log('[CRM Node] Lead stage updated successfully');
@@ -128,9 +128,9 @@ export class CRMNode {
         console.log('[CRM Node] Adding tag to lead:', { leadId, tagName });
 
         // Dynamic import to avoid circular dependencies if any, or just standard usage
-        const { addLeadTagSystem } = await import('@/modules/core/crm/tags-actions');
+        const { addContactTagSystemAction } = await import('@/modules/features/crm/crm-actions');
 
-        const result = await addLeadTagSystem(leadId, tagName, organizationId);
+        const result = await addContactTagSystemAction(leadId, tagName, organizationId);
 
         if (result.success) {
             console.log('[CRM Node] Tag added successfully');

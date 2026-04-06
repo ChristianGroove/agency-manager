@@ -2,7 +2,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { AdvancedReportData } from '@/modules/core/crm/analytics-actions';
+import { AdvancedReportData } from '@/modules/features/crm/services/logic/analytics-actions';
 import { BrandingConfig } from '@/types/branding';
 
 interface ReportExportData {

@@ -12,8 +12,8 @@
 
 "use client";
 import React, { useState, useEffect } from 'react';
-import { getPipelineStages, type PipelineStage } from '@/modules/core/crm/pipeline-actions';
-import { getTags, type Tag as CRMTag } from '@/modules/core/crm/tags-actions';
+import { getPipelineStages, type PipelineStage } from '@/modules/features/crm/services/logic/pipeline-actions';
+import { getTags, type Tag as CRMTag } from '@/modules/features/crm/services/logic/tags-actions';
 import {
     Sheet,
     SheetContent,

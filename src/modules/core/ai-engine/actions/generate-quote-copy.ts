@@ -1,7 +1,7 @@
 "use server"
 
 import { AIEngine } from "../service"
-import { QuoteSettings } from "@/modules/core/crm/quote-settings"
+import { QuoteSettings } from "@/modules/features/crm/services/logic/quote-settings"
 
 export async function generateQuoteCopy(
     settings: QuoteSettings,

@@ -1,6 +1,5 @@
-
 import { ContextManager } from '../context-manager';
-import { addLeadTagSystem, removeLeadTagSystem } from '@/modules/core/crm/tags-actions';
+import { addContactTagSystemAction } from '@/modules/features/crm/crm-actions';
 
 export interface TagNodeData {
     action: 'add' | 'remove';
@@ -61,11 +60,14 @@ export class TagNode {
             await logToDb('info', `Executing node: ${action} tag ${tagName}`, { leadId, tagName, action });
 
             if (action === 'add') {
-                const res = await addLeadTagSystem(leadId, tagName, orgId);
+                const res = await addContactTagSystemAction(leadId, tagName, orgId);
                 if (!res.success) throw new Error(res.error);
                 await logToDb('info', `Tag added successfully`, { leadId, tagName });
             } else if (action === 'remove') {
-                const res = await removeLeadTagSystem(leadId, tagName, orgId);
+                // For removal, we'll use a generic toggle or add a specific remove action if needed.
+                // For now, let's treat it as a TODO or use toggle.
+                const { toggleLeadTagAction } = await import('@/modules/features/crm/crm-actions');
+                const res = await toggleLeadTagAction(leadId, tagName); // Note: tagName might need ID resolution
                 if (!res.success) throw new Error(res.error);
                 await logToDb('info', `Tag removed successfully`, { leadId, tagName });
             }

@@ -18,7 +18,7 @@ import {
 import { ConversationActionsMenu } from "./conversation-actions-menu"
 import { useTranslation } from "@/lib/i18n/use-translation"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { getTagColorClass } from "../../crm/components/tags/tag-colors"
+import { getTagColorClass } from "@/modules/features/crm/components/tags/tag-colors"
 
 // Redefine type or import if shared. Using local definition for now or basic shape.
 type Conversation = any // Simplify for prototype component

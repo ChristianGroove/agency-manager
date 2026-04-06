@@ -24,7 +24,7 @@ const CreateClientAction: AssistantAction = {
 
         // Logic (Simulated for Phase 0 if import is tricky, or dynamic import)
         try {
-            const { quickCreateProspect } = await import("@/modules/core/clients/actions");
+            const { quickCreateProspect } = await import("@/modules/features/crm/services/logic/actions");
 
             // Ensure ctx.user_id is valid
             if (!ctx.user_id) throw new Error("No user ID in context");

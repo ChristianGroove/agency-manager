@@ -347,7 +347,7 @@ export async function POST(request: Request) {
 
             if (invoice?.client_id) {
                 try {
-                    const { ProcessEngine } = await import('@/modules/core/crm/process-engine/engine')
+                    const { ProcessEngine } = await import('@/modules/features/crm/services/process-engine/engine')
 
                     // Check for active process
                     const process = await ProcessEngine.getActiveProcess(invoice.client_id)

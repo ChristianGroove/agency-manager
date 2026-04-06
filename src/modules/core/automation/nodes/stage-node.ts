@@ -1,6 +1,5 @@
-
 import { ContextManager } from '../context-manager';
-import { updateLeadStatusSystem } from '@/modules/core/crm/leads-actions';
+import { updateContactStatusSystemAction } from '@/modules/features/crm/crm-actions';
 
 export interface StageNodeData {
     status: string;
@@ -34,7 +33,7 @@ export class StageNode {
 
             console.log(`[StageNode] Updating Lead ${leadId} status to '${status}'`);
 
-            const res = await updateLeadStatusSystem(leadId, status, organizationId);
+            const res = await updateContactStatusSystemAction(leadId, status, organizationId || '');
 
             if (!res.success) throw new Error(res.error);
 

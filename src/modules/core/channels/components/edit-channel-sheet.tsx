@@ -1,7 +1,7 @@
 "use client"
 
 import { Channel } from "../types"
-import { PipelineStage } from "@/modules/core/crm/pipeline-actions"
+import { PipelineStage } from "@/modules/features/crm/services/logic/pipeline-actions"
 import { Button } from "@/components/ui/button"
 import {
     Save, Loader2, Phone, Eye, EyeOff, RefreshCw,

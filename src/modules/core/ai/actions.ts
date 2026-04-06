@@ -1,7 +1,7 @@
 "use server"
 
 import { AnalysisService } from "./analysis-service"
-import { ProcessEngine } from "@/modules/core/crm/process-engine/engine"
+import { ProcessEngine } from "@/modules/features/crm/services/process-engine/engine"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
 
 export async function getLeadAnalysis(leadId: string) {

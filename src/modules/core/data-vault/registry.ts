@@ -58,7 +58,7 @@ class ModuleRegistry {
 export const vaultRegistry = new ModuleRegistry()
 
 // Register Core Modules
-import { crmDataAdapter } from "@/modules/core/crm/data-adapter"
+import { crmDataAdapter } from "@/modules/features/crm/services/logic/data-adapter"
 import { messagingDataAdapter } from "@/modules/core/messaging/data-adapter"
 import { automationDataAdapter } from "@/modules/core/automation/data-adapter"
 

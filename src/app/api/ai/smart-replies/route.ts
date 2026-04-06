@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
 
         if (lead?.id) {
             try {
-                const { ProcessEngine } = await import('@/modules/core/crm/process-engine/engine')
+                const { ProcessEngine } = await import('@/modules/features/crm/services/process-engine/engine')
                 const context = await ProcessEngine.getProcessContext(lead.id)
                 if (context) {
                     processContext = {
