@@ -19,8 +19,7 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 import { toast } from "sonner"
-import { createHostingAccount, updateHostingAccount } from "@/modules/features/hosting/actions"
-import { supabase } from "@/lib/supabase"
+import { createHostingAccount, updateHostingAccount, getContactOptions } from "@/modules/features/hosting/actions"
 import { Loader2 } from "lucide-react"
 
 interface CreateHostingSheetProps {
@@ -76,8 +75,13 @@ export function CreateHostingSheet({ open, onOpenChange, onSuccess, accountToEdi
     }, [open, accountToEdit, clientId])
 
     const fetchClients = async () => {
-        const { data } = await supabase.from('leads').select('id, name').order('name')
-        if (data) setClients(data)
+        try {
+            const data = await getContactOptions()
+            setClients(data)
+        } catch (error) {
+            console.error("Error fetching contact options:", error)
+            toast.error("Error al cargar clientes")
+        }
     }
 
     const handleSubmit = async (e: React.FormEvent) => {

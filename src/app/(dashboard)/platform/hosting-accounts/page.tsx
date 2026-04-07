@@ -39,6 +39,7 @@ import { format } from "date-fns"
 import { SearchFilterBar, FilterOption } from "@/components/shared/search-filter-bar"
 import { CreateHostingSheet } from "@/modules/features/hosting/components/create-hosting-sheet"
 import { SectionHeader } from "@/components/layout/section-header"
+import { getHostingAccounts, deleteHostingAccount } from "@/modules/features/hosting/actions"
 
 export default function HostingPage() {
     const [accounts, setAccounts] = useState<any[]>([])
@@ -51,7 +52,6 @@ export default function HostingPage() {
     const fetchAccounts = async () => {
         setLoading(true)
         try {
-            const { getHostingAccounts } = await import("@/modules/features/hosting/actions")
             const data = await getHostingAccounts()
             setAccounts(data || [])
         } catch (error) {
@@ -69,7 +69,6 @@ export default function HostingPage() {
     const handleDelete = async (id: string) => {
         if (!confirm("¿Eliminar esta cuenta de hosting?")) return
         try {
-            const { deleteHostingAccount } = await import("@/modules/features/hosting/actions")
             await deleteHostingAccount(id)
             toast.success("Cuenta eliminada")
             fetchAccounts()

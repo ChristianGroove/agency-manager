@@ -154,18 +154,12 @@ export class ContactRepository {
             p_page: params.page,
             p_page_size: params.pageSize,
             p_date_from: params.dateFrom,
-            p_date_to: params.dateTo
-            // Note: The RPC might need update to handle contactType if we want strict filter there, 
-            // but usually stageId='all' is used for Leads and a different RPC or filter for clients.
+            p_date_to: params.dateTo,
+            p_contact_type: params.contactType === 'all' ? null : (params.contactType || 'client')
         })
 
         if (error) throw error
         
-        // If strict contactType requested, we might need JS filtering if RPC doesn't support it yet
-        if (params.contactType && params.contactType !== 'all') {
-            data.leads = data.leads.filter((l: any) => l.contact_type === params.contactType)
-        }
-
         return data
     }
 

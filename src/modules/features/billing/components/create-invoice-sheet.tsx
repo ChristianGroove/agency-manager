@@ -39,8 +39,7 @@ import { format } from "date-fns"
 import { supabase } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
-import { getSettings } from "@/modules/core/settings/actions"
-import { getActiveEmitters } from "@/modules/core/settings/emitters-actions"
+import { getSettingsAction, getEmittersAction, getContactOptionsAction } from "@/modules/features/billing/billing-actions"
 import { Emitter } from "@/types/billing"
 import { getEmitterDocumentType, getDocumentTypeLabel, isEmittersModuleEnabled } from "@/lib/billing-utils"
 import { Calendar } from "@/components/ui/calendar"
@@ -162,40 +161,34 @@ export function CreateInvoiceSheet({
         setLoading(true)
         try {
             // 1. Settings
-            const settingsData = await getSettings()
-            setSettings(settingsData)
+            const settingsRes = await getSettingsAction()
+            if (settingsRes.success && settingsRes.data) {
+                setSettings(settingsRes.data)
+            }
 
             // 2. Clients (if needed)
             if (!clientId) {
-                const { getCurrentOrganizationId } = await import('@/modules/core/organizations/actions')
-                const orgId = await getCurrentOrganizationId()
-
-                if (!orgId) {
-                    console.error('No organization context found')
-                    return
+                const res = await getContactOptionsAction()
+                if (res.success && res.data) {
+                    setClients(res.data)
                 }
-
-                const { data } = await supabase
-                    .from('leads')
-                    .select('id, name, company_name')
-                    .eq('organization_id', orgId)
-                    .is('deleted_at', null)
-                    .order('name')
-                if (data) setClients(data)
             }
 
             // 3. Emitters
             if (isEmittersModuleEnabled()) {
-                const activeEmitters = await getActiveEmitters()
-                setEmitters(activeEmitters)
+                const emittersRes = await getEmittersAction()
+                if (emittersRes.success && emittersRes.data) {
+                    const activeEmitters = emittersRes.data
+                    setEmitters(activeEmitters)
 
-                // Auto-select logic
-                if (activeEmitters.length === 1 && !selectedEmitterId && !invoiceToEdit) {
-                    setSelectedEmitterId(activeEmitters[0].id)
-                }
-                // Pre-fill from prop
-                if (emitterId && !selectedEmitterId && !invoiceToEdit) {
-                    setSelectedEmitterId(emitterId)
+                    // Auto-select logic
+                    if (activeEmitters.length === 1 && !selectedEmitterId && !invoiceToEdit) {
+                        setSelectedEmitterId(activeEmitters[0].id)
+                    }
+                    // Pre-fill from prop
+                    if (emitterId && !selectedEmitterId && !invoiceToEdit) {
+                        setSelectedEmitterId(emitterId)
+                    }
                 }
             }
 
@@ -209,15 +202,15 @@ export function CreateInvoiceSheet({
             } else {
                 // New Invoice Defaults
                 if (!invoiceNumber) {
-                    const prefix = settingsData.invoice_prefix || 'INV-'
+                    const prefix = settings?.invoice_prefix || 'INV-'
                     const timestamp = Date.now()
                     const randomSuffix = Math.random().toString(36).substring(2, 5).toUpperCase()
                     setInvoiceNumber(`${prefix}${timestamp}-${randomSuffix}`)
                 }
 
-                if (!dueDate && settingsData.default_due_days) {
+                if (!dueDate && settings?.default_due_days) {
                     const d = new Date()
-                    d.setDate(d.getDate() + (parseInt(settingsData.default_due_days) || 30))
+                    d.setDate(d.getDate() + (parseInt(settings?.default_due_days) || 30))
                     setDueDate(d.toISOString().split('T')[0])
                 }
 

@@ -333,3 +333,28 @@ export async function getOrganizationSubscription() {
 
     return data
 }
+
+/**
+ * Retrieves all "Master Contacts" (contact_type='client') for the current organization.
+ */
+export async function getContactOptions() {
+    const supabase = await createClient()
+    const orgId = await getCurrentOrganizationId()
+
+    if (!orgId) return []
+
+    const { data, error } = await supabase
+        .from('leads')
+        .select('id, name, company_name, email')
+        .eq('organization_id', orgId)
+        .eq('contact_type', 'client')
+        .is('deleted_at', null)
+        .order('name')
+
+    if (error) {
+        console.error('[BillingService.getContactOptions] Error:', error)
+        return []
+    }
+
+    return data
+}

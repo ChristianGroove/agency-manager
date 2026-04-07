@@ -153,7 +153,8 @@ export class LeadsRepository {
             p_page: params.page,
             p_page_size: params.pageSize,
             p_date_from: params.dateFrom,
-            p_date_to: params.dateTo
+            p_date_to: params.dateTo,
+            p_contact_type: 'lead' // DEFAULT FOR PIPELINE/DEALS
         })
 
         if (error) throw error

@@ -7,10 +7,9 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Loader2, Plus, Trash, ArrowLeft, Check, ChevronsUpDown, UserPlus, FileText, RefreshCcw, Building2 } from "lucide-react"
 import { QuoteItem, ServiceCatalogItem, Client, Emitter } from "@/types"
-import { createQuoteAction as createQuote, updateQuoteAction as updateQuote } from "../quotes-actions"
+import { createQuoteAction as createQuote, updateQuoteAction as updateQuote, getContactOptionsAction } from "../quotes-actions"
 import { useTranslation } from "@/lib/i18n/use-translation"
 import { quickCreateProspect } from "@/modules/features/crm/services/logic/actions"
-import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
 import {
     Command,
@@ -115,42 +114,31 @@ export function QuoteBuilder({ onSuccess, mode = 'page', emitters, prefillLeadId
     // --- Data Fetching ---
     useEffect(() => {
         const fetchData = async () => {
-            // CRITICAL: Get organization context
-            const supabase = await import('@/lib/supabase').then(m => m.supabase)
-            const { getCurrentOrganizationId } = await import('@/modules/core/organizations/actions')
-            const orgId = await getCurrentOrganizationId()
-
-            if (!orgId) {
-                console.error('No organization context found')
-                return
-            }
-
-            // Fetch Clients - WITH ORGANIZATION FILTER
-            const { data: clientsData } = await supabase
-                .from('leads')
-                .select('*')
-                .eq('organization_id', orgId)
-                .is('deleted_at', null)
-                .order('name')
-            if (clientsData) setClients(clientsData)
-
-            // Fetch Catalog
+            setLoading(true)
             try {
-                // Fetch strictly Catalog Items (is_catalog_item = true)
-                const { data: catalogItems, error } = await supabase
-                    .from('services')
-                    .select('*')
-                    .eq('is_catalog_item', true)
-                    .eq('organization_id', orgId)
-                    .order('name')
+                // 1. Fetch Clients via Action (Filtered by contact_type='client')
+                const clientsData = await getContactOptionsAction()
+                if (clientsData) setClients(clientsData as Client[])
 
-                if (error) throw error
-
-                if (catalogItems) {
-                    setCatalog(catalogItems as ServiceCatalogItem[])
+                // 2. Fetch Catalog (Keeping for now, but should move to service)
+                const { supabase } = await import('@/lib/supabase')
+                const { getCurrentOrganizationId } = await import('@/modules/core/organizations/actions')
+                const orgId = await getCurrentOrganizationId()
+                
+                if (orgId) {
+                    const { data: catalogItems } = await supabase
+                        .from('services')
+                        .select('*')
+                        .eq('is_catalog_item', true)
+                        .eq('organization_id', orgId)
+                        .order('name')
+                    
+                    if (catalogItems) setCatalog(catalogItems as ServiceCatalogItem[])
                 }
             } catch (err) {
-                console.error("Catalog processing error:", err)
+                console.error("Data fetching error:", err)
+            } finally {
+                setLoading(false)
             }
         }
         fetchData()
@@ -168,17 +156,21 @@ export function QuoteBuilder({ onSuccess, mode = 'page', emitters, prefillLeadId
 
         // Clean phone for fuzzy search
         const clean = phone.replace(/\D/g, '')
-        const orgId = (await import('@/modules/core/organizations/actions').then(m => m.getCurrentOrganizationId()))!
-
-        // Check local clients first
+        
+        // Search in already loaded clients
         const localMatch = clients.find(c => c.phone?.includes(clean) || (c.phone && clean.includes(c.phone.replace(/\D/g, ''))))
         if (localMatch) {
             setDuplicateWarning(localMatch)
             return localMatch
         }
 
-        // Check DB Clients
-        // Use maybeSingle() to avoid error on multiple duplicates
+        // Search in DB if not found locally
+        const { supabase } = await import('@/lib/supabase')
+        const { getCurrentOrganizationId } = await import('@/modules/core/organizations/actions')
+        const orgId = await getCurrentOrganizationId()
+
+        if (!orgId) return null
+
         const { data: clientData } = await supabase
             .from('leads')
             .select('*')
@@ -192,25 +184,6 @@ export function QuoteBuilder({ onSuccess, mode = 'page', emitters, prefillLeadId
             if (dbClean.endsWith(clean) || clean.endsWith(dbClean)) {
                 setDuplicateWarning(clientData)
                 return clientData
-            }
-        }
-
-        // Check DB Leads (If not found in clients)
-        const { data: leadData } = await supabase
-            .from('leads')
-            .select('*')
-            .eq('organization_id', orgId)
-            .ilike('phone', `%${clean}%`)
-            .limit(1)
-            .maybeSingle()
-
-        if (leadData) {
-            const dbClean = leadData.phone?.replace(/\D/g, '') || ''
-            if (dbClean.endsWith(clean) || clean.endsWith(dbClean)) {
-                // Map lead to client-like structure for warning
-                const found = { id: leadData.id, name: leadData.name, phone: leadData.phone, isLead: true } as any
-                setDuplicateWarning(found)
-                return found
             }
         }
 
@@ -231,6 +204,7 @@ export function QuoteBuilder({ onSuccess, mode = 'page', emitters, prefillLeadId
         if ((duplicateWarning as any).isLead) {
             const toastId = toast.loading("Convirtiendo lead a cliente...")
             try {
+                const { supabase } = await import('@/lib/supabase')
                 const { data: { user } } = await supabase.auth.getUser()
 
                 // Convert Lead to Client (Create Client from Lead data)
@@ -280,6 +254,7 @@ export function QuoteBuilder({ onSuccess, mode = 'page', emitters, prefillLeadId
 
         setLoading(true)
         try {
+            const { supabase } = await import('@/lib/supabase')
             const { data: { user } } = await supabase.auth.getUser()
             if (!user) throw new Error("Usuario no autenticado")
 

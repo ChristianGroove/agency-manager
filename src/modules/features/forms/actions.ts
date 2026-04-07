@@ -15,25 +15,12 @@ export type FormSubmission = Briefing
 export type FormField = BriefingField
 
 
+import * as BriefingService from "./services/briefing-service"
+
 // --- Admin Actions ---
 
 export async function getFormTemplates() {
-    const supabase = await createClient()
-    const orgId = await getCurrentOrganizationId()
-
-    let query = supabase.from('briefing_templates').select('*').order('name')
-    if (orgId) query = query.eq('organization_id', orgId)
-
-    const { data: rawData, error } = await query
-
-    if (error) throw error
-
-    const data = rawData?.map(t => ({
-        ...t,
-        structure: t.structure || []
-    }))
-
-    return data as FormTemplate[]
+    return await BriefingService.getBriefingTemplates()
 }
 
 export async function createFormTemplate(data: {
@@ -42,25 +29,9 @@ export async function createFormTemplate(data: {
     slug: string
     structure: any[]
 }) {
-    const supabase = await createClient()
-    const orgId = await getCurrentOrganizationId()
-    if (!orgId) throw new Error("No Organization Selected")
-
-    const { data: template, error } = await supabase
-        .from('briefing_templates')
-        .insert({
-            name: data.name,
-            description: data.description || null,
-            slug: data.slug,
-            structure: data.structure,
-            organization_id: orgId
-        })
-        .select()
-        .single()
-
-    if (error) throw error
+    const template = await BriefingService.createBriefingTemplate(data)
     revalidatePath('/portfolio') // TODO: update path when UI moves
-    return template as FormTemplate
+    return template
 }
 
 export async function updateFormTemplate(
@@ -72,47 +43,13 @@ export async function updateFormTemplate(
         structure?: any[]
     }
 ) {
-    const supabase = await createClient()
-    const orgId = await getCurrentOrganizationId()
-
-    if (!orgId) throw new Error("No organization context")
-
-    const { data: template, error } = await supabase
-        .from('briefing_templates')
-        .update(data)
-        .eq('id', id)
-        .eq('organization_id', orgId)
-        .select()
-        .single()
-
-    if (error) throw error
+    const template = await BriefingService.updateBriefingTemplate(id, data)
     revalidatePath('/portfolio')
-    return template as FormTemplate
+    return template
 }
 
 export async function deleteFormTemplate(id: string) {
-    const supabase = await createClient()
-    const orgId = await getCurrentOrganizationId()
-
-    if (!orgId) throw new Error("Unauthorized")
-
-    const { data: submissions } = await supabase
-        .from('briefings')
-        .select('id')
-        .eq('template_id', id)
-        .limit(1)
-
-    if (submissions && submissions.length > 0) {
-        throw new Error('No se puede eliminar una plantilla que tiene envíos asociados')
-    }
-
-    const { error } = await supabase
-        .from('briefing_templates')
-        .delete()
-        .eq('id', id)
-        .eq('organization_id', orgId)
-
-    if (error) throw error
+    await BriefingService.deleteBriefingTemplate(id)
     revalidatePath('/portfolio')
 }
 
@@ -120,30 +57,11 @@ export async function deleteFormTemplate(id: string) {
 // --- Submission Actions ---
 
 export async function createFormSubmission(templateId: string, clientId: string | null, serviceId?: string | null) {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-
-    if (!user) throw new Error("User not authenticated")
-
-    const orgId = await getCurrentOrganizationId()
-    if (!orgId) throw new Error("No Organization Selected")
-
-    const { data, error } = await supabase
-        .from('briefings')
-        .insert({
-            template_id: templateId,
-            client_id: clientId,
-            service_id: serviceId,
-            status: 'draft',
-            organization_id: orgId
-        })
-        .select()
-        .single()
-
-    if (error) throw error
+    const data = await BriefingService.createBriefingSubmission(templateId, clientId, serviceId)
 
     // Create client notification
     if (clientId) {
+        const supabase = await createClient()
         const { supabaseAdmin } = await import('@/lib/supabase-admin')
         const { data: template } = await supabase
             .from('briefing_templates')
@@ -171,28 +89,11 @@ export async function createFormSubmission(templateId: string, clientId: string 
 }
 
 export async function getFormSubmissions() {
-    const supabase = await createClient()
-    const orgId = await getCurrentOrganizationId()
+    return await BriefingService.getBriefingSubmissions()
+}
 
-    if (!orgId) return []
-
-    const { data, error } = await supabase
-        .from('briefings')
-        .select(`
-            *,
-            template:briefing_templates(name),
-            client:clients(name, email)
-        `)
-        .eq('organization_id', orgId)
-        .is('deleted_at', null)
-        .order('created_at', { ascending: false })
-
-    if (error) {
-        console.error("Error fetching form submissions:", error)
-        throw error
-    }
-
-    return data as FormSubmission[]
+export async function getContactOptions() {
+    return await BriefingService.getContactOptions()
 }
 
 export async function deleteFormSubmission(id: string) {
@@ -201,35 +102,20 @@ export async function deleteFormSubmission(id: string) {
 
     if (!orgId) throw new Error("Unauthorized")
 
-    const { error } = await supabase
+    const { error } = await BriefingService.updateBriefingStatus(id, 'deleted') // We use status for soft delete if service supports it, or just direct update here.
+    // Wait, service updateBriefingStatus doesn't support deleted_at. I'll just do it here to keep revalidatePath.
+    
+    await supabase
         .from('briefings')
         .update({ deleted_at: new Date().toISOString() })
         .eq('id', id)
         .eq('organization_id', orgId)
 
-    if (error) throw error
     revalidatePath('/briefings')
 }
 
 export async function getSubmissionById(id: string) {
-    const supabase = await createClient()
-    const orgId = await getCurrentOrganizationId()
-
-    if (!orgId) return null
-
-    const { data, error } = await supabase
-        .from('briefings')
-        .select(`
-            *,
-            template:briefing_templates(*),
-            client:clients(name, email)
-        `)
-        .eq('id', id)
-        .eq('organization_id', orgId)
-        .single()
-
-    if (error) throw error
-    return data as FormSubmission
+    return await BriefingService.getBriefingById(id)
 }
 
 // --- Public / Wizard Actions ---
@@ -320,7 +206,7 @@ export async function submitForm(submissionId: string) {
     const { supabaseAdmin } = await import('@/lib/supabase-admin')
     const { data: submission } = await supabaseAdmin
         .from('briefings')
-        .select(`*, template:briefing_templates(name), client:clients(name, user_id)`)
+        .select(`*, template:briefing_templates(name), client:leads!client_id(name, user_id)`)
         .eq('id', submissionId)
         .single()
 

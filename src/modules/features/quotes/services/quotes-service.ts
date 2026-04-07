@@ -39,6 +39,32 @@ export async function getQuotes() {
 }
 
 /**
+ * Retrieves all "Master Contacts" (contact_type='client') for the current organization.
+ * Used for dropdown selectors in the UI to ensure uniqueness and clean data.
+ */
+export async function getContactOptions() {
+  const supabase = await createClient()
+  const orgId = await getCurrentOrganizationId()
+
+  if (!orgId) return []
+
+  const { data, error } = await supabase
+    .from('leads')
+    .select('id, name, email, company_name')
+    .eq('organization_id', orgId)
+    .eq('contact_type', 'client')
+    .is('deleted_at', null)
+    .order('name')
+
+  if (error) {
+    console.error('[QuotesService.getContactOptions] Error:', error)
+    return []
+  }
+
+  return data
+}
+
+/**
  * Retrieves a single quote by ID, scoped to the current organization.
  * 
  * @param {string} id - The UUID of the quote.

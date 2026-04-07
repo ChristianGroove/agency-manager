@@ -55,9 +55,28 @@ export async function getPublicInvoiceAction(id: string) {
 }
 
 export async function getEmittersAction() {
-    const { getEmitters } = await import("@/modules/core/settings/emitters-actions")
+    const { getActiveEmitters } = await import("@/modules/core/settings/emitters-actions")
     try {
-        const data = await getEmitters()
+        const data = await getActiveEmitters()
+        return { success: true, data }
+    } catch (e: any) {
+        return { success: false, error: e.message }
+    }
+}
+
+export async function getSettingsAction() {
+    const { getSettings } = await import("@/modules/core/settings/actions")
+    try {
+        const data = await getSettings()
+        return { success: true, data }
+    } catch (e: any) {
+        return { success: false, error: e.message }
+    }
+}
+
+export async function getContactOptionsAction() {
+    try {
+        const data = await BillingService.getContactOptions()
         return { success: true, data }
     } catch (e: any) {
         return { success: false, error: e.message }

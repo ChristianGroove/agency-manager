@@ -19,7 +19,7 @@ import {
     ArrowRight
 } from "lucide-react"
 import { FormTemplate, FormField } from "@/modules/features/forms/actions"
-import { getFormTemplates, createFormSubmission } from "@/modules/features/forms/actions"
+import { getFormTemplates, createFormSubmission, getContactOptions } from "@/modules/features/forms/actions"
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
@@ -94,18 +94,13 @@ export function CreateFormSheet({
                 return
             }
 
-            const [templatesData, clientsRes] = await Promise.all([
+            const [templatesData, contactRes] = await Promise.all([
                 getFormTemplates(),
-                supabase
-                    .from('leads')
-                    .select('id, name, company_name')
-                    .eq('organization_id', orgId)
-                    .is('deleted_at', null)
-                    .order('name')
+                getContactOptions()
             ])
-
+            
             setTemplates(templatesData || [])
-            setClients(clientsRes.data as any || [])
+            setClients(contactRes as any || [])
         } catch (error) {
             console.error("Error fetching dependencies:", error)
             toast.error("Error cargando plantillas")

@@ -94,6 +94,13 @@ export async function convertQuoteAction(quoteId: string) {
 }
 
 /**
+ * Action to get contacts filtered by client type.
+ */
+export async function getContactOptionsAction() {
+    return await QuotesService.getContactOptions()
+}
+
+/**
  * Action to send a quote via WhatsApp. 
  * This is a pass-through to the service as it doesn't require cache revalidation.
  */
