@@ -72,7 +72,10 @@ export async function getPortalData(token: string) {
                 { data: catalogItems }
             ] = await Promise.all([
                 supabaseAdmin.from('invoices').select('*').eq('client_id', client.id).is('deleted_at', null).neq('status', 'cancelled').order('created_at', { ascending: false }),
-                isB2B ? supabaseAdmin.from('quotes').select('*').eq('client_id', client.id).is('deleted_at', null).order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
+                isB2B ? supabaseAdmin.from('quotes').select('*')
+                    .or(`client_id.eq.${client.id},lead_id.eq.${client.id}`)
+                    .is('deleted_at', null)
+                    .order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
                 isB2B ? supabaseAdmin.from('briefings').select('*, template:briefing_templates(name)').eq('client_id', client.id).eq('organization_id', client.organization_id).is('deleted_at', null).order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
                 isB2B ? supabaseAdmin.from('client_events').select('*').eq('client_id', client.id).order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
                 isB2B ? supabaseAdmin.from('services').select('*').eq('client_id', client.id).eq('status', 'active').is('deleted_at', null).order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
@@ -443,9 +446,9 @@ export async function getPortalQuote(token: string, quoteId: string) {
 
     const { data, error } = await supabaseAdmin
         .from('quotes')
-        .select('*, client:leads (*), emitter:emitters (*)')
+        .select('*, client:leads!client_id (*), lead:leads!lead_id (*), emitter:emitters (*)')
         .eq('id', quoteId)
-        .eq('client_id', client.id)
+        .or(`client_id.eq.${client.id},lead_id.eq.${client.id}`)
         .single()
 
     if (error) throw error

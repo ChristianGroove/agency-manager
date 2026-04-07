@@ -16,7 +16,7 @@ export async function convertQuote(quoteId: string) {
         // 1. Fetch Quote & Items
         const { data: quote, error: quoteError } = await supabase
             .from('quotes')
-            .select('*, client:clients(*)')
+            .select('*, client:leads!client_id(*)')
             .eq('id', quoteId)
             .single()
 

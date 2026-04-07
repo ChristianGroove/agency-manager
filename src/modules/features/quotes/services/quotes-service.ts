@@ -25,7 +25,7 @@ export async function getQuotes() {
 
   const { data, error } = await supabase
     .from('quotes')
-    .select('*, client:clients(*), lead:leads!lead_id(*), emitter:emitters(*)')
+    .select('*, client:leads!client_id(*), lead:leads!lead_id(*), emitter:emitters(*)')
     .eq('organization_id', orgId)
     .is('deleted_at', null)
     .order('created_at', { ascending: false })
@@ -52,7 +52,7 @@ export async function getQuote(id: string) {
 
   const { data, error } = await supabase
     .from('quotes')
-    .select('*, client:clients(*), lead:leads!lead_id(*), emitter:emitters(*)')
+    .select('*, client:leads!client_id(*), lead:leads!lead_id(*), emitter:emitters(*)')
     .eq('id', id)
     .eq('organization_id', orgId)
     .single()
@@ -187,8 +187,8 @@ export async function getPublicQuote(id: string) {
       .from('quotes')
       .select(`
         *,
-        client:clients (*),
-        lead:leads (*),
+        client:leads!client_id (*),
+        lead:leads!lead_id (*),
         emitter:emitters (*),
         organization:organizations (id, name, logo_url)
       `)
@@ -328,7 +328,7 @@ export async function sendQuoteViaWhatsApp(quoteId: string, targetPhone?: string
   try {
     const { data: quote, error: quoteError } = await supabase
       .from('quotes')
-      .select('*, client:clients(name, phone), lead:leads!lead_id(name, phone)')
+      .select('*, client:leads!client_id(name, phone), lead:leads!lead_id(name, phone)')
       .eq('id', quoteId)
       .eq('organization_id', orgId)
       .single()

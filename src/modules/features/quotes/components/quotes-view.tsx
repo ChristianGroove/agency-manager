@@ -24,12 +24,17 @@ import {
     DropdownMenuTrigger,
     DropdownMenuSeparator
 } from "@/components/animate-ui/components/radix/dropdown-menu"
-import { supabase } from "@/lib/supabase"
 import { Quote } from "@/types"
 import { SplitText } from "@/components/ui/split-text"
 import { toast } from "sonner"
-import { duplicateQuoteAction as duplicateQuote, updateQuoteAction as updateQuote, getQuotes, getPublicQuote } from "../quotes-actions"
-import { convertQuoteAction as convertQuote } from '../quotes-actions'
+import { 
+    duplicateQuoteAction as duplicateQuote, 
+    updateQuoteAction as updateQuote, 
+    getQuotes, 
+    getPublicQuote,
+    deleteQuotesAction as deleteQuotes,
+    convertQuoteAction as convertQuote 
+} from "../quotes-actions"
 import { QuoteShareSheet } from "./quote-share-sheet"
 import { useTranslation } from "@/lib/i18n/use-translation"
 import { QuoteDetailDialog } from "./quote-detail-dialog"
@@ -82,18 +87,14 @@ export function QuotesView({ initialQuotes, initialEmitters }: QuotesViewProps) 
         if (!confirm("¿Estás seguro de eliminar esta cotización?")) return
 
         try {
-            const { error } = await supabase
-                .from('quotes')
-                .update({ deleted_at: new Date().toISOString() })
-                .eq('id', id)
-
-            if (error) throw error
+            const res = await deleteQuotes([id])
+            if (!res.success) throw new Error(res.error)
 
             setQuotes(quotes.filter(q => q.id !== id))
             toast.success("Cotización eliminada")
-        } catch (error) {
+        } catch (error: any) {
             console.error("Error deleting quote:", error)
-            toast.error("Error al eliminar")
+            toast.error("Error al eliminar: " + error.message)
         }
     }
 
@@ -179,8 +180,9 @@ export function QuotesView({ initialQuotes, initialEmitters }: QuotesViewProps) 
 
         setIsDeleting(true)
         try {
-            const { deleteQuotesAction: deleteQuotes } = await import("../quotes-actions")
-            await deleteQuotes(Array.from(selectedIds))
+            const res = await deleteQuotes(Array.from(selectedIds))
+            if (!res.success) throw new Error(res.error)
+
             toast.success(`${selectedIds.size} cotizaciones eliminadas`)
             setSelectedIds(new Set())
             await fetchQuotes()
