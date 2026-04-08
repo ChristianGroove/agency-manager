@@ -15,7 +15,8 @@
     "flows:publish": "tsx scripts/publish-flows.ts",
     "flows:publish-all": "tsx scripts/publish-flows.ts -- --all",
     "calling:init": "tsx scripts/setup-calling.ts",
-    "calling:status": "tsx scripts/setup-calling.ts -- --status"
+    "calling:status": "tsx scripts/setup-calling.ts -- --status",
+    "clean": "tsx scripts/cleanup-workspace.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.485.0",
