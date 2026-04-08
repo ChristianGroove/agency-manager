@@ -102,14 +102,20 @@ export async function deleteFormSubmission(id: string) {
 
     if (!orgId) throw new Error("Unauthorized")
 
-    const { error } = await BriefingService.updateBriefingStatus(id, 'deleted') // We use status for soft delete if service supports it, or just direct update here.
-    // Wait, service updateBriefingStatus doesn't support deleted_at. I'll just do it here to keep revalidatePath.
-    
-    await supabase
+    // We perform a soft delete by setting deleted_at
+    const { error } = await supabase
         .from('briefings')
-        .update({ deleted_at: new Date().toISOString() })
+        .update({ 
+            deleted_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        })
         .eq('id', id)
         .eq('organization_id', orgId)
+
+    if (error) {
+        console.error("[deleteFormSubmission] Error:", error)
+        throw new Error("No se pudo eliminar el envío")
+    }
 
     revalidatePath('/briefings')
 }

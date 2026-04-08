@@ -43,7 +43,7 @@ export function PortalBriefingView({ token, briefingId, onBack }: PortalBriefing
 
             } catch (err) {
                 console.error("Failed to load briefing", err)
-                setError(t('portal.briefing_view.error_loading'))
+                setError(t('portal.components.briefing_view.error_loading'))
             } finally {
                 setLoading(false)
             }
@@ -56,7 +56,7 @@ export function PortalBriefingView({ token, briefingId, onBack }: PortalBriefing
         return (
             <div className="flex flex-col items-center justify-center min-h-[50vh]">
                 <Loader2 className="h-8 w-8 animate-spin text-brand-pink mb-4" />
-                <p className="text-gray-500">{t('portal.briefing_view.loading')}</p>
+                <p className="text-gray-500">{t('portal.components.briefing_view.loading')}</p>
             </div>
         )
     }
@@ -64,8 +64,8 @@ export function PortalBriefingView({ token, briefingId, onBack }: PortalBriefing
     if (error || !briefing) {
         return (
             <div className="text-center py-12">
-                <p className="text-red-500 mb-4">{error || t('portal.briefing_view.not_found')}</p>
-                <Button onClick={onBack} variant="outline">{t('portal.briefing_view.back')}</Button>
+                <p className="text-red-500 mb-4">{error || t('portal.components.briefing_view.not_found')}</p>
+                <Button onClick={onBack} variant="outline">{t('portal.components.briefing_view.back')}</Button>
             </div>
         )
     }
@@ -76,7 +76,7 @@ export function PortalBriefingView({ token, briefingId, onBack }: PortalBriefing
             <div className="mb-6 flex items-center">
                 <Button variant="ghost" className="gap-2 text-gray-500" onClick={onBack}>
                     <ArrowLeft className="h-4 w-4" />
-                    {t('portal.briefing_view.return')}
+                    {t('portal.components.briefing_view.return')}
                 </Button>
             </div>
 
@@ -88,6 +88,3 @@ export function PortalBriefingView({ token, briefingId, onBack }: PortalBriefing
         </div>
     )
 }
-
-
-

@@ -872,7 +872,7 @@ export const en = {
                 error_loading: "Error loading form. Please try again.",
                 not_found: "Form not found",
                 back: "Back",
-                return: "Return"
+                return: "Back"
             },
             service_detail: {
                 back_to_services: "Back to Services",

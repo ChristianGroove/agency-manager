@@ -226,7 +226,10 @@ export function PortalLayout({ token, client, invoices, quotes, briefings, event
                             services={services} invoices={invoices} briefings={briefings}
                             onPay={onPay} onViewInvoice={onViewInvoice}
                             initialBriefingId={targetBriefingId}
-                            onBriefingClosed={() => setTargetBriefingId(null)}
+                            onBriefingClosed={() => {
+                                setTargetBriefingId(null)
+                                setActiveTab('summary')
+                            }}
                         />
                     )}
                     {dynamicTabs.find(t => t.key === activeTab)?.component === 'billing' && (

@@ -107,6 +107,79 @@ export async function getTrashItems(): Promise<TrashItem[]> {
         }
     }
 
+    // 4. Briefings
+    const { data: briefings } = await supabase
+        .from('briefings')
+        .select(`
+            id, 
+            deleted_at,
+            template:briefing_templates(name)
+        `)
+        .eq('organization_id', orgId)
+        .not('deleted_at', 'is', null)
+
+    if (briefings) {
+        briefings.forEach((b: any) => {
+            const daysLeft = calculateDaysLeft(b.deleted_at!)
+            if (daysLeft >= 0) {
+                results.push({
+                    id: b.id,
+                    type: 'briefing',
+                    name: b.template?.name || "Briefing",
+                    deleted_at: b.deleted_at!,
+                    days_left: daysLeft,
+                    original_table: 'briefings'
+                })
+            }
+        })
+    }
+
+    // 5. Invoices
+    const { data: invoices } = await supabase
+        .from('invoices')
+        .select('id, invoice_number, deleted_at')
+        .eq('organization_id', orgId)
+        .not('deleted_at', 'is', null)
+
+    if (invoices) {
+        invoices.forEach(i => {
+            const daysLeft = calculateDaysLeft(i.deleted_at!)
+            if (daysLeft >= 0) {
+                results.push({
+                    id: i.id,
+                    type: 'invoice',
+                    name: `Factura ${i.invoice_number}`,
+                    deleted_at: i.deleted_at!,
+                    days_left: daysLeft,
+                    original_table: 'invoices'
+                })
+            }
+        })
+    }
+
+    // 6. Quotes
+    const { data: quotes } = await supabase
+        .from('quotes')
+        .select('id, number, deleted_at')
+        .eq('organization_id', orgId)
+        .not('deleted_at', 'is', null)
+
+    if (quotes) {
+        quotes.forEach(q => {
+            const daysLeft = calculateDaysLeft(q.deleted_at!)
+            if (daysLeft >= 0) {
+                results.push({
+                    id: q.id,
+                    type: 'quote',
+                    name: `Cotización ${q.number}`,
+                    deleted_at: q.deleted_at!,
+                    days_left: daysLeft,
+                    original_table: 'quotes'
+                })
+            }
+        })
+    }
+
     // Sort by deleted_at desc
     return results.sort((a, b) => new Date(b.deleted_at).getTime() - new Date(a.deleted_at).getTime())
 }
@@ -117,7 +190,7 @@ export async function restoreItem(id: string, type: string) {
     if (!orgId) throw new Error("No org")
 
     let table = ''
-    if (type === 'client') table = 'clients'
+    if (type === 'client') table = 'leads'
     if (type === 'service') table = 'services'
     if (type === 'invoice') table = 'invoices'
     if (type === 'organization') table = 'organizations'
@@ -131,7 +204,7 @@ export async function restoreItem(id: string, type: string) {
         .update({ deleted_at: null })
         .eq('id', id)
 
-    // For clients/services, check organization_id
+    // For clients/services/etc, check organization_id
     if (type !== 'organization') {
         query.eq('organization_id', orgId)
     } else {
@@ -173,7 +246,7 @@ export async function permanentlyDeleteItem(id: string, type: string) {
     }
 
     let table = ''
-    if (type === 'client') table = 'clients'
+    if (type === 'client') table = 'leads'
     if (type === 'service') table = 'services'
     if (type === 'organization') table = 'organizations'
     if (type === 'invoice') table = 'invoices'
@@ -210,6 +283,98 @@ export async function permanentlyDeleteItem(id: string, type: string) {
             resourceId: id,
             metadata: { type, permanent: true }
         })
+    }
+
+    revalidatePath('/')
+    return { success: true }
+}
+
+export async function emptyTrash(): Promise<{ success: boolean }> {
+    const supabase = await createClient()
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) throw new Error("No org")
+
+    const tables = ['leads', 'services', 'briefings', 'quotes', 'invoices']
+    
+    // For child organizations, we need to check if current org is reseller
+    const { data: orgDetails } = await supabase
+        .from('organizations')
+        .select('organization_type')
+        .eq('id', orgId)
+        .single()
+
+    const allTables = [...tables]
+    if (orgDetails?.organization_type !== 'client') {
+        allTables.push('organizations')
+    }
+
+    const promises = allTables.map(table => {
+        const query = supabase.from(table).delete().not('deleted_at', 'is', null)
+        if (table === 'organizations') {
+            return query.eq('acquired_by_reseller_id', orgId)
+        }
+        return query.eq('organization_id', orgId)
+    })
+
+    const results = await Promise.all(promises)
+    const errors = results.filter(r => r.error)
+
+    if (errors.length > 0) {
+        console.error("[emptyTrash] Errors:", errors)
+        throw new Error("Ocurrieron errores al vaciar algunas tablas")
+    }
+
+    revalidatePath('/')
+    return { success: true }
+}
+
+export async function bulkTrashAction(
+    items: { id: string, type: string }[], 
+    action: 'restore' | 'delete'
+): Promise<{ success: boolean }> {
+    const supabase = await createClient()
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) throw new Error("No org")
+
+    // Group items by type for efficiency
+    const grouped = items.reduce((acc, item) => {
+        if (!acc[item.type]) acc[item.type] = []
+        acc[item.type].push(item.id)
+        return acc
+    }, {} as Record<string, string[]>)
+
+    const promises = Object.entries(grouped).map(([type, ids]) => {
+        let table = ''
+        if (type === 'client') table = 'leads'
+        if (type === 'service') table = 'services'
+        if (type === 'organization') table = 'organizations'
+        if (type === 'invoice') table = 'invoices'
+        if (type === 'briefing') table = 'briefings'
+        if (type === 'quote') table = 'quotes'
+
+        if (!table) return Promise.resolve({ error: new Error(`Unknown type: ${type}`) })
+
+        if (action === 'restore') {
+            const query = supabase.from(table).update({ deleted_at: null }).in('id', ids)
+            if (type === 'organization') {
+                return query.eq('acquired_by_reseller_id', orgId)
+            }
+            return query.eq('organization_id', orgId)
+        } else {
+            const query = supabase.from(table).delete().in('id', ids)
+            if (type === 'organization') {
+                return query.eq('acquired_by_reseller_id', orgId)
+            }
+            return query.eq('organization_id', orgId)
+        }
+    })
+
+    const results = await Promise.all(promises)
+    const errors = results.filter(r => r.error)
+
+    if (errors.length > 0) {
+        console.error("[bulkTrashAction] Errors:", errors)
+        throw new Error(`Error al procesar ${action === 'restore' ? 'restauración' : 'eliminación'} masiva`)
     }
 
     revalidatePath('/')

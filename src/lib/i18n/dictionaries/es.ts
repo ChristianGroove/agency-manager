@@ -872,7 +872,7 @@ export const es = {
                 error_loading: "Error al cargar el formulario. Por favor intenta de nuevo.",
                 not_found: "Formulario no encontrado",
                 back: "Volver",
-                return: "Regresar"
+                return: "Volver"
             },
             service_detail: {
                 back_to_services: "Volver a Servicios",
