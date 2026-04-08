@@ -114,7 +114,7 @@ export const en = {
             regional_settings: "Regional Settings",
             system_preferences: "System Preferences",
             open_brand_center: "Open Brand Center",
-            agency_name: "Business Name",
+            agency_name: "Company Name",
             website: "Website",
             admin_email: "Administrative Email",
             phone: "Phone / WhatsApp",
@@ -266,6 +266,11 @@ export const en = {
                 "Offer recurring services with a discount to ensure cash flow.",
                 "Document 'before and after' for visual portfolio."
             ]
+        },
+        spaces: {
+            title: "Pixy Spaces",
+            description: "Modular business management ecosystem {companyName}",
+            powered_by: "Powered by Pixy"
         }
     },
     quotes: {

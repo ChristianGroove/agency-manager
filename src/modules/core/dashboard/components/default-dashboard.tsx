@@ -56,11 +56,11 @@ export function DefaultDashboard({ dashboardData, extraData, userRole: initialRo
             }
         ],
         social: {
-            title: "Premium 3D Experience",
+            companyName: dashboardData?.settings?.agency_name,
+            facebook: "https://www.facebook.com/pixyspaces",
+            instagram: "https://www.instagram.com/pixyspaces/",
+            whatsapp: "https://wa.me/573504076800",
             // Fallback colors/links or empty for 3D card effect
-            facebook: dashboardData?.settings?.social_facebook,
-            instagram: dashboardData?.settings?.social_instagram,
-            twitter: dashboardData?.settings?.social_twitter,
         },
         quickActions: [
             { 

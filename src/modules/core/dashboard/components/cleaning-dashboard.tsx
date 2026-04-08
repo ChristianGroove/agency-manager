@@ -101,10 +101,10 @@ export function CleaningDashboard({ dashboardData: coreData, extraData, userRole
             }
         ],
         social: {
-            title: "Cleaning/Space",
-            facebook: coreData?.settings?.social_facebook,
-            instagram: coreData?.settings?.social_instagram,
-            twitter: coreData?.settings?.social_twitter,
+            companyName: coreData?.settings?.agency_name,
+            facebook: "https://www.facebook.com/pixyspaces",
+            instagram: "https://www.instagram.com/pixyspaces/",
+            whatsapp: "https://wa.me/573504076800",
         },
         quickActions: quickActions,
         smartAlert: smartAlert

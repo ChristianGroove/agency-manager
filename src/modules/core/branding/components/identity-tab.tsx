@@ -9,6 +9,7 @@ import { MagicPalette } from "./magic-palette"
 import { EmailSignatureGenerator } from "./email-signature-generator"
 import { Separator } from "@/components/ui/separator"
 import { Globe, Lock } from "lucide-react"
+import { useTranslation } from "@/lib/i18n/use-translation"
 
 interface IdentityTabProps {
     settings: BrandingConfig
@@ -17,6 +18,7 @@ interface IdentityTabProps {
 }
 
 export function IdentityTab({ settings, onChange, tierFeatures }: IdentityTabProps) {
+    const { t } = useTranslation();
 
     const handleLogoChange = (url: string) => {
         onChange({
@@ -52,11 +54,11 @@ export function IdentityTab({ settings, onChange, tierFeatures }: IdentityTabPro
 
                 <div className="grid grid-cols-2 gap-5">
                     <div className="space-y-2">
-                        <Label className="text-xs font-semibold text-gray-700">Nombre de la Agencia</Label>
+                        <Label className="text-xs font-semibold text-gray-700">{t('settings.general.agency_name')}</Label>
                         <Input
                             value={settings.name}
                             onChange={(e) => onChange({ ...settings, name: e.target.value })}
-                            placeholder="Agency Name"
+                            placeholder={t('settings.general.agency_name')}
                             className="bg-white h-9"
                         />
                     </div>

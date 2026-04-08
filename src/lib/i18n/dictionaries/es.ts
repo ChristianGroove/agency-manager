@@ -114,7 +114,7 @@ export const es = {
             regional_settings: "Configuración Regional",
             system_preferences: "Preferencias del Sistema",
             open_brand_center: "Abrir Centro de Marca",
-            agency_name: "Nombre Comercial",
+            agency_name: "Nombre de la Empresa",
             website: "Sitio Web",
             admin_email: "Email Administrativo",
             phone: "Teléfono / WhatsApp",
@@ -260,12 +260,17 @@ export const es = {
                 "La especialización es clave: Definir un nicho de mercado claro te permite cobrar tarifas premium."
             ],
             cleaning: [
-                "La puntualidad es tu mejor marketing: Un equipo a tiempo genera 50% más retención.",
+                "La puntualidad es tu mejor marketing: Un equipo a tiempo genera 50% more retention.",
                 "Revisa los insumos semanalmente para evitar paradas operativas.",
                 "Capacita a tu personal en atención al cliente, no solo en limpieza.",
                 "Ofrece servicios recurrentes con descuento para asegurar flujo de caja.",
                 "Documenta el 'antes y después' para portafolio visual."
             ]
+        },
+        spaces: {
+            title: "Pixy Spaces",
+            description: "Ecosistema modular de gestión empresarial {companyName}",
+            powered_by: "Powered by Pixy"
         }
     },
     quotes: {

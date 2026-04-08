@@ -1,19 +1,23 @@
 import React from 'react';
-import { Facebook, Instagram, Twitter } from 'lucide-react';
+import { Facebook, Instagram, MessageCircle } from 'lucide-react';
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 interface GlassCard3DProps {
     title?: string;
+    companyName?: string;
     socialFacebook?: string;
     socialInstagram?: string;
-    socialTwitter?: string;
+    socialWhatsapp?: string;
 }
 
 export default function GlassCard3D({
-    title = "Agency/Space",
-    socialFacebook = "https://facebook.com/pixypds",
-    socialInstagram = "https://instagram.com/pixypds",
-    socialTwitter = "https://twitter.com/pixypds",
+    title,
+    companyName = "",
+    socialFacebook = "https://www.facebook.com/pixyspaces",
+    socialInstagram = "https://www.instagram.com/pixyspaces/",
+    socialWhatsapp = "https://wa.me/573504076800",
 }: GlassCard3DProps) {
+    const { t } = useTranslation();
 
     const pixyIsotipo = (
         <svg width="28" height="28" viewBox="0 0 538 538" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -29,17 +33,15 @@ export default function GlassCard3D({
 
                 {/* Content */}
                 <div className="pt-[32px] pl-[30px] pr-[60px] [transform:translate3d(0,0,26px)] relative z-10 flex flex-col gap-4">
-                    <span className="block text-gray-900 dark:text-white font-black text-lg leading-tight">
-                        {title}
+                    <span className="block text-gray-900 dark:text-white font-black text-lg leading-tight uppercase font-outfit">
+                        {title || t('dashboard.spaces.title')}
                     </span>
-                    <span className="block text-gray-600 dark:text-white/90 text-[14px] pr-4">
-                        Diseño y desarrollo<br />
-                        premium, para marcas<br />
-                        destacadas.
+                    <span className="block text-gray-600 dark:text-white/90 text-[14px] pr-4 leading-snug">
+                        {t('dashboard.spaces.description', { companyName })}
                     </span>
                     {/* Footer */}
                     <span className="block text-gray-500 dark:text-white/60 text-[9px] uppercase font-bold tracking-widest leading-none mt-2">
-                        Powered by: <a href="https://www.pixy.com.co" target="_blank" rel="noopener noreferrer" className="hover:text-brand-pink transition-colors">Pixy Spaces</a>
+                        {t('dashboard.spaces.powered_by')} <a href="https://www.pixy.com.co" target="_blank" rel="noopener noreferrer" className="hover:text-brand-pink transition-colors"></a>
                     </span>
                 </div>
 
@@ -69,15 +71,15 @@ export default function GlassCard3D({
                             <Instagram className="w-[15px] h-[15px] text-gray-700 dark:text-gray-900 group-hover/btn:text-white" strokeWidth={2} />
                         </a>
 
-                        {/* Twitter */}
+                        {/* WhatsApp */}
                         <a
-                            href={socialTwitter}
+                            href={socialWhatsapp}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="w-[30px] aspect-square p-1.5 bg-gray-50 dark:bg-white rounded-full border border-gray-200 dark:border-0 grid place-content-center shadow-[rgba(0,0,0,0.1)_0px_7px_5px_-5px] dark:shadow-[rgba(0,0,0,0.3)_0px_7px_5px_-5px] hover:bg-brand-pink transition-transform duration-200 ease-in-out delay-[0.8s] group-hover:[transform:translate3d(0,0,50px)] group/btn"
+                            className="w-[30px] aspect-square p-1.5 bg-gray-50 dark:bg-white rounded-full border border-gray-200 dark:border-0 grid place-content-center shadow-[rgba(0,0,0,0.1)_0_7px_5px_-5px] dark:shadow-[rgba(0,0,0,0.3)_0_7px_5px_-5px] hover:bg-brand-pink transition-transform duration-200 ease-in-out delay-[0.8s] group-hover:[transform:translate3d(0,0,50px)] group/btn"
                             style={{ transitionProperty: 'transform, box-shadow' }}
                         >
-                            <Twitter className="w-[15px] h-[15px] text-gray-700 dark:text-gray-900 group-hover/btn:text-white" strokeWidth={2} />
+                            <MessageCircle className="w-[15px] h-[15px] text-gray-700 dark:text-gray-900 group-hover/btn:text-white" strokeWidth={2} />
                         </a>
                     </div>
                 </div>

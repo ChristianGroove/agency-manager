@@ -93,10 +93,10 @@ export function RetailDashboard({ dashboardData, extraData, userRole: initialRol
             }
         ],
         social: {
-            title: "Retail/Space",
-            facebook: settings?.social_facebook,
-            instagram: settings?.social_instagram,
-            twitter: settings?.social_twitter,
+            companyName: settings?.agency_name,
+            facebook: "https://www.facebook.com/pixyspaces",
+            instagram: "https://www.instagram.com/pixyspaces/",
+            whatsapp: "https://wa.me/573504076800",
         },
         quickActions: [
             { title: t('dashboard.actions.new_client'), icon: UserPlus, colorClass: "bg-brand-cyan/10 text-brand-cyan group-hover:bg-brand-cyan group-hover:text-white", onClick: () => setIsClientModalOpen(true) },

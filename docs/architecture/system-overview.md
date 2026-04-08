@@ -52,6 +52,7 @@ Este documento proporciona la visión general definitiva de la arquitectura téc
 - **Junio 2025**: Lanzamiento inicial con arquitectura monolítica (MVP).
 - **Marzo 2026**: Consolidación de CRM (Entidad unificada de Leads).
 - **Abril 2026**: 
+    - **Estandarización de Interfaz y Marca**: Unificación de componentes 3D "Spaces" con títulos y descripciones dinámicas (interpolación de nombre de empresa) en todos los tipos de dashboard.
     - **Saneamiento de Interfaz**: Fragmentación de "God Components" (`ChatArea`, `ClientManagementSheet`) en arquitectura de 3 capas. Reducción del 80% de líneas de código por archivo orquestador.
     - **Capa de Seguridad de Identidad (Identity Safety)**: Separación física de Contactos Maestros vs Leads del Pipeline. Blindaje de integridad referencial.
     - **Papelera de Reciclaje Unificada**: Sistema de gestión masiva y purga profunda multi-módulo (Briefings, Quotes, Invoices, Clients).

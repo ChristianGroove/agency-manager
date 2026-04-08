@@ -110,10 +110,10 @@ export function ResellerDashboard({ dashboardData: dashboardRes, extraData, user
             }
         ],
         social: {
-            title: "Platform/Space",
-            facebook: settings?.social_facebook,
-            instagram: settings?.social_instagram,
-            twitter: settings?.social_twitter,
+            companyName: settings?.agency_name,
+            facebook: "https://www.facebook.com/pixyspaces",
+            instagram: "https://www.instagram.com/pixyspaces/",
+            whatsapp: "https://wa.me/573504076800",
         },
         quickActions: [
             { title: t('dashboard.actions.new_tenant'), icon: Building2, colorClass: "bg-purple-50 text-purple-600 group-hover:bg-purple-600 group-hover:text-white", onClick: () => setIsNewOrgModalOpen(true) },

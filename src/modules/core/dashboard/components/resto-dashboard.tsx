@@ -52,10 +52,10 @@ export function RestoDashboard({ dashboardData, extraData, userRole: initialRole
             }
         ],
         social: {
-            title: "Resto/Space",
-            facebook: dashboardData?.settings?.social_facebook,
-            instagram: dashboardData?.settings?.social_instagram,
-            twitter: dashboardData?.settings?.social_twitter,
+            companyName: dashboardData?.settings?.agency_name,
+            facebook: "https://www.facebook.com/pixyspaces",
+            instagram: "https://www.instagram.com/pixyspaces/",
+            whatsapp: "https://wa.me/573504076800",
         },
         quickActions: [
             { title: "Ver Menú Digital", icon: QrCode, colorClass: "bg-brand-cyan/10 text-brand-cyan", onClick: () => window.open(portalUrl, "_blank") },
