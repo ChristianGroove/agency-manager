@@ -109,7 +109,7 @@ export async function createLocation(payload: Partial<Location>) {
         return { success: false, error: error.message }
     }
 
-    revalidatePath('/dashboard/locations')
+    revalidatePath('/platform/locations')
     return { success: true, data }
 }
 
@@ -138,8 +138,32 @@ export async function updateLocation(id: string, payload: Partial<Location>) {
         return { success: false, error: error.message }
     }
 
-    revalidatePath('/dashboard/locations')
+    revalidatePath('/platform/locations')
     return { success: true, data }
+}
+
+/**
+ * Elimina una sede
+ */
+export async function deleteLocation(id: string) {
+    const currentOrgId = await getCurrentOrganizationId()
+    if (!currentOrgId) return { success: false, error: 'Unauthorized' }
+
+    const supabase = await createClient()
+
+    const { error } = await supabase
+        .from('organization_locations')
+        .delete()
+        .eq('id', id)
+        .eq('organization_id', currentOrgId)
+
+    if (error) {
+        console.error("Error deleting location:", error)
+        return { success: false, error: error.message }
+    }
+
+    revalidatePath('/platform/locations')
+    return { success: true }
 }
 
 /**
@@ -190,5 +214,3 @@ export async function getStaffTrackers() {
 
     return { success: true, data: Array.from(latestByStaff.values()) }
 }
-
-

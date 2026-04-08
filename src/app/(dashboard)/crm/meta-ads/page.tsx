@@ -1,4 +1,4 @@
-import { MetaAdsCenter } from "@/modules/core/marketing/components/meta-ads-center"
+import { MetaAdsCenter } from "@/modules/features/marketing/components/meta-ads-center"
 import { Metadata } from "next"
 
 export const metadata: Metadata = {

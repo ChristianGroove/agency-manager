@@ -21,9 +21,9 @@ Funcionalidades que, aunque son complejas, se consideran base para cualquier ins
 
 ### Módulos Candidatos a Reubicación (Features)
 Módulos que contienen lógica de negocio que podría considerarse una "Feature" conectable.
-- **`clients`**: Actualmente vacío (migrado a `features/crm`). Debería eliminarse de `core`.
-- **`locations`**: Gestión de sedes físicas. Podría ser un plugin vertical.
-- **`marketing`**: Herramientas de captación. Más afín a una feature de ventas.
+- **`clients`**: Actualmente vacío (migrado a `features/crm`). Eliminado de `core`.
+- **`locations`**: Gestión de sedes físicas. [MIGRADO A FEATURES/LOCATIONS].
+- **`marketing`**: Herramientas de captación. [MIGRADO A FEATURES/MARKETING].
 - **`trash`**: Lógica de papelera de reciclaje. Podría ser un `hook` global en lugar de un módulo completo.
 - **`caa`**: (Consolidación de Agentes y Automatización). Lógica específica de optimización de agentes.
 
@@ -39,7 +39,7 @@ Módulos que contienen lógica de negocio que podría considerarse una "Feature"
 
 ## 3. Estrategia Recomendada de Reorganización
 
-1. **Limpieza de Residuos**: Eliminar submódulos vacíos en `core`.
-2. **Promoción a Features**: Mover `marketing`, `locations` y `ai-engine` (como lógica de negocio) a la capa de `features`.
-3. **Consolidación de Infraestructura**: Agrupar utilidades pequeñas (`logging`, `audit`, `backup`) bajo un único módulo de `system` o `infra` para reducir el ruido en la raíz.
-4. **Defensa del Core**: Establecer una política estricta de que el `core` solo puede crecer si la funcionalidad es requerida por **al menos 3 features diferentes** de forma simultánea.
+1. **Limpieza de Residuos**: Finalizada (Eliminación de `core/clients`).
+2. **Promoción a Features**: **Fase 1 Completada**. Migración exitosa de `locations` y `marketing` a la capa de `features`.
+3. **Consolidación de Infraestructura**: Pendiente (Agrupar utilidades pequeñas como `logging`, `audit`, `backup`).
+4. **Defensa del Core**: Política en vigor para prevenir inflación futura.

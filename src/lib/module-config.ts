@@ -158,13 +158,11 @@ export const MODULE_ROUTES: ModuleRoute[] = [
 
 
     // --- OPERACIONES / PROYECTOS ---
-
     {
         key: 'core_locations',
         label: 'Sedes',
         href: '/platform/locations',
         icon: Store,
-        isCore: true,
         category: 'operations',
         parentModule: 'core_locations',
         access: {

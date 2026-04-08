@@ -4,7 +4,7 @@ import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase-server"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
 import { getAttendanceLogs, getStaff, getAttendanceShifts } from "@/modules/features/attendance/actions"
-import { getLocations } from "@/modules/core/locations/actions"
+import { getLocations } from "@/modules/features/locations/actions"
 import { AttendanceDashboard } from "@/modules/features/attendance/components/admin/attendance-dashboard"
 import { GlobalLoader } from "@/components/ui/global-loader"
 

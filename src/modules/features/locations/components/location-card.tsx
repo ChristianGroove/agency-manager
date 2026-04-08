@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useMemo, useState, useEffect } from 'react'
-import { MapPin, Clock, Users, ChevronRight, Activity, Smartphone, CheckCircle2, Settings, LayoutGrid } from 'lucide-react'
+import { MapPin, Clock, Users, ChevronRight, Activity, Smartphone, CheckCircle2, Settings, LayoutGrid, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -24,10 +24,11 @@ interface LocationCardProps {
     location: Location
     staffMembers?: LocationStaffStatus[]
     onEdit?: (loc: Location) => void
+    onDelete?: (loc: Location) => void
     onClick?: (loc: Location) => void
 }
 
-export function LocationCard({ location, staffMembers = [], onEdit, onClick }: LocationCardProps) {
+export function LocationCard({ location, staffMembers = [], onEdit, onDelete, onClick }: LocationCardProps) {
     const [isOpen, setIsOpen] = useState(() => isLocationOpenNow(location.business_hours, location.timezone))
 
     useEffect(() => {
@@ -193,6 +194,18 @@ export function LocationCard({ location, staffMembers = [], onEdit, onClick }: L
                                     <p className="text-[11px] font-bold text-slate-400">Sin personal asignado</p>
                                 </div>
                             )}
+
+                            <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-11 w-11 rounded-2xl text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-all bg-slate-100/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 shadow-sm"
+                                onClick={(e) => {
+                                    e.stopPropagation()
+                                    onDelete && onDelete(location)
+                                }}
+                            >
+                                <Trash2 className="w-4 h-4" />
+                            </Button>
 
                             <Button
                                 size="icon"

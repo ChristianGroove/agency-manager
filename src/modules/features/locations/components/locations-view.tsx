@@ -5,10 +5,11 @@ import { Plus, Search, Map } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { Location, StaffTracker } from '../actions'
+import { Location, StaffTracker, deleteLocation } from '../actions'
 import { LocationCard, LocationStaffStatus } from './location-card'
 import { LocationManagementSheet } from './management/location-management-sheet'
 import { SectionHeader } from "@/components/layout/section-header"
+import { toast } from 'sonner'
 import dynamic from 'next/dynamic'
 
 // Dynamically import the map to avoid SSR issues
@@ -49,6 +50,24 @@ export function LocationsView({ initialLocations, staffList, initialTrackers }: 
                 photo_url: s.photo_url,
                 status: 'offline' // For now, status can be added later if needed
             })) as LocationStaffStatus[]
+    }
+
+    const handleDelete = async (location: Location) => {
+        if (!window.confirm(`¿Estás seguro de que deseas eliminar la sede "${location.name}"? Esta acción no se puede deshacer.`)) {
+            return
+        }
+
+        try {
+            const res = await deleteLocation(location.id)
+            if (res.success) {
+                toast.success('Sede eliminada correctamente')
+                setLocations(prev => prev.filter(l => l.id !== location.id))
+            } else {
+                toast.error('Error al eliminar sede: ' + res.error)
+            }
+        } catch (error) {
+            toast.error('Ocurrió un error inesperado al eliminar la sede')
+        }
     }
 
     return (
@@ -117,6 +136,7 @@ export function LocationsView({ initialLocations, staffList, initialTrackers }: 
                                     setSelectedLocation(loc)
                                     setIsSheetOpen(true)
                                 }}
+                                onDelete={handleDelete}
                             />
                         ))}
                     </div>

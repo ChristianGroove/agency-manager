@@ -56,6 +56,7 @@ Este documento proporciona la visión general definitiva de la arquitectura téc
     - **Saneamiento de Interfaz**: Fragmentación de "God Components" (`ChatArea`, `ClientManagementSheet`) en arquitectura de 3 capas. Reducción del 80% de líneas de código por archivo orquestador.
     - **Capa de Seguridad de Identidad (Identity Safety)**: Separación física de Contactos Maestros vs Leads del Pipeline. Blindaje de integridad referencial.
     - **Papelera de Reciclaje Unificada**: Sistema de gestión masiva y purga profunda multi-módulo (Briefings, Quotes, Invoices, Clients).
+    - **Reorganización Arquitectónica**: Saneamiento del `core` (Fase 1). Migración de los módulos de **Sedes** (`locations`) y **Marketing** hacia la capa de `features` para mejorar la modularidad y el control de licencias.
 
 ---
 
