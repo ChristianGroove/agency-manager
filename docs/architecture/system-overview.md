@@ -51,10 +51,26 @@ Este documento proporciona la visión general definitiva de la arquitectura téc
 
 - **Junio 2025**: Lanzamiento inicial con arquitectura monolítica (MVP).
 - **Marzo 2026**: Consolidación de CRM (Entidad unificada de Leads).
-- **Abril 2026**: Saneamiento de Interfaz. Fragmentación de "God Components" (`ChatArea`, `ClientManagementSheet`) en arquitectura de 3 capas (Hooks + Action Managers + Atomic UI). Reducción del 80% en líneas de código por archivo orquestador.
+- **Abril 2026**: 
+    - **Saneamiento de Interfaz**: Fragmentación de "God Components" (`ChatArea`, `ClientManagementSheet`) en arquitectura de 3 capas. Reducción del 80% de líneas de código por archivo orquestador.
+    - **Capa de Seguridad de Identidad (Identity Safety)**: Separación física de Contactos Maestros vs Leads del Pipeline. Blindaje de integridad referencial.
+    - **Papelera de Reciclaje Unificada**: Sistema de gestión masiva y purga profunda multi-módulo (Briefings, Quotes, Invoices, Clients).
 
 ---
 
-## 6. Conclusión de la Auditoría Arquitectónica
+## 6. Pilares de Protección de Datos
+
+### A. Capa de Seguridad de Identidad (Identity Safety)
+Agency Manager implementa un modelo de "Identidad Intocable". Los **Contactos Maestros** (`contact_type='client'`) son la fuente de verdad absoluta. El **Pipeline de Ventas** (`leads`/`prospects`) funciona como una capa transaccional vinculada. 
+- *Regla*: El borrado de un lead de negocio JAMÁS afecta al contacto maestro, previniendo la pérdida de historial de facturación o hosting.
+
+### B. Gestión de Ciclo de Vida (Unified Recycle Bin)
+Todo borrado en el sistema sigue la estrategia de **Soft-Delete** via `deleted_at`.
+- **Visibilidad**: La papelera centraliza todos los módulos, permitiendo restauraciones granulares o masivas.
+- **Limpieza**: La función `Empty Trash` permite que el administrador purgue registros físicos para cumplimiento de normativas de privacidad o higiene de datos.
+
+---
+
+## 7. Conclusión de la Auditoría Arquitectónica
 
 El sistema posee una arquitectura **Madura y Coherente**. La transición de un modelo centrado en `clients` a una entidad unificada de `leads` (CRM Consolidation) es el paso técnico más importante realizado recientemente para preparar el producto para una escala masiva de multi-tenancy. La organización en `src/modules` es la clave para que Agency Manager pueda seguir creciendo como una plataforma multivertical sin colapsar bajo su propia complejidad.

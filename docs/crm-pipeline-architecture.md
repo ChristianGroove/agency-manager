@@ -9,9 +9,25 @@ El corazón del CRM reside en la tabla `leads`, la cual ha sido optimizada para 
 - **`score` (int4)**: Puntaje de 0-100 calculado por el algoritmo de salud. Determina la prioridad del lead.
 - **`last_scored_at` (timestamptz)**: Timestamp del último cálculo de score.
 - **`estimated_value` (numeric)**: Valor proyectado del cierre, mapeado desde la propiedad legacy `value`.
+- **`contact_type` (text)**: Discriminador crítico (`client` vs `lead`).
+- **`master_contact_id` (uuid)**: Link de auto-referencia para vincular un lead transaccional con su **Contacto Maestro**.
 - **`organization_id`**: Pilar del aislamiento Multi-Tenant vía RLS.
 
-## 2. Ciclo de Vida del Lead (Lifecycle)
+## 2. Gestión de Identidad y Seguridad (Safety Layer)
+
+Para garantizar la integridad de los datos, el pipeline opera bajo un modelo de **Blindaje de Contactos Maestros**:
+
+### A. Relación Lead-Maestro
+Cada oportunidad en el embudo (`contact_type='lead'`) está vinculada a un registro de identidad permanente en la agenda (`contact_type='client'`) a través de `master_contact_id`. Esto permite:
+- Tener múltiples negocios activos (ej: "Mantenimiento", "Rediseño") para una misma empresa sin duplicar datos de contacto.
+- Mantener la consistencia de facturación y hosting centralizada en el "Master".
+
+### B. Borrado Seguro y Papelera
+Toda acción de eliminación en el pipeline es **Soft-Delete** (`deleted_at`).
+- **Independencia de Borrado**: Eliminar un lead del embudo NO afecta al contacto maestro vinculado. El cliente permanece en la agenda con sus servicios activos, aunque su tarjeta de negocio sea enviada a la papelera.
+- **Acción Masiva**: La papelera permite restaurar leads o borrarlos físicamente de forma individual o en bloque, sin riesgo de "daño colateral" a la base de clientes.
+
+## 3. Ciclo de Vida del Lead (Lifecycle)
 
 El sistema implementa una estrategia de **Data Hygiene** para mantener el rendimiento:
 

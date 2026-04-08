@@ -1,9 +1,8 @@
 # Arquitectura del Módulo de Contactos (Clientes)
 
-## Visión General
-El módulo de Contactos (también llamado Clientes, Members, Tenants, etc., dependiendo del espacio) ha sido rediseñado para asegurar rendimiento (menos carga de componentes React en el DOM), evitar deuda técnica y garantizar una total modularidad adaptativa mediante el **Vertical Registry**.
+El módulo de Contactos (también llamado Clientes o Contactos Maestros) ha sido rediseñado bajo una arquitectura de **Seguridad de Identidad**. La premisa central es la separación física de la **Agenda Maestra** (`contact_type='client'`) frente a las **Tarjetas de Pipeline** (`contact_type='lead'`), permitiendo gestionar múltiples negocios con un solo contacto sin duplicidad visual ni pérdida de datos maestros al limpiar el embudo de ventas.
 
-La filosofía central de este módulo es que debe **comportarse, lucir y cargar datos diferentes** dependiendo del `spaceType` (Ej. `platform`, `agency`, `inbox`, `resto`, etc.), sin duplicar pantallas ni sobrecargar el sistema.
+La filosofía central de este módulo es que debe **comportarse, lucir y cargar datos diferentes** dependiendo del `spaceType` (Ej. `platform`, `agency`, `inbox`, `resto`, etc.), utilizando el **Vertical Registry** para adaptar la terminología y las acciones disponibles.
 
 ## 1. Arquitectura de Archivos y Componentes
 
