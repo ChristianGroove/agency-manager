@@ -1,7 +1,7 @@
-'use server'
+﻿'use server'
 
 import { createClient } from "@/lib/supabase-server"
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 
@@ -165,7 +165,7 @@ export async function getWeeklyRevenue() {
         if (error) throw error
 
         // Group by day
-        const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
+        const days = ['Dom', 'Lun', 'Mar', 'MiÃ©', 'Jue', 'Vie', 'SÃ¡b']
         const dailyRevenue = new Array(7).fill(0).map((_, i) => {
             const d = new Date(startDate)
             d.setDate(d.getDate() + i)
@@ -192,3 +192,4 @@ export async function getWeeklyRevenue() {
         return []
     }
 }
+

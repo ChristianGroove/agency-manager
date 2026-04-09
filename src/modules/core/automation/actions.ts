@@ -2,9 +2,9 @@
 
 import { createClient } from "@/lib/supabase-server"
 import { revalidatePath } from "next/cache"
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { inngest } from "@/lib/inngest/client"
-import { WorkflowDefinition } from "./engine"
+import { WorkflowDefinition } from "./types"
 
 export async function saveWorkflow(id: string, name: string, description: string, definition: WorkflowDefinition, isActive: boolean = false) {
     try {
@@ -673,3 +673,4 @@ export async function uploadAutomationMedia(formData: FormData) {
 
     return { success: true, url: publicUrl, type: file.type, name: file.name }
 }
+

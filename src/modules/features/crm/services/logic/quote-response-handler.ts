@@ -2,7 +2,7 @@
 
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { MetaProvider } from "@/modules/core/messaging/providers/meta-provider"
-import { inboxService } from "@/modules/core/messaging/inbox-service"
+import { MessagingPersistence } from "@/modules/core/messaging/services/persistence"
 
 /**
  * Quote Response Handler
@@ -247,15 +247,16 @@ export async function handleQuoteRejection(context: QuoteResponseContext) {
         }
 
         // 5. Save outbound message to chat
-        await inboxService.saveOutboundMessage(
-            context.conversationId,
-            {
+        await MessagingPersistence.saveOutboundMessage({
+            conversationId: context.conversationId,
+            content: {
                 type: 'text',
                 text: '📋 Se ha enviado un formulario para conocer el motivo del rechazo.'
             },
-            result.messageId || 'unknown',
-            'sent'
-        )
+            messageId: result.messageId || 'unknown',
+            sender: 'sent', // The original code used 'sent' as sender_id, which is weird but I'll keep the intent
+            channel: 'whatsapp'
+        })
 
 
         return { success: true }
@@ -356,12 +357,13 @@ export async function handleRejectionReasonSelected(
 
 
                 // Save to inbox
-                await inboxService.saveOutboundMessage(
+                await MessagingPersistence.saveOutboundMessage({
                     conversationId,
-                    { type: 'text', text: ackMessage.replace('${reason}', reason) },
-                    result.messageId || 'ack_' + Date.now(),
-                    'sent'
-                )
+                    content: { type: 'text', text: ackMessage.replace('${reason}', reason) },
+                    messageId: result.messageId || 'ack_' + Date.now(),
+                    sender: 'sent',
+                    channel: 'whatsapp'
+                })
             }
         }
 

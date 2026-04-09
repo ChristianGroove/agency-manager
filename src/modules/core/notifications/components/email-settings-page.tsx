@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { EmailTemplate, setActiveTemplate } from "@/modules/core/notifications/actions"
+import { EmailTemplate, setActiveTemplate, updateEmailTemplate } from "@/modules/core/notifications/actions"
 import { SmtpConfigFull } from "@/modules/core/notifications/actions/smtp-actions"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -13,7 +13,6 @@ import { cn } from "@/lib/utils"
 import { getInvoiceEmailHtml, getQuoteEmailHtml, getBriefingSubmissionEmailHtml, getPortalInviteEmailHtml, EmailStyle, EmailBranding } from "@/lib/email-templates"
 import { SmtpConnectionTab } from "./smtp-connection-tab"
 import { TemplateTextEditor } from "@/components/email/TemplateTextEditor"
-import { updateEmailTemplate } from "@/modules/core/notifications/actions"
 import { toast } from "sonner"
 
 interface EmailSettingsPageProps {

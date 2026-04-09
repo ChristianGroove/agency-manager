@@ -80,7 +80,7 @@ export function QuickAssignPanel({ conversationId, channel, connectionId, curren
 
     useEffect(() => {
         const fetchRole = async () => {
-            const { getCurrentUserPermissions } = await import("@/modules/core/settings/actions/team-actions")
+            const { getCurrentUserPermissions } = await import("@/modules/core/settings/settings-actions")
             const perms = await getCurrentUserPermissions()
             setCurrentUserRole(perms?.role || null)
         }

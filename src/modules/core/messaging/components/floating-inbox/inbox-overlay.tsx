@@ -1,6 +1,6 @@
 "use client"
 
-import { useGlobalInbox } from "../../context/global-inbox-context"
+import { useGlobalInbox } from "@/modules/core/messaging/context/global-inbox-context"
 import { motion, AnimatePresence } from "framer-motion"
 import { X } from "lucide-react"
 import { Button } from "@/components/ui/button"

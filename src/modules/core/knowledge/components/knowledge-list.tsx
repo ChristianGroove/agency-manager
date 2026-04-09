@@ -12,7 +12,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { KnowledgeEntry } from "../actions"
+import { KnowledgeEntry } from "@/modules/core/knowledge/knowledge-actions"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 

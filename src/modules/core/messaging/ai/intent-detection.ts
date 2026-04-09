@@ -61,7 +61,7 @@ const INTENT_DEFINITIONS = {
 }
 
 import { AIEngine } from "@/modules/core/ai-engine/service"
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 
 /**
  * Detect customer intent using Central Engine

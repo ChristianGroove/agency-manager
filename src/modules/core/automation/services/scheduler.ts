@@ -1,4 +1,4 @@
-'use server';
+﻿'use server';
 
 /**
  * Workflow Scheduler Service
@@ -8,7 +8,7 @@
  */
 
 import { createClient } from '@/lib/supabase-server';
-import { getCurrentOrganizationId } from '@/modules/core/organizations/actions';
+import { getCurrentOrganizationId } from '@/modules/core/organizations/organization-actions';
 
 interface ScheduledJob {
     id: string;
@@ -254,5 +254,6 @@ export function formatDuration(minutes: number): string {
         return `${hours} hora${hours === 1 ? '' : 's'}`;
     }
     const days = Math.floor(minutes / (60 * 24));
-    return `${days} día${days === 1 ? '' : 's'}`;
+    return `${days} dÃ­a${days === 1 ? '' : 's'}`;
 }
+

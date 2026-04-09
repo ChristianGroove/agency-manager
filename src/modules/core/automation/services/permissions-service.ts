@@ -1,4 +1,4 @@
-'use server';
+﻿'use server';
 
 /**
  * Workflow Permissions Service
@@ -7,7 +7,7 @@
  */
 
 import { createClient } from '@/lib/supabase-server';
-import { getCurrentOrganizationId } from '@/modules/core/organizations/actions';
+import { getCurrentOrganizationId } from '@/modules/core/organizations/organization-actions';
 
 export type WorkflowRole = 'viewer' | 'editor' | 'approver' | 'admin';
 
@@ -137,3 +137,4 @@ export async function checkPermission(workflowId: string, requiredRole: Workflow
 
     return !!data;
 }
+

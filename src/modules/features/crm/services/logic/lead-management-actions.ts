@@ -1,8 +1,8 @@
-"use server"
+﻿"use server"
 
 import { createClient } from "@/lib/supabase-server"
 import { revalidatePath } from "next/cache"
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { messagingCleanupService } from "@/modules/core/messaging/cleanup-service"
 
 async function getCrmServices() {
@@ -128,3 +128,4 @@ export async function deleteAllLeads() {
     revalidatePath('/crm')
     return { success: true }
 }
+

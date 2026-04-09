@@ -1,8 +1,8 @@
-'use server'
+﻿'use server'
 
 import { createClient } from '@/lib/supabase-server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
-import { getCurrentOrganizationId } from '@/modules/core/organizations/actions'
+import { getCurrentOrganizationId } from '@/modules/core/organizations/organization-actions'
 
 // Helper to get org
 async function getOrgId() {
@@ -432,7 +432,7 @@ export async function getAdvancedReports(startDate: string, endDate: string, org
 
         if (!targetOrgId) {
             console.error('[REPORTS] No organization ID provided or found')
-            return { success: false, error: 'No se pudo determinar la organización activa' }
+            return { success: false, error: 'No se pudo determinar la organizaciÃ³n activa' }
         }
 
         const { data, error } = await supabaseAdmin.rpc('get_advanced_crm_reports', {
@@ -456,3 +456,4 @@ export async function getAdvancedReports(startDate: string, endDate: string, org
         return { success: false, error: String(error) }
     }
 }
+

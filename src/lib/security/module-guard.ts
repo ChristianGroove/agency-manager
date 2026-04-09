@@ -1,4 +1,4 @@
-"use server"
+﻿"use server"
 
 /**
  * MODULE GUARD
@@ -13,7 +13,7 @@
  *   await requireModule('module_briefings')
  */
 
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { getOrganizationActiveModules } from "@/modules/core/saas/module-management-actions"
 import { redirect } from "next/navigation"
 
@@ -166,3 +166,4 @@ export const MODULES = {
 } as const
 
 export type ModuleKey = typeof MODULES[keyof typeof MODULES]
+

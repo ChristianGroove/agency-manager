@@ -15,7 +15,7 @@ interface SentimentResult {
 }
 
 import { AIEngine } from "@/modules/core/ai-engine/service"
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 
 /**
  * Analyze sentiment of a message using Central Engine

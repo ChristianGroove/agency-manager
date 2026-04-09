@@ -1,5 +1,5 @@
-import { createClient } from "@/lib/supabase-server";
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions";
+﻿import { createClient } from "@/lib/supabase-server";
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions";
 import { AssistantContext } from "./types";
 import { headers } from "next/headers";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
@@ -110,3 +110,4 @@ export async function resolveAssistantContext(): Promise<{ context: AssistantCon
         supabase: supabase // Return the authenticated client
     };
 }
+

@@ -1,7 +1,7 @@
-'use server'
+﻿'use server'
 
 import { createClient } from "@/lib/supabase-server"
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { revalidatePath } from "next/cache"
 
 export interface SystemModule {
@@ -112,3 +112,4 @@ export async function toggleModule(moduleKey: string, isActive: boolean) {
     revalidatePath('/platform/apps')
     return { success: true }
 }
+

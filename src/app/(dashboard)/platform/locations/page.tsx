@@ -1,16 +1,16 @@
-import { Suspense } from "react"
+﻿import { Suspense } from "react"
 import { Metadata } from "next"
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase-server"
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { getLocations, getStaffTrackers } from "@/modules/features/locations/actions"
 import { getStaff } from "@/modules/features/attendance/actions"
 import { LocationsView } from "@/modules/features/locations/components/locations-view"
 import { GlobalLoader } from "@/components/ui/global-loader"
 
 export const metadata: Metadata = {
-    title: "Gestión de Sedes | Pixy",
-    description: "Administra las sedes, sucursales y puntos de atención de tu negocio.",
+    title: "GestiÃ³n de Sedes | Pixy",
+    description: "Administra las sedes, sucursales y puntos de atenciÃ³n de tu negocio.",
 }
 
 export default async function LocationsAdminPage() {
@@ -44,3 +44,4 @@ export default async function LocationsAdminPage() {
         </Suspense>
     )
 }
+

@@ -1,8 +1,8 @@
-"use server"
+﻿"use server"
 
 import { createClient } from "@/lib/supabase-server"
 import { supabaseAdmin } from "@/lib/supabase-admin"
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { requireOrgRole } from "@/lib/auth/org-roles"
 import { revalidatePath } from "next/cache"
 import { Channel, ChannelConfig } from "./types"
@@ -355,9 +355,9 @@ async function getChannelByInstanceName(instanceName: string, orgId: string): Pr
  * 
  * Flow:
  * 1. Check if instance exists in Evolution
- * 2. If exists + belongs to this org → reconnect (get QR)
- * 3. If exists + different org → error
- * 4. If not exists → create new instance
+ * 2. If exists + belongs to this org â†’ reconnect (get QR)
+ * 3. If exists + different org â†’ error
+ * 4. If not exists â†’ create new instance
  */
 import { EvolutionAdapter } from "@/modules/core/integrations/adapters/evolution-adapter"
 
@@ -385,7 +385,7 @@ export async function createWhatsAppChannel(phoneNumber: string): Promise<{ chan
 
         if (instanceOwnerPrefix !== orgPrefix) {
             // Different org owns this instance (shouldn't happen with naming, but safety check)
-            throw new Error("Este número ya está en uso por otra organización")
+            throw new Error("Este nÃºmero ya estÃ¡ en uso por otra organizaciÃ³n")
         }
 
         // Check if we have a channel record for this instance
@@ -394,7 +394,7 @@ export async function createWhatsAppChannel(phoneNumber: string): Promise<{ chan
         if (existingChannel) {
             // We have a channel record - check if it's active and connected
             if (existingChannel.status === 'active' && instanceInfo.state === 'open') {
-                throw new Error("Este número ya está conectado como canal activo")
+                throw new Error("Este nÃºmero ya estÃ¡ conectado como canal activo")
             }
 
             // Channel exists but disconnected - get QR to reconnect
@@ -504,10 +504,11 @@ export async function createWhatsAppChannel(phoneNumber: string): Promise<{ chan
 
         // If error is still "already exists", provide clearer message
         if (error.message?.includes("already") || error.message?.includes("in use")) {
-            throw new Error("Este número ya está registrado. Por favor contacta soporte si crees que es un error.")
+            throw new Error("Este nÃºmero ya estÃ¡ registrado. Por favor contacta soporte si crees que es un error.")
         }
 
         throw new Error("Error al crear canal WhatsApp: " + error.message)
     }
 }
+
 

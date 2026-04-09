@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import {
     Sheet,
@@ -16,7 +16,7 @@ import { useState, useEffect } from "react"
 import { createBrowserClient } from "@supabase/ssr"
 import { Fingerprint, Loader2, Plus, X, Shield, Crown, User as UserIcon } from "lucide-react"
 import { usePasskeys } from "@/modules/auth/passkeys/use-passkeys"
-import { getCurrentUserPermissions } from "@/modules/core/settings/actions/team-actions"
+import { getCurrentUserPermissions } from "@/modules/core/settings/settings-actions"
 
 interface ProfileSheetProps {
     open: boolean
@@ -115,7 +115,7 @@ export function ProfileSheet({ open, onOpenChange, user, currentOrgId }: Profile
 
                         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                             <TabsList className="grid w-full grid-cols-2 mb-6 bg-gray-100/50 p-1 rounded-lg">
-                                <TabsTrigger value="general" className="rounded-md text-xs font-medium data-[state=active]:bg-white data-[state=active]:shadow-sm">Información</TabsTrigger>
+                                <TabsTrigger value="general" className="rounded-md text-xs font-medium data-[state=active]:bg-white data-[state=active]:shadow-sm">InformaciÃ³n</TabsTrigger>
                                 <TabsTrigger value="security" className="rounded-md text-xs font-medium data-[state=active]:bg-white data-[state=active]:shadow-sm">Seguridad</TabsTrigger>
                             </TabsList>
 
@@ -137,7 +137,7 @@ export function ProfileSheet({ open, onOpenChange, user, currentOrgId }: Profile
                                             {(() => {
                                                 if (user?.user_metadata?.platform_role === 'super_admin' || profile?.platform_role === 'super_admin') return 'Super Admin';
                                                 const role = orgRole?.toLowerCase() || '';
-                                                if (role.includes('owner') || role.includes('dueño')) return 'Dueño';
+                                                if (role.includes('owner') || role.includes('dueÃ±o')) return 'DueÃ±o';
                                                 if (role.includes('admin') || role.includes('administrador')) return 'Administrador';
                                                 if (role.includes('member') || role.includes('miembro')) return 'Miembro';
                                                 return orgRole || "Miembro";
@@ -147,7 +147,7 @@ export function ProfileSheet({ open, onOpenChange, user, currentOrgId }: Profile
                                     <div className="flex flex-col px-3 py-2 bg-gray-50/50 rounded-lg border border-gray-100 text-center">
                                         <span className="text-[9px] uppercase font-bold text-gray-400 tracking-wider">Miembro Desde</span>
                                         <span className="font-semibold text-gray-900 text-xs mt-0.5">
-                                            {user?.created_at ? new Date(user.created_at).toLocaleDateString() : "—"}
+                                            {user?.created_at ? new Date(user.created_at).toLocaleDateString() : "â€”"}
                                         </span>
                                     </div>
                                 </div>
@@ -164,10 +164,10 @@ export function ProfileSheet({ open, onOpenChange, user, currentOrgId }: Profile
                                         <div className="space-y-1">
                                             <h3 className="text-sm font-semibold text-indigo-950 flex items-center gap-2">
                                                 <Fingerprint className="h-4 w-4 text-indigo-500" />
-                                                Acceso Biométrico
+                                                Acceso BiomÃ©trico
                                             </h3>
                                             <p className="text-xs text-indigo-900/60 leading-relaxed">
-                                                Inicia sesión sin contraseña usando tu huella o rostro.
+                                                Inicia sesiÃ³n sin contraseÃ±a usando tu huella o rostro.
                                             </p>
                                         </div>
                                     </div>

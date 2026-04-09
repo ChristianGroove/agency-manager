@@ -1,8 +1,8 @@
-"use server"
+﻿"use server"
 
 import { createClient } from "@/lib/supabase-server"
 import { revalidatePath } from "next/cache"
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 
 export type ClientCategory = {
     id: string
@@ -51,7 +51,7 @@ export async function createClientCategory(name: string, color: string = 'slate'
         if (error) {
             // Handle unique constraint violation gracefully
             if (error.code === '23505') {
-                return { success: false, error: "Ya existe una categoría con este nombre." }
+                return { success: false, error: "Ya existe una categorÃ­a con este nombre." }
             }
             throw error
         }
@@ -83,7 +83,7 @@ export async function updateClientCategory(id: string, name: string, color: stri
 
         if (error) {
             if (error.code === '23505') {
-                return { success: false, error: "Ya existe otra categoría con este nombre." }
+                return { success: false, error: "Ya existe otra categorÃ­a con este nombre." }
             }
             throw error
         }
@@ -116,3 +116,4 @@ export async function deleteClientCategory(id: string) {
         return { success: false, error: error.message }
     }
 }
+

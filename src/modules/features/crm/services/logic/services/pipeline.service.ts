@@ -1,4 +1,4 @@
-import { SupabaseClient } from '@supabase/supabase-js'
+﻿import { SupabaseClient } from '@supabase/supabase-js'
 import { PipelineRepository } from '../repositories/pipeline.repository'
 import { unstable_cache } from 'next/cache'
 
@@ -63,12 +63,12 @@ export class PipelineService {
         const { getLeads } = await import('../leads-actions')
         const { getEmitters } = await import('@/modules/core/settings/emitters-actions')
         const { getLeadsCount } = await import('../lead-management-actions')
-        const { getCurrentUserPermissions } = await import('@/modules/core/settings/actions/team-actions')
+        const { getCurrentUserPermissions } = await import('@/modules/core/settings/settings-actions')
 
         const perms = await getCurrentUserPermissions()
         let allowedChannels: string[] | undefined = undefined
         const role = perms?.role?.toLowerCase()
-        const isGlobalRole = role === 'owner' || role === 'dueño' || role === 'admin' || role === 'administrador'
+        const isGlobalRole = role === 'owner' || role === 'dueÃ±o' || role === 'admin' || role === 'administrador'
         const hasGlobalView = isGlobalRole || perms?.permissions?.all === true || 
                              perms?.permissions?.['inbox.conversations.view_all'] === true
 

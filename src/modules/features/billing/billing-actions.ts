@@ -1,4 +1,4 @@
-"use server"
+﻿"use server"
 
 import { revalidatePath } from "next/cache"
 import * as BillingService from "./services/billing-service"
@@ -65,7 +65,7 @@ export async function getEmittersAction() {
 }
 
 export async function getSettingsAction() {
-    const { getSettings } = await import("@/modules/core/settings/actions")
+    const { getSettings } = await import("@/modules/core/settings/settings-actions")
     try {
         const data = await getSettings()
         return { success: true, data }
@@ -137,7 +137,7 @@ export async function getPaymentTransactions() {
 export async function getOrganizationSubscription() {
     // This usually matches org logic but exposed here for dashboard
     const { createClient } = await import("@/lib/supabase-server")
-    const { getCurrentOrganizationId } = await import("@/modules/core/organizations/actions")
+    const { getCurrentOrganizationId } = await import("@/modules/core/organizations/organization-actions")
     const supabase = await createClient()
     const orgId = await getCurrentOrganizationId()
     if (!orgId) return null
@@ -218,3 +218,4 @@ export async function sendPlatformInvoiceEmailAction(invoiceId: string, recipien
 export async function getPlatformPaymentMethodsAction() {
     return await PlatformBillingService.getPlatformPaymentMethods()
 }
+

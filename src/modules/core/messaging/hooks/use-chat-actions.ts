@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { supabase } from "@/lib/supabase"
 import { MessageContentType } from "@/types/messaging"
-import { sendMessage, sendProductCardMessage } from "../actions"
+import { sendMessage, sendProductCardMessage } from "../actions/messages"
 import { MESSAGING_STORAGE_BUCKET } from "../constants"
 import { refineDraftContent } from "../ai/smart-replies"
 import { Message, Conversation } from "./use-chat-logic"
@@ -73,8 +73,8 @@ export function useChatActions(params: {
             
             const features = currentPendingProduct.metadata?.portal_card?.features || []
             if (Array.isArray(features) && features.length > 0) {
-                const featureList = features.map((f: string) => f?.trim() ? `✅ ${f.trim()}` : '').filter(Boolean).join('\n')
-                if (featureList) parts.push(`\n*CARACTERÍSTICAS*\n${featureList}`)
+                const featureList = features.map((f: string) => f?.trim() ? `âœ… ${f.trim()}` : '').filter(Boolean).join('\n')
+                if (featureList) parts.push(`\n*CARACTERÃSTICAS*\n${featureList}`)
             }
             parts.push(`\n*Precio:* $${currentPendingProduct.base_price?.toLocaleString() || 'N/A'}`)
             if (textContent && textContent.trim()) parts.push(`\n---\n_${textContent.trim()}_`)
@@ -91,7 +91,7 @@ export function useChatActions(params: {
             if (finalType === 'text') {
                 messageContent = { type: 'text', text: textContent }
             } else if (finalType === 'location' && location) {
-                messageContent = { type: 'location', latitude: location.latitude, longitude: location.longitude, address: location.address || 'Ubicación' }
+                messageContent = { type: 'location', latitude: location.latitude, longitude: location.longitude, address: location.address || 'UbicaciÃ³n' }
             } else {
                 messageContent = { type: finalType, mediaUrl: finalMediaUrl, url: finalMediaUrl, caption: textContent, filename: finalType === 'document' ? (pendingAttachment?.name || textContent) : undefined }
             }
@@ -204,7 +204,7 @@ export function useChatActions(params: {
             const result = await refineDraftContent(inputValue)
             if (result.success && result.refined) {
                 setInputValue(result.refined)
-                toast.success(t('crm.inbox.chat.actions.refine_ai_success'), { icon: "✨" })
+                toast.success(t('crm.inbox.chat.actions.refine_ai_success'), { icon: "âœ¨" })
             } else {
                 toast.error(t('crm.inbox.chat.actions.refine_ai_error'))
             }

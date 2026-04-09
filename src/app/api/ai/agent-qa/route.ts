@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { analyzeAgentPerformance } from '@/modules/core/messaging/ai/agent-qa'
+﻿import { NextRequest, NextResponse } from 'next/server'
+import { analyzeAgentPerformance } from '@/modules/core/messaging/messaging-actions'
 
 export async function POST(req: NextRequest) {
     try {

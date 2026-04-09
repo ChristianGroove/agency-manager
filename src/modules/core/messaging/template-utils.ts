@@ -1,4 +1,4 @@
-import { TemplateComponent } from "./template-actions"
+﻿import { TemplateComponent } from "@/modules/core/messaging/messaging-actions"
 
 export function extractMetadata(components: TemplateComponent[]): { color?: string, icon?: string } {
     const meta = components.find(c => c.type === 'UI_METADATA')
@@ -29,13 +29,13 @@ export const COLORS = [
 export const ICONS = [
     { id: 'MessageSquare', icon: MessageSquare, label: 'Mensaje' },
     { id: 'Star', icon: Star, label: 'Estrella' },
-    { id: 'Heart', icon: Heart, label: 'Corazón' },
+    { id: 'Heart', icon: Heart, label: 'CorazÃ³n' },
     { id: 'ThumbsUp', icon: ThumbsUp, label: 'Bien' },
     { id: 'Phone', icon: Phone, label: 'Llamada' },
     { id: 'Mail', icon: Mail, label: 'Correo' },
     { id: 'Calendar', icon: Calendar, label: 'Calendario' },
     { id: 'CreditCard', icon: CreditCard, label: 'Pago' },
-    { id: 'Package', icon: Package, label: 'Envío' },
+    { id: 'Package', icon: Package, label: 'EnvÃ­o' },
     { id: 'User', icon: User, label: 'Usuario' },
     { id: 'Zap', icon: Zap, label: 'Rayo' },
     { id: 'AlertCircle', icon: AlertCircle, label: 'Alerta' },

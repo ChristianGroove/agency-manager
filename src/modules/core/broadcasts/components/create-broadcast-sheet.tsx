@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect, useMemo } from 'react'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
@@ -32,7 +32,7 @@ import {
 import { createQuickCampaign } from '../marketing-actions'
 import { getRecipientCount } from '../actions'
 import { toast } from 'sonner'
-import { getTemplates, syncTemplatesFromMeta, MessageTemplate } from '@/modules/core/messaging/template-actions'
+import { getTemplates, syncTemplatesFromMeta, MessageTemplate } from '@/modules/core/messaging/messaging-actions'
 
 interface CreateBroadcastSheetProps {
     open: boolean
@@ -132,7 +132,7 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
 
     const handleSubmit = async () => {
         if (!form.name.trim()) {
-            toast.error('Ingresa un nombre para la campaña')
+            toast.error('Ingresa un nombre para la campaÃ±a')
             return
         }
 
@@ -163,11 +163,11 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
         })
 
         if (result.success) {
-            toast.success('Campaña creada exitosamente')
+            toast.success('CampaÃ±a creada exitosamente')
             onOpenChange(false)
             onSuccess()
         } else {
-            toast.error(result.error || 'Error al crear campaña')
+            toast.error(result.error || 'Error al crear campaÃ±a')
         }
         setLoading(false)
     }
@@ -190,10 +190,10 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
                         </div>
                         <div>
                             <SheetTitle className="text-xl font-semibold text-gray-900">
-                                Nueva Campaña
+                                Nueva CampaÃ±a
                             </SheetTitle>
                             <p className="text-xs text-muted-foreground mt-0.5">
-                                Envía un mensaje a múltiples contactos
+                                EnvÃ­a un mensaje a mÃºltiples contactos
                             </p>
                         </div>
                     </div>
@@ -209,7 +209,7 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
                                     </div>
                                     <div>
                                         <p className="text-sm font-medium text-gray-900">Destinatarios</p>
-                                        <p className="text-xs text-muted-foreground">Según los filtros actuales</p>
+                                        <p className="text-xs text-muted-foreground">SegÃºn los filtros actuales</p>
                                     </div>
                                 </div>
                                 <div className="text-right">
@@ -223,9 +223,9 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
 
                             {/* Name */}
                             <div className="space-y-2">
-                                <Label>Nombre de la Campaña *</Label>
+                                <Label>Nombre de la CampaÃ±a *</Label>
                                 <Input
-                                    placeholder="Ej: Promoción Enero 2026"
+                                    placeholder="Ej: PromociÃ³n Enero 2026"
                                     value={form.name}
                                     onChange={(e) => setForm(prev => ({ ...prev, name: e.target.value }))}
                                     className="h-11"
@@ -234,7 +234,7 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
 
                             {/* Channel */}
                             <div className="space-y-2">
-                                <Label>Canal de Envío</Label>
+                                <Label>Canal de EnvÃ­o</Label>
                                 <Select
                                     value={form.channel}
                                     onValueChange={(v) => setForm(prev => ({ ...prev, channel: v as any }))}
@@ -356,10 +356,10 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
                                                 <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="43200">Flash Sale — 12 horas</SelectItem>
-                                                <SelectItem value="86400">Diario — 24 horas</SelectItem>
-                                                <SelectItem value="604800">Semanal — 7 días</SelectItem>
-                                                <SelectItem value="2592000">Mensual — 30 días</SelectItem>
+                                                <SelectItem value="43200">Flash Sale â€” 12 horas</SelectItem>
+                                                <SelectItem value="86400">Diario â€” 24 horas</SelectItem>
+                                                <SelectItem value="604800">Semanal â€” 7 dÃ­as</SelectItem>
+                                                <SelectItem value="2592000">Mensual â€” 30 dÃ­as</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>
@@ -368,7 +368,7 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
                                 <div className="space-y-2">
                                     <Label>Mensaje *</Label>
                                     <Textarea
-                                        placeholder="Escribe tu mensaje aquí... Usa {{nombre}} para personalizar"
+                                        placeholder="Escribe tu mensaje aquÃ­... Usa {{nombre}} para personalizar"
                                         rows={5}
                                         value={form.message}
                                         onChange={(e) => setForm(prev => ({ ...prev, message: e.target.value }))}
@@ -384,7 +384,7 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
                             <div className="space-y-4 p-4 bg-slate-50/50 rounded-xl border border-slate-100">
                                 <h3 className="font-semibold text-sm text-gray-900 flex items-center gap-2">
                                     <Users className="h-4 w-4 text-brand-pink" />
-                                    Segmentación
+                                    SegmentaciÃ³n
                                 </h3>
 
                                 <div className="space-y-2">
@@ -400,14 +400,14 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
                                             <SelectItem value="all">Todos los estados</SelectItem>
                                             <SelectItem value="open">Abierto</SelectItem>
                                             <SelectItem value="qualified">Calificado</SelectItem>
-                                            <SelectItem value="negotiation">Negociación</SelectItem>
+                                            <SelectItem value="negotiation">NegociaciÃ³n</SelectItem>
                                             <SelectItem value="won">Ganado</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>
 
                                 <div className="flex items-center justify-between py-2">
-                                    <Label htmlFor="has_phone" className="cursor-pointer">Solo con teléfono</Label>
+                                    <Label htmlFor="has_phone" className="cursor-pointer">Solo con telÃ©fono</Label>
                                     <Switch
                                         id="has_phone"
                                         checked={form.filters.has_phone}
@@ -435,7 +435,7 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
                                                 <p className="text-[13px] text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed">
                                                     {form.channel === 'whatsapp' ? filledPreview : form.message}
                                                 </p>
-                                                <p className="text-[10px] text-gray-400 text-right mt-1">Marketing ✓</p>
+                                                <p className="text-[10px] text-gray-400 text-right mt-1">Marketing âœ“</p>
                                             </div>
                                         </div>
                                     </div>
@@ -456,7 +456,7 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
                         >
                             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             <Send className="mr-2 h-4 w-4" />
-                            Crear Campaña
+                            Crear CampaÃ±a
                         </Button>
                     </div>
                 </div>

@@ -23,7 +23,7 @@ import {
     ArrowRight,
     Sparkles
 } from "lucide-react"
-import { getUnassignedDistributionStats, distributeUnassignedConversations } from "../../assignment-actions"
+import { getUnassignedDistributionStats, distributeUnassignedConversations } from "@/modules/core/messaging/assignment-actions"
 import { toast } from "sonner"
 import { useTranslation } from "@/lib/i18n/use-translation"
 import { cn } from "@/lib/utils"

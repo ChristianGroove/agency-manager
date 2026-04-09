@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { transcribeAudio } from '@/modules/core/messaging/ai/transcription'
+﻿import { NextRequest, NextResponse } from 'next/server'
+import { transcribeAudio } from '@/modules/core/messaging/messaging-actions'
 
 export async function POST(req: NextRequest) {
     try {

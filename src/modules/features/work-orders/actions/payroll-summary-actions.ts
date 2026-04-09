@@ -1,7 +1,7 @@
-'use server'
+﻿'use server'
 
 import { createClient } from "@/lib/supabase-server"
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { startOfDay, endOfDay, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns"
 
 export type DateFilter = 'today' | 'yesterday' | 'week' | 'month'
@@ -232,7 +232,7 @@ export async function liquidateStaffDebt(data: {
                 amount: data.amount,
                 payment_method: data.paymentMethod,
                 payment_date: data.paymentDate,
-                notes: data.notes || `Liquidación de ${debt.totalHours}h trabajadas`
+                notes: data.notes || `LiquidaciÃ³n de ${debt.totalHours}h trabajadas`
             })
             .select()
             .single()
@@ -270,3 +270,4 @@ export async function quickPayStaff(data: {
     // Redirect to new liquidation system
     return await liquidateStaffDebt(data)
 }
+

@@ -1,7 +1,7 @@
-'use server'
+﻿'use server'
 
 import { createClient } from "@/lib/supabase-server"
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import OpenAI from "openai"
 
 export async function generateCatalogImage(params: {
@@ -97,3 +97,4 @@ export async function generateCatalogImage(params: {
         throw new Error(error.message || "Failed to generate image")
     }
 }
+

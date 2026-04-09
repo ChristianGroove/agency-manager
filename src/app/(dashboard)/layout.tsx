@@ -1,15 +1,15 @@
-import { getDashboardTemplate } from "@/components/portals/portal-registry"
+﻿import { getDashboardTemplate } from "@/components/portals/portal-registry"
 import { createClient } from "@/lib/supabase-server"
 import { redirect } from "next/navigation"
-import { getCurrentOrganizationId, getCurrentOrgDetails } from "@/modules/core/organizations/actions"
+import { getCurrentOrganizationId, getCurrentOrgDetails } from "@/modules/core/organizations/organization-actions"
 import { isSuperAdmin } from "@/lib/auth/platform-roles"
-import { getSettings } from "@/modules/core/settings/actions"
+import { getSettings } from "@/modules/core/settings/settings-actions"
 import { getDictionary } from "@/lib/i18n/dictionaries"
 import { I18nProvider } from "@/lib/i18n/context"
 import { Locale } from "@/lib/i18n/dictionaries"
 
 import { getCurrentOrganizationApp } from "@/modules/core/saas/app-data-actions"
-import { getActiveModules } from "@/modules/core/saas/actions"
+import { getActiveModules } from "@/modules/core/saas/saas-actions"
 import { getOrganizationSubscription } from "@/modules/features/billing/billing-actions"
 import { SaaSProvider } from "@/components/providers/saas-provider"
 import { SuspendedDashboardView } from "@/components/dashboard/SuspendedDashboardView"
@@ -27,7 +27,7 @@ export default async function DashboardLayout({
     const { data: { user }, error: authError } = await supabase.auth.getUser()
 
     if (authError || !user) {
-        console.error("❌ [LAYOUT] Auth Error details:", {
+        console.error("âŒ [LAYOUT] Auth Error details:", {
             error: authError,
             user: user ? 'User exists' : 'User is null'
         })
@@ -45,12 +45,12 @@ export default async function DashboardLayout({
         getActiveModules()
     ])
 
-    // Lógica de Suspensión (Canceled / Unpaid)
+    // LÃ³gica de SuspensiÃ³n (Canceled / Unpaid)
     // El SuperAdmin siempre tiene bypass
     const isSuspended = !isAdmin && (subscription?.status === 'canceled' || subscription?.status === 'unpaid')
 
     // Determinamos el Portal Template de forma eficiente
-    // Si orgDetails tiene portal_template (vía join o precarga), lo usamos. 
+    // Si orgDetails tiene portal_template (vÃ­a join o precarga), lo usamos. 
     // Si no, b2b_dashboard es el default.
     const portalTemplateKey = orgDetails?.active_app?.portal_template || 'b2b_dashboard'
 
@@ -92,3 +92,4 @@ export default async function DashboardLayout({
         </I18nProvider>
     )
 }
+

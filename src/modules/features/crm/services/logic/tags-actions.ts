@@ -1,7 +1,7 @@
-"use server"
+﻿"use server"
 
 import { createClient } from "@/lib/supabase-server"
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { TagsService } from "./services/tags.service"
 
 export type Tag = {
@@ -125,3 +125,4 @@ export async function clearLeadTagsSystem(leadId: string, organizationId: string
         return { success: false, error: e.message }
     }
 }
+

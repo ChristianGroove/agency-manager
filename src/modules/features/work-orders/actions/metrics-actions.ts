@@ -1,7 +1,7 @@
-'use server'
+﻿'use server'
 
 import { createClient } from "@/lib/supabase-server"
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 
 export async function getOperationsMetrics() {
     const supabase = await createClient()
@@ -44,3 +44,4 @@ export async function getOperationsMetrics() {
         return null
     }
 }
+

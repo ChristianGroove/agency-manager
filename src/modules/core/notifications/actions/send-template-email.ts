@@ -1,10 +1,10 @@
-'use server'
+﻿'use server'
 
 import { createClient } from "@/lib/supabase-server"
 import { EmailService } from "@/modules/core/notifications/email.service"
 import { TemplateEngine } from "@/modules/core/notifications/template-engine"
 import { getEffectiveBranding } from "@/modules/core/branding/actions"
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { getPortalUrl } from "@/lib/utils"
 
 interface SendTemplateEmailPayload {
@@ -203,3 +203,4 @@ export async function sendTemplateEmail({ clientId, templateKey, contextId, cust
 
     return result
 }
+

@@ -1,16 +1,16 @@
-"use server"
+﻿"use server"
 
 import { createClient } from "@/lib/supabase-server"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { revalidatePath } from "next/cache"
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { ContactService } from "./services/contact-service"
 import { ClientService } from "./services/client-service"
 import { PipelineService } from "./services/logic/services/pipeline.service"
 import { TagService } from "./services/tag-service"
 import { CrmTaskService } from "./services/crm-task-service"
 import { DealService } from "./services/deal-service"
-import { getCurrentUserPermissions } from "@/modules/core/settings/actions/team-actions"
+import { getCurrentUserPermissions } from "@/modules/core/settings/settings-actions"
 import { ActionResponse, PipelineStage, Pipeline, PaginatedLeadsResponse } from "./types"
 import { Lead, Client } from "@/types"
 
@@ -206,7 +206,7 @@ export async function getPipelineViewDataAction(connectionId?: string | null) {
         const perms = await getCurrentUserPermissions()
         
         const role = perms?.role?.toLowerCase()
-        const isGlobalRole = role === 'owner' || role === 'dueño' || role === 'admin' || role === 'administrador'
+        const isGlobalRole = role === 'owner' || role === 'dueÃ±o' || role === 'admin' || role === 'administrador'
         
         // Convert UI 'all' to null for backend logic
         const cid = connectionId === 'all' ? null : connectionId
@@ -374,7 +374,7 @@ export async function clearContactTagsAction(leadId: string) {
 }
 
 export async function getSettingsAction(): Promise<ActionResponse<any>> {
-    const { getSettings } = await import("@/modules/core/settings/actions")
+    const { getSettings } = await import("@/modules/core/settings/settings-actions")
     try {
         const data = await getSettings()
         return { success: true, data }
@@ -536,3 +536,4 @@ export async function sendInteractiveQuoteAction(cartId: string, conversationId:
         return { success: false, error: e.message }
     }
 }
+

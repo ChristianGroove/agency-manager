@@ -1,7 +1,7 @@
-"use client"
+﻿"use client"
 
 import { useEffect, useState } from "react"
-import { getOrganizationCardDetails } from "@/modules/core/organizations/actions"
+import { getOrganizationCardDetails } from "@/modules/core/organizations/organization-actions"
 import { cn } from "@/lib/utils"
 import { Building2, ChevronRight, Crown, Sparkles } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -105,7 +105,7 @@ export function OrganizationCard({ orgId, collapsed, className }: OrganizationCa
                         import("@/modules/core/auth/actions").then(mod => mod.logout())
                     }}
                     className="p-1.5 rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors z-10"
-                    title="Cerrar Sesión"
+                    title="Cerrar SesiÃ³n"
                 >
                     <LogOut className="w-4 h-4" />
                 </div>
@@ -115,3 +115,4 @@ export function OrganizationCard({ orgId, collapsed, className }: OrganizationCa
 }
 
 import { LogOut } from "lucide-react"
+

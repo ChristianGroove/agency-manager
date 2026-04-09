@@ -13,7 +13,7 @@ import {
     MessageSquare, Zap, Clock, AlertCircle, RefreshCw
 } from "lucide-react"
 import { toast } from "sonner"
-import { getTemplates, syncTemplatesFromMeta, MessageTemplate } from "@/modules/core/messaging/template-actions"
+import { MessageTemplate, getTemplates, syncTemplatesFromMeta } from "../actions/templates"
 import { sendTemplateMessage } from "@/modules/core/messaging/send-template-action"
 import { cn } from "@/lib/utils"
 
@@ -140,7 +140,7 @@ export function TemplatePickerSheet({ open, onOpenChange, conversationId, onSent
                 headerParameters: headerParams
             })
 
-            toast.success("Plantilla enviada ✓")
+            toast.success("Plantilla enviada âœ“")
             onOpenChange(false)
             onSent?.()
         } catch (error: any) {
@@ -185,7 +185,7 @@ export function TemplatePickerSheet({ open, onOpenChange, conversationId, onSent
                                         {selectedTemplate ? selectedTemplate.name : "Plantillas WhatsApp"}
                                     </SheetTitle>
                                     <SheetDescription className="text-xs text-muted-foreground mt-0">
-                                        {selectedTemplate ? "Completa las variables y envía" : "Selecciona una plantilla aprobada"}
+                                        {selectedTemplate ? "Completa las variables y envÃ­a" : "Selecciona una plantilla aprobada"}
                                     </SheetDescription>
                                 </div>
                             </div>
@@ -227,12 +227,12 @@ export function TemplatePickerSheet({ open, onOpenChange, conversationId, onSent
                                                     onClick={loadTemplates}
                                                     className="text-xs gap-1"
                                                 >
-                                                    <RefreshCw className="h-3 w-3" /> Reintentar sincronización
+                                                    <RefreshCw className="h-3 w-3" /> Reintentar sincronizaciÃ³n
                                                 </Button>
                                             </div>
                                         ) : (
                                             <p className="text-xs mt-1 text-center max-w-[260px]">
-                                                Sincroniza desde Meta en Settings → Plantillas, o crea una nueva y envíala a aprobación.
+                                                Sincroniza desde Meta en Settings â†’ Plantillas, o crea una nueva y envÃ­ala a aprobaciÃ³n.
                                             </p>
                                         )}
                                     </div>
@@ -333,7 +333,7 @@ export function TemplatePickerSheet({ open, onOpenChange, conversationId, onSent
                                                 </p>
                                             )}
                                             <p className="text-[10px] text-gray-400 text-right mt-1">
-                                                {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} ✓✓
+                                                {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} âœ“âœ“
                                             </p>
                                         </div>
                                     </div>

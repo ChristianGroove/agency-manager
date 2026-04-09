@@ -11,7 +11,7 @@ import { NotificationsCard } from "@/modules/core/preferences/components/notific
 import { ProductivityCard } from "@/modules/core/preferences/components/productivity-card"
 import { DisplayCard } from "@/modules/core/preferences/components/display-card"
 import { useTranslation } from "@/lib/i18n/use-translation"
-import { getCurrentUserPermissions } from "@/modules/core/settings/actions/team-actions"
+import { getCurrentUserPermissions } from "@/modules/core/settings/settings-actions"
 
 interface InboxSettingsSheetProps {
     open: boolean

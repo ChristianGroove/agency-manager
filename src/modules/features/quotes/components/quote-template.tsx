@@ -1,8 +1,8 @@
-
+﻿
 import { Quote, Client } from "@/types"
 import { forwardRef } from "react"
 import { cn } from "@/lib/utils"
-import { getDocumentBranding } from '@/modules/core/settings/actions'
+import { getDocumentBranding } from '@/modules/core/settings/settings-actions'
 import { type DocumentBrandingSettings } from '@/modules/features/billing/types'
 
 interface QuoteTemplateProps {
@@ -47,7 +47,7 @@ export const QuoteTemplate = forwardRef<HTMLDivElement, QuoteTemplateProps>(
                             {settings?.agency_description && <p className="text-xs text-gray-600 font-medium tracking-wide">{settings.agency_description}</p>}
                         </div>
                         <div className="text-right">
-                            <h2 className="text-2xl font-bold text-gray-900 tracking-tight">COTIZACIÓN</h2>
+                            <h2 className="text-2xl font-bold text-gray-900 tracking-tight">COTIZACIÃ“N</h2>
                             <p className="text-lg font-bold text-gray-900 mt-0.5"># {quote.number}</p>
                             <p className="text-xs text-gray-600 mt-1">Fecha: {new Date(quote.date).toLocaleDateString()}</p>
                         </div>
@@ -96,7 +96,7 @@ export const QuoteTemplate = forwardRef<HTMLDivElement, QuoteTemplateProps>(
                     <div className="mb-12 rounded-lg overflow-hidden border border-gray-200">
                         <div className="bg-gray-50 text-gray-700 p-4 grid grid-cols-12 font-bold text-xs uppercase tracking-wider border-b border-gray-200">
                             <div className="col-span-1 text-center">#</div>
-                            <div className="col-span-5">Descripción</div>
+                            <div className="col-span-5">DescripciÃ³n</div>
                             <div className="col-span-2 text-right">Precio Unit.</div>
                             <div className="col-span-2 text-center">Cant.</div>
                             <div className="col-span-2 text-right">Total</div>
@@ -104,7 +104,7 @@ export const QuoteTemplate = forwardRef<HTMLDivElement, QuoteTemplateProps>(
                         <div className="bg-white">
                             {quote.items.length === 0 ? (
                                 <div className="p-8 text-center text-gray-500 italic">
-                                    No hay items en esta cotización.
+                                    No hay items en esta cotizaciÃ³n.
                                 </div>
                             ) : (
                                 quote.items.map((item, index) => (
@@ -133,7 +133,7 @@ export const QuoteTemplate = forwardRef<HTMLDivElement, QuoteTemplateProps>(
                     {/* Terms */}
                     <div className="mt-auto pt-8 border-t border-gray-100">
                         <p className="text-[10px] text-gray-400 text-center leading-relaxed max-w-2xl mx-auto">
-                            {settings?.quote_validity_text || "Esta cotización tiene una validez de 15 días calendario. Los precios están sujetos a cambios después de este periodo."}
+                            {settings?.quote_validity_text || "Esta cotizaciÃ³n tiene una validez de 15 dÃ­as calendario. Los precios estÃ¡n sujetos a cambios despuÃ©s de este periodo."}
                         </p>
                     </div>
                 </div>

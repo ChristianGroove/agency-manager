@@ -1,8 +1,8 @@
-'use server'
+﻿'use server'
 
 import { createClient } from "@/lib/supabase-server"
 import { supabaseAdmin } from "@/lib/supabase-admin"
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { revalidatePath } from "next/cache"
 
 const PAYROLL_PATH = "/cleaning/payroll"
@@ -642,3 +642,4 @@ export async function getOrganizationPayrollStats(startDate: string, endDate: st
         paidCount
     }
 }
+

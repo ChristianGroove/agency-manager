@@ -1,4 +1,4 @@
-import {
+﻿import {
     MemberPermissions,
     FeaturePermissions,
     ModulePermissions,
@@ -22,12 +22,12 @@ import {
 
 /**
  * @deprecated
- * Este sistema de permisos legacy está siendo retirado.
+ * Este sistema de permisos legacy estÃ¡ siendo retirado.
  * Por favor, utiliza el nuevo sistema IAM V2 ubicado en:
  * src/modules/core/iam/permissions.ts
  * src/modules/core/iam/services/role-service.ts
  * 
- * Los roles y permisos ahora se gestionan dinámicamente desde la base de datos
+ * Los roles y permisos ahora se gestionan dinÃ¡micamente desde la base de datos
  * mediante Roles Custom y no mediante constantes hardcoded.
  */
 
@@ -156,7 +156,7 @@ export const DEFAULT_PERMISSIONS_BY_ROLE: Record<string, MemberPermissions> = {
  */
 export const AVAILABLE_MODULES: ModuleDefinition[] = [
     { id: 'crm', label: 'CRM / Clientes', icon: 'Users' },
-    { id: 'invoicing', label: 'Facturación', icon: 'FileText' },
+    { id: 'invoicing', label: 'FacturaciÃ³n', icon: 'FileText' },
     { id: 'projects', label: 'Proyectos', icon: 'FolderKanban' },
     { id: 'support', label: 'Soporte', icon: 'Headphones' },
     { id: 'communications', label: 'Comunicaciones', icon: 'MessageSquare' },
@@ -165,7 +165,7 @@ export const AVAILABLE_MODULES: ModuleDefinition[] = [
     // Cleaning vertical modules
     { id: 'appointments', label: 'Citas', icon: 'Calendar', vertical: ['cleaning'] },
     { id: 'staff', label: 'Personal', icon: 'UserCog', vertical: ['cleaning'] },
-    { id: 'payroll', label: 'Nómina', icon: 'Wallet', vertical: ['cleaning'] },
+    { id: 'payroll', label: 'NÃ³mina', icon: 'Wallet', vertical: ['cleaning'] },
 ]
 
 /**
@@ -184,12 +184,12 @@ export const PERMISSION_CATEGORIES: PermissionCategory[] = [
     },
     {
         id: 'settings',
-        label: 'Configuración',
+        label: 'ConfiguraciÃ³n',
         icon: 'Settings',
         permissions: [
-            { key: 'can_edit_settings', label: 'Editar configuración', description: 'Acceso a configuración general' },
+            { key: 'can_edit_settings', label: 'Editar configuraciÃ³n', description: 'Acceso a configuraciÃ³n general' },
             { key: 'can_edit_branding', label: 'Editar branding', description: 'Puede modificar logos y colores' },
-            { key: 'can_manage_billing', label: 'Gestionar facturación', description: 'Acceso a suscripción y pagos de la plataforma' },
+            { key: 'can_manage_billing', label: 'Gestionar facturaciÃ³n', description: 'Acceso a suscripciÃ³n y pagos de la plataforma' },
         ]
     },
     {
@@ -204,7 +204,7 @@ export const PERMISSION_CATEGORIES: PermissionCategory[] = [
     },
     {
         id: 'invoicing',
-        label: 'Facturación',
+        label: 'FacturaciÃ³n',
         icon: 'FileText',
         permissions: [
             { key: 'can_create_invoices', label: 'Crear facturas' },
@@ -227,7 +227,7 @@ export const PERMISSION_CATEGORIES: PermissionCategory[] = [
         label: 'Reportes',
         icon: 'BarChart3',
         permissions: [
-            { key: 'can_view_reports', label: 'Ver reportes', description: 'Acceso a dashboards y métricas' },
+            { key: 'can_view_reports', label: 'Ver reportes', description: 'Acceso a dashboards y mÃ©tricas' },
             { key: 'can_export_data', label: 'Exportar datos', description: 'Puede descargar reportes en Excel/CSV' },
         ]
     },
@@ -244,8 +244,8 @@ export const CLEANING_PERMISSION_CATEGORIES: PermissionCategory[] = [
         permissions: [
             { key: 'can_manage_appointments', label: 'Gestionar citas' },
             { key: 'can_manage_staff', label: 'Gestionar personal' },
-            { key: 'can_view_payroll', label: 'Ver nómina' },
-            { key: 'can_process_payroll', label: 'Procesar pagos de nómina' },
+            { key: 'can_view_payroll', label: 'Ver nÃ³mina' },
+            { key: 'can_process_payroll', label: 'Procesar pagos de nÃ³mina' },
         ]
     }
 ]

@@ -1,6 +1,6 @@
-import { Suspense } from "react"
+﻿import { Suspense } from "react"
 import { getEffectiveBranding } from "@/modules/core/branding/actions"
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { requireOrgRole } from "@/lib/auth/org-roles"
 import { IdentityDashboard } from "@/modules/core/branding/components/identity-dashboard"
 import { supabaseAdmin } from "@/lib/supabase-admin" // For tier fetching optimization
@@ -53,3 +53,4 @@ export default async function IdentityPage() {
         />
     )
 }
+

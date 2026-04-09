@@ -1,8 +1,8 @@
-"use server"
+﻿"use server"
 
 import { createClient } from "@/lib/supabase-server"
 import { supabaseAdmin } from "@/lib/supabase-admin"
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { revalidatePath } from "next/cache"
 
 /**
@@ -23,11 +23,11 @@ export async function createBrandingUpgradeTransaction() {
         .single()
 
     if (org?.allow_direct_billing === false) {
-        throw new Error("El cobro directo está deshabilitado para esta organización. Por favor contacta a tu proveedor.")
+        throw new Error("El cobro directo estÃ¡ deshabilitado para esta organizaciÃ³n. Por favor contacta a tu proveedor.")
     }
 
     if (org?.branding_tier_id === 'whitelabel') {
-        throw new Error("La organización ya cuenta con Branding Total.")
+        throw new Error("La organizaciÃ³n ya cuenta con Branding Total.")
     }
 
     // 2. Prepare Transaction
@@ -84,3 +84,4 @@ export async function checkUpgradeStatus() {
 
     return org?.branding_tier_id === 'whitelabel'
 }
+

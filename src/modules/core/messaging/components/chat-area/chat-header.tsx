@@ -3,11 +3,11 @@ import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { CheckCircle2, Clock, Archive, Trash2, Phone, Sidebar, X, Check } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { Conversation } from "../../hooks/use-chat-logic"
+import { Conversation } from "@/modules/core/messaging/hooks/use-chat-logic"
 import { useTranslation } from "@/lib/i18n/use-translation"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
-import { completeConversation, snoozeConversation, archiveConversation, deleteConversation } from "../../conversation-actions"
+import { completeConversation, snoozeConversation, archiveConversation, deleteConversation } from "@/modules/core/messaging/conversation-actions"
 
 interface ChatHeaderProps {
     conversation: Conversation | null

@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { saveFAQ } from '@/modules/core/messaging/ai/knowledge-extractor'
+﻿import { NextRequest, NextResponse } from 'next/server'
+import { saveFAQ } from '@/modules/core/messaging/messaging-actions'
 
 export async function POST(req: NextRequest) {
     try {

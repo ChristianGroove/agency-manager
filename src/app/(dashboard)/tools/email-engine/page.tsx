@@ -1,4 +1,4 @@
-import { Suspense } from "react"
+﻿import { Suspense } from "react"
 import { getEmailTemplates } from "@/modules/core/notifications/actions/template-actions"
 import { getSmtpConfig } from "@/modules/core/notifications/actions/smtp-actions"
 import { EmailSettingsPage } from "@/modules/core/notifications/components/email-settings-page"
@@ -8,7 +8,7 @@ import { redirect } from "next/navigation"
 
 export const metadata = {
     title: "Motor de Correos",
-    description: "Gestiona las plantillas de correo electrónico y la conexión SMTP",
+    description: "Gestiona las plantillas de correo electrÃ³nico y la conexiÃ³n SMTP",
 }
 
 export default async function Page() {

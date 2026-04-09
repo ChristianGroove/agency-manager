@@ -1,4 +1,4 @@
-"use server"
+﻿"use server"
 
 import { createClient } from '@/lib/supabase-server'
 import { supabaseAdmin } from "@/lib/supabase-admin"
@@ -65,7 +65,7 @@ export async function updateCartItem(itemId: string, quantity: number) {
 // 5. Search Catalog
 export async function searchCatalog(query: string = '', category?: string, page: number = 0, pageSize: number = 10) {
     // Get current organization
-    const { getCurrentOrganizationId } = await import('@/modules/core/organizations/actions')
+    const { getCurrentOrganizationId } = await import('@/modules/core/organizations/organization-actions')
     const orgId = await getCurrentOrganizationId()
 
     if (!orgId) return { success: false, error: "Unauthorized", data: [], count: 0, hasMore: false }
@@ -92,6 +92,7 @@ export async function sendInteractiveQuote(cartId: string, conversationId: strin
         return { success: true }
     } catch (e: any) {
         console.error("Send Quote Error", e)
-        return { success: false, error: e.message || 'Error al enviar cotización' }
+        return { success: false, error: e.message || 'Error al enviar cotizaciÃ³n' }
     }
 }
+

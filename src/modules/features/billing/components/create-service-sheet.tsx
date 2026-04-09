@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
@@ -39,7 +39,7 @@ import { supabase } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { ServiceCatalogSelector } from "@/modules/features/catalog/components/service-catalog-selector"
-import { logDomainEventAction } from "@/modules/core/logging/actions"
+import { logDomainEventAction } from "@/modules/core/logging/logging-actions"
 import { ServiceRetroactiveModal } from "./service-retroactive-modal"
 import { useTranslation } from "@/lib/i18n/use-translation"
 import * as BillingUtils from "@/lib/billing-utils"
@@ -151,7 +151,7 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
 
     const fetchClients = async () => {
         setIsLoadingClients(true)
-        const { getCurrentOrganizationId } = await import('@/modules/core/organizations/actions')
+        const { getCurrentOrganizationId } = await import('@/modules/core/organizations/organization-actions')
         const orgId = await getCurrentOrganizationId()
 
         if (!orgId) {
@@ -233,7 +233,7 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
         }
 
         // CRITICAL: Get organization context
-        const { getCurrentOrganizationId } = await import('@/modules/core/organizations/actions')
+        const { getCurrentOrganizationId } = await import('@/modules/core/organizations/organization-actions')
         const orgId = await getCurrentOrganizationId()
 
         if (!orgId) return toast.error(t('services.toasts.org_not_found'))
@@ -355,7 +355,7 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
                 {trigger || (
                     <Button className="h-9 px-4 bg-brand-pink hover:bg-brand-pink/90 shadow-md text-white border-0">
                         <Plus className="mr-2 h-4 w-4" />
-                        {serviceToEdit ? 'Editar Servicio' : 'Añadir Servicio'}
+                        {serviceToEdit ? 'Editar Servicio' : 'AÃ±adir Servicio'}
                     </Button>
                 )}
             </SheetTrigger>
@@ -521,7 +521,7 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
                                                     <Input type="number" value={unitPrice || ''} onChange={e => setUnitPrice(parseFloat(e.target.value) || 0)} className="pl-7 bg-white" />
                                                 </div>
                                             </div>
-                                            <div className="col-span-2 text-center pb-2 text-gray-400 font-bold">×</div>
+                                            <div className="col-span-2 text-center pb-2 text-gray-400 font-bold">Ã—</div>
                                             <div className="col-span-5 space-y-1">
                                                 <Label>{t('services.form.total')}</Label>
                                                 <div className="h-10 px-3 flex items-center justify-end font-bold text-gray-900 bg-gray-100 rounded-md">
@@ -565,7 +565,7 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
                                                     placeholder={t('services.form.portal_detailed_placeholder')}
                                                     className="w-full min-h-[100px] px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-pink/20 resize-none"
                                                 />
-                                                <p className="text-xs text-gray-500">Se mostrará en el reverso de la card del portal</p>
+                                                <p className="text-xs text-gray-500">Se mostrarÃ¡ en el reverso de la card del portal</p>
                                             </div>
 
                                             <div className="space-y-2">
@@ -592,7 +592,7 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
                                                                 }}
                                                                 className="shrink-0"
                                                             >
-                                                                ✕
+                                                                âœ•
                                                             </Button>
                                                         </div>
                                                     ))}
@@ -619,7 +619,7 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
                                                                     newHighlights[idx] = e.target.value
                                                                     setFormData({ ...formData, portal_highlights: newHighlights })
                                                                 }}
-                                                                placeholder="Ej. Más vendido"
+                                                                placeholder="Ej. MÃ¡s vendido"
                                                                 className="text-sm"
                                                             />
                                                             <Button
@@ -631,7 +631,7 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
                                                                 }}
                                                                 className="shrink-0"
                                                             >
-                                                                ✕
+                                                                âœ•
                                                             </Button>
                                                         </div>
                                                     ))}
@@ -728,4 +728,5 @@ export function CreateServiceSheet({ clientId, clientName, onSuccess, trigger, o
         </Sheet >
     )
 }
+
 

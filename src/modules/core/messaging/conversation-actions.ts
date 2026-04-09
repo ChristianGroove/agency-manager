@@ -1,7 +1,7 @@
-"use server"
+﻿"use server"
 
 import { createClient } from "@/lib/supabase-server"
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { revalidatePath } from "next/cache"
 import { messagingCleanupService } from "./cleanup-service"
 
@@ -331,3 +331,4 @@ async function clearLeadTagsOnEvent(conversationId: string) {
         await clearContactTagsAction(conv.lead_id)
     }
 }
+

@@ -9,7 +9,7 @@ function debugLog(step: string, data: any) {
     console.log(`[BRANDING_DEBUG] ${step}:`, JSON.stringify(data, null, 2))
 }
 import { revalidatePath } from "next/cache"
-// import { getActiveModules } from "@/modules/core/saas/actions"
+// import { getActiveModules } from "@/modules/core/saas/saas-actions"
 import { requireOrgRole } from "@/lib/auth/org-roles"
 
 import { BrandingConfig } from "@/types/branding"
@@ -233,7 +233,7 @@ export async function uploadBrandingAsset(formData: FormData) {
     }
 
     // Verify Admin for uploads
-    const { getCurrentOrganizationId } = await import('@/modules/core/organizations/actions')
+    const { getCurrentOrganizationId } = await import('@/modules/core/organizations/actions/crud')
     const orgId = await getCurrentOrganizationId()
     if (orgId) {
         // Only check if inside org context. If global profile upload, maybe skip?
@@ -249,12 +249,12 @@ export async function uploadBrandingAsset(formData: FormData) {
     const bucket = formData.get("bucket") as string || "branding" // Default to branding bucket
 
     if (!file) {
-        throw new Error("No se ha seleccionado ningún archivo")
+        throw new Error("No se ha seleccionado ningÃºn archivo")
     }
 
     // 2. Validate File
     if (file.size > 5 * 1024 * 1024) throw new Error("El archivo no debe superar 5MB")
-    if (!file.type.startsWith("image/")) throw new Error("Solo imágenes son permitidas")
+    if (!file.type.startsWith("image/")) throw new Error("Solo imÃ¡genes son permitidas")
 
     // 3. Upload to Storage
     const fileExt = file.name.split(".").pop()
@@ -292,7 +292,7 @@ export async function updateOrganizationBranding(settings: BrandingConfig) {
         throw new Error("Unauthorized")
     }
 
-    const { getCurrentOrganizationId } = await import('@/modules/core/organizations/actions')
+    const { getCurrentOrganizationId } = await import('@/modules/core/organizations/actions/crud')
     const orgId = await getCurrentOrganizationId()
     if (!orgId) {
         throw new Error("Organization not found")
@@ -403,3 +403,4 @@ export async function updateOrganizationBranding(settings: BrandingConfig) {
     revalidatePath("/platform/adn")
     return { success: true }
 }
+

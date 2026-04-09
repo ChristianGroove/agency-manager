@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect } from 'react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/ui/sheet'
@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Input } from '@/components/ui/input'
 import { Search, UserPlus, Check } from 'lucide-react'
-import { getOrganizationMembers } from '@/modules/core/settings/actions/team-actions'
+import { getOrganizationMembers } from '@/modules/core/settings/settings-actions'
 import { assignLeads } from '../services/logic/crm-advanced-actions'
 import { toast } from 'sonner'
 // Removed useQuery dependency to avoid install issues, using useEffect
@@ -191,7 +191,7 @@ export function AssignLeadSheet({ open, onClose, leadIds, currentAssigneeId, onS
                             disabled={assigning}
                             className="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white shadow-xl shadow-blue-200 dark:shadow-none"
                         >
-                            {assigning ? 'Asignando...' : 'Confirmar Asignación'}
+                            {assigning ? 'Asignando...' : 'Confirmar AsignaciÃ³n'}
                         </Button>
                     </SheetFooter>
                 </div>

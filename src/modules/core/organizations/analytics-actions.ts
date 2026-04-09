@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase-server"
 import { supabaseAdmin } from "@/lib/supabase-admin"
-import { getCurrentOrganizationId } from "./actions"
+import { getCurrentOrganizationId } from "./actions/crud"
 import { isSuperAdmin } from "@/lib/auth/platform-roles"
 
 /**

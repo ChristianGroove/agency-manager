@@ -5,6 +5,7 @@ import { SupabaseClient } from "@supabase/supabase-js"
 import { normalizePhone } from "@/lib/normalize-phone"
 import { ChannelResolver, ConnectionMatch } from "@/modules/core/messaging/channel-resolver"
 import { BusinessHoursEngine } from "@/lib/business-hours"
+import { MessagingPersistence } from "./services/persistence"
 
 export class InboxService {
 
@@ -244,36 +245,7 @@ export class InboxService {
         return { conversation, lead, isNewLead }
     }
 
-    /**
-     * Save an outbound message sent by an agent
-     */
-    async saveOutboundMessage(conversationId: string, content: any, externalId: string | null = null, sender: string = 'Agent', id?: string, channel: string = 'whatsapp') {
-        const supabase = supabaseAdmin
-
-        const { error } = await supabase.from('messages').insert({
-            id: id, // Optional explicit ID
-            conversation_id: conversationId,
-            direction: 'outbound',
-            channel: channel,
-            content: typeof content === 'string' ? { type: 'text', text: content } : content,
-            status: 'sent',
-            external_id: externalId,
-            sender: sender,
-            metadata: {
-                sender_type: sender === 'System' ? 'bot' : 'human'
-            }
-        })
-
-        if (error) {
-            console.error('[InboxService] Failed to save outbound message:', error)
-            throw error
-        }
-
-        // Update triggers automatically via DB
-        // The DB trigger 'update_conversation_last_message' updates last_message, 
-        // but does NOT increment unread_count for outbound (checked trigger definition).
-        console.log(`[InboxService] Outbound message saved, trigger will update convo ${conversationId} `)
-    }
+    // ... (rest of update logic)
 
     /**
      * Handle automation logic (Pipeline, Working Hours, Auto-Reply, Welcome Message)
@@ -364,27 +336,7 @@ export class InboxService {
         }
     }
 
-    /**
-     * Check if a conversation has an active 24h session window (Meta policies)
-     * A window is active if the last INBOUND message was received less than 24h ago.
-     */
-    async hasActiveSessionWindow(conversationId: string): Promise<boolean> {
-        const { data: lastInbound, error } = await supabaseAdmin
-            .from('messages')
-            .select('created_at')
-            .eq('conversation_id', conversationId)
-            .eq('direction', 'inbound')
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .single();
-
-        if (error || !lastInbound) return false;
-
-        const lastMessageDate = new Date(lastInbound.created_at);
-        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-
-        return lastMessageDate > twentyFourHoursAgo;
-    }
+    // Method moved to MessagingPersistence
 
     private isWithinWorkingHours(config: any, timezone: string = 'America/Bogota'): boolean {
         return BusinessHoursEngine.isOnline(config, new Date());

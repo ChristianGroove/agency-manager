@@ -1,6 +1,6 @@
-import { supabaseAdmin } from "@/lib/supabase-admin"
+﻿import { supabaseAdmin } from "@/lib/supabase-admin"
 import { PipelineProcessMap } from "@/types/process-engine"
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 
 export class ProcessMapper {
 
@@ -84,3 +84,4 @@ export class ProcessMapper {
         }
     }
 }
+

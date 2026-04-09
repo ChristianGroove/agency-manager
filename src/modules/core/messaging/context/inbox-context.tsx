@@ -115,7 +115,7 @@ export function InboxProvider({ children }: { children: ReactNode }) {
         if (isTemplatesLoading) return;
         setIsTemplatesLoading(true)
         try {
-            const { getTemplates } = await import("../template-actions")
+            const { getTemplates } = await import("../actions/templates")
             const all = await getTemplates()
             setTemplates(all)
         } finally {

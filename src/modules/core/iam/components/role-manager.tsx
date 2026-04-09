@@ -16,7 +16,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { toast } from 'sonner';
-import { createRole, deleteRole } from "../actions"; // We'll need a server action wrapper
+import { createRole, deleteRole } from "../actions/role-actions"; // We'll need a server action wrapper
 
 interface RoleManagerProps {
     initialRoles: Role[];

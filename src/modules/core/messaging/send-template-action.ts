@@ -1,9 +1,9 @@
 "use server"
 
 import { createClient } from "@/lib/supabase-server"
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/actions/crud"
 import { revalidatePath } from "next/cache"
-import { inboxService } from "./inbox-service"
+import { MessagingPersistence } from "./services/persistence"
 
 /**
  * Send a WhatsApp HSM Template Message via Meta Graph API v24.0
@@ -154,7 +154,7 @@ export async function sendTemplateMessage(input: {
     console.log('[sendTemplateMessage] Success:', messageId)
 
     // 7. Build preview text for DB storage
-    let previewText = `📋 Plantilla: ${input.templateName}`
+    let previewText = `ðŸ“‹ Plantilla: ${input.templateName}`
     if (input.bodyParameters.length > 0) {
         previewText += ` (${input.bodyParameters.join(', ')})`
     }
@@ -169,15 +169,15 @@ export async function sendTemplateMessage(input: {
         text: previewText
     }
 
-    await inboxService.saveOutboundMessage(
-        input.conversationId,
-        messageContent,
-        messageId,
-        user.email || 'Agent',
-        undefined,
-        'whatsapp'
-    )
+    await MessagingPersistence.saveOutboundMessage({
+        conversationId: input.conversationId,
+        content: messageContent,
+        sender: user.email || 'Agent',
+        messageId: messageId,
+        channel: 'whatsapp'
+    })
 
     revalidatePath('/inbox')
     return { success: true, messageId }
 }
+

@@ -1,7 +1,7 @@
-'use server'
+﻿'use server'
 
 import { createClient } from "@/lib/supabase-server"
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { ServiceCatalogItem } from "@/types"
 
 export async function getActiveServices() {
@@ -66,3 +66,4 @@ export async function getClients() {
     if (error) return []
     return data
 }
+

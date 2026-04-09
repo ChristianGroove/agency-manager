@@ -2,8 +2,8 @@
 
 import { useRef, useState, useEffect } from "react"
 import { VirtuosoHandle } from "react-virtuoso"
-import { useChatLogic } from "../../hooks/use-chat-logic"
-import { useChatActions } from "../../hooks/use-chat-actions"
+import { useChatLogic } from "@/modules/core/messaging/hooks/use-chat-logic"
+import { useChatActions } from "@/modules/core/messaging/hooks/use-chat-actions"
 import { ChatHeader } from "./chat-header"
 import { MessageList } from "./message-list"
 import { ChatInput } from "./chat-input"

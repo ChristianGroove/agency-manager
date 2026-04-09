@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase-server"
+﻿import { createClient } from "@/lib/supabase-server"
 import { revalidatePath } from "next/cache"
 
 /**
@@ -42,7 +42,7 @@ export async function registerBillableEvent(params: {
     const supabase = supabaseAdmin
 
     const { data: org, error: orgError } = await supabase.from('organizations').select('id, acquired_by_reseller_id, acquisition_date').eq('id', params.organization_id).single()
-    if (orgError || !org) return { success: false, error: 'Organización no encontrada' }
+    if (orgError || !org) return { success: false, error: 'OrganizaciÃ³n no encontrada' }
 
     let resellerChain: { org_id: string; level: number }[] = []
     if (org.acquired_by_reseller_id) {
@@ -132,7 +132,7 @@ export async function approveSettlement(settlement_id: string, userId: string) {
 }
 
 export async function getRevenueMetrics(reseller_org_id?: string) {
-    const orgId = reseller_org_id || await (await import("@/modules/core/organizations/actions")).getCurrentOrganizationId()
+    const orgId = reseller_org_id || await (await import("@/modules/core/organizations/organization-actions")).getCurrentOrganizationId()
     if (!orgId) return { total_clients: 0, total_revenue: 0, total_commission_earned: 0, pending_commission: 0, clients_by_phase: {} }
     
     const supabase = await createClient()
@@ -168,3 +168,4 @@ export async function getRevenueMetrics(reseller_org_id?: string) {
 
     return { total_clients: totalClients || 0, total_revenue: totalRevenue, total_commission_earned: totalCommissionEarned, pending_commission: pendingCommission, clients_by_phase: clientsByPhase }
 }
+

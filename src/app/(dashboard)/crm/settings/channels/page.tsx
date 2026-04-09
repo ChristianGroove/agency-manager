@@ -1,4 +1,4 @@
-import { Suspense } from "react"
+﻿import { Suspense } from "react"
 import { getChannels } from "@/modules/core/channels/actions"
 import { ChannelsList } from "@/modules/core/channels/components/channels-list"
 import { getDictionary } from "@/lib/i18n/get-dictionary"
@@ -12,8 +12,8 @@ export async function generateMetadata() {
 }
 
 import { getPipelineStages } from "@/modules/features/crm/services/logic/pipeline-actions"
-import { getOrganizationMembers } from "@/modules/core/settings/actions/team-actions"
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getOrganizationMembers } from "@/modules/core/settings/settings-actions"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 
 export default async function ChannelsPage() {
     const [channels, pipelineStages, agents, organizationId] = await Promise.all([
@@ -34,3 +34,4 @@ export default async function ChannelsPage() {
         </Suspense>
     )
 }
+

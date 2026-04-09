@@ -1,6 +1,6 @@
 import { inngest } from "@/lib/inngest/client"
 import { supabaseAdmin } from "@/lib/supabase-admin"
-import { registerBillableEvent } from "@/modules/core/revenue/actions"
+import { registerBillableEvent } from "@/modules/billing/platform/revenue/actions"
 import type { BillableEventType } from "@/types/revenue"
 
 /**

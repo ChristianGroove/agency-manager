@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { KnowledgeEntry, getKnowledgeBase, deleteKnowledgeEntry, upsertKnowledgeEntry } from "@/modules/core/knowledge/actions"
+import { KnowledgeEntry, getKnowledgeBase, deleteKnowledgeEntry, upsertKnowledgeEntry } from "@/modules/core/knowledge/knowledge-actions"
 import { KnowledgeStats } from "@/modules/core/knowledge/components/knowledge-stats"
 import { KnowledgeList } from "@/modules/core/knowledge/components/knowledge-list"
 import { KnowledgeSheet } from "@/modules/core/knowledge/components/knowledge-sheet"

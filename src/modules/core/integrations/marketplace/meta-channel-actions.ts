@@ -1,6 +1,6 @@
-"use server"
+﻿"use server"
 
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { requireOrgRole } from "@/lib/auth/org-roles"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { revalidatePath } from "next/cache"
@@ -152,7 +152,7 @@ export async function activateMetaChannel(input: ActivateInput): Promise<{ succe
             if (existingChannel.status === 'active') {
                 return {
                     success: false,
-                    error: `Este canal ya está activado`
+                    error: `Este canal ya estÃ¡ activado`
                 };
             }
 
@@ -259,3 +259,4 @@ export async function deactivateMetaChannel(channelId: string): Promise<{ succes
         return { success: false, error: error.message }
     }
 }
+

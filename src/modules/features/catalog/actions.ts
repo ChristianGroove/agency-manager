@@ -1,7 +1,7 @@
-'use server'
+﻿'use server'
 
 import { createClient } from "@/lib/supabase-server"
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { revalidatePath } from "next/cache"
 import { ServiceCatalogItem } from "@/types"
 import { getCurrentOrganizationApp } from "@/modules/core/saas/app-data-actions"
@@ -104,7 +104,7 @@ export async function updateCatalogItem(id: string, data: Partial<ServiceCatalog
         .single()
 
     if (error) {
-        console.error("❌ UPDATE CATALOG ITEM ERROR:", JSON.stringify(error, null, 2))
+        console.error("âŒ UPDATE CATALOG ITEM ERROR:", JSON.stringify(error, null, 2))
         throw error
     }
     revalidatePath('/portfolio')
@@ -194,5 +194,6 @@ export async function getCatalogItems() {
     // Order by resolved category name
     return itemsWithName.sort((a, b) => (a.category || '').localeCompare(b.category || '')) as ServiceCatalogItem[]
 }
+
 
 

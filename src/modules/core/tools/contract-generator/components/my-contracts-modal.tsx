@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { FolderOpen, FileText, Download, Trash2, Loader2, RefreshCw, ExternalLink } from "lucide-react"
-import { getContracts, deleteContract } from "../actions"
+import { getContracts, deleteContract } from "@/modules/core/tools/contract-generator/contract-actions"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { format } from "date-fns"

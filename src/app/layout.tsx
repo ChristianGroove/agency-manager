@@ -1,7 +1,7 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { getSettings } from "@/modules/core/settings/actions";
+import { getSettings } from "@/modules/core/settings/settings-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -16,19 +16,19 @@ const geistMono = Geist_Mono({
 });
 
 import { getEffectiveBranding } from "@/modules/core/branding/actions"; // Import new action
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"; // Need ID
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"; // Need ID
 
 export async function generateMetadata(): Promise<Metadata> {
   // PERF: Graceful fallback - don't block render on branding fetch errors
   try {
     const orgId = await getCurrentOrganizationId();
     if (!orgId) {
-      return { title: 'Pixy', description: 'Sistema de gestión empresarial' };
+      return { title: 'Pixy', description: 'Sistema de gestiÃ³n empresarial' };
     }
     const branding = await getEffectiveBranding(orgId);
     return {
       title: branding.name,
-      description: `Sistema de gestión para ${branding.name}`,
+      description: `Sistema de gestiÃ³n para ${branding.name}`,
       icons: {
         icon: (branding.logos.favicon || "/pixy-isotipo.png") + "?v=2",
         shortcut: (branding.logos.favicon || "/pixy-isotipo.png") + "?v=2",
@@ -37,7 +37,7 @@ export async function generateMetadata(): Promise<Metadata> {
     };
   } catch (e) {
     console.error('[Metadata] Error fetching branding, using defaults:', e);
-    return { title: 'Pixy', description: 'Sistema de gestión empresarial' };
+    return { title: 'Pixy', description: 'Sistema de gestiÃ³n empresarial' };
   }
 }
 
@@ -93,3 +93,4 @@ export default async function RootLayout({
     </html>
   );
 }
+

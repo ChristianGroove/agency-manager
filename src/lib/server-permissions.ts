@@ -1,5 +1,5 @@
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
-import { getOrganizationModules } from "@/modules/core/organizations/actions"
+﻿import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
+import { getOrganizationModules } from "@/modules/core/organizations/organization-actions"
 import { redirect } from "next/navigation"
 
 export async function requireModule(moduleKey: string) {
@@ -33,3 +33,4 @@ export async function hasFeature(featureKey: string): Promise<boolean> {
 
     return modules.includes(featureKey)
 }
+

@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useEffect, useState, useCallback, useMemo } from "react"
 import { Lead, Emitter } from "@/types"
@@ -6,7 +6,7 @@ import { convertLeadToClientAction as convertLeadToClient, getLeadsAction as get
 import { PipelineStage } from "../types"
 import { getEmitters } from "@/modules/core/settings/emitters-actions"
 import { getChannels } from "@/modules/core/channels/actions"
-import { getCurrentUserPermissions } from "@/modules/core/settings/actions/team-actions"
+import { getCurrentUserPermissions } from "@/modules/core/settings/settings-actions"
 import { Channel } from "@/modules/core/channels/types"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card } from "@/components/ui/card"
@@ -122,7 +122,7 @@ export function CRMDashboard({
             const perms = await getCurrentUserPermissions()
 
             const role = perms?.role?.toLowerCase();
-            const isGlobalRole = role === 'owner' || role === 'dueño' || role === 'admin' || role === 'administrador';
+            const isGlobalRole = role === 'owner' || role === 'dueÃ±o' || role === 'admin' || role === 'administrador';
             const hasGlobalView = isGlobalRole || perms?.permissions?.all === true || 
                                  perms?.permissions?.['inbox.conversations.view_all'] === true
             const isRestricted = !hasGlobalView
@@ -169,7 +169,7 @@ export function CRMDashboard({
         if (latestQuote) {
             setShareQuoteId(latestQuote.id)
         } else {
-            toast.error("Este lead no tiene una cotización vinculada")
+            toast.error("Este lead no tiene una cotizaciÃ³n vinculada")
         }
     }, [])
 
@@ -186,7 +186,7 @@ export function CRMDashboard({
     } = useLeadFilters(leads)
 
     const handleConvertToClient = useCallback(async (leadId: string) => {
-        const confirmed = confirm("¿Convertir este lead a cliente activo?")
+        const confirmed = confirm("Â¿Convertir este lead a cliente activo?")
         if (!confirmed) return
 
         const res = await convertLeadToClient(leadId)
@@ -200,7 +200,7 @@ export function CRMDashboard({
     }, [loadData, router])
 
     const handleMarkLost = useCallback(async (leadId: string) => {
-        const confirmed = confirm("¿Marcar este lead como perdido?")
+        const confirmed = confirm("Â¿Marcar este lead como perdido?")
         if (!confirmed) return
 
         const res = await updateLeadStatus(leadId, 'lost')
@@ -375,7 +375,7 @@ export function CRMDashboard({
                     {/* Standardized Header */}
                     <SectionHeader
                         title="Pipeline"
-                        subtitle="Gestión de prospectos y ciclo de ventas"
+                        subtitle="GestiÃ³n de prospectos y ciclo de ventas"
                         icon={Kanban}
                         action={
                             <div className="flex items-center gap-2">
@@ -435,7 +435,7 @@ export function CRMDashboard({
                                     variant="outline"
                                     size="icon"
                                     onClick={() => setAnalyticsSheetOpen(true)}
-                                    title="Ver Analítica"
+                                    title="Ver AnalÃ­tica"
                                     className="h-9 w-9"
                                 >
                                     <BarChart3 className="h-4 w-4" />
@@ -449,7 +449,7 @@ export function CRMDashboard({
                                 <Button variant="outline" size="icon" onClick={() => setSettingsSheetOpen(true)} title="Configurar Pipeline" className="h-9 w-9">
                                     <Settings className="h-4 w-4" />
                                 </Button>
-                                <Button variant="outline" size="icon" onClick={() => setManageSheetOpen(true)} title="Gestión de Leads" className="h-9 w-9 text-slate-600 dark:text-slate-300">
+                                <Button variant="outline" size="icon" onClick={() => setManageSheetOpen(true)} title="GestiÃ³n de Leads" className="h-9 w-9 text-slate-600 dark:text-slate-300">
                                     <Wrench className="h-4 w-4" />
                                 </Button>
                                 <Button onClick={() => setCreateSheetOpen(true)} size="sm" className="h-9 bg-brand-pink hover:bg-brand-pink/90 text-white shadow-md shadow-pink-500/20">
@@ -659,7 +659,7 @@ export function CRMDashboard({
                     onSuccess={() => {
                         loadData()
                         setQuoteSheetOpen(false)
-                        toast.success('Cotización creada y vinculada al lead')
+                        toast.success('CotizaciÃ³n creada y vinculada al lead')
                     }}
                 />
 

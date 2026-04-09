@@ -1,7 +1,7 @@
-"use server"
+﻿"use server"
 
 import { createClient } from "@/lib/supabase-server"
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { revalidatePath } from "next/cache"
 
 export type SidebarContact = {
@@ -43,7 +43,7 @@ export async function getSidebarContacts(query: string = ""): Promise<SidebarCon
             .from('leads')
             .select('id, name, phone, email, created_at, company_name, contact_type')
             .eq('organization_id', orgId)
-            .eq('contact_type', 'client') // FIltrar quirúrgicamente para mostrar solo clientes en este tab
+            .eq('contact_type', 'client') // FIltrar quirÃºrgicamente para mostrar solo clientes en este tab
             .is('deleted_at', null)
             .not('phone', 'is', null) // Only contacts with phone
             .neq('phone', '')         // Only contacts with non-empty phone
@@ -79,3 +79,4 @@ export async function getSidebarContacts(query: string = ""): Promise<SidebarCon
         return []
     }
 }
+

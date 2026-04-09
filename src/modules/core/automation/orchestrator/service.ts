@@ -1,9 +1,9 @@
-'use server';
+﻿'use server';
 
 import { OrchestratorResponseSchema, GeneratedNode, GeneratedEdge } from './schema';
 import { validatePromptContext, checkOrchestratorRateLimit } from './context-guard';
 import { getLayoutedElements } from '../utils/layout-utils';
-import { getCurrentOrganizationId } from '@/modules/core/organizations/actions';
+import { getCurrentOrganizationId } from '@/modules/core/organizations/organization-actions';
 import { Node, Edge } from '@xyflow/react';
 
 export interface OrchestratorResult {
@@ -34,7 +34,7 @@ export async function orchestrateWorkflow(
     if (!organizationId) {
         return {
             success: false,
-            error: 'No se pudo identificar tu organización. Por favor recarga la página.'
+            error: 'No se pudo identificar tu organizaciÃ³n. Por favor recarga la pÃ¡gina.'
         };
     }
 
@@ -43,7 +43,7 @@ export async function orchestrateWorkflow(
     if (!rateLimit.allowed) {
         return {
             success: false,
-            error: `Has alcanzado el límite de generaciones. Intenta de nuevo en ${Math.ceil(rateLimit.resetInSeconds / 60)} minutos.`,
+            error: `Has alcanzado el lÃ­mite de generaciones. Intenta de nuevo en ${Math.ceil(rateLimit.resetInSeconds / 60)} minutos.`,
             rateLimitInfo: { remaining: 0, resetInSeconds: rateLimit.resetInSeconds }
         };
     }
@@ -77,7 +77,7 @@ export async function orchestrateWorkflow(
             console.error('[Orchestrator] Schema validation failed:', parsed.error.issues);
             return {
                 success: false,
-                error: 'La IA generó una respuesta inválida. Intenta reformular tu descripción de forma más clara.',
+                error: 'La IA generÃ³ una respuesta invÃ¡lida. Intenta reformular tu descripciÃ³n de forma mÃ¡s clara.',
                 rateLimitInfo: { remaining: rateLimit.remaining, resetInSeconds: rateLimit.resetInSeconds }
             };
         }
@@ -154,10 +154,10 @@ function validateWorkflowLogic(workflow: { nodes: GeneratedNode[]; edges: Genera
     const nodeIds = new Set(workflow.nodes.map(n => n.id));
     for (const edge of workflow.edges) {
         if (!nodeIds.has(edge.source)) {
-            errors.push(`Conexión inválida: origen '${edge.source}' no existe`);
+            errors.push(`ConexiÃ³n invÃ¡lida: origen '${edge.source}' no existe`);
         }
         if (!nodeIds.has(edge.target)) {
-            errors.push(`Conexión inválida: destino '${edge.target}' no existe`);
+            errors.push(`ConexiÃ³n invÃ¡lida: destino '${edge.target}' no existe`);
         }
     }
 
@@ -170,7 +170,7 @@ function validateWorkflowLogic(workflow: { nodes: GeneratedNode[]; edges: Genera
 
     for (const node of workflow.nodes) {
         if (node.type !== 'trigger' && !connectedNodes.has(node.id)) {
-            errors.push(`Nodo '${node.label}' no está conectado al flujo`);
+            errors.push(`Nodo '${node.label}' no estÃ¡ conectado al flujo`);
         }
     }
 
@@ -205,3 +205,4 @@ function transformEdgesToReactFlow(edges: GeneratedEdge[]): Edge[] {
         animated: true,
     }));
 }
+

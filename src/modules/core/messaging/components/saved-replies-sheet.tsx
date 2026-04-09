@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, useRef } from "react"
-import { MessageTemplate, getTemplates, createTemplate, updateTemplate, deleteTemplate, TemplateComponent } from "../template-actions"
+import { MessageTemplate, getTemplates, createTemplate, updateTemplate, deleteTemplate, TemplateComponent } from "../actions/templates"
 import { extractMetadata, COLORS, ICONS } from "../template-utils"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
@@ -13,7 +13,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { Label } from "@/components/ui/label"
-import { refineDraftContent } from "../ai/actions"
+import { refineDraftContent } from "../actions/ai"
 import dynamic from "next/dynamic"
 import { useTranslation } from "@/lib/i18n/use-translation"
 

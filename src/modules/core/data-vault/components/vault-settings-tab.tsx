@@ -14,7 +14,7 @@ import {
     TableRow,
 } from "@/components/ui/table"
 import { Loader2, Shield, HardDrive, Download, Trash2, RefreshCcw, Lock } from "lucide-react"
-import { createSnapshot, deleteSnapshot, restoreSnapshot, updateVaultConfig } from "../actions"
+import { createSnapshot, deleteSnapshot, restoreSnapshot, updateVaultConfig } from "../data-vault-actions"
 import { DataSnapshot } from "../types"
 import { formatDistanceToNow } from "date-fns"
 import { es } from "date-fns/locale"

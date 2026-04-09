@@ -1,7 +1,7 @@
-import { createClient } from "@/lib/supabase-server"
+﻿import { createClient } from "@/lib/supabase-server"
 import { Quote } from "@/types"
 import { normalizePhone } from "@/lib/normalize-phone"
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 
 /**
  * Service Layer for Quotes Module
@@ -224,7 +224,7 @@ export async function getPublicQuote(id: string) {
 
     if (error || !quote) {
       console.error('[QuotesService.getPublicQuote] error:', error)
-      return { success: false, error: "Cotización no encontrada o inválida" }
+      return { success: false, error: "CotizaciÃ³n no encontrada o invÃ¡lida" }
     }
 
     const { data: settings } = await supabaseAdmin
@@ -241,7 +241,7 @@ export async function getPublicQuote(id: string) {
     return { success: true, data: enhancedQuote }
   } catch (error: any) {
     console.error('[QuotesService.getPublicQuote] Exception:', error)
-    return { success: false, error: "Error de servidor al cargar la cotización" }
+    return { success: false, error: "Error de servidor al cargar la cotizaciÃ³n" }
   }
 }
 
@@ -359,16 +359,16 @@ export async function sendQuoteViaWhatsApp(quoteId: string, targetPhone?: string
       .eq('organization_id', orgId)
       .single()
 
-    if (quoteError || !quote) return { success: false, error: "Cotización no encontrada" }
+    if (quoteError || !quote) return { success: false, error: "CotizaciÃ³n no encontrada" }
 
     const phone = targetPhone || quote.client?.phone || quote.lead?.phone
-    if (!phone) return { success: false, error: "No se encontró un número de teléfono para enviar" }
+    if (!phone) return { success: false, error: "No se encontrÃ³ un nÃºmero de telÃ©fono para enviar" }
 
     const name = quote.client?.name || quote.lead?.name || "Cliente"
     const origin = process.env.NEXT_PUBLIC_APP_URL || "https://pixy-crm.vercel.app"
     const publicLink = `${origin}/quote/${quote.id}`
 
-    const { sendMessage } = await import("@/modules/core/messaging/actions")
+    const { sendMessage } = await import("@/modules/core/messaging/messaging-actions")
 
     let leadId = quote.lead_id
     if (!leadId && quote.client_id) {
@@ -411,7 +411,7 @@ export async function sendQuoteViaWhatsApp(quoteId: string, targetPhone?: string
         if (newLead) leadId = newLead.id
       }
 
-      if (!leadId) return { success: false, error: "No se pudo crear el contacto para el envío" }
+      if (!leadId) return { success: false, error: "No se pudo crear el contacto para el envÃ­o" }
 
       const { data: newConv, error: createError } = await supabase.from('conversations').insert({
         organization_id: orgId,
@@ -427,9 +427,9 @@ export async function sendQuoteViaWhatsApp(quoteId: string, targetPhone?: string
       conversationId = newConv.id
     }
 
-    if (!conversationId) return { success: false, error: "Error preparando la conversación" }
+    if (!conversationId) return { success: false, error: "Error preparando la conversaciÃ³n" }
 
-    const message = `Hola ${name}, te comparto tu cotización #${quote.number} por valor de $${quote.total.toLocaleString()}. Puedes verla aquí: ${publicLink}`
+    const message = `Hola ${name}, te comparto tu cotizaciÃ³n #${quote.number} por valor de $${quote.total.toLocaleString()}. Puedes verla aquÃ­: ${publicLink}`
     const result = await sendMessage(conversationId, {
       type: 'text',
       text: message
@@ -438,10 +438,11 @@ export async function sendQuoteViaWhatsApp(quoteId: string, targetPhone?: string
     if (result.success) {
       return { success: true, message: "Enviado correctamente", conversationId }
     } else {
-      return { success: false, error: "Fallo el envío del mensaje" }
+      return { success: false, error: "Fallo el envÃ­o del mensaje" }
     }
   } catch (error: any) {
     console.error("[QuotesService.sendQuoteViaWhatsApp] Error:", error)
     return { success: false, error: error.message }
   }
 }
+

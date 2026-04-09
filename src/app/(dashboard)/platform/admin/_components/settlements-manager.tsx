@@ -24,8 +24,8 @@ import {
     getAllSettlements,
     approveSettlement,
     getRevenueShareRules
-} from "@/modules/core/revenue/actions"
-import { executeConnectPayout } from "@/modules/core/revenue/stripe-connect"
+} from "@/modules/billing/platform/revenue/actions"
+import { executeConnectPayout } from "@/modules/billing/platform/revenue/stripe-connect"
 
 // Types inferred from actions
 type SettlementBase = Awaited<ReturnType<typeof getAllSettlements>>[number]

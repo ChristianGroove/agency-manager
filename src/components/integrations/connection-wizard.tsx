@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { createConnection } from "@/modules/core/integrations/actions"
+import { createConnection } from "@/modules/core/integrations/integration-actions"
 import { toast } from "sonner"
 import { Loader2, Key, CheckCircle2, Globe, Server } from "lucide-react"
 import { IntegrationProvider } from "./integration-card"

@@ -1,9 +1,9 @@
-"use server"
+﻿"use server"
 
 import { createClient } from "@/lib/supabase-server"
 import { revalidatePath } from "next/cache"
 import { logDomainEvent } from "@/lib/event-logger"
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { Client } from "@/types"
 
 export type CreateProspectInput = {
@@ -133,7 +133,7 @@ export async function getPaginatedClients(page: number = 1, pageSize: number = 5
     })
 
     if (error) {
-        console.error("❌ RPC get_paginated_clients error:", error)
+        console.error("âŒ RPC get_paginated_clients error:", error)
         return { clients: [], totalCount: 0, counts: { all: 0, overdue: 0, urgent: 0, active: 0, inactive: 0 } }
     }
 
@@ -162,3 +162,4 @@ export async function deleteClients(ids: string[]) {
         return { success: false, error: error.message }
     }
 }
+

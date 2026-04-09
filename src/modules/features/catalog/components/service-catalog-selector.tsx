@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useState, useEffect, useMemo } from "react"
 import { Search, Filter, ArrowRight, Check, Loader2 } from "lucide-react"
@@ -10,7 +10,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { supabase } from "@/lib/supabase"
 import { ServiceCatalogItem } from "@/types"
 import { cn } from "@/lib/utils"
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { getCategories, ServiceCategory } from "@/modules/features/catalog/categories-actions"
 
 interface ServiceCatalogSelectorProps {
@@ -18,7 +18,7 @@ interface ServiceCatalogSelectorProps {
     onCancel: () => void
 }
 
-// ✅ Dynamic categories loaded from database - no more hardcoded config!
+// âœ… Dynamic categories loaded from database - no more hardcoded config!
 
 export function ServiceCatalogSelector({ onSelect, onCancel }: ServiceCatalogSelectorProps) {
     const [searchTerm, setSearchTerm] = useState("")
@@ -106,7 +106,7 @@ export function ServiceCatalogSelector({ onSelect, onCancel }: ServiceCatalogSel
             {/* Sidebar Categories */}
             <div className="w-64 bg-gray-50 border-r border-gray-100 flex flex-col">
                 <div className="p-6 pb-4">
-                    <h2 className="text-xl font-bold text-gray-900 tracking-tight">Catálogo</h2>
+                    <h2 className="text-xl font-bold text-gray-900 tracking-tight">CatÃ¡logo</h2>
                     <p className="text-xs text-muted-foreground mt-1">Explora tus servicios</p>
                 </div>
 
@@ -126,7 +126,7 @@ export function ServiceCatalogSelector({ onSelect, onCancel }: ServiceCatalogSel
 
                         {availableCategories.length > 0 ? (
                             <>
-                                <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-3 py-2 mt-4">Categorías</div>
+                                <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-3 py-2 mt-4">CategorÃ­as</div>
                                 {availableCategories.map((catName) => {
                                     // Find category from database
                                     const category = categories.find(c => c.name === catName)
@@ -157,7 +157,7 @@ export function ServiceCatalogSelector({ onSelect, onCancel }: ServiceCatalogSel
                             <div className="text-center py-8 px-4">
                                 <LucideIcons.FolderOpen className="h-8 w-8 mx-auto mb-2 text-gray-300" />
                                 <p className="text-xs text-muted-foreground">
-                                    No hay categorías disponibles.
+                                    No hay categorÃ­as disponibles.
                                 </p>
                                 <p className="text-xs text-muted-foreground mt-1">
                                     Crea tu primer servicio.
@@ -191,7 +191,7 @@ export function ServiceCatalogSelector({ onSelect, onCancel }: ServiceCatalogSel
                     {loading ? (
                         <div className="flex items-center justify-center h-full text-muted-foreground">
                             <Loader2 className="h-6 w-6 animate-spin mr-2" />
-                            Cargando catálogo...
+                            Cargando catÃ¡logo...
                         </div>
                     ) : filteredItems.length === 0 ? (
                         <div className="text-center py-20 text-muted-foreground">
@@ -258,4 +258,5 @@ export function ServiceCatalogSelector({ onSelect, onCancel }: ServiceCatalogSel
         </div>
     )
 }
+
 

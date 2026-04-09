@@ -1,7 +1,7 @@
-"use server"
+﻿"use server"
 
 import { createClient } from "@/lib/supabase-server"
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { encrypt } from "./encryption"
 import { revalidatePath } from "next/cache"
 import { AICredential } from "./types"
@@ -33,7 +33,7 @@ export async function getAICredentials(organizationId?: string) {
     // Return with masked keys
     return data.map((cred: any) => ({
         ...cred,
-        api_key_encrypted: '●●●●●●●●', // Masked for UI
+        api_key_encrypted: 'â—â—â—â—â—â—â—â—', // Masked for UI
         providerName: cred.provider?.name,
         providerLogo: cred.provider?.logo_url
     }))
@@ -129,3 +129,4 @@ export async function updateAICredentialPriority(items: { id: string; priority: 
     revalidatePath('/platform/integrations')
     return { success: true }
 }
+

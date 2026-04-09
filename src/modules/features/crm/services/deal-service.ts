@@ -228,10 +228,10 @@ export class DealService {
         if (!result.success) throw new Error("Meta API Error: " + result.error)
 
         // 6. Save reflection
-        const { inboxService } = await import('@/modules/core/messaging/inbox-service')
-        await inboxService.saveOutboundMessage(
+        const { MessagingPersistence } = await import('@/modules/core/messaging/services/persistence')
+        await MessagingPersistence.saveOutboundMessage({
             conversationId,
-            {
+            content: {
                 type: 'interactive_buttons',
                 text: `[COTIZACIÓN] ${headerText}\n\n${bodyText}\n\n${footerText}\n\n[Botones: ${approveLabel} | ${rejectLabel}]`,
                 header: { type: 'text', text: headerText },
@@ -242,10 +242,9 @@ export class DealService {
                     { id: `reject_cart_${cartId}`, title: rejectLabel }
                 ]
             },
-            result.messageId,
-            'Agent',
-            undefined,
-            'whatsapp'
-        )
+            messageId: result.messageId,
+            sender: 'Agent',
+            channel: 'whatsapp'
+        })
     }
 }

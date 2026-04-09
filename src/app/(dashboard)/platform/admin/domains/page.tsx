@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { getPlatformDomainsConfig, updatePlatformDomains, getOrganizationDomainsConfig, updateOrganizationDomains } from "@/modules/core/domains/actions"
+import { getPlatformDomainsConfig, updatePlatformDomains, getOrganizationDomainsConfig, updateOrganizationDomains } from "@/modules/core/domains/domain-actions"
 import { getAdminOrganizations } from "@/modules/core/admin/actions"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"

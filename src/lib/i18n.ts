@@ -1,5 +1,5 @@
-import { createClient } from "@/lib/supabase-server"
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+﻿import { createClient } from "@/lib/supabase-server"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 
 // ==========================================
 // DICTIONARY (Simple Server-Side i18n)
@@ -10,31 +10,31 @@ export type Language = 'es' | 'en'
 const dictionaries = {
     es: {
         admin: {
-            title: "Plantillas de Solución",
-            description: "Paquetes de módulos pre-configurados para diferentes verticales",
+            title: "Plantillas de SoluciÃ³n",
+            description: "Paquetes de mÃ³dulos pre-configurados para diferentes verticales",
             create_button: "Crear Plantilla",
-            create_dialog_title: "Crear Plantilla de Solución",
-            edit_dialog_title: "Editar Plantilla de Solución",
+            create_dialog_title: "Crear Plantilla de SoluciÃ³n",
+            edit_dialog_title: "Editar Plantilla de SoluciÃ³n",
             back_button: "Volver a Plantillas",
-            current_template: "Plantilla de Solución Actual",
+            current_template: "Plantilla de SoluciÃ³n Actual",
             using_template: "Usando esta plantilla",
             featured: "Destacado",
             inactive: "Inactivo",
             active_organizations: "Organizaciones Activas",
             per_month: "/mes",
-            trial_days_label: "días de prueba",
+            trial_days_label: "dÃ­as de prueba",
             form: {
                 name: "Nombre de Plantilla",
-                description: "Descripción",
-                category: "Categoría",
+                description: "DescripciÃ³n",
+                category: "CategorÃ­a",
                 price: "Precio Mensual",
                 search_placeholder: "Buscar Spaces...",
                 save: "Guardar Cambios",
                 create: "Crear"
             },
             toast: {
-                created: "¡Plantilla creada exitosamente!",
-                updated: "¡Plantilla actualizada exitosamente!",
+                created: "Â¡Plantilla creada exitosamente!",
+                updated: "Â¡Plantilla actualizada exitosamente!",
                 error: "Error al guardar"
             }
         }
@@ -115,3 +115,4 @@ export async function getDictionary(lang?: Language) {
     const resolvedLang = lang || await resolveLanguage()
     return dictionaries[resolvedLang] || dictionaries.es
 }
+

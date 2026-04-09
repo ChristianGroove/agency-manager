@@ -34,7 +34,7 @@ export function ChannelAccessSelector({ selectedIds, onChange, disabled }: Chann
 
     useEffect(() => {
         const fetchChannels = async () => {
-            const { getCurrentUserPermissions } = await import("@/modules/core/settings/actions/team-actions")
+            const { getCurrentUserPermissions } = await import("@/modules/core/settings/settings-actions")
             const [data, perms] = await Promise.all([
                 getChannels(),
                 getCurrentUserPermissions()

@@ -1,5 +1,5 @@
-import { createClient } from "@/lib/supabase-server"
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+﻿import { createClient } from "@/lib/supabase-server"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 
 /**
  * Service Layer for Hosting Web Module
@@ -153,3 +153,4 @@ export async function deleteHostingAccount(id: string) {
 
     return { success: true }
 }
+

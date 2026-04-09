@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 // import { MobileSidebar } from "./mobile-sidebar"
 import { NotificationBell } from "./notification-bell"
@@ -21,7 +21,7 @@ import { logout } from "@/modules/core/auth/actions"
 import { SpaceStatusBadge } from "@/components/dashboard/SpaceStatusBadge"
 import { getCurrentOrganizationApp } from "@/modules/core/saas/app-data-actions"
 import { getOrganizationSubscription } from "@/modules/features/billing/billing-actions"
-import { getCurrentOrgDetails } from "@/modules/core/organizations/actions"
+import { getCurrentOrgDetails } from "@/modules/core/organizations/organization-actions"
 
 export function Header({ currentOrgId }: { currentOrgId: string | null | undefined }) {
     const [showMarquee, setShowMarquee] = useState(false)
@@ -121,3 +121,4 @@ export function Header({ currentOrgId }: { currentOrgId: string | null | undefin
         </div>
     )
 }
+

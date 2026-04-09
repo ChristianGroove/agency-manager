@@ -1,9 +1,7 @@
-'use server'
-
+"use server"
 import { createClient } from "@/lib/supabase-server"
-import { getCurrentOrganizationId } from "./actions"
+import { getCurrentOrganizationId } from "./actions/crud"
 import { revalidatePath } from "next/cache"
-
 export interface TenantConfigUpdate {
     allow_direct_billing?: boolean
     capabilities?: Record<string, boolean>

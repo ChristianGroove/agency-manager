@@ -1,10 +1,10 @@
-"use server"
+﻿"use server"
 
 import { createClient } from "@/lib/supabase-server"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { revalidatePath, revalidateTag } from "next/cache"
 import { requireSuperAdmin } from "@/lib/auth/platform-roles"
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { SaasApp, AppModule, AppAddOn, AppWithDetails } from "@/types/saas"
 import { moduleValidator } from "@/lib/module-validator"
 
@@ -372,7 +372,7 @@ export async function removeModuleFromApp(appModuleId: string) {
             .eq('id', appModuleId)
             .single()
 
-        if (!moduleToDelete) throw new Error("Módulo de Space no encontrado")
+        if (!moduleToDelete) throw new Error("MÃ³dulo de Space no encontrado")
 
         // 2. Get all modules currently in this app
         const { data: appModules } = await supabaseAdmin
@@ -392,7 +392,7 @@ export async function removeModuleFromApp(appModuleId: string) {
             const dependents = plan.modules_to_disable.filter(m => m !== moduleToDelete.module_key)
             return {
                 success: false,
-                error: `No puedes desactivar este módulo. Otros módulos activos de este Space dependen de él: ${dependents.join(', ')}. Desactívalos primero.`
+                error: `No puedes desactivar este mÃ³dulo. Otros mÃ³dulos activos de este Space dependen de Ã©l: ${dependents.join(', ')}. DesactÃ­valos primero.`
             }
         }
 
@@ -486,3 +486,4 @@ export async function getAppUsageStats() {
 
     return stats
 }
+

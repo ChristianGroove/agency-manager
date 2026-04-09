@@ -1,7 +1,7 @@
-'use server'
+﻿'use server'
 
 import { createClient } from "@/lib/supabase-server"
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { revalidatePath } from "next/cache"
 
 export type Broadcast = {
@@ -252,3 +252,4 @@ export async function getRecipientCount(filters: Record<string, unknown>) {
         return { success: false, error: String(error), count: 0 }
     }
 }
+

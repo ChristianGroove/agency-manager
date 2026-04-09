@@ -14,55 +14,7 @@ import { metaComplianceMetrics } from './ai-compliance-metrics';
  * Pixy Commercial Intents (Task-Oriented AI)
  * These cover the 80-90% of valid interactions
  */
-export enum PixyBusinessIntent {
-    /** Diagnóstico técnico y resolución de errores */
-    TECHNICAL_DIAGNOSTICS = 'technical_diagnostics',
-
-    /** Gobernanza de plantillas HSM */
-    TEMPLATE_GOVERNANCE = 'template_governance',
-
-    /** Monitoreo de salud de cuenta y quality rating */
-    ACCOUNT_HEALTH = 'account_health',
-
-    /** Ciclo de vida de API y versionado */
-    API_VERSIONING = 'api_versioning',
-
-    /** Implementación de funciones avanzadas */
-    ADVANCED_FEATURES = 'advanced_features',
-
-    /** Facturación y modelo de costos 2026 */
-    BILLING_PRICING = 'billing_pricing',
-
-    /** Onboarding y validación de negocio */
-    ONBOARDING_VALIDATION = 'onboarding_validation',
-
-    /** Escalación a soporte humano */
-    HUMAN_HANDOFF = 'human_handoff',
-}
-
-/**
- * Off-Topic Intents (Must be deflected)
- * These are NOT allowed by Meta 2026 policy
- */
-export enum OffTopicIntent {
-    /** Conocimiento general (ej. "¿Capital de Francia?") */
-    GENERAL_KNOWLEDGE = 'general_knowledge',
-
-    /** Escritura creativa (ej. "Escríbeme un poema") */
-    CREATIVE_WRITING = 'creative_writing',
-
-    /** Consejos personales no relacionados */
-    PERSONAL_ADVICE = 'personal_advice',
-
-    /** Charla casual */
-    CASUAL_CHAT = 'casual_chat',
-
-    /** Tareas educativas generales */
-    EDUCATIONAL_GENERAL = 'educational_general',
-
-    /** Completamente fuera de alcance */
-    OUT_OF_SCOPE = 'out_of_scope',
-}
+import { PixyBusinessIntent, OffTopicIntent } from './types';
 
 /**
  * Intent classification result

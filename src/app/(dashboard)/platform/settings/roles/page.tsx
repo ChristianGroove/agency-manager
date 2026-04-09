@@ -1,12 +1,12 @@
-import { Metadata } from "next"
+﻿import { Metadata } from "next"
 import { RoleManager } from "@/modules/core/iam/components/role-manager"
 import { getOrganizationRoles } from "@/modules/core/iam/services/role-service"
 import { DashboardShell } from "@/components/layout/dashboard-shell"
 import { hasPermission } from "@/modules/core/iam/services/role-service"
-import { PERMISSIONS } from "@/modules/core/iam/permissions"
+import { PERMISSIONS } from "@/modules/core/iam/iam-actions"
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase-server"
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 
 export const metadata: Metadata = {
     title: "Role Management",
@@ -47,3 +47,4 @@ export default async function RolesPage() {
         </DashboardShell>
     )
 }
+

@@ -1,8 +1,8 @@
 'use server';
 
 import { createClient } from '@/lib/supabase-server';
-import { getCurrentOrganizationId } from '@/modules/core/organizations/actions';
-import { PERMISSIONS, PermissionString } from '../permissions';
+import { getCurrentOrganizationId } from '@/modules/core/organizations/organization-actions';
+import { PERMISSIONS, PermissionString } from '../actions/permissions';
 import { cache } from 'react';
 
 export interface Role {
@@ -177,8 +177,8 @@ export async function seedDefaultRoles(orgId: string) {
     const roles = [
         {
             organization_id: orgId,
-            name: 'Dueño',
-            description: 'Acceso total y administrativo a la organización',
+            name: 'DueÃ±o',
+            description: 'Acceso total y administrativo a la organizaciÃ³n',
             is_system_role: true,
             hierarchy_level: 100,
             permissions: { all: true }
@@ -206,7 +206,7 @@ export async function seedDefaultRoles(orgId: string) {
         {
             organization_id: orgId,
             name: 'Miembro',
-            description: 'Acceso estándar a funciones de operación',
+            description: 'Acceso estÃ¡ndar a funciones de operaciÃ³n',
             is_system_role: true,
             hierarchy_level: 10,
             permissions: {
@@ -227,3 +227,4 @@ export async function seedDefaultRoles(orgId: string) {
 
     return { success: true };
 }
+

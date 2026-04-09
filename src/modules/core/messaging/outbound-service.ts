@@ -1,6 +1,7 @@
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { integrationRegistry } from "@/modules/core/integrations/registry"
 import { normalizePhone } from "@/lib/normalize-phone"
+import { MessagingPersistence } from "./services/persistence"
 
 export class OutboundService {
     async sendMessage(
@@ -97,13 +98,12 @@ export class OutboundService {
 
         // 5. Log to DB
         if (conversationId) {
-            const { inboxService: inbox } = await import("./inbox-service")
-            await inbox.saveOutboundMessage(
+            await MessagingPersistence.saveOutboundMessage({
                 conversationId,
                 content,
-                result.messageId,
-                'System'
-            )
+                externalId: result.messageId,
+                sender: 'Agent'
+            })
         } else {
             console.warn(`[OutboundService] No conversation found for ${recipientPhone}, message sent but not logged.`)
         }

@@ -1,11 +1,11 @@
-"use server"
+﻿"use server"
 
 import { createClient } from "@/lib/supabase-server"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { Lead, Client } from "@/types"
 import { PaginatedLeadsResponse } from "../../types"
 import { revalidatePath } from "next/cache"
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { LeadsService } from "./services/leads.service"
 import { LeadsRepository } from "./repositories/leads.repository"
 
@@ -248,3 +248,4 @@ export async function purgeColdLeads(criteria: {
         return { success: false, error: error.message }
     }
 }
+

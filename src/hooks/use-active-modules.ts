@@ -1,8 +1,8 @@
-'use client'
+﻿'use client'
 
 import React, { useEffect, useState, useCallback } from 'react'
-import { getActiveModules } from '@/modules/core/saas/actions'
-import { getCurrentUserPermissions } from '@/modules/core/settings/actions/team-actions'
+import { getActiveModules } from '@/modules/core/saas/saas-actions'
+import { getCurrentUserPermissions } from '@/modules/core/settings/settings-actions'
 
 interface UseActiveModulesReturn {
     modules: string[]
@@ -79,7 +79,7 @@ export function useActiveModules(): UseActiveModulesReturn {
 
         try {
             // Import dynamically to ensure we get the server action
-            const { getSidebarContext } = await import('@/modules/core/saas/actions')
+            const { getSidebarContext } = await import('@/modules/core/saas/saas-actions')
 
             // Single aggregated network call
             const data = await getSidebarContext()

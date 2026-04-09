@@ -1,5 +1,5 @@
-import { createClient } from "@/lib/supabase-server"
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+﻿import { createClient } from "@/lib/supabase-server"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { Invoice, InvoiceItem } from "@/types"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 
@@ -358,3 +358,4 @@ export async function getContactOptions() {
 
     return data
 }
+

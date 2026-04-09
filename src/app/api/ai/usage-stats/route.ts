@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server'
-import { getCurrentOrganizationId } from '@/modules/core/organizations/actions'
+﻿import { NextResponse } from 'next/server'
+import { getCurrentOrganizationId } from '@/modules/core/organizations/organization-actions'
 import { createClient } from '@/lib/supabase-server'
 
 export async function GET() {
@@ -81,3 +81,4 @@ export async function GET() {
         )
     }
 }
+

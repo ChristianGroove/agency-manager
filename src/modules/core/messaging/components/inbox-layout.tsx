@@ -14,8 +14,8 @@ import { useTranslation } from "@/lib/i18n/use-translation"
 import { useSearchParams, useRouter } from "next/navigation"
 import { createConversation } from "../conversation-management-actions"
 import { InboxProvider, useInboxContext } from "../context/inbox-context"
-import { getActiveModules } from "@/modules/core/saas/actions"
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getActiveModules } from "@/modules/core/saas/saas-actions"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { getAgentsWorkload } from "../assignment-actions"
 import { supabase } from "@/lib/supabase"
 import { GlobalMessageListener } from "./floating-inbox/global-message-listener"
@@ -103,7 +103,7 @@ function InboxLayoutContent({ initialConversationId }: InboxLayoutProps) {
                         getActiveModules(orgId),
                         supabase.from('organizations').select('active_app_id').eq('id', orgId).single(),
                         getAgentsWorkload(),
-                        import('@/modules/core/settings/actions/team-actions').then(m => m.getCurrentUserPermissions())
+                        import('@/modules/core/settings/settings-actions').then(m => m.getCurrentUserPermissions())
                     ])
                     
                     setActiveModules(modules)
@@ -266,3 +266,4 @@ function InboxLayoutContent({ initialConversationId }: InboxLayoutProps) {
         </DndContext>
     )
 }
+

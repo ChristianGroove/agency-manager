@@ -1,5 +1,5 @@
-import { createClient } from "@/lib/supabase-server"
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+﻿import { createClient } from "@/lib/supabase-server"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import crypto from "crypto"
 
@@ -176,7 +176,7 @@ export async function createSubscriptionPaymentTransaction() {
     const { getCurrentOrganizationApp } = await import("@/modules/core/saas/app-data-actions")
     const currentApp = await getCurrentOrganizationApp()
 
-    if (!currentApp?.app) throw new Error("No hay un plan activo configurado para esta organización")
+    if (!currentApp?.app) throw new Error("No hay un plan activo configurado para esta organizaciÃ³n")
 
     const app = currentApp.app
     const amount = app.price_monthly || 29
@@ -203,7 +203,7 @@ export async function createSubscriptionPaymentTransaction() {
             invoice_ids: [],
             metadata: {
                 type: 'subscription_payment',
-                concept: `Suscripción Mensual: ${app.name}`,
+                concept: `SuscripciÃ³n Mensual: ${app.name}`,
                 app_id: app.id
             }
         })
@@ -265,3 +265,4 @@ export async function getOrganizationSubscription() {
 
     return data
 }
+

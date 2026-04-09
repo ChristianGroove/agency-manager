@@ -1,6 +1,6 @@
-"use server"
+﻿"use server"
 
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { revalidatePath } from "next/cache"
 
 import { type CRMTemplate, CRMTemplates } from "./templates-shared"
@@ -24,3 +24,4 @@ export async function applyTemplateAction(templateId: string) {
     revalidatePath('/crm')
     return { success: true }
 }
+

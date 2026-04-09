@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Search, Facebook, Mail, CreditCard, Bot, MessageSquare, Megaphone, Smartphone, Sparkles } from "lucide-react"
 import { ConnectionWizard } from "./connection-wizard"
-import { Connection } from "@/modules/core/integrations/actions"
+import { Connection } from "@/modules/core/integrations/integration-actions"
 import Link from "next/link"
 
 // Mock Providers Configuration

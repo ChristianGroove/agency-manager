@@ -110,7 +110,7 @@ export async function POST(request: Request) {
                         console.log(`[Webhook] ✅ Successfully upgraded Org ${paymentTx.organization_id} to White Label (Direct Payment)`)
 
                         // Register Billable Event for Revenue/Commissions
-                        const { registerBillableEvent } = await import('@/modules/core/revenue/actions')
+                        const { registerBillableEvent } = await import('@/modules/billing/platform/revenue/actions')
                         await registerBillableEvent({
                             organization_id: paymentTx.organization_id,
                             event_type: 'addon',
@@ -197,7 +197,7 @@ export async function POST(request: Request) {
                     }
 
                     // 2. Register Billable Event (This is the revenue)
-                    const { registerBillableEvent } = await import('@/modules/core/revenue/actions')
+                    const { registerBillableEvent } = await import('@/modules/billing/platform/revenue/actions')
                     await registerBillableEvent({
                         organization_id: paymentTx.organization_id,
                         event_type: 'subscription_base',

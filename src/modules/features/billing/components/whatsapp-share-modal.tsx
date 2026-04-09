@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Share2, Copy, Check } from "lucide-react"
 import { cn, getPortalShortUrl } from "@/lib/utils"
-import { getSettings } from "@/modules/core/settings/actions"
+import { getSettings } from "@/modules/core/settings/settings-actions"
 import { generateMessage, getWhatsAppLink } from "@/lib/communication-utils"
 import { Invoice } from "@/types"
 

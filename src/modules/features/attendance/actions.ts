@@ -1,12 +1,12 @@
-"use server"
+﻿"use server"
 
 import { headers } from "next/headers"
 import { createClient } from "@/lib/supabase-server"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
-import { trackStorageUpload, validateStorageLimit } from "@/modules/core/storage/actions"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
+import { trackStorageUpload, validateStorageLimit } from "@/modules/core/storage/storage-actions"
 import { requireOrgRole } from "@/lib/auth/org-roles"
 import { calculateDistanceInMeters } from "@/lib/utils"
 
@@ -53,15 +53,15 @@ export interface Staff {
 
 /**
  * Registra la Asistencia (ZERO-TRUST LOCAL TIME)
- * 1. El tiempo NO se envía desde el cliente. Supabase usa su `now().
+ * 1. El tiempo NO se envÃ­a desde el cliente. Supabase usa su `now().
  * 2. Verifica la Geocerca (Haversine).
  * 3. Valida exactitud GPS.
  */
 export async function registerAttendanceMark(payload: AttendancePayload) {
     try {
         const validated = AttendancePayloadSchema.parse(payload)
-        // Usamos supabaseAdmin para el lookup del staff porque el portal funciona con tokens anónimos 
-        // que el RLS del cliente estándar bloquea por defecto.
+        // Usamos supabaseAdmin para el lookup del staff porque el portal funciona con tokens anÃ³nimos 
+        // que el RLS del cliente estÃ¡ndar bloquea por defecto.
         const supabase = supabaseAdmin
 
         // 1. Conseguir el Staff usando el Token
@@ -72,7 +72,7 @@ export async function registerAttendanceMark(payload: AttendancePayload) {
             .single()
 
         if (staffError || !staff) {
-            return { success: false, error: "Token inválido o empleado no encontrado." }
+            return { success: false, error: "Token invÃ¡lido o empleado no encontrado." }
         }
         if (!staff.is_active) {
             return { success: false, error: "El empleado se encuentra inactivo." }
@@ -84,21 +84,21 @@ export async function registerAttendanceMark(payload: AttendancePayload) {
             return { success: false, error: "El empleado no tiene una sede asignada." }
         }
         if (!location.is_active) {
-            return { success: false, error: "La sede asignada está inactiva." }
+            return { success: false, error: "La sede asignada estÃ¡ inactiva." }
         }
 
-        // --- LÓGICA ANTI-SPOOFING / FRAUDE ---
+        // --- LÃ“GICA ANTI-SPOOFING / FRAUDE ---
         let isValid = true
         const fraudFlags: string[] = []
         let distanceToLocation = null
 
-        // A. Revisión de Precisión GPS (Evita Fake GPS o Geolocation por IP)
+        // A. RevisiÃ³n de PrecisiÃ³n GPS (Evita Fake GPS o Geolocation por IP)
         if (validated.accuracyMeters === null || validated.accuracyMeters > 150) {
             isValid = false
             fraudFlags.push('low_accuracy_gps_or_disabled')
         }
 
-        // B. Revisión de Geocerca (Haversine)
+        // B. RevisiÃ³n de Geocerca (Haversine)
         if (validated.deviceLat && validated.deviceLng && location.latitude && location.longitude) {
             distanceToLocation = calculateDistanceInMeters(
                 validated.deviceLat,
@@ -107,7 +107,7 @@ export async function registerAttendanceMark(payload: AttendancePayload) {
                 location.longitude
             )
 
-            // Margen de tolerancia del 15% (mínimo 15m) para jitter de GPS y deriva de sensores
+            // Margen de tolerancia del 15% (mÃ­nimo 15m) para jitter de GPS y deriva de sensores
             const toleranceBuffer = Math.max(location.geofence_radius_meters * 0.15, 15)
             const allowedMaxDistance = location.geofence_radius_meters + toleranceBuffer
 
@@ -132,16 +132,16 @@ export async function registerAttendanceMark(payload: AttendancePayload) {
         const deviceMetadata = {
             ip,
             userAgent,
-            clientTimeReported: new Date().toISOString() // Solo para auditoría si hay desfase masivo
+            clientTimeReported: new Date().toISOString() // Solo para auditorÃ­a si hay desfase masivo
         }
 
-        // D. Verificación Estricta (Zero-Trust Server Time)
+        // D. VerificaciÃ³n Estricta (Zero-Trust Server Time)
         if (validated.type === 'check_in' || validated.type === 'break_end') {
             const currentState = await getDailyAttendanceState(validated.staffToken)
 
             // 1. Validar Gracia de Entrada (Check-In)
             if (currentState.success && currentState.state === -1) {
-                return { success: false, error: currentState.nextBlockStartTime ? `Tu turno inicia a las ${currentState.nextBlockStartTime}.` : `Estás fuera de horario.` }
+                return { success: false, error: currentState.nextBlockStartTime ? `Tu turno inicia a las ${currentState.nextBlockStartTime}.` : `EstÃ¡s fuera de horario.` }
             }
 
             // 2. Validar Gracia de Break (Regreso)
@@ -152,7 +152,7 @@ export async function registerAttendanceMark(payload: AttendancePayload) {
                         const nowInTz = new Date().toLocaleTimeString('en-US', { timeZone: currentState.timezone as string, hour12: false, hour: '2-digit', minute: '2-digit' })
 
                         if (nowInTz < graceReturn) {
-                            return { success: false, error: `Aún estás en horario de descanso. Debes regresar a partir de las ${graceReturn}.` }
+                            return { success: false, error: `AÃºn estÃ¡s en horario de descanso. Debes regresar a partir de las ${graceReturn}.` }
                         }
                     } else {
                         // Fallback a hora configurada global
@@ -162,7 +162,7 @@ export async function registerAttendanceMark(payload: AttendancePayload) {
                         const minimumReturnTime = breakStartTime + ((breakDurationMinutes - 5) * 60000)
 
                         if (now < minimumReturnTime) {
-                            return { success: false, error: "Aún te encuentras en tu horario de descanso obligatorio. No puedes regresar antes." }
+                            return { success: false, error: "AÃºn te encuentras en tu horario de descanso obligatorio. No puedes regresar antes." }
                         }
                     }
                 } else if (currentState.success && currentState.state !== 2) {
@@ -171,7 +171,7 @@ export async function registerAttendanceMark(payload: AttendancePayload) {
             }
         }
 
-        // 2. Insertar el Log (Postgres pondrá el timestamp real EXACTAMENTE AHORA)
+        // 2. Insertar el Log (Postgres pondrÃ¡ el timestamp real EXACTAMENTE AHORA)
         const { data: log, error: logError } = await supabase
             .from('attendance_logs')
             .insert({
@@ -205,7 +205,7 @@ export async function registerAttendanceMark(payload: AttendancePayload) {
         return {
             success: true,
             data: log,
-            warning: !isValid ? "Marca registrada, pero retenida por validación de seguridad." : null
+            warning: !isValid ? "Marca registrada, pero retenida por validaciÃ³n de seguridad." : null
         }
 
     } catch (err: any) {
@@ -214,12 +214,12 @@ export async function registerAttendanceMark(payload: AttendancePayload) {
 }
 
 /**
- * Sube una foto en base64 al Storage y devuelve la URL pública.
+ * Sube una foto en base64 al Storage y devuelve la URL pÃºblica.
  * Por ahora usaremos el bucket 'public_assets'.
  */
 export async function uploadAttendancePhoto(base64Image: string, staffId: string): Promise<{ success: boolean, url?: string, error?: string }> {
     try {
-        // Usamos supabaseAdmin para evadir RLS, ya que el personal entrando via token no tiene sesión de Auth tradicional.
+        // Usamos supabaseAdmin para evadir RLS, ya que el personal entrando via token no tiene sesiÃ³n de Auth tradicional.
         const supabase = supabaseAdmin
 
         // Detect format or default to webp
@@ -292,12 +292,12 @@ export async function uploadStaffPhoto(formData: FormData) {
         }
 
         const file = formData.get("file") as File
-        if (!file) throw new Error("No se ha seleccionado ningún archivo")
+        if (!file) throw new Error("No se ha seleccionado ningÃºn archivo")
 
         // 2. Validate against Org Storage Limits
         const validation = await validateStorageLimit(orgId, file.size)
         if (!validation.allowed) {
-            throw new Error(validation.message || "Límite de almacenamiento alcanzado.")
+            throw new Error(validation.message || "LÃ­mite de almacenamiento alcanzado.")
         }
 
         // 3. Prepare File Path
@@ -383,7 +383,7 @@ export async function getAttendanceLogs(organizationId: string, limit = 100) {
 // ==========================================
 
 /**
- * Obtiene todo el personal de la organización
+ * Obtiene todo el personal de la organizaciÃ³n
  */
 export async function getStaff() {
     try {
@@ -523,7 +523,7 @@ export async function getDailyAttendanceState(staffToken: string) {
     try {
         const supabase = supabaseAdmin
 
-        // 1. Conseguir el Staff, su configuración de turno y su sede para horarios
+        // 1. Conseguir el Staff, su configuraciÃ³n de turno y su sede para horarios
         const { data: staff, error: staffError } = await supabase
             .from('organization_staff')
             .select(`
@@ -537,11 +537,11 @@ export async function getDailyAttendanceState(staffToken: string) {
             .single()
 
         if (staffError || !staff) {
-            return { success: false, error: "Token inválido." }
+            return { success: false, error: "Token invÃ¡lido." }
         }
 
-        // 2. Calcular las fronteras del día actual en hora local de Colombia (ej. Bogota)
-        // Como el portal lo consume un cliente asume que el backend evalúa el hoy del servidor, 
+        // 2. Calcular las fronteras del dÃ­a actual en hora local de Colombia (ej. Bogota)
+        // Como el portal lo consume un cliente asume que el backend evalÃºa el hoy del servidor, 
         // usaremos postgres time interval para simplificar
 
         // Obtener todos los registros exitosos del staff de "HOY"
@@ -558,7 +558,7 @@ export async function getDailyAttendanceState(staffToken: string) {
         const validLogsCount = logs?.length || 0
         const shiftType = staff.shift_type || 'split'
 
-        // 3. Evaluar horario de operación personalizado (Individual > Location fallback)
+        // 3. Evaluar horario de operaciÃ³n personalizado (Individual > Location fallback)
         let isOutofHours = false
         let nextBlockStartTime = null
         let expectedBreakReturnTime = null
@@ -595,18 +595,18 @@ export async function getDailyAttendanceState(staffToken: string) {
                         }
                     }
 
-                    // Gracia de Regreso de Break (Señalar meta estricta a la UI)
+                    // Gracia de Regreso de Break (SeÃ±alar meta estricta a la UI)
                     if (validLogsCount === 2 && shiftType === 'split' && block2Start) {
                         expectedBreakReturnTime = block2Start
                     }
                 }
             } else {
-                // Si el día no existe en el JSON
+                // Si el dÃ­a no existe en el JSON
                 isOutofHours = true
             }
         }
 
-        let state = 0 // Estado inicial (Nuevo Día)
+        let state = 0 // Estado inicial (Nuevo DÃ­a)
 
         // Si bloqueamos por fuera de horario ANTES de iniciar marcas:
         if (isOutofHours && validLogsCount === 0) {
@@ -660,16 +660,16 @@ export async function getDailyAttendanceState(staffToken: string) {
 // ==========================================
 
 /**
- * Motor Matemático de Nómina
- * Lee todos los logs del día de un Colaborador y sobre-escribe su Turno Maestro (Shifts).
- * Separa automáticamente Horas Ordinarias de Horas Extras basadas en su contrato.
+ * Motor MatemÃ¡tico de NÃ³mina
+ * Lee todos los logs del dÃ­a de un Colaborador y sobre-escribe su Turno Maestro (Shifts).
+ * Separa automÃ¡ticamente Horas Ordinarias de Horas Extras basadas en su contrato.
  */
 async function processDailyShift(staffId: string, orgId: string, locationId: string | null, expectedHours: number) {
     try {
         const supabase = supabaseAdmin
 
-        // 1. Obtener los logs de validación de HOY de la Sede/Persona
-        // (En producción global debería usar el timezone de la sede en vez de UTC)
+        // 1. Obtener los logs de validaciÃ³n de HOY de la Sede/Persona
+        // (En producciÃ³n global deberÃ­a usar el timezone de la sede en vez de UTC)
         const todayStart = new Date(new Date().setHours(0, 0, 0, 0)).toISOString()
         const todayEnd = new Date(new Date().setHours(23, 59, 59, 999)).toISOString()
         const localDateString = new Date().toLocaleDateString('sv-SE') // yyyy-mm-dd ISO sin T
@@ -731,7 +731,7 @@ async function processDailyShift(staffId: string, orgId: string, locationId: str
                 organization_id: orgId,
                 staff_id: staffId,
                 location_id: locationId,
-                date: localDateString, // Clave única junto a staff_id
+                date: localDateString, // Clave Ãºnica junto a staff_id
                 first_in: firstIn,
                 last_out: lastOut,
                 total_break_minutes: totalBreakMinutes,
@@ -752,13 +752,13 @@ async function processDailyShift(staffId: string, orgId: string, locationId: str
 }
 
 /**
- * Obtener todos los turnos calculados de una organización para Nómina.
+ * Obtener todos los turnos calculados de una organizaciÃ³n para NÃ³mina.
  */
 export async function getAttendanceShifts(organizationId: string) {
     try {
         const supabase = await createClient()
 
-        // Para nómina, necesitamos ver todo el historial de turnos o al menos los más recientes
+        // Para nÃ³mina, necesitamos ver todo el historial de turnos o al menos los mÃ¡s recientes
         const { data, error } = await supabase
             .from('attendance_shifts')
             .select(`
@@ -777,5 +777,6 @@ export async function getAttendanceShifts(organizationId: string) {
         return { success: false, error: err.message, data: [] }
     }
 }
+
 
 

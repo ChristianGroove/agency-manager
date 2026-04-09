@@ -1,7 +1,7 @@
 import { Suspense } from "react"
 import dynamic from "next/dynamic"
 import { DashboardSkeleton } from "@/modules/core/dashboard/dashboard-skeleton"
-import { getDashboardPayload } from "@/modules/core/dashboard/actions"
+import { getDashboardPayload } from "@/modules/core/dashboard/dashboard-actions"
 
 // Vertical dashboards are Client Components (imported normally)
 import { AgencyDashboard } from "@/modules/core/dashboard/components/agency-dashboard"

@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useEffect, useState, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
@@ -33,7 +33,7 @@ export default function QuoteDetailPage() {
 
     const fetchSettings = async () => {
         try {
-            const { getSettings } = await import("@/modules/core/settings/actions")
+            const { getSettings } = await import("@/modules/core/settings/settings-actions")
             const settingsData = await getSettings()
             if (settingsData) setSettings(settingsData)
         } catch (error) {
@@ -72,14 +72,14 @@ export default function QuoteDetailPage() {
 
     const handleConvertLead = async () => {
         if (!quote?.lead_id) return
-        if (!confirm("¿Estás seguro de convertir este prospecto en cliente?")) return
+        if (!confirm("Â¿EstÃ¡s seguro de convertir este prospecto en cliente?")) return
 
         setConverting(true)
         try {
             const res = await convertLeadToClient(quote.lead_id)
             if (!res.success || !res.data) throw new Error(res.error)
 
-            alert(`¡Prospecto convertido exitosamente! Ahora es el cliente: ${res.data.name}`)
+            alert(`Â¡Prospecto convertido exitosamente! Ahora es el cliente: ${res.data.name}`)
             // Refresh to show client data instead of lead
             fetchQuote(quote.id)
         } catch (error: any) {
@@ -92,7 +92,7 @@ export default function QuoteDetailPage() {
 
     const handleConvertToInvoice = async () => {
         if (!quote) return
-        if (!confirm("¿Convertir esta cotización en servicios y facturas?")) return
+        if (!confirm("Â¿Convertir esta cotizaciÃ³n en servicios y facturas?")) return
         setConverting(true)
         try {
             // Import dynamically or at top? using Server Action
@@ -101,9 +101,9 @@ export default function QuoteDetailPage() {
 
             if (result.success) {
                 const { servicesCreated, invoicesCreated } = result.results || { servicesCreated: 0, invoicesCreated: 0 }
-                let message = "Conversión exitosa.\n"
-                if (servicesCreated > 0) message += `✅ ${servicesCreated} Servicio(s) de suscripción creados.\n`
-                if (invoicesCreated) message += `✅ Factura de cobro único generada.\n`
+                let message = "ConversiÃ³n exitosa.\n"
+                if (servicesCreated > 0) message += `âœ… ${servicesCreated} Servicio(s) de suscripciÃ³n creados.\n`
+                if (invoicesCreated) message += `âœ… Factura de cobro Ãºnico generada.\n`
 
                 alert(message)
 
@@ -196,7 +196,7 @@ export default function QuoteDetailPage() {
                 }
             }
 
-            alert('Cotización enviada exitosamente por correo')
+            alert('CotizaciÃ³n enviada exitosamente por correo')
 
         } catch (error: any) {
             console.error('Error sending email:', error)
@@ -213,7 +213,7 @@ export default function QuoteDetailPage() {
     }
 
     if (!quote) {
-        return <div className="min-h-screen flex items-center justify-center bg-gray-100">Cotización no encontrada</div>
+        return <div className="min-h-screen flex items-center justify-center bg-gray-100">CotizaciÃ³n no encontrada</div>
     }
 
     // Determine who the quote is for
@@ -234,7 +234,7 @@ export default function QuoteDetailPage() {
                                 </Button>
                             </Link>
                             <div className="h-8 w-px bg-gray-300" />
-                            <h1 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">Cotización</h1>
+                            <h1 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">CotizaciÃ³n</h1>
                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${quote.status === 'draft' ? 'bg-gray-100 text-gray-700' :
                                 quote.status === 'sent' ? 'bg-blue-100 text-blue-700' :
                                     quote.status === 'accepted' ? 'bg-green-100 text-green-700' :

@@ -8,7 +8,7 @@ import { Card } from "@/components/ui/card"
 import { Slider } from "@/components/ui/slider"
 import { Switch } from "@/components/ui/switch"
 import { updateAgentStatus, toggleAutoAssign, updateAgentCapacity, getAgentsWorkload } from "../assignment-actions"
-import { simulateInboundMessage } from "../actions"
+import { simulateInboundMessage } from "@/modules/core/messaging/messaging-actions"
 import { Circle, User, Zap, Info, Loader2, MessageSquare } from "lucide-react"
 import { toast } from "sonner"
 import {

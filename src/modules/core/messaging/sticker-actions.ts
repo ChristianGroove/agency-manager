@@ -1,7 +1,7 @@
-"use server"
+﻿"use server"
 
 import { createClient } from "@/lib/supabase-server"
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { MESSAGING_STORAGE_BUCKET } from "./constants"
 
 export async function uploadSticker(formData: FormData): Promise<{ url: string | null, error: string | null }> {
@@ -73,3 +73,4 @@ export async function deleteSticker(url: string): Promise<{ success: boolean, er
     if (error) return { success: false, error: error.message }
     return { success: true, error: null }
 }
+

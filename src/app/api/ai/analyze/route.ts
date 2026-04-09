@@ -1,7 +1,7 @@
-import { NextResponse } from 'next/server'
-import { analyzeSentiment, saveSentimentAnalysis, autoEscalateIfNeeded } from '@/modules/core/messaging/ai/sentiment-analysis'
-import { detectIntent, saveIntent, applyIntentRouting } from '@/modules/core/messaging/ai/intent-detection'
-import { getCurrentOrganizationId } from '@/modules/core/organizations/actions'
+﻿import { NextResponse } from 'next/server'
+import { analyzeSentiment, saveSentimentAnalysis, autoEscalateIfNeeded } from '@/modules/core/messaging/messaging-actions'
+import { detectIntent, saveIntent, applyIntentRouting } from '@/modules/core/messaging/messaging-actions'
+import { getCurrentOrganizationId } from '@/modules/core/organizations/organization-actions'
 
 export async function POST(request: Request) {
     try {
@@ -57,3 +57,4 @@ export async function POST(request: Request) {
         }, { status: 500 })
     }
 }
+

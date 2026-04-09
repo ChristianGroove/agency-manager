@@ -20,7 +20,7 @@ import { EmailLogsTable } from "@/modules/core/notifications/components/email-lo
 import { SubscriptionSettingsTab } from "./subscription-settings-tab"
 import { VaultSettingsTab } from "@/modules/core/data-vault/components/vault-settings-tab"
 import { AuditLogsTable } from "@/modules/core/audit/audit-logs-table"
-import { ResellerDashboard } from "@/modules/core/revenue/components/reseller-dashboard"
+import { ResellerDashboard } from "@/modules/billing/platform/revenue/components/reseller-dashboard"
 import { BrandCenterSheet } from "@/modules/core/branding/components/brand-center-sheet"
 import { BiometricButton } from "@/components/auth/biometric-button"
 import { SectionHeader } from "@/components/layout/section-header"
@@ -29,7 +29,7 @@ import { SplitText } from "@/components/ui/split-text"
 import { isEmittersModuleEnabled } from "@/lib/flags"
 import { useTranslation } from "@/lib/i18n/use-translation"
 import { useRegisterView } from "@/modules/core/caa/context/view-context"
-import { getSettings, updateSettings } from "@/modules/core/settings/actions"
+import { getSettings, updateSettings } from "./actions/crud"
 import { COMMUNICATION_VARIABLES, DEFAULT_TEMPLATES } from "@/lib/communication-utils"
 
 import { BrandingConfig } from "@/types/branding"
@@ -85,10 +85,10 @@ export function SettingsForm({
     // CAA Registration
     useRegisterView({
         viewId: "settings",
-        label: "Configuración",
+        label: "ConfiguraciÃ³n",
         actions: [
-            { id: "save-settings", label: "Guardar Cambios", type: "function", target: "submit_form", icon: Save, description: "Guardar la configuración actual" },
-            { id: "view-billing", label: "Facturación y Planes", type: "route", target: "/platform/settings?tab=subscription", icon: CreditCard, description: "Gestionar plan y métodos de pago" },
+            { id: "save-settings", label: "Guardar Cambios", type: "function", target: "submit_form", icon: Save, description: "Guardar la configuraciÃ³n actual" },
+            { id: "view-billing", label: "FacturaciÃ³n y Planes", type: "route", target: "/platform/settings?tab=subscription", icon: CreditCard, description: "Gestionar plan y mÃ©todos de pago" },
             { id: "manage-team", label: "Gestionar Equipo", type: "route", target: "/platform/settings?tab=team", icon: Users, description: "Invitar o eliminar miembros" }
         ]
     })
@@ -153,12 +153,12 @@ export function SettingsForm({
             if (result.error) {
                 alert("Error al guardar: " + result.error)
             } else {
-                alert("Configuración guardada correctamente")
+                alert("ConfiguraciÃ³n guardada correctamente")
                 router.refresh()
             }
         } catch (error) {
             console.error(error)
-            alert("Ocurrió un error inesperado")
+            alert("OcurriÃ³ un error inesperado")
         } finally {
             setIsLoading(false)
         }
@@ -181,7 +181,7 @@ export function SettingsForm({
         },
         {
             id: 'audit',
-            label: "Auditoría",
+            label: "AuditorÃ­a",
             icon: ShieldAlert,
             minRole: 'admin',
             isCore: true
@@ -318,9 +318,9 @@ export function SettingsForm({
                 <TabsContent value="audit" className="space-y-4 mt-4" suppressHydrationWarning>
                     <Card className="bg-white dark:bg-white/5 border-gray-100 dark:border-white/10 shadow-sm backdrop-blur-md">
                         <CardHeader>
-                            <CardTitle>Registro de Auditoría</CardTitle>
+                            <CardTitle>Registro de AuditorÃ­a</CardTitle>
                             <CardDescription>
-                                Historial inmutable de acciones críticas de seguridad y cambios en la organización.
+                                Historial inmutable de acciones crÃ­ticas de seguridad y cambios en la organizaciÃ³n.
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
@@ -346,7 +346,7 @@ export function SettingsForm({
                                     <div className="h-10 w-10 rounded-full bg-brand-pink/10 flex items-center justify-center text-brand-pink">
                                         <Palette className="w-5 h-5" />
                                     </div>
-                                    <h3 className="font-medium">Diseño y Plantillas</h3>
+                                    <h3 className="font-medium">DiseÃ±o y Plantillas</h3>
                                     <p className="text-xs text-muted-foreground mb-2">Personaliza el aspecto de tus correos.</p>
                                     <Button variant="outline" size="sm" onClick={() => router.push('/platform/settings/email')}>
                                         Gestionar Plantillas
@@ -361,7 +361,7 @@ export function SettingsForm({
                                         onChange={handleChange}
                                         placeholder="Ej: Mi Agencia"
                                     />
-                                    <p className="text-xs text-muted-foreground">El nombre que verán los clientes.</p>
+                                    <p className="text-xs text-muted-foreground">El nombre que verÃ¡n los clientes.</p>
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="email_reply_to">Correo de Respuesta</Label>
@@ -405,7 +405,7 @@ export function SettingsForm({
                                     <Input id="invoice_prefix" name="invoice_prefix" value={formData.invoice_prefix || 'INV-'} onChange={handleChange} placeholder="INV-" />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="default_due_days">Días de Vencimiento</Label>
+                                    <Label htmlFor="default_due_days">DÃ­as de Vencimiento</Label>
                                     <Input type="number" id="default_due_days" name="default_due_days" value={formData.default_due_days || 30} onChange={handleChange} />
                                 </div>
                             </div>
@@ -420,7 +420,7 @@ export function SettingsForm({
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="invoice_legal_text">Pie de Página de Factura</Label>
+                                <Label htmlFor="invoice_legal_text">Pie de PÃ¡gina de Factura</Label>
                                 <Textarea id="invoice_legal_text" name="invoice_legal_text" value={formData.invoice_legal_text || ''} onChange={handleChange} placeholder="Texto legal..." className="min-h-[100px]" />
                             </div>
                         </CardContent>
@@ -439,20 +439,20 @@ export function SettingsForm({
                                 <div className="flex items-center justify-between">
                                     <div className="space-y-0.5">
                                         <Label className="text-base">Habilitar Pagos en el Portal</Label>
-                                        <p className="text-sm text-muted-foreground">Si se desactiva, los clientes verán sus cuentas pero no podrán pagar.</p>
+                                        <p className="text-sm text-muted-foreground">Si se desactiva, los clientes verÃ¡n sus cuentas pero no podrÃ¡n pagar.</p>
                                     </div>
                                     <Switch checked={formData.enable_portal_payments !== false} onCheckedChange={(checked) => handleSwitchChange('enable_portal_payments', checked)} />
                                 </div>
                                 <div className="flex items-center justify-between">
                                     <div className="space-y-0.5">
-                                        <Label className="text-base">Permitir Pago Múltiple</Label>
-                                        <p className="text-sm text-muted-foreground">Pagar varios documentos en una sola transacción.</p>
+                                        <Label className="text-base">Permitir Pago MÃºltiple</Label>
+                                        <p className="text-sm text-muted-foreground">Pagar varios documentos en una sola transacciÃ³n.</p>
                                     </div>
                                     <Switch checked={formData.enable_multi_invoice_payment !== false} onCheckedChange={(checked) => handleSwitchChange('enable_multi_invoice_payment', checked)} />
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="min_payment_amount">Monto Mínimo de Pago</Label>
+                                <Label htmlFor="min_payment_amount">Monto MÃ­nimo de Pago</Label>
                                 <Input type="number" id="min_payment_amount" name="min_payment_amount" value={formData.min_payment_amount || 0} onChange={handleChange} />
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -469,13 +469,13 @@ export function SettingsForm({
                     </Card>
                     <Card className="border-indigo-100 dark:border-indigo-500/20 bg-indigo-50/30 dark:bg-indigo-500/5">
                         <CardHeader>
-                            <CardTitle className="flex items-center gap-2 text-indigo-700 dark:text-indigo-400">Integración Wompi (API)</CardTitle>
+                            <CardTitle className="flex items-center gap-2 text-indigo-700 dark:text-indigo-400">IntegraciÃ³n Wompi (API)</CardTitle>
                             <CardDescription>Configura tus llaves de API.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label htmlFor="wompi_public_key">Llave Pública</Label>
+                                    <Label htmlFor="wompi_public_key">Llave PÃºblica</Label>
                                     <Input id="wompi_public_key" name="wompi_public_key" value={formData.wompi_public_key || ''} onChange={handleChange} placeholder="pub_..." className="bg-white" />
                                 </div>
                                 <div className="space-y-2">
@@ -485,7 +485,7 @@ export function SettingsForm({
                             </div>
                             <div className="flex items-center justify-between pt-2">
                                 <div className="space-y-0.5">
-                                    <Label>Ambiente de Producción</Label>
+                                    <Label>Ambiente de ProducciÃ³n</Label>
                                     <p className="text-xs text-muted-foreground">Desactiva para usar modo Sandbox.</p>
                                 </div>
                                 <Switch checked={formData.wompi_environment === 'Production'} onCheckedChange={(checked) => setFormData((prev: any) => ({ ...prev, wompi_environment: checked ? 'Production' : 'Sandbox' }))} />
@@ -500,13 +500,13 @@ export function SettingsForm({
                             <Card>
                                 <CardHeader>
                                     <CardTitle className="flex items-center gap-2"><Globe className="h-4 w-4" /> General</CardTitle>
-                                    <CardDescription>Configuración básica del portal.</CardDescription>
+                                    <CardDescription>ConfiguraciÃ³n bÃ¡sica del portal.</CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-4">
                                     <div className="flex items-center justify-between p-4 border dark:border-white/10 rounded-lg bg-muted/20 dark:bg-white/5">
                                         <div className="space-y-0.5">
                                             <Label className="text-base">Habilitar Portal</Label>
-                                            <p className="text-sm text-muted-foreground">Si se desactiva, los clientes verán mantenimiento.</p>
+                                            <p className="text-sm text-muted-foreground">Si se desactiva, los clientes verÃ¡n mantenimiento.</p>
                                         </div>
                                         <Switch checked={formData.portal_enabled !== false} onCheckedChange={(checked) => handleSwitchChange('portal_enabled', checked)} />
                                     </div>
@@ -520,7 +520,7 @@ export function SettingsForm({
                                 <div className="mx-auto bg-blue-100 dark:bg-blue-500/20 rounded-full w-10 h-10 flex items-center justify-center mb-3">
                                     <Palette className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                                 </div>
-                                <h3 className="text-base font-semibold text-blue-900 dark:text-blue-100 mb-1">El Branding del Portal cambió de lugar</h3>
+                                <h3 className="text-base font-semibold text-blue-900 dark:text-blue-100 mb-1">El Branding del Portal cambiÃ³ de lugar</h3>
                                 <p className="text-sm text-blue-700 dark:text-blue-300 mb-4 max-w-sm mx-auto">Personaliza colores y logos en el Centro de Marca.</p>
                                 {userRole !== 'member' && (
                                     <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white" onClick={() => setShowBrandCenter(true)}>
@@ -533,7 +533,7 @@ export function SettingsForm({
                             <Card>
                                 <CardHeader>
                                     <CardTitle className="flex items-center gap-2"><Eye className="h-4 w-4" /> Visibilidad</CardTitle>
-                                    <CardDescription>Controla qué módulos ven tus clientes.</CardDescription>
+                                    <CardDescription>Controla quÃ© mÃ³dulos ven tus clientes.</CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-6">
                                     <div className="flex items-center justify-between">
@@ -572,7 +572,7 @@ export function SettingsForm({
                             </CardHeader>
                             <CardContent className="space-y-6">
                                 <div className="space-y-2">
-                                    <Label>Envío de Factura</Label>
+                                    <Label>EnvÃ­o de Factura</Label>
                                     <Textarea
                                         value={formData.comm_templates?.invoice_send || DEFAULT_TEMPLATES.invoice_sent}
                                         onChange={(e) => handleTemplateChange('invoice_send', e.target.value)}

@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server'
+﻿import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase-server'
-import { getCurrentOrganizationId } from '@/modules/core/organizations/actions'
+import { getCurrentOrganizationId } from '@/modules/core/organizations/organization-actions'
 
 const META_API_VERSION = 'v22.0'
 const META_GRAPH_URL = 'https://graph.facebook.com'
@@ -51,15 +51,15 @@ async function resolveCallingCredentials() {
         || process.env.META_PHONE_NUMBER_ID
 
     if (!accessToken) {
-        console.error('[resolveCallingCredentials] ❌ Missing Meta access token');
+        console.error('[resolveCallingCredentials] âŒ Missing Meta access token');
         throw new Error('Missing Meta access token');
     }
     if (!phoneNumberId) {
-        console.error('[resolveCallingCredentials] ❌ Missing Phone Number ID');
+        console.error('[resolveCallingCredentials] âŒ Missing Phone Number ID');
         throw new Error('Missing Phone Number ID');
     }
 
-    console.log('[resolveCallingCredentials] ✅ Resolved:', { phoneNumberId, hasToken: !!accessToken });
+    console.log('[resolveCallingCredentials] âœ… Resolved:', { phoneNumberId, hasToken: !!accessToken });
     return { accessToken, phoneNumberId }
 }
 
@@ -245,3 +245,4 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: error.message }, { status: 500 })
     }
 }
+

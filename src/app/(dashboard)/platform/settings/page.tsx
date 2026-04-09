@@ -1,26 +1,26 @@
-import { Suspense } from "react"
+﻿import { Suspense } from "react"
 import { SettingsForm } from "@/modules/core/settings/settings-form"
-import { getSettings } from "@/modules/core/settings/actions"
+import { getSettings } from "@/modules/core/settings/settings-actions"
 import { getEffectiveBranding } from "@/modules/core/branding/actions"
 import { getCurrentBrandingTier } from "@/modules/core/branding/tier-actions"
-import { getOrganizationModules, getCurrentOrganizationId, getOrganizationCardDetails } from "@/modules/core/organizations/actions"
+import { getOrganizationModules, getCurrentOrganizationId, getOrganizationCardDetails } from "@/modules/core/organizations/organization-actions"
 import { getSubscriptionApp } from "@/modules/features/catalog/actions"
 import { getCurrentOrgRole } from "@/lib/auth/org-roles"
 import { Loader2 } from "lucide-react"
 
 export const metadata = {
-    title: "Configuración",
-    description: "Gestiona la configuración de tu organización",
+    title: "ConfiguraciÃ³n",
+    description: "Gestiona la configuraciÃ³n de tu organizaciÃ³n",
 }
 
 
-import { getSnapshots, getVaultConfig } from "@/modules/core/data-vault/actions"
+import { getSnapshots, getVaultConfig } from "@/modules/core/data-vault/data-vault-actions"
 
 export default async function SettingsPage() {
     const orgId = await getCurrentOrganizationId()
 
     if (!orgId) {
-        return <div>Error: Organización no encontrada</div>
+        return <div>Error: OrganizaciÃ³n no encontrada</div>
     }
 
     const [settings, activeModules, subscriptionApp, brandingSettings, userRole, tierData, snapshots, vaultConfig, organization] = await Promise.all([
@@ -69,5 +69,6 @@ function SettingsLoading() {
         </div>
     )
 }
+
 
 

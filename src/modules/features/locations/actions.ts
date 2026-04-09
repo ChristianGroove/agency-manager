@@ -1,9 +1,9 @@
-"use server"
+﻿"use server"
 
 import { createClient } from "@/lib/supabase-server"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { revalidatePath } from "next/cache"
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 
 // TIPOS
 export interface BusinessDay {
@@ -55,7 +55,7 @@ export interface StaffTracker {
 // ==========================================
 
 /**
- * Obtiene todas las sedes de la organización actual
+ * Obtiene todas las sedes de la organizaciÃ³n actual
  */
 export async function getLocations() {
     const currentOrgId = await getCurrentOrganizationId()
@@ -167,7 +167,7 @@ export async function deleteLocation(id: string) {
 }
 
 /**
- * Obtiene la última posición conocida de cada staff (Trackers)
+ * Obtiene la Ãºltima posiciÃ³n conocida de cada staff (Trackers)
  */
 export async function getStaffTrackers() {
     const currentOrgId = await getCurrentOrganizationId()
@@ -175,7 +175,7 @@ export async function getStaffTrackers() {
 
     const supabase = await createClient()
 
-    // Obtenemos los últimos logs de asistencia que tengan coordenadas
+    // Obtenemos los Ãºltimos logs de asistencia que tengan coordenadas
     const { data, error } = await supabase
         .from('attendance_logs')
         .select(`
@@ -196,7 +196,7 @@ export async function getStaffTrackers() {
         return { success: false, data: [] }
     }
 
-    // Filtrar para quedarnos con el último de cada staff
+    // Filtrar para quedarnos con el Ãºltimo de cada staff
     const latestByStaff = new Map<string, StaffTracker>()
 
     data?.forEach((log: any) => {
@@ -214,3 +214,4 @@ export async function getStaffTrackers() {
 
     return { success: true, data: Array.from(latestByStaff.values()) }
 }
+

@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useState, useEffect } from "react"
 import { Building2, Plus, Check } from "lucide-react"
@@ -14,7 +14,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { CreateOrganizationSheet } from "./create-organization-sheet" // Restored for admin users
 import { OrganizationMember } from "@/types/organization"
-import { getUserOrganizations, switchOrganization, getCurrentOrgName, getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getUserOrganizations, switchOrganization, getCurrentOrgName, getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 
@@ -62,7 +62,7 @@ export function OrganizationSwitcher({ trigger, initialOrgDetails }: Organizatio
     const handleSwitch = async (orgId: string) => {
         try {
             // Show loading state
-            toast.loading("Cambiando de organización...")
+            toast.loading("Cambiando de organizaciÃ³n...")
 
             // 1. Force Clear existing cookie first (to remove conflicting domain/path overrides)
             document.cookie = 'pixy_org_id=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;'
@@ -84,7 +84,7 @@ export function OrganizationSwitcher({ trigger, initialOrgDetails }: Organizatio
 
         } catch (error) {
             toast.dismiss()
-            toast.error("Error cambiando de organización")
+            toast.error("Error cambiando de organizaciÃ³n")
             console.error(error)
         }
     }
@@ -127,7 +127,7 @@ export function OrganizationSwitcher({ trigger, initialOrgDetails }: Organizatio
                 >
                     <SheetHeader className="hidden">
                         <SheetTitle>Mis Organizaciones</SheetTitle>
-                        <SheetDescription>Cambiar organización</SheetDescription>
+                        <SheetDescription>Cambiar organizaciÃ³n</SheetDescription>
                     </SheetHeader>
 
                     <div className="flex flex-col h-full bg-white/95 backdrop-blur-xl">
@@ -198,7 +198,7 @@ export function OrganizationSwitcher({ trigger, initialOrgDetails }: Organizatio
                                             <p className="text-xs text-gray-500 truncate flex items-center gap-1">
                                                 <span className="font-mono">{member.organization?.slug}</span>
                                                 {member.organization?.parent_organization_id && ( // Note: We might need to join parent info in query if we want name, for now just showing visual clue
-                                                    <span className="text-gray-400">• Sub-cuenta</span>
+                                                    <span className="text-gray-400">â€¢ Sub-cuenta</span>
                                                 )}
                                             </p>
                                         </div>
@@ -229,14 +229,14 @@ export function OrganizationSwitcher({ trigger, initialOrgDetails }: Organizatio
                                     className="shadow-lg shadow-indigo-500/20 bg-indigo-600 hover:bg-indigo-700 text-white"
                                 >
                                     <Plus className="mr-2 h-4 w-4" />
-                                    Nueva Organización
+                                    Nueva OrganizaciÃ³n
                                 </Button>
                             ) : (
                                 /* Regular users: redirect to onboarding */
                                 <Link href="/onboarding" onClick={() => setIsOpen(false)}>
                                     <Button className="shadow-lg shadow-indigo-500/20 bg-indigo-600 hover:bg-indigo-700 text-white">
                                         <Plus className="mr-2 h-4 w-4" />
-                                        Nueva Organización
+                                        Nueva OrganizaciÃ³n
                                     </Button>
                                 </Link>
                             )}
@@ -256,3 +256,4 @@ export function OrganizationSwitcher({ trigger, initialOrgDetails }: Organizatio
         </>
     )
 }
+

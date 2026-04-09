@@ -46,7 +46,7 @@ export function ChannelsList({ channels, pipelineStages, agents, organizationId 
     // OAuth handler with specific channel type
     const handleMetaConnect = async (channelType?: 'whatsapp' | 'messenger' | 'instagram') => {
         try {
-            const { getMetaAuthUrl } = await import('@/modules/core/integrations/marketplace/actions')
+            const { getMetaAuthUrl } = await import('@/modules/core/integrations/marketplace/marketplace-actions')
             const url = await getMetaAuthUrl(channelType)
             window.location.assign(url)
         } catch (error) {

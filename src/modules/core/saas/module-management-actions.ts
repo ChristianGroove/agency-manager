@@ -1,10 +1,10 @@
-"use server"
+﻿"use server"
 
 import { createClient } from "@/lib/supabase-server"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { revalidatePath } from "next/cache"
 import { requireSuperAdmin } from "@/lib/auth/platform-roles"
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { moduleValidator } from "@/lib/module-validator"
 import type { SystemModule, ModuleActivationPlan } from "@/lib/module-validator"
 
@@ -449,3 +449,4 @@ export async function validateAllOrganizationModules(organizationId: string) {
         }
     }
 }
+

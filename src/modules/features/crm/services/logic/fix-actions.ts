@@ -1,8 +1,8 @@
-
+﻿
 "use server"
 
 import { createClient } from "@/lib/supabase-server"
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { getPipelineStages } from "./pipeline-actions"
 import { revalidatePath } from "next/cache"
 
@@ -43,3 +43,4 @@ export async function fixLeadsStatus() {
     revalidatePath('/crm')
     return { success: true, count: orphans.length, fixedTo: firstStageKey }
 }
+

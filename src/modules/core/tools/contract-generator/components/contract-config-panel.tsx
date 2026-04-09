@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react"
 import { useContract } from "../context/contract-context"
-import { getClientsList, getServicesList } from "../actions"
+import { getClientsList, getServicesList } from "@/modules/core/tools/contract-generator/contract-actions"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"

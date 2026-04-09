@@ -8,8 +8,8 @@ import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { PERMISSION_GROUPS, PERMISSIONS } from '../permissions';
-import { updateRole } from '../actions'; // Server action
+import { PERMISSION_GROUPS, PERMISSIONS } from '../actions/permissions';
+import { updateRole } from '../actions/role-actions'; // Server action
 import { toast } from 'sonner';
 import { Save, AlertCircle, CheckCircle2, Shield } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';

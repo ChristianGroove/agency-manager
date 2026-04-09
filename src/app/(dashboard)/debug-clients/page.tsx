@@ -1,6 +1,6 @@
-
+﻿
 import { createClient } from "@/lib/supabase-server"
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 
 export default async function DebugClientsPage() {
     const supabase = await createClient()
@@ -64,3 +64,4 @@ export default async function DebugClientsPage() {
         </div>
     )
 }
+

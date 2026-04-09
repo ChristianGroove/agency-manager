@@ -1,7 +1,7 @@
 "use server"
 
 import { AIEngine } from "@/modules/core/ai-engine/service"
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { createClient } from "@/lib/supabase-server"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 

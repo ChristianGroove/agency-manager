@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useEffect, useState, useRef } from "react"
 import { useParams } from "next/navigation"
@@ -12,7 +12,7 @@ import { Invoice } from "@/types"
 import { ShareInvoiceModal } from "@/modules/features/billing/components/share-invoice-modal"
 import { InvoiceTemplate } from "@/modules/features/billing/components/invoice-template"
 import { ShareButton } from "@/components/animate-ui/components/community/share-button"
-import { getSettings } from "@/modules/core/settings/actions"
+import { getSettings } from "@/modules/core/settings/settings-actions"
 import { getDocumentTypeLabel } from "@/lib/billing-utils"
 
 export default function InvoicePage() {
@@ -37,7 +37,7 @@ export default function InvoicePage() {
   }, [invoice?.organization_id])
 
   const fetchSettings = async (orgId: string) => {
-    const { getPublicInvoiceSettings } = await import("@/modules/core/settings/actions")
+    const { getPublicInvoiceSettings } = await import("@/modules/core/settings/settings-actions")
     const data = await getPublicInvoiceSettings(orgId)
     setSettings(data)
   }
@@ -81,7 +81,7 @@ export default function InvoicePage() {
     if (!invoice || !invoice.client) return
     if (!invoice.client.email) return alert('El cliente no tiene un email registrado.')
 
-    if (!confirm(`¿Enviar factura ${invoice.number} a ${invoice.client.name} (${invoice.client.email})?`)) return
+    if (!confirm(`Â¿Enviar factura ${invoice.number} a ${invoice.client.name} (${invoice.client.email})?`)) return
 
     try {
       // Use efficient Server Action

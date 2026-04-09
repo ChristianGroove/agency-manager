@@ -1,7 +1,7 @@
 'use server'
 
 import { supabaseAdmin } from "@/lib/supabase-admin"
-import { getCurrentOrgDetails, getCurrentOrganizationId } from "./actions"
+import { getCurrentOrgDetails, getCurrentOrganizationId } from "./actions/crud"
 
 // ============================================
 // SPACE CATEGORY — Single Source of Truth

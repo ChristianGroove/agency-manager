@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
@@ -6,7 +6,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { getSettings } from "@/modules/core/settings/actions"
+import { getSettings } from "@/modules/core/settings/settings-actions"
 import { getWhatsAppLink } from "@/lib/communication-utils"
 import { sendQuoteViaWhatsAppAction as sendQuoteViaWhatsApp, getQuote } from "../quotes-actions"
 import { Quote } from "@/types"
@@ -43,7 +43,7 @@ export function QuoteShareSheet({ quote: initialQuote, quoteId, open, onOpenChan
                 if (res.success && res.data) {
                     setQuote(res.data)
                 } else {
-                    toast.error("Error al cargar la cotización")
+                    toast.error("Error al cargar la cotizaciÃ³n")
                     onOpenChange(false)
                 }
             }).finally(() => setLoadingQuote(false))
@@ -69,7 +69,7 @@ export function QuoteShareSheet({ quote: initialQuote, quoteId, open, onOpenChan
         if (!settings || !quote) return
 
         // Default template
-        const templateContent = "Hola {cliente}, te comparto la Cotización N° {numero} por valor de {valor}. Quedo atento a tus comentarios. ¡Gracias!"
+        const templateContent = "Hola {cliente}, te comparto la CotizaciÃ³n NÂ° {numero} por valor de {valor}. Quedo atento a tus comentarios. Â¡Gracias!"
 
         const clientName = quote.client?.name || quote.lead?.name || "Cliente"
         const finalMessage = templateContent
@@ -87,7 +87,7 @@ export function QuoteShareSheet({ quote: initialQuote, quoteId, open, onOpenChan
         try {
             const phone = quote.client?.phone || quote.lead?.phone
             if (!phone) {
-                toast.error("El cliente no tiene teléfono registrado")
+                toast.error("El cliente no tiene telÃ©fono registrado")
                 setSending(false)
                 return
             }
@@ -140,10 +140,10 @@ export function QuoteShareSheet({ quote: initialQuote, quoteId, open, onOpenChan
                     <SheetHeader>
                         <SheetTitle className="text-2xl font-bold flex items-center gap-2">
                             <Share2 className="h-6 w-6 text-indigo-600" />
-                            Compartir Cotización
+                            Compartir CotizaciÃ³n
                         </SheetTitle>
                         <SheetDescription className="text-base">
-                            Envía la cotización directamente al cliente por WhatsApp.
+                            EnvÃ­a la cotizaciÃ³n directamente al cliente por WhatsApp.
                         </SheetDescription>
                     </SheetHeader>
                 </div>
@@ -160,9 +160,9 @@ export function QuoteShareSheet({ quote: initialQuote, quoteId, open, onOpenChan
                                 <div className="h-20 w-20 bg-green-100 rounded-full flex items-center justify-center mb-4">
                                     <CheckCircle2 className="h-10 w-10 text-green-600" />
                                 </div>
-                                <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100">¡Mensaje Enviado!</h3>
+                                <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Â¡Mensaje Enviado!</h3>
                                 <p className="text-gray-500 max-w-sm">
-                                    La cotización ha sido enviada correctamente. Se ha creado/actualizado la conversación en el Inbox.
+                                    La cotizaciÃ³n ha sido enviada correctamente. Se ha creado/actualizado la conversaciÃ³n en el Inbox.
                                 </p>
                                 <div className="flex flex-col w-full max-w-xs gap-3 pt-4">
                                     <Button onClick={handleGoToInbox} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white h-12 text-lg">
@@ -179,7 +179,7 @@ export function QuoteShareSheet({ quote: initialQuote, quoteId, open, onOpenChan
                                 {/* Quote Summary Card */}
                                 <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm flex items-center justify-between">
                                     <div>
-                                        <p className="text-sm text-muted-foreground font-medium">Cotización</p>
+                                        <p className="text-sm text-muted-foreground font-medium">CotizaciÃ³n</p>
                                         <p className="text-lg font-bold text-gray-900 dark:text-gray-100">#{quote.number}</p>
                                     </div>
                                     <div className="text-right">
@@ -198,10 +198,10 @@ export function QuoteShareSheet({ quote: initialQuote, quoteId, open, onOpenChan
                                         value={message}
                                         onChange={(e) => setMessage(e.target.value)}
                                         className="min-h-[200px] p-4 text-base leading-relaxed resize-none rounded-xl border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-indigo-500/20 bg-white dark:bg-gray-800 shadow-sm"
-                                        placeholder="Escribe tu mensaje aquí..."
+                                        placeholder="Escribe tu mensaje aquÃ­..."
                                     />
                                     <p className="text-xs text-muted-foreground pl-1">
-                                        El enlace a la cotización se añadirá automáticamente al final del mensaje.
+                                        El enlace a la cotizaciÃ³n se aÃ±adirÃ¡ automÃ¡ticamente al final del mensaje.
                                     </p>
                                 </div>
 
@@ -209,7 +209,7 @@ export function QuoteShareSheet({ quote: initialQuote, quoteId, open, onOpenChan
                                 <div className="rounded-lg bg-blue-50 dark:bg-blue-900/20 p-3 text-sm text-blue-700 dark:text-blue-300 flex items-start gap-2">
                                     <ExternalLink className="h-4 w-4 mt-0.5 shrink-0" />
                                     <p>
-                                        El cliente recibirá un enlace único para ver la cotización online: <br />
+                                        El cliente recibirÃ¡ un enlace Ãºnico para ver la cotizaciÃ³n online: <br />
                                         <span className="font-mono bg-blue-100 dark:bg-blue-900/40 px-1 rounded">/quote/{quote.id}</span>
                                     </p>
                                 </div>

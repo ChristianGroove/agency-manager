@@ -1,7 +1,7 @@
-import { createClient } from '@/lib/supabase-server'
+﻿import { createClient } from '@/lib/supabase-server'
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { ProcessInstance, ProcessState, ProcessContext } from "@/types/process-engine"
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 
 export class ProcessEngine {
 
@@ -235,3 +235,4 @@ export class ProcessEngine {
         return { instance: instance as ProcessInstance, state: state as ProcessState }
     }
 }
+

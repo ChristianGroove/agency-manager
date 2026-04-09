@@ -1,7 +1,7 @@
-"use server"
+﻿"use server"
 
 import { createClient } from "@/lib/supabase-server"
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { Emitter } from "@/types/billing"
 
 export async function getActiveEmitters() {
@@ -104,3 +104,4 @@ export async function deleteEmitter(id: string) {
     if (error) throw error
     return { success: true }
 }
+

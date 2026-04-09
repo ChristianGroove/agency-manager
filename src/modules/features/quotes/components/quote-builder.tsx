@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
@@ -122,7 +122,7 @@ export function QuoteBuilder({ onSuccess, mode = 'page', emitters, prefillLeadId
 
                 // 2. Fetch Catalog (Keeping for now, but should move to service)
                 const { supabase } = await import('@/lib/supabase')
-                const { getCurrentOrganizationId } = await import('@/modules/core/organizations/actions')
+                const { getCurrentOrganizationId } = await import('@/modules/core/organizations/organization-actions')
                 const orgId = await getCurrentOrganizationId()
                 
                 if (orgId) {
@@ -166,7 +166,7 @@ export function QuoteBuilder({ onSuccess, mode = 'page', emitters, prefillLeadId
 
         // Search in DB if not found locally
         const { supabase } = await import('@/lib/supabase')
-        const { getCurrentOrganizationId } = await import('@/modules/core/organizations/actions')
+        const { getCurrentOrganizationId } = await import('@/modules/core/organizations/organization-actions')
         const orgId = await getCurrentOrganizationId()
 
         if (!orgId) return null
@@ -225,7 +225,7 @@ export function QuoteBuilder({ onSuccess, mode = 'page', emitters, prefillLeadId
                 }
             } catch (e: any) {
                 console.error(e)
-                toast.error("Error en conversión", { id: toastId })
+                toast.error("Error en conversiÃ³n", { id: toastId })
                 return
             }
         } else {
@@ -248,7 +248,7 @@ export function QuoteBuilder({ onSuccess, mode = 'page', emitters, prefillLeadId
         // Blocking Check
         const dup = await checkDuplicatePhone(prospectData.phone)
         if (dup) {
-            toast.warning(`El número ya existe (${dup.name}). Usa el botón 'Usar Existente'.`)
+            toast.warning(`El nÃºmero ya existe (${dup.name}). Usa el botÃ³n 'Usar Existente'.`)
             return
         }
 
@@ -322,7 +322,7 @@ export function QuoteBuilder({ onSuccess, mode = 'page', emitters, prefillLeadId
         // If in lead mode, don't require client. Otherwise require client.
         if (!isLeadOnlyMode && !selectedClientId) return toast.error(t('invoicing.toasts.select_client'))
         if (items.length === 0) return toast.error(t('quotes.builder.empty_items_message'))
-        // if (!selectedEmitterId) return toast.error("Selecciona una identidad de facturación") // Optional check
+        // if (!selectedEmitterId) return toast.error("Selecciona una identidad de facturaciÃ³n") // Optional check
 
         setLoading(true)
         try {
@@ -351,7 +351,7 @@ export function QuoteBuilder({ onSuccess, mode = 'page', emitters, prefillLeadId
             // If update, we use existing ID.
             const quoteId = existingQuote ? existingQuote.id : (response as any).data?.id
 
-            toast.success(existingQuote ? "Cotización actualizada" : t('invoicing.toasts.created_success'))
+            toast.success(existingQuote ? "CotizaciÃ³n actualizada" : t('invoicing.toasts.created_success'))
 
             if (onSuccess) {
                 onSuccess()
@@ -472,7 +472,7 @@ export function QuoteBuilder({ onSuccess, mode = 'page', emitters, prefillLeadId
                                             Lead en Pipeline
                                         </span>
                                         <span className="text-xs text-gray-400 mt-1">
-                                            Se vinculará directamente al lead sin crear contacto.
+                                            Se vincularÃ¡ directamente al lead sin crear contacto.
                                         </span>
                                     </div>
                                 </div>
@@ -626,7 +626,7 @@ export function QuoteBuilder({ onSuccess, mode = 'page', emitters, prefillLeadId
                                                                 />
                                                                 <CommandList>
                                                                     <CommandEmpty className="py-3 px-4 text-xs text-muted-foreground">Escribe para personalizar</CommandEmpty>
-                                                                    <CommandGroup heading="Catálogo">
+                                                                    <CommandGroup heading="CatÃ¡logo">
                                                                         {catalog.map((s) => (
                                                                             <CommandItem
                                                                                 key={s.id}
@@ -819,7 +819,7 @@ export function QuoteBuilder({ onSuccess, mode = 'page', emitters, prefillLeadId
                         <div className="space-y-2">
                             <Label>Nombre Completo</Label>
                             <Input
-                                placeholder="Ej. Juan Pérez"
+                                placeholder="Ej. Juan PÃ©rez"
                                 value={prospectData.name}
                                 onChange={(e) => setProspectData({ ...prospectData, name: e.target.value })}
                             />
@@ -833,7 +833,7 @@ export function QuoteBuilder({ onSuccess, mode = 'page', emitters, prefillLeadId
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label>Teléfono (Opcional)</Label>
+                            <Label>TelÃ©fono (Opcional)</Label>
                             <Input
                                 placeholder="+57 300..."
                                 value={prospectData.phone}
@@ -848,7 +848,7 @@ export function QuoteBuilder({ onSuccess, mode = 'page', emitters, prefillLeadId
                                 <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm flex flex-col gap-2 animate-in fade-in">
                                     <div className="flex items-center gap-2 text-amber-800 font-medium">
                                         <div className="h-2 w-2 rounded-full bg-amber-500" />
-                                        Este número ya pertenece a:
+                                        Este nÃºmero ya pertenece a:
                                     </div>
                                     <div className="pl-4 text-gray-600 font-bold">{duplicateWarning.name} {duplicateWarning.isLead ? '(Lead)' : ''}</div>
                                     <Button
@@ -872,3 +872,4 @@ export function QuoteBuilder({ onSuccess, mode = 'page', emitters, prefillLeadId
         </div >
     )
 }
+

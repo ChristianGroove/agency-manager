@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { processLifecycleTransitions, getExpiringTrials } from '@/modules/core/lifecycle/actions'
+import { processLifecycleTransitions, getExpiringTrials } from '@/modules/core/lifecycle/lifecycle-actions'
 
 /**
  * Lifecycle Cleanup Cron Job

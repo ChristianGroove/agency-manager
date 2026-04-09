@@ -1,11 +1,11 @@
-import { createClient } from "@/lib/supabase-server"
+﻿import { createClient } from "@/lib/supabase-server"
 import { AutomationsView } from "@/modules/core/automation/components/automations-view"
 import { getWorkflowStats, getExecutionHistory } from "@/modules/core/automation/actions"
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 
 export const metadata = {
     title: "Automatizaciones | CRM",
-    description: "Gestiona y monitorea tus workflows de automatización",
+    description: "Gestiona y monitorea tus workflows de automatizaciÃ³n",
 }
 
 export default async function CRMAutomationsPage() {
@@ -40,3 +40,4 @@ export default async function CRMAutomationsPage() {
         />
     )
 }
+

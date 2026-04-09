@@ -1,8 +1,8 @@
-"use server"
+﻿"use server"
 
 import { createClient } from "@/lib/supabase-server"
 import { supabaseAdmin } from "@/lib/supabase-admin"
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { SaasApp } from "@/types/saas"
 import { cache } from "react"
 
@@ -81,3 +81,4 @@ export const getCurrentOrganizationApp = cache(async () => {
         metadata: {}
     }
 })
+

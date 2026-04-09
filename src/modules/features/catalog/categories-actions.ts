@@ -1,7 +1,7 @@
-'use server'
+﻿'use server'
 
 import { createClient } from "@/lib/supabase-server"
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { revalidatePath } from "next/cache"
 
 /**
@@ -228,3 +228,4 @@ export async function reorderCategories(categoryIds: string[]): Promise<void> {
     revalidatePath('/services')
     revalidatePath('/portfolio')
 }
+

@@ -1,5 +1,5 @@
-import { getPaginatedClients } from "@/modules/features/crm/services/logic/actions"
-import { getSettings } from "@/modules/core/settings/actions"
+﻿import { getPaginatedClients } from "@/modules/features/crm/services/logic/actions"
+import { getSettings } from "@/modules/core/settings/settings-actions"
 import { getClientCategories } from "@/modules/features/crm/services/logic/categories-actions"
 import ClientsView from "@/modules/features/crm/components/clients-view"
 import { GrowthEcosystemShell } from "@/modules/core/layout/growth-ecosystem-shell"
@@ -7,7 +7,7 @@ import { Suspense } from "react"
 
 export const metadata = {
     title: "Clientes",
-    description: "Gestión de cartera de clientes",
+    description: "GestiÃ³n de cartera de clientes",
 }
 
 export default async function ClientsPage({

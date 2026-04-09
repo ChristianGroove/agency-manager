@@ -1,8 +1,8 @@
-import { Suspense } from "react"
+﻿import { Suspense } from "react"
 import { Metadata } from "next"
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase-server"
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { getAttendanceLogs, getStaff, getAttendanceShifts } from "@/modules/features/attendance/actions"
 import { getLocations } from "@/modules/features/locations/actions"
 import { AttendanceDashboard } from "@/modules/features/attendance/components/admin/attendance-dashboard"
@@ -10,7 +10,7 @@ import { GlobalLoader } from "@/components/ui/global-loader"
 
 export const metadata: Metadata = {
     title: "Control de Asistencia | Pixy",
-    description: "Gestión y auditoría de asistencia de colaboradores.",
+    description: "GestiÃ³n y auditorÃ­a de asistencia de colaboradores.",
 }
 
 export default async function AttendanceAdminPage() {
@@ -42,4 +42,5 @@ export default async function AttendanceAdminPage() {
         </Suspense>
     )
 }
+
 

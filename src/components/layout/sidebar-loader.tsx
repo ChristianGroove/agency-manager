@@ -1,8 +1,8 @@
-import { Sidebar } from "./sidebar"
-import { getSidebarContext } from "@/modules/core/saas/actions"
+﻿import { Sidebar } from "./sidebar"
+import { getSidebarContext } from "@/modules/core/saas/saas-actions"
 import { createClient } from "@/lib/supabase-server"
 import { isSuperAdmin } from "@/lib/auth/platform-roles"
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 
 export async function SidebarLoader({
     user,
@@ -19,7 +19,7 @@ export async function SidebarLoader({
     // We already have User, OrgId and Admin flag from Layout.
     const [sidebarContext, orgs] = await Promise.all([
         getSidebarContext(currentOrgId || undefined, user, activeModules),
-        import("@/modules/core/organizations/actions").then(mod => mod.getUserOrganizations())
+        import("@/modules/core/organizations/organization-actions").then(mod => mod.getUserOrganizations())
     ])
 
     return (
@@ -32,3 +32,4 @@ export async function SidebarLoader({
         />
     )
 }
+

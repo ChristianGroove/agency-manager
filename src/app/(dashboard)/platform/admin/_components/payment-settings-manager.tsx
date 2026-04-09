@@ -28,7 +28,7 @@ import {
     updatePlatformFees,
     testStripeConnection,
     PaymentGatewayConfig
-} from "@/modules/core/payments/gateway-actions"
+} from "@/modules/billing/platform/gateways/gateway-actions"
 import { cn } from "@/lib/utils"
 
 const GATEWAY_ICONS: Record<string, any> = {

@@ -1,7 +1,7 @@
-'use server'
+﻿'use server'
 
 import { createClient } from "@/lib/supabase-server"
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { revalidatePath } from "next/cache"
 import { randomUUID } from "crypto"
 
@@ -139,3 +139,4 @@ export async function reorderPaymentMethods(items: { id: string, order: number }
     revalidatePath('/settings')
     return { success: true }
 }
+

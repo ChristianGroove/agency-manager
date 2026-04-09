@@ -1,11 +1,11 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { TrashItem, getTrashItems, restoreItem, permanentlyDeleteItem, emptyTrash, bulkTrashAction } from "@/modules/core/trash/actions"
+import { TrashItem, getTrashItems, restoreItem, permanentlyDeleteItem, emptyTrash, bulkTrashAction } from "@/modules/core/trash/trash-actions"
 import { Loader2, RefreshCw, Trash2, AlertTriangle, Search, Archive, Settings, CheckSquare, Square, Eraser } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { toast } from "sonner"
@@ -14,7 +14,7 @@ import { useActiveModules } from "@/hooks/use-active-modules"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { updateSettings } from "@/modules/core/settings/actions"
+import { updateSettings } from "@/modules/core/settings/settings-actions"
 import { cn } from "@/lib/utils"
 
 export function TrashBinModal({ shortcut = 'ctrl+alt+p' }: { shortcut?: string }) {
@@ -79,7 +79,7 @@ export function TrashBinModal({ shortcut = 'ctrl+alt+p' }: { shortcut?: string }
     }
 
     const handleDelete = async (item: TrashItem) => {
-        if (!confirm("¿Estás seguro de eliminar esto permanentemente? NO SE PUEDE DESHACER.")) return
+        if (!confirm("Â¿EstÃ¡s seguro de eliminar esto permanentemente? NO SE PUEDE DESHACER.")) return
 
         setProcessingId(item.id)
         try {
@@ -101,7 +101,7 @@ export function TrashBinModal({ shortcut = 'ctrl+alt+p' }: { shortcut?: string }
     }
 
     const handleEmptyTrash = async () => {
-        if (!confirm("¿Estás seguro de vaciar COMPLETAMENTE la papelera? Esta acción eliminará permanentemente TODOS los registros de todas las categorías y NO se puede deshacer.")) return
+        if (!confirm("Â¿EstÃ¡s seguro de vaciar COMPLETAMENTE la papelera? Esta acciÃ³n eliminarÃ¡ permanentemente TODOS los registros de todas las categorÃ­as y NO se puede deshacer.")) return
 
         setIsBulkProcessing(true)
         try {
@@ -121,7 +121,7 @@ export function TrashBinModal({ shortcut = 'ctrl+alt+p' }: { shortcut?: string }
         if (count === 0) return
 
         if (action === 'delete') {
-            if (!confirm(`¿Estás seguro de eliminar permanentemente ${count} elementos? NO SE PUEDE DESHACER.`)) return
+            if (!confirm(`Â¿EstÃ¡s seguro de eliminar permanentemente ${count} elementos? NO SE PUEDE DESHACER.`)) return
         }
 
         setIsBulkProcessing(true)
@@ -135,7 +135,7 @@ export function TrashBinModal({ shortcut = 'ctrl+alt+p' }: { shortcut?: string }
                 setSelectedIds(new Set())
             }
         } catch (error) {
-            toast.error(`Error al procesar acción masiva`)
+            toast.error(`Error al procesar acciÃ³n masiva`)
         } finally {
             setIsBulkProcessing(false)
         }
@@ -176,7 +176,7 @@ export function TrashBinModal({ shortcut = 'ctrl+alt+p' }: { shortcut?: string }
                         <div>
                             <DialogTitle className="text-xl">Recycle Bin (Papelera)</DialogTitle>
                             <DialogDescription>
-                                Los elementos eliminados se conservan por 30 días antes de ser purgados permanentemente.
+                                Los elementos eliminados se conservan por 30 dÃ­as antes de ser purgados permanentemente.
                             </DialogDescription>
                         </div>
                     </div>
@@ -225,7 +225,7 @@ export function TrashBinModal({ shortcut = 'ctrl+alt+p' }: { shortcut?: string }
                             ) : filteredItems.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center h-full text-gray-400 py-20">
                                     <Archive className="h-12 w-12 mb-3 opacity-20" />
-                                    <p>No hay elementos en esta sección</p>
+                                    <p>No hay elementos en esta secciÃ³n</p>
                                 </div>
                             ) : (
                                 <div className="space-y-4">
@@ -292,10 +292,10 @@ export function TrashBinModal({ shortcut = 'ctrl+alt+p' }: { shortcut?: string }
                                                                 variant={item.days_left < 5 ? "destructive" : "outline"}
                                                                 className="text-[10px] whitespace-nowrap"
                                                             >
-                                                                {item.days_left} días restantes
+                                                                {item.days_left} dÃ­as restantes
                                                             </Badge>
                                                         </div>
-                                                        <p className="text-sm text-gray-500 truncate capitalize">{item.type} • {item.original_table}</p>
+                                                        <p className="text-sm text-gray-500 truncate capitalize">{item.type} â€¢ {item.original_table}</p>
                                                     </div>
                                                 </div>
 
@@ -333,7 +333,7 @@ export function TrashBinModal({ shortcut = 'ctrl+alt+p' }: { shortcut?: string }
                 <div className="bg-white px-6 py-3 border-t border-gray-200 text-xs text-gray-400 flex justify-between items-center">
                     <span>ESC para cerrar</span>
                     <div className="flex items-center gap-4">
-                        <span className="flex items-center gap-1"><AlertTriangle className="h-3 w-3" /> Restaurar devuelve a ubicación original</span>
+                        <span className="flex items-center gap-1"><AlertTriangle className="h-3 w-3" /> Restaurar devuelve a ubicaciÃ³n original</span>
                         <Popover>
                             <PopoverTrigger asChild>
                                 <Button variant="ghost" size="sm" className="h-6 gap-1 text-xs text-muted-foreground hover:text-foreground">
@@ -343,7 +343,7 @@ export function TrashBinModal({ shortcut = 'ctrl+alt+p' }: { shortcut?: string }
                             </PopoverTrigger>
                             <PopoverContent className="w-80" align="end">
                                 <div className="space-y-4">
-                                    <h4 className="font-medium leading-none">Configuración de Papelera</h4>
+                                    <h4 className="font-medium leading-none">ConfiguraciÃ³n de Papelera</h4>
                                     <div className="space-y-2">
                                         <Label htmlFor="shortcut">Atajo de Teclado</Label>
                                         <div className="flex gap-2">

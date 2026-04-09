@@ -1,7 +1,7 @@
 import { Suspense } from "react"
 import { Loader2 } from "lucide-react"
 import { MarketplacePage } from "@/modules/core/integrations/marketplace/components/marketplace-page"
-import { getMarketplaceProviders, getInstalledIntegrations } from "@/modules/core/integrations/marketplace/actions"
+import { getMarketplaceProviders, getInstalledIntegrations } from "@/modules/core/integrations/marketplace/marketplace-actions"
 import { getAICredentials, getAIProviders } from "@/modules/core/ai-engine/actions"
 
 export default async function Page() {

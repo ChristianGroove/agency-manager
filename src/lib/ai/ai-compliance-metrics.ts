@@ -8,62 +8,9 @@
  * - Data sanitization rate
  */
 
-import { PixyBusinessIntent, OffTopicIntent } from './ai-intent-validator';
+import { PixyBusinessIntent, OffTopicIntent, IntentEvent } from './types';
 
-/**
- * Intent tracking event
- */
-interface IntentEvent {
-    intent: PixyBusinessIntent | OffTopicIntent;
-    isCommercial: boolean;
-    timestamp: Date;
-}
-
-/**
- * Compliance metrics snapshot
- */
-export interface ComplianceMetrics {
-    /** Intent ratio breakdown */
-    intentRatio: {
-        commercial: number;      // Target: 80-90%
-        offTopic: number;        // Max: 10-20%
-        unknown: number;         // Min: <5%
-    };
-
-    /** Total messages analyzed */
-    totalMessages: number;
-
-    /** Deflection rate */
-    deflectionRate: number;      // Expected: 10-20%
-
-    /** Handoff rate */
-    handoffRate: number;         // Expected: 5-10%
-
-    /** Data sanitization rate */
-    dataSanitizationRate: number; // Target: 100%
-
-    /** Is compliant with Meta 2026? */
-    isCompliant: boolean;
-
-    /** Time window */
-    windowStart: Date;
-    windowEnd: Date;
-
-    /** Intent distribution */
-    intentDistribution: Record<string, number>;
-}
-
-/**
- * Compliance alert
- */
-export interface ComplianceAlert {
-    severity: 'critical' | 'high' | 'medium' | 'low';
-    message: string;
-    metric: string;
-    currentValue: number;
-    targetValue: number;
-    timestamp: Date;
-}
+import { ComplianceMetrics, ComplianceAlert } from './types';
 
 /**
  * AI Compliance Metrics Class

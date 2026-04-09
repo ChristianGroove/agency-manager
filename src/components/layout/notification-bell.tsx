@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useState, useEffect } from "react"
 import { Bell } from "lucide-react"
@@ -11,7 +11,7 @@ import {
 import { supabase } from "@/lib/supabase"
 import { NotificationList } from "./notification-list"
 // import { checkUpcomingPayments } from "@/lib/notifications"
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 
 type Notification = {
     id: string
@@ -164,3 +164,4 @@ export function NotificationBell({ trigger }: NotificationBellProps) {
         </DropdownMenu>
     )
 }
+

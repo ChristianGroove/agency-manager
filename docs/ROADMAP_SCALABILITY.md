@@ -2,23 +2,24 @@
 
 Este documento detalla la estrategia por fases para transformar a Pixy en un producto técnicamente blindado y empresarialmente escalable, corrigiendo las inconsistencias detectadas sin interrumpir las operaciones actuales.
 
+
+## Fase 0: Estabilización y Blindaje Arquitectónico (✅ COMPLETADO)
+*Enfoque: Eliminar deuda técnica, normalizar dependencias y asegurar cumplimiento de Next.js 16.1.*
+
+- **Normalización de Dependencias**: Resolución de 17 dependencias circulares y consolidación de acciones en capas atómicas (`actions/`, `services/`, `hooks/`).
+- **Seguridad "Use Server"**: Aislamiento total de lógica de servidor (DB/Metadata) mediante directivas estrictas en 100+ archivos clave.
+- **Modernización de Middleware**: Migración de `proxy.ts` al estándar Next.js 16.1.1 para enrutamiento multi-tenant robusto.
+- **Recuperación de Integridad**: Restauración de definiciones críticas de nodos de automatización y servicios de IA.
+
 ---
 
-## Fase 1: Armonización y Soberanía (Inmediato)
-*Enfoque: Eliminar duplicidades y dar control a los Resellers.*
+## Fase 1: Sanitización Modular y Saneamiento del Core (🚀 PRÓXIMO PASO)
+*Enfoque: Desacoplar funcionalidades del motor SaaS y categorizar dominios.*
 
-### 1.1 Unificación de la "Biblia" (Single Source of Truth)
-- **Acción**: Fusionar la sección de Revenue Sharing. Eliminar la redundancia entre la Sección 3 y la Sección 10.
-- **Resultado**: Cero confusiones sobre comisiones para el equipo de desarrollo.
-
-### 1.2 Implementación de Soberanía de Facturación
-- **Acción**: Añadir un campo `config.allow_direct_billing` en la tabla `organizations` para Resellers.
-- **Acción**: El botón de "Upgrade Directo" solo se muestra si el Reseller padre lo permite.
-- **Resultado**: Se elimina el conflicto de precios entre Agencia y Pixy.
-
-### 1.3 Definición Técnica de "Actividad"
-- **Acción**: Implementar un trigger que registre `support_session` automáticamente cada vez que un Owner/Admin de un Reseller entre al dashboard de un Cliente Hijo.
-- **Resultado**: Payouts automáticos y justos sin carga manual para el socio.
+- **Migración de Dominios**: Mover módulos funcionales (`messaging`, `automation`, `tools`, `integrations`) del Core hacia la capa de `features/`.
+- **Extracción de Infraestructura**: Crear `src/modules/infrastructure` para servicios transversales (Logging, Data-Vault, Storage).
+- **Hardening del Motor**: Reducir el Core a <10 carpetas esenciales (Auth, Orgs, IAM, SaaS Engine).
+- **Mapeo de Capacidades**: Preparar la estructura para que los SPACES activen Features en lugar de depender de la vertical hardcodeada.
 
 ---
 
@@ -54,5 +55,12 @@ Este documento detalla la estrategia por fases para transformar a Pixy en un pro
 
 ---
 
-## 🛠️ Próximos Pasos (Quick Win)
-¿Deseas que empiece hoy mismo con la **Fase 1.1 (Unificación de la Biblia)** y **1.2 (Soberanía de Facturación)**? Son cambios de bajo riesgo pero de alto impacto en la salud del producto.
+## 🛠️ Próximos Pasos Recomendados
+
+Tras la estabilización del núcleo, el siguiente movimiento estratégico es:
+
+1. **Fase 2.1: Sistema de Capacidades (Capabilities Registry)**: Migrar de un sistema rígido de "Verticales" a uno modular basado en capacidades. Esto permitirá activar/desactivar funciones (CRM Avanzado, Automatización, IA) por tenant de forma dinámica.
+2. **Auditoría de Smoke Tests de Facturación**: Implementar la verificación automatizada de repartición de ingresos (Reseller vs Platform) ahora que la arquitectura está limpia.
+3. **Validación en Entorno Linux/Docker**: Confirmar que el build de producción pasa sin errores en un entorno real de despliegue.
+
+¿Deseas que procedamos con el **Diseño del Systema de Capacidades (Fase 2.1)** o prefieres reforzar la **Seguridad de RLS (Fase 3.1)**?

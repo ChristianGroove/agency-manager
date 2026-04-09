@@ -1,7 +1,7 @@
 "use server"
 
 import { supabaseAdmin } from "@/lib/supabase-admin"
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { decrypt } from "@/modules/core/ai-engine/encryption"
 import OpenAI from "openai"
 import { GoogleGenerativeAI } from "@google/generative-ai"

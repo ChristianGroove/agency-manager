@@ -14,7 +14,7 @@ import { useRouter } from "next/navigation"
 import { useTranslation } from "@/lib/i18n/use-translation"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { getChannels } from "@/modules/core/channels/actions"
-import { getCurrentUserPermissions } from "@/modules/core/settings/actions/team-actions"
+import { getCurrentUserPermissions } from "@/modules/core/settings/settings-actions"
 import { Channel as ChannelType } from "@/modules/core/channels/types"
 import { supabase } from "@/lib/supabase"
 

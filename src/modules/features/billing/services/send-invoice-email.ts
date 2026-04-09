@@ -1,10 +1,10 @@
-'use server'
+﻿'use server'
 
 import { createClient } from "@/lib/supabase-server"
 import { EmailService } from "@/modules/core/notifications/email.service"
 import { TemplateEngine } from "@/modules/core/notifications/template-engine"
 import { getEffectiveBranding } from "@/modules/core/branding/actions"
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 
 export async function sendInvoiceEmail(invoiceId: string) {
     const supabase = await createClient()
@@ -46,7 +46,7 @@ export async function sendInvoiceEmail(invoiceId: string) {
         secondary_color: brandingConfig.colors.secondary,
         logo_url: brandingConfig.logos.main || undefined,
         website_url: brandingConfig.website,
-        footer_text: `© ${new Date().getFullYear()} ${brandingConfig.name}. Todos los derechos reservados.`
+        footer_text: `Â© ${new Date().getFullYear()} ${brandingConfig.name}. Todos los derechos reservados.`
     }
 
     // 4. Generate HTML using Database Template Engine
@@ -94,3 +94,4 @@ export async function sendInvoiceEmail(invoiceId: string) {
 
     return { success: true }
 }
+

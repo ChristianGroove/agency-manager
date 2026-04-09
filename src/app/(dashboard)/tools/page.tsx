@@ -1,9 +1,9 @@
-import { Suspense } from "react"
+﻿import { Suspense } from "react"
 import { Loader2 } from "lucide-react"
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { getEffectiveBranding } from "@/modules/core/branding/actions"
 import { ToolsView } from "@/modules/core/tools/components/tools-view"
-import { getSettings } from "@/modules/core/settings/actions"
+import { getSettings } from "@/modules/core/settings/settings-actions"
 import { BrandingConfig } from "@/types/branding"
 
 export const metadata = {
@@ -21,3 +21,4 @@ export default async function ToolsPage() {
         </Suspense>
     )
 }
+

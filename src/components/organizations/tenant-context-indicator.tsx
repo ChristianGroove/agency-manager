@@ -1,10 +1,10 @@
-"use client"
+﻿"use client"
 
 import { useEffect, useState } from "react"
 import { createBrowserClient } from "@supabase/ssr"
 import { Building2 } from "lucide-react"
 
-import { getCurrentOrgName, getTenantContext } from "@/modules/core/organizations/actions"
+import { getCurrentOrgName, getTenantContext } from "@/modules/core/organizations/organization-actions"
 
 export function TenantContextIndicator() {
     const [context, setContext] = useState<{ name: string, color: string } | null>(null)
@@ -59,3 +59,4 @@ export function TenantContextIndicator() {
         </div>
     )
 }
+

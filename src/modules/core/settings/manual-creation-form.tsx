@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { RolePicker } from "@/modules/core/iam/components/role-picker"
-import { createUserManually } from "./actions/team-actions"
+import { createUserManually } from "./actions/team"
 import { toast } from "sonner"
 import { Eye, EyeOff, Lock, User, Mail, CheckCircle, Loader2 } from "lucide-react"
 
@@ -21,7 +21,7 @@ export function ManualCreationForm({ onSuccess }: { onSuccess: () => void }) {
             return
         }
         if (password.length < 6) {
-            toast.error("La contraseña debe tener al menos 6 caracteres")
+            toast.error("La contraseÃ±a debe tener al menos 6 caracteres")
             return
         }
 
@@ -65,7 +65,7 @@ export function ManualCreationForm({ onSuccess }: { onSuccess: () => void }) {
             </div>
 
             <div className="space-y-2">
-                <Label htmlFor="create-email">Correo Electrónico</Label>
+                <Label htmlFor="create-email">Correo ElectrÃ³nico</Label>
                 <div className="relative">
                     <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                     <Input
@@ -81,13 +81,13 @@ export function ManualCreationForm({ onSuccess }: { onSuccess: () => void }) {
             </div>
 
             <div className="space-y-2">
-                <Label htmlFor="create-password">Contraseña</Label>
+                <Label htmlFor="create-password">ContraseÃ±a</Label>
                 <div className="relative">
                     <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                     <Input
                         id="create-password"
                         type={showPassword ? "text" : "password"}
-                        placeholder="Contraseña segura"
+                        placeholder="ContraseÃ±a segura"
                         className="pl-9 pr-9"
                         autoComplete="new-password"
                         value={password}
@@ -107,7 +107,7 @@ export function ManualCreationForm({ onSuccess }: { onSuccess: () => void }) {
                         )}
                     </Button>
                 </div>
-                <p className="text-xs text-gray-500">Mínimo 6 caracteres.</p>
+                <p className="text-xs text-gray-500">MÃ­nimo 6 caracteres.</p>
             </div>
 
             <div className="space-y-2">
@@ -121,8 +121,8 @@ export function ManualCreationForm({ onSuccess }: { onSuccess: () => void }) {
             <div className="flex items-start gap-2 p-3 bg-amber-50 text-amber-800 rounded-md text-xs">
                 <CheckCircle className="h-4 w-4 mt-0.5 shrink-0" />
                 <p>
-                    <strong>Nota Importante:</strong> El usuario será creado y confirmado inmediatamente.
-                    Tú eres responsable de comunicarle sus credenciales de acceso de forma segura.
+                    <strong>Nota Importante:</strong> El usuario serÃ¡ creado y confirmado inmediatamente.
+                    TÃº eres responsable de comunicarle sus credenciales de acceso de forma segura.
                 </p>
             </div>
 

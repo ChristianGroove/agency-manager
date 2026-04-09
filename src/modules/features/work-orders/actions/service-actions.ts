@@ -1,7 +1,7 @@
-'use server'
+﻿'use server'
 
 import { createClient } from "@/lib/supabase-server"
-import { getCurrentOrganizationId } from "@/modules/core/organizations/actions"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { revalidatePath } from "next/cache"
 
 export interface CleaningService {
@@ -93,3 +93,4 @@ export async function deleteCleaningService(id: string) {
     revalidatePath('/cleaning')
     return { success: true }
 }
+
