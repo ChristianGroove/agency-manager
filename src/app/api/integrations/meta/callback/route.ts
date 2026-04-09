@@ -300,7 +300,7 @@ export async function GET(request: Request) {
 
         // 5. Handle based on source (Granular vs Full)
         if (isGranularConnection && filteredAssets.length > 0) {
-            const { activateMetaChannel } = await import('@/modules/core/integrations/marketplace/meta-channel-actions');
+            const { activateMetaChannel } = await import('@\/modules\/infrastructure\/integrations/marketplace/meta-channel-actions');
 
             let successCount = 0;
             let errorMessages: string[] = [];

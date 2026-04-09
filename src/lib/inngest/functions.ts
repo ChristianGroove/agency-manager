@@ -1,6 +1,6 @@
 import { inngest } from "./client";
-import { trackUsage } from "@/modules/core/usage/usage-tracker";
-import { WorkflowEngine } from "@/modules/core/automation/engine";
+import { trackUsage } from "@\/modules\/infrastructure\/usage/usage-tracker";
+import { WorkflowEngine } from "@/modules/features/automation/engine";
 import { createClient } from "@supabase/supabase-js";
 
 // Helper to load execution context
@@ -45,7 +45,7 @@ export const runWorkflow = inngest.createFunction(
 
         // 1. Check Usage Limits (Protection)
         await step.run("check-limits", async () => {
-            const { assertUsageAllowed } = await import("@/modules/core/usage/usage-limiter");
+            const { assertUsageAllowed } = await import("@\/modules\/infrastructure\/usage/usage-limiter");
             await assertUsageAllowed({ organizationId, engine: 'automation' });
         });
 
@@ -153,7 +153,7 @@ export const contractOrchestrator = inngest.createFunction(
         // 1. Meter AI Usage
         if (usage) {
             await step.run("meter-ai-usage", async () => {
-                const { trackUsage } = await import("@/modules/core/usage/usage-tracker");
+                const { trackUsage } = await import("@\/modules\/infrastructure\/usage/usage-tracker");
 
                 // Track AI Messages (1 per generation)
                 await trackUsage({
@@ -191,7 +191,7 @@ export const contractOrchestrator = inngest.createFunction(
 
         // 3. Send Branded Email
         await step.run("send-delivery-email", async () => {
-            const { emailService } = await import("@/modules/core/communication/email-service");
+            const { emailService } = await import("@\/modules\/infrastructure\/communication/email-service");
             const supabase = createClient(
                 process.env.NEXT_PUBLIC_SUPABASE_URL!,
                 process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -222,12 +222,13 @@ export const contractOrchestrator = inngest.createFunction(
     }
 );
 
-import { vaultSnapshotScheduler } from "@/modules/core/data-vault/scheduler";
+import { vaultSnapshotScheduler } from "@/modules/infrastructure/data-vault/scheduler";
 import { monthlySubscriptionBilling } from "@/inngest/billing";
 import { platformDunningManager } from "@/inngest/dunning-manager";
 import { clientInvoicingAutomation } from "@/inngest/client-invoicing";
 import { processIncomingMessage } from "@/inngest/messaging";
 import { processStripeWebhook } from "@/inngest/stripe";
+import { trashCleanup } from "@/inngest/trash-cleanup";
 
 export const functions = [
     runWorkflow, 
@@ -237,7 +238,8 @@ export const functions = [
     platformDunningManager, 
     clientInvoicingAutomation,
     processIncomingMessage,
-    processStripeWebhook
+    processStripeWebhook,
+    trashCleanup
 ];
 
 

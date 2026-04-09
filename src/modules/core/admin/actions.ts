@@ -4,7 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase-admin"
 import { requireSuperAdmin } from "@/lib/auth/platform-roles"
 import { revalidatePath } from "next/cache"
 import { headers } from "next/headers"
-import { EmailService } from "@/modules/core/notifications/email.service"
+import { EmailService } from "@\/modules\/features\/notifications/email.service"
 
 /**
  * =======================
@@ -167,7 +167,7 @@ export async function adminResetUserPassword(userId: string, orgId: string | nul
     // 3. Send Email via PLATFORM context
     const { getAuthRecoveryEmailHtml } = await import('@/lib/email-templates')
     // We fetch platform branding
-    const { EmailService } = await import('@/modules/core/notifications/email.service')
+    const { EmailService } = await import('@\/modules\/features\/notifications/email.service')
     
     // We send it!
     const emailResult = await EmailService.send({

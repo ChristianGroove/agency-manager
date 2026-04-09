@@ -28,6 +28,9 @@
       ],
       "@/modules/features/*": [
         "./src/modules/features/*"
+      ],
+      "@/modules/infrastructure/*": [
+        "./src/modules/infrastructure/*"
       ]
     }
   },

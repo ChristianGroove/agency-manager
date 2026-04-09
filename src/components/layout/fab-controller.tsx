@@ -17,7 +17,7 @@ const LazyAssistantOverlay = dynamic(
 )
 
 const LazyAssistantModal = dynamic(
-    () => import("@/modules/core/caa/components/assistant-modal").then(mod => mod.AssistantModal),
+    () => import("@\/modules\/features\/caa/components/assistant-modal").then(mod => mod.AssistantModal),
     {
         ssr: false,
         loading: () => null

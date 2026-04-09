@@ -1,6 +1,6 @@
-﻿import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase-server'
-import { AIEngine } from '@/modules/core/ai-engine/service'
+import { AIEngine } from '@\/modules\/infrastructure\/ai-engine/service'
 import { getCurrentOrganizationId } from '@/modules/core/organizations/organization-actions'
 
 export async function POST(req: NextRequest) {

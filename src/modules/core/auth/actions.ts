@@ -121,7 +121,7 @@ export async function signup(formData: FormData) {
                     
                     // Recursive-like block or just handle here. Let's handle here to keep it flat.
                     const { getAuthConfirmationEmailHtml } = await import('@/lib/email-templates')
-                    const { EmailService } = await import('@/modules/core/notifications/email.service')
+                    const { EmailService } = await import('@\/modules\/features\/notifications/email.service')
                     const identity = await (EmailService as any).getSenderIdentity('PLATFORM')
                     const confirmationHtml = getAuthConfirmationEmailHtml(reInviteLink, identity.branding, identity.style)
 
@@ -152,7 +152,7 @@ export async function signup(formData: FormData) {
 
         // 2. Resolve Template & Branding
         const { getAuthConfirmationEmailHtml } = await import('@/lib/email-templates')
-        const { EmailService } = await import('@/modules/core/notifications/email.service')
+        const { EmailService } = await import('@\/modules\/features\/notifications/email.service')
         
         const identity = await (EmailService as any).getSenderIdentity('PLATFORM')
         const confirmationHtml = getAuthConfirmationEmailHtml(inviteLink, identity.branding, identity.style)
@@ -217,7 +217,7 @@ export async function sendMagicLink(formData: FormData) {
         const magicLink = getSecureAuthLink(actionLink, 'magiclink', redirectBase, '/dashboard')
 
         // 2. Send Custom Email
-        const { EmailService } = await import('@/modules/core/notifications/email.service')
+        const { EmailService } = await import('@\/modules\/features\/notifications/email.service')
         const { getAuthMagicLinkEmailHtml } = await import('@/lib/email-templates')
         
         // Resolve identity to build template with correct style
@@ -283,7 +283,7 @@ export async function resetPasswordRequest(formData: FormData) {
 
     try {
         // 2. Send Email (Custom Service)
-        const { EmailService } = await import('@/modules/core/notifications/email.service')
+        const { EmailService } = await import('@\/modules\/features\/notifications/email.service')
         const { getAuthRecoveryEmailHtml } = await import('@/lib/email-templates')
 
         // Resolve identity for template

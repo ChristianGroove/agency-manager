@@ -2,7 +2,7 @@ import { CreateServiceSheet } from "@/modules/features/billing/components/create
 import { CreateInvoiceSheet } from "@/modules/features/billing/components/create-invoice-sheet"
 import { CreateHostingSheet } from "@/modules/features/hosting/components/create-hosting-sheet"
 import { ServiceDetailModal } from "@/modules/features/billing/components/service-detail-modal"
-import { UnifiedCommunicationModal } from "@/modules/core/communication/components/unified-communication-modal"
+import { UnifiedCommunicationModal } from "@\/modules\/infrastructure\/communication/components/unified-communication-modal"
 import { Client } from "@/types"
 
 interface ClientActionManagerProps {

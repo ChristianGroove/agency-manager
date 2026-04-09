@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase-server"
 import { NextResponse } from "next/server"
-import { WorkflowEngine, WorkflowDefinition } from "@/modules/core/automation/engine"
+import { WorkflowEngine, WorkflowDefinition } from "@/modules/features/automation/engine"
 
 // Force dynamic to ensure we always check the DB for latest items
 export const dynamic = 'force-dynamic'

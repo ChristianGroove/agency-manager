@@ -6,7 +6,7 @@ import { isSuperAdmin } from "@/lib/auth/platform-roles"
 import { getAuthRedirectBase } from "@/lib/auth-utils"
 import { getSecureAuthLink } from "@/lib/auth-link-utils"
 import { getAuthInviteEmailHtml, getAuthConfirmationEmailHtml } from "@/lib/email-templates"
-import { EmailService } from "@/modules/core/notifications/email.service"
+import { EmailService } from "@\/modules\/features\/notifications/email.service"
 import { getCurrentOrganizationId, getUserOrganizations, getCurrentOrgDetails } from "./crud"
 import { switchOrganization } from "./context"
 

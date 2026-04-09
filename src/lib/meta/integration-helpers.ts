@@ -7,7 +7,7 @@
 
 import { wabaSubscriptionManager } from '@/lib/meta/waba-subscription-manager';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { decryptObject } from '@/modules/core/integrations/encryption';
+import { decryptObject } from '@\/modules\/infrastructure\/integrations/encryption';
 
 /**
  * Auto-subscribe WABA after successful Meta Business integration

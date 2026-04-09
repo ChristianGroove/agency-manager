@@ -1,6 +1,6 @@
-﻿import { NextResponse } from 'next/server'
-import { analyzeSentiment, saveSentimentAnalysis, autoEscalateIfNeeded } from '@/modules/core/messaging/messaging-actions'
-import { detectIntent, saveIntent, applyIntentRouting } from '@/modules/core/messaging/messaging-actions'
+import { NextResponse } from 'next/server'
+import { analyzeSentiment, saveSentimentAnalysis, autoEscalateIfNeeded } from '@/modules/features/messaging/messaging-actions'
+import { detectIntent, saveIntent, applyIntentRouting } from '@/modules/features/messaging/messaging-actions'
 import { getCurrentOrganizationId } from '@/modules/core/organizations/organization-actions'
 
 export async function POST(request: Request) {

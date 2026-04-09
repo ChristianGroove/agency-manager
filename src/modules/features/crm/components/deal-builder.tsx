@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils"
 
 import { getDealCart, addToCart, removeCartItem, updateCartItem, sendInteractiveQuote, DealCart } from "../services/logic/deal-actions"
 import { ProductSelector } from "./product-selector"
-import { useInboxContext } from "@/modules/core/messaging/context/inbox-context"
+import { useInboxContext } from "@/modules/features/messaging/context/inbox-context"
 
 interface DealBuilderProps {
     leadId: string

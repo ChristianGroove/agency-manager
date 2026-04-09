@@ -222,7 +222,8 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         category: 'operations',
         parentModule: 'module_quotes',
         access: {
-            allowedRoles: ['owner', 'admin']
+            allowedRoles: ['owner', 'admin'],
+            requiredCapabilities: ['crm.quotes']
         }
     },
     {
@@ -345,7 +346,8 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         category: 'finance',
         parentModule: 'module_invoicing',
         access: {
-            allowedRoles: ['owner', 'admin']
+            allowedRoles: ['owner', 'admin'],
+            requiredCapabilities: ['billing.management']
         }
     },
     {
@@ -427,12 +429,19 @@ export function filterRoutesByModules(
     userRole?: string | null,
     orgType?: 'platform' | 'reseller' | 'client',
     vertical?: string,
-    capabilities: Record<string, boolean> = {}
+    capabilities: Record<string, boolean> | string[] = {}
 ): ModuleRoute[] {
     const normalizedRole = userRole?.toLowerCase()
+    
+    // Resolve capability check function
+    const hasCap = (cap: string) => {
+        if (Array.isArray(capabilities)) return capabilities.includes(cap);
+        return capabilities[cap] === true || capabilities['all'] === true;
+    }
+
     const isOwner = normalizedRole === 'owner' || 
                    normalizedRole === 'dueño' || 
-                   capabilities['all'] === true
+                   hasCap('all');
 
     return MODULE_ROUTES.filter(route => {
         const { access, isCore, key, parentModule } = route
@@ -441,7 +450,13 @@ export function filterRoutesByModules(
         if (orgType && access?.excludedOrgTypes?.includes(orgType)) return false
         if (key === 'reseller_tenants' && orgType === 'client') return false
 
-        // 2. CORE & DASHBOARD LOGIC
+        // 2. CAPABILITY CHECK (New)
+        if (access?.requiredCapabilities) {
+            const hasRequired = access.requiredCapabilities.every(cap => hasCap(cap));
+            if (!hasRequired) return false;
+        }
+
+        // 3. CORE & DASHBOARD LOGIC
         // Core modules and dashboard are infrastructure and should be visible if access allows
         if (isCore || key === 'dashboard') {
             if (!access) return true
@@ -454,7 +469,7 @@ export function filterRoutesByModules(
             }
             
             // Permission check (IAM V2)
-            if (access.requiredPermission && capabilities[access.requiredPermission] === true) {
+            if (access.requiredPermission && hasCap(access.requiredPermission)) {
                 return true
             }
 
@@ -464,7 +479,7 @@ export function filterRoutesByModules(
             return true
         }
 
-        // 3. VERTICAL MODULES LOGIC (Requires subscription)
+        // 4. VERTICAL MODULES LOGIC (Requires subscription)
         const checkKey = parentModule || key
         const isSubscribed = activeModules.includes(checkKey)
         
@@ -482,7 +497,7 @@ export function filterRoutesByModules(
         }
 
         // Permission check (IAM V2)
-        if (access.requiredPermission && capabilities[access.requiredPermission] === true) {
+        if (access.requiredPermission && hasCap(access.requiredPermission)) {
             return true
         }
 

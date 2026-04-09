@@ -14,6 +14,7 @@ import { metaComplianceMetrics } from './ai-compliance-metrics';
  * Pixy Commercial Intents (Task-Oriented AI)
  * These cover the 80-90% of valid interactions
  */
+export { PixyBusinessIntent, OffTopicIntent } from './types';
 import { PixyBusinessIntent, OffTopicIntent } from './types';
 
 /**

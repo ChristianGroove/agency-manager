@@ -1,5 +1,5 @@
-﻿import { NextRequest, NextResponse } from 'next/server'
-import { saveFAQ } from '@/modules/core/messaging/messaging-actions'
+import { NextRequest, NextResponse } from 'next/server'
+import { saveFAQ } from '@/modules/features/messaging/messaging-actions'
 
 export async function POST(req: NextRequest) {
     try {

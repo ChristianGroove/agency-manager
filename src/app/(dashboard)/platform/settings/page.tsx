@@ -1,4 +1,4 @@
-﻿import { Suspense } from "react"
+import { Suspense } from "react"
 import { SettingsForm } from "@/modules/core/settings/settings-form"
 import { getSettings } from "@/modules/core/settings/settings-actions"
 import { getEffectiveBranding } from "@/modules/core/branding/actions"
@@ -9,18 +9,18 @@ import { getCurrentOrgRole } from "@/lib/auth/org-roles"
 import { Loader2 } from "lucide-react"
 
 export const metadata = {
-    title: "ConfiguraciÃ³n",
-    description: "Gestiona la configuraciÃ³n de tu organizaciÃ³n",
+    title: "Configuración",
+    description: "Gestiona la configuración de tu organización",
 }
 
 
-import { getSnapshots, getVaultConfig } from "@/modules/core/data-vault/data-vault-actions"
+import { getSnapshots, getVaultConfig } from "@/modules/infrastructure/data-vault/data-vault-actions"
 
 export default async function SettingsPage() {
     const orgId = await getCurrentOrganizationId()
 
     if (!orgId) {
-        return <div>Error: OrganizaciÃ³n no encontrada</div>
+        return <div>Error: Organización no encontrada</div>
     }
 
     const [settings, activeModules, subscriptionApp, brandingSettings, userRole, tierData, snapshots, vaultConfig, organization] = await Promise.all([

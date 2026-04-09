@@ -1,10 +1,10 @@
-﻿"use server"
+"use server"
 
 import { createClient } from "@/lib/supabase-server"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { requireOrgRole } from "@/lib/auth/org-roles"
-import { trackStorageUpload, validateStorageLimit } from "@/modules/core/storage/storage-actions"
+import { trackStorageUpload, validateStorageLimit } from "@/modules/infrastructure/storage/storage-actions"
 
 /**
  * Upload Service Catalog Image to Storage
@@ -26,13 +26,13 @@ export async function uploadCatalogImage(formData: FormData) {
 
     const file = formData.get("file") as File
     if (!file) {
-        throw new Error("No se ha seleccionado ningÃºn archivo")
+        throw new Error("No se ha seleccionado ningún archivo")
     }
 
     // 2. Validate against Org Storage Limits
     const validation = await validateStorageLimit(orgId, file.size)
     if (!validation.allowed) {
-        throw new Error(validation.message || "LÃ­mite de almacenamiento alcanzado.")
+        throw new Error(validation.message || "Límite de almacenamiento alcanzado.")
     }
 
     // 3. Prepare File Path

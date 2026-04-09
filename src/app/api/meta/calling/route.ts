@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase-server'
 import { getCurrentOrganizationId } from '@/modules/core/organizations/organization-actions'
 
@@ -31,7 +31,7 @@ async function resolveCallingCredentials() {
     }
 
     // Decrypt credentials
-    const { decryptObject } = await import('@/modules/core/integrations/encryption')
+    const { decryptObject } = await import('@\/modules\/infrastructure\/integrations/encryption')
     let creds = connection.credentials as any
     if (typeof creds === 'string') {
         try { creds = JSON.parse(creds) } catch { /* noop */ }

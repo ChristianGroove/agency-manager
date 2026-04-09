@@ -1,6 +1,6 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
-import { AIWorkflowAnalyzer, WorkflowContext } from '@/modules/core/automation/ai-analyzer';
-import { WorkflowNode, WorkflowEdge } from '@/modules/core/automation/engine';
+import { NextRequest, NextResponse } from 'next/server';
+import { AIWorkflowAnalyzer, WorkflowContext } from '@/modules/features/automation/ai-analyzer';
+import { WorkflowNode, WorkflowEdge } from '@/modules/features/automation/engine';
 import { getCurrentOrganizationId } from '@/modules/core/organizations/organization-actions';
 
 export async function POST(request: NextRequest) {

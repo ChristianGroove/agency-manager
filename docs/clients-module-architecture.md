@@ -2,7 +2,7 @@
 
 El módulo de Contactos (también llamado Clientes o Contactos Maestros) ha sido rediseñado bajo una arquitectura de **Seguridad de Identidad**. La premisa central es la separación física de la **Agenda Maestra** (`contact_type='client'`) frente a las **Tarjetas de Pipeline** (`contact_type='lead'`), permitiendo gestionar múltiples negocios con un solo contacto sin duplicidad visual ni pérdida de datos maestros al limpiar el embudo de ventas.
 
-La filosofía central de este módulo es que debe **comportarse, lucir y cargar datos diferentes** dependiendo del `spaceType` (Ej. `platform`, `agency`, `inbox`, `resto`, etc.), utilizando el **Vertical Registry** para adaptar la terminología y las acciones disponibles.
+La filosofía central de este módulo es que debe **comportarse, lucir y cargar datos diferentes** dependiendo de la **Categoría del Space** (Ej. `platform`, `agency`, `resto`, etc.), utilizando el **Motor de Capacidades** para adaptar la terminología y las funciones disponibles.
 
 ## 1. Arquitectura de Archivos y Componentes
 
@@ -10,20 +10,19 @@ El módulo abandonó el patrón monolítico donde `ClientsView.tsx` manejaba mil
 
 ### Estructura Principal:
 *   `clients-view.tsx` **(El Orquestador)**: Es el corazón del módulo. Solo se encarga de fetchear o recibir datos limpios, manejar estados locales básicos de UI profunda (Search, Filter, viewToggle) y orquestar llamadas de modales. NO renderiza tarjetas ni tablas manualmente.
-*   `clients-context.tsx` **(El Estado Global de la Vistas)**: Inyecta variables críticas como `spaceType`, `searchQuery` o `activeFilter` a cualquier subcomponente de la jerarquía inferior de Clientes (ClientsGrid, Toolbar) para evitar prop-drilling excesivo de componentes fijos.
+*   `clients-context.tsx` **(El Estado Global de la Vistas)**: Inyecta variables críticas como las **Capacidades Activas**, `searchQuery` o `activeFilter` a cualquier subcomponente de la jerarquía inferior de Clientes (ClientsGrid, Toolbar) para evitar prop-drilling excesivo de componentes fijos.
 *   `clients-grid.tsx` **(Vista de Cuadrícula / Tarjetas)**: Mapea la vista densa/compacta. Condiciona los "bloques de estado" visuales basándose enteramente en si el contacto tiene deudas (`debt > 0`), pagos próximos (`futureDebt > 0`) o urgencias basadas en `daysToPay`, y si la vista es Compacta (`!isCompactView`).
 *   `clients-table.tsx` **(Vista de Lista / Tabla)**: Representación de lista enfocada en acciones rápidas, optimizada con `Tooltip` e iconos sutiles.
 *   `client-dialogs-manager.tsx` **(Contralor de Modales/Sheets)**: Mueve TODAS las ventanas flotantes y modales laterales (Gestión Completa, Portal Action, Connectivity, Cobros Rápidos) fuera del árbol de iteración de Clientes. Renderizar los modales individualmente por cada iteración del `.map()` creaba degradación de rendimiento masiva. 
 
-## 2. El Role Fundamental del Vertical Registry (`VERTICAL_REGISTRY`)
+## 2. El Role Fundamental del Motor de Configuración (UI Config)
 
-El `VERTICAL_REGISTRY` (`src/modules/core/organizations/vertical-registry.ts`) dictamina la estructura de este módulo a nivel lógico y UI. **NUNCA** se deben hardcodear palabras como "Clientes" o "Facturación" dentro del código base de este módulo.
+El `VERTICAL_REGISTRY` (`src/modules/core/organizations/vertical-registry.ts`) ahora actúa como los **Presets** iniciales, pero la verdad absoluta reside en el **`ui_config`** del Space (Saas Engine V2). **NUNCA** se deben hardcodear palabras como "Clientes" o "Facturación" dentro del código base; siempre se debe consumir el diccionario inyectado por el contexto de la organización.
 
-El `config` del espacio actual determina:
-- **`config.terminology.clients` / `client`:** Define si la pantalla dice "Contactos", "Tenants" o "Clientes".
-- **`config.management.visibleTabs`:** (Ej. `['info', 'activity', 'services', 'billing', 'hosting']`). Control estricto de **qué pestañas renderizar** dentro de la Hoja de Gestión Detallada (`ClientManagementSheet`) Y además, bloquea la carga silenciosa de componentes secundarios asíncronos (Modales crear servicios/facturas).
-- **`config.management.actions`:** Para mostrar/ocultar botones primarios.
-- **`config.insights`:** Especifica qué campo del objeto `client` (sea la metadata o propiedad de nivel 1) debe representarse visualmente en la UI como dato primario o secundario.
+La configuración dinámica del espacio determina:
+- **`config.terminology`**: Diccionario inyectado (`paciente`, `reserva`, etc.).
+- **`config.capabilities`**: Lista de funciones activas (ej: `crm.advanced`, `billing.management`). Control estricto de **qué pestañas renderizar** dentro de la Hoja de Gestión Detallada (`ClientManagementSheet`) Y además, bloquea la carga silenciosa de componentes secundarios asíncronos.
+- **`config.policies`**: Políticas de negocio (ej: `require_location`).
 
 ## 3. Data Transformation (Transformación Limpia en View)
 
@@ -47,9 +46,9 @@ Esta transformación debe ser inmutable y la única fuente de verdad validada qu
 
 ## 5. Hoja de Gestión Detallada (`ClientManagementSheet.tsx`)
 
-Es el componente de detalle dinámico. Responde jerárquicamente al `spaceType`.
+Es el componente de detalle dinámico. Responde jerárquicamente a las **Capacidades** activas.
 **Regla de Oro en Próximos Desarrollos:** Si vas a añadir una funcionalidad exclusiva (Ej. Tab "Reservas de Restaurantes"), DEBES:
-1. Agregar el string de la 'visibleTab' (ej. `'reservations'`) al `VERTICAL_REGISTRY` en el key base del Vertical.
-2. Renderizar el `TabsTrigger` solo si `config.management.visibleTabs.includes('reservations')`.
-3. Validar botones estáticos de acción secundaria localizados en el **Footer de la Hoja de Gestión** con esa misma condición.
-4. Asegurar que este componente NO carge API states o requests secundarios relacionados a las reservas si ese espacio NO incluye ese tab.
+1. Asegurar que existe una capacidad en el `CAPABILITIES_REGISTRY` (ej. `resto.reservations`).
+2. Vincular esa capacidad al módulo técnico correspondiente.
+3. Renderizar el `TabsTrigger` solo si `capabilities.includes('resto.reservations')`.
+4. El sistema inyectará automáticamente los datos si la capacidad está activa.

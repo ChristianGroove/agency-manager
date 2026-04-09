@@ -1,6 +1,6 @@
 
 import { NextResponse } from 'next/server';
-import { TestExecutor, TestExecutionConfig } from '@/modules/core/automation/test-executor';
+import { TestExecutor, TestExecutionConfig } from '@/modules/features/automation/test-executor';
 
 export async function POST(req: Request) {
     try {

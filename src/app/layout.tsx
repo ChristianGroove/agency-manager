@@ -1,4 +1,4 @@
-﻿import type { Metadata } from "next";
+import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { getSettings } from "@/modules/core/settings/settings-actions";
@@ -41,15 +41,15 @@ export async function generateMetadata(): Promise<Metadata> {
   }
 }
 
-import { TrashBinModal } from "@/modules/core/trash/trash-bin-modal";
+import { TrashBinModal } from "@\/modules\/infrastructure\/trash/trash-bin-modal";
 import { Toaster } from "sonner";
 
 import { AuthRefresher } from "@/components/providers/auth-refresher";
 import StyledJsxRegistry from "@/components/providers/styled-jsx-registry";
 import { BrandingProvider } from "@/components/providers/branding-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
-import { ViewContextProvider } from "@/modules/core/caa/context/view-context";
-import { ClientInit } from "@/modules/core/caa/client-init";
+import { ViewContextProvider } from "@\/modules\/features\/caa/context/view-context";
+import { ClientInit } from "@\/modules\/features\/caa/client-init";
 
 export default async function RootLayout({
   children,

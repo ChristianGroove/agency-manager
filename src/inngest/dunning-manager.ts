@@ -1,6 +1,6 @@
 import { inngest } from "@/lib/inngest/client";
 import { supabaseAdmin } from "@/lib/supabase-admin";
-import { EmailService } from "@/modules/core/notifications/email.service";
+import { EmailService } from "@\/modules\/features\/notifications/email.service";
 
 /**
  * Platform Dunning Manager

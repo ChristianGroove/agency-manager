@@ -39,3 +39,32 @@ export async function getOrgSpaceCategory(orgId?: string): Promise<SpaceCategory
         return 'agency'
     }
 }
+
+import { DynamicSpaceConfig, CAPABILITY_PRESETS } from "./capabilities-registry"
+
+/**
+ * Resolves the full dynamic configuration for an organization.
+ * Priority: DB Configuration > Vertical Preset > Hardcoded Registry
+ */
+export async function resolveOrgCapabilities(orgId: string): Promise<DynamicSpaceConfig> {
+    const category = await getOrgSpaceCategory(orgId)
+    const orgDetails = await getCurrentOrgDetails(orgId)
+    
+    // Start with the preset for the category
+    const baseConfig = CAPABILITY_PRESETS[category] || CAPABILITY_PRESETS.agency
+    
+    // If the org has dynamic UI config in metadata/features, we merge it here
+    // For now, we use the presets, but this is prepared for the JSONB DB fields.
+    const dynamicUIConfig = orgDetails?.active_app?.ui_config || null
+
+    if (dynamicUIConfig) {
+        return {
+            ...baseConfig,
+            ...dynamicUIConfig,
+            terminology: { ...baseConfig.terminology, ...dynamicUIConfig.terminology },
+            policies: { ...baseConfig.policies, ...dynamicUIConfig.policies }
+        }
+    }
+
+    return baseConfig
+}

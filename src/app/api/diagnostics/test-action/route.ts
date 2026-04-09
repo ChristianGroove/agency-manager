@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { updateConversationState } from "@/modules/core/messaging/conversation-management-actions"
+import { updateConversationState } from "@/modules/features/messaging/conversation-management-actions"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 
 export async function GET() {

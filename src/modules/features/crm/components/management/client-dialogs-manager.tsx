@@ -5,7 +5,7 @@ import { CreateLeadSheet as CreateClientSheet } from "../create-lead-sheet"
 import { ClientManagementSheet } from "./client-management-sheet"
 import { ConnectivitySheet } from "@/components/sheets/connectivity-sheet"
 import { PortalGovernanceSheet } from "@/components/sheets/portal-governance-sheet"
-import { UnifiedCommunicationModal } from "@/modules/core/communication/components/unified-communication-modal"
+import { UnifiedCommunicationModal } from "@\/modules\/infrastructure\/communication/components/unified-communication-modal"
 import { QuickInvoicesModal } from "./quick-invoices-modal"
 // NotesModal is now integrated or removed
 

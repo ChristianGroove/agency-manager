@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
-import { BackupService } from "@/modules/core/backup/backup-service"
+import { BackupService } from "@\/modules\/infrastructure\/backup/backup-service"
 import { supabaseAdmin } from "@/lib/supabase-admin"
-import { decryptObject } from "@/modules/core/integrations/encryption"
+import { decryptObject } from "@\/modules\/infrastructure\/integrations/encryption"
 
 /**
  * CRON ENDPOINT: /api/cron/backup

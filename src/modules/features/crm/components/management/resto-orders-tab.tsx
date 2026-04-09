@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react"
 import { ShoppingBag, CreditCard, TrendingUp, Calendar, Loader2, SearchX } from "lucide-react"
 import { getRestoClientOrders, RestoOrderHistoryItem } from "@/components/portals/b2c-restaurant-template/actions/resto-orders-actions"
-import { RestoOrderWidget } from "@/modules/core/messaging/components/resto-order-widget"
+import { RestoOrderWidget } from "@/modules/features/messaging/components/resto-order-widget"
 
 interface RestoOrdersTabProps {
     orgId: string

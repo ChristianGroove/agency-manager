@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabase-admin"
-import { checkConnectionHealth } from "@/modules/core/channels/connection-health"
+import { checkConnectionHealth } from "@\/modules\/features\/channels/connection-health"
 
 /**
  * Cron endpoint to check health of all active WhatsApp connections.

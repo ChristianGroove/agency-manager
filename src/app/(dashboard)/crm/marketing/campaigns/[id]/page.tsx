@@ -1,4 +1,4 @@
-import { CampaignBuilder } from "@/modules/core/broadcasts/components/campaign-builder"
+import { CampaignBuilder } from "@\/modules\/features\/broadcasts/components/campaign-builder"
 import { createClient } from "@/lib/supabase-server"
 import { notFound } from "next/navigation"
 

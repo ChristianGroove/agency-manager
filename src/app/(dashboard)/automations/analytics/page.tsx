@@ -1,8 +1,8 @@
 
-import { getWorkflowStats, getExecutionHistory } from "@/modules/core/automation/actions"
-import { PerformanceStats } from "@/modules/core/automation/components/analytics/performance-stats"
-import { ExecutionsChart } from "@/modules/core/automation/components/analytics/executions-chart"
-import { RecentExecutionsTable } from "@/modules/core/automation/components/analytics/recent-executions-table"
+import { getWorkflowStats, getExecutionHistory } from "@/modules/features/automation/actions"
+import { PerformanceStats } from "@/modules/features/automation/components/analytics/performance-stats"
+import { ExecutionsChart } from "@/modules/features/automation/components/analytics/executions-chart"
+import { RecentExecutionsTable } from "@/modules/features/automation/components/analytics/recent-executions-table"
 
 export default async function AnalyticsPage() {
     const stats = await getWorkflowStats()

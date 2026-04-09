@@ -1,4 +1,4 @@
-import { InboxLayout } from "@/modules/core/messaging/components/inbox-layout"
+import { InboxLayout } from "@/modules/features/messaging/components/inbox-layout"
 
 export const metadata = {
     title: "Inbox | Ultra-Modern",

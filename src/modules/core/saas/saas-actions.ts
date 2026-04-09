@@ -1,4 +1,4 @@
-﻿"use server"
+"use server"
 
 import { createClient } from "@/lib/supabase-server"
 import { supabaseAdmin } from "@/lib/supabase-admin"
@@ -350,19 +350,25 @@ export async function getSidebarContext(orgId?: string, user?: User | null, prel
             visualBrandingPromise
         ])
 
+        // Resolve modern UI Capabilities (Phase 2.1)
+        const { resolveOrgCapabilities } = await import("@/modules/core/organizations/space-helpers")
+        const dynamicUI = await resolveOrgCapabilities(organizationId)
+
         return {
             modules: modules,
             userRole: userPerms?.role || null,
             userPermissions: userPerms?.permissions || null,
             organizationType: (orgDetails?.organization_type || 'client') as 'platform' | 'reseller' | 'client',
-            vertical: orgDetails?.vertical_key,
+            vertical: orgDetails?.vertical_key || dynamicUI.terminology.client.toLowerCase(),
             capabilities: {
                 ...(brandingData?.capabilities || {}),
-                ...(userPerms?.permissions || {})
+                ...(userPerms?.permissions || {}),
+                ...dynamicUI.capabilities.reduce((acc, cap) => ({ ...acc, [cap]: true }), {})
             },
             // Optimization Props
             branding: visualBranding,
-            orgDetails: orgDetails
+            orgDetails: orgDetails,
+            uiConfig: dynamicUI
         }
 
     } catch (error) {

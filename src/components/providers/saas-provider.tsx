@@ -2,11 +2,13 @@
 
 import { createContext, useContext, ReactNode } from "react"
 import { SaasApp } from "@/types/saas"
+import { DynamicSpaceConfig } from "@/modules/core/organizations/capabilities-registry"
 
 interface SaaSContextType {
     app: SaasApp | null
     subscription: any | null
     orgDetails: any | null
+    uiConfig: DynamicSpaceConfig | null
     isSuspended: boolean
 }
 

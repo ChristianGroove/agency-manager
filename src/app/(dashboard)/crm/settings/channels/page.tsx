@@ -1,6 +1,6 @@
-﻿import { Suspense } from "react"
-import { getChannels } from "@/modules/core/channels/actions"
-import { ChannelsList } from "@/modules/core/channels/components/channels-list"
+import { Suspense } from "react"
+import { getChannels } from "@\/modules\/features\/channels/actions"
+import { ChannelsList } from "@\/modules\/features\/channels/components/channels-list"
 import { getDictionary } from "@/lib/i18n/get-dictionary"
 
 export async function generateMetadata() {

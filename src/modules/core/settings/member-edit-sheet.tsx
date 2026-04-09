@@ -15,7 +15,7 @@ import {
     updateMemberPermissions
 } from "./actions/team"
 import { RolePicker } from "@/modules/core/iam/components/role-picker"
-import { ChannelAccessSelector } from "@/modules/core/messaging/components/settings/channel-access-selector"
+import { ChannelAccessSelector } from "@/modules/features/messaging/components/settings/channel-access-selector"
 import { MemberPermissions, FeaturePermissions, ModulePermissions } from "@/lib/permissions/types"
 
 interface MemberEditSheetProps {

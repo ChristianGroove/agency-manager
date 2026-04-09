@@ -17,7 +17,7 @@ import {
     CheckCircle2,
     Sparkles
 } from "lucide-react"
-import { getOrgUsageStatus, UsageStatus } from "@/modules/core/usage/plan-actions"
+import { getOrgUsageStatus, UsageStatus } from "@\/modules\/infrastructure\/usage/plan-actions"
 import { cn } from "@/lib/utils"
 
 interface UsageStatusCardProps {

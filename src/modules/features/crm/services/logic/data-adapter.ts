@@ -1,5 +1,5 @@
 
-import { DataModule } from "@/modules/core/data-vault/types"
+import { DataModule } from "@/modules/infrastructure/data-vault/types"
 import { createClient } from "@/lib/supabase-server"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 

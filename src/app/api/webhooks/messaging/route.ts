@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { MessagingProvider, IncomingMessage, SendMessageOptions, WebhookValidationResult } from '@/modules/core/messaging/providers/types'
+import { MessagingProvider, IncomingMessage, SendMessageOptions, WebhookValidationResult } from '@/modules/features/messaging/providers/types'
 import { ChannelType } from '@/types/messaging'
-import { MetaProvider } from '@/modules/core/messaging/providers/meta-provider'
-import { EvolutionProvider } from '@/modules/core/messaging/providers/evolution-provider'
+import { MetaProvider } from '@/modules/features/messaging/providers/meta-provider'
+import { EvolutionProvider } from '@/modules/features/messaging/providers/evolution-provider'
 
 // --- Loopback Strategy (Keep for loopback tests) ---
 class LoopbackStrategy implements MessagingProvider {
@@ -18,7 +18,7 @@ async function getConfiguredManager() {
     console.log('[getConfiguredManager] Starting dynamic import...')
     let webhookManagerModule;
     try {
-        webhookManagerModule = await import('@/modules/core/messaging/webhook-handler')
+        webhookManagerModule = await import('@/modules/features/messaging/webhook-handler')
         console.log('[getConfiguredManager] Import successful')
     } catch (err: any) {
         console.error('[getConfiguredManager] Import FAILED:', err)

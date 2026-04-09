@@ -16,7 +16,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { GripVertical, Trash2, Plus, Type, Image as ImageIcon, Layout, Eye, Code, Save, Loader2 } from 'lucide-react';
 import { ImageUpload } from '@/components/ui/image-upload';
-import { saveEmailTemplate } from '@/modules/core/notifications/actions/save-template';
+import { saveEmailTemplate } from '@\/modules\/features\/notifications/actions/save-template';
 import { toast } from 'sonner';
 
 // --- SORTABLE BLOCK ITEM ---

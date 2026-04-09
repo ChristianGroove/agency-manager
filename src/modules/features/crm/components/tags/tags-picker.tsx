@@ -25,7 +25,7 @@ import {
 } from "../../crm-actions"
 import { Tag, LeadTag } from "../../types"
 import { toast } from "sonner"
-import { useInboxContext } from "@/modules/core/messaging/context/inbox-context"
+import { useInboxContext } from "@/modules/features/messaging/context/inbox-context"
 
 interface TagsPickerProps {
     leadId: string

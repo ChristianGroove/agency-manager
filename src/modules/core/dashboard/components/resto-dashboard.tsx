@@ -3,7 +3,7 @@
 import { PortalAccessWidget } from "./portal-access-widget"
 import { GlobalDashboardBanner } from "./global-dashboard-banner"
 import { ModularDashboardLayout, DashboardDataProps } from "@/modules/core/dashboard/modular-dashboard-layout"
-import { useRegisterView } from "@/modules/core/caa/context/view-context"
+import { useRegisterView } from "@\/modules\/features\/caa/context/view-context"
 import { useTranslation } from "@/lib/i18n/use-translation"
 import { useRouter } from "next/navigation"
 import { Utensils, QrCode, ClipboardList, TrendingUp } from "lucide-react"

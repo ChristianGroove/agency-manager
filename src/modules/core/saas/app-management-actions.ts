@@ -1,4 +1,4 @@
-﻿"use server"
+"use server"
 
 import { createClient } from "@/lib/supabase-server"
 import { supabaseAdmin } from "@/lib/supabase-admin"
@@ -487,3 +487,38 @@ export async function getAppUsageStats() {
     return stats
 }
 
+/**
+ * Super Admin: Update App UI Configuration (Terminology & Capabilities)
+ */
+import { DynamicSpaceConfig } from "@/modules/core/organizations/capabilities-registry"
+
+export async function updateAppUIConfig(appId: string, config: DynamicSpaceConfig) {
+    await requireSuperAdmin()
+
+    try {
+        const { error } = await supabaseAdmin
+            .from('saas_apps')
+            .update({
+                ui_config: config as any,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', appId)
+
+        if (error) throw error
+
+        // Purge caches
+        revalidatePath('/platform/admin/apps')
+        revalidatePath(`/platform/admin/apps/${appId}`)
+        // @ts-ignore
+        revalidateTag('org-modules')
+
+        return { success: true }
+
+    } catch (error: any) {
+        console.error('Error updating app UI config:', error)
+        return {
+            success: false,
+            error: error.message
+        }
+    }
+}

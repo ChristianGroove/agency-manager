@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { TestExecutor, TestExecutionConfig } from '@/modules/core/automation/test-executor';
-import { WorkflowDefinition } from '@/modules/core/automation/engine';
+import { TestExecutor, TestExecutionConfig } from '@/modules/features/automation/test-executor';
+import { WorkflowDefinition } from '@/modules/features/automation/engine';
 
 export async function POST(
     request: NextRequest,

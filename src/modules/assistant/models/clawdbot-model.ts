@@ -2,7 +2,7 @@ import { AssistantModel, AssistantModelInput, AssistantModelOutput } from "./ass
 import { clawdbotClient, ClawdbotMessage } from "../clients/clawdbot.client";
 import { rateLimiter } from "./rate-limiter";
 import { SYSTEM_INTENTS } from "../intent-registry";
-import { AIEngine } from "@/modules/core/ai-engine/service";
+import { AIEngine } from "@\/modules\/infrastructure\/ai-engine/service";
 import { MockAssistantModel } from "./mock-model";
 
 export class ClawdbotAssistantModel implements AssistantModel {

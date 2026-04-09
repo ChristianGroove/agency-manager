@@ -1,6 +1,6 @@
 
 import { NextRequest, NextResponse } from "next/server";
-import { automationTrigger } from "@/modules/core/automation/automation-trigger.service";
+import { automationTrigger } from "@/modules/features/automation/automation-trigger.service";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
 export async function POST(req: NextRequest) {

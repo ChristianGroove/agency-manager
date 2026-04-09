@@ -14,7 +14,7 @@ import {
 import { searchCatalog } from "../services/logic/deal-actions"
 import { getCategories, ServiceCategory } from "@/modules/features/catalog/categories-actions"
 import { cn } from "@/lib/utils"
-import { useInboxContext } from "@/modules/core/messaging/context/inbox-context"
+import { useInboxContext } from "@/modules/features/messaging/context/inbox-context"
 
 interface Product {
     id: string

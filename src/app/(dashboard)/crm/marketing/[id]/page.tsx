@@ -1,4 +1,4 @@
-import { BroadcastDetailView } from "@/modules/core/broadcasts/components/broadcast-detail-view"
+import { BroadcastDetailView } from "@\/modules\/features\/broadcasts/components/broadcast-detail-view"
 
 export default function BroadcastDetailPage({ params }: { params: { id: string } }) {
     return (

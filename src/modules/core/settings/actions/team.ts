@@ -1,4 +1,4 @@
-﻿"use server"
+"use server"
 
 import { createClient } from "@/lib/supabase-server"
 import { supabaseAdmin } from "@/lib/supabase-admin"
@@ -200,7 +200,7 @@ export async function inviteMember(email: string, roleId: string) {
 
         // 4. Send Invite Email (Custom SMTP / Resend)
         // Dynamically import to avoid top-level circular deps if any
-        const { EmailService } = await import('@/modules/core/notifications/email.service')
+        const { EmailService } = await import('@\/modules\/features\/notifications/email.service')
 
         await EmailService.send({
             to: email,

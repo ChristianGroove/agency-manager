@@ -3,18 +3,18 @@ import { DashboardShell } from "@/components/layout/dashboard-shell"
 import { SystemAlertBanner } from "@/components/layout/system-alert-banner"
 import { Suspense, useMemo } from "react"
 import { GlobalLoader } from "@/components/ui/global-loader"
-import { GlobalInboxProvider } from "@/modules/core/messaging/context/global-inbox-context"
+import { GlobalInboxProvider } from "@/modules/features/messaging/context/global-inbox-context"
 import dynamic from "next/dynamic"
 import { FabController } from "@/components/layout/fab-controller"
 import { User } from "@supabase/supabase-js"
 
 // Lazy load heavy messaging components to reduce initial bundle
 const GlobalMessageListener = dynamic(
-    () => import("@/modules/core/messaging/components/floating-inbox/global-message-listener").then(mod => mod.GlobalMessageListener),
+    () => import("@/modules/features/messaging/components/floating-inbox/global-message-listener").then(mod => mod.GlobalMessageListener),
     { ssr: false }
 )
 const InboxOverlay = dynamic(
-    () => import("@/modules/core/messaging/components/floating-inbox/inbox-overlay").then(mod => mod.InboxOverlay),
+    () => import("@/modules/features/messaging/components/floating-inbox/inbox-overlay").then(mod => mod.InboxOverlay),
     { ssr: false }
 )
 

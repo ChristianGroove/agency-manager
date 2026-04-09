@@ -5,9 +5,9 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeft, Search, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { TemplateCard } from '@/modules/core/automation/components/template-card';
-import { WORKFLOW_TEMPLATES } from '@/modules/core/automation/templates';
-import { WorkflowTemplate, TEMPLATE_CATEGORIES } from '@/modules/core/automation/templates/types';
+import { TemplateCard } from '@/modules/features/automation/components/template-card';
+import { WORKFLOW_TEMPLATES } from '@/modules/features/automation/templates';
+import { WorkflowTemplate, TEMPLATE_CATEGORIES } from '@/modules/features/automation/templates/types';
 import { toast } from 'sonner';
 import { nanoid } from 'nanoid';
 

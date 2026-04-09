@@ -11,19 +11,36 @@ import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Switch } from "@/components/ui/switch"
-import { Package, Users, DollarSign, Settings, Save, Loader2, AlertCircle, LayoutGrid, CheckCircle2, Globe, ChevronUp, ChevronDown } from "lucide-react"
+import { Package, Users, DollarSign, Settings, Save, Loader2, AlertCircle, LayoutGrid, CheckCircle2, Globe, ChevronUp, ChevronDown, Languages, ShieldCheck } from "lucide-react"
 import { updateApp, addModuleToApp, removeModuleFromApp } from "@/modules/core/saas/app-management-actions"
 import { getAppPortalConfig, updateAppPortalModule, reorderAppPortalModules } from "@/modules/core/saas/portal-config-actions"
 import { getAllSystemModules } from "@/modules/core/admin/actions"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { 
+    DynamicSpaceConfig, 
+    CAPABILITY_PRESETS, 
+    UICapability 
+} from '@/modules/core/organizations/capabilities-registry'
 
 interface AppDetailsSheetProps {
     app: any | null
     isOpen: boolean
     onClose: () => void
     dict: any
+}
+
+/**
+ * Maps DB Module Keys to UI Capabilities for automatic synchronization.
+ */
+const MODULE_CAPABILITY_MAP: Record<string, UICapability> = {
+    'module_quotes': 'crm.quotes',
+    'module_invoicing': 'billing.management',
+    'module_payments': 'billing.management',
+    'module_automation': 'automation.engine',
+    'module_whitelabel': 'whitelabel.branding',
+    'module_hosting': 'hosting.management'
 }
 
 export function AppDetailsSheet({ app, isOpen, onClose, dict }: AppDetailsSheetProps) {
@@ -37,12 +54,40 @@ export function AppDetailsSheet({ app, isOpen, onClose, dict }: AppDetailsSheetP
     // Local state for immediate UI feedback on module toggles
     const [localAppModules, setLocalAppModules] = useState<any[]>(app?.modules || [])
 
+    // Local state for UI Config (Terminology & Capabilities)
+    const [uiConfig, setUiConfig] = useState<DynamicSpaceConfig>(() => {
+        const defaultConfig = CAPABILITY_PRESETS[app?.space_category || 'agency'] || CAPABILITY_PRESETS.agency
+        return {
+            terminology: app?.ui_config?.terminology || defaultConfig.terminology,
+            capabilities: app?.ui_config?.capabilities || defaultConfig.capabilities,
+            policies: app?.ui_config?.policies || defaultConfig.policies,
+            management: app?.ui_config?.management || defaultConfig.management,
+            rules: app?.ui_config?.rules || defaultConfig.rules
+        }
+    })
+
     // Sync external prop changes to local state
     useEffect(() => {
         if (app?.modules) {
             setLocalAppModules(app.modules)
         }
-    }, [app?.modules])
+        if (app?.ui_config) {
+            setUiConfig(prev => ({
+                ...prev,
+                terminology: app.ui_config.terminology || prev.terminology,
+                capabilities: app.ui_config.capabilities || prev.capabilities,
+                policies: app.ui_config.policies || prev.policies
+            }))
+        } else if (app?.space_category) {
+            const preset = CAPABILITY_PRESETS[app.space_category] || CAPABILITY_PRESETS.agency
+            setUiConfig(prev => ({
+                ...prev,
+                terminology: preset.terminology,
+                capabilities: preset.capabilities,
+                policies: preset.policies
+            }))
+        }
+    }, [app?.modules, app?.ui_config, app?.space_category])
 
     // Fetch portal modules when sheet opens
     useEffect(() => {
@@ -83,6 +128,18 @@ export function AppDetailsSheet({ app, isOpen, onClose, dict }: AppDetailsSheetP
                 })
                 if (res.success) {
                     toast.success("Módulo añadido al Space")
+                    
+                    // Phase 2.3 Perfection: Auto-sync capability if exists
+                    const relatedCap = MODULE_CAPABILITY_MAP[moduleKey]
+                    if (relatedCap && !uiConfig.capabilities.includes(relatedCap)) {
+                        setUiConfig(prev => ({
+                            ...prev,
+                            capabilities: [...prev.capabilities, relatedCap]
+                        }))
+                        // We don't call updateApp here because the user will click "Guardar Cambios" at the end.
+                        // However, uiConfig is now in sync for the payload.
+                    }
+
                     // Immediate UI Update (Optimistic appModuleId since DB generates it, but isEnabled only checks existence of module_key)
                     setLocalAppModules(prev => [...prev, { id: 'temp-' + Date.now(), module_key: moduleKey }])
                     router.refresh()
@@ -139,7 +196,8 @@ export function AppDetailsSheet({ app, isOpen, onClose, dict }: AppDetailsSheetP
                 space_category: formData.get('space_category') as any,
                 price_monthly: parseFloat(formData.get('price_monthly') as string),
                 color: formData.get('color') as string,
-                is_active: formData.get('is_active') === 'true'
+                is_active: formData.get('is_active') === 'true',
+                ui_config: uiConfig // Phase 2.3: Include dynamic configuration
             }
 
             const result = await updateApp(app.id, updates)
@@ -212,14 +270,16 @@ export function AppDetailsSheet({ app, isOpen, onClose, dict }: AppDetailsSheetP
 
                     <Tabs defaultValue="overview" className="flex-1 flex flex-col overflow-hidden">
                         <div className="px-8 pt-6 pb-2">
-                            <TabsList className="grid w-full max-w-2xl grid-cols-4 bg-muted/50 p-1 rounded-xl">
+                            <TabsList className="grid w-full max-w-2xl grid-cols-5 bg-muted/50 p-1 rounded-xl">
                                 <TabsTrigger value="overview" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">Resumen</TabsTrigger>
                                 <TabsTrigger value="modules" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
                                     <LayoutGrid className="h-4 w-4 mr-1.5" />
-                                    Módulos
+                                    Funciones & Módulos
+                                </TabsTrigger>
+                                <TabsTrigger value="terminology" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                                    Diccionario
                                 </TabsTrigger>
                                 <TabsTrigger value="portal" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                                    <Globe className="h-4 w-4 mr-1.5" />
                                     Portal
                                 </TabsTrigger>
                                 <TabsTrigger value="settings" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">Config</TabsTrigger>
@@ -280,68 +340,169 @@ export function AppDetailsSheet({ app, isOpen, onClose, dict }: AppDetailsSheetP
 
                                 {/* MODULES TAB */}
                                 <TabsContent value="modules" className="space-y-6 mt-0 animate-in fade-in-50 duration-500 slide-in-from-bottom-2">
-                                    <div className="flex items-center justify-between">
+                                    <div className="space-y-6">
                                         <div>
-                                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Gestor de Módulos</h3>
-                                            <p className="text-sm text-muted-foreground">Configura los módulos que heredarán las organizaciones asignadas a este Space.</p>
+                                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white uppercase tracking-tight">Capacidades del Sistema</h3>
+                                            <p className="text-sm text-muted-foreground">Activa los módulos que heredarán las organizaciones asignadas a este Space. Las funciones se verán reflejadas en el Sidebar de los clientes.</p>
                                         </div>
-                                    </div>
 
-                                    {modulesLoading ? (
-                                        <div className="flex items-center justify-center py-12">
-                                            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                                        </div>
-                                    ) : (
-                                        <div className="gap-6">
-                                            {Object.entries(
-                                                allSystemModules.reduce((acc, sysModule) => {
-                                                    const cat = sysModule.category || 'otros'
-                                                    if (!acc[cat]) acc[cat] = []
-                                                    acc[cat].push(sysModule)
-                                                    return acc
-                                                }, {} as Record<string, any[]>)
-                                            ).sort(([catA], [catB]) => catA.localeCompare(catB)).map(([category, modules]) => (
-                                                <div key={category} className="mb-6">
-                                                    <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3 border-b pb-2">{category}</h4>
-                                                    <div className="grid gap-3">
-                                                        {(modules as any[]).map((sysModule: any) => {
-                                                            const relatedAppModule = localAppModules.find((m: any) => m.module_key === sysModule.key)
-                                                            const isEnabled = !!relatedAppModule
+                                        {modulesLoading ? (
+                                            <div className="flex items-center justify-center py-12">
+                                                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-10 pb-8">
+                                                {Object.entries(
+                                                    allSystemModules.reduce((acc, mod) => {
+                                                        const cat = mod.category || 'Otros'
+                                                        if (!acc[cat]) acc[cat] = []
+                                                        acc[cat].push(mod)
+                                                        return acc
+                                                    }, {} as Record<string, any[]>)
+                                                ).sort(([catA], [catB]) => catA.localeCompare(catB)).map(([category, modules]) => (
+                                                    <div key={category} className="space-y-4">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="h-px bg-slate-200 dark:bg-slate-800 flex-1" />
+                                                            <h4 className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] px-2">{category}</h4>
+                                                            <div className="h-px bg-slate-200 dark:bg-slate-800 flex-1" />
+                                                        </div>
+                                                        <div className="grid gap-4">
+                                                            {(modules as any[]).map((sysModule: any) => {
+                                                                const relatedAppModule = localAppModules.find((m: any) => m.module_key === sysModule.key)
+                                                                const isEnabled = !!relatedAppModule
 
-                                                            return (
-                                                                <div key={sysModule.key} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${isEnabled ? 'border-indigo-200 bg-indigo-50/50 dark:bg-indigo-900/10' : 'border-gray-200 bg-white dark:bg-zinc-950/50 dark:border-zinc-800'}`}>
-                                                                    <div className="flex gap-4">
-                                                                        <div className={`p-2 rounded-lg h-min ${isEnabled ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-400' : 'bg-gray-100 text-gray-500 dark:bg-zinc-900/50'}`}>
-                                                                            <Package className="h-5 w-5" />
-                                                                        </div>
-                                                                        <div>
-                                                                            <div className="font-medium text-sm">{sysModule.name || sysModule.key}</div>
-                                                                            <div className="text-xs text-muted-foreground mt-0.5 max-w-md line-clamp-1" title={sysModule.description}>{sysModule.description || 'Sin descripción'}</div>
-                                                                            <div className="flex gap-2 mt-2">
-                                                                                <Badge variant="outline" className="text-[9px] uppercase font-mono px-1.5 py-0 h-4 bg-white dark:bg-zinc-900">{sysModule.key}</Badge>
-                                                                                {sysModule.dependencies?.length > 0 && (
-                                                                                    <Badge variant="secondary" className="text-[9px] bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400 px-1.5 py-0 h-4">
-                                                                                        Deps: {sysModule.dependencies.join(', ')}
-                                                                                    </Badge>
-                                                                                )}
+                                                                return (
+                                                                    <div 
+                                                                        key={sysModule.key} 
+                                                                        className={`flex items-center justify-between p-4 rounded-2xl border-2 transition-all duration-300 ${
+                                                                            isEnabled 
+                                                                            ? 'border-indigo-500/20 bg-indigo-50/40 dark:bg-indigo-900/10 shadow-[0_4px_20px_-4px_rgba(99,102,241,0.1)]' 
+                                                                            : 'border-slate-100 bg-white hover:border-slate-200 dark:bg-zinc-950/50 dark:border-zinc-800 dark:hover:border-zinc-700'
+                                                                        }`}
+                                                                    >
+                                                                        <div className="flex gap-4">
+                                                                            <div className={`p-3 rounded-xl h-min transition-colors ${isEnabled ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/30' : 'bg-slate-100 text-slate-400 dark:bg-zinc-900'}`}>
+                                                                                <Package className="h-5 w-5" />
+                                                                            </div>
+                                                                            <div className="space-y-1">
+                                                                                <div className="font-bold text-sm tracking-tight">{sysModule.name || sysModule.key}</div>
+                                                                                <div className="text-xs text-muted-foreground leading-relaxed max-w-xl line-clamp-2" title={sysModule.description}>
+                                                                                    {sysModule.description || 'Este módulo expande las capacidades del núcleo del sistema.'}
+                                                                                </div>
+                                                                                <div className="flex items-center gap-2 mt-2">
+                                                                                                                    {sysModule.price_monthly > 0 && (
+                                                                                        <Badge className="text-[9px] bg-emerald-50 text-emerald-600 hover:bg-emerald-50 border-emerald-100 px-2 py-0 h-4">
+                                                                                            +${sysModule.price_monthly}/mes
+                                                                                        </Badge>
+                                                                                    )}
+                                                                                </div>
                                                                             </div>
                                                                         </div>
+                                                                        <div className="flex items-center pl-6 border-l border-slate-100 dark:border-zinc-800">
+                                                                            <Switch
+                                                                                checked={isEnabled}
+                                                                                disabled={isSubmitting}
+                                                                                onCheckedChange={() => handleModuleToggle(sysModule.key, isEnabled, relatedAppModule?.id)}
+                                                                                className="data-[state=checked]:bg-indigo-500"
+                                                                            />
+                                                                        </div>
                                                                     </div>
-                                                                    <div className="flex items-center ml-4 shrink-0">
-                                                                        <Switch
-                                                                            checked={isEnabled}
-                                                                            disabled={isSubmitting}
-                                                                            onCheckedChange={() => handleModuleToggle(sysModule.key, isEnabled, relatedAppModule?.id)}
-                                                                        />
-                                                                    </div>
-                                                                </div>
-                                                            )
-                                                        })}
+                                                                )
+                                                            })}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                </TabsContent>
+
+                                {/* TERMINOLOGY TAB (Phase 2.3) */}
+                                <TabsContent value="terminology" className="space-y-6 mt-0 animate-in fade-in-50 duration-500 slide-in-from-bottom-2">
+                                    <div className="space-y-6">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Motor de Terminología</h3>
+                                                <p className="text-sm text-muted-foreground">Configura el vocabulario del sistema para adaptarlo a la industria del Space.</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                            <div className="space-y-5">
+                                                <div className="space-y-2">
+                                                    <Label className="text-sm font-bold uppercase tracking-wider text-muted-foreground/80">Entidad: Cliente</Label>
+                                                    <div className="grid gap-4 p-4 rounded-xl bg-slate-50 border border-slate-100 dark:bg-slate-900/40 dark:border-slate-800">
+                                                        <div className="grid gap-1.5">
+                                                            <Label htmlFor="term-client" className="text-xs font-medium">Singular (Ej: Paciente, Comensal)</Label>
+                                                            <Input 
+                                                                id="term-client"
+                                                                value={uiConfig.terminology.client}
+                                                                onChange={(e) => setUiConfig(prev => ({ ...prev, terminology: { ...prev.terminology, client: e.target.value } }))}
+                                                                placeholder="Cliente"
+                                                                className="bg-white"
+                                                            />
+                                                        </div>
+                                                        <div className="grid gap-1.5">
+                                                            <Label htmlFor="term-clients" className="text-xs font-medium">Plural (Ej: Pacientes, Comensales)</Label>
+                                                            <Input 
+                                                                id="term-clients"
+                                                                value={uiConfig.terminology.clients}
+                                                                onChange={(e) => setUiConfig(prev => ({ ...prev, terminology: { ...prev.terminology, clients: e.target.value } }))}
+                                                                placeholder="Clientes"
+                                                                className="bg-white"
+                                                            />
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            ))}
+
+                                                <div className="space-y-2">
+                                                    <Label className="text-sm font-bold uppercase tracking-wider text-muted-foreground/80">Entidad: Proyecto / Trabajo</Label>
+                                                    <div className="grid gap-4 p-4 rounded-xl bg-slate-50 border border-slate-100 dark:bg-slate-900/40 dark:border-slate-800">
+                                                        <div className="grid gap-1.5">
+                                                            <Label htmlFor="term-project" className="text-xs font-medium">Nombre (Ej: Tratamiento, Reserva, Lead)</Label>
+                                                            <Input 
+                                                                id="term-project"
+                                                                value={uiConfig.terminology.project}
+                                                                onChange={(e) => setUiConfig(prev => ({ ...prev, terminology: { ...prev.terminology, project: e.target.value } }))}
+                                                                placeholder="Proyecto"
+                                                                className="bg-white"
+                                                            />
+                                                        </div>
+                                                        <p className="text-[10px] text-muted-foreground italic px-1">Este término se usará en columnas de tablas y etiquetas de formularios.</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-5">
+                                                <div className="space-y-2">
+                                                    <Label className="text-sm font-bold uppercase tracking-wider text-muted-foreground/80">Acción: Venta / Servicio</Label>
+                                                    <div className="grid gap-4 p-4 rounded-xl bg-slate-50 border border-slate-100 dark:bg-slate-900/40 dark:border-slate-800">
+                                                        <div className="grid gap-1.5">
+                                                            <Label htmlFor="term-sale" className="text-xs font-medium">Nombre (Ej: Venta, Pedido, Servicio)</Label>
+                                                            <Input 
+                                                                id="term-sale"
+                                                                value={uiConfig.terminology.sale}
+                                                                onChange={(e) => setUiConfig(prev => ({ ...prev, terminology: { ...prev.terminology, sale: e.target.value } }))}
+                                                                placeholder="Venta"
+                                                                className="bg-white"
+                                                            />
+                                                        </div>
+                                                        <p className="text-[10px] text-muted-foreground italic px-1">Afecta a la terminología en facturación y reportes.</p>
+                                                    </div>
+                                                </div>
+
+                                                <div className="p-5 rounded-xl bg-indigo-50/50 border border-indigo-100 dark:bg-indigo-900/10 dark:border-indigo-900/30">
+                                                    <h4 className="font-bold text-indigo-900 dark:text-indigo-300 mb-2 flex items-center gap-2">
+                                                        <Languages className="h-4 w-4" />
+                                                        Modo Dinámico Activo
+                                                    </h4>
+                                                    <p className="text-xs text-indigo-700 dark:text-indigo-400 leading-relaxed">
+                                                        El sistema utiliza placeholders inteligentes en el código. Al cambiar estos valores, Pixy remapeará automáticamente cada etiqueta en el Dashboard de tus clientes.
+                                                    </p>
+                                                </div>
+                                            </div>
                                         </div>
-                                    )}
+                                    </div>
                                 </TabsContent>
 
                                 {/* PORTAL TAB */}

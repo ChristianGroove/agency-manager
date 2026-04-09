@@ -8,6 +8,8 @@ export type SystemModule = {
     created_at: string
 }
 
+import { DynamicSpaceConfig } from "@/modules/core/organizations/capabilities-registry"
+
 export interface SaasApp {
     id: string
     name: string
@@ -27,6 +29,7 @@ export interface SaasApp {
     is_featured: boolean
     sort_order: number
     metadata?: Record<string, any>
+    ui_config?: DynamicSpaceConfig
     created_at: string
     status?: string
     space_category?: 'agency' | 'resto' | 'cleaning' | 'platform' | 'retail' | 'saas'

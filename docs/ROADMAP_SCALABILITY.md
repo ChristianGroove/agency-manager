@@ -13,23 +13,22 @@ Este documento detalla la estrategia por fases para transformar a Pixy en un pro
 
 ---
 
-## Fase 1: Sanitización Modular y Saneamiento del Core (🚀 PRÓXIMO PASO)
+## Fase 1: Sanitización Modular y Saneamiento del Core (✅ COMPLETADO)
 *Enfoque: Desacoplar funcionalidades del motor SaaS y categorizar dominios.*
 
-- **Migración de Dominios**: Mover módulos funcionales (`messaging`, `automation`, `tools`, `integrations`) del Core hacia la capa de `features/`.
-- **Extracción de Infraestructura**: Crear `src/modules/infrastructure` para servicios transversales (Logging, Data-Vault, Storage).
-- **Hardening del Motor**: Reducir el Core a <10 carpetas esenciales (Auth, Orgs, IAM, SaaS Engine).
-- **Mapeo de Capacidades**: Preparar la estructura para que los SPACES activen Features en lugar de depender de la vertical hardcodeada.
+- **Migración de Dominios (Features)**: Desplazamiento de `messaging`, `automation`, `broadcasts`, `notifications`, `channels`, `knowledge` y `caa` hacia `src/modules/features/`.
+- **Extracción de Infraestructura**: Consolidación de `src/modules/infrastructure` con los servicios: `logging`, `storage`, `data-vault`, `ai-engine`, `integrations`, `audit`, `backup`, `usage`, `trash`, `tools` y `communication`.
+- **Hardening del Core**: Reducción del núcleo a los módulos motor (Auth, Orgs, IAM, SaaS Engine).
+- **Refactorización Global**: Actualización de más de 800 referencias de importación para garantizar la integridad del sistema.
 
 ---
 
-## Fase 2: Abstracción y Resiliencia (Corto Plazo)
-*Enfoque: Dejar de ser una "App de Agencias" para ser una "Plataforma de Verticales".*
-
-### 2.1 Sistema de Capacidades (Capabilities vs. Verticals)
-- **Acción**: Eliminar los `if (vertical === 'agency')`.
-- **Acción**: Crear un `CAPABILITIES_REGISTRY`. Las rutas y lógica se activan por flags (ej: `has_advanced_crm`, `has_white_label`, `has_automation`).
-- **Resultado**: Pixy puede lanzar verticales de "Salud", "Real Estate" o "Legal" en días, no en meses.
+## Fase 2: Motor de Espacios y Configuración Dinámica (✅ COMPLETADO)
+- [x] **Gestión Centralizada**: Unificación de configuración de Spaces en `AppDetailsSheet`.
+- [x] **Motor de Terminología**: Implementación de diccionario dinámico por Space.
+- [x] **Sistema de Capacidades**: Control granular de UI basado en `ui_config` (JSONB).
+- [x] **Auto-Sincronización**: Mapeo inteligente entre módulos técnicos y funciones de UI.
+- **Documentación**: [SAAS_SPACE_ENGINE_V2.md](file:///d:/Pixy/agency-manager/docs/architecture/SAAS_SPACE_ENGINE_V2.md)
 
 ### 2.2 Papelera de Reciclaje B2B (Safety Net)
 - **Acción**: Reforzar el `soft-delete`. Todo elemento "borrado" va a una tabla de auditoría/papelera por 30 días.

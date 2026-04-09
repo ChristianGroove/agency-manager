@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -6,16 +6,16 @@ import { Badge } from "@/components/ui/badge"
 import { Plus, Search, FileText, Zap, MessageSquare, Clock, AlertCircle, CheckCircle2, RefreshCw, Trash2, Upload } from "lucide-react"
 import { useState, useEffect } from "react"
 import { toast } from "sonner"
-import { getTemplates, deleteTemplateFromMeta, syncTemplatesFromMeta, submitTemplateToMeta, MessageTemplate } from "@/modules/core/messaging/messaging-actions"
-import { TemplateBuilderSheet } from "@/modules/core/messaging/components/template-builder-sheet"
+import { getTemplates, deleteTemplateFromMeta, syncTemplatesFromMeta, submitTemplateToMeta, MessageTemplate } from "@/modules/features/messaging/messaging-actions"
+import { TemplateBuilderSheet } from "@/modules/features/messaging/components/template-builder-sheet"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
 import { SectionHeader } from "@/components/layout/section-header"
 import { useI18n } from "@/lib/i18n/context"
-import { getChannels } from "@/modules/core/channels/actions"
+import { getChannels } from "@\/modules\/features\/channels/actions"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Channel } from "@/modules/core/channels/types"
+import { Channel } from "@\/modules\/features\/channels/types"
 
 export default function TemplatesPage() {
     const { dict } = useI18n()

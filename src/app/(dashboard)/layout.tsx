@@ -1,7 +1,8 @@
-﻿import { getDashboardTemplate } from "@/components/portals/portal-registry"
+import { getDashboardTemplate } from "@/components/portals/portal-registry"
 import { createClient } from "@/lib/supabase-server"
 import { redirect } from "next/navigation"
 import { getCurrentOrganizationId, getCurrentOrgDetails } from "@/modules/core/organizations/organization-actions"
+import { resolveOrgCapabilities } from "@/modules/core/organizations/space-helpers"
 import { isSuperAdmin } from "@/lib/auth/platform-roles"
 import { getSettings } from "@/modules/core/settings/settings-actions"
 import { getDictionary } from "@/lib/i18n/dictionaries"
@@ -45,6 +46,8 @@ export default async function DashboardLayout({
         getActiveModules()
     ])
 
+    const uiConfig = currentOrgId ? await resolveOrgCapabilities(currentOrgId) : null
+
     // LÃ³gica de SuspensiÃ³n (Canceled / Unpaid)
     // El SuperAdmin siempre tiene bypass
     const isSuspended = !isAdmin && (subscription?.status === 'canceled' || subscription?.status === 'unpaid')
@@ -63,7 +66,8 @@ export default async function DashboardLayout({
             <SaaSProvider initialData={{
                 app: appResult?.app || null,
                 subscription,
-                orgDetails
+                orgDetails,
+                uiConfig
             }}>
                 <PortalLayoutComponent
                     user={user}

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { ArrowLeft, Package, Users, DollarSign, Settings } from 'lucide-react'
 import Link from 'next/link'
 import { EditAppDialog } from './_components/edit-app-dialog'
+import { UIConfigTabs } from './_components/ui-config-tabs'
 import { getDictionary } from "@/lib/i18n"
 
 interface PageProps {
@@ -130,6 +131,13 @@ export default async function AppDetailPage({ params }: PageProps) {
                     </CardContent>
                 </Card>
             </div>
+
+            {/* UI Motor Configuration (New Phase 2.2) */}
+            <UIConfigTabs 
+                appId={app.id} 
+                currentConfig={app.ui_config} 
+                category={app.space_category}
+            />
 
             {/* Modules List */}
             <Card>

@@ -1,4 +1,4 @@
-import { MarketingDashboard } from "@/modules/core/broadcasts/components/marketing-dashboard"
+import { MarketingDashboard } from "@\/modules\/features\/broadcasts/components/marketing-dashboard"
 
 export default function MarketingPage() {
     return (

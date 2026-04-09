@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { runMarketingCycle } from '@/modules/core/broadcasts/marketing-runner'
+import { runMarketingCycle } from '@\/modules\/features\/broadcasts/marketing-runner'
 
 export const dynamic = 'force-dynamic' // Ensure no caching for Cron
 export const maxDuration = 60 // Allow longer processing (Vercel max for Hobby)

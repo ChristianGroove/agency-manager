@@ -133,8 +133,8 @@ export class DealsService {
         }
 
         // 5. Build Meta Provider & dispatch HTTP
-        const { MetaProvider } = await import("@/modules/core/messaging/providers/meta-provider")
-        const { decryptObject } = await import('@/modules/core/integrations/encryption')
+        const { MetaProvider } = await import("@/modules/features/messaging/providers/meta-provider")
+        const { decryptObject } = await import('@\/modules\/infrastructure\/integrations/encryption')
         const finalCreds = decryptObject(creds)
 
         const token = finalCreds.accessToken || finalCreds.apiToken || finalCreds.access_token
@@ -164,7 +164,7 @@ export class DealsService {
         if (!result.success) throw new Error("Meta API Error: " + result.error)
 
         // 6. DB Storage reflection for CRM Inbox Rendering
-        const { MessagingPersistence } = await import('@/modules/core/messaging/services/persistence')
+        const { MessagingPersistence } = await import('@/modules/features/messaging/services/persistence')
         await MessagingPersistence.saveOutboundMessage({
             conversationId,
             content: {

@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Trash2, Edit2, ExternalLink, Clock, CheckCircle2 } from "lucide-react"
-import { Connection, deleteConnection } from "@/modules/core/integrations/integration-actions"
+import { Connection, deleteConnection } from "@\/modules\/infrastructure\/integrations/integration-actions"
 import { IntegrationProvider } from "./integration-card"
 import { toast } from "sonner"
 import { useState } from "react"
