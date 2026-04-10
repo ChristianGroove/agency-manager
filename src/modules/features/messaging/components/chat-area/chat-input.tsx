@@ -150,7 +150,10 @@ export function ChatInput({
                             </div>
                         )}
 
-                        <div className="bg-zinc-100 dark:bg-zinc-800 rounded-2xl flex items-center px-4 py-2 focus-within:bg-zinc-50 transition-all">
+                        <div 
+                            className="bg-zinc-100 dark:bg-zinc-800 rounded-2xl flex items-center px-4 py-2 transition-all"
+                            style={{ outline: 'none', boxShadow: 'none', border: 'none' }}
+                        >
                             <Textarea
                                 ref={textareaRef}
                                 value={inputValue}
@@ -158,7 +161,8 @@ export function ChatInput({
                                 onKeyDown={handleKeyDown}
                                 onPaste={handlePaste}
                                 placeholder={t('crm.inbox.chat.input_placeholder')}
-                                className="min-h-[24px] max-h-[120px] w-full border-none shadow-none focus-visible:ring-0 p-0 bg-transparent resize-none leading-relaxed"
+                                className="min-h-[24px] max-h-[120px] w-full p-0 bg-transparent resize-none leading-relaxed text-zinc-900 dark:text-zinc-100 border-none shadow-none focus-visible:ring-0"
+                                style={{ outline: 'none', boxShadow: 'none', border: 'none' }}
                                 rows={1}
                             />
                             {inputValue.length > 5 && (

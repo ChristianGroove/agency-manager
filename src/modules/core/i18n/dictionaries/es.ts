@@ -1029,7 +1029,7 @@ export const es = {
             },
             chat: {
                 no_messages: "Sin mensajes",
-                input_placeholder: "Escribe un mensaje... (Atajo: '/' para respuestas guardadas)",
+                input_placeholder: "Escribe un mensaje...",
                 refine_ai: "Refinar con IA",
                 ai_refined: "Refinado por IA",
                 note_mode: "Modo Nota",

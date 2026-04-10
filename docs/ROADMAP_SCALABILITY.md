@@ -99,7 +99,16 @@ Este documento detalla la estrategia por fases para transformar a Pixy en un pro
 - **4.2 Monitorización de Performance**: Implementar auditoría de tiempos de respuesta en modo multi-tenant para asegurar latencias < 200ms.
 - **4.3 Validación Linux/Docker**: Garantizar paridad dev-prod mediante contenedorización (Próximos Pasos).
 
-## 🛠️ Próximos Pasos Recomendados
+## Fase 5: Endurecimiento de Seguridad (Security Hardening - POSTERGADO)
+*Objetivo: Resolver vulnerabilidades detectadas por los Security Advisors.*
 
-1. **Optimización de Consultas Críticas**: Revisar los RPCs de facturación y CRM para garantizar su escalabilidad a millones de registros.
-2. **Hardening de Infraestructura**: Configurar alertas automáticas en Supabase para picos de uso inusuales.
+- [ ] **Aislamiento Multi-tenancy Crítico**:
+  - [ ] Cambiar vista `v_clients` de `SECURITY DEFINER` a `SECURITY INVOKER` para forzar respeto a RLS de la tabla `leads`. (Prioridad: Alta).
+  - [ ] Activar RLS en la tabla `agent_status_history` para evitar visibilidad cruzada de logs. (Prioridad: Media).
+- [ ] **Higiene de Funciones**:
+  - [ ] Establecer `search_path = public` en todos los RPCs para mitigar ataques de inyección de funciones y asegurar el contexto de ejecución.
+
+## 🛠️ Próximos Pasos Recomendados (Post-Despliegue)
+
+1. **Monitorización de Performance**: Implementar auditoría de tiempos de respuesta en modo multi-tenant.
+2. **Ejecución de Phase 5**: Una vez estabilizada la Phase 4 en producción, realizar el hardening de seguridad documentado.

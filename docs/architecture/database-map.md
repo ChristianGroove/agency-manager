@@ -70,3 +70,21 @@ Para garantizar latencias < 200ms en el dashboard:
 1. **Single Scan**: Los RPCs de paginación deben usar Window Functions (`COUNT(*) OVER()`) para obtener el total y los datos en una sola lectura.
 2. **Composite Indexing**: Toda consulta de reporte por `organization_id` y `status` debe contar con un índice compuesto que incluya el campo de ordenamiento (ej: `waiting_since`).
 3. **Activity Logs**: No calcular agregados de logs en vuelo para periodos largos; usar pre-agregaciones si el volumen supera los 100k registros/mes.
+
+---
+
+## 6. Deuda Técnica de Seguridad (Postergada - Phase 5)
+
+Las siguientes vulnerabilidades han sido detectadas y están programadas para remediación post-estabilización:
+
+1. **v_clients (Multi-tenant Leak Risk)**:
+   - **Vulnerabilidad**: Definida como `SECURITY DEFINER` sobre la tabla `leads`.
+   - **Riesgo**: Permite potencial visibilidad de datos entre organizaciones.
+   - **Mitigación**: Debe cambiarse a `SECURITY INVOKER` en la Phase 5.
+2. **agent_status_history (RLS Missing)**:
+   - **Vulnerabilidad**: Row Level Security deshabilitado.
+   - **Riesgo**: Visibilidad global de estados de agentes por cualquier usuario autenticado.
+   - **Mitigación**: Activar RLS con política de `organization_id`.
+3. **RPC Search Path**:
+   - **Vulnerabilidad**: RPCs sin `search_path` definido.
+   - **Mitigación**: Añadir `SET search_path = public` a todos los RPCs.
