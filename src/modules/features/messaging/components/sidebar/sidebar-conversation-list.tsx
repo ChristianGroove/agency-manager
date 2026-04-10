@@ -49,6 +49,7 @@ type Conversation = Database['public']['Tables']['conversations']['Row'] & {
         name: string | null
         phone: string | null
         avatar_url: string | null
+        status: string | null
     } | null
     integration_connections: {
         connection_name: string | null
@@ -249,7 +250,7 @@ export function SidebarConversationList({
 
         let query = supabase
             .from('conversations')
-            .select('*, leads(name, phone, avatar_url), clients(name, phone, avatar_url), integration_connections(connection_name)')
+            .select('*, leads(name, phone, avatar_url, status), clients(name, phone, avatar_url), integration_connections(connection_name)')
             .order('last_message_at', { ascending: false })
             .range(currentOffset, currentOffset + PAGE_SIZE - 1)
 
@@ -387,14 +388,17 @@ export function SidebarConversationList({
                         return prev 
                     })
 
-                    if (updatedConv.id === selectedIdRef.current) {
-                        window.dispatchEvent(new CustomEvent('pixy:sync-active-chat', { 
-                            detail: { conversationId: updatedConv.id } 
-                        }));
+                        if (updatedConv.id === selectedIdRef.current) {
+                            window.dispatchEvent(new CustomEvent('pixy:sync-active-chat', { 
+                                detail: { conversationId: updatedConv.id } 
+                            }));
+                        }
+                        
+                        // DEBT: Avoid global refetch on every Realtime update.
+                        // Surgical state updates above are sufficient for most cases.
+                        // We only refetch strictly on INSERT (handled elsewhere if needed) or major sync triggers.
                     }
-                    debouncedFetchConversations(false)
-                }
-            )
+                )
             .on('broadcast', { event: 'vanish' }, (payload: any) => {
                 const { conversationId } = payload.payload;
                 if (conversationId) {

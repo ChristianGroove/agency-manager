@@ -55,9 +55,9 @@ export function ChatHeader({
             toast.success(t('crm.inbox.context.actions.archived'))
             await archiveConversation(conversationId)
         } else if (action === 'delete') {
-            if (window.confirm("¿Seguro que quieres eliminar esta conversación?")) {
-                toast.success("Eliminando conversación...")
-                await deleteConversation(conversationId)
+            if (window.confirm("¿Estás seguro de que deseas eliminar esta conversación permanentemente?")) {
+                // SILENT OPTIMISTIC DELETE: No wait, no extra toasts, matching sidebar cards
+                deleteConversation(conversationId)
             }
         }
     }

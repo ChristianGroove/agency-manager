@@ -28,12 +28,12 @@ Antes de tomar cualquier decisión, lea:
 ## 5. Estabilización de UI, Analítica y Seguridad (Completado 2026-04-10)
 Se han corregido fallos críticos y se ha blindado el sistema para el despliegue del Baseline:
 
-- **Pipeline Stepper Líquido**: Nueva interfaz táctica en el Inbox (`LeadStageStepper.tsx`) con diseño simétrico de badge/pill.
-- **Saneamiento de Analítica**: Reparación del RPC de reportes para unificar métricas de Leads (Ventas) y Conversaciones (SLA).
-- **Blindaje de Seguridad (DB Hardening)**:
-    - RPCs protegidos con `SET search_path = public`.
-    - Vista `v_clients` securizada con `SECURITY INVOKER` vía migración incremental.
+- **Inbox Premium & Ultra-Fluido** (Phase 4.1.3):
+    - **UX Stepper**: Refactorizado a **Radix UI Popover** mediante Portal, asegurando cierre perfecto al clic-fuera e inmunidad a conflictos de capas.
+    - **Visual Hierarchy**: Avatares con strokes cromáticos dinámicos y **strokes de selección vinculados al Pipeline** para coherencia visual total.
+    - **Silent Optimism**: Implementación de borrado instantáneo y silencioso sincronizado vía Broadcast "Vanish".
+    - **Optimización Realtime**: Singleton `realtimeManager` activo, eliminando el bug de "conversaciones fantasma".
 - **Higiene de Datos**: Eliminación total de la lógica de "soft-delete" en servicios TS, implementando borrado físico estricto.
-- **Build Status**: Verificado exitosamente (Exit Code 0).
+- **Build Status**: Verificado exitosamente tras refactorización de Radix.
 
 **EL SISTEMA ESTÁ EN ESTADO DE PERFECCIÓN TÉCNICA Y LISTO PARA EL DESPLIEGUE DEL BASELINE.**

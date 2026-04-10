@@ -86,46 +86,23 @@ export function ConversationActionsMenu({
 
                 <DropdownMenuSeparator />
 
-                <DropdownMenuSub>
-                    <DropdownMenuSubTrigger className="text-red-600 focus:text-red-600">
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Eliminar
-                    </DropdownMenuSubTrigger>
-                    <DropdownMenuSubContent className="w-56" onClick={(e) => e.stopPropagation()}>
-                        <DropdownMenuItem 
-                            className="text-red-600 focus:text-red-600"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                if (window.confirm("¿Eliminar solo esta conversación?")) {
-                                    handleAction(
-                                        () => deleteConversation(conversationId, false),
-                                        "Conversación eliminada",
-                                        true
-                                    )
-                                }
-                            }}
-                        >
-                            <Trash2 className="mr-2 h-3.5 w-3.5" />
-                            Solo esta conversación
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                            className="text-red-600 focus:text-red-600 font-semibold"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                if (window.confirm("¡ATENCIÓN! Esto eliminará el chat Y EL LEAD permanentemente. ¿Continuar?")) {
-                                    handleAction(
-                                        () => deleteConversation(conversationId, true),
-                                        "Chat y Lead eliminados",
-                                        true
-                                    )
-                                }
-                            }}
-                        >
-                            <Trash2 className="mr-2 h-3.5 w-3.5" />
-                            Todo el contacto (Lead)
-                        </DropdownMenuItem>
-                    </DropdownMenuSubContent>
-                </DropdownMenuSub>
+                <DropdownMenuItem
+                    className="text-red-600 focus:text-red-600 font-medium"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        // UNIFIED METHODOLOGY: Single physical delete action matching top bar
+                        if (window.confirm("¿Estás seguro de que deseas eliminar esta conversación permanentemente?")) {
+                            handleAction(
+                                () => deleteConversation(conversationId, false),
+                                "Conversación eliminada",
+                                true
+                            )
+                        }
+                    }}
+                >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Eliminar
+                </DropdownMenuItem>
             </DropdownMenuContent>
         </DropdownMenu>
     )

@@ -71,13 +71,36 @@ Para asegurar una experiencia fluida, el CRM redirige las acciones de "Enviar Me
 Tras la estabilización de la Phase 4.1.2, la gestión del Pipeline se ha integrado profundamente en el Inbox mediante una interfaz táctica:
 
 ### A. Lead Stage Stepper
-- **Componente**: `LeadStageStepper.tsx`
-- **Ubicación**: Se despliega en la parte superior central del `ChatArea`, posicionado de forma absoluta para no obstruir el flujo de mensajes.
-- **Diseño**: Adopta una estética de "Pill Badge" redondeada y minimalista, alineada verticalmente con el botón de **Nota** inferior para mantener el equilibrio visual de la interfaz.
-- **Lógica Status-Driven**: El Stepper opera basándose en el campo `status` (status_key) de la tabla `leads`. Esto elimina la dependencia de columnas de esquema inconsistentes y garantiza que el cambio de etapa sea atómico y seguro.
+- **Componente**: `LeadStageStepper.tsx` (Refactorizado Phase 4.1.3)
+- **Implementación Técnica**: Utiliza **Radix UI Popover** para garantizar un manejo de eventos de nivel empresarial.
+    - **Portals**: El menú se renderiza en la raíz del DOM, evitando recortes por contenedores con `overflow: hidden`.
+    - **Click-Outside**: Implementa la lógica de descarte de Radix, que es inmune a bloqueos de propagación de eventos en otros componentes del Inbox.
+    - **Accesibilidad**: Soporta automáticamente cierre con tecla `ESC` y gestión de foco.
+- **Transiciones**: Mantiene animaciones fluidas con `framer-motion` (AnimatePresence + forceMount) para asegurar que el diseño no pierda su sensación "Premium" al transicionar entre estados.
+- **Lógica Status-Driven**: Opera basado en `status_key`, asegurando consistencia total con el backend.
 
 ### B. Sincronización de Procesos
 Al cambiar la etapa desde el Stepper:
-1. Se actualiza el campo `status` en la DB.
-2. Si el Pipeline tiene activado el "Process Engine", se dispara una validación de transición automática.
-3. El cambio se refleja instantáneamente en el **Command Center** (Analítica) gracias a la nueva arquitectura unificada de reportes.
+1. Se actualiza el campo `status` en la DB mediante `updateLeadStatus`.
+2. El frontend recibe una notificación de éxito vía `sonner` y actualiza el estado local del contexto del Inbox.
+3. El cambio se refleja instantáneamente en el **Command Center** y en los indicadores visuales del avatar.
+
+## 7. Refinamiento Estético de Tarjetas (Inboxing UI)
+
+Para elevar la experiencia a un estándar "Premium", se han implementado mejoras críticas en la representación de datos en las tarjetas del sidebar (`ConversationListItem.tsx`):
+
+### A. Strokes Cromáticos de Pipeline (Visual Health)
+Cada avatar en el Inbox ahora funciona como un indicador de salud del pipeline:
+- **Lógica**: Se mapea el campo `status` del lead contra la tabla `pipeline_stages`.
+- **Implementación Técnica**: Debido a las limitaciones de Tailwind para detectar clases generadas por string templates (ej. `border-${color}`), se utiliza un **Mapeador Explícito de Literales**. Esto garantiza que todos los colores de borde (violet, emerald, sky, etc.) sean incluidos en el bundle de producción.
+- **Diferenciación**: Permite al agente identificar instantáneamente qué conversaciones están en etapas críticas (ej. Propuesta Enviada) sin necesidad de abrir el chat.
+
+### B. Sistema de Badges de Canal Centrado
+Se ha rediseñado la posición de los iconos de integración (WhatsApp, Instagram, Messenger):
+- **Posicionamiento**: El icono vive como un badge absoluto centrado en la base del avatar (`bottom-[-6px] left-1/2`).
+- **Minimalismo**: Se ha eliminado el fondo blanco y bordes pesados, dejando el icono puro con un ligero `drop-shadow` para maximizar la limpieza visual.
+
+### C. Jerarquía de Información y Selección Dinámica
+- **Estados de Selección**: Se ha refinado el contraste en modo claro. La selección usa `bg-zinc-100/80`.
+- **Stroke de Selección Dinámico**: El borde izquierdo de la tarjeta seleccionada ya no es negro estático. Ahora **hereda el color de la etapa del pipeline** del lead, reforzando la asociación visual entre el contacto y su estado comercial en todo momento.
+- **Reubicación de Iconos**: El indicador de asignación (`UserCheck`) se ha movido junto a la fecha en el footer, liberando espacio para un nombre de contacto más legible.

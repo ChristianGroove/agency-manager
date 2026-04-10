@@ -61,10 +61,10 @@ Para asegurar que el dashboard de agentes refleje la ocupación real, el sistema
 
 Para garantizar que la interfaz se sienta instantánea y libre de "cards zombis", el sistema utiliza una estrategia de sincronización en tres capas:
 
-### A. Capa Local (Local Global Sync)
-Cuando el usuario activo realiza una acción de Resolve/Delete/Snooze, el componente dispara un evento de ventana personalizado: `pixy:conversation-deleted`.
-- **Propósito**: Notificar a otros componentes en la misma pestaña (ej: Sidebar desde el ChatArea) para que eliminen la card de inmediato sin esperar confirmación del servidor.
-- **Implementación**: `window.dispatchEvent(new CustomEvent('pixy:conversation-deleted', ...))`.
+### A. Capa Local (Silent Optimism)
+Cuando el usuario activo realiza una acción de Resolve/Delete/Snooze, la interfaz opera bajo una política de **Borrado Silencioso (Silent Optimistic)**:
+- **Sin Friction**: Se han eliminado los Toasts de "Eliminando..." y los retrasos artificiales de feedback. La card desaparece instantáneamente.
+- **Evento Local**: El componente dispara un evento de ventana personalizado `pixy:conversation-deleted` para que componentes hermanos (Sidebar, Header) sincronicen su estado visual en la misma pestaña sin esperar al servidor.
 
 ### B. Capa Multi-Agente (Realtime Broadcast)
 Dado que la replicación de base de datos (Postgres Changes) puede tener latencia o fallar en borrados debido a configuraciones de réplica, usamos **Broadcast**.
@@ -75,6 +75,11 @@ Dado que la replicación de base de datos (Postgres Changes) puede tener latenci
 Las acciones en `conversation-actions.ts` están optimizadas para no bloquear el hilo principal:
 - **Limpieza en paralelo**: El borrado de media en Storage, la limpieza de etiquetas en el Lead y el borrado en DB ocurren simultáneamente usando `Promise.all`.
 - **Optimistic UI**: El frontend navega al listado ANTES de que el backend responda, confiando en el éxito de la operación.
+
+### D. Optimización de Consultas (Anti-Ghosting)
+Para evitar el bug de "Conversaciones Fantasma" (cards que reaparecen tras un refresh o un evento de realtime), se ha optimizado la consulta de la barra lateral (`SidebarConversationList.tsx`):
+- **Carga Quirúrgica**: Se garantiza que el campo `status` y `leads` se recuperen exhaustivamente en cada fetch y re-fetch filtrado.
+- **Aislamiento de Eventos**: Los listeners de Realtime ahora manejan actualizaciones de estado de forma atómica (`eventType === 'DELETE'`), evitando re-fetches globales innecesarios que anteriormente contaminaban el estado local con datos cacheados obsoletos.
 
 ## 6. Gestión de WebSockets (Realtime Singleton)
 

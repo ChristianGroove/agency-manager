@@ -18,6 +18,7 @@ import {
 import { ConversationActionsMenu } from "./conversation-actions-menu"
 import { useTranslation } from "@/modules/core/i18n/use-translation"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { useSafeInboxContext } from "../context/inbox-context"
 import { getTagColorClass } from "@/modules/features/crm/components/tags/tag-colors"
 
 // Redefine type or import if shared. Using local definition for now or basic shape.
@@ -34,6 +35,7 @@ interface ConversationListItemProps {
  
 export const ConversationListItem = memo(function ConversationListItem({ conv, isSelected, onSelect, onOpenMenu, fetchConversations, tick }: ConversationListItemProps) {
      const { t, locale } = useTranslation()
+     const { pipelineStages } = useSafeInboxContext() || { pipelineStages: [] }
     const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
         id: conv.id,
     })
@@ -89,6 +91,40 @@ export const ConversationListItem = memo(function ConversationListItem({ conv, i
             locale: locale === 'es' ? es : enUS
         })
     }, [conv.last_message_at, locale, t, tick]) // Update every tick (30s)
+ 
+    // Find pipeline color for the stroke (Explicit class map for Tailwind safety)
+    const getPipelineBorderClass = (bgColor?: string | null) => {
+        if (!bgColor) return "border-l-transparent"
+        // Force Tailwind to include target classes in the bundle by listing them literally
+        const colorMap: Record<string, string> = {
+            'bg-red-500': 'border-l-red-500',
+            'bg-orange-500': 'border-l-orange-500',
+            'bg-amber-500': 'border-l-amber-500',
+            'bg-yellow-500': 'border-l-yellow-500',
+            'bg-green-500': 'border-l-green-500',
+            'bg-emerald-500': 'border-l-emerald-500',
+            'bg-teal-500': 'border-l-teal-500',
+            'bg-cyan-500': 'border-l-cyan-500',
+            'bg-sky-500': 'border-l-sky-500',
+            'bg-blue-500': 'border-l-blue-500',
+            'bg-indigo-500': 'border-l-indigo-500',
+            'bg-violet-500': 'border-l-violet-500',
+            'bg-purple-500': 'border-l-purple-500',
+            'bg-fuchsia-500': 'border-l-fuchsia-500',
+            'bg-pink-500': 'border-l-pink-500',
+            'bg-rose-500': 'border-l-rose-500',
+            'bg-zinc-500': 'border-l-zinc-500',
+            'bg-zinc-400': 'border-l-zinc-400',
+            'bg-gray-500': 'border-l-gray-500',
+        }
+        return colorMap[bgColor] || bgColor.replace('bg-', 'border-l-')
+    }
+
+    const pipelineBorderClass = useMemo(() => {
+        if (!conv.leads?.status || !pipelineStages) return null
+        const stage = pipelineStages.find((s: any) => s.status_key === conv.leads.status)
+        return getPipelineBorderClass(stage?.color)
+    }, [conv.leads?.status, pipelineStages])
 
     useEffect(() => {
         const timeDiff = new Date().getTime() - new Date(conv.last_message_at).getTime()
@@ -109,9 +145,11 @@ export const ConversationListItem = memo(function ConversationListItem({ conv, i
             {...attributes}
             onClick={() => onSelect(conv.id)}
             className={cn(
-                "w-full p-4 text-left hover:bg-zinc-100 dark:hover:bg-zinc-800/50 transition-all relative cursor-grab active:cursor-grabbing outline-none group touch-none border-l-4",
-                isSelected ? "bg-muted border-l-foreground" : "border-transparent",
-                isUnread && !isSelected && "bg-zinc-50/50 dark:bg-zinc-900/20",
+                "w-full p-4 text-left transition-all relative cursor-grab active:cursor-grabbing outline-none group touch-none border-l-4",
+                isSelected 
+                    ? cn("bg-zinc-100/80 dark:bg-zinc-100/10", pipelineBorderClass || "border-l-black dark:border-l-white") 
+                    : "hover:bg-zinc-50/80 dark:hover:bg-zinc-800/30 border-l-transparent",
+                isUnread && !isSelected && "bg-white dark:bg-zinc-950",
                 isDragging && "opacity-50 grayscale",
                 isNew && "ring-1 ring-inset ring-blue-500/50 bg-blue-50/50 dark:bg-blue-900/20 transition-all duration-500 ease-out"
             )}
@@ -144,13 +182,37 @@ export const ConversationListItem = memo(function ConversationListItem({ conv, i
             </div>
 
             <div className="flex items-center gap-3">
-                <div className="flex-shrink-0 pointer-events-none">
-                    <Avatar className="h-10 w-10 border border-black/5 dark:border-white/10 shadow-sm">
-                        <AvatarImage src={conv.leads?.avatar_url || conv.clients?.avatar_url} alt={contactName} />
-                        <AvatarFallback className="bg-gradient-to-br from-zinc-100 to-zinc-200 dark:from-zinc-800 dark:to-zinc-900 text-zinc-900 dark:text-zinc-100 font-bold">
-                            {contactName.slice(0, 2).toUpperCase()}
-                        </AvatarFallback>
-                    </Avatar>
+                <div className="flex-shrink-0 pointer-events-none relative">
+                    <div className={cn(
+                        "p-[2px] rounded-full border-2 transition-colors",
+                        pipelineBorderClass || "border-zinc-100 dark:border-zinc-800"
+                    )}>
+                        <Avatar className="h-10 w-10 border border-black/5 dark:border-white/10 shadow-sm">
+                            <AvatarImage src={conv.leads?.avatar_url || conv.clients?.avatar_url} alt={contactName} />
+                            <AvatarFallback className="bg-gradient-to-br from-zinc-100 to-zinc-200 dark:from-zinc-800 dark:to-zinc-900 text-zinc-900 dark:text-zinc-100 font-bold text-xs uppercase">
+                                {contactName.slice(0, 2)}
+                            </AvatarFallback>
+                        </Avatar>
+                    </div>
+
+                    {/* Channel Badge Centered on Avatar Base - No background, minimal */}
+                    {(() => {
+                        const channel = conv.channel?.toLowerCase()
+                        const provider = (conv as any).integration_connections?.provider_key?.toLowerCase()
+                        const combined = `${channel} ${provider}`
+                        
+                        let icon = null
+                        if (combined.includes('whatsapp') || combined.includes('evolution')) icon = "/social media icons/whatsapp.png"
+                        else if (combined.includes('messenger') || combined.includes('facebook')) icon = "/social media icons/messenger.png"
+                        else if (combined.includes('instagram')) icon = "/social media icons/instagram.png"
+
+                        if (!icon) return null
+                        return (
+                            <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 z-10 pointer-events-none">
+                                <img src={icon} alt="Channel" className="h-4 w-4 object-contain drop-shadow-sm" />
+                            </div>
+                        )
+                    })()}
                 </div>
 
                 <div className="flex-1 min-w-0 pointer-events-none flex flex-col gap-1 pr-6">
@@ -188,11 +250,8 @@ export const ConversationListItem = memo(function ConversationListItem({ conv, i
                         </div>
 
                         <div className="flex items-center gap-2 flex-shrink-0 ml-2 pointer-events-auto">
-                            {conv.assigned_to && (
-                                <UserCheck className="h-3 w-3 text-muted-foreground" />
-                            )}
                             {conv.unread_count > 0 && (
-                                <Badge className="h-5 min-w-[1.25rem] px-1.5 bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 border-none shadow-sm flex items-center justify-center">
+                                <Badge className="h-5 min-w-[1.25rem] px-1.5 bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 border-none shadow-sm flex items-center justify-center text-[10px] font-bold">
                                     {conv.unread_count}
                                 </Badge>
                             )}
@@ -209,27 +268,27 @@ export const ConversationListItem = memo(function ConversationListItem({ conv, i
                         </p>
                     </div>
 
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
-                        {(['whatsapp', 'evolution', 'whatsapp_cloud', 'meta_whatsapp'].includes((conv.channel as any)?.toLowerCase())) && (
-                            <>
-                                <img src="/social media icons/whatsapp.png" alt="WhatsApp" className="h-3.5 w-3.5 object-contain" />
-                                {conv.integration_connections?.connection_name && (
-                                    <span className="text-[10px] px-1.5 py-0.5 bg-zinc-100 dark:bg-zinc-800 rounded text-zinc-600 dark:text-zinc-400 font-medium truncate max-w-[80px]">
-                                        {conv.integration_connections.connection_name}
-                                    </span>
-                                )}
-                            </>
-                        )}
-                        {(['messenger', 'meta_messenger', 'facebook_dm', 'facebook_page'].includes((conv.channel as any)?.toLowerCase())) && (
-                            <img src="/social media icons/messenger.png" alt="Messenger" className="h-3.5 w-3.5 object-contain" />
-                        )}
-                        {(['instagram', 'instagram_dm', 'instagram_dme', 'meta_instagram'].includes((conv.channel as any)?.toLowerCase())) && (
-                            <img src="/social media icons/instagram.png" alt="Instagram" className="h-3.5 w-3.5 object-contain" />
+                    <div className="flex items-center gap-2 text-[10px] text-muted-foreground/60 flex-wrap mt-0.5">
+                        {conv.integration_connections?.connection_name && (
+                            <span className="bg-zinc-100 dark:bg-zinc-800/80 px-1.5 py-0.5 rounded text-[10px] font-medium text-muted-foreground/90 truncate max-w-[100px]">
+                                {conv.integration_connections.connection_name}
+                            </span>
                         )}
 
-                        <span>
+                        <span className="font-medium">
                              {formattedLastMessageTime}
                          </span>
+                         
+                        {conv.assigned_to && (
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <UserCheck className="h-3 w-3 text-brand-pink/70" />
+                                    </TooltipTrigger>
+                                    <TooltipContent>Asignado a un agente</TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        )}
 
                         {conv.tags && conv.tags.length > 0 && typeof conv.tags[0] === 'string' && (
                             <div className="flex gap-1">

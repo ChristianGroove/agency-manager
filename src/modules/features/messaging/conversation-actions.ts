@@ -125,7 +125,13 @@ export async function deleteConversation(conversationId: string, deleteLeadIfOrp
         return { success: false, error: error.message }
     }
 
-    // 3. Optional Orphaned Lead Cleanup
+    // 4. MULTI-AGENT BROADCAST (Critical for real-time consistency)
+    // Emit immedately after DB delete to ensure all clients vanish the item
+    if (orgId) {
+        broadcastVanish(orgId, conversationId).catch(e => console.error("[ConversationActions] Broadcast error:", e))
+    }
+
+    // 5. Optional Orphaned Lead Cleanup
     if (deleteLeadIfOrphaned && conv.lead_id) {
         const { data: otherConvs } = await supabase
             .from('conversations')
@@ -139,13 +145,9 @@ export async function deleteConversation(conversationId: string, deleteLeadIfOrp
         }
     }
 
-    // Ensure media cleanup finished at some point (we await it here to ensure consistency before returning)
+    // Ensure heavy media cleanup finished before returning, 
+    // but the UI has already been notified to vanish the item via broadcast above.
     await mediaCleanupPromise;
-
-    // 4. MULTI-AGENT BROADCAST (Critical for real-time consistency)
-    if (orgId) {
-        broadcastVanish(orgId, conversationId).catch(e => console.error("[ConversationActions] Broadcast error:", e))
-    }
 
     revalidatePath('/inbox')
     revalidatePath('/crm')
