@@ -14,7 +14,7 @@ Toda la agregación de métricas ocurre en el servidor de base de datos para gar
     - **Pipeline**: Suma del valor monetario de las conversaciones asignadas por agente.
     - **Abandono Crítico**: Leads en estado "pendientes" por más de **24 horas** (86,400 segundos) sin respuesta inicial.
 
-## 2. Generador de PDF (@/lib/crm-report-generator.ts)
+## 2. Generador de PDF (@/modules/features/crm/services/crm-report-generator.ts)
 
 Utiliza `jsPDF` y `AutoTable` para crear documentos profesionales de múltiples páginas.
 
@@ -35,7 +35,7 @@ El sistema de reportes está diseñado como un módulo premium opcional dentro d
 - **Módulo Key**: `module_crm_reports`
 - **Activación**: Se habilita o deshabilita desde el **SuperAdmin Centro de Mando / SaaS Engine Manager**. Su estado se almacena en la tabla `saas_app_modules` y se refleja en `manual_module_overrides`.
 - **Restricción de Rol**: Por diseño de seguridad, este módulo es de acceso exclusivo para el rol **`owner`** (Dueño). Los administradores y agentes no tienen visibilidad de esta sección en el menú de navegación.
-- **Enforcement**: La lógica de visibilidad reside en `src/lib/module-config.ts`.
+- **Enforcement**: La lógica de visibilidad reside en `@/modules/core/saas/module-config.ts`.
 
 ## 4. Sistema de Identidad e Imágenes (Deshabilitable)
 

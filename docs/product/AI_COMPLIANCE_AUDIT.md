@@ -25,9 +25,9 @@ This document provides comprehensive evidence of Pixy's AI system compliance wit
 - ✅ Human handoff system implemented
 
 **Evidence Files**:
-- [`ai-intent-validator.ts`](file:///C:/Users/Usuario/.gemini/antigravity/scratch/agency-manager/src/lib/ai/ai-intent-validator.ts) - Intent classification system
-- [`ai-deflection-handler.ts`](file:///C:/Users/Usuario/.gemini/antigravity/scratch/agency-manager/src/lib/ai/ai-deflection-handler.ts) - Off-topic handling
-- [`ai-message-handler.ts`](file:///C:/Users/Usuario/.gemini/antigravity/scratch/agency-manager/src/lib/ai/ai-message-handler.ts) - System orchestration
+- [`ai-intent-validator.ts`](file:///d:/Pixy/agency-manager/src/modules/infrastructure/ai/services/ai-intent-validator.ts) - Intent classification system
+- [`ai-deflection-handler.ts`](file:///d:/Pixy/agency-manager/src/modules/infrastructure/ai/services/ai-deflection-handler.ts) - Off-topic handling
+- [`ai-message-handler.ts`](file:///d:/Pixy/agency-manager/src/modules/infrastructure/ai/services/ai-message-handler.ts) - System orchestration
 
 ---
 
@@ -146,7 +146,7 @@ User Query → Intent Classifier → Off-Topic Detected → Deflection Response 
 **Maximum Deflections**: 2 attempts  
 **After 2 deflections**: Automatic handoff to human agent
 
-**Implementation**: [`ai-deflection-handler.ts`](file:///C:/Users/Usuario/.gemini/antigravity/scratch/agency-manager/src/lib/ai/ai-deflection-handler.ts)
+**Implementation**: [`ai-deflection-handler.ts`](file:///d:/Pixy/agency-manager/src/modules/infrastructure/ai/services/ai-deflection-handler.ts)
 
 ---
 
@@ -176,7 +176,7 @@ Unknown/Unclassified:   2.6% ✅ (Min: <5%)
 4. Advanced Features: 10.8%
 5. Billing & Pricing: 8.6%
 
-**Monitoring**: Real-time tracking via [`ai-compliance-metrics.ts`](file:///C:/Users/Usuario/.gemini/antigravity/scratch/agency-manager/src/lib/ai/ai-compliance-metrics.ts)
+**Monitoring**: Real-time tracking via [`ai-compliance-metrics.ts`](file:///d:/Pixy/agency-manager/src/modules/infrastructure/ai/services/ai-compliance-metrics.ts)
 
 ---
 
@@ -197,7 +197,7 @@ All messages are sanitized before sending to external LLMs:
 - ✅ Credit cards
 - ✅ Personal identifiers (DNI, IDs)
 
-**Implementation**: [`ai-data-protection.ts`](file:///C:/Users/Usuario/.gemini/antigravity/scratch/agency-manager/src/lib/ai/ai-data-protection.ts)
+**Implementation**: [`ai-data-protection.ts`](file:///d:/Pixy/agency-manager/src/modules/infrastructure/ai/services/ai-data-protection.ts)
 
 ### Zero Data Retention Configuration
 
@@ -242,7 +242,7 @@ Time to Human:         <2 minutes
 Agent Availability:    99.1%
 ```
 
-**Implementation**: [`ai-handoff-manager.ts`](file:///C:/Users/Usuario/.gemini/antigravity/scratch/agency-manager/src/lib/ai/ai-handoff-manager.ts)
+**Implementation**: [`ai-handoff-manager.ts`](file:///d:/Pixy/agency-manager/src/modules/infrastructure/ai/services/ai-handoff-manager.ts)
 
 ---
 
@@ -357,7 +357,7 @@ Status: ✅ APPROVED - Human escalation
 - Off-topic ratio exceeds 20%
 - Data sanitization rate drops below 95%
 
-**Compliance Dashboard**: [`ai-compliance-metrics.ts`](file:///C:/Users/Usuario/.gemini/antigravity/scratch/agency-manager/src/lib/ai/ai-compliance-metrics.ts)
+**Compliance Dashboard**: [`ai-compliance-metrics.ts`](file:///d:/Pixy/agency-manager/src/modules/infrastructure/ai/services/ai-compliance-metrics.ts)
 
 ### Weekly Reports
 
@@ -408,11 +408,11 @@ Status: ✅ APPROVED - Human escalation
 
 ## Appendix A: Intent Keywords Reference
 
-See [`ai-intent-validator.ts`](file:///C:/Users/Usuario/.gemini/antigravity/scratch/agency-manager/src/lib/ai/ai-intent-validator.ts) for complete keyword patterns.
+See [`ai-intent-validator.ts`](file:///d:/Pixy/agency-manager/src/modules/infrastructure/ai/services/ai-intent-validator.ts) for complete keyword patterns.
 
 ## Appendix B: Deflection Templates
 
-See [`ai-deflection-handler.ts`](file:///C:/Users/Usuario/.gemini/antigravity/scratch/agency-manager/src/lib/ai/ai-deflection-handler.ts) for all deflection response templates.
+See [`ai-deflection-handler.ts`](file:///d:/Pixy/agency-manager/src/modules/infrastructure/ai/services/ai-deflection-handler.ts) for all deflection response templates.
 
 ---
 

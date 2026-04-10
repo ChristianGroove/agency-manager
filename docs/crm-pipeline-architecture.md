@@ -22,10 +22,10 @@ Cada oportunidad en el embudo (`contact_type='lead'`) está vinculada a un regis
 - Tener múltiples negocios activos (ej: "Mantenimiento", "Rediseño") para una misma empresa sin duplicar datos de contacto.
 - Mantener la consistencia de facturación y hosting centralizada en el "Master".
 
-### B. Borrado Seguro y Papelera
-Toda acción de eliminación en el pipeline es **Soft-Delete** (`deleted_at`).
-- **Independencia de Borrado**: Eliminar un lead del embudo NO afecta al contacto maestro vinculado. El cliente permanece en la agenda con sus servicios activos, aunque su tarjeta de negocio sea enviada a la papelera.
-- **Acción Masiva**: La papelera permite restaurar leads o borrarlos físicamente de forma individual o en bloque, sin riesgo de "daño colateral" a la base de clientes.
+### B. Borrado Físico Definitivo
+Toda acción de eliminación en el pipeline es **Física e Irreversible**.
+- **Independencia de Borrado**: Eliminar un lead del embudo NO afecta al contacto maestro vinculado. El cliente permanece en la agenda con sus servicios activos.
+- **Eficiencia**: El borrado directo optimiza el rendimiento de la base de datos al no acumular registros residuales ("tombstones").
 
 ## 3. Ciclo de Vida del Lead (Lifecycle)
 

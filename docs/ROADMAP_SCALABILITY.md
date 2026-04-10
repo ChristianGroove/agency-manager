@@ -92,11 +92,12 @@ Este documento detalla la estrategia por fases para transformar a Pixy en un pro
 
 ---
 
-## Fase 4: Optimización y Performance (Próximos Pasos)
-*Enfoque: Carga de alta fidelidad y despliegue continuo.*
+## Fase 4: Optimización y Performance (✅ EN PROGRESO)
+*Enfoque: Carga de alta fidelidad y escalabilidad empresarial.*
 
-- **4.1 Monitorización de Performance**: Implementar auditoría de tiempos de respuesta en modo multi-tenant para asegurar latencias < 200ms en el dashboard.
-- **4.2 Validación Linux/Docker**: Garantizar que el entorno de producción es 100% fiel al desarrollo mediante pruebas de contenedor.
+- **4.1 Optimización de Consultas Críticas (✅ COMPLETADO)**: Refactorización de RPCs de Facturación y CRM con Window Functions e índices GIN (Trigram).
+- **4.2 Monitorización de Performance**: Implementar auditoría de tiempos de respuesta en modo multi-tenant para asegurar latencias < 200ms.
+- **4.3 Validación Linux/Docker**: Garantizar paridad dev-prod mediante contenedorización (Próximos Pasos).
 
 ## 🛠️ Próximos Pasos Recomendados
 

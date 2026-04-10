@@ -49,7 +49,7 @@ Las tablas Hub son aquellas que sirven como punto de unión para múltiples domi
 ## 3. Relaciones Transversales Críticas
 
 1. **Aislamiento Global (`organization_id`)**: Casi todas las tablas del esquema `public` poseen una clave foránea hacia `organizations`. Las políticas de RLS dependen de este campo para evitar fugas de datos entre inquilinos.
-2. **Estrategia de Borrado (`deleted_at`)**: Estandarización de soft-delete en `leads`, `quotes`, `invoices` y `briefings`. Esto alimenta la Papelera de Reciclaje centralizada.
+2. **Estrategia de Borrado (Físico)**: Eliminación definitiva de registros en `leads`, `quotes`, `invoices` y `briefings`. Se ha descartado el uso de "Papelera" y `deleted_at` para optimizar el rendimiento y cumplir con la arquitectura V2.
 3. **El Eje del Cliente (`lead_id` / `master_contact_id`)**: La tabla `leads` es el conector natural entre **Messaging** (conversaciones), **Billing** (facturas) y **CRM** (oportunidades). La recursividad permite que un "Master Contact" agrupe múltiples historiales de negocio.
 4. **Identidad del Agente (`user_id`)**: Vincula las acciones del personal (mensajes enviados, facturas creadas) con su perfil de usuario.
 
@@ -60,3 +60,13 @@ Las tablas Hub son aquellas que sirven como punto de unión para múltiples domi
 - **Densidad de `leads`**: Tras la consolidación, esta tabla es el punto único de falla. Se han implementado índices parciales y una Capa de Seguridad de Identidad para mitigar riesgos de borrado accidental y colisiones de datos.
 - **Crecimiento de `messages`**: El registro de mensajes carece de una estrategia de archivado o particionamiento, lo que podría degradar el rendimiento con el tiempo.
 - **Transición de `clients` (Legacy)**: Se ha completado la migración lógica a la tabla `leads` mediante el discriminador `contact_type='client'`. Las tablas residuales deben ser removidas físicamente para higiene total del esquema.
+- **Escalabilidad de Búsquedas**: Es obligatorio el uso de GIN Trigram Indexes para cualquier campo de texto que se consulte vía `ILIKE` en el Command Center.
+
+---
+
+## 5. Estándares de Rendimiento (Phase 4)
+
+Para garantizar latencias < 200ms en el dashboard:
+1. **Single Scan**: Los RPCs de paginación deben usar Window Functions (`COUNT(*) OVER()`) para obtener el total y los datos en una sola lectura.
+2. **Composite Indexing**: Toda consulta de reporte por `organization_id` y `status` debe contar con un índice compuesto que incluya el campo de ordenamiento (ej: `waiting_since`).
+3. **Activity Logs**: No calcular agregados de logs en vuelo para periodos largos; usar pre-agregaciones si el volumen supera los 100k registros/mes.

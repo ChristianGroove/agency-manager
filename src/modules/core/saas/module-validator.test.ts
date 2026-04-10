@@ -1,11 +1,11 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { ModuleValidator } from './module-validator'
-import { supabaseAdmin } from './supabase-admin'
+import { supabaseAdmin } from '@/modules/core/database/supabase-admin'
 import { ModuleDependency, SystemModule } from './module-validator'
 
 // Mock dependencies
-vi.mock('./supabase-admin', () => ({
+vi.mock('@/modules/core/database/supabase-admin', () => ({
     supabaseAdmin: {
         from: vi.fn(),
         rpc: vi.fn()
